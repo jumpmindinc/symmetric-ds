@@ -65,7 +65,8 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 class MsSql2008DdlReaderTest {
-    protected MsSql2008DatabasePlatform platform;
+//    protected MsSql2008DatabasePlatform platform;
+    protected IDatabasePlatform platform;
     protected Pattern mssql2008IsoDatePattern;
     /*
      * The regular expression pattern for the mssql2008 conversion of ISO times.
@@ -84,6 +85,7 @@ class MsSql2008DdlReaderTest {
     public void setUp() throws Exception {
         platform = mock(MsSql2008DatabasePlatform.class);
         sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
         mssql2008IsoDatePattern = Pattern.compile("TO_DATE\\('([^']*)'\\, 'YYYY\\-MM\\-DD'\\)");
         mssql2008IsoTimePattern = Pattern.compile("TO_DATE\\('([^']*)'\\, 'HH24:MI:SS'\\)");
         mssql2008IsoTimestampPattern = Pattern.compile("TO_DATE\\('([^']*)'\\, 'YYYY\\-MM\\-DD HH24:MI:SS'\\)");

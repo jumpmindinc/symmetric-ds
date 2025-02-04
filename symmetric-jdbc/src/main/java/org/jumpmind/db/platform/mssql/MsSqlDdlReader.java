@@ -78,6 +78,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ChangeCatalogConnectionHandler;
 import org.jumpmind.db.sql.IConnectionHandler;
 import org.jumpmind.db.sql.ISqlRowMapper;
+import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
@@ -100,7 +101,7 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
         setDefaultCatalogPattern(null);
         setDefaultSchemaPattern(null);
         setDefaultTablePattern("%");
-        JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
+        ISqlTemplate sqlTemplate = platform.getSqlTemplateDirty();
         if (sqlTemplate.getDatabaseMajorVersion() >= 9) {
             String sql = "select name from sys.types where is_user_defined = 1";
             List<Row> rows = sqlTemplate.query(sql);
