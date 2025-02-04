@@ -79,7 +79,7 @@ abstract public class AbstractDdlTypesTest {
                     + column.getName(), column.findPlatformColumn(getName()));
         }
         assertNotNull(fromXml);
-        platform.alterTables(false, null, fromXml);
+        platform.alterTables(false, fromXml);
         Table fromDb2 = platform.readTableFromDatabase(null, null, tableName());
         assertNotNull("Could not find " + tableName() + " in the database", fromDb2);
         for (Column column1 : columns1) {

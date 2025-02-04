@@ -73,7 +73,7 @@ public class AuditTableDataRouter extends AbstractDataRouter implements IBuiltIn
             if (auditTable == null) {
                 auditTable = toAuditTable(table);
                 if (parameterService.is(ParameterConstants.AUTO_CONFIGURE_DATABASE)) {
-                    platform.alterTables(true, null, auditTable);
+                    platform.alterTables(true, auditTable);
                 }
                 auditTable = platform.getTableFromCache(auditTable.getCatalog(), auditTable.getSchema(), auditTable.getName(), false);
                 auditTables.put(tableName, auditTable);

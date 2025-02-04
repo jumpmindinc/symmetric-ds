@@ -108,13 +108,13 @@ public class DatabasePlatformTest {
         table.getColumnWithName("NOTES2").setSize("20");
         table.getColumnWithName("NOTES2").setDefaultValue("1234");
         // alter to add two columns that will cause a table rebuild
-        platform.alterTables(false, null, table);
+        platform.alterTables(false, table);
         tableFromDatabase = platform.getTableFromCache(table.getName(), true);
         assertNotNull(tableFromDatabase);
         assertEquals(4, tableFromDatabase.getColumnCount());
         assertEquals(1, template.queryForLong(String.format("select count(*) from %s%s%s", delimiter, tableFromDatabase.getName(), delimiter)));
         // alter to remove two columns that will cause a table rebuild
-        platform.alterTables(false, null, origTable);
+        platform.alterTables(false, origTable);
         tableFromDatabase = platform.getTableFromCache(origTable.getName(), true);
         assertNotNull(tableFromDatabase);
         assertEquals(2, tableFromDatabase.getColumnCount());
@@ -133,7 +133,7 @@ public class DatabasePlatformTest {
         dropCreateAndThenReadTable(table);
         final String DEFAULT_VALUE = "SOMETHING";
         table.getColumnWithName("NOTES").setDefaultValue(DEFAULT_VALUE);
-        platform.alterTables(false, null, table);
+        platform.alterTables(false, table);
         Table tableFromDatabase = platform.getTableFromCache(table.getName(), true);
         assertEquals(DEFAULT_VALUE, tableFromDatabase.getColumnWithName("NOTES").getDefaultValue());
     }
@@ -191,7 +191,7 @@ public class DatabasePlatformTest {
         table.getColumnWithName("ID").setAutoIncrement(false);
         table.getColumnWithName("COL1").setSize("254");
         table.getColumnWithName("COL1").setRequired(true);
-        platform.alterTables(false, null, table);
+        platform.alterTables(false, table);
         tableFromDatabase = platform.getTableFromCache(table.getName(), true);
         assertFalse(tableFromDatabase.getColumnWithName("ID").isAutoIncrement());
         /* sqlite character fields do not limit based on size */
