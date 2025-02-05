@@ -56,16 +56,17 @@ public class SimpleStagingDataWriter {
     protected long memoryThresholdInBytes;
     protected String category;
     protected BatchType batchType;
+    protected String sourceNodeId;
     protected String targetNodeId;
     protected DataContext context;
     protected ProcessInfo processInfo;
     protected BufferedWriter writer;
     protected Batch batch;
-    protected boolean missingBatchId;
+    protected long invalidLineCount;
     protected Exception exception;
 
     public SimpleStagingDataWriter(ProcessInfo processInfo, BufferedReader reader, ISymmetricEngine engine, String category, long memoryThresholdInBytes,
-            BatchType batchType, String targetNodeId, DataContext context, IProtocolDataWriterListener... listeners) {
+            BatchType batchType, String sourceNodeId, String targetNodeId, DataContext context, IProtocolDataWriterListener... listeners) {
         this.reader = new CsvReader(reader);
         this.reader.setEscapeMode(CsvReader.ESCAPE_MODE_BACKSLASH);
         this.reader.setSafetySwitch(false);
@@ -74,6 +75,7 @@ public class SimpleStagingDataWriter {
         this.memoryThresholdInBytes = memoryThresholdInBytes;
         this.category = category;
         this.batchType = batchType;
+        this.sourceNodeId = sourceNodeId;
         this.targetNodeId = targetNodeId;
         this.listeners = listeners;
         this.context = context;
@@ -214,7 +216,10 @@ public class SimpleStagingDataWriter {
                     putStats(batchStats, batchStatsColumnsLine, batchStatsLine);
                     processInfo.setTotalDataCount(batchStats.get("DATA_ROW_COUNT"));
                 } else if (writer == null) {
-                    missingBatchId = true;
+                    invalidLineCount++;
+                    if (log.isDebugEnabled() && line != null) {
+                        log.debug("Invalid line received outside of a batch: {}", line);
+                    }
                 } else {
                     TableLine batchLine = batchTableLines.get(tableLine);
                     if (batchLine == null || (batchLine != null && batchLine.columnsLine == null)) {
@@ -252,8 +257,8 @@ public class SimpleStagingDataWriter {
                 lineCount++;
                 if (System.currentTimeMillis() - ts > 60000) {
                     log.info(
-                            "Batch '{}', for node '{}', for process 'transfer to stage' has been processing for {} seconds.  The following stats have been gathered: {}",
-                            new Object[] { (batch != null ? batch.getBatchId() : "?"), (batch != null ? batch.getTargetNodeId() : "?"),
+                            "Batch '{}', from node '{}', for process 'transfer to stage' has been processing for {} seconds.  The following stats have been gathered: {}",
+                            new Object[] { (batch != null ? batch.getBatchId() : "?"), sourceNodeId,
                                     (System.currentTimeMillis() - startTime) / 1000,
                                     "LINES=" + lineCount + ", BYTES=" + ((resource == null) ? 0 : resource.getSize()) });
                     ts = System.currentTimeMillis();
@@ -278,8 +283,8 @@ public class SimpleStagingDataWriter {
             log.error("Failed to write batch into staging from {}.  {}: {}", context.getContext().get(Constants.DATA_CONTEXT_SOURCE_NODE).toString(),
                     ex.getClass().getName(), ex.getMessage());
         } finally {
-            if (missingBatchId) {
-                throw new ProtocolException("Batch content is missing batch ID");
+            if (invalidLineCount > 0) {
+                throw new ProtocolException("Received {} invalid lines from node {} that were outside of a batch", invalidLineCount, sourceNodeId);
             }
         }
     }
@@ -316,7 +321,7 @@ public class SimpleStagingDataWriter {
                 writer.write(line);
                 writer.write("\n");
             } else {
-                exception = new ProtocolException("Batch data is corrupt because no batch ID was present for DML lines");
+                exception = new ProtocolException("Batch data is corrupt from node " + sourceNodeId + " because no batch ID was present");
                 processInfo.setStatus(ProcessStatus.ERROR);
             }
         }
