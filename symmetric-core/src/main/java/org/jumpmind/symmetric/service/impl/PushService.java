@@ -30,6 +30,7 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.SymmetricException;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.BatchAck;
 import org.jumpmind.symmetric.model.Node;
@@ -220,7 +221,8 @@ public class PushService extends AbstractOfflineDetectorService implements IPush
             List<OutgoingBatch> extractedBatches = null;
             if (nodeSecurity != null && nodeSecurity.isRegistrationEnabled()) {
                 if (identity.getNodeId().equals(nodeSecurity.getCreatedAtNodeId()) && nodeSecurity.isRegistrationAllowedNow() &&
-                        parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)) {
+                        parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED) &&
+                        (status.getQueue() == null || status.getQueue().equals(Constants.CHANNEL_DEFAULT))) {
                     transport = transportManager.getRegisterPushTransport(remote, identity);
                     extractedBatches = registrationService.registerWithClient(remote, transport);
                 }
