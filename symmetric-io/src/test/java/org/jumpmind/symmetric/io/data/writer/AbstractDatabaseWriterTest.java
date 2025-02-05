@@ -161,7 +161,6 @@ public class AbstractDatabaseWriterTest {
         StubAbstractDatabaseWriter abstractDatabaseWriter = new StubAbstractDatabaseWriter();
         abstractDatabaseWriter.start(sourceTable, targetTable);
         String[] rowData = null;
-        long startTime = System.currentTimeMillis();
         for (int rowNo = 0; rowNo < maxRows; rowNo++) {
             rowData = abstractDatabaseWriter.getRowDataNew(csvData, CsvData.ROW_DATA);
             // rowData = abstractDatabaseWriter.getRowDataOld(csvData, CsvData.ROW_DATA);
