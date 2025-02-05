@@ -570,7 +570,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                 SimpleStagingDataWriter stageWriter = null;
                 try {
                     stageWriter = new SimpleStagingDataWriter(transferInfo, transport.openReader(), stagingManager, Constants.STAGING_CATEGORY_INCOMING,
-                            memoryThresholdInBytes, BatchType.LOAD, targetNodeId, ctx, loadListener);
+                            memoryThresholdInBytes, BatchType.LOAD, sourceNode.getNodeId(), targetNodeId, ctx, loadListener);
                     stageWriter.process();
                 } finally {
                     /* Previously submitted tasks will still be executed */
@@ -1183,23 +1183,30 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
+            if (this == obj) {
                 return true;
-            if (obj == null)
+            }
+            if (obj == null) {
                 return false;
-            if (getClass() != obj.getClass())
+            }
+            if (getClass() != obj.getClass()) {
                 return false;
+            }
             ConflictNodeGroupLink other = (ConflictNodeGroupLink) obj;
             if (getConflictId() == null) {
-                if (other.getConflictId() != null)
+                if (other.getConflictId() != null) {
                     return false;
-            } else if (!getConflictId().equals(other.getConflictId()))
+                }
+            } else if (!getConflictId().equals(other.getConflictId())) {
                 return false;
+            }
             if (nodeGroupLink == null) {
-                if (other.nodeGroupLink != null)
+                if (other.nodeGroupLink != null) {
                     return false;
-            } else if (!nodeGroupLink.equals(other.nodeGroupLink))
+                }
+            } else if (!nodeGroupLink.equals(other.nodeGroupLink)) {
                 return false;
+            }
             return true;
         }
     }
