@@ -146,6 +146,15 @@ public class AseDdlBuilder extends AbstractDdlBuilder {
         super.createTable(table, ddl, temporary, recreate);
     }
 
+    /**
+     * Specifies "datarows" for table locking scheme, in order to overcome overly restrictive defaults ("allpages" or "datapages") leading to deadlocks
+     */
+    @Override
+    protected void writeTableCreationStmtEnding(Table table, StringBuilder ddl) {
+        ddl.append(" lock datarows");
+        super.writeTableCreationStmtEnding(table, ddl);
+    }
+
     @Override
     protected void writeColumn(Table table, Column column, StringBuilder ddl) {
         if (column.isGenerated()) {
