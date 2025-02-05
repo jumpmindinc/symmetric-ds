@@ -777,7 +777,10 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
             System.out.println("Copying security files");
             FileUtils.copyToDirectory(new File(AppUtils.getSymHome() + "/security/keystore"), new File(workingDirectory, "WEB-INF/classes"));
             FileUtils.copyToDirectory(new File(AppUtils.getSymHome() + "/security/cacerts"), new File(workingDirectory, "WEB-INF/classes"));
-            FileUtils.copyToDirectory(new File(AppUtils.getSymHome() + "/security/rest.properties"), new File(workingDirectory, "WEB-INF/classes"));
+            File restPropFile = new File(AppUtils.getSymHome() + "/security/rest.properties");
+            if (restPropFile.exists()) {
+                FileUtils.copyToDirectory(restPropFile, new File(workingDirectory, "WEB-INF/classes"));
+            }
         }
         if (!line.hasOption(OPTION_EXCLUDE_LOG4J)) {
             System.out.println("Copying log4j files");
