@@ -185,6 +185,14 @@ final public class SymmetricUtils {
 
     public static boolean filterTransactions(Transaction transaction, Map<String, Transaction> transactionMap,
             List<Transaction> filteredTransactions, String dbUser, boolean isBlockingUser, boolean isBlocking) {
+        return SymmetricUtils.filterTransactions(transaction, transactionMap, filteredTransactions, dbUser, isBlockingUser, isBlocking, 0);
+    }
+
+    public static boolean filterTransactions(Transaction transaction, Map<String, Transaction> transactionMap,
+            List<Transaction> filteredTransactions, String dbUser, boolean isBlockingUser, boolean isBlocking, int level) {
+        if (level > 500) {
+            return false;
+        }
         Transaction blockingTransaction = transactionMap.get(transaction.getBlockingId());
         if (!isBlocking && blockingTransaction == null) {
             return false;
@@ -195,12 +203,12 @@ final public class SymmetricUtils {
         if (isBlockingUser || (dbUser != null && dbUser.equalsIgnoreCase(transaction.getUsername()))) {
             filteredTransactions.add(transaction);
             if (blockingTransaction != null) {
-                filterTransactions(blockingTransaction, transactionMap, filteredTransactions, dbUser, true, true);
+                filterTransactions(blockingTransaction, transactionMap, filteredTransactions, dbUser, true, true, level + 1);
             }
             return true;
         }
         if (blockingTransaction != null
-                && filterTransactions(blockingTransaction, transactionMap, filteredTransactions, dbUser, false, true)) {
+                && filterTransactions(blockingTransaction, transactionMap, filteredTransactions, dbUser, false, true, level + 1)) {
             filteredTransactions.add(transaction);
             return true;
         }
