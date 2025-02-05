@@ -116,6 +116,13 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
     @Override
     public boolean createOrAlterTablesIfNecessary(String... tableNames) {
         boolean altered = super.createOrAlterTablesIfNecessary(tableNames);
+        altered = altered || alterTableIdentityGapIfNecessary();
+        altered = altered || alterTableLockingSchemeIfNecessary();
+        return altered;
+    }
+
+    public boolean alterTableIdentityGapIfNecessary() {
+        boolean altered = false;
         ISqlTemplate sqlTemplate = platform.getSqlTemplate();
         String prefix = getTablePrefix();
         try {
@@ -134,13 +141,19 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
             log.warn("Failed to alter identity gap: {}", e.getMessage());
             log.debug("", e);
         }
+        return altered;
+    }
+
+    /**
+     * Applies the "datarows" table locking scheme to overcome overly restrictive defaults ("allpages" or "datapages") causing database waits and deadlocks
+     */
+    public boolean alterTableLockingSchemeIfNecessary() {
+        boolean altered = false;
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        String prefix = getTablePrefix();
         try {
             if (parameterService.is(ParameterConstants.SYBASE_ROW_LEVEL_LOCKS_ONLY, true)) {
-                List<String> tables = new ArrayList<String>();
-                tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_DATA).toLowerCase());
-                tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_DATA_EVENT).toLowerCase());
-                tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_OUTGOING_BATCH).toLowerCase());
-                tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_MONITOR_EVENT).toLowerCase());
+                List<String> tables = getTableNamesRequiringDatarowLockingScheme(prefix);
                 String sql = "select case (sysstat2 & 57344) when 32768 then 1 else 0 end from sysobjects where name = ?";
                 for (String table : tables) {
                     if (sqlTemplate.queryForInt(sql, table) == 0) {
@@ -157,6 +170,21 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
         return altered;
     }
 
+    public List<String> getTableNamesRequiringDatarowLockingScheme(String prefix) {
+        List<String> tables = new ArrayList<String>();
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_DATA).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_DATA_EVENT).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_OUTGOING_BATCH).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_INCOMING_BATCH).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_MONITOR_EVENT).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_EXTRACT_REQUEST).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_NODE_HOST).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_LOCK).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_JOB).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_FILE_SNAPSHOT).toLowerCase());
+        return tables;
+    }
+
     @Override
     public void dropRequiredDatabaseObjects() {
     }
@@ -171,6 +199,7 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
             log.info("Dropping {} trigger for {}", triggerName, Table.getFullyQualifiedTableName(catalogName, schemaName, tableName));
             ((JdbcSqlTransaction) transaction)
                     .executeCallback(new IConnectionCallback<Boolean>() {
+                        @Override
                         public Boolean execute(Connection con) throws SQLException {
                             String previousCatalog = con.getCatalog();
                             try (Statement stmt = con.createStatement()) {
@@ -219,6 +248,7 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
             final String triggerName) {
         return ((JdbcSqlTemplate) platform.getSqlTemplate())
                 .execute(new IConnectionCallback<Boolean>() {
+                    @Override
                     public Boolean execute(Connection con) throws SQLException {
                         String previousCatalog = con.getCatalog();
                         String sql = "select count(*) from dbo.sysobjects where type = 'TR' AND name = ?";
@@ -272,6 +302,7 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
                 });
     }
 
+    @Override
     public void disableSyncTriggers(ISqlTransaction transaction, String nodeId) {
         if (nodeId == null) {
             nodeId = "";
@@ -280,11 +311,13 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
         transaction.prepareAndExecute("set clientname '" + nodeId + "'");
     }
 
+    @Override
     public void enableSyncTriggers(ISqlTransaction transaction) {
         transaction.prepareAndExecute("set clientapplname null");
         transaction.prepareAndExecute("set clientname null");
     }
 
+    @Override
     public String getSyncTriggersExpression() {
         return "@clientapplname <> 'SymmetricDS'";
     }
@@ -304,10 +337,12 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
         return true;
     }
 
+    @Override
     public void cleanDatabase() {
         platform.getSqlTemplate().update("dump transaction " + platform.getDefaultCatalog() + " with no_log");
     }
 
+    @Override
     public boolean needsToSelectLobData() {
         return true;
     }
