@@ -249,7 +249,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
         if (isCteExpression()) {
             retSql = getPlatform().getDdlBuilder().getDatabaseInfo().getCteExpression()
                     + " " + sql;
-            retSql = currentDmlStatement.updateCteExpression(retSql, batch.getSourceNodeId());
+            retSql = DmlStatement.updateCteExpression(retSql, batch.getSourceNodeId());
         }
         return retSql;
     }
@@ -269,6 +269,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
             }
             statistics.get(batch).startTimer(DataWriterStatisticConstants.LOADMILLIS);
             if (requireNewStatement(DmlType.INSERT, data, false, true, null)) {
+                checkTargetTableHasColumns();
                 lastUseConflictDetection = true;
                 currentDmlStatement = getPlatform().createDmlStatement(DmlType.INSERT, targetTable, writerSettings.getTextColumnExpression());
                 replaceCteExpression();
@@ -616,6 +617,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                     }
                 }
             } else {
+                checkTargetTableHasColumns();
                 if (log.isDebugEnabled()) {
                     log.debug("Not running update for table {} with pk of {}.  There was no change to apply",
                             targetTable.getFullyQualifiedTableName(), data.getCsvData(CsvData.PK_DATA));
@@ -628,6 +630,13 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
             throw ex;
         } finally {
             statistics.get(batch).stopTimer(DataWriterStatisticConstants.LOADMILLIS);
+        }
+    }
+
+    protected void checkTargetTableHasColumns() {
+        if (targetTable.getColumnCount() == 0) {
+            throw new IllegalStateException("There are no columns defined for table " + targetTable.getFullyQualifiedTableName() +
+                    " that match with " + sourceTable.getColumnCount() + " columns in the batch");
         }
     }
 
