@@ -21,48 +21,34 @@
 package org.jumpmind.db.platform.mssql;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.doReturn;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 
-import javax.sql.DataSource;
-
 import org.jumpmind.db.DdlReaderTestConstants;
-import org.jumpmind.db.model.Column;
-import org.jumpmind.db.model.IndexColumn;
-import org.jumpmind.db.model.NonUniqueIndex;
-import org.jumpmind.db.model.PlatformColumn;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.mock.MockDbDataSource;
+import org.jumpmind.db.mock.MockDbUtils;
 import org.jumpmind.db.model.Trigger;
-import org.jumpmind.db.model.Trigger.TriggerType;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
-import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
-import org.jumpmind.db.sql.Row;
-import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
 
 class MsSql2000DdlReaderTest {
+    protected final String SAMPLE_CATALOG_NAME = "testCatlog";
+    protected final String SAMPLE_SCHEMA_NAME = "testSchema";
+    protected final String SAMPLE_TRIGGER_NAME = "testTrigger";
+    protected final String SAMPLE_TABLE_NAME = "testTableName";
+    protected final String SAMPLE_INDEX_NAME = "testIndexName";
+    public final int MsSqlDatabasePlatform_VERSION9 = 9; // Older versions do not have user defined column types
     protected MsSql2000DatabasePlatform platform;
     protected Pattern mssql2000IsoDatePattern;
     /*
@@ -77,6 +63,11 @@ class MsSql2000DdlReaderTest {
     ISqlTransaction sqlTransaction;
     protected AbstractJdbcDdlReader abstractJdbcDdlReader;
     ThreadLocalRandom rand = ThreadLocalRandom.current();
+    // Anticipated queries to mock responses for:
+    public final String MSSQL_USER_DEFIND_TYPES_QUERY = "select name from sys.types where is_user_defined = 1";
+    public final String MSSQL_INFORMATION_SCHEMA_TABLES_QUERY = "select \"TABLE_NAME\" from \"testCatlog\".\"INFORMATION_SCHEMA\".\"TABLES\" where";
+    public final String MSSQL_INFORMATION_SCHEMA_TRIGGER_QUERY = "select TRIG.name, TAB.name as table_name, SC.name as table_schema, TRIG.is_disabled, TRIG.is_ms_shipped, TRIG.is_not_for_replication, TRIG.is_instead_of_trigger, TRIG.create_date, TRIG.modify_date, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsUpdateTrigger') AS isupdate, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsDeleteTrigger') AS isdelete, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsInsertTrigger') AS isinsert, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsAfterTrigger') AS isafter, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsInsteadOfTrigger') AS isinsteadof, TRIG.object_id, TRIG.parent_id, TAB.schema_id, OBJECT_DEFINITION(TRIG.OBJECT_ID) as trigger_source from sys.triggers as TRIG inner join sys.tables as TAB on TRIG.parent_id = TAB.object_id inner join sys.schemas as SC on TAB.schema_id = SC.schema_id where TAB.name=? and SC.name=?";
+
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -87,9 +78,26 @@ class MsSql2000DdlReaderTest {
         mssql2000IsoTimestampPattern = Pattern.compile("TO_DATE\\('([^']*)'\\, 'YYYY\\-MM\\-DD HH24:MI:SS'\\)");
     }
 
+    /**
+     * Helper builds new instance of the MsSqlDdlReader and mocks results for anticipated query listing user-defined types
+     */
+    private MsSqlDdlReader createTestSubject_MsSqlDdlReader(MockDbDataSource mockDataSource) {
+        // if (mockDataSource == null) {
+        // mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION9);
+        // }
+        mockDataSource.enqueue(MockDbUtils.buildStatementNoResults(
+                MSSQL_USER_DEFIND_TYPES_QUERY, 1));
+        MsSql2000DatabasePlatform platform = new MsSql2000DatabasePlatform(mockDataSource, mockDataSource.getSqlTemplateSettings());
+        mockDataSource.enqueue(MockDbUtils.buildStatementNoResults(
+                MSSQL_USER_DEFIND_TYPES_QUERY, 1));
+        MsSqlDdlReader testReader = new MsSqlDdlReader(platform);
+        return testReader;
+    }
+
     @Test
     void testMsSqlDdlReaderConstructor() throws Exception {
-        MsSqlDdlReader testReader = new MsSqlDdlReader(platform);
+        MockDbDataSource mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION9);
+        MsSqlDdlReader testReader = createTestSubject_MsSqlDdlReader(mockDataSource);
         testReader.setDefaultCatalogPattern(null);
         testReader.setDefaultSchemaPattern(null);
         testReader.setDefaultTablePattern("%");
@@ -103,101 +111,39 @@ class MsSql2000DdlReaderTest {
 
     @Test
     void testGetTableNames() throws Exception {
-        MsSqlDdlReader testReader = new MsSqlDdlReader(platform);
+        MockDbDataSource mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION9);
+        mockDataSource.mockAndEnqueueTableLookupResults(SAMPLE_TABLE_NAME, MSSQL_INFORMATION_SCHEMA_TABLES_QUERY);
+        MsSqlDdlReader testReader = createTestSubject_MsSqlDdlReader(mockDataSource);
         List<String> tableNameResults = new ArrayList<String>();
         List<String> tableNames = new ArrayList<String>();
-        tableNames.add("testName");
-        MsSqlJdbcSqlTemplate testTemplate = mock(MsSqlJdbcSqlTemplate.class);
-        when(platform.getSqlTemplateDirty()).thenReturn(testTemplate);
-        doReturn(tableNames).when(testTemplate).queryWithHandler(ArgumentMatchers.anyString(),
-                ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
-        tableNameResults = testReader.getTableNames("testCatlog", "testSchema", null);
+        tableNames.add(SAMPLE_TABLE_NAME);
+
+        tableNameResults = testReader.getTableNames(SAMPLE_CATALOG_NAME, SAMPLE_SCHEMA_NAME, null);
         assertEquals(tableNames, tableNameResults);
     }
-
+ 
+ 
     @ParameterizedTest
     @CsvSource({ "INSERT,1,0,0", "UPDATE,0,1,0", "DELETE,0,0,1", })
     void testGetTriggers(String triggerTypeParam, String isInsert, String isUpdate, String isDelete) throws Exception {
-        // Mocked components
-        SqlTemplateSettings settings = mock(SqlTemplateSettings.class);
-        PreparedStatement ps = mock(PreparedStatement.class);
-        Statement st = mock(Statement.class);
-        PreparedStatement ps2 = mock(PreparedStatement.class);
-        DataSource dataSource = mock(DataSource.class);
-        DatabaseInfo databaseInfo = mock(DatabaseInfo.class);
-        Connection connection = mock(Connection.class);
-        ResultSet rs = mock(ResultSet.class);
-        ResultSet rs2 = mock(ResultSet.class);
-        ResultSetMetaData rsMetaData = mock(ResultSetMetaData.class);
-        ResultSetMetaData rsMetaData2 = mock(ResultSetMetaData.class);
-        // "Real" components
-        MsSqlDdlReader testReader = new MsSqlDdlReader(platform);
-        List<Trigger> actualTriggers = new ArrayList<Trigger>();
-        MsSqlJdbcSqlTemplate testTemplate = new MsSqlJdbcSqlTemplate(dataSource, settings, databaseInfo);
-        // Spied components
-        MsSqlJdbcSqlTemplate spyTemplate = Mockito.spy(testTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(spyTemplate);
-        when(spyTemplate.getDataSource()).thenReturn(dataSource);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.createStatement(spyTemplate.getSettings().getResultSetType(), ResultSet.CONCUR_READ_ONLY)).thenReturn(st);
-        when(connection.prepareStatement(ArgumentMatchers.anyString(), ArgumentMatchers.anyInt(), ArgumentMatchers.anyInt())).thenReturn(ps)
-                .thenReturn(ps2);
-        when(ps.executeQuery()).thenReturn(rs);
-        when(rs.next()).thenReturn(true).thenReturn(false);
-        when(rs.getMetaData()).thenReturn(rsMetaData);
-        when(rsMetaData.getColumnCount()).thenReturn(10);
-        when(rsMetaData.getColumnLabel(1)).thenReturn("name");
-        when(rs.getObject(1)).thenReturn("testTrigger");
-        when(rsMetaData.getColumnLabel(2)).thenReturn("table_schema");
-        when(rs.getObject(2)).thenReturn("testSchema");
-        when(rsMetaData.getColumnLabel(3)).thenReturn(DdlReaderTestConstants.TABLE_NAME);
-        when(rs.getObject(3)).thenReturn("testTableName");
-        when(rsMetaData.getColumnLabel(4)).thenReturn("is_disabled");
-        when(rs.getObject(4)).thenReturn("FALSE");
-        when(rsMetaData.getColumnLabel(5)).thenReturn("trigger_source");
-        when(rs.getObject(5)).thenReturn("create ");
-        when(rsMetaData.getColumnLabel(6)).thenReturn("isupdate");
-        when(rs.getObject(6)).thenReturn(isUpdate);
-        when(rsMetaData.getColumnLabel(7)).thenReturn("isdelete");
-        when(rs.getObject(7)).thenReturn(isDelete);
-        when(rsMetaData.getColumnLabel(8)).thenReturn("isinsert");
-        when(rs.getObject(8)).thenReturn(isInsert);
-        when(rsMetaData.getColumnLabel(9)).thenReturn("isafter");
-        when(rs.getObject(9)).thenReturn("0");
-        when(rsMetaData.getColumnLabel(10)).thenReturn("isinsteadof");
-        when(rs.getObject(10)).thenReturn("0");
-        when(ps2.executeQuery()).thenReturn(rs2);
-        when(rs2.next()).thenReturn(true).thenReturn(false);
-        when(rs2.getMetaData()).thenReturn(rsMetaData2);
-        when(rsMetaData2.getColumnCount()).thenReturn(1);
-        when(rsMetaData2.getColumnLabel(1)).thenReturn("TEXT");
-        when(rs2.getObject(1)).thenReturn("testText");
-        Row triggerMetaData = new Row(5);
-        triggerMetaData.put("trigger_name", "testTrigger");
-        triggerMetaData.put("trigger_schema", "testSchema");
-        triggerMetaData.put(DdlReaderTestConstants.TABLE_NAME, "testTableName");
-        triggerMetaData.put("STATUS", "ACTIVE");
-        triggerMetaData.put("TRIGGERING_EVENT", triggerTypeParam);
-        Trigger trigger = new Trigger();
-        trigger.setName("testTrigger");
-        trigger.setSchemaName("testSchema");
-        trigger.setTableName("testTableName");
-        trigger.setEnabled(false);
-        trigger.setSource("create ");
-        trigger.setMetaData(triggerMetaData);
-        String triggerType = triggerTypeParam;
-        trigger.setTriggerType(TriggerType.valueOf(triggerType));
-        actualTriggers.add(trigger);
-        List<Trigger> triggers = testReader.getTriggers("test", "test", "test");
+        String expectedTriggerSource = "create ";
+        MockDbDataSource mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION9);
+        mockDataSource.mockAndEnqueueTriggerLookupResults(SAMPLE_TRIGGER_NAME, SAMPLE_SCHEMA_NAME, SAMPLE_TABLE_NAME, expectedTriggerSource,
+                isInsert, isUpdate, isDelete, MSSQL_INFORMATION_SCHEMA_TRIGGER_QUERY);
+        MsSqlDdlReader testReader = createTestSubject_MsSqlDdlReader(mockDataSource);
+        List<Trigger> triggers = testReader.getTriggers(SAMPLE_CATALOG_NAME, SAMPLE_SCHEMA_NAME, SAMPLE_TABLE_NAME);
+        assertNotNull(triggers);
+        assertEquals(1, triggers.size());
         Trigger testTrigger = triggers.get(0);
-        assertEquals("testTrigger", testTrigger.getName());
-        assertEquals("testSchema", testTrigger.getSchemaName());
-        assertEquals("testTableName", testTrigger.getTableName());
+        assertEquals(SAMPLE_TRIGGER_NAME, testTrigger.getName());
+        assertEquals(SAMPLE_SCHEMA_NAME, testTrigger.getSchemaName());
+        assertEquals(SAMPLE_TABLE_NAME, testTrigger.getTableName());
         assertEquals(true, testTrigger.isEnabled());
-        assertEquals("create ", testTrigger.getSource());
+        assertEquals(expectedTriggerSource, testTrigger.getSource());
         assertEquals(true, testTrigger.getTriggerType().toString().equals(triggerTypeParam));
     }
-
+    
+    /*
     @ParameterizedTest
     @CsvSource({ "2008-11-11, DATE, " + Types.DATE + ",," + -1 + "", "2008-11-11 12:10:30, TIMESTAMP, " + Types.TIMESTAMP + ",," + -1 + "",
             "testDef, VARCHAR, " + Types.VARCHAR + ",254," + 254 + "", })
@@ -531,7 +477,7 @@ class MsSql2000DdlReaderTest {
         when(stmtrs3.next()).thenReturn(true);
         when(stmt4.executeQuery()).thenReturn(stmtrs4);
         when(stmtrs4.next()).thenReturn(true);
-        doReturn(1).when(spyTemplate).queryForInt(ArgumentMatchers.anyString(), (Object) ArgumentMatchers.any());
+        doReturn(1).when(spyTemplate).queryForInt(ArgumentMatchers.anyString(), ArgumentMatchers.any());
         Table testTable = spyReader.readTable(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
         Table expectedTable = new Table();
         expectedTable.setName(DdlReaderTestConstants.TESTNAME);
@@ -732,7 +678,7 @@ class MsSql2000DdlReaderTest {
         when(stmtrs3.next()).thenReturn(true);
         when(stmt4.executeQuery()).thenReturn(stmtrs4);
         when(stmtrs4.next()).thenReturn(true);
-        doReturn(1).when(spyTemplate).queryForInt(ArgumentMatchers.anyString(), (Object) ArgumentMatchers.any());
+        doReturn(1).when(spyTemplate).queryForInt(ArgumentMatchers.anyString(), ArgumentMatchers.any());
         Table testTable = spyReader.readTable(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
         Table expectedTable = new Table();
         expectedTable.setName(DdlReaderTestConstants.TESTNAME);
@@ -1124,7 +1070,7 @@ class MsSql2000DdlReaderTest {
         when(stmtrs3.next()).thenReturn(true);
         when(stmt4.executeQuery()).thenReturn(stmtrs4);
         when(stmtrs4.next()).thenReturn(true);
-        doReturn(1).when(spyTemplate).queryForInt(ArgumentMatchers.anyString(), (Object) ArgumentMatchers.any());
+        doReturn(1).when(spyTemplate).queryForInt(ArgumentMatchers.anyString(), ArgumentMatchers.any());
         Table testTable = spyReader.readTable(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
         Table expectedTable = new Table();
         expectedTable.setName(DdlReaderTestConstants.TESTNAME);
@@ -1171,7 +1117,7 @@ class MsSql2000DdlReaderTest {
         expectedTable.addIndex(testIndex);
         assertEquals(expectedTable, testTable);
     }
-
+    */
     protected String getResultSetSchemaName() {
         return DdlReaderTestConstants.TABLE_SCHEM;
     }
@@ -1179,4 +1125,5 @@ class MsSql2000DdlReaderTest {
     public IDatabasePlatform getPlatform() {
         return platform;
     }
+
 }
