@@ -34,12 +34,6 @@ public class DerbyTriggerTemplate extends AbstractTriggerTemplate {
         super(symmetricDialect);
         //@formatter:off
 
-        // NOTE.
-        // Column type templates are not actually used in the database triggers. However, the presence of a type template
-        // causes a generic trigger (as per trigger templates below) to be created for the relevant column. When this
-        // trigger fires (on insert/update/delete), DerbyFunctions:insertData is eventually called with the JDBC result
-        // set, and the CSV data is then formatted using DerbyFunctions:escape for all types (except blob/clob).
-
         emptyColumnTemplate = "''" ;
         stringColumnTemplate = "sym_escape($(tableAlias).\"$(columnName)\")" ;
         xmlColumnTemplate = null;
@@ -51,7 +45,7 @@ public class DerbyTriggerTemplate extends AbstractTriggerTemplate {
         clobColumnTemplate = "sym_clob_to_string('\"$(columnName)\"', '$(schemaName)$(tableName)', $(primaryKeyWhereString) )" ;
         blobColumnTemplate = "sym_blob_to_string('\"$(columnName)\"', '$(schemaName)$(tableName)', $(primaryKeyWhereString) )" ;
         wrappedBlobColumnTemplate = null;
-        booleanColumnTemplate = "sym_escape($(tableAlias).\"$(columnName)\")" ;
+        booleanColumnTemplate = "case when $(columnName) is null then '' when $(columnName) then '1' else '0' end" ;
 
         triggerConcatCharacter = "||" ;
         newTriggerValue = "new" ;
