@@ -38,10 +38,12 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+@DisplayName("MsSqlDdlReader")
 class MsSql2000DdlReaderTest {
     protected final String SAMPLE_CATALOG_NAME = "testCatlog";
     protected final String SAMPLE_SCHEMA_NAME = "testSchema";
@@ -95,7 +97,8 @@ class MsSql2000DdlReaderTest {
     }
 
     @Test
-    void testMsSqlDdlReaderConstructor() throws Exception {
+    @DisplayName("Constructed OK")
+    void testConstructor() throws Exception {
         MockDbDataSource mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION9);
         MsSqlDdlReader testReader = createTestSubject_MsSqlDdlReader(mockDataSource);
         testReader.setDefaultCatalogPattern(null);
@@ -110,9 +113,10 @@ class MsSql2000DdlReaderTest {
     }
 
     @Test
+    @DisplayName("getTableNames Single")
     void testGetTableNames() throws Exception {
         MockDbDataSource mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION9);
-        mockDataSource.mockAndEnqueueTableLookupResults(SAMPLE_TABLE_NAME, MSSQL_INFORMATION_SCHEMA_TABLES_QUERY);
+        mockDataSource.mockAndEnqueueTableLookup1Results(SAMPLE_TABLE_NAME, MSSQL_INFORMATION_SCHEMA_TABLES_QUERY);
         MsSqlDdlReader testReader = createTestSubject_MsSqlDdlReader(mockDataSource);
         List<String> tableNameResults = new ArrayList<String>();
         List<String> tableNames = new ArrayList<String>();
@@ -125,10 +129,11 @@ class MsSql2000DdlReaderTest {
  
     @ParameterizedTest
     @CsvSource({ "INSERT,1,0,0", "UPDATE,0,1,0", "DELETE,0,0,1", })
-    void testGetTriggers(String triggerTypeParam, String isInsert, String isUpdate, String isDelete) throws Exception {
+    @DisplayName("getTriggers Single")
+    void testGetTrigger1(String triggerTypeParam, String isInsert, String isUpdate, String isDelete) throws Exception {
         String expectedTriggerSource = "create ";
         MockDbDataSource mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION9);
-        mockDataSource.mockAndEnqueueTriggerLookupResults(SAMPLE_TRIGGER_NAME, SAMPLE_SCHEMA_NAME, SAMPLE_TABLE_NAME, expectedTriggerSource,
+        mockDataSource.mockAndEnqueueTriggerLookup1Results(SAMPLE_TRIGGER_NAME, SAMPLE_SCHEMA_NAME, SAMPLE_TABLE_NAME, expectedTriggerSource,
                 isInsert, isUpdate, isDelete, MSSQL_INFORMATION_SCHEMA_TRIGGER_QUERY);
         MsSqlDdlReader testReader = createTestSubject_MsSqlDdlReader(mockDataSource);
         List<Trigger> triggers = testReader.getTriggers(SAMPLE_CATALOG_NAME, SAMPLE_SCHEMA_NAME, SAMPLE_TABLE_NAME);

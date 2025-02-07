@@ -12,6 +12,9 @@ import org.mockito.ArgumentMatchers;
 
 import com.nuodb.jdbc.EmptyResultSet;
 
+/**
+ * Helper class with static methods for mocking resultsets and other database objects in MockDbDataSource
+ */
 public final class MockDbUtils {
     /**
      * Mocks up a null result set for a PreparedStatement (no data returned!). Use with MockDbDataSource.enqueue()
@@ -215,9 +218,9 @@ public final class MockDbUtils {
     }
 
     /**
-     * Mocks results for a table look up query (useful for DdlReader.getTableNames )
+     * Mocks up 1 result row for an anticipated Prepared statement fetching table information (useful for DdlReader.getTableNames )
      */
-    public static MockDbPreparedStatement mockTableLookupStatement(String tableName, String anticipatedPlatformTableLookupQuery) throws SQLException {
+    public static MockDbPreparedStatement mockTableLookup1Statement(String tableName, String anticipatedPlatformTableLookupQuery) throws SQLException {
         ResultSet tableLookupResults = buildResultSet1Column1RowStringValue("TABLE_NAME", tableName);
         MockDbPreparedStatement tableLookupStatement = buildPreparedStatement(anticipatedPlatformTableLookupQuery,
                 tableLookupResults, 1);
@@ -225,9 +228,9 @@ public final class MockDbUtils {
     }
 
     /**
-     * Mocks up result set for an anticipated Prepared statement fetching Trigger information. Use with MockMsSqlConnection.enqueuePreparedStatement()
+     * Mocks up 1 result row for an anticipated Prepared statement fetching trigger information. Use with MockMsSqlConnection.enqueuePreparedStatement()
      */
-    public static MockDbPreparedStatement mockTriggerLookupPreparedStatement(String triggerName, String schemaName, String tableName, String triggerSource,
+    public static MockDbPreparedStatement mockTriggerLookup1PreparedStatement(String triggerName, String schemaName, String tableName, String triggerSource,
             String isInsert,
             String isUpdate,
             String isDelete, String triggerInfoQuery) throws SQLException {

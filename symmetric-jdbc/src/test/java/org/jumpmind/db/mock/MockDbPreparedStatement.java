@@ -23,6 +23,9 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
 
+/**
+ * Helper class stubs out most methods for PreparedStatement. All mocked Resultsets are piped from MockDbDataSource.
+ */
 public class MockDbPreparedStatement implements PreparedStatement {
     protected String sql;
     protected ResultSet mockResultSet;

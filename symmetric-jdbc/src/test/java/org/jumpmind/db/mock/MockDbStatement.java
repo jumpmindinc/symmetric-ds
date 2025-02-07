@@ -6,6 +6,9 @@ import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
 
+/**
+ * Helper class stubs out most methods for Statement. All mocked Resultsets are piped from MockDbDataSource.
+ */
 public class MockDbStatement implements Statement {
     protected String sql;
     protected ResultSet mockResultSet;

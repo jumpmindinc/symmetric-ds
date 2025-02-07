@@ -168,20 +168,20 @@ public class MockDbDataSource implements DataSource {
     }
 
     /**
-     * Mocks and enqueues results for a table look up query (useful for DdlReader.getTableNames )
+     * Mocks and enqueues 1 result for a table look up query (useful for DdlReader.getTableNames )
      */
-    public void mockAndEnqueueTableLookupResults(String tableName, String anticipatedPlatformTableLookupQuery)
+    public void mockAndEnqueueTableLookup1Results(String tableName, String anticipatedPlatformTableLookupQuery)
             throws SQLException {
-        MockDbPreparedStatement tableLookupStatement = MockDbUtils.mockTableLookupStatement(tableName, anticipatedPlatformTableLookupQuery);
+        MockDbPreparedStatement tableLookupStatement = MockDbUtils.mockTableLookup1Statement(tableName, anticipatedPlatformTableLookupQuery);
         this.enqueue(tableLookupStatement);
     }
 
     /**
-     * Mocks and enqueues results for a trigger look up query (useful for DdlReader.getTriggers )
+     * Mocks and enqueues 1 result for a trigger look up query (useful for DdlReader.getTriggers )
      */
-    public void mockAndEnqueueTriggerLookupResults(String triggerName, String schemaName, String tableName, String triggerSource,
+    public void mockAndEnqueueTriggerLookup1Results(String triggerName, String schemaName, String tableName, String triggerSource,
             String isInsert, String isUpdate, String isDelete, String triggerInfoQuery) throws SQLException {
-        MockDbPreparedStatement triggerLookupStatement = MockDbUtils.mockTriggerLookupPreparedStatement(triggerName, schemaName, tableName,
+        MockDbPreparedStatement triggerLookupStatement = MockDbUtils.mockTriggerLookup1PreparedStatement(triggerName, schemaName, tableName,
                 triggerSource, isInsert, isUpdate, isDelete, triggerInfoQuery);
         this.enqueue(triggerLookupStatement);
     }

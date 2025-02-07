@@ -8,7 +8,6 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.NClob;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -17,16 +16,18 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
 import org.jumpmind.db.sql.SqlException;
 
+/**
+ * Helper class stubs out most methods for Connection. All mocked Resultsets are piped from MockDbDataSource.
+ */
 public class MockDbConnection implements Connection {
     protected MockDbDataSource parentDataSource;
-    protected ArrayList<ResultSet> metaDataResults;
+    // protected ArrayList<ResultSet> metaDataResults;
     private String catalog;
     private String schema;
     private int transactionIsolationLevel;
@@ -41,9 +42,6 @@ public class MockDbConnection implements Connection {
             this.transactionIsolationLevel = 0;
             this.readOnly = false;
             this.autoCommitFlag = true;
-            this.metaDataResults = new ArrayList<ResultSet>();
-            // this.statements = new ArrayList<Statement>();
-            // this.preparedStatements = new ArrayList<PreparedStatement>();
         } catch (Exception ex) {
             System.out.println("MockDbSqlConnection - FAILED. Ex=" + ex.toString());
             return;
@@ -51,20 +49,20 @@ public class MockDbConnection implements Connection {
     }
 
     // Mock set up helper Queue-up a mock ResultSet object to be returned by the dequeueDatabaseMetaData() method
-    public void enqueueMetaResultSet(ResultSet rs) {
-        this.metaDataResults.add(rs);
-    }
+    // public void enqueueMetaResultSet(ResultSet rs) {
+    // this.metaDataResults.add(rs);
+    // }
 
     // Mock set up helper
-    public ResultSet dequeueMetaResultSet() {
-        if (this.metaDataResults.size() < 1) {
-            System.out.println("dequeueDatabaseMetaData - No more pre-defined ResultSets in the metaDataResults queue!");
-            return null;
-        }
-        ResultSet rs = this.metaDataResults.remove(0);
-        System.out.println("dequeueMetaResultSet - Dispensed one pre-defined ResultSet from the metaDataResults queue;");
-        return rs;
-    }
+    // public ResultSet dequeueMetaResultSet() {
+    // if (this.metaDataResults.size() < 1) {
+    // System.out.println("dequeueDatabaseMetaData - No more pre-defined ResultSets in the metaDataResults queue!");
+    // return null;
+    // }
+    // ResultSet rs = this.metaDataResults.remove(0);
+    // System.out.println("dequeueMetaResultSet - Dispensed one pre-defined ResultSet from the metaDataResults queue;");
+    // return rs;
+    // }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {

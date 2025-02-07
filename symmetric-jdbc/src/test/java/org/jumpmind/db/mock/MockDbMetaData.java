@@ -9,6 +9,9 @@ import java.sql.SQLException;
 import org.apache.commons.lang3.NotImplementedException;
 import org.jumpmind.db.sql.SqlException;
 
+/**
+ * Helper class stubs out most methods for DatabaseMetaData. All mocked Resultsets are piped from MockDbDataSource.
+ */
 public class MockDbMetaData implements DatabaseMetaData {
     protected MockDbDataSource parentDataSource;
     protected int databaseMajorVersion = 1;
