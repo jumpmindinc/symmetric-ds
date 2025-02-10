@@ -1099,7 +1099,9 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                                 log.info("Bulk loader failed in class {} with message: {}", e.getClass().getName(), e.getMessage());
                                 ctx.put(ContextConstants.CONTEXT_BULK_WRITER_TO_USE, "default");
                                 ctx.setLastError(null);
-                                listener.currentBatch.setStatus(Status.OK);
+                                if (listener.currentBatch != null) {
+                                    listener.currentBatch.setStatus(Status.OK);
+                                }
                                 processor.setDataReader(buildDataReader(batchInStaging, resource));
                                 try {
                                     listener.getBatchesProcessed().remove(listener.currentBatch);
@@ -1114,7 +1116,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                                 }
                             } else {
                                 isError = true;
-                                if (listener.currentBatch.getSqlCode() == ErrorConstants.PROTOCOL_VIOLATION_CODE) {
+                                if (listener.currentBatch != null && listener.currentBatch.getSqlCode() == ErrorConstants.PROTOCOL_VIOLATION_CODE) {
                                     log.info("The batch {} may be corrupt in staging, so removing it.", batchInStaging.getNodeBatchId());
                                     resource.delete();
                                     incomingBatch = listener.currentBatch;
