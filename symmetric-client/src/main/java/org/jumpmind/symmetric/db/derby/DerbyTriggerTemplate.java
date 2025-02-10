@@ -44,7 +44,7 @@ public class DerbyTriggerTemplate extends AbstractTriggerTemplate {
         clobColumnTemplate = "sym_clob_to_string('\"$(columnName)\"', '$(schemaName)$(tableName)', $(primaryKeyWhereString) )" ;
         blobColumnTemplate = "sym_blob_to_string('\"$(columnName)\"', '$(schemaName)$(tableName)', $(primaryKeyWhereString) )" ;
         wrappedBlobColumnTemplate = null;
-        booleanColumnTemplate = null;
+        booleanColumnTemplate = "case when $(columnName) is null then '' when $(columnName) then '1' else '0' end" ;
         triggerConcatCharacter = "||" ;
         newTriggerValue = "new" ;
         oldTriggerValue = "old" ;

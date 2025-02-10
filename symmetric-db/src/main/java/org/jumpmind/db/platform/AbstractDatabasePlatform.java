@@ -511,7 +511,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
             } else if (type == Types.NUMERIC || type == Types.DECIMAL || type == Types.DOUBLE || type == Types.REAL) {
                 objectValue = parseBigDecimal(value);
             } else if (type == Types.BOOLEAN) {
-                objectValue = value.equals("1") ? Boolean.TRUE : Boolean.FALSE;
+                objectValue = parseBoolean(value);
             } else if (!(column.getJdbcTypeName() != null && FormatUtils.upper(column.getJdbcTypeName()).contains(TypeMap.GEOMETRY))
                     && !(column.getJdbcTypeName() != null && FormatUtils.upper(column.getJdbcTypeName()).contains(TypeMap.GEOGRAPHY))
                     && (type == Types.BLOB || type == Types.LONGVARBINARY || type == Types.BINARY || type == Types.VARBINARY ||
@@ -576,6 +576,11 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         } catch (NumberFormatException ex) {
             return new BigInteger(value);
         }
+    }
+
+    protected Object parseBoolean(String value) {
+        value = cleanNumber(value);
+        return value.equals("1") ? Boolean.TRUE : Boolean.FALSE;
     }
 
     protected String cleanNumber(String value) {
