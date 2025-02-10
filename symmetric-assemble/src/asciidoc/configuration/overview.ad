@@ -1,0 +1,19 @@
+
+=== Overview
+
+The Configure Overview screen provides a summary of what is currently configured in this master node.
+The main table on this screen shows configuration elements (Groups, Group Links, Routers, etc.) and the number of items
+configured for each element.  As an example, in the sample screenshot below, there are 2 Groups defined, 2 Group Links
+defined, 2 Routers defined, 9 Channels, defined, etc.  Certain configuration elements are required to configure the 
+synchronization scenario.  If these elements are not configured, a warning symbol will be displayed next to the element name.
+
+In addition to using the <<Add Table(s) Wizard>> to configure the synchronization solution, you can also configure SymmetricDS
+configuration elements one by one using the links on the left hand side of the Configure Overview screen.  Each configuration
+element is described in the following sections of this guide.
+
+Configuration can also be imported from and exported to external files by pressing the <<Import>> and <<Export>> buttons 
+from the Configure Overview screen.  
+
+image::images/configure-overview.png[]
+
+include::{includedir}/configuration/pro-wizard-config.ad[]

@@ -5,13 +5,7 @@
 :linkattrs:
 :numbered:
 
-ifdef::pro[]
-= SymmetricDS Pro @appMajorVersion@ Tutorials
-endif::pro[]
-
-ifndef::pro[]
 = SymmetricDS @appMajorVersion@ Tutorials
-endif::pro[]
 
 
 

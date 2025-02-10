@@ -1,20 +1,16 @@
 
-=== Add Table(s) Wizard
+==== Add Table(s) Wizard
 
 Once the SymmetricDS software is installed, an instance of it is running, and a master node is setup, the synchronization
 scenario must be configured (i.e. what tables and/or files do I want to synchronize from which source node groups to which
 target node groups).  The Add Table(s) Wizard simplifies this process by walking you through several simple configuration steps.
-
-The Add Table(s) Wizard can be found under the Configure->Overview screen.
-
-image::images/configure-overview.png[]
 
 NOTE: The add table(s) wizard will show a screen for each router that is in place.  The below example
 shows the `Two Tier` configuration option with a client and server.
 
 image::images/wizard-config/wizard-config-start.png[]
 
-==== Router: Client to Server
+===== Router: Client to Server
 
 [.float-group]
 --
@@ -25,7 +21,7 @@ Select all tables that should be synchronized in the direction
 stated in the header, in this case from `CLIENT` to the `SERVER`
 --
 
-==== Router: Server to Client
+===== Router: Server to Client
 
 [.float-group]
 --
@@ -41,7 +37,7 @@ will be configured for bi-directional sync.
 --
 
 
-==== Configuration Summary
+===== Configuration Summary
 
 [.float-group]
 --

@@ -30,7 +30,11 @@ This version of the guide was generated on {localdate}.
 
 include::introduction.ad[]
 include::installation.ad[]
-include::setup.ad[]
+ifdef::pro[]
+include::set-up-new-replication.ad[]
+include::join-existing-replication.ad[]
+endif::pro[]
+include::adding-nodes.ad[]
 include::configuration.ad[]
 include::manage.ad[]
 include::advanced-topics.ad[]

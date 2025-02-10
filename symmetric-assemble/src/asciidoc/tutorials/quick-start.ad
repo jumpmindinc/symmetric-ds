@@ -4,54 +4,21 @@ IMPORTANT: To see a demonstration of a preconfigured SymmetricDS environment see
 
 This guide will walk you through the minimum steps required to setup data synchronization through a single installation of SymmetricDS.
 
-ifndef::pro[]
 .Steps covered 
 . Install
 . Connect Source Database
 . Configure
 . Connect Target Database
-endif::pro[]
-
-ifdef::pro[]
-.Steps covered 
-. Install
-. Run
-. Connect Source Database
-. Select Tables
-. Connect Target Database
-endif::pro[]
 
 
 === Install 
-ifndef::pro[]
 Download and install SymmetricDS from the http://www.symmetricds.org/download[SymmetricDS.org] website.
 
 TIP: For complete installation instructions click link:user-guide.html#_installation[here,window="_tutorials"]
-endif::pro[]
 
-ifdef::pro[]
-Download and install SymmetricDS from the http://www.jumpmind.com/products/symmetricds/download[JumpMind] website.
-
-TIP: For complete installation instructions click link:user-guide.html#_installation[here,window="_tutorials"]
-endif::pro[]
-
-
-
-ifdef::pro[]
-=== Run
-
-Open the control center to verify SymmetricDS server is running.  If it is not start the server using the start server button.   Then open the web console using the open web console button.  
-
-.SymmetricDS Control Center
-image::images/tutorials/control-center.png[]
-
-TIP: Depending on your operating system a program shortcut for the control center might have been setup.  Otherwise you can find it directly in the /bin directory of your
-SymmetricDS installation.  The executable file is named *symcc*.
-endif::pro[]
 
 === Connect Source Database
 
-ifndef::pro[]
 Create a property file named `xxxxx.properties` in the engines folder of your SymmetricDS installation.   Replace the `xxxxx` with a name for your node (homeoffice, central, server, etc).
 
 TIP: A sample database is needed for each corresponding node that is created.
@@ -169,23 +136,6 @@ useCursors=true;bufferMaxMemory=10240;lobBuffer=5242880
 
 TIP: For complete instructions creating the master node click link:user-guide.html#_master_node_setup[here,window="_tutorials"]
 
-endif::pro[]
-
-ifdef::pro[]
-image::images/wizard-node-setup.png[]
-
-. Select "Master Node" from the connect database wizard
-. Provide JDBC connection information for your source database, hit next
-. Select "Standard 2 Tier" profile, hit next
-. Use the default sync url, hit next
-. Provide a password for the web console, hit next
-. Finish
-
-TIP: For complete instructions creating the master node click link:user-guide.html#_master_node_setup[here,window="_tutorials"]
-
-endif::pro[]
-
-ifndef::pro[]
 === Configure
 
 SymmetricDS configuration requires at a minimum each of the following entities. 
@@ -248,33 +198,9 @@ insert into SYM_TRIGGER_ROUTER
         current_timestamp);
 ----
 
-endif::pro[]
-
-ifdef::pro[]
-=== Select Tables
-
-The Add Table(s) Wizard will be displayed by default when configuration is missing.  If it is closed or not visible it can be opened by hitting the "Add Table(s) Wizard" button on the Overview screen of the Configure tab.
-
-[.float-group]
---
-[.left]
-image::images/wizard-config/wizard-config-start.png[]
-[.left]
-image::images/wizard-config/wizard-config-client-server.png[]
---
-
-. Welcome, hit next
-. Select tables you wish to sync from client to server, hit next
-. Select tables you wish to sync from server to client, hit next
-. Verify the summary, hit finish
-
-TIP: For complete instructions for the add table(s) wizard click link:user-guide.html#_quick_config_wizard[here,window="_tutorials"]
-endif::pro[]
-
 
 === Connect Target Database
 
-ifndef::pro[]
 Create a property file named `xxxxx.properties` in the engines folder of your SymmetricDS installation.   Replace the `xxxxx` with a name for your target node (ex. store).
 
 .Properties
@@ -289,25 +215,6 @@ Create a property file named `xxxxx.properties` in the engines folder of your Sy
 . db.password={JDBC password}
 
 TIP: For complete instructions creating the target node click link:user-guide.html#_node_properties_file[here,window="_tutorials"]
-endif::pro[]
-
-ifdef::pro[]
-The Connect Database Wizard will be displayed by default when only one node has been configured.  If it is closed or not visible it can be opened by hitting the "Add" button on the Nodes screen of the Manage tab. 
-
-image::images/wizard-connect/wizard-connect-menu.png[]
-
-. Select Local, hit next
-. Provide JDBC connection information for your target database, hit next
-. Select default registration url, hit next
-. Select client node group, hit next
-. Provide an external id of 1, hit next
-. Select default sync url, hit next
-. Choose appropriate options here depending if your target tables already exist and if they should be initially loaded with data from the source.  Hit next
-. Hit finish
-
-TIP: For complete instructions to setup the target database click link:user-guide.html#_add_node[here,window="_tutorials"] 
-
-endif::pro[]
 
 [horizontal]
 icon:graduation-cap[role="green" size="2x"]:: [big]#*Congratulations! You have completed the Quick Start.*#  

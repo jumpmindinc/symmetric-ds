@@ -14,16 +14,6 @@ For information on how to install SymmetricDS, please refer to the Installation 
 
 ==== Creating and Starting
 
-ifdef::pro[]
-The Demo button will automatically install three `nodes` with synchronization pre-configured.  This will allow
-you to see a working model of SymmetricDS.
-
-.Open the web console and click Demo.
-image::images/wizard-node-setup.png[]
-endif::pro[]
-
-ifndef::pro[]
-
 Once SymmetricDS has been installed, we will need to populate the database with the demo configuration and sym tables. To do this, execute the following steps:
 
 
@@ -78,18 +68,11 @@ INFO [corp-000] [AbstractSymmetricEngine] [symmetric-engine-startup-0] Started S
 The stores are configured to attempt registration at a random time interval up to every minute.
 
 
-endif::pro[]
-
 ==== Initial Load
 
 An initial load is the process of seeding tables at a target node with data from a source node. 
 Instead of capturing data, data is selected from the source table using a SQL statement and then it is streamed to the client.
 
-ifdef::pro[]
-By default, the Demo does this action for you.  However, it is worth noting that Initial Loads can be sent through the Manage->Nodes screen.
-endif::pro[]
-
-ifndef::pro[]
 The store nodes were pre-configured to do an initial load after registration.  However, it
 is worth noting that Initial Loads can be sent using the following commands:
 [source, cli]
@@ -102,20 +85,8 @@ bin/symadmin --engine corp-000 reload-node 001
 bin/symadmin --engine corp-000 reload-node 002
 ----
 
-endif::pro[]
-
 ==== What's Created
 
-ifdef::pro[]
-
-The demo databases are http://www.h2database.com[H2 Databases].  You can connect to them using a sql explorer tool like 
-http://squirrel-sql.sourceforge.net/[Squirrel Sql].  The connection information can be found in the properties files in the 
-engines directory.
-
-Please verify the databases by navigating to the Explore tab and using the database explorer on the left.
-endif::pro[]
-
-ifndef::pro[]
 Please verify the databases by logging in and listing the tables. You can verify using the following command:
 
 [source, cli]
@@ -124,7 +95,6 @@ bin/dbsql --engine corp-000
 ----
  
 From here, you can:
-endif::pro[]
 
 * Find the item tables that sync from root to client (that is, from corp to store): item and item_selling_price.
 * Find the sales tables that sync from store to corp: sale_transaction and sale_return_line_item.
@@ -138,12 +108,7 @@ Next, we will make a change to the item data in the central office corp node dat
 
 Create data in corp for all stores to pull.
 
-ifdef::pro[]
-Navigate to the SQL Explorer for the corp node and execute (image:images/explore-execute-all.png[title="Run As Script"]) the following scripts.
-endif::pro[]
-ifndef::pro[]
 Open an interactive SQL session with the corp database and add a new item for sale, with different prices at store 001 and store 002.
-endif::pro[]
 
 [source, SQL]
 ----
@@ -154,22 +119,10 @@ insert into item_selling_price (item_id, store_id, price)
 	values (110000055, '002', 1.00);
 ----
 
-ifdef::pro[]
-image::images/tutorials/new-demo-pull-sql.png[]
-endif::pro[]
-
-ifndef::pro[]
 Watch the logging output of both nodes to see the data transfer. The store is configured to push data to the corp node every minute.
-endif::pro[]
 
 ==== Verify Outgoing Batches
 
-ifdef::pro[]
-.Verify the outgoing batches were created and sent (status of `OK`).
-image::images/tutorials/new-demo-pull-verify-outgoing-batch.png[]
-endif::pro[]
-
-ifndef::pro[]
 Open an interactive SQL session with the corp node database and run the following query to see that the batch sent (status of `OK`).
 
 [source, SQL]
@@ -177,25 +130,14 @@ Open an interactive SQL session with the corp node database and run the followin
 select * from sym_outgoing_batch order by batch_id desc
 ----
 
-endif::pro[]
-
 ==== Verify Incoming Batches
 
-ifdef::pro[]
-.Verify the incoming batches were received (status of `OK`).
-image::images/tutorials/demo-pull-verify-incoming-batch.png[]
-
-endif::pro[]
-
-ifndef::pro[]
 Open an interactive SQL session with the store node database and run the following query to see that the batch was received (status of `OK`).
 
 [source, SQL]
 ----
 select * from sym_incoming_batch order by batch_id desc
 ----
-
-endif::pro[]
 
 ==== Verify SQL
 
@@ -206,11 +148,6 @@ Verify the change directly in a store database.
 select * from item_selling_price
 ----
 
-ifdef::pro[]
-.Verify the new price for store 002 is 1.00
-image::images/tutorials/demo-pull-verify-explore.png[]
-endif::pro[]
-
 IMPORTANT:  Make sure you have selected either store-001 or store-002 to run your query against.
 
 === Pushing Data
@@ -220,14 +157,8 @@ We will now simulate a sale at the store and observe how SymmetricDS pushes the 
 ==== Create Data
 
 Create data in a store to be pushed to corp.  
-ifdef::pro[]
-Navigate to the SQL Explorer for the store node 
-and execute (image:images/explore-execute-all.png[title="Run As Script"]) the following scripts.
-endif::pro[]
 
-ifndef::pro[]
 Open an interactive SQL session with the store node database and add a new sale to the store node database.
-endif::pro[]
 
 [source, SQL]
 ----
@@ -238,22 +169,10 @@ insert into sale_return_line_item (tran_id, item_id, price, quantity)
 	values (1000, 110000055, 0.65, 1);
 ----
 
-ifdef::pro[]
-image::images/tutorials/demo-push-sql.png[]
-endif::pro[]
-
-ifndef::pro[]
 Watch the logging output of both nodes to see the data transfer. The store is configured to push data to the corp node every minute.
-endif::pro[]
 
 ==== Verify Outgoing Batches
 
-ifdef::pro[]
-.Verify the outgoing batches were created and sent (status of `OK`).
-image::images/tutorials/demo-push-verify-outgoing-batch.png[]
-endif::pro[]
-
-ifndef::pro[]
 Open an interactive SQL session with the store node database and run the following query to see that the batch sent (status of `OK`).
 
 [source, SQL]
@@ -261,23 +180,14 @@ Open an interactive SQL session with the store node database and run the followi
 select * from sym_outgoing_batch order by batch_id desc
 ----
 
-endif::pro[]
-
 ==== Verify Incoming Batches
-ifdef::pro[]
-.Verify the incoming batches were received (status of `OK`).
-image::images/tutorials/demo-push-verify-incoming-batch.png[]
-endif::pro[]
 
-ifndef::pro[]
 Open an interactive SQL session with the corp node database and run the following query to see that the batch was received (status of `OK`).
 
 [source, SQL]
 ----
 select * from sym_incoming_batch order by batch_id desc
 ----
-
-endif::pro[]
 
 ==== Verify SQL
 
@@ -288,20 +198,10 @@ Verify the change directly in the corp database.
 select * from sale_transaction;
 ----
 
-ifdef::pro[]
-.Verify the sale transaction from store 001 is present
-image::images/tutorials/demo-push-verify-explore-1.png[]
-endif::pro[]
-
 [source, SQL]
 ----
 select * from sale_return_line_item;
 ----
-
-ifdef::pro[]
-.Verify the sale return line item from store 001 is present
-image::images/tutorials/demo-push-verify-explore-2.png[]
-endif::pro[]
 
 IMPORTANT:  Make sure you have selected corp-000 to run your query against.
 

@@ -1,0 +1,14 @@
+
+== Adding Nodes
+
+ifdef::pro[]
+
+Once configuration is complete SymmetricDS will automatically pop up a Connect Database Wizard if there is only one node currently setup in your network.
+
+See <<Add Node>> for more information.
+
+endif::pro[]
+
+include::setup/engine-properties.ad[]
+
+include::setup/write-only-setup.ad[]

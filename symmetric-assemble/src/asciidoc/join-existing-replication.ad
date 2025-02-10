@@ -1,0 +1,72 @@
+
+== Join Existing Replication
+
+=== Connect to the Database
+
+[.float-group]
+--
+[.left.text-left]
+image::images/wizard-connect/wizard-connect-database.png[]
+
+The first step in joining an existing replication is to connect to the database that will be joining. If trigger-based capture is selected, then this database will also be used to store the SymmetricDS configuration. 
+
+--
+* Specify the database type
+* Choose the replication mode (not all options available for every database)
+** <<Trigger-based>> - Triggers installed and maintained by SymmetricDS to capture changes.
+** <<Log-based>> - Database providers transaction logs are read to capture changes. 
+** <<Time-based,Time-based (read only)>> - A timestamp column or a single column numeric value is used to capture changes.
+** <<Write Only,None (write only)>> - A node that will only act as a target and will not capture changes.
+* Specify the JDBC URL.  An example will be provided based on the database type selected.  Be sure to replace host name, port and 
+database name if necessary (varies by database type)
+* Specify the id to be used to login to the database
+* Specify the password to be used to login to the database
+
+=== Table Permissions
+
+[.float-group]
+--
+[.left.text-left]
+image::images/wizard-connect/wizard-connect-permissions.png[]
+
+This screen shows the permissions required to install the Symmetric System tables for the provided user and database.
+
+--
+
+=== Registration URL
+
+[.float-group]
+--
+[.left.text-left]
+image::images/wizard-connect/wizard-connect-reg-url-remote.png[]
+
+Provide the registration URL in order to register the node on the SymmetricDS network.
+
+This URL is the sync URL of the Master Node.
+
+--
+
+=== Communication Settings
+
+[.float-group]
+--
+[.left.text-left]
+image::images/wizard-connect/wizard-connect-host.png[]
+
+Provide the URL that other SymmetricDS nodes will use to connect to this node.  
+The default option provided should be used unless the node will be accessed
+through a proxy, load balancer, or different host name than shown in the default option. 
+
+You can also select HTTPS or HTTP to be used for transferring data.
+
+--
+
+=== Summary
+
+[.float-group]
+--
+[.left.text-left]
+image::images/wizard-connect/wizard-connect-ready.png[]
+
+The node is now ready to be installed.  Click the *Finish* button.
+--
