@@ -1460,7 +1460,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         if (platform.supportsParametersInSelect()) {
             transaction.prepareAndExecute(getSql("updateExtractRequestLoadTime"), outgoingBatch.getBatchId(), new Date(),
                     outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0,
-                    outgoingBatch.getLoadMillis(), outgoingBatch.getBatchId(), new Date(), outgoingBatch.getBatchId(),
+                    outgoingBatch.getLoadMillis(), outgoingBatch.getBatchId(), new Date(), outgoingBatch.isBulkLoaderFlag(),
+                    outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0,
+                    outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0, outgoingBatch.getBatchId(),
                     outgoingBatch.getBatchId(), outgoingBatch.getNodeId(), outgoingBatch.getLoadId(), engine.getNodeId());
         } else {
             String sql = getSql("updateExtractRequestLoadTimeNoParamsInSelect");
@@ -2188,6 +2190,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             request.setExtractedMillis(row.getLong("extracted_millis"));
             request.setExtractThreadId(row.getInteger("extract_thread_id"));
             request.setLoadThreadId(row.getInteger("load_thread_id"));
+            request.setNumRowsBulkLoaded(row.getLong("bulk_rows_loaded"));
             return request;
         }
     }

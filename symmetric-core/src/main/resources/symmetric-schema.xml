@@ -58,7 +58,7 @@
         <column name="target_catalog_name"  type="VARCHAR" size="255" description="Optional database catalog that the target table belongs to. Only use this if the target table is not in the default catalog." />
         <column name="target_schema_name"   type="VARCHAR" size="255" description="Optional database schema that the target table belongs to. Only use this if the target table is not in the default schema." />
         <column name="target_table_name"    type="VARCHAR" size="255" description="Optional database table that this setting will apply to.  If left blank, the setting will be for any table in the channel (if set) and in the specified node group link." />
-        <column name="detect_type"          type="VARCHAR" size="128" required="true" description="Indicates the strategy to use for detecting conflicts during a dml action.  The possible values are: use_pk_data (manual, fallback, ignore), use_changed_data (newer_wins, manual, fallback, ignore), use_old_data (manual, fallback, ignore), use_timestamp (newer_wins), use_version (newer_wins)" />
+        <column name="detect_type"          type="VARCHAR" size="128" required="true" description="Indicates the strategy to use for detecting conflicts during a dml action.  The possible values are: use_pk_data (manual, fallback, ignore), use_changed_data (manual, fallback, ignore), use_old_data (manual, fallback, ignore), use_timestamp (newer_wins), use_version (newer_wins)" />
         <column name="detect_expression"    type="LONGVARCHAR" description="An expression that provides additional information about the detection mechanism.  If the detection mechanism is use_timestamp or use_version then this expression will be the name of the timestamp or version column." />
         <column name="resolve_type"         type="VARCHAR" size="128" required="true" description="Indicates the strategy for resolving update conflicts.  The possible values differ based on the detect_type that is specified." />
         <column name="ping_back"            type="VARCHAR" size="128" required="true" description="Indicates the strategy for sending resolved conflicts back to the source system.  Possible values are: OFF, SINGLE_ROW, and REMAINING_ROWS." />
@@ -158,6 +158,7 @@
         <column name="load_thread_id" type="INTEGER" required="false" description="Thread number within dynamic queue assigned for loading over push/pull" />
         <column name="last_update_time" type="TIMESTAMP"  description="Timestamp when a process last updated this entry." />
         <column name="create_time" type="TIMESTAMP"  description="Timestamp when this entry was created." />
+        <column name="bulk_rows_loaded" type="BIGINT" required="false" default="0" description="The number of rows that are bulk loaded in an extract." />
         <index name="idx_er_ld_src_nd">
             <index-column name="load_id"/>
             <index-column name="source_node_id"/>
@@ -838,8 +839,8 @@
         <column name="sql_message" type="LONGVARCHAR" description="For a request in error, this is the error message that describes the error." />
         <column name="last_update_by" type="VARCHAR" size="50"  description="The user who last updated this entry." />
         <column name="last_update_time" type="TIMESTAMP" required="true" description="Timestamp when a user or the system last updated this entry." />
-        <column name="batch_bulk_load_count" type="BIGINT" required="true" default="0" description="The number of batches that were loaded with the bulk loader."/>
-        
+        <column name="batch_bulk_load_count" type="BIGINT" required="true" default="0" description="The number of batches that were loaded with the bulk loader." />
+        <column name="bulk_row_load_count" type="BIGINT" required="true" default="0" description="The number of rows that were loaded with the bulk loader."/>
     </table>
     
     <table name="transform_column" description="Defines the column mappings and optional data transformation for a data loader transformation.">

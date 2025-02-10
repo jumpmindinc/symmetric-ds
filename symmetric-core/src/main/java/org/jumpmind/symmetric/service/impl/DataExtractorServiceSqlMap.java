@@ -64,7 +64,12 @@ public class DataExtractorServiceSqlMap extends AbstractSqlMap {
         
         putSql("updateExtractRequestLoadTime", "update $(extract_request) set loaded_time = (case when end_batch_id = ? then ? when 1 = 0 then last_update_time else null end), "
                 + " loaded_rows = loaded_rows + ?, loaded_millis = loaded_millis + ?, last_loaded_batch_id = ?, "
-                + " last_update_time=? where start_batch_id <= ? and end_batch_id >= ? and node_id=? and load_id=? and source_node_id = ? and loaded_time is null");
+                + " last_update_time=?, "
+                + " bulk_rows_loaded = bulk_rows_loaded + "
+                + " (case when 0 = ? then 0"
+                + " when ? is null then 0"
+                + " else ? end)"
+                + " where start_batch_id <= ? and end_batch_id >= ? and node_id=? and load_id=? and source_node_id = ? and loaded_time is null");
         
         putSql("updateExtractRequestLoadTimeNoParamsInSelect", "update $(extract_request) set loaded_time = (case when end_batch_id = $(batchId) then current_timestamp when 1 = 0 then last_update_time else null end), "
                 + " loaded_rows = loaded_rows + $(rowCount), loaded_millis = loaded_millis + $(loadMillis), last_loaded_batch_id = ?, "
