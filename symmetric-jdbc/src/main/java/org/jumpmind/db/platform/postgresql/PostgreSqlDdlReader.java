@@ -417,7 +417,7 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
         }, tableName, schema);
         return triggers;
     }
-    
+
     @Override
     public PlatformTrigger getPlatformTrigger(IDatabasePlatform platform, Trigger trigger) {
         int majorVersion = getPlatform().getDatabaseVersion().getVersion();

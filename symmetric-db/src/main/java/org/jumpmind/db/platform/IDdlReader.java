@@ -51,11 +51,11 @@ public interface IDdlReader {
     public List<String> getColumnNames(String catalog, String schema, String tableName);
 
     public List<Trigger> getTriggers(String catalog, String schema, String tableName);
-    
+
     public List<Trigger> getApplicationTriggersForModel(String catalog, String schema, String tableName, String triggerPrefix);
 
     public Trigger getTriggerFor(Table table, String name);
-    
+
     public PlatformTrigger getPlatformTrigger(IDatabasePlatform platform, Trigger trigger);
 
     public Collection<ForeignKey> getExportedKeys(Table table);

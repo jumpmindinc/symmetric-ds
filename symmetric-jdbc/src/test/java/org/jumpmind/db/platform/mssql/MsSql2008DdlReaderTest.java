@@ -65,7 +65,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 class MsSql2008DdlReaderTest {
-//    protected MsSql2008DatabasePlatform platform;
+    // protected MsSql2008DatabasePlatform platform;
     protected IDatabasePlatform platform;
     protected Pattern mssql2008IsoDatePattern;
     /*

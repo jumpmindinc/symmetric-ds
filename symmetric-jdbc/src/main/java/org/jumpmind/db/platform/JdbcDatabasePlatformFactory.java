@@ -282,7 +282,8 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
             }
             nameVersion.setProtocol(url);
             determineDatabaseNameVersionSubprotocol(dataSource, connection, metaData, nameVersion);
-            log.info("Detected database '" + nameVersion.getName() + "', version '" + nameVersion.getVersion() + ", minor version '" + nameVersion.getMinorVersion() + "', protocol '" + nameVersion.getProtocol()
+            log.info("Detected database '" + nameVersion.getName() + "', version '" + nameVersion.getVersion() + ", minor version '" + nameVersion
+                    .getMinorVersion() + "', protocol '" + nameVersion.getProtocol()
                     + "'");
         } catch (Throwable ex) {
             throw new SqlException("Error while reading the database metadata: " + ex.getMessage(), ex);

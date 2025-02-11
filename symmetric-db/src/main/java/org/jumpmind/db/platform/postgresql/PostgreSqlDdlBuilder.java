@@ -588,7 +588,7 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
         printEndOfStatement(ddl);
         change.apply(currentModel, delimitedIdentifierModeOn);
     }
-    
+
     @Override
     protected void processChange(Database currentModel, Database desiredModel, RemoveFunctionChange change,
             StringBuilder ddl) {

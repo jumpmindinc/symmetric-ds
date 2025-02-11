@@ -107,12 +107,12 @@ public class KafkaDdlReader implements IDdlReader {
     public List<TableRow> getImportedForeignTableRows(List<TableRow> tableRows, Set<TableRow> visited, BinaryEncoding encoding) {
         return null;
     }
-    
+
     @Override
     public List<Trigger> getApplicationTriggersForModel(String catalog, String schema, String tableName, String triggerPrefix) {
         return new ArrayList<Trigger>(0);
     }
-    
+
     @Override
     public PlatformTrigger getPlatformTrigger(IDatabasePlatform platform, Trigger trigger) {
         return new PlatformTrigger(platform.getName(), trigger.getSource());

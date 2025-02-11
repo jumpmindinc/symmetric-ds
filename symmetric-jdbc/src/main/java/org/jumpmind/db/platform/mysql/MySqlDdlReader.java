@@ -224,12 +224,11 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
         if ("UUID".equalsIgnoreCase(column.getJdbcTypeName())) {
             column.setSize("36");
             PlatformColumn platformColumn = column.getPlatformColumns().get(platform.getName());
-            if(platformColumn != null) {
+            if (platformColumn != null) {
                 if ("UUID".equalsIgnoreCase(platformColumn.getType())) {
                     platformColumn.setSize(-1);
                 }
             }
-            
         }
         return column;
     }

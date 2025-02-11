@@ -830,7 +830,7 @@ public class DatabaseXmlUtil {
         }
         return sb.toString();
     }
-    
+
     private static void handleIncludeColumns(Writer output, IIndex index) throws IOException {
         for (IndexColumn column : index.getIncludedColumns()) {
             output.write("\t\t\t<include-column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"/>\n");

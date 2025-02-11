@@ -127,7 +127,7 @@ public class Trigger implements Cloneable, Serializable {
     public String getFullyQualifiedName() {
         return getFullyQualifiedName(catalogName, schemaName, tableName, triggerName);
     }
-    
+
     public void removePlatformTrigger(String databaseName) {
         if (platformTriggers != null) {
             platformTriggers.remove(databaseName);
@@ -200,7 +200,7 @@ public class Trigger implements Cloneable, Serializable {
         }
         return true;
     }
-    
+
     public Object clone() throws CloneNotSupportedException {
         Trigger result = (Trigger) super.clone();
         result.triggerName = triggerName;

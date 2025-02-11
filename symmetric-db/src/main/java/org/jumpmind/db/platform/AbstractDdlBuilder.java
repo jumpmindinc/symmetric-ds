@@ -414,7 +414,7 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
         processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { AddTableChange.class });
         // 5th pass: adding external constraints and indices
         processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { AddForeignKeyChange.class, AddIndexChange.class,
-            AddTableLoggingChange.class });
+                AddTableLoggingChange.class });
         processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { RemoveTriggerChange.class });
         processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { RemoveFunctionChange.class });
         processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { AddFunctionChange.class });
@@ -874,14 +874,14 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
         printEndOfStatement(ddl);
         change.apply(currentModel, delimitedIdentifierModeOn);
     }
-    
+
     protected void processChange(Database currentModel, Database desiredModel, RemoveTriggerChange change,
             StringBuilder ddl) {
         ddl.append("DROP TRIGGER ").append(change.getTrigger().getName());
         printEndOfStatement(ddl);
         change.apply(currentModel, delimitedIdentifierModeOn);
     }
-    
+
     protected void processChange(Database currentModel, Database desiredModel, AddTriggerChange change,
             StringBuilder ddl) {
         if (change.getNewTrigger().getPlatformTriggers().containsKey(databaseName)) {
@@ -892,7 +892,7 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
             change.apply(currentModel, delimitedIdentifierModeOn);
         }
     }
-    
+
     protected void processChange(Database currentModel, Database desiredModel, RemoveFunctionChange change,
             StringBuilder ddl) {
         ddl.append("DROP FUNCTION ");
@@ -906,7 +906,7 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
         printEndOfStatement(ddl);
         change.apply(currentModel, delimitedIdentifierModeOn);
     }
-    
+
     protected void processChange(Database currentModel, Database desiredModel, AddFunctionChange change,
             StringBuilder ddl) {
         if (change.getNewFunction().getPlatformFunctions().containsKey(databaseName)) {
@@ -917,7 +917,7 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
             change.apply(currentModel, delimitedIdentifierModeOn);
         }
     }
-    
+
     protected String replaceDelimiterWithEscapeCharacters(String triggerText) {
         return triggerText.replace(databaseInfo.getSqlCommandDelimiter(), getTriggerDelimiterReplacementCharacters());
     }

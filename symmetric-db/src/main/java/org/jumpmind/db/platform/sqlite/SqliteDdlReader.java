@@ -292,14 +292,13 @@ public class SqliteDdlReader implements IDdlReader {
         }, tableName.toLowerCase());
         return triggers;
     }
-    
+
     @Override
     public List<Trigger> getApplicationTriggersForModel(String catalog, String schema, String tableName, String triggerPrefix) {
         List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getTriggers(catalog, schema, tableName)
                 .stream()
-                .filter(t -> ! t.getName().toUpperCase().startsWith(triggerPrefix.toUpperCase() + "_"))
+                .filter(t -> !t.getName().toUpperCase().startsWith(triggerPrefix.toUpperCase() + "_"))
                 .collect(Collectors.toList());
-        
         if (triggers != null && triggers.size() > 0) {
             for (org.jumpmind.db.model.Trigger trigger : triggers) {
                 PlatformTrigger platformTrigger = new PlatformTrigger(platform.getName(), trigger.getSource());
@@ -323,7 +322,7 @@ public class SqliteDdlReader implements IDdlReader {
     public List<TableRow> getImportedForeignTableRows(List<TableRow> tableRows, Set<TableRow> visited, BinaryEncoding encoding) {
         return null;
     }
-    
+
     @Override
     public PlatformTrigger getPlatformTrigger(IDatabasePlatform platform, Trigger trigger) {
         return new PlatformTrigger(platform.getName(), trigger.getSource());

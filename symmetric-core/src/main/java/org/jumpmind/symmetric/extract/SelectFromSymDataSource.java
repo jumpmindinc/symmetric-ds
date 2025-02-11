@@ -332,7 +332,8 @@ public class SelectFromSymDataSource extends SelectFromSource {
             copyTargetTable.removeAllIndexes();
         }
         if (includeTriggerDdl) {
-            List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getApplicationTriggersForModel(sourceTable.getCatalog(), sourceTable.getSchema(), sourceTable.getName(), symmetricDialect.getTablePrefix());
+            List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getApplicationTriggersForModel(sourceTable.getCatalog(), sourceTable
+                    .getSchema(), sourceTable.getName(), symmetricDialect.getTablePrefix());
             if (triggers != null && triggers.size() > 0) {
                 copyTargetTable.addTriggers(triggers);
             }

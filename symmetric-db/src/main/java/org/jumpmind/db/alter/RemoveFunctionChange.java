@@ -15,7 +15,7 @@ public class RemoveFunctionChange extends TableChangeImplBase {
         this.trigger = trigger;
         this.function = function;
     }
-    
+
     public Function getFunction() {
         return function;
     }
