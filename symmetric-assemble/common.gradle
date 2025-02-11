@@ -299,7 +299,8 @@ subprojects { subproject ->
         postgresqlVersion =  '42.7.3'
         hsqldbVersion = '2.5.1'
         sqliteVersion = '3.34.0'
-        mssqlVersion = '12.6.3.jre8'
+        // Also update mssql-jdbc_auth*.dll (in symmetric-pro:/src/izpack/x64 and x86) and install.xml
+        mssqlVersion = '12.8.1.jre8'
         jakartaMailVersion = '2.0.2'
         jdomVersion = '2.0.6.1'
         jaxbVersion = '4.0.3'
