@@ -393,14 +393,16 @@ public class JdbcSqlTransaction implements ISqlTransaction {
 
     protected void removeMarkersThatWereSuccessful(BatchUpdateException ex) {
         int[] updateCounts = ex.getUpdateCounts();
-        Iterator<Object> it = markers.iterator();
-        int index = 0;
-        while (it.hasNext()) {
-            it.next();
-            if (updateCounts.length > index && normalizeUpdateCount(updateCounts[index]) > 0) {
-                it.remove();
+        if (updateCounts != null) {
+            Iterator<Object> it = markers.iterator();
+            int index = 0;
+            while (it.hasNext()) {
+                it.next();
+                if (updateCounts.length > index && normalizeUpdateCount(updateCounts[index]) > 0) {
+                    it.remove();
+                }
+                index++;
             }
-            index++;
         }
     }
 
