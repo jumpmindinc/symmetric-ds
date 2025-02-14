@@ -9,9 +9,9 @@ ifdef::pro[]
 
 Use `symadmin module install mongodb` to install driver files, or copy your own files into the `lib` sub-directory.
 
-MongoDB can be setup as a write only or a log based node.
+MongoDB can be setup as a write-only or a log based node.
 
-*None (write only)* - Select this mode at setup if you only need to load data into Mongo (no capture).
+*None (write-only)* - Select this mode at setup if you only need to load data into Mongo (no capture).
 *Log Based* - Select this mode if you need to capture changes in Mongo to be sent out to other nodes.
 
 

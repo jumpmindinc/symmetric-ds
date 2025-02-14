@@ -1,7 +1,7 @@
 
 === RabbitMQ
 
-Send changes from your relational database to RabbitMQ in a variety of formats.  A RabbitMQ node can be setup as a <<Write Only Node>> to receive changes from another node that is capturing changes.
+Send changes from your relational database to RabbitMQ in a variety of formats.  A RabbitMQ node can be setup as a <<Write-Only Node>> to receive changes from another node that is capturing changes.
 
 ifdef::pro[]
 Setup the RabbitMQ node by using the <<Add Node,Connect Database>> wizard and selecting RabbitMQ as the type.   The URL will be the connection point to RabbitMQ.

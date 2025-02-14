@@ -48,7 +48,7 @@ They are as follows:
 - *--schema <arg>* : Look for tables in schema.
 - *--sql <arg>* : Run custom SQL to select data.
 - *--use-jdbc-timestamp-format <arg>* : When true db export uses {ts 'yyyy-MM-dd h:mm:ss.SSS'} format for exported dates and times.  Defaults to true.
-- *--use-sym-db* : Use the database that contains SymmetricDS's tables.  This only applies for nodes that are write only, time based, or log based.
+- *--use-sym-db* : Use the database that contains SymmetricDS's tables.  This only applies for nodes that are write-only, time-based, or log-based.
 - *--use-variable-dates* : Substitute dates as ${curdate+-millis}.
 - *-v, --verbose* : Use verbose format for console output.
 - *--where <arg>* : Specify the SQL for the "where" clause.

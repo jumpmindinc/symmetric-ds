@@ -1,29 +1,29 @@
 
-==== Load Only Triggers
+==== Load-Only Triggers
 
-Occasionally the decision of what data to load initially results in additional triggers. These triggers, known as load only triggers, 
+Occasionally the decision of what data to load initially results in additional triggers. These triggers, known as load-only triggers, 
 are configured such that they do not capture any data changes. 
 In other words, the sync on insert, sync on update, and sync on delete attributes of the trigger are all set to false.
 
 ifdef::pro[]
-.Sample load only trigger
+.Sample load-only trigger
 ====
 image::images/triggers/trigger-load-only.png[]
 ====
 endif::pro[]
 
-.Load only triggers still participate in the following:
+.Load-only triggers still participate in the following:
 * Initial Loads
 * Reverse Initial Loads
 * Table Reloads
 * Creation of tables during initial loads
 
-.Use cases for load only triggers:
+.Use cases for load-only triggers:
 * To load a read-only lookup table, for example. It could also be used to load a table that needs populated with example or default data. 
 * Recovery of data for tables that have a single direction of synchronization. For example, a retail store records sales 
 transactions that synchronize in one direction by trickling back to the central office. If the retail store needs to 
 recover all the sales transactions from the central office, they can be sent are part of an initial load from the central 
-office by setting up a load only trigger that "sync" in that direction.
+office by setting up a load-only trigger that "sync" in that direction.
 
 ifndef::pro[]
 The following SQL statement sets up a non-syncing dead Trigger that sends the sale_transaction table to the "store" Node Group 

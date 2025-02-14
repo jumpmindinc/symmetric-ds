@@ -218,7 +218,7 @@ public class SymmetricEngineHolder {
                 properties.setProperty(ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + BasicDataSourcePropertyConstants.DB_POOL_PASSWORD,
                         SecurityConstants.PREFIX_ENC + service.encrypt(loadOnlyPassword));
             } catch (Exception ex) {
-                log.warn("Could not encrypt load only password", ex);
+                log.warn("Could not encrypt load-only password", ex);
             }
         }
         String engineName = validateRequiredProperties(properties);

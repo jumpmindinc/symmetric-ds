@@ -3,7 +3,7 @@
 
 Use `symadmin module install kafka` to install driver files, or copy your own files into the `lib` sub-directory.
 
-Send changes from your relational database to Kafka in a variety of formats.  A Kafka node can be setup as a <<Write Only Node>> to receive changes from another node that is capturing changes.
+Send changes from your relational database to Kafka in a variety of formats.  A Kafka node can be setup as a <<Write-Only Node>> to receive changes from another node that is capturing changes.
 
 ifdef::pro[]
 Setup the Kafka node by using the <<Add Node,Connect Database>> wizard and selecting Kafka as the type.   The URL will be the connection point to Kafka.  User and password are not needed (or used).

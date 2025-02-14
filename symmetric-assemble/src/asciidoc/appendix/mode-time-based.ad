@@ -1,11 +1,11 @@
 [id="Time-based",reftext="Time-based"]
 === Time-based
 
-In a time-based replication mode setup the changes are ready in by selecting data out of the source based on a schedule.  This setup is generally used when read only access is all that is available from the source and a trigger-based or log-based approach is not an option.
+In a time-based replication mode setup the changes are ready in by selecting data out of the source based on a schedule.  This setup is generally used when read-only access is all that is available from the source and a trigger-based or log-based approach is not an option.
 
 *Overview*
 
-* Read only access is much easier to achieve on a data source.
+* Read-only access is much easier to achieve on a data source.
 * Less performance impact on application users of the source as data is only selected out of the source system.
 
 *More to Consider*

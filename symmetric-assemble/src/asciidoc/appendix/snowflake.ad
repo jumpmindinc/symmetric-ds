@@ -4,7 +4,7 @@ Use `symadmin module install snowflake` to install driver files, or copy your ow
 
 ==== Setup
 
-Snowflake supports running as a write only node in SymmetricDS.  See <<Write Only Node>> for details on setting up a write only node in SymmetricDS.
+Snowflake supports running as a write-only node in SymmetricDS.  See <<Write-Only Node>> for details on setting up a write-only node in SymmetricDS.
 Snowflake can also be set up to capture changes using log-mining.
 
 
@@ -19,7 +19,7 @@ endif::pro[]
 
 ifndef::pro[] 
 
-.Example properties to setup a Snowflake write only node
+.Example properties to setup a Snowflake write-only node
 ----
 load.only=true
 target.db.driver=net.snowflake.client.jdbc.SnowflakeDriver

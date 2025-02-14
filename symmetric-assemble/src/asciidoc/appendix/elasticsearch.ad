@@ -9,7 +9,7 @@ ifdef::pro[]
 
 Use `symadmin module install elasticsearch` to install driver files, or copy your own files into the `lib` sub-directory.
 
-Send changes from your relational database to Elasticsearch in a variety of formats.  An Elasticsearch node can be setup as a <<Write Only Node>> to receive changes from another node that is capturing changes.
+Send changes from your relational database to Elasticsearch in a variety of formats.  An Elasticsearch node can be setup as a <<Write-Only Node>> to receive changes from another node that is capturing changes.
 
 Setup the Elasticsearch node by using the <<Add Node,Connect Database>> wizard and selecting Elasticsearch as the type.   The URL will be the connection point to Elasticsearch.  If your Elasticsearch database has security enabled, please enter your username and password. When selecting an Elasticsearch User, make sure that the minimum permissions given to the user are all of the Index level permissions. This can be done by creating a custom role with those permissions, and assigning that role to the user.
 

@@ -3,7 +3,7 @@
 
 Use `symadmin module install teradata` to install driver files, or copy your own files into the `lib` sub-directory.
 
-NOTE: Teradata is only supported as a <<Write Only Node>>.   It can only be used as a target to load data into from other dialects.
+NOTE: Teradata is only supported as a <<Write-Only Node>>.   It can only be used as a target to load data into from other dialects.
 
 ==== Drivers
 

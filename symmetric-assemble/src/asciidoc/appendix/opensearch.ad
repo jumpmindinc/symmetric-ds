@@ -9,7 +9,7 @@ ifdef::pro[]
 
 Use `symadmin module install opensearch` to install driver files, or copy your own files into the `lib` sub-directory.
 
-Send changes from your relational database to OpenSearch in a variety of formats.  An OpenSearch node can be setup as a <<Write Only Node>> to receive changes from another node that is capturing changes.
+Send changes from your relational database to OpenSearch in a variety of formats.  An OpenSearch node can be setup as a <<Write-Only Node>> to receive changes from another node that is capturing changes.
 
 Setup the OpenSearch node by using the <<Add Node,Connect Database>> wizard and selecting OpenSearch as the type.   The URL will be the connection point to OpenSearch.  User and password are not needed (or used).
 

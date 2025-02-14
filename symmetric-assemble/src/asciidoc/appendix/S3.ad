@@ -9,7 +9,7 @@ ifdef::pro[]
 
 Use `symadmin module install s3` to install driver files, or copy your own files into the `lib` sub-directory.
 
-Send changes from your relational database to S3 as a CSV file.  An S3 node can be setup as a <<Write Only Node>> to receive changes from another node that is capturing changes.
+Send changes from your relational database to S3 as a CSV file.  An S3 node can be setup as a <<Write-Only Node>> to receive changes from another node that is capturing changes.
 
 Setup the S3 node by using the <<Add Node,Connect Database>> wizard and selecting Amazon S3 as the type. User and password are not needed (or used).
 

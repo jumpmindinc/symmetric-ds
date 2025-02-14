@@ -1,35 +1,35 @@
-=== Write Only Node
+=== Write-Only Node
 
-Write only nodes can be configured for nodes that are only designed to load data into the database.   This prevents any triggers or runtime tables from being installed on this database but still allow data to be replicated to it.
+Write-only nodes can be configured for nodes that are only designed to load data into the database.   This prevents any triggers or runtime tables from being installed on this database but still allow data to be replicated to it.
 
-.Advantages of Write Only Nodes
+.Advantages of Write-Only Nodes
 * No SymmetricDS runtime tables (SYM_*) installed inside the target database.
 * No SymmetricDS triggers installed inside the target database.
 * There is still support for bulk loaders if provided (MSSQL, Oracle, Postgres, MySQL for example).
 * Allows SymmetricDS to load data into dialects that are not fully supported yet or may not have full trigger support.
 
-.Constraints of Write Only Nodes
+.Constraints of Write-Only Nodes
 * Can not be set up to capture changes
 * Requires a JDBC driver 
 * May require table creation outside of SymmetricDS
 * Requires an additional database to be used for SymmetricDS runtime usage.  H2 is used in the setup below but any other database could be used as the runtime database.
 
-==== Setup Write Only Node
+==== Set Up Write-Only Node
 
 ifdef::pro[]
 
-* To setup a write only node, begin by adding a new node to your configuration (See <<Add Node>> for details on adding a new node).
+* To set up a write-only node, begin by adding a new node to your configuration (See <<Add Node>> for details on adding a new node).
 
-===== Setup Write Only Node For Supported Databases
-* On the database setup screen of the connect database wizard, select "None (write only)" after selecting your database type.
+===== Set Up Write-Only Node For Supported Databases
+* On the database setup screen of the connect database wizard, select "None (write-only)" after selecting your database type.
 
 image::images/manage/manage-write-only.png[]
 
 * The remaining steps in the connect database wizard are the same as if adding a full node so continue through the remainder of the connect database wizard to complete the configuration.
 
-===== Setup Write Only Node For Unsupported Databases
+===== Set Up Write-Only Node For Unsupported Databases
 
-* Click the Add Driver... button to setup a new JDBC driver to support a write only node.
+* Click the Add Driver... button to set up a new JDBC driver to support a write-only node.
 
 image::images/manage/manage-write-only-driver.png[]
 
@@ -61,7 +61,7 @@ endif::pro[]
 ifndef::pro[]
 1. Begin by setting up a <<Node Properties File>>.  You do not need to provide any of the db.* properties just yet as they will be adjusted in step 2.
 
-2. Adjust the db.* properties in the write only engine properties file to utilize H2 for runtime information and configuration.   The db.user and db.password values are required but do not have to contain values, an empty property for these is sufficient.
+2. Adjust the db.* properties in the write-only engine properties file to utilize H2 for runtime information and configuration.   The db.user and db.password values are required but do not have to contain values, an empty property for these is sufficient.
 
 [source,properties]
 ----
@@ -72,10 +72,10 @@ db.user=
 db.password=
 ----
 
-NOTE: If you have multiple write only nodes under a single installation of SymmetricDS you will need to provide a unique H2 database name for each in the db.url above (default is load-only).  
+NOTE: If you have multiple write-only nodes under a single installation of SymmetricDS you will need to provide a unique H2 database name for each in the db.url above (default is load-only).  
 
 
-3. Add the following properties to identify the node as write only and provide connection information for your write only database.
+3. Add the following properties to identify the node as write-only and provide connection information for your write-only database.
 ----
 load.only=true
 target.db.driver=

@@ -115,7 +115,7 @@ They are as follows:
 - *--replace* : Indicates that existing rows should be replaced.  They will be replaced by an update statement.  This only applies for --format=CSV, SYM_XML.
 - *--schema <arg>* : Look for tables in schema.
 - *--table <arg>* : Specify table to import.
-- *--use-sym-db* : Import into the database that contains SymmetricDS's tables.  This only applies for nodes that are write only, time based, or log based.
+- *--use-sym-db* : Import into the database that contains SymmetricDS's tables.  This only applies for nodes that are write-only, time-based, or log-based.
 - *--use-variable-dates* : Allow date subscription using format ${curdate+-millis}.
 - *-v, --verbose* : Use verbose format for console output.
 

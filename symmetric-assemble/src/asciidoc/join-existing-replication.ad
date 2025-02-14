@@ -15,8 +15,8 @@ The first step in joining an existing replication is to connect to the database 
 * Choose the replication mode (not all options available for every database)
 ** <<Trigger-based>> - Triggers installed and maintained by SymmetricDS to capture changes.
 ** <<Log-based>> - Database providers transaction logs are read to capture changes. 
-** <<Time-based,Time-based (read only)>> - A timestamp column or a single column numeric value is used to capture changes.
-** <<Write Only,None (write only)>> - A node that will only act as a target and will not capture changes.
+** <<Time-based,Time-based (read-only)>> - A timestamp column or a single column numeric value is used to capture changes.
+** <<Write-Only,None (write-only)>> - A node that will only act as a target and will not capture changes.
 * Specify the JDBC URL.  An example will be provided based on the database type selected.  Be sure to replace host name, port and 
 database name if necessary (varies by database type)
 * Specify the id to be used to login to the database

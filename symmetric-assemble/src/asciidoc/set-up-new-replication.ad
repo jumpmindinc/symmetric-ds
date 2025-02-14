@@ -3,6 +3,8 @@
 
 First-time setup is done through the Configure Canvas. The Canvas makes it possible to quickly get connected to one or more endpoints and configure tables, subset rules, and transforms before SymmetricDS is installed in any database. This is all done through a graphical interface that makes it easy to visualize the configuration.
 
+If you have a CSV or SQL file containing the configuration from another installation of SymmetricDS, it can be imported into the Configure Canvas when setting up a new installation of SymmetricDS. The Canvas can be used to modify the imported configuration if necessary.
+
 === Connect to the First Endpoint
 
 image::images/canvas/DefineEndpointScreen_first.png[]
@@ -155,20 +157,12 @@ The first screen of the Deploy Wizard contains an overview of every undeployed e
 
 The external ID setting should be set to a name that will be used to refer to the individual endpoint. By default, it is the same as the group ID, which refers to the group that will contain this endpoint.
 
-The location setting can be set to either local or remote. Select local to deploy the endpoint within the current installation of SymmetricDS, or select remote if the endpoint will be deployed elsewhere. The Deploy Wizard will create all of the necessary configuration for a remote endpoint, but the endpoint itself must be deployed at a later time using the Connect Database Wizard within a separate installation of SymmetricDS. At least one endpoint must be local in order to proceed with deployment.
-
-The sync URL setting controls the web address where the endpoint can be reached by other endpoints. Typically, it is only changed for networking and load balancing purposes. If the network will be accessing the web console through a proxy or a different hostname than the one shown, the hostname can be overridden. Also, the sync URL determines whether HTTP or HTTPS is used to transfer data. The sync URL can be accessed on the <<Nodes,Manage Nodes>> screen later.
-
 The capture type setting determines how SymmetricDS will capture changes to the endpoint. There are four options for capture type, though some endpoint types do not support all four:
 
 * <<Trigger-based>> - Triggers installed and maintained by SymmetricDS to capture changes.
 * <<Log-based>> - Endpoint providers transaction logs are read to capture changes.
-* <<Time-based,Time-based (read only)>> - A timestamp column or a single column numeric value is used to capture changes.
-* <<Write Only,None (write only)>> - A node that will only act as a target and will not capture changes.
-
-If the capture type is not set to trigger-based, then it's possible to have SymmetricDS install its tables in a separate runtime database. The default runtime database is H2, a lightweight embedded single-user database. There are a variety of other database types that can be used for the runtime database.
-
-The registration server option determines which endpoint all other endpoints will register with. The registration server stores the set of configuration that will be synchronized to all other endpoints. Whenever a new endpoint starts up, it will connect to the registration server in order to join the network and receive its configuration.
+* <<Time-based,Time-based (read-only)>> - A timestamp column or a single column numeric value is used to capture changes.
+* <<Write-Only,None (write-only)>> - A node that will only act as a target and will not capture changes.
 
 [.float-group]
 --
@@ -178,6 +172,14 @@ image::images/wizard-deploy/PermissionsDialog.png[]
 Both the application database and the runtime database will go through a permissions check. When each endpoint completes its permissions check, the results will show up as either passed or failed. Click the icon to the right of each result to view more details about how each permissions check went. For more information about the specific permissions that each endpoint type requires, find the endpoint type under the <<Database Notes>> appendix.
 
 --
+
+The location setting can be set to either local or remote. Select local to deploy the endpoint within the current installation of SymmetricDS, or select remote if the endpoint will be deployed elsewhere. The Deploy Wizard will create all of the necessary configuration for a remote endpoint, but the endpoint itself must be deployed at a later time using the Connect Database Wizard within a separate installation of SymmetricDS. At least one endpoint must be local in order to proceed with deployment.
+
+The sync URL setting controls the web address where the endpoint can be reached by other endpoints. Typically, it is only changed for networking and load balancing purposes. If the network will be accessing the web console through a proxy or a different hostname than the one shown, the hostname can be overridden. Also, the sync URL determines whether HTTP or HTTPS is used to transfer data. The sync URL can be accessed on the <<Nodes,Manage Nodes>> screen later.
+
+If the capture type is not set to trigger-based, then it's possible to have SymmetricDS install its tables in a separate runtime database. The default runtime database is H2, a lightweight embedded single-user database. There are a variety of other database types that can be used for the runtime database.
+
+The registration server option determines which endpoint all other endpoints will register with. The registration server stores the set of configuration that will be synchronized to all other endpoints. Whenever a new endpoint starts up, it will connect to the registration server in order to join the network and receive its configuration.
 
 ==== Advanced Endpoint Settings
 

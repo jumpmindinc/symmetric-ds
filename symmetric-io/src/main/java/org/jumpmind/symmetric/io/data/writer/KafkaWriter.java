@@ -430,12 +430,12 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
 
     @Override
     protected void logFailureDetails(Throwable e, CsvData data, boolean logLastDmlDetails) {
-        // Overridden to work with write only kafka
+        // Overridden to work with write-only kafka
     }
 
     @Override
     protected void allowInsertIntoAutoIncrementColumns(boolean value, Table table) {
-        // Overridden to work with write only kafka
+        // Overridden to work with write-only kafka
     }
 
     @Override

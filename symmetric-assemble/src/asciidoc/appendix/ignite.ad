@@ -5,7 +5,7 @@ Use `symadmin module install ignite` to install driver files, or copy your own f
 
 Since SymmetricDS is trigger based and there are not triggers in Apache Ignite, data can only be loaded to an Apache Ignite instance.  The runtime SymmetricDS tables will also need to be installed in a full relational database to support integration with Apache Ignite.
 
-TIP:  See <<Write Only Node>> for more details on the general concepts of a write only node.
+TIP:  See <<Write-Only Node>> for more details on the general concepts of a write-only node.
 
 The following steps explain how to configure a SymmetricDS instance using Apache Ignite as a destination node:
 

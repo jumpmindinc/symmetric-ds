@@ -1,7 +1,7 @@
-[id="Write Only",reftext="Write Only"]
-=== Write Only
+[id="Write-Only",reftext="Write-Only"]
+=== Write-Only
 
-A write only node (previously load only) is unable to capture any changes and instead is only used as an end point (target) for other nodes to deliver changes. 
+A write-only node (previously load only) is unable to capture any changes and instead is only used as an end point (target) for other nodes to deliver changes. 
 
 *Overview*
 
@@ -11,4 +11,4 @@ A write only node (previously load only) is unable to capture any changes and in
 
 *More to Consider*
 
-* Changes can not be captured for this database while in a write only mode.
+* Changes can not be captured for this database while in a write-only mode.

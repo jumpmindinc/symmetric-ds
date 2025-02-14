@@ -10,7 +10,7 @@ Send changes from your relational database to Google's BigQuery.
 
 ==== Setup
 
-BigQuery is only supported as a write only node in SymmetricDS.  See <<Write Only Node>> for details on setting up a write only node in SymmetricDS.
+BigQuery is only supported as a write-only node in SymmetricDS.  See <<Write-Only Node>> for details on setting up a write-only node in SymmetricDS.
 
 ifdef::pro[]
 Setup the BigQuery node by using the <<Add Node,Connect Database>> wizard and selecting BigQuery as the type.  
@@ -23,7 +23,7 @@ endif::pro[]
 
 ifndef::pro[] 
 
-.Example properties to setup a Google BigQuery write only node
+.Example properties to setup a Google BigQuery write-only node
 ----
 load.only=true
 
