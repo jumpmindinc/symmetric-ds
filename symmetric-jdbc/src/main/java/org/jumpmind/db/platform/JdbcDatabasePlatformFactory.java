@@ -239,6 +239,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         try {
             Constructor<? extends IDatabasePlatform> construtor = clazz.getConstructor(DataSource.class, SqlTemplateSettings.class);
             IDatabasePlatform platform = construtor.newInstance(dataSource, settings);
+            platform.setDatabaseVersion(nameVersion);
             log.info("The IDatabasePlatform being used is " + platform.getClass().getCanonicalName());
             platform.getDdlBuilder().setDelimitedIdentifierModeOn(delimitedIdentifierMode);
             platform.getDdlBuilder().setCaseSensitive(caseSensitive);
@@ -271,6 +272,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
             DatabaseMetaData metaData = connection.getMetaData();
             nameVersion.setName(metaData.getDatabaseProductName());
             nameVersion.setVersion(metaData.getDatabaseMajorVersion());
+            nameVersion.setMinorVersion(metaData.getDatabaseMinorVersion());
             String url = metaData.getURL();
             if (StringUtils.isNotBlank(url) && url.length() > JDBC_PREFIX.length()) {
                 url = url.substring(JDBC_PREFIX.length());
@@ -280,7 +282,8 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
             }
             nameVersion.setProtocol(url);
             determineDatabaseNameVersionSubprotocol(dataSource, connection, metaData, nameVersion);
-            log.info("Detected database '" + nameVersion.getName() + "', version '" + nameVersion.getVersion() + "', protocol '" + nameVersion.getProtocol()
+            log.info("Detected database '" + nameVersion.getName() + "', version '" + nameVersion.getVersion() + ", minor version '" + nameVersion
+                    .getMinorVersion() + "', protocol '" + nameVersion.getProtocol()
                     + "'");
         } catch (Throwable ex) {
             throw new SqlException("Error while reading the database metadata: " + ex.getMessage(), ex);

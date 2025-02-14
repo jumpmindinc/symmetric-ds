@@ -23,6 +23,7 @@ package org.jumpmind.db.platform;
 public class DatabaseVersion {
     private String name;
     private int version;
+    private int minorVersion;
     private String protocol;
 
     public String getName() {
@@ -51,5 +52,13 @@ public class DatabaseVersion {
 
     public void setProtocol(String protocol) {
         this.protocol = protocol;
+    }
+
+    public int getMinorVersion() {
+        return minorVersion;
+    }
+
+    public void setMinorVersion(int minorVersion) {
+        this.minorVersion = minorVersion;
     }
 }

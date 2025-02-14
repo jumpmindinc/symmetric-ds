@@ -82,4 +82,8 @@ public interface IDdlBuilder {
     public List<IModelChange> getDetectedChanges(Database currentModel, Database desiredModel, IAlterDatabaseInterceptor... alterDatabaseInterceptors);
 
     public void initCteExpression();
+
+    public void setTriggerDelimiterReplacementCharacters(String triggerDelimiterReplacementCharacters);
+
+    public String getTriggerDelimiterReplacementCharacters();
 }

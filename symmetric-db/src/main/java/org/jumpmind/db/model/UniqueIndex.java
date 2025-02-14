@@ -67,6 +67,7 @@ public class UniqueIndex extends IndexImpBase {
         UniqueIndex result = new UniqueIndex();
         result.name = name;
         result.columns = (ArrayList<IndexColumn>) columns.clone();
+        result.includedColumns = (ArrayList<IndexColumn>) includedColumns.clone();
         clonePlatformIndexes(result);
         return result;
     }
@@ -76,6 +77,7 @@ public class UniqueIndex extends IndexImpBase {
             UniqueIndex other = (UniqueIndex) obj;
             return new EqualsBuilder().append(name, other.name).append(columns, other.columns)
                     .append(platformIndexes, other.platformIndexes)
+                    .append(includedColumns, other.includedColumns)
                     .isEquals();
         } else {
             return false;

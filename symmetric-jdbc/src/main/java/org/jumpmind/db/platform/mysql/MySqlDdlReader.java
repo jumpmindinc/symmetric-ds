@@ -181,6 +181,8 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                 return convertTextToLob ? Types.BLOB : Types.LONGVARCHAR;
             }
             return super.mapUnknownJdbcTypeForColumn(values);
+        } else if (type != null && type == Types.OTHER && "UUID".equalsIgnoreCase("UUID")) {
+            return Types.VARCHAR;
         } else if (type != null && type == Types.OTHER) {
             return Types.LONGVARCHAR;
         } else {
@@ -218,6 +220,15 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                 column.getJdbcTypeName().equalsIgnoreCase(TypeMap.LINESTRING) ||
                 column.getJdbcTypeName().equalsIgnoreCase(TypeMap.POLYGON)) {
             column.setJdbcTypeName(TypeMap.GEOMETRY);
+        }
+        if ("UUID".equalsIgnoreCase(column.getJdbcTypeName())) {
+            column.setSize("36");
+            PlatformColumn platformColumn = column.getPlatformColumns().get(platform.getName());
+            if (platformColumn != null) {
+                if ("UUID".equalsIgnoreCase(platformColumn.getType())) {
+                    platformColumn.setSize(-1);
+                }
+            }
         }
         return column;
     }

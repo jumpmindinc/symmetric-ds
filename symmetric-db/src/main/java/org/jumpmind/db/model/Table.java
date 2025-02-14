@@ -97,6 +97,7 @@ public class Table implements Serializable, Cloneable, Comparable<Table> {
     private boolean madeAllColumnsPrimaryKey;
     /** This table has changes logged by the transaction log. */
     private boolean logging = true;
+    private ArrayList<Trigger> triggers = new ArrayList<Trigger>();
 
     public Table() {
     }
@@ -162,6 +163,10 @@ public class Table implements Serializable, Cloneable, Comparable<Table> {
 
     public void removeAllIndexes() {
         indices.clear();
+    }
+
+    public void removeAllTriggers() {
+        triggers.clear();
     }
 
     /**
@@ -955,6 +960,12 @@ public class Table implements Serializable, Cloneable, Comparable<Table> {
                 result.indices.add((IIndex) i.clone());
             }
         }
+        result.triggers = new ArrayList<Trigger>(triggers.size());
+        for (Trigger t : triggers) {
+            if (t != null) {
+                result.triggers.add((Trigger) t.clone());
+            }
+        }
         return result;
     }
 
@@ -1588,6 +1599,72 @@ public class Table implements Serializable, Cloneable, Comparable<Table> {
 
     public void setMadeAllColumnsPrimaryKey(boolean madeAllColumnsPrimaryKey) {
         this.madeAllColumnsPrimaryKey = madeAllColumnsPrimaryKey;
+    }
+
+    public int getTriggerCount() {
+        return triggers.size();
+    }
+
+    public Trigger getTrigger(int i) {
+        return triggers.get(i);
+    }
+
+    public Trigger[] getTriggers() {
+        return triggers.toArray(new Trigger[triggers.size()]);
+    }
+
+    public List<Trigger> getTriggersAsList() {
+        return new ArrayList<Trigger>(this.triggers);
+    }
+
+    public final void addTrigger(Trigger trigger) {
+        if (trigger != null) {
+            triggers.add(trigger);
+        }
+    }
+
+    public void addTrigger(int idx, Trigger trigger) {
+        if (trigger != null) {
+            triggers.add(idx, trigger);
+        }
+    }
+
+    public void addTrigger(Trigger previousTrigger, Trigger trigger) {
+        if (trigger != null) {
+            if (previousTrigger == null) {
+                triggers.add(0, trigger);
+            } else {
+                triggers.add(triggers.indexOf(previousTrigger), trigger);
+            }
+        }
+    }
+
+    public void addTriggers(Collection<Trigger> triggers) {
+        for (Iterator<Trigger> it = triggers.iterator(); it.hasNext();) {
+            addTrigger(it.next());
+        }
+    }
+
+    public Trigger findTrigger(String name, boolean caseSensitive) {
+        for (Iterator<Trigger> it = triggers.iterator(); it.hasNext();) {
+            Trigger trigger = it.next();
+            if (caseSensitive) {
+                if (trigger.getName().equals(name)) {
+                    return trigger;
+                }
+            } else {
+                if (trigger.getName().equalsIgnoreCase(name)) {
+                    return trigger;
+                }
+            }
+        }
+        return null;
+    }
+
+    public void removeTrigger(Trigger trigger) {
+        if (trigger != null) {
+            triggers.remove(trigger);
+        }
     }
 
     static class ColumnPkSequenceComparator implements Comparator<Column> {

@@ -62,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
@@ -72,6 +73,7 @@ import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.NonUniqueIndex;
 import org.jumpmind.db.model.PlatformColumn;
+import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
@@ -151,6 +153,28 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     public List<Trigger> getTriggers(String catalog, String schema,
             String tableName) {
         return Collections.emptyList();
+    }
+
+    @Override
+    public List<Trigger> getApplicationTriggersForModel(String catalog, String schema, String tableName, String triggerPrefix) {
+        List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getTriggers(catalog, schema, tableName)
+                .stream()
+                .filter(t -> !t.getName().toUpperCase().startsWith(triggerPrefix.toUpperCase() + "_"))
+                .collect(Collectors.toList());
+        if (triggers != null && triggers.size() > 0) {
+            for (org.jumpmind.db.model.Trigger trigger : triggers) {
+                PlatformTrigger platformTrigger = getPlatformTrigger(this.platform, trigger);
+                if (platformTrigger != null) {
+                    trigger.addPlatformTrigger(platformTrigger);
+                }
+            }
+        }
+        return triggers;
+    }
+
+    @Override
+    public PlatformTrigger getPlatformTrigger(IDatabasePlatform platform, Trigger trigger) {
+        return new PlatformTrigger(platform.getName(), trigger.getSource());
     }
 
     /*
@@ -677,6 +701,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 String schema = (String) values.get(getName(getResultSetSchemaName()));
                 table.setSchema(schema);
                 table.setDescription((String) values.get(getName("REMARKS")));
+                // TODO Pass in connection to readColumns(...)
                 table.addColumns(readColumns(metaData, tableName));
                 if (table.getColumnCount() > 0) {
                     table.addForeignKeys(readForeignKeys(connection, metaData, tableName));
@@ -874,6 +899,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             List<Column> columns = new ArrayList<Column>();
             while (columnData.next()) {
                 Map<String, Object> values = readMetaData(columnData, getColumnsForColumn());
+                // TODO Pass connection to readColumn(...)
                 Column column = readColumn(metaData, values);
                 if (!columnNames.contains(column.getName())) {
                     columnNames.add(column.getName());

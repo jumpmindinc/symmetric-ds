@@ -45,6 +45,7 @@ import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -63,6 +64,7 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.CompressionTypes;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.PlatformIndex;
 import org.jumpmind.db.model.Table;
@@ -76,6 +78,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ChangeCatalogConnectionHandler;
 import org.jumpmind.db.sql.IConnectionHandler;
 import org.jumpmind.db.sql.ISqlRowMapper;
+import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
@@ -98,7 +101,7 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
         setDefaultCatalogPattern(null);
         setDefaultSchemaPattern(null);
         setDefaultTablePattern("%");
-        JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
+        ISqlTemplate sqlTemplate = platform.getSqlTemplateDirty();
         if (sqlTemplate.getDatabaseMajorVersion() >= 9) {
             String sql = "select name from sys.types where is_user_defined = 1";
             List<Row> rows = sqlTemplate.query(sql);
@@ -463,41 +466,62 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
     protected Collection<IIndex> readIndices(Connection connection,
             DatabaseMetaDataWrapper metaData, String tableName) throws SQLException {
         Collection<IIndex> indices = super.readIndices(connection, metaData, tableName);
-        if (platform instanceof MsSql2008DatabasePlatform) {
-            if (indices != null && indices.size() > 0) {
-                String sql = "SELECT [TABLENAME] = t.[Name]\n" +
+        String sql = null;
+        if (indices != null && indices.size() > 0) {
+            if (platform instanceof MsSql2008DatabasePlatform) {
+                sql = "SELECT [TABLENAME] = t.[Name]\n" +
                         "        ,[INDEXNAME] = i.[Name]\n" +
                         "        ,[IndexType] = i.[type_desc]\n" +
                         "        ,[FILTER] = i.filter_definition\n" +
                         "        ,[HASFILTER] = i.has_filter\n" +
                         "        ,[COMPRESSIONTYPE] = p.data_compression\n" +
                         "        ,[COMPRESSIONDESCRIPTION] = p.data_compression_desc\n" +
+                        "        ,[COLUMN_NAME] = c.name\n" +
+                        "        ,[IS_INCLUDED_COLUMN] = ixc.is_included_column\n" +
                         "FROM sys.indexes i WITH (NOLOCK)\n" +
                         "INNER JOIN sys.tables t WITH (NOLOCK) ON t.object_id = i.object_id\n" +
                         "INNER JOIN sys.partitions p WITH (NOLOCK) ON p.object_id=t.object_id AND p.index_id=i.index_id\n" +
+                        "INNER JOIN sys.index_columns ixc WITH (NOLOCK) ON t.object_id=ixc.object_id and i.index_id=ixc.index_id\n" +
+                        "INNER JOIN sys.columns c WITH (NOLOCK) ON c.object_id=t.object_id and ixc.column_id=c.column_id\n" +
                         "WHERE t.type_desc = N'USER_TABLE'\n" +
                         "and t.name=?\n" +
                         "and i.name in (%s)\n" +
                         "and p.index_id > 1";
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < indices.size(); i++) {
-                    if (sb.length() > 0) {
-                        sb.append(",");
-                    }
-                    sb.append("?");
+            } else if (platform instanceof MsSql2005DatabasePlatform) {
+                sql = "select [TABLENAME] = t.[Name]\n"
+                        + "    ,[INDEXNAME] = i.[Name]\n"
+                        + "    ,[COLUMN_NAME] = c.name\n"
+                        + "    ,[IS_INCLUDED_COLUMN] = ixc.is_included_column\n"
+                        + "from sys.tables t WITH (NOLOCK)\n"
+                        + "INNER JOIN sys.indexes i WITH (NOLOCK) ON t.object_id=i.object_id\n"
+                        + "INNER JOIN sys.index_columns ixc WITH (NOLOCK) ON t.object_id=ixc.object_id and i.index_id=ixc.index_id\n"
+                        + "INNER JOIN sys.columns c WITH (NOLOCK) ON c.object_id=t.object_id and ixc.column_id=c.column_id\n"
+                        + "WHERE t.type_desc = N'USER_TABLE'\n"
+                        + "and i.type > 1\n"
+                        + "and t.name=?\n"
+                        + "and i.name in (%s)";
+            }
+        }
+        if (sql != null) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < indices.size(); i++) {
+                if (sb.length() > 0) {
+                    sb.append(",");
                 }
-                sql = String.format(sql, sb.toString());
-                log.debug("Running the following query to get metadata about whether an index has compression or filters\n {}", sql);
-                try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                    int i = 1;
-                    ps.setString(i++, tableName);
-                    for (IIndex index : indices) {
-                        ps.setString(i++, index.getName());
-                    }
-                    try (ResultSet rs = ps.executeQuery()) {
-                        while (rs.next()) {
-                            readIndex(indices, tableName, rs);
-                        }
+                sb.append("?");
+            }
+            sql = String.format(sql, sb.toString());
+            log.debug("Running the following query to get metadata about whether an index has compression or filters\n {}", sql);
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                int i = 1;
+                ps.setString(i++, tableName);
+                for (IIndex index : indices) {
+                    ps.setString(i++, index.getName());
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    Set<String> columnLabels = getColumnLabels(rs);
+                    while (rs.next()) {
+                        readIndex(indices, tableName, rs, columnLabels);
                     }
                 }
             }
@@ -505,39 +529,53 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
         return indices;
     }
 
-    private void readIndex(Collection<IIndex> indices, String tableName, ResultSet rs) throws SQLException {
+    private void readIndex(Collection<IIndex> indices, String tableName, ResultSet rs, Set<String> columnLabels) throws SQLException {
         String indexName = rs.getString("INDEXNAME");
         IIndex iIndex = findIndex(indexName, indices);
         if (iIndex != null) {
-            boolean hasFilter = rs.getBoolean("HASFILTER");
-            int compressionType = rs.getInt("COMPRESSIONTYPE");
-            boolean hasCompression = (compressionType > 0);
-            if (hasFilter || hasCompression) {
-                PlatformIndex platformIndex = new PlatformIndex();
-                platformIndex.setName(indexName);
-                if (hasFilter) {
-                    log.debug("table: " + tableName + " index: " + indexName + " has filter: " + rs.getString("FILTER"));
-                    platformIndex.setFilterCondition("WHERE " + rs.getString("FILTER"));
-                }
-                if (hasCompression) {
-                    if (compressionType == 1) {
-                        log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.ROW.name());
-                        platformIndex.setCompressionType(CompressionTypes.ROW);
-                    } else if (compressionType == 2) {
-                        log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.PAGE.name());
-                        platformIndex.setCompressionType(CompressionTypes.PAGE);
-                    } else if (compressionType == 3) {
-                        log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.COLUMNSTORE.name());
-                        platformIndex.setCompressionType(CompressionTypes.COLUMNSTORE);
-                    } else if (compressionType == 4) {
-                        log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.COLUMNSTORE_ARCHIVE
-                                .name());
-                        platformIndex.setCompressionType(CompressionTypes.COLUMNSTORE_ARCHIVE);
-                    } else {
-                        platformIndex.setCompressionType(CompressionTypes.NONE);
+            if (columnLabels.contains("HASFILTER")) {
+                boolean hasFilter = rs.getBoolean("HASFILTER");
+                int compressionType = rs.getInt("COMPRESSIONTYPE");
+                boolean hasCompression = (compressionType > 0);
+                if (hasFilter || hasCompression) {
+                    PlatformIndex platformIndex = findPlatformIndex(indexName, iIndex);
+                    if (platformIndex == null) {
+                        platformIndex = new PlatformIndex();
+                        platformIndex.setName(indexName);
                     }
+                    if (hasFilter) {
+                        log.debug("table: " + tableName + " index: " + indexName + " has filter: " + rs.getString("FILTER"));
+                        platformIndex.setFilterCondition("WHERE " + rs.getString("FILTER"));
+                    }
+                    if (hasCompression) {
+                        if (compressionType == 1) {
+                            log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.ROW.name());
+                            platformIndex.setCompressionType(CompressionTypes.ROW);
+                        } else if (compressionType == 2) {
+                            log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.PAGE.name());
+                            platformIndex.setCompressionType(CompressionTypes.PAGE);
+                        } else if (compressionType == 3) {
+                            log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.COLUMNSTORE.name());
+                            platformIndex.setCompressionType(CompressionTypes.COLUMNSTORE);
+                        } else if (compressionType == 4) {
+                            log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.COLUMNSTORE_ARCHIVE
+                                    .name());
+                            platformIndex.setCompressionType(CompressionTypes.COLUMNSTORE_ARCHIVE);
+                        } else {
+                            platformIndex.setCompressionType(CompressionTypes.NONE);
+                        }
+                    }
+                    iIndex.addPlatformIndex(platformIndex);
                 }
-                iIndex.addPlatformIndex(platformIndex);
+            }
+            if (columnLabels.contains("IS_INCLUDED_COLUMN")) {
+                int includedColumn = rs.getInt("IS_INCLUDED_COLUMN");
+                String columnName = rs.getString("COLUMN_NAME");
+                if (includedColumn > 0) {
+                    IndexColumn indexColumn = new IndexColumn();
+                    indexColumn.setName(columnName);
+                    iIndex.addIncludedColumn(indexColumn);
+                }
             }
         }
     }
@@ -549,6 +587,23 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
             }
         }
         return null;
+    }
+
+    private PlatformIndex findPlatformIndex(String indexName, IIndex iIndex) {
+        if (iIndex.getPlatformIndexes() != null && iIndex.getPlatformIndexes().containsKey(indexName)) {
+            return iIndex.getPlatformIndexes().get(indexName);
+        }
+        return null;
+    }
+
+    private Set<String> getColumnLabels(ResultSet rs) throws SQLException {
+        Set<String> s = new HashSet<String>();
+        ResultSetMetaData rsmeta = rs.getMetaData();
+        int columnCount = rsmeta.getColumnCount();
+        for (int i = 1; i <= columnCount; i++) {
+            s.add(rsmeta.getColumnLabel(i));
+        }
+        return s;
     }
 
     @Override

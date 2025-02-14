@@ -34,8 +34,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.ForeignKey;
+import org.jumpmind.db.model.Function;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.PlatformColumn;
+import org.jumpmind.db.model.PlatformFunction;
+import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
@@ -378,12 +381,18 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
                 + "event_manipulation AS trigger_type, "
                 + "event_object_table AS table_name,"
                 + "trig.*, "
-                + "pgproc.prosrc "
+                + "pgproc.prosrc, "
+                + "pg_get_functiondef(pgproc.proname::regproc) AS functiontext, "
+                + "pg_get_triggerdef(pgtrig.oid, true) as triggertext, "
+                + "nmspace.nspname as funcschema, "
+                + "pgproc.proname as proname "
                 + "FROM INFORMATION_SCHEMA.TRIGGERS AS trig "
                 + "INNER JOIN pg_catalog.pg_trigger AS pgtrig "
                 + "ON pgtrig.tgname=trig.trigger_name "
                 + "INNER JOIN pg_catalog.pg_proc AS pgproc "
                 + "ON pgproc.oid=pgtrig.tgfoid "
+                + "INNER JOIN pg_catalog.pg_namespace as nmspace "
+                + "ON pgproc.pronamespace = nmspace.oid "
                 + "WHERE event_object_table=? AND event_object_schema=?;";
         triggers = sqlTemplate.query(sql, new ISqlRowMapper<Trigger>() {
             @Override
@@ -407,5 +416,34 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
             }
         }, tableName, schema);
         return triggers;
+    }
+
+    @Override
+    public PlatformTrigger getPlatformTrigger(IDatabasePlatform platform, Trigger trigger) {
+        int majorVersion = getPlatform().getDatabaseVersion().getVersion();
+        int minorVersion = getPlatform().getDatabaseVersion().getMinorVersion();
+        PlatformTrigger platformTrigger = null;
+        if (majorVersion > 8 || (majorVersion == 8 && minorVersion >= 4)) {
+            platformTrigger = new PlatformTrigger(platform.getName(), trigger.getSource());
+            if (trigger.getMetaData() instanceof Row) {
+                Row triggerMetaData = (Row) trigger.getMetaData();
+                String triggertext = triggerMetaData.getString("triggertext");
+                platformTrigger.setTriggerText(triggertext);
+                Function function = new Function();
+                function.setCatalogName(triggerMetaData.getString("trigger_catalog"));
+                function.setSchemaName(triggerMetaData.getString("funcschema"));
+                function.setFunctionName(triggerMetaData.getString("proname"));
+                function.setTableName(triggerMetaData.getString("table_name"));
+                function.setTriggerName(triggerMetaData.getString("trigger_name"));
+                PlatformFunction platformFunction = new PlatformFunction();
+                platformFunction.setName(platform.getName());
+                platformFunction.setFunctionText(triggerMetaData.getString("functiontext"));
+                function.addPlatformFunction(platformFunction);
+                platformTrigger.setFunction(function);
+            }
+        } else {
+            // TODO Log something here once in a while
+        }
+        return platformTrigger;
     }
 }

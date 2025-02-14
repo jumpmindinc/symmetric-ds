@@ -67,6 +67,7 @@ public class NonUniqueIndex extends IndexImpBase {
         NonUniqueIndex result = new NonUniqueIndex();
         result.name = name;
         result.columns = (ArrayList<IndexColumn>) columns.clone();
+        result.includedColumns = (ArrayList<IndexColumn>) includedColumns.clone();
         clonePlatformIndexes(result);
         return result;
     }
@@ -77,6 +78,7 @@ public class NonUniqueIndex extends IndexImpBase {
             NonUniqueIndex other = (NonUniqueIndex) obj;
             return new EqualsBuilder().append(name, other.name).append(columns, other.columns)
                     .append(platformIndexes, other.platformIndexes)
+                    .append(includedColumns, other.includedColumns)
                     .isEquals();
         } else {
             return false;

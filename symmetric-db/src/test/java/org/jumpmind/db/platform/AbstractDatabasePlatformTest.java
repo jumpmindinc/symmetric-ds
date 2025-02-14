@@ -31,6 +31,8 @@ import org.jumpmind.db.platform.h2.H2DdlBuilder;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 public class AbstractDatabasePlatformTest {
     @Test
@@ -78,6 +80,14 @@ public class AbstractDatabasePlatformTest {
         assertEquals("\"TABLE\"", testDatabasePlatform.parseQualifiedTableName("\"CATALOG\".\"SCHEMA\".\"TABLE\"").get("table"));
         assertEquals("\"SCHEMA\"", testDatabasePlatform.parseQualifiedTableName("\"CATALOG\".\"SCHEMA\".\"TABLE\"").get("schema"));
         assertEquals(3, testDatabasePlatform.parseQualifiedTableName("\"CATALOG\".\"SCHEMA\".\"TABLE\"").size());
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "1,true", "true,true", "0,false" })
+    void testParseBoolean(String textValue, String expectedValue) {
+        Boolean expectedResult = Boolean.valueOf(expectedValue);
+        Object result = testDatabasePlatform.parseBoolean(textValue); // null value is not applicable because of check in getObjectValue
+        assertEquals(expectedResult, result);
     }
 
     private AbstractDatabasePlatform testDatabasePlatform = new AbstractDatabasePlatform(new SqlTemplateSettings()) {

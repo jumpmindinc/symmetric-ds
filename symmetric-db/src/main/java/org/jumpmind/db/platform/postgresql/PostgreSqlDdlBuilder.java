@@ -57,7 +57,9 @@ import org.jumpmind.db.alter.ColumnSizeChange;
 import org.jumpmind.db.alter.CopyColumnValueChange;
 import org.jumpmind.db.alter.PrimaryKeyChange;
 import org.jumpmind.db.alter.RemoveColumnChange;
+import org.jumpmind.db.alter.RemoveFunctionChange;
 import org.jumpmind.db.alter.RemoveTableLoggingChange;
+import org.jumpmind.db.alter.RemoveTriggerChange;
 import org.jumpmind.db.alter.TableChange;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
@@ -576,6 +578,27 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
         } else {
             return false;
         }
+    }
+
+    @Override
+    protected void processChange(Database currentModel, Database desiredModel, RemoveTriggerChange change,
+            StringBuilder ddl) {
+        ddl.append("DROP TRIGGER ").append(change.getTrigger().getName());
+        ddl.append(" ON ").append(change.getChangedTable().getFullyQualifiedTableName());
+        printEndOfStatement(ddl);
+        change.apply(currentModel, delimitedIdentifierModeOn);
+    }
+
+    @Override
+    protected void processChange(Database currentModel, Database desiredModel, RemoveFunctionChange change,
+            StringBuilder ddl) {
+        ddl.append("DROP FUNCTION IF EXISTS ");
+        if (change.getFunction().getSchemaName() != null && change.getFunction().getSchemaName().length() > 0) {
+            ddl.append(change.getFunction().getSchemaName()).append(".");
+        }
+        ddl.append(change.getFunction().getFunctionName());
+        printEndOfStatement(ddl);
+        change.apply(currentModel, delimitedIdentifierModeOn);
     }
 
     @Override

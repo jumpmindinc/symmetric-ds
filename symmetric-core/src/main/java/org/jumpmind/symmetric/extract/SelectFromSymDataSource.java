@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.extract;
 
 import java.sql.Types;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
@@ -295,6 +296,7 @@ public class SelectFromSymDataSource extends SelectFromSource {
         boolean excludeIndexes = parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_INDEXES, false) | sendSchemaExcludeIndices;
         boolean deferConstraints = outgoingBatch.isLoadFlag() && parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false);
         boolean deferTableLogging = evaluateDeferTableLogging(outgoingBatch, sendSchemaExcludeIndices);
+        boolean includeTriggerDdl = parameterService.is(ParameterConstants.CREATE_TABLE_INCLUDE_APPLICATION_TRIGGERS, false);
         if (outgoingBatch.getLoadId() > 0) {
             TableReloadStatus tableReloadStatus = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(outgoingBatch.getLoadId(), engine.getNodeId());
             if (tableReloadStatus != null && tableReloadStatus.isCompleted()) {
@@ -326,6 +328,13 @@ public class SelectFromSymDataSource extends SelectFromSource {
         }
         if (excludeIndexes || deferConstraints) {
             copyTargetTable.removeAllIndexes();
+        }
+        if (includeTriggerDdl) {
+            List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getApplicationTriggersForModel(sourceTable.getCatalog(), sourceTable
+                    .getSchema(), sourceTable.getName(), symmetricDialect.getTablePrefix());
+            if (triggers != null && triggers.size() > 0) {
+                copyTargetTable.addTriggers(triggers);
+            }
         }
         if (parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_PK_IF_SOURCE_WITHOUT_PK, false)
                 && sourceTable.getPrimaryKeyColumnCount() == 0 && copyTargetTable.getPrimaryKeyColumnCount() > 0) {

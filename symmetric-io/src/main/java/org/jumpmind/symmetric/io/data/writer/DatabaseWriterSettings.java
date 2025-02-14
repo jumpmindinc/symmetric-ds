@@ -65,6 +65,10 @@ public class DatabaseWriterSettings {
     protected boolean ignoreSqlDataEventFailures = false;
     protected boolean createIndexConvertUniqueToNonuniqueWhenColumnsNotRequired = true;
     protected boolean stripOutCommentsInScripts = true;
+    protected String runtimeConfigTriggerPrefix = "sym";
+    protected boolean createTableIncludeApplicationTriggers = false;
+    protected boolean keepBulkStagingFiles = false;
+    protected String msSqlBulkLoadBcpCodePage;
 
     public void setAlterDatabaseInterceptors(IAlterDatabaseInterceptor[] alterDatabaseInterceptors) {
         this.alterDatabaseInterceptors = alterDatabaseInterceptors;
@@ -383,5 +387,37 @@ public class DatabaseWriterSettings {
 
     public void setStripOutCommentsInScripts(boolean stripOutCommentsInScripts) {
         this.stripOutCommentsInScripts = stripOutCommentsInScripts;
+    }
+
+    public String getRuntimeConfigTriggerPrefix() {
+        return runtimeConfigTriggerPrefix;
+    }
+
+    public void setRuntimeConfigTriggerPrefix(String runtimeConfigTriggerPrefix) {
+        this.runtimeConfigTriggerPrefix = runtimeConfigTriggerPrefix;
+    }
+
+    public boolean isCreateTableIncludeApplicationTriggers() {
+        return createTableIncludeApplicationTriggers;
+    }
+
+    public void setCreateTableIncludeApplicationTriggers(boolean createTableIncludeApplicationTriggers) {
+        this.createTableIncludeApplicationTriggers = createTableIncludeApplicationTriggers;
+    }
+
+    public boolean isKeepBulkStagingFiles() {
+        return keepBulkStagingFiles;
+    }
+
+    public void setKeepBulkStagingFiles(boolean keepBulkStagingFiles) {
+        this.keepBulkStagingFiles = keepBulkStagingFiles;
+    }
+
+    public String getMsSqlBulkLoadBcpCodePage() {
+        return msSqlBulkLoadBcpCodePage;
+    }
+
+    public void setMsSqlBulkLoadBcpCodePage(String msSqlBulkLoadBcpCodePage) {
+        this.msSqlBulkLoadBcpCodePage = msSqlBulkLoadBcpCodePage;
     }
 }

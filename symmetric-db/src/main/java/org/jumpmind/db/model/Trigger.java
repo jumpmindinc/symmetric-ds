@@ -20,10 +20,16 @@
  */
 package org.jumpmind.db.model;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
-public class Trigger {
+import org.jumpmind.db.platform.DatabaseNamesConstants;
+
+public class Trigger implements Cloneable, Serializable {
+    private static final long serialVersionUID = 1L;
+
     public enum TriggerType {
         INSERT, UPDATE, DELETE
     };
@@ -36,6 +42,7 @@ public class Trigger {
     TriggerType triggerType;
     boolean enabled;
     Map<String, Object> metaData = new HashMap<String, Object>();
+    Map<String, PlatformTrigger> platformTriggers;
 
     public Trigger(String name, String catalogName, String schemaName, String tableName, TriggerType triggerType) {
         this(name, catalogName, schemaName, tableName, triggerType, true);
@@ -119,6 +126,97 @@ public class Trigger {
 
     public String getFullyQualifiedName() {
         return getFullyQualifiedName(catalogName, schemaName, tableName, triggerName);
+    }
+
+    public void removePlatformTrigger(String databaseName) {
+        if (platformTriggers != null) {
+            platformTriggers.remove(databaseName);
+        }
+    }
+
+    public void addPlatformTrigger(PlatformTrigger platformTrigger) {
+        if (platformTriggers == null) {
+            platformTriggers = new HashMap<String, PlatformTrigger>();
+        }
+        platformTriggers.put(platformTrigger.getName(), platformTrigger);
+    }
+
+    public Map<String, PlatformTrigger> getPlatformTriggers() {
+        return platformTriggers;
+    }
+
+    public PlatformTrigger findPlatformTrigger(String name) {
+        PlatformTrigger platformTrigger = null;
+        if (platformTriggers != null) {
+            platformTrigger = platformTriggers.get(name);
+            if (platformTrigger == null) {
+                if (name.contains(DatabaseNamesConstants.MSSQL)) {
+                    return findDifferentVersionPlatformTrigger(DatabaseNamesConstants.MSSQL);
+                } else if (name.contains(DatabaseNamesConstants.ORACLE)) {
+                    return findDifferentVersionPlatformTrigger(DatabaseNamesConstants.ORACLE);
+                } else if (name.contains(DatabaseNamesConstants.POSTGRESQL)) {
+                    return findDifferentVersionPlatformTrigger(DatabaseNamesConstants.POSTGRESQL);
+                } else if (name.contains(DatabaseNamesConstants.SQLANYWHERE)) {
+                    return findDifferentVersionPlatformTrigger(DatabaseNamesConstants.SQLANYWHERE);
+                } else if (name.contains(DatabaseNamesConstants.FIREBIRD)) {
+                    return findDifferentVersionPlatformTrigger(DatabaseNamesConstants.FIREBIRD);
+                } else if (name.contains(DatabaseNamesConstants.HSQLDB)) {
+                    return findDifferentVersionPlatformTrigger(DatabaseNamesConstants.HSQLDB);
+                }
+            }
+        }
+        return platformTrigger;
+    }
+
+    private PlatformTrigger findDifferentVersionPlatformTrigger(String name) {
+        if (platformTriggers != null) {
+            for (Entry<String, PlatformTrigger> entry : platformTriggers.entrySet()) {
+                if (entry.getKey() != null && entry.getKey().contains(name)) {
+                    return entry.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean anyPlatformTriggerNameContains(String name) {
+        if (platformTriggers != null) {
+            for (String platformTriggerName : platformTriggers.keySet()) {
+                if (platformTriggerName != null && platformTriggerName.contains(name)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean allPlatformTriggerNamesContain(String name) {
+        if (platformTriggers != null) {
+            for (String platformTriggerName : platformTriggers.keySet()) {
+                if (platformTriggerName != null && !platformTriggerName.contains(name)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public Object clone() throws CloneNotSupportedException {
+        Trigger result = (Trigger) super.clone();
+        result.triggerName = triggerName;
+        result.catalogName = catalogName;
+        result.enabled = enabled;
+        result.schemaName = schemaName;
+        result.source = source;
+        result.tableName = tableName;
+        result.triggerType = triggerType;
+        if (platformTriggers != null) {
+            result.platformTriggers = new HashMap<String, PlatformTrigger>(platformTriggers.size());
+            for (Map.Entry<String, PlatformTrigger> platformTrigger : platformTriggers.entrySet()) {
+                result.platformTriggers.put(platformTrigger.getKey(), (PlatformTrigger) platformTrigger.getValue().clone());
+            }
+        }
+        return result;
     }
 
     public static String getFullyQualifiedName(String catalog, String schema, String tableName, String triggerName) {

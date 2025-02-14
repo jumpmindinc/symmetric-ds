@@ -43,15 +43,24 @@ import java.math.BigDecimal;
 
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
+import org.jumpmind.db.model.Function;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.PlatformFunction;
+import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDdlBuilder;
 import org.jumpmind.db.platform.ase.AseDdlBuilder;
@@ -164,6 +173,7 @@ public class ModelComparator {
         detectIndexChanges(sourceModel, sourceTable, targetModel, targetTable, changes);
         detectColumnChanges(sourceModel, sourceTable, targetModel, targetTable, changes);
         detectPrimaryKeyChanges(sourceModel, sourceTable, targetModel, targetTable, changes);
+        detectTriggerChanges(sourceModel, sourceTable, targetModel, targetTable, changes);
         return changes;
     }
 
@@ -241,6 +251,12 @@ public class ModelComparator {
                 // we have to use the target table here because the index might
                 // reference a new column
                 changes.add(new AddIndexChange(targetTable, targetIndex));
+            } else {
+                if (!new EqualsBuilder().append(new HashSet<IIndex>(Arrays.asList(targetIndex)), new HashSet<IIndex>(Arrays.asList(sourceIndex))).isEquals()) {
+                    log.info("Index {} needs to be modified (removed/created) for table {}", targetIndex.getName(), sourceTable.getName());
+                    changes.add(new RemoveIndexChange(sourceTable, sourceIndex));
+                    changes.add(new AddIndexChange(targetTable, targetIndex));
+                }
             }
         }
     }
@@ -324,6 +340,79 @@ public class ModelComparator {
                 changes.add(new RemoveColumnChange(sourceTable, sourceColumn));
             }
         }
+    }
+
+    public void detectTriggerChanges(Database sourceModel, Table sourceTable,
+            Database targetModel, Table targetTable, ArrayList<IModelChange> changes) {
+        Map<String, Trigger> sourceTriggersMap = new HashMap<String, Trigger>();
+        Map<String, Trigger> targetTriggersMap = new HashMap<String, Trigger>();
+        String platformName = targetModel.getName();
+        if (sourceTable.getTriggers() != null) {
+            for (Trigger trigger : sourceTable.getTriggers()) {
+                sourceTriggersMap.put(trigger.getName(), trigger);
+            }
+        }
+        if (targetTable.getTriggers() != null) {
+            for (Trigger trigger : targetTable.getTriggers()) {
+                targetTriggersMap.put(trigger.getName(), trigger);
+            }
+        }
+        for (Map.Entry<String, Trigger> entry : sourceTriggersMap.entrySet()) {
+            Trigger sourceTrigger = entry.getValue();
+            if (targetTriggersMap.containsKey(entry.getKey())) {
+                Trigger targetTrigger = targetTriggersMap.get(entry.getKey());
+                if (sourceTrigger.getPlatformTriggers().containsKey(platformName)) {
+                    PlatformTrigger targetPlatformTrigger = targetTrigger.findPlatformTrigger(platformName);
+                    PlatformTrigger sourcePlatformTrigger = sourceTrigger.findPlatformTrigger(platformName);
+                    boolean triggerTextChanged = !StringUtils.equals(targetPlatformTrigger.getTriggerText(), sourcePlatformTrigger.getTriggerText());
+                    String targetFunctionText = getFunctionText(targetPlatformTrigger, platformName);
+                    String sourceFunctionText = getFunctionText(sourcePlatformTrigger, platformName);
+                    boolean functionTextChanged = !StringUtils.equals(targetFunctionText, sourceFunctionText);
+                    if (triggerTextChanged || functionTextChanged) {
+                        changes.add(new RemoveTriggerChange(sourceTable, sourceTrigger));
+                        changes.add(new RemoveFunctionChange(sourceTable, sourceTrigger, sourcePlatformTrigger.getFunction()));
+                        changes.add(new AddFunctionChange(targetTable, targetTrigger, targetPlatformTrigger.getFunction()));
+                        changes.add(new AddTriggerChange(targetTable, targetTrigger));
+                    }
+                }
+            } else {
+                changes.add(new RemoveTriggerChange(sourceTable, sourceTrigger));
+                if (sourceTrigger.getPlatformTriggers().containsKey(platformName)) {
+                    PlatformTrigger sourcePlatformTrigger = sourceTrigger.findPlatformTrigger(platformName);
+                    Function sourceFunction = sourcePlatformTrigger.getFunction();
+                    if (sourceFunction != null) {
+                        changes.add(new RemoveFunctionChange(sourceTable, sourceTrigger, sourceFunction));
+                    }
+                }
+            }
+        }
+        for (Map.Entry<String, Trigger> entry : targetTriggersMap.entrySet()) {
+            if (!sourceTriggersMap.containsKey(entry.getKey())) {
+                Trigger targetTrigger = entry.getValue();
+                if (targetTrigger.getPlatformTriggers().containsKey(platformName)) {
+                    PlatformTrigger platformTrigger = targetTrigger.getPlatformTriggers().get(platformName);
+                    Function targetFunction = platformTrigger.getFunction();
+                    if (targetFunction != null) {
+                        changes.add(new AddFunctionChange(targetTable, targetTrigger, targetFunction));
+                    }
+                }
+                changes.add(new AddTriggerChange(targetTable, entry.getValue()));
+            }
+        }
+    }
+
+    private String getFunctionText(PlatformTrigger platformTrigger, String databaseName) {
+        String functionText = null;
+        if (platformTrigger != null && platformTrigger.getFunction() != null) {
+            Function function = platformTrigger.getFunction();
+            if (function.getPlatformFunctions().containsKey(databaseName)) {
+                PlatformFunction platformFunction = function.getPlatformFunctions().get(databaseName);
+                if (platformFunction != null) {
+                    functionText = platformFunction.getFunctionText();
+                }
+            }
+        }
+        return functionText;
     }
 
     /**
@@ -490,6 +579,11 @@ public class ModelComparator {
                         }
                         if (targetColumn.anyPlatformColumnNameContains("postgres")) {
                             sourceDefaultValueString = sourceDefaultValueString.replace("::text", "");
+                        }
+                        return sourceDefaultValueString.equalsIgnoreCase(targetDefaultValueString);
+                    } else if (sourceColumn.isOfNumericType() && targetColumn.isOfNumericType()) {
+                        if (sourceColumn.anyPlatformColumnNameContains("postgres")) {
+                            sourceDefaultValueString = sourceDefaultValueString.replace("'", "").replace("::integer", "");
                         }
                         return sourceDefaultValueString.equalsIgnoreCase(targetDefaultValueString);
                     }

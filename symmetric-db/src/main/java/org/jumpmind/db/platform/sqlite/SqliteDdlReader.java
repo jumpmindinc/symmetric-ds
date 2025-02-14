@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
@@ -36,6 +37,7 @@ import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.NonUniqueIndex;
+import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
@@ -292,6 +294,21 @@ public class SqliteDdlReader implements IDdlReader {
     }
 
     @Override
+    public List<Trigger> getApplicationTriggersForModel(String catalog, String schema, String tableName, String triggerPrefix) {
+        List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getTriggers(catalog, schema, tableName)
+                .stream()
+                .filter(t -> !t.getName().toUpperCase().startsWith(triggerPrefix.toUpperCase() + "_"))
+                .collect(Collectors.toList());
+        if (triggers != null && triggers.size() > 0) {
+            for (org.jumpmind.db.model.Trigger trigger : triggers) {
+                PlatformTrigger platformTrigger = new PlatformTrigger(platform.getName(), trigger.getSource());
+                trigger.addPlatformTrigger(platformTrigger);
+            }
+        }
+        return triggers;
+    }
+
+    @Override
     public Collection<ForeignKey> getExportedKeys(Table table) {
         return null;
     }
@@ -309,5 +326,10 @@ public class SqliteDdlReader implements IDdlReader {
     @Override
     public List<TableRow> getImportedForeignTableRows(List<TableRow> tableRows, Set<TableRow> visited, BinaryEncoding encoding) {
         return null;
+    }
+
+    @Override
+    public PlatformTrigger getPlatformTrigger(IDatabasePlatform platform, Trigger trigger) {
+        return new PlatformTrigger(platform.getName(), trigger.getSource());
     }
 }

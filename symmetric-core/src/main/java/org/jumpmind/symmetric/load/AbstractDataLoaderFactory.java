@@ -27,9 +27,9 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.io.data.writer.Conflict;
+import org.jumpmind.symmetric.io.data.writer.DatabaseWriterSettings;
 import org.jumpmind.symmetric.io.data.writer.Conflict.DetectConflict;
 import org.jumpmind.symmetric.io.data.writer.Conflict.ResolveConflict;
-import org.jumpmind.symmetric.io.data.writer.DatabaseWriterSettings;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +76,12 @@ public abstract class AbstractDataLoaderFactory {
         settings.setCreateIndexConvertUniqueToNonuniqueWhenColumnsNotRequired(
                 parameterService.is(ParameterConstants.CREATE_INDEX_CONVERT_UNIQUE_TO_NONUNIQUE_WHEN_COLUMNS_NOT_REQUIRED, true));
         settings.setStripOutCommentsInScripts(parameterService.is(ParameterConstants.DATA_LOADER_SQL_EVENT_STRIP_COMMENTS, true));
+        String triggerPrefix = parameterService.getString(ParameterConstants.RUNTIME_CONFIG_TRIGGER_PREFIX);
+        if (triggerPrefix == null || triggerPrefix.length() == 0) {
+            triggerPrefix = parameterService.getString(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym");
+        }
+        settings.setRuntimeConfigTriggerPrefix(triggerPrefix);
+        settings.setCreateTableIncludeApplicationTriggers(parameterService.is(ParameterConstants.CREATE_TABLE_INCLUDE_APPLICATION_TRIGGERS, false));
         Map<String, Conflict> byChannel = new HashMap<String, Conflict>();
         Map<String, Conflict> byTable = new HashMap<String, Conflict>();
         boolean multipleDefaultSettingsFound = false;
@@ -106,6 +112,8 @@ public abstract class AbstractDataLoaderFactory {
         }
         settings.setConflictSettingsByChannel(byChannel);
         settings.setConflictSettingsByTable(byTable);
+        settings.setKeepBulkStagingFiles(parameterService.is(ParameterConstants.KEEP_BULK_STAGING_FILES));
+        settings.setMsSqlBulkLoadBcpCodePage(parameterService.getString(ParameterConstants.MSSQL_BULK_LOAD_BCP_CODE_PAGE));
         return settings;
     }
 

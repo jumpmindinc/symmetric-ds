@@ -63,13 +63,17 @@ import org.jumpmind.db.model.CompressionTypes;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.ForeignKey.ForeignKeyAction;
+import org.jumpmind.db.model.Function;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.NonUniqueIndex;
 import org.jumpmind.db.model.PlatformColumn;
+import org.jumpmind.db.model.PlatformFunction;
 import org.jumpmind.db.model.PlatformIndex;
+import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.model.UniqueIndex;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -202,6 +206,10 @@ public class DatabaseXmlUtil {
             Table table = null;
             ForeignKey fk = null;
             IIndex index = null;
+            Trigger trigger = null;
+            PlatformTrigger platformTrigger = null;
+            Function function = null;
+            PlatformFunction platformFunction = null;
             boolean done = false;
             int eventType = parser.getEventType();
             while (eventType != XmlPullParser.END_DOCUMENT && !done) {
@@ -368,6 +376,19 @@ public class DatabaseXmlUtil {
                             if (index != null) {
                                 index.addColumn(indexColumn);
                             }
+                        } else if (name.equalsIgnoreCase("include-column")) {
+                            IndexColumn indexColumn = new IndexColumn();
+                            for (int i = 0; i < parser.getAttributeCount(); i++) {
+                                String attributeName = parser.getAttributeName(i);
+                                String attributeValue = parser.getAttributeValue(i);
+                                if (attributeName.equalsIgnoreCase("name")) {
+                                    indexColumn.setName(attributeValue);
+                                }
+                            }
+                            indexColumn.setColumn(table.getColumnWithName(indexColumn.getName()));
+                            if (index != null) {
+                                index.addIncludedColumn(indexColumn);
+                            }
                         } else if (name.equalsIgnoreCase("platform-index")) {
                             PlatformIndex platformIndex = new PlatformIndex();
                             for (int i = 0; i < parser.getAttributeCount(); i++) {
@@ -394,6 +415,64 @@ public class DatabaseXmlUtil {
                             if (index != null) {
                                 index.addPlatformIndex(platformIndex);
                             }
+                        } else if (name.equalsIgnoreCase("trigger")) {
+                            trigger = new Trigger();
+                            trigger.setCatalogName(catalog);
+                            trigger.setSchemaName(schema);
+                            for (int i = 0; i < parser.getAttributeCount(); i++) {
+                                String attributeName = parser.getAttributeName(i);
+                                String attributeValue = parser.getAttributeValue(i);
+                                if (attributeName.equalsIgnoreCase("name")) {
+                                    trigger.setName(attributeValue);
+                                }
+                            }
+                            if (table != null) {
+                                table.addTrigger(trigger);
+                            }
+                        } else if (name.equalsIgnoreCase("platform-trigger")) {
+                            platformTrigger = new PlatformTrigger();
+                            for (int i = 0; i < parser.getAttributeCount(); i++) {
+                                String attributeName = parser.getAttributeName(i);
+                                String attributeValue = parser.getAttributeValue(i);
+                                if (attributeName.equalsIgnoreCase("name")) {
+                                    platformTrigger.setName(attributeValue);
+                                }
+                            }
+                            if (trigger != null) {
+                                trigger.addPlatformTrigger(platformTrigger);
+                            }
+                        } else if (name.equalsIgnoreCase("trigger-text")) {
+                            String triggerText = parser.nextText();
+                            platformTrigger.setTriggerText(triggerText);
+                        } else if (name.equalsIgnoreCase("function")) {
+                            function = new Function();
+                            function.setCatalogName(catalog);
+                            function.setSchemaName(schema);
+                            for (int i = 0; i < parser.getAttributeCount(); i++) {
+                                String attributeName = parser.getAttributeName(i);
+                                String attributeValue = parser.getAttributeValue(i);
+                                if (attributeName.equalsIgnoreCase("name")) {
+                                    function.setFunctionName(attributeValue);
+                                }
+                            }
+                            if (platformTrigger != null) {
+                                platformTrigger.setFunction(function);
+                            }
+                        } else if (name.equalsIgnoreCase("platform-function")) {
+                            platformFunction = new PlatformFunction();
+                            for (int i = 0; i < parser.getAttributeCount(); i++) {
+                                String attributeName = parser.getAttributeName(i);
+                                String attributeValue = parser.getAttributeValue(i);
+                                if (attributeName.equalsIgnoreCase("name")) {
+                                    platformFunction.setName(attributeValue);
+                                }
+                            }
+                            if (function != null) {
+                                function.addPlatformFunction(platformFunction);
+                            }
+                        } else if (name.equalsIgnoreCase("function-text")) {
+                            String functionText = parser.nextText();
+                            platformFunction.setFunctionText(functionText);
                         }
                         break;
                     case XmlPullParser.END_TAG:
@@ -403,10 +482,16 @@ public class DatabaseXmlUtil {
                         } else if (name.equalsIgnoreCase("index")
                                 || name.equalsIgnoreCase("unique")) {
                             index = null;
-                        } else if (name.equalsIgnoreCase("table")) {
-                            table = null;
                         } else if (name.equalsIgnoreCase("foreign-key")) {
                             fk = null;
+                        } else if (name.equalsIgnoreCase("trigger")) {
+                            trigger = null;
+                        } else if (name.equalsIgnoreCase("platform-trigger")) {
+                            platformTrigger = null;
+                        } else if (name.equalsIgnoreCase("function")) {
+                            function = null;
+                        } else if (name.equalsIgnoreCase("platform-function")) {
+                            platformFunction = null;
                         }
                         break;
                 }
@@ -650,6 +735,7 @@ public class DatabaseXmlUtil {
                     for (IndexColumn column : index.getColumns()) {
                         output.write("\t\t\t<unique-column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"/>\n");
                     }
+                    handleIncludeColumns(output, index);
                 } else {
                     output.write("\t\t<index name=\"" + StringEscapeUtils.escapeXml10(index.getName()) + "\">\n");
                     for (IndexColumn column : index.getColumns()) {
@@ -659,6 +745,7 @@ public class DatabaseXmlUtil {
                         }
                         output.write("/>\n");
                     }
+                    handleIncludeColumns(output, index);
                 }
                 if (index.getPlatformIndexes() != null && index.getPlatformIndexes().size() > 0) {
                     Map<String, PlatformIndex> platformIndexes = index.getPlatformIndexes();
@@ -682,6 +769,41 @@ public class DatabaseXmlUtil {
                 } else {
                     output.write("\t\t</index>\n");
                 }
+            }
+            for (Trigger trigger : table.getTriggers()) {
+                output.write("\t\t<trigger name=\"" + StringEscapeUtils.escapeXml10(trigger.getName()) + "\">\n");
+                if (trigger.getPlatformTriggers() != null) {
+                    Map<String, PlatformTrigger> platformTriggers = trigger.getPlatformTriggers();
+                    for (String key : platformTriggers.keySet()) {
+                        PlatformTrigger platformTrigger = platformTriggers.get(key);
+                        String triggerText = platformTrigger.getTriggerText();
+                        output.write("\t\t\t<platform-trigger name=\"" + StringEscapeUtils.escapeXml10(platformTrigger.getName()) + "\">\n");
+                        output.write("\t\t\t\t<trigger-text>");
+                        output.write("<![CDATA[");
+                        output.write(triggerText);
+                        output.write("]]>");
+                        output.write("</trigger-text>\n");
+                        Function function = platformTrigger.getFunction();
+                        if (function != null) {
+                            output.write("\t\t\t\t<function name=\"" + StringEscapeUtils.escapeXml10(function.getFunctionName()) + "\">\n");
+                            Map<String, PlatformFunction> platformFunctions = function.getPlatformFunctions();
+                            for (String functionKey : platformFunctions.keySet()) {
+                                PlatformFunction platformFunction = platformFunctions.get(functionKey);
+                                String functionText = platformFunction.getFunctionText();
+                                output.write("\t\t\t\t\t<platform-function name=\"" + StringEscapeUtils.escapeXml10(platformFunction.getName()) + "\">\n");
+                                output.write("\t\t\t\t\t\t<function-text>");
+                                output.write("<![CDATA[");
+                                output.write(functionText);
+                                output.write("]]>");
+                                output.write("</function-text>\n");
+                                output.write("\t\t\t\t\t</platform-function>\n");
+                            }
+                            output.write("\t\t\t\t</function>\n");
+                        }
+                        output.write("\t\t\t</platform-trigger>\n");
+                    }
+                }
+                output.write("\t\t</trigger>\n");
             }
             output.write("\t</table>\n");
         } catch (IOException e) {
@@ -707,5 +829,11 @@ public class DatabaseXmlUtil {
                     StringEscapeUtils.escapeXml10(fk.getOnDeleteAction().getForeignKeyActionName()) + "\"");
         }
         return sb.toString();
+    }
+
+    private static void handleIncludeColumns(Writer output, IIndex index) throws IOException {
+        for (IndexColumn column : index.getIncludedColumns()) {
+            output.write("\t\t\t<include-column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"/>\n");
+        }
     }
 }

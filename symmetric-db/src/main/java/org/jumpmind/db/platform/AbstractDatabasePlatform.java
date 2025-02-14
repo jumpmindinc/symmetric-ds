@@ -47,6 +47,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
@@ -83,6 +84,7 @@ import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
+import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.PermissionResult.Status;
 import org.jumpmind.db.sql.DmlStatement;
@@ -93,6 +95,7 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlScript;
+import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.exception.IoException;
@@ -131,6 +134,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     protected Boolean supportsMultiThreadedTransactions;
     protected boolean supportsTruncate = true;
     protected String sourceNodeId;
+    protected DatabaseVersion databaseVersion;
 
     public AbstractDatabasePlatform(SqlTemplateSettings settings) {
         this.settings = settings;
@@ -231,24 +235,27 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     }
 
     @Override
-    public void alterDatabase(Database desiredDatabase, boolean continueOnError, IAlterDatabaseInterceptor[] interceptors) {
-        alterTables(continueOnError, interceptors, desiredDatabase.getTables());
+    public void alterDatabase(Database desiredDatabase, String triggerPrefix, boolean continueOnError, IAlterDatabaseInterceptor[] interceptors) {
+        alterTables(continueOnError, false, triggerPrefix, interceptors, desiredDatabase.getTables());
     }
 
     @Override
-    public void alterDatabase(Database desiredDatabase, boolean continueOnError) {
-        alterDatabase(desiredDatabase, continueOnError, null);
+    public void alterDatabase(Database desiredDatabase, String triggerPrefix, boolean continueOnError) {
+        alterDatabase(desiredDatabase, triggerPrefix, continueOnError, null);
     }
 
     @Override
     public void alterTables(boolean continueOnError, Table... desiredTables) {
-        alterTables(continueOnError, null, desiredTables);
+        alterTables(continueOnError, false, null, null, desiredTables);
     }
 
     @Override
-    public void alterTables(boolean continueOnError, IAlterDatabaseInterceptor[] interceptors, Table... desiredTables) {
+    public void alterTables(boolean continueOnError, boolean createTableIncludeApplicationTriggers, String triggerPrefix,
+            IAlterDatabaseInterceptor[] interceptors, Table... desiredTables) {
         Database currentDatabase = new Database();
+        currentDatabase.setName(getName());
         Database desiredDatabase = new Database();
+        desiredDatabase.setName(getName());
         StringBuilder tablesProcessed = new StringBuilder();
         for (Table table : desiredTables) {
             tablesProcessed.append(table.getFullyQualifiedTableName());
@@ -256,6 +263,12 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
             desiredDatabase.addTable(table);
             Table currentTable = ddlReader.readTable(table.getCatalog(), table.getSchema(), table.getName());
             if (currentTable != null) {
+                if (createTableIncludeApplicationTriggers) {
+                    List<Trigger> triggers = ddlReader.getApplicationTriggersForModel(table.getCatalog(), table.getSchema(), table.getName(), triggerPrefix);
+                    if (triggers != null && triggers.size() > 0) {
+                        currentTable.addTriggers(triggers);
+                    }
+                }
                 currentDatabase.addTable(currentTable);
             }
         }
@@ -264,12 +277,29 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         }
         String alterSql = ddlBuilder.alterDatabase(currentDatabase, desiredDatabase, interceptors);
         if (StringUtils.isNotBlank(alterSql.trim())) {
-            log.info("Running alter sql:\n{}", alterSql);
             String delimiter = getDdlBuilder().getDatabaseInfo().getSqlCommandDelimiter();
-            new SqlScript(alterSql, getSqlTemplate(), !continueOnError, false, false, delimiter, null)
+            Map<String, String> replacementTokens = new HashMap<String, String>();
+            replacementTokens.put(ddlBuilder.getTriggerDelimiterReplacementCharacters(), getDdlBuilder().getDatabaseInfo().getSqlCommandDelimiter());
+            log.info("Running alter sql:\n{}", getAlterSql(alterSql, createTableIncludeApplicationTriggers, replacementTokens, delimiter));
+            new SqlScript(alterSql, getSqlTemplate(), !continueOnError, false, false, delimiter, replacementTokens)
                     .execute(getDatabaseInfo().isRequiresAutoCommitForDdl());
         } else {
             log.info("Tables up to date.  No alters found for {}", tablesProcessed);
+        }
+    }
+
+    private String getAlterSql(String alterSql, boolean replaceTokens, Map<String, String> replacementTokens, String delimiter) {
+        if (replaceTokens) {
+            StringBuilder ddl = new StringBuilder();
+            SqlScriptReader reader = new SqlScriptReader(new StringReader(alterSql));
+            reader.setDelimiter(getDdlBuilder().getDatabaseInfo().getSqlCommandDelimiter());
+            reader.setReplacementTokens(replacementTokens);
+            for (String statement = reader.readSqlStatement(); statement != null; statement = reader.readSqlStatement()) {
+                ddl.append(statement).append(delimiter).append(System.lineSeparator());
+            }
+            return ddl.toString();
+        } else {
+            return alterSql;
         }
     }
 
@@ -481,7 +511,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
             } else if (type == Types.NUMERIC || type == Types.DECIMAL || type == Types.DOUBLE || type == Types.REAL) {
                 objectValue = parseBigDecimal(value);
             } else if (type == Types.BOOLEAN) {
-                objectValue = value.equals("1") ? Boolean.TRUE : Boolean.FALSE;
+                objectValue = parseBoolean(value);
             } else if (!(column.getJdbcTypeName() != null && FormatUtils.upper(column.getJdbcTypeName()).contains(TypeMap.GEOMETRY))
                     && !(column.getJdbcTypeName() != null && FormatUtils.upper(column.getJdbcTypeName()).contains(TypeMap.GEOGRAPHY))
                     && (type == Types.BLOB || type == Types.LONGVARBINARY || type == Types.BINARY || type == Types.VARBINARY ||
@@ -546,6 +576,11 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         } catch (NumberFormatException ex) {
             return new BigInteger(value);
         }
+    }
+
+    protected Object parseBoolean(String value) {
+        value = cleanNumber(value);
+        return value.equals("1") ? Boolean.TRUE : Boolean.FALSE;
     }
 
     protected String cleanNumber(String value) {
@@ -1259,10 +1294,10 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         try {
             database.removeAllTablesExcept();
             database.addTable(alterTable);
-            alterDatabase(database, false);
+            alterDatabase(database, "sym", false);
             database.removeAllTablesExcept();
             database.addTable(table);
-            alterDatabase(database, false);
+            alterDatabase(database, "sym", false);
             result.setStatus(Status.PASS);
         } catch (SqlException e) {
             result.setException(e);
@@ -1421,5 +1456,13 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     @Override
     public boolean allowsUniqueIndexDuplicatesWithNulls() {
         return true;
+    }
+
+    public DatabaseVersion getDatabaseVersion() {
+        return databaseVersion;
+    }
+
+    public void setDatabaseVersion(DatabaseVersion databaseVersion) {
+        this.databaseVersion = databaseVersion;
     }
 }

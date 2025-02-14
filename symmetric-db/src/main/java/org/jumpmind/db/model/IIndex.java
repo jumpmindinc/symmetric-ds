@@ -158,4 +158,14 @@ public interface IIndex extends Cloneable, Serializable {
     public Map<String, PlatformIndex> getPlatformIndexes();
 
     public PlatformIndex findPlatformIndex(PlatformIndex platformIndex);
+
+    public int getIncludedColumnCount();
+
+    public IndexColumn getIncludedColumn(int idx);
+
+    public IndexColumn[] getIncludedColumns();
+
+    public boolean hasIncludedColumn(Column column);
+
+    public void addIncludedColumn(IndexColumn column);
 }

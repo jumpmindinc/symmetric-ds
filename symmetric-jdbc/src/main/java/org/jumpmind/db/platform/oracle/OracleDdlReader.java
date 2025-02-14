@@ -491,10 +491,10 @@ public class OracleDdlReader extends AbstractJdbcDdlReader {
             sqlTemplate.query(sourceSql, new ISqlRowMapper<Trigger>() {
                 public Trigger mapRow(Row row) {
                     String line = row.getString("TEXT");
+                    buff.append(line);
                     if (!line.endsWith("\n")) {
                         buff.append("\n");
                     }
-                    buff.append(line);
                     return trigger;
                 }
             }, schema, name);

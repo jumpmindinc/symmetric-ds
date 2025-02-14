@@ -217,7 +217,7 @@ class OracleDdlReaderTest {
         assertEquals("testSchema", testTrigger.getSchemaName());
         assertEquals("testTableName", testTrigger.getTableName());
         assertEquals(false, testTrigger.isEnabled());
-        assertEquals("create \ntestText", testTrigger.getSource());
+        assertEquals("create testText\n", testTrigger.getSource());
         assertEquals(true, testTrigger.getTriggerType().toString().equals(triggerType));
     }
 

@@ -52,6 +52,7 @@ public abstract class IndexImpBase implements IIndex {
     protected String name;
     /** The columns making up the index. */
     protected ArrayList<IndexColumn> columns = new ArrayList<IndexColumn>();
+    protected ArrayList<IndexColumn> includedColumns = new ArrayList<IndexColumn>();
     protected Map<String, PlatformIndex> platformIndexes;
 
     public String getName() {
@@ -67,11 +68,11 @@ public abstract class IndexImpBase implements IIndex {
     }
 
     public IndexColumn getColumn(int idx) {
-        return (IndexColumn) columns.get(idx);
+        return columns.get(idx);
     }
 
     public IndexColumn[] getColumns() {
-        return (IndexColumn[]) columns.toArray(new IndexColumn[columns.size()]);
+        return columns.toArray(new IndexColumn[columns.size()]);
     }
 
     public boolean hasColumn(Column column) {
@@ -103,6 +104,41 @@ public abstract class IndexImpBase implements IIndex {
 
     public void removeColumn(int idx) {
         columns.remove(idx);
+    }
+
+    public int getIncludedColumnCount() {
+        return includedColumns.size();
+    }
+
+    public IndexColumn getIncludedColumn(int idx) {
+        return includedColumns.get(idx);
+    }
+
+    public IndexColumn[] getIncludedColumns() {
+        return includedColumns.toArray(new IndexColumn[includedColumns.size()]);
+    }
+
+    public boolean hasIncludedColumn(Column column) {
+        for (int idx = 0; idx < includedColumns.size(); idx++) {
+            IndexColumn curColumn = getIncludedColumn(idx);
+            if (column.getName().equals(curColumn.getName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void addIncludedColumn(IndexColumn column) {
+        if (column != null) {
+            for (int idx = 0; idx < includedColumns.size(); idx++) {
+                IndexColumn curColumn = getIncludedColumn(idx);
+                if (curColumn.getOrdinalPosition() > column.getOrdinalPosition()) {
+                    includedColumns.add(idx, column);
+                    return;
+                }
+            }
+            includedColumns.add(column);
+        }
     }
 
     public abstract Object clone() throws CloneNotSupportedException;

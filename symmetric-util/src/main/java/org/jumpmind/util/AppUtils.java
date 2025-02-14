@@ -59,7 +59,7 @@ public class AppUtils {
     private static FastDateFormat timezoneFormatter = FastDateFormat.getInstance("Z");
     private static Properties implProp = new Properties();
     static {
-        loadProperties(implProp, "symmetric-impl.properties");
+        loadProperties(implProp, "/symmetric-impl.properties");
     }
 
     private static void loadProperties(Properties prop, String resourceName) {
@@ -68,6 +68,14 @@ public class AppUtils {
             try (InputStream fis = url.openStream()) {
                 prop.load(fis);
             } catch (IOException ex) {
+            }
+        } else {
+            url = AppUtils.class.getResource(resourceName);
+            if (url != null) {
+                try (InputStream fis = url.openStream()) {
+                    prop.load(fis);
+                } catch (IOException ex) {
+                }
             }
         }
     }

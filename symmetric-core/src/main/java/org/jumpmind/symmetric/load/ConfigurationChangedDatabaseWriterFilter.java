@@ -179,7 +179,7 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
             hasListener = engine.getExtensionService().getExtensionPointList(IClientReloadListener.class).size() > 0;
             context.put(CTX_KEY_INITIAL_LOAD_LISTENER, hasListener);
         }
-        return hasListener && engine.getDatabasePlatform().supportsMultiThreadedTransactions();
+        return hasListener;
     }
 
     private boolean matchesTable(Table table, String tableSuffix) {

@@ -24,6 +24,8 @@ import java.sql.Types;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.TypeMap;
@@ -228,6 +230,23 @@ public class MsSql2005DdlBuilder extends MsSql2000DdlBuilder {
                 !(databaseInfo.isNullAsDefaultValueRequired() && databaseInfo.hasNullDefault(column.getMappedTypeCode()))) {
             ddl.append(" ");
             writeColumnNullableStmt(ddl);
+        }
+    }
+
+    @Override
+    protected void writeExternalIndexCreate(Table table, IIndex index, StringBuilder ddl) {
+        super.writeExternalIndexCreate(table, index, ddl);
+        if (index.getIncludedColumns() != null && index.getIncludedColumns().length > 0) {
+            ddl.append(" INCLUDE (");
+            IndexColumn[] includedColumns = index.getIncludedColumns();
+            for (int i = 0; i < includedColumns.length; i++) {
+                IndexColumn includedColumn = includedColumns[i];
+                if (i > 0) {
+                    ddl.append(", ");
+                }
+                ddl.append(includedColumn.getName());
+            }
+            ddl.append(")");
         }
     }
 }

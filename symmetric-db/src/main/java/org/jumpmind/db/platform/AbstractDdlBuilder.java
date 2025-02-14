@@ -56,10 +56,12 @@ import org.apache.commons.collections4.Predicate;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.alter.AddColumnChange;
 import org.jumpmind.db.alter.AddForeignKeyChange;
+import org.jumpmind.db.alter.AddFunctionChange;
 import org.jumpmind.db.alter.AddIndexChange;
 import org.jumpmind.db.alter.AddPrimaryKeyChange;
 import org.jumpmind.db.alter.AddTableChange;
 import org.jumpmind.db.alter.AddTableLoggingChange;
+import org.jumpmind.db.alter.AddTriggerChange;
 import org.jumpmind.db.alter.ColumnAutoIncrementChange;
 import org.jumpmind.db.alter.ColumnAutoUpdateChange;
 import org.jumpmind.db.alter.ColumnDataTypeChange;
@@ -74,10 +76,12 @@ import org.jumpmind.db.alter.ModelComparator;
 import org.jumpmind.db.alter.PrimaryKeyChange;
 import org.jumpmind.db.alter.RemoveColumnChange;
 import org.jumpmind.db.alter.RemoveForeignKeyChange;
+import org.jumpmind.db.alter.RemoveFunctionChange;
 import org.jumpmind.db.alter.RemoveIndexChange;
 import org.jumpmind.db.alter.RemovePrimaryKeyChange;
 import org.jumpmind.db.alter.RemoveTableChange;
 import org.jumpmind.db.alter.RemoveTableLoggingChange;
+import org.jumpmind.db.alter.RemoveTriggerChange;
 import org.jumpmind.db.alter.TableChange;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
@@ -129,6 +133,7 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
     protected boolean sqlCommentsOn = false;
     protected boolean scriptModeOn = false;
     protected String databaseName;
+    private String triggerDelimiterReplacementCharacters = "&&&&";
 
     /**
      * Creates a new sql builder.
@@ -387,6 +392,8 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
      * needs to come after the table removal (so that tables of the same name are removed) and before the addition of foreign keys etc.</li>
      * <li>{@link org.jumpmind.db.alter.AddForeignKeyChange} and {@link org.jumpmind.db.alter.AddIndexChange} come last after table/column/primary key additions
      * or changes.</li>
+     * <li>{@link org.jumpmind.db.alter.RemoveTriggerChange} come after the tables are completely built.</li>
+     * <li>{@link org.jumpmind.db.alter.AddTriggerChange} is done last.</li>
      * </ol>
      */
     protected void processChanges(Database currentModel, Database desiredModel, List<IModelChange> changes,
@@ -408,6 +415,10 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
         // 5th pass: adding external constraints and indices
         processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { AddForeignKeyChange.class, AddIndexChange.class,
                 AddTableLoggingChange.class });
+        processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { RemoveTriggerChange.class });
+        processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { RemoveFunctionChange.class });
+        processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { AddFunctionChange.class });
+        processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { AddTriggerChange.class });
     }
 
     protected void processChanges(Database currentModel, Database desiredModel, List<IModelChange> changes,
@@ -455,6 +466,14 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
                         processChange(currentModel, desiredModel, (CopyColumnValueChange) change, ddl);
                     } else if (change.getClass().equals(AddTableLoggingChange.class)) {
                         processChange(currentModel, desiredModel, (AddTableLoggingChange) change, ddl);
+                    } else if (change.getClass().equals(RemoveTriggerChange.class)) {
+                        processChange(currentModel, desiredModel, (RemoveTriggerChange) change, ddl);
+                    } else if (change.getClass().equals(AddTriggerChange.class)) {
+                        processChange(currentModel, desiredModel, (AddTriggerChange) change, ddl);
+                    } else if (change.getClass().equals(RemoveFunctionChange.class)) {
+                        processChange(currentModel, desiredModel, (RemoveFunctionChange) change, ddl);
+                    } else if (change.getClass().equals(AddFunctionChange.class)) {
+                        processChange(currentModel, desiredModel, (AddFunctionChange) change, ddl);
                     } else {
                         processChange(currentModel, desiredModel, change, ddl);
                     }
@@ -854,6 +873,53 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
         printIdentifier(getColumnName(change.getSourceColumn()), ddl);
         printEndOfStatement(ddl);
         change.apply(currentModel, delimitedIdentifierModeOn);
+    }
+
+    protected void processChange(Database currentModel, Database desiredModel, RemoveTriggerChange change,
+            StringBuilder ddl) {
+        ddl.append("DROP TRIGGER ").append(change.getTrigger().getName());
+        printEndOfStatement(ddl);
+        change.apply(currentModel, delimitedIdentifierModeOn);
+    }
+
+    protected void processChange(Database currentModel, Database desiredModel, AddTriggerChange change,
+            StringBuilder ddl) {
+        if (change.getNewTrigger().getPlatformTriggers().containsKey(databaseName)) {
+            String triggerText = change.getNewTrigger().getPlatformTriggers().get(databaseName).getTriggerText();
+            triggerText = replaceDelimiterWithEscapeCharacters(triggerText);
+            ddl.append(triggerText);
+            printEndOfStatement(ddl);
+            change.apply(currentModel, delimitedIdentifierModeOn);
+        }
+    }
+
+    protected void processChange(Database currentModel, Database desiredModel, RemoveFunctionChange change,
+            StringBuilder ddl) {
+        ddl.append("DROP FUNCTION ");
+        if (change.getFunction().getCatalogName() != null && change.getFunction().getCatalogName().length() > 0) {
+            ddl.append(change.getFunction().getCatalogName()).append(databaseInfo.getCatalogSeparator());
+        }
+        if (change.getFunction().getSchemaName() != null && change.getFunction().getSchemaName().length() > 0) {
+            ddl.append(change.getFunction().getSchemaName()).append(databaseInfo.getSchemaSeparator());
+        }
+        ddl.append(change.getFunction().getFunctionName());
+        printEndOfStatement(ddl);
+        change.apply(currentModel, delimitedIdentifierModeOn);
+    }
+
+    protected void processChange(Database currentModel, Database desiredModel, AddFunctionChange change,
+            StringBuilder ddl) {
+        if (change.getNewFunction().getPlatformFunctions().containsKey(databaseName)) {
+            String functionText = change.getNewFunction().getPlatformFunctions().get(databaseName).getFunctionText();
+            functionText = replaceDelimiterWithEscapeCharacters(functionText);
+            ddl.append(functionText);
+            printEndOfStatement(ddl);
+            change.apply(currentModel, delimitedIdentifierModeOn);
+        }
+    }
+
+    protected String replaceDelimiterWithEscapeCharacters(String triggerText) {
+        return triggerText.replace(databaseInfo.getSqlCommandDelimiter(), getTriggerDelimiterReplacementCharacters());
     }
 
     protected boolean writeAlterColumnDataTypeToBigInt(ColumnDataTypeChange change, StringBuilder ddl) {
@@ -2050,7 +2116,7 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
         int sourceScale = sourceColumn.getScale();
         PlatformColumn platformSourceColumn = sourceColumn.findPlatformColumn(databaseName);
         if (platformSourceColumn != null && !platformSourceColumn.isUserDefinedType()) {
-            sourceSize = String.valueOf(platformSourceColumn.getSize());
+            sourceSize = String.valueOf(platformSourceColumn.getSize() == -1 ? 0 : platformSourceColumn.getSize());
             sourceScale = platformSourceColumn.getDecimalDigits() == -1 ? 0 : platformSourceColumn.getDecimalDigits();
             if (scaleMatters) {
                 sourceSize += "," + sourceScale;
@@ -2660,5 +2726,13 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
 
     @Override
     public void initCteExpression() {
+    }
+
+    public String getTriggerDelimiterReplacementCharacters() {
+        return triggerDelimiterReplacementCharacters;
+    }
+
+    public void setTriggerDelimiterReplacementCharacters(String triggerDelimiterReplacementCharacters) {
+        this.triggerDelimiterReplacementCharacters = triggerDelimiterReplacementCharacters;
     }
 }

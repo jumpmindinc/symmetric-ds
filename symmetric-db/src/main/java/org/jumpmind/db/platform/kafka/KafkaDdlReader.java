@@ -20,14 +20,17 @@
  */
 package org.jumpmind.db.platform.kafka;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
+import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
+import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.IDdlReader;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.util.BinaryEncoding;
@@ -108,5 +111,15 @@ public class KafkaDdlReader implements IDdlReader {
     @Override
     public List<TableRow> getImportedForeignTableRows(List<TableRow> tableRows, Set<TableRow> visited, BinaryEncoding encoding) {
         return null;
+    }
+
+    @Override
+    public List<Trigger> getApplicationTriggersForModel(String catalog, String schema, String tableName, String triggerPrefix) {
+        return new ArrayList<Trigger>(0);
+    }
+
+    @Override
+    public PlatformTrigger getPlatformTrigger(IDatabasePlatform platform, Trigger trigger) {
+        return new PlatformTrigger(platform.getName(), trigger.getSource());
     }
 }

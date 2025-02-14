@@ -20,6 +20,8 @@
  */
 package org.jumpmind.symmetric;
 
+import java.net.CookieHandler;
+import java.net.CookieManager;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -116,6 +118,12 @@ public class SymmetricBoot extends SpringBootServletInitializer {
 
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
+        TypedProperties sysProps = new TypedProperties(System.getProperties());
+        if (sysProps.is(ServerConstants.SERVER_HTTP_COOKIES_ENABLED)) {
+            if (CookieHandler.getDefault() == null) {
+                CookieHandler.setDefault(new CookieManager());
+            }
+        }
         return builder.sources(SymmetricBoot.class);
     }
 }

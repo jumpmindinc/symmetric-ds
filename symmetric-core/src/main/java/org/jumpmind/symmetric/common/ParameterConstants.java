@@ -175,6 +175,7 @@ final public class ParameterConstants {
     public final static String CREATE_TABLE_WITHOUT_INDEXES = "create.table.without.indexes";
     public final static String CREATE_TABLE_WITHOUT_PK_IF_SOURCE_WITHOUT_PK = "create.table.without.pk.if.source.without.pk";
     public final static String CREATE_TABLE_NOT_NULL_COLUMNS = "create.table.not.null.columns.supported";
+    public final static String CREATE_TABLE_INCLUDE_APPLICATION_TRIGGERS = "create.table.include.application.triggers";
     public final static String CREATE_INDEX_CONVERT_UNIQUE_TO_NONUNIQUE_WHEN_COLUMNS_NOT_REQUIRED = "create.index.convert.unique.to.nonunique.when.columns.not.required";
     public final static String STREAM_TO_FILE_ENABLED = "stream.to.file.enabled";
     public final static String STREAM_TO_FILE_THRESHOLD = "stream.to.file.threshold.bytes";
@@ -474,6 +475,8 @@ final public class ParameterConstants {
     public final static String CAPTURE_TYPE_TIME_BASED = "time.based.capture";
     public final static String FILESYNCTRACKER_MAX_ROWS_BEFORE_COMMIT = "filesynctracker.max.rows.before.commit";
     public final static String SYNC_USE_READY_QUEUES = "sync.use.ready.queues";
+    public final static String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
+    public final static String MSSQL_BULK_LOAD_BCP_CODE_PAGE = "mssql.bulk.load.bcp.code.page";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;

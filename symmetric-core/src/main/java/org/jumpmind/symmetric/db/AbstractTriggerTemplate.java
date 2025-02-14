@@ -987,7 +987,7 @@ abstract public class AbstractTriggerTemplate {
             templateToUse = adjustColumnTemplate(templateToUse, column.getMappedTypeCode());
             templateToUse = templateToUse.trim();
         } else {
-            throw new NotImplementedException("Table " + table + " column " + column);
+            throw new NotImplementedException(table.toString() + " " + column.toString());
         }
         String formattedColumnText = FormatUtils.replace("columnSizeOrMax",
                 trigger.isUseCaptureLobs() ? "max" : "$(columnSize)", templateToUse);
