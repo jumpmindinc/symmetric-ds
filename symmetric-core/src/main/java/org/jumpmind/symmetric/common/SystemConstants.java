@@ -33,6 +33,7 @@ public class SystemConstants {
     public static final String SYSPROP_WEB_DIR = "symmetric.default.web.dir";
     public static final String SYSPROP_SERVER_PROPERTIES_PATH = "symmetric.server.properties.path";
     public static final String SYSPROP_MODULES_DIR = "symmetric.modules.dir";
+    public static final String SYSPROP_TOOLS_DIR = "symmetric.tools.dir";
     public static final String SYSPROP_CLUSTER_SERVER_ID = "runtime.symmetric.cluster.server.id";
     public static final String SYSPROP_DEFAULT_HTTP_PORT = "symmetric.default.http.port";
     public static final String SYSPROP_DEFAULT_HTTPS_PORT = "symmetric.default.https.port";
