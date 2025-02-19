@@ -196,4 +196,21 @@ public class ServletUtils {
         return (SymmetricEngineHolder) ctx.getAttribute(
                 WebConstants.ATTR_ENGINE_HOLDER);
     }
+
+    public static String getEndpointNameFromUrl(HttpServletRequest request) {
+        String endpointName = null;
+        String normalizedUri = ServletUtils.normalizeRequestUri(request);
+        if (normalizedUri.startsWith("/")) {
+            normalizedUri = normalizedUri.replaceFirst("/" + ServletUtils.getEngineNameFromUrl(request) + "/", "");
+        } else {
+            normalizedUri = normalizedUri.replaceFirst(ServletUtils.getEngineNameFromUrl(request) + "/", "");
+        }
+        int endIndex = normalizedUri.indexOf("/");
+        if (endIndex > 0) {
+            endpointName = normalizedUri.substring(0, endIndex);
+        } else {
+            endpointName = normalizedUri;
+        }
+        return endpointName;
+    }
 }
