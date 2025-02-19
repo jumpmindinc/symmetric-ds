@@ -24,11 +24,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MavenArtifact {
+    public static final String DEFAULT_PACKAGING = "jar";
+    public static final String ZIP_PACKAGING = "zip";
     public static final String REGEX_LIST = "\\s*,\\s*";
     public static final String REGEX_COMPONENTS = "\\s*:\\s*";
     private String groupId;
     private String artifactId;
     private String version;
+    private String packaging = DEFAULT_PACKAGING;
 
     public MavenArtifact(String groupId, String artifactId, String version) {
         this.groupId = groupId;
@@ -48,6 +51,9 @@ public class MavenArtifact {
             if (array.length >= 3) {
                 this.version = array[2].replace("$version", defaultVersion.replaceAll("x-SNAPSHOT", "0"));
             }
+            if (array.length >= 4) {
+                this.packaging = array[3];
+            }
         }
     }
 
@@ -56,8 +62,8 @@ public class MavenArtifact {
         return groupId + ":" + artifactId + ":" + version;
     }
 
-    public String toFileName(String extension) {
-        return artifactId + "-" + version + "." + extension;
+    public String toFileName() {
+        return artifactId + "-" + version + "." + packaging;
     }
 
     @Override
@@ -132,5 +138,13 @@ public class MavenArtifact {
 
     public void setVersion(String version) {
         this.version = version;
+    }
+
+    public String getPackaging() {
+        return packaging;
+    }
+
+    public void setPackaging(String packaging) {
+        this.packaging = packaging;
     }
 }
