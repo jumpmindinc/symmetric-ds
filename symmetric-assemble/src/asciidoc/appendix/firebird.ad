@@ -56,4 +56,4 @@ Firebird 3 is supported, however legacy authentication must be enabled in order 
 
 ==== Bulk Loading
 
-SymmetricDS has bulk loading capability available for Firebird, when registering a Firebird database with SymmetricDS, bulk loading will be checked by default. SymmetricDS specifies data loader types on a channel by channel basis. Once you have your database registered, to utilize bulk loading versus straight JDBC insert, specify the Bulk Loader ("bulk") in the data_loader_type column of sym_channel table.
+SymmetricDS has bulk loading capability available for Firebird. When registering a Firebird database with SymmetricDS, bulk loading will be enabled by default. SymmetricDS specifies data loader types on a channel by channel basis. Once you have your database registered, to utilize bulk loading versus straight JDBC insert, specify the Bulk Loader ("bulk") in the data_loader_type column of sym_channel table.

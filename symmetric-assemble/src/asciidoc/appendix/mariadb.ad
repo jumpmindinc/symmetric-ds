@@ -25,9 +25,7 @@ See MySQL notes.  You can use either the MySQL or MariaDB driver for this dialec
 |===
 
 ==== Bulk Loading
-When registering a Maria database with SymmetricDS, bulk loading will be checked by default.
-
-image::images/appendix/mysql-enable-bulk-loading.png[]
+When registering a Maria database with SymmetricDS, bulk loading will be enabled by default.
 
 To succesfully bulk load, once your MySQL database is registered with SymmetricDS, go to the top of the screen and select the MySQL node you want to bulk load from the drop down list of your nodes.
 

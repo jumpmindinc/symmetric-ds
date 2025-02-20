@@ -108,7 +108,7 @@ Column-level transforms can be created, selected, and filtered in a similar way 
 
 Below the list of source columns, there is the option to create a transform with no source column. On the opposite side, below the list of target columns, there is the option to create a transform that removes the mapping for a source column by getting rid of its value. This option is only necessary if the table-level transform's column policy is implied.
 
-Once a column transform has been selected, it will be possible to delete or edit the column transform using the buttons on the right. The Edit button opens a dialog that contains options regarding how the individual column is transformed.
+Once a column transform has been selected, it will be possible to delete or edit the column transform using the icons on the transform or the buttons on the right. The Edit button opens a dialog that contains options regarding how the individual column is transformed.
 
 image::images/canvas/TransformColumnDetailsDialog.png[]
 
@@ -123,7 +123,7 @@ Once a column transform has been defined, a solid line will appear with each tra
 [.left.text-left]
 image::images/canvas/AddTargetColumnDialog.png[]
 
-Another option on the right side of the screen is the Add Target Column button. This button will create a new target column that a transform can be connected to. Enable the 'Map this to "(no source column)"' option if the new target column does not need a source column. This will automatically create a constant transform for the new target column.
+The Add Target Column button appears in two places: on the right side of the screen and below the target column names. This button will create a new target column that a transform can be connected to. Enable the 'Map this to "(no source column)"' option if the new target column does not need a source column. This will automatically create a constant transform for the new target column.
 
 --
 

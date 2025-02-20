@@ -33,4 +33,4 @@ The sync.triggers.thread.count.per.server parameter should be set to 1.
 
 ==== Loading Data
 
-SymmetricDS has bulk loading capability available for SQLite, when registering a SQLite database with SymmetricDS, bulk loading will be checked by default. SymmetricDS specifies data loader types on a channel by channel basis. Once you have your database registered, to utilize bulk loading versus straight JDBC insert, specify the Bulk Loader ("bulk") in the data_loader_type column of sym_channel table.
+SymmetricDS has bulk loading capability available for SQLite. When registering a SQLite database with SymmetricDS, bulk loading will be enabled by default. SymmetricDS specifies data loader types on a channel by channel basis. Once you have your database registered, to utilize bulk loading versus straight JDBC insert, specify the Bulk Loader ("bulk") in the data_loader_type column of sym_channel table.

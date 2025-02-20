@@ -88,5 +88,6 @@ ALL is referring to the combination of INSERT, UPDATE, DELETE, SELECT, ALTER and
 
 ==== Bulk Loading
 
-SymmetricDS has bulk loading capability available for Sybase ASE, when registering a Sybase ASE database with SymmetricDS, bulk loading will be checked by default. SymmetricDS specifies data loader types on a channel by channel basis. Once you have your database registered, to utilize bulk loading versus straight JDBC insert, specify the Bulk Loader ("bulk") in the data_loader_type column of sym_channel table.
+SymmetricDS has bulk loading capability available for Sybase ASE. When registering a Sybase ASE database with SymmetricDS, bulk loading will be enabled by default. SymmetricDS specifies data loader types on a channel by channel basis. Once you have your database registered, to utilize bulk loading versus straight JDBC insert, specify the Bulk Loader ("bulk") in the data_loader_type column of sym_channel table.
 
+In order to make use of bulk loading, SymmetricDS must have access to a bcp executable. Either the bcp executable must be available on the PATH or the user must set the ase.bulk.load.bcp.cmd parameter to the path to the bcp executable.

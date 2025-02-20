@@ -131,19 +131,19 @@ public final class CommonUiUtils {
         return editor;
     }
 
-    public static void notify(String message) {
-        notify("", message);
+    public static Notification notify(String message) {
+        return notify("", message);
     }
 
-    public static void notify(String message, Consumer<Boolean> shortcutToggler) {
-        notify("", message, shortcutToggler);
+    public static Notification notify(String message, Consumer<Boolean> shortcutToggler) {
+        return notify("", message, shortcutToggler);
     }
 
-    public static void notify(String caption, String message) {
-        notify(caption, message, null);
+    public static Notification notify(String caption, String message) {
+        return notify(caption, message, null);
     }
 
-    public static void notify(String caption, String message, Consumer<Boolean> shortcutToggler) {
+    public static Notification notify(String caption, String message, Consumer<Boolean> shortcutToggler) {
         Page page = UI.getCurrent().getPage();
         if (page != null) {
             HorizontalLayout layout = new HorizontalLayout();
@@ -196,7 +196,9 @@ public final class CommonUiUtils {
             notification.setDuration(-1);
             Shortcuts.addShortcutListener(notification, () -> notification.close(), Key.ESCAPE);
             notification.open();
+            return notification;
         }
+        return null;
     }
 
     private static String contactWithLineFeed(String[] lines) {
@@ -207,20 +209,20 @@ public final class CommonUiUtils {
         return line.toString();
     }
 
-    public static void notifyError() {
-        notifyError((Consumer<Boolean>) null);
+    public static Notification notifyError() {
+        return notifyError((Consumer<Boolean>) null);
     }
 
-    public static void notifyError(Consumer<Boolean> shortcutToggler) {
-        notify("An unexpected error occurred", "See the log file for additional details", shortcutToggler);
+    public static Notification notifyError(Consumer<Boolean> shortcutToggler) {
+        return notify("An unexpected error occurred", "See the log file for additional details", shortcutToggler);
     }
 
-    public static void notifyError(String message) {
-        notifyError(message, null);
+    public static Notification notifyError(String message) {
+        return notifyError(message, null);
     }
 
-    public static void notifyError(String message, Consumer<Boolean> shortcutToggler) {
-        notify("An error occurred", message, shortcutToggler);
+    public static Notification notifyError(String message, Consumer<Boolean> shortcutToggler) {
+        return notify("An error occurred", message, shortcutToggler);
     }
 
     public static Object getObject(ResultSet rs, int i) throws SQLException {

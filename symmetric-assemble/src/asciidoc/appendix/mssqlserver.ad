@@ -128,4 +128,4 @@ endif::pro[]
 
 ==== Bulk Loading
 
-When registering a SQL Server database with SymmetricDS, bulk loading will be be checked by default. In order to make use of bulk loading, the user must provide a path to a bcp executable (installation for this executable is linked in the Connect Database Wizard when asked about bulk loading).
+When registering a SQL Server database with SymmetricDS, bulk loading will be be enabled by default. In order to make use of bulk loading, SymmetricDS must have access to a bcp executable. Windows and Linux installations will include a bcp executable if the SQL Server driver was downloaded during installation. Otherwise, either the bcp executable must be available on the PATH or the user must provide a path to the bcp executable via the Deploy Wizard, the Connect Database Wizard, or the mssql.bulk.load.bcp.cmd parameter.
