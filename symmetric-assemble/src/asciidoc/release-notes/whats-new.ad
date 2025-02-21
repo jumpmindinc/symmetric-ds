@@ -2,92 +2,76 @@
 
 ifdef::pro[]
 
-=== DB2 for i Log-based Replication
---
-DB2 for i replication (on IBM iSeries AS/400 platform) was expanded to include log mining of journals,
-in addition to trigger-based change capture.
---
-
-=== MariaDB Log-based Replication
---
-MariaDB support was expanded to include log mining of the binary log,
-in addition to trigger-based change capture.
---
-
-=== Progress OpenEdge Replication
---
-Replicate changes from Progress OpenEdge database or load data from other databases into it. 
-OpenEdge is a relational database management system with a 4GL programming language for building business applications.
-This dialect has bi-directional support that includes change data capture, sub-setting, transformations, and initial loads.
---
-
-=== Compare and Repair
---
-Compare and Repair feature allows comparison of data between a source database and one or more target databases.
-The user has options of all or specific tables, level of comparison, immediate or scheduled, and whether to report or repair data.
-Comparison can use checksums at a table or chunk level to minimize use of the network.
-Parallel threads are used on each database per comparison request (compare.queue.per.request.count) with a maximum
-number of threads available on each server (compare.thread.per.server.count).
-A report of matching, different, missing, and extra rows can be kept, including a SQL file of changes that
-can be viewed or applied automatically to the target database.
---
-
-=== Insight Manager
---
-The Insights Manager is a sliding panel on the left side of the Dashboard that presents the user
-with proactive AI-generated recommendations that can help optimize and enhance the system.
-The user can choose to approve actions, schedule reminders for a later time, or dismiss altogether.
-Insights are collected across all nodes in the system and use pattern matching and rules collected
-from support cases.
---
-
 === UI Improvements
 --
-Screens now use lazy initialization to reduce the time it takes to login and navigate.
-The Manage -> Jobs screen has a new history icon that opens a listing of job runs from the past 30 days along with
-a graph of job statistics.
+The Configure tab now features a Canvas, replacing the Design tab with a new approach to configuring replication.
+Common replication scenarios are now simplified to setup using a visual canvas of connected nodes and the tables being replicated.
+Transforms are now created by drawing lines between tables and columns, even showing implied mappings as dashed lines.
+Changes are applied with a deployment wizard that collects final settings, creates engines, and prepares replication.
+The familiar original screens are still available with advanced settings.
 --
 
-=== Security Improvements
+=== Scaling Initial Load
 --
-Web console users can be put into a hierarchy of roles, giving them permission to create or modify users at or below
-their current role.  Web console users can be given a "break glass" indicator that prevents login unless another
-user breaks the glass for a temporary, time-based password to the account.
-Web console users can now authenticate with single sign-on (SSO) using the SAML security standard with a third party
-identity provider.
+Scaling the number of threads used for an initial load is now as easy as changing a parameter setting, one for extract threads
+(initial.load.extract.thread.per.server.count) and another for push/pull threads (initial.load.queue.sync.thread.count).
+The "reload" channel now defaults to a "reload" queue, which tells the system to use the parameter settings for the number of threads.
+All batches for a table are assigned to the same thread so there is no contention for the table.
+Users should request loads that either create tables or clear tables and defer constraints, so the system knows that foreign keys
+will not be present and it can use multiple threads.
+--
+
+== Bulk Extract and Load Improvements
+--
+Bulk extract using native tools is now supported for SQL-Server and SAP (Sybase) ASE using the bcp bulk copy utility.
+Bulk loading using the bcp bulk copy utility is now supported on SAP ASE in addition to SQL-Server.
+The setup program and node wizard now perform automatic installation and configuration of native bulk loaders for SQL-Server and Oracle.
+The PostgreSQL bulk loader was improved to create unlogged tables and use binary mode copy, resulting in a 30% performance improvement.
+--
+
+=== File Sync with Azure Blob and S3
+--
+File sync now supports Azure Blob Storage and S3 buckets as either source or target of files.
+Paths to files that start with "azure://" or "s3://" will prompt the user for connection information to the cloud provider.
+--
+
+=== OAuth2 and OpenID Connect 
+--
+Web console users can now authenticate with single sign-on (SSO) using the OAuth2 and OpenID Connect (OIDC) security standards with a third party
+identity provider.  A role mapping feature allows the user's role from OIDC to be mapped into a web console role.
 --
 
 endif::pro[]
 
-=== Performance Improvements
+=== Channel Improvements
 --
-Purge now uses "exists" clause instead of "in" clause for correlated deletes if the database supports it.
-File sync now stages file changes to improve response time for pull sync requests, which also helps with network timeouts.
-Routing now uses a cached list of enabled nodes it can route changes to for each batch it creates.
-The default push and pull intervals were changed to 10 seconds to reduce the sync time experienced by new users.
+Internal operational SYM tables, such as node, node_security, and incoming/outgoing_error, now use a "system" channel
+so they act independently and are easier to see as batches for operations versus configuration changes (on the "config" channel).
+All SYM tables are using channels with a "system" queue so they sync on their own thread even when other channels have a backlog.
+The "reload" channel for initial and partial loads now defaults to the "bulk" data loader with an increased max batch size of 100,000.
 --
 
-=== Operational Improvements
+=== Ready Queues
 --
-Old data gaps are marked as expired by routing for performance, but left in the system for purge service to track and remove
-after a longer time period (purge.expired.data.gap.retention.minutes).
-If purge service finds data in an expired gap, it will repair the data by queuing reloads of the rows by primary key values.
-The sym_outgoing_error table was added to mirror sym_incoming_error and allow users to provide resolution for
-data conflicts on the outgoing side.
-All HTTP error codes now use 600 series to distinguish from any network devices that use standard 500 series.
-In some cases, more specific HTTP error codes are now used that may cause older clients to log only a general error message
-with the error code, which include 601 bad request, 602 engine not found, and 605 client already connected.
-ifdef::pro[]
+Ready queues is a feature to make efficient use of multiple queues and their associated threads.
+Instead of each node communication thread querying for ready data, the cache manager now keeps a list of queues by node
+that are ready with changes to send, reducing the number of queries needed.
+Push and pull service use the ready queues to efficiently allocate only the threads needed to send or receive data.
+Since pull service runs on the target, it still contacts each node on the default queue to get a list of ready queues.
+--
 
-The symconsole command line utility can now perform operations with the license key.
-endif::pro[]
+=== Faster Local Data Transfer
+--
+When engines are hosted together (by placing the engine files in the same "engines" directory), a batch for a target engine
+will be accessed from the source engine's staging area directly instead of copying it, saving the I/O cost of copying the data again.
+Remote nodes are unaffected and still receive batches over the network as usual.
 --
 
 === Technology Upgrades
 --
-H2 database version 2 is now included.  Users with existing H2 1.x databases may need to add ";MODE=LEGACY" to the end of db.url
+H2 database version 2.2 is now included.  Users with existing H2 1.x databases may need to add ";MODE=LEGACY" to the end of db.url
 or "set MODE LEGACY" to db.init.sql (the Pro installer will do this automatically).
-Spring framework libraries were updated to version 6.
-Spring Boot 3 is now used to run the Jetty web server in standalone mode.
-Java 17 or later is now required.
+Users with existing H2 2.0 or 2.1 databases need to export their database from the old version and import into the new one
+(the Pro installer will do this automatically).
+The server property of server.http.cookies.enabled is now true by default to accept cookies used by load balancers.
 --
