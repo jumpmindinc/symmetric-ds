@@ -375,7 +375,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         synchronized (activeTriggerHistories) {
             for (TriggerHistory triggerHistory : activeTriggerHistories) {
                 if ((!triggerHistory.getTriggerId().equals(trigger.getTriggerId()) ||
-                        ((trigger.isSourceTableNameWildCarded() || trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded()) &&
+                        ((trigger.isSourceTableNameWildCarded() || trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded() || trigger.isSourceTableNameExpanded()) &&
                                 (oldhist == null || triggerHistory.getTriggerHistoryId() != oldhist.getTriggerHistoryId()))) &&
                         ((triggerHistory.getNameForDeleteTrigger() != null && triggerHistory.getNameForDeleteTrigger().equals(triggerName)) ||
                                 (triggerHistory.getNameForInsertTrigger() != null && triggerHistory.getNameForInsertTrigger().equals(triggerName)) ||
@@ -1934,41 +1934,48 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 ts = System.currentTimeMillis();
                 List<TriggerHistory> activeTriggerHistories = getActiveTriggerHistories();
                 context.incrementActiveTriggerHistoriesTime(System.currentTimeMillis() - ts);
-                Map<Trigger, Table> triggersToProcess = new HashMap<Trigger, Table>();
+                Map<String, List<TriggerTableSupportingInfo>> triggerToTableSupportingInfo = getTriggerToTableSupportingInfo(
+                        triggersForCurrentNode, activeTriggerHistories, false, context);
+                Map<Trigger, List<Table>> triggersToProcess = new HashMap<Trigger, List<Table>>();
                 for (Table table : tables) {
                     IDatabasePlatform targetPlatform = symmetricDialect.getTargetPlatform(table.getName());
                     for (Trigger trigger : triggersForCurrentNode) {
                         if (trigger.matches(table, targetPlatform.getDefaultCatalog(), targetPlatform.getDefaultSchema(), ignoreCase) &&
                                 (!trigger.isSourceTableNameWildCarded() || !trigger.isSourceTableNameExpanded()
                                         || !containsExactMatchForSourceTableName(table, triggersForCurrentNode, ignoreCase))) {
-                            triggersToProcess.put(trigger, table);
+                            List<Table> l = triggersToProcess.get(trigger);
+                            if (l == null) {
+                                l = new ArrayList<Table>();
+                                triggersToProcess.put(trigger, l);
+                            }
+                            l.add(table);
                         }
                     }
                 }
-                Map<String, List<TriggerTableSupportingInfo>> triggerToTableSupportingInfo = getTriggerToTableSupportingInfo(
-                        new ArrayList<Trigger>(triggersToProcess.keySet()), activeTriggerHistories, false, context);
                 if (triggersToProcess.size() > 0) {
                     context.incrementTriggersToSyncCount(triggersToProcess.size());
-                    for (Map.Entry<Trigger, Table> entry : triggersToProcess.entrySet()) {
+                    for (Map.Entry<Trigger, List<Table>> entry : triggersToProcess.entrySet()) {
                         Trigger trigger = entry.getKey();
-                        Table table = entry.getValue();
+                        List<Table> l = entry.getValue();
                         List<TriggerTableSupportingInfo> triggerTableSupportingInfoList = triggerToTableSupportingInfo.get(trigger.getTriggerId());
-                        TriggerTableSupportingInfo triggerTableSupportingInfo = null;
-                        for (TriggerTableSupportingInfo t : triggerTableSupportingInfoList) {
-                            if (getFullyQualifiedTableName(t.getTable()).equals(getFullyQualifiedTableName(table))) {
-                                triggerTableSupportingInfo = t;
-                                break;
+                        for (Table table : l) {
+                            TriggerTableSupportingInfo triggerTableSupportingInfo = null;
+                            for (TriggerTableSupportingInfo t : triggerTableSupportingInfoList) {
+                                if (getFullyQualifiedTableName(t.getTable()).equals(getFullyQualifiedTableName(table))) {
+                                    triggerTableSupportingInfo = t;
+                                    break;
+                                }
                             }
-                        }
-                        if (triggerTableSupportingInfo != null) {
-                            log.info("Synchronizing triggers for {}", table.getFullyQualifiedTableName());
-                            ts = System.currentTimeMillis();
-                            updateOrCreateDatabaseTriggers(trigger, triggerTableSupportingInfo.getTable(), null, force, true, activeTriggerHistories,
-                                    triggerTableSupportingInfo, context);
-                            context.incrementUpdateOrCreateDatabaseTriggersTime(System.currentTimeMillis() - ts);
-                            log.info("Done synchronizing triggers for {}", table.getFullyQualifiedTableName());
-                        } else {
-                            handleTableNotFound(trigger, activeTriggerHistories, context);
+                            if (triggerTableSupportingInfo != null) {
+                                log.info("Synchronizing triggers for {}", table.getFullyQualifiedTableName());
+                                ts = System.currentTimeMillis();
+                                updateOrCreateDatabaseTriggers(trigger, triggerTableSupportingInfo.getTable(), null, force, true, activeTriggerHistories,
+                                        triggerTableSupportingInfo, context);
+                                context.incrementUpdateOrCreateDatabaseTriggersTime(System.currentTimeMillis() - ts);
+                                log.info("Done synchronizing triggers for {}", table.getFullyQualifiedTableName());
+                            } else {
+                                handleTableNotFound(trigger, activeTriggerHistories, context);
+                            }
                         }
                     }
                 }
