@@ -4,5 +4,4 @@
 Greenplum is a data warehouse based on PostgreSQL. It is supported as a target platform in SymmetricDS.
 
 SymmetricDS has bulk loading capability available for Greenplum. SymmetricDS specifies data loader types 
-on a channel by channel basis. To utilize Greenplum Bulk loading versus straight JDBC insert, specify the 
-Postgres Bulk Loader ("postgres_bulk") in the data_loader_type column of sym_channel.
+on a channel by channel basis. To utilize Greenplum Bulk loading versus straight JDBC insert, specify "bulk" in the data_loader_type column of sym_channel.

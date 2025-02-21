@@ -16,7 +16,7 @@ keys features, by checking if a row exists before attempting an insert. However,
 this check. The data types supported are smallint, integer, bigint, decimal, real, double precision, boolean, char, 
 varchar, date, and timestamp.
 
-A data loader named "redshift_bulk" is a bulk loader that can be set for a channel to improve loading performance. 
+A data loader named "bulk" is a bulk loader that can be set for a channel to improve loading performance. 
 Instead of sending individual SQL statements to the database, it creates a comma separated value (CSV) file, uploads 
 the object to Amazon S3, and uses the COPY statement to load it. The COPY command appends the new data to any existing 
 rows in the table. If the target table has any IDENTITY columns, the EXPLICIT_IDS option is enabled to override 
