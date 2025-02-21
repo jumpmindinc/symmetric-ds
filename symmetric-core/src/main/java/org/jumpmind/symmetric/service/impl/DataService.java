@@ -226,7 +226,7 @@ public class DataService extends AbstractService implements IDataService {
         }
         return successful;
     }
-    
+
     /**
      * Helper. Creates an ISO-compliant transaction Id string for specified instant and prefix.
      */
