@@ -54,6 +54,7 @@ public class ExtractRequest implements Serializable {
     private long transferredMillis;
     private long loadedMillis;
     private long parentRequestId;
+    private long numRowsBulkLoaded;
     private Integer extractThreadId;
     private Integer loadThreadId;
 
@@ -275,6 +276,14 @@ public class ExtractRequest implements Serializable {
 
     public void setLoadThreadId(Integer loadThreadId) {
         this.loadThreadId = loadThreadId;
+    }
+
+    public void setNumRowsBulkLoaded(long numRowsBulkLoaded) {
+        this.numRowsBulkLoaded = numRowsBulkLoaded;
+    }
+
+    public long getNumRowsBulkLoaded() {
+        return this.numRowsBulkLoaded;
     }
 
     @Override
