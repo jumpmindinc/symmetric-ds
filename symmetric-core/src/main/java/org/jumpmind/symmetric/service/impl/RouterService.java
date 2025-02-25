@@ -1203,6 +1203,9 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 maxDataIdAlreadyRouted = lastGap.getStartId();
             }
         }
+        if (maxDataIdAlreadyRouted == 0) {
+            return 0;
+        }
         long leftToRoute = (engine.getDataService().findMaxDataId() - maxDataIdAlreadyRouted) + 1;
         if (leftToRoute > 0) {
             return leftToRoute;
