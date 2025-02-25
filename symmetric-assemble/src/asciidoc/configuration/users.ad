@@ -15,6 +15,7 @@ Authentication Method:: Method to authenticate the user.
 |Internal|Internal refers to users being stored in the SYM_CONSOLE_USER table.  
 |LDAP| LDAP refers to users being authenticated through an LDAP server.  See the <<LDAP>> section for more information.
 |SAML| SAML refers to users being authenticated through a SAML identity provider. See the <<SAML>> section for more information.
+|OAuth 2.0 / OpenID Connect| OAuth 2.0 / OpenID Connect refers to users being authenticated through OAuth 2.0 / OpenID Connect. See the <<OAuth 2.0 / OpenID Connect>> section for more information.
 
 !===
 [[user-id]]User Id:: Unique Identifier for a User.
