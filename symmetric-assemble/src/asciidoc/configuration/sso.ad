@@ -122,3 +122,65 @@ While compatibility is not limited to only these identity providers, the followi
 * Okta
 * OneLogin
 * Ping Identity
+
+==== OAuth 2.0 / OpenID Connect
+
+To get started with setting up OAuth 2.0 / OpenID Connect with SymmetricDS, first you will need to set up OAuth 2.0 / OIDC with a provider of your choice.
+
+When configuring your OAuth 2.0 / OIDC Credentials, use the following format for your JavaScript origin (the hostname and the port must match the hostname and port you are using for SymmetricDS):
+
+|===
+
+|Authorized JavaScript origins|https://{hostname}:{port}
+
+|===
+
+SymmetricDS will calculate your Redirect URI for you. Go to Configure -> Single Sign-On -> OAuth2.0 / OIDC and copy the Redirect URI. You will need to configure a Redirect URI for each node you plan to access using OAuth 2.0 / OIDC.
+
+image::images/sso/oauth2-copy-redirect-uri.png[]
+
+
+When using OAuth 2.0 / OIDC with SymmetricDS, users will be able to login without having a corresponding console user. To configure SymmetricDS using OAuth 2.0 / OIDC, you have to set seven <<Parameters>>.
+
+
+console.auth.oauth2.client.secret:: This is the Client secret that your OAuth 2.0 provider gives you when you create your OAuth 2.0 Credentials.
+
+console.auth.oauth2.client.id:: This is the Client ID that your OAuth 2.0 provider gives you when you create your OAuth 2.0 Credentials.
+
+console.auth.oauth2.authorization.endpoint:: The authorization endpoint is used by SymmetricDS in order to interact with your OAuth 2.0/OIDC provider and get the authorization to access the protected resource. This can be found in your providers OpenID Connect "Discovery Document."
+
+console.auth.oauth2.token.endpoint:: The token endpoint is used by SymmetricDS in order to get an access token or a refresh token from your OAuth 2.0/OIDC provider. This can be found in your providers OpenID Connect "Discovery Document."
+
+console.auth.oauth2.discovery.jwks.uri:: The URL of the OpenID Provider's JWK Set document. This contains the signing key(s) SymmetricDS uses to validate signatures from the OpenID Provider. This can be found in your providers OpenID Connect "Discovery Document."
+
+console.auth.oauth2.issuer:: The issuer identifier of the OpenID Provider. This can be found in your providers OpenID Connect "Discovery Document."
+
+
+console.auth.oauth2.role.map::  Map of OAuth 2.0 / OIDC roles to console role IDs. Allows OAuth 2.0 / OIDC users to log in without having a corresponding console user if they are assigned one of the specified roles.
+                            [&#xA0;Default:&#xA0;]
+
+
+The map must use the following format: +
+"OAuth2Role1==SYMROLE1","OAuth2Role2==SYMROLE2","OAuth2Role3==SYMROLE3"
+
+Using the "Import Discovery URI" button in the UI allows SymmetricDS to auto-fill in 4 parameters for you. You only need to provide the URL of your providers OpenID Connect "Discovery Document." Doing so will allow SymmetricDS to set the Authorization Endpoint, Token Endpoint, JWKS URI, and Issuer parameters.
+
+image::images/sso/oauth2-import-discovery.png[]
+
+
+Once this is configured, anybody assigned one of the roles specified in the console.auth.oauth2.role.map parameter will be able to login to SymmetricDS via OAuth 2.0 / OIDC. To do so, simply select "Login with OAuth 2.0 / OIDC" upon login, and you will be redirected to your OAuth 2.0 / OIDC provider to login. 
+
+image::images/sso/oauth2-login.png[]
+
+
+These parameters can be set within the OAuth 2.0 / OIDC tab on the Configure -> Single Sign-On page by filling out the form and clicking *Save*.
+
+image::images/sso/oauth2-save.png[]
+
+
+These parameters can also be set by manually by entering the desired values in Configure->Parameters.
+
+image::images/sso/oauth2-parameters.png[]
+
+
+
