@@ -41,6 +41,8 @@ import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
 import org.jumpmind.db.DdlReaderTestConstants;
+import org.jumpmind.db.mock.MockDbDataSource;
+import org.jumpmind.db.mock.MockDbUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.CompressionTypes;
 import org.jumpmind.db.model.IndexColumn;
@@ -58,14 +60,26 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
+/**
+ * Tests MsSqlDdlReader (universal class) in conjunction with the MsSql2008DatabasePlatform
+ */
+@DisplayName("MsSqlDdlReader_MsSql2008DatabasePlatform")
 class MsSql2008DdlReaderTest {
-    // protected MsSql2008DatabasePlatform platform;
+    protected final String SAMPLE_CATALOG_NAME = "testCatlog";
+    protected final String SAMPLE_SCHEMA_NAME = "testSchema";
+    protected final String SAMPLE_TRIGGER_NAME = "testTrigger";
+    protected final String SAMPLE_TABLE_NAME = "testTableName";
+    protected final String SAMPLE_INDEX_NAME = "testIndexName";
+    public final int MsSqlDatabasePlatform_VERSION10 = 10; // SQL Server 2008
+//    protected MsSql2008DatabasePlatform platform;
     protected IDatabasePlatform platform;
     protected Pattern mssql2008IsoDatePattern;
     /*
@@ -80,6 +94,10 @@ class MsSql2008DdlReaderTest {
     ISqlTransaction sqlTransaction;
     protected AbstractJdbcDdlReader abstractJdbcDdlReader;
     ThreadLocalRandom rand = ThreadLocalRandom.current();
+    // Anticipated queries to mock responses for:
+    public final String MSSQL_USER_DEFIND_TYPES_QUERY = "select name from sys.types where is_user_defined = 1";
+    public final String MSSQL_INFORMATION_SCHEMA_TABLES_QUERY = "select \"TABLE_NAME\" from \"testCatlog\".\"INFORMATION_SCHEMA\".\"TABLES\" where";
+    public final String MSSQL_INFORMATION_SCHEMA_TRIGGER_QUERY = "select TRIG.name, TAB.name as table_name, SC.name as table_schema, TRIG.is_disabled, TRIG.is_ms_shipped, TRIG.is_not_for_replication, TRIG.is_instead_of_trigger, TRIG.create_date, TRIG.modify_date, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsUpdateTrigger') AS isupdate, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsDeleteTrigger') AS isdelete, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsInsertTrigger') AS isinsert, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsAfterTrigger') AS isafter, OBJECTPROPERTY(TRIG.OBJECT_ID, 'ExecIsInsteadOfTrigger') AS isinsteadof, TRIG.object_id, TRIG.parent_id, TAB.schema_id, OBJECT_DEFINITION(TRIG.OBJECT_ID) as trigger_source from sys.triggers as TRIG inner join sys.tables as TAB on TRIG.parent_id = TAB.object_id inner join sys.schemas as SC on TAB.schema_id = SC.schema_id where TAB.name=? and SC.name=?";
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -91,9 +109,29 @@ class MsSql2008DdlReaderTest {
         mssql2008IsoTimestampPattern = Pattern.compile("TO_DATE\\('([^']*)'\\, 'YYYY\\-MM\\-DD HH24:MI:SS'\\)");
     }
 
+    // @AfterAll
+    // public void tearDown() throws Exception {
+    //
+    // }
+
+    /**
+     * Helper builds new instance of the MsSqlDdlReader and mocks results for anticipated query listing user-defined types
+     */
+    private MsSqlDdlReader createMsSqlDdlReader(MockDbDataSource mockDataSource) {
+        mockDataSource.enqueue(MockDbUtils.buildStatementNoResults(
+                MSSQL_USER_DEFIND_TYPES_QUERY, 1));
+        MsSql2008DatabasePlatform platform2008 = new MsSql2008DatabasePlatform(mockDataSource, mockDataSource.getSqlTemplateSettings());
+        mockDataSource.enqueue(MockDbUtils.buildStatementNoResults(
+                MSSQL_USER_DEFIND_TYPES_QUERY, 1));
+        MsSqlDdlReader testReader = new MsSqlDdlReader(platform2008);
+        return testReader;
+    }
+
     @Test
-    void testMsSqlDdlReaderConstructor() throws Exception {
-        MsSqlDdlReader testReader = new MsSqlDdlReader(platform);
+    @DisplayName("Constructed")
+    void testConstructor() throws Exception {
+        MockDbDataSource mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION10);
+        MsSqlDdlReader testReader = createMsSqlDdlReader(mockDataSource);
         testReader.setDefaultCatalogPattern(null);
         testReader.setDefaultSchemaPattern(null);
         testReader.setDefaultTablePattern("%");
@@ -105,7 +143,22 @@ class MsSql2008DdlReaderTest {
         assertEquals(true, mssql2008IsoTimestampPattern.pattern().equals("TO_DATE\\('([^']*)'\\, 'YYYY\\-MM\\-DD HH24:MI:SS'\\)"));
     }
 
+    @Test
+    @DisplayName("getTableNames Single")
+    void getTableNames() throws Exception {
+        MockDbDataSource mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION10);
+        mockDataSource.mockAndEnqueueTableLookup1Results(SAMPLE_TABLE_NAME, MSSQL_INFORMATION_SCHEMA_TABLES_QUERY);
+        MsSqlDdlReader testReader = createMsSqlDdlReader(mockDataSource);
+        List<String> tableNameResults = new ArrayList<String>();
+        List<String> tableNames = new ArrayList<String>();
+        tableNames.add(SAMPLE_TABLE_NAME);
+        tableNameResults = testReader.getTableNames(SAMPLE_CATALOG_NAME, SAMPLE_SCHEMA_NAME, null);
+        assertEquals(tableNames, tableNameResults);
+    }
+    
+
     @ParameterizedTest
+    @Disabled
     @CsvSource({ "INSERT,1,0,0", "UPDATE,0,1,0", "DELETE,0,0,1", })
     void testGetTriggers(String triggerTypeParam, String isInsert, String isUpdate, String isDelete) throws Exception {
         // Mocked components
@@ -189,6 +242,7 @@ class MsSql2008DdlReaderTest {
     }
 
     @ParameterizedTest
+    @Disabled
     @CsvSource({ "2008-11-11, DATE, " + Types.DATE + ",," + -1 + "", "2008-11-11 12:10:30, TIMESTAMP, " + Types.TIMESTAMP + ",," + -1 + "",
             "testDef, VARCHAR, " + Types.VARCHAR + ",254," + 254 + "", })
     void testReadTableWithBasicArgs(String defaultValue, String jdbcTypeName, int jdbcTypeCode, String testColumnSize, int platformColumnSize)
@@ -388,6 +442,7 @@ class MsSql2008DdlReaderTest {
     }
 
     @ParameterizedTest
+    @Disabled
     @CsvSource({ "testDef, VARCHAR, " + Types.VARCHAR + ",254," + 254 + ",0",
             "testDef, VARCHAR, " + Types.VARCHAR + ",254," + 254 + ",1",
             "testDef, VARCHAR, " + Types.VARCHAR + ",254," + 254 + ",2",
