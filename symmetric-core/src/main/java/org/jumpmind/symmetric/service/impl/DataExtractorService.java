@@ -1460,9 +1460,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         if (platform.supportsParametersInSelect()) {
             transaction.prepareAndExecute(getSql("updateExtractRequestLoadTime"), outgoingBatch.getBatchId(), new Date(),
                     outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0,
-                    outgoingBatch.getLoadMillis(), outgoingBatch.getBatchId(), new Date(), outgoingBatch.isBulkLoaderFlag(),
-                    outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0,
-                    outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0, outgoingBatch.getBatchId(),
+                    outgoingBatch.getLoadMillis(), outgoingBatch.getBatchId(), new Date(), outgoingBatch.isBulkLoaderFlag() == true ? outgoingBatch
+                            .getLoadRowCount() : 0, outgoingBatch.getBatchId(),
                     outgoingBatch.getBatchId(), outgoingBatch.getNodeId(), outgoingBatch.getLoadId(), engine.getNodeId());
         } else {
             String sql = getSql("updateExtractRequestLoadTimeNoParamsInSelect");

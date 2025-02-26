@@ -840,7 +840,7 @@
         <column name="last_update_by" type="VARCHAR" size="50"  description="The user who last updated this entry." />
         <column name="last_update_time" type="TIMESTAMP" required="true" description="Timestamp when a user or the system last updated this entry." />
         <column name="batch_bulk_load_count" type="BIGINT" required="true" default="0" description="The number of batches that were loaded with the bulk loader." />
-        <column name="bulk_row_load_count" type="BIGINT" required="true" default="0" description="The number of rows that were loaded with the bulk loader."/>
+        <column name="row_bulk_load_count" type="BIGINT" required="true" default="0" description="The number of rows that were loaded with the bulk loader."/>
     </table>
     
     <table name="transform_column" description="Defines the column mappings and optional data transformation for a data loader transformation.">
