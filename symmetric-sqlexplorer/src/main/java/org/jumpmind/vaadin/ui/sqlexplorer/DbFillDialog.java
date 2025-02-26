@@ -67,6 +67,7 @@ public class DbFillDialog extends ResizableDialog {
     private TextField insertWeightField;
     private TextField updateWeightField;
     private TextField deleteWeightField;
+    private TextField commitRowSizeField;
     private DbFill dbFill;
     private RadioButtonGroup<String> oGroup;
     private QueryPanel queryPanel;
@@ -194,6 +195,11 @@ public class DbFillDialog extends ResizableDialog {
         oGroup.setItems("Fill Table(s)", "Send to Sql Editor");
         oGroup.setValue("Fill Table(s)");
         formLayout.add(oGroup);
+        commitRowSizeField = new TextField("Commit Row Size");
+        commitRowSizeField.setValue("1");
+        commitRowSizeField.setValueChangeMode(ValueChangeMode.EAGER);
+        commitRowSizeField.addValueChangeListener(event -> fillButton.setEnabled(enableFillButton()));
+        formLayout.add(commitRowSizeField);
         optionLayout = new Scroller(optionContent);
         optionLayout.setScrollDirection(ScrollDirection.VERTICAL);
         optionLayout.setSizeFull();
@@ -244,6 +250,7 @@ public class DbFillDialog extends ResizableDialog {
         dbFill.setInterval(Integer.parseInt(intervalField.getValue().toString()));
         dbFill.setDmlWeight(new DmlWeight(Integer.parseInt(insertWeightField.getValue()), Integer.parseInt(updateWeightField.getValue()),
                 Integer.parseInt(deleteWeightField.getValue())));
+        dbFill.setMaxRowsCommit(Integer.parseInt(commitRowSizeField.getValue()));
         if (oGroup.getValue().toString().equals("Send to Sql Editor")) {
             dbFill.setPrint(true);
         }
