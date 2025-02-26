@@ -1469,6 +1469,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             sql = FormatUtils.replace("rowCount",
                     String.valueOf(outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0), sql);
             sql = FormatUtils.replace("loadMillis", String.valueOf(outgoingBatch.getLoadMillis()), sql);
+            sql = FormatUtils.replace("bulkRowsLoaded",
+                    String.valueOf(outgoingBatch.isBulkLoaderFlag() == true ? (outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0)
+                            : 0), sql);
             transaction.prepareAndExecute(sql, outgoingBatch.getBatchId(), new Date(), outgoingBatch.getBatchId(),
                     outgoingBatch.getBatchId(), outgoingBatch.getNodeId(), outgoingBatch.getLoadId(), engine.getNodeId());
         }
