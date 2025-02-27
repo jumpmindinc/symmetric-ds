@@ -74,7 +74,8 @@ public class DataServiceSqlMap extends AbstractSqlMap {
                 + " table_count, rows_loaded, rows_count, "
                 + " completed, cancelled, full_load, "
                 + " start_time, end_time, last_update_time, last_update_by, "
-                + " error_flag, sql_state, sql_code, sql_message, batch_bulk_load_count "
+                + " error_flag, sql_state, sql_code, sql_message, batch_bulk_load_count, "
+                + " row_bulk_load_count "
                 + " from $(table_reload_status) ");
         putSql("selectActiveTableReloadStatus", "select source_node_id, target_node_id, load_id, "
                 + " end_data_batch_id, start_data_batch_id, "
@@ -83,7 +84,8 @@ public class DataServiceSqlMap extends AbstractSqlMap {
                 + " table_count, rows_loaded, rows_count, "
                 + " completed, cancelled, full_load, "
                 + " start_time, end_time, last_update_time, last_update_by, "
-                + " error_flag, sql_state, sql_code, sql_message, batch_bulk_load_count "
+                + " error_flag, sql_state, sql_code, sql_message, batch_bulk_load_count, "
+                + " row_bulk_load_count "
                 + " from $(table_reload_status) "
                 + " where completed = 0 and cancelled = 0");
         putSql("orderTableReloadStatus", " order by load_id desc, completed, last_update_time desc");
@@ -98,7 +100,8 @@ public class DataServiceSqlMap extends AbstractSqlMap {
                 + " table_count, rows_loaded, rows_count, "
                 + " completed, cancelled, full_load, "
                 + " start_time, end_time, last_update_time, last_update_by, "
-                + " error_flag, sql_state, sql_code, sql_message, batch_bulk_load_count "
+                + " error_flag, sql_state, sql_code, sql_message, batch_bulk_load_count, "
+                + " row_bulk_load_count "
                 + " from $(table_reload_status) "
                 + " where load_id = ? and source_node_id = ?");
         putSql("selectTableReloadStatusByTargetNodeId", "select source_node_id, target_node_id, load_id, "
@@ -108,7 +111,8 @@ public class DataServiceSqlMap extends AbstractSqlMap {
                 + " table_count, rows_loaded, rows_count, "
                 + " completed, cancelled, full_load, "
                 + " start_time, end_time, last_update_time, last_update_by, "
-                + " error_flag, sql_state, sql_code, sql_message, batch_bulk_load_count "
+                + " error_flag, sql_state, sql_code, sql_message, batch_bulk_load_count, "
+                + " row_bulk_load_count "
                 + " from $(table_reload_status) "
                 + " where target_node_id = ?");
         putSql("updateProcessedTableReloadRequest",
@@ -156,7 +160,10 @@ public class DataServiceSqlMap extends AbstractSqlMap {
                 + " last_update_time = ?, "
                 + " batch_bulk_load_count = case when ? between start_data_batch_id and end_data_batch_id then batch_bulk_load_count + ? else batch_bulk_load_count end, "
                 + " error_flag = case when error_batch_id = ? then 0 else error_flag end, "
-                + " error_batch_id = case when error_batch_id = ? then null else error_batch_id end "
+                + " error_batch_id = case when error_batch_id = ? then null else error_batch_id end, "
+                + " row_bulk_load_count = (select case"
+                + " when sum(bulk_rows_loaded) is null then 0"
+                + " else sum(bulk_rows_loaded) end from $(extract_request) where load_id = ? and source_node_id = ?) "
                 + " where load_id = ? and source_node_id = ? and completed = 0");
         putSql("updateTableReloadStatusDataLoadedNoParams", "update $(table_reload_status) "
                 + " set completed = case when ("
@@ -177,7 +184,10 @@ public class DataServiceSqlMap extends AbstractSqlMap {
                 + " last_update_time = current_timestamp, "
                 + " batch_bulk_load_count = case when $(batchId) between start_data_batch_id and end_data_batch_id then batch_bulk_load_count + $(isBulkLoaded) else batch_bulk_load_count end, "
                 + " error_flag = case when error_batch_id = $(batchId) then 0 else error_flag end, "
-                + " error_batch_id = case when error_batch_id = $(batchId) then null else error_batch_id end "
+                + " error_batch_id = case when error_batch_id = $(batchId) then null else error_batch_id end, "
+                + " (row_bulk_load_count) = (select case"
+                + " when sum(bulk_rows_loaded) is null then 0"
+                + " else sum(bulk_rows_loaded) end from $(extract_request) where load_id = $(loadId) and source_node_id = '$(nodeId)') "
                 + " where load_id = $(loadId) and source_node_id = '$(nodeId)' and completed = 0");
         putSql("updateTableReloadStatusFailed", "update $(table_reload_status) "
                 + " set error_flag = case when error_batch_id is null or error_batch_id != ? then 1 else error_flag end, "

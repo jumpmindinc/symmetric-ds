@@ -158,6 +158,7 @@
         <column name="load_thread_id" type="INTEGER" required="false" description="Thread number within dynamic queue assigned for loading over push/pull" />
         <column name="last_update_time" type="TIMESTAMP"  description="Timestamp when a process last updated this entry." />
         <column name="create_time" type="TIMESTAMP"  description="Timestamp when this entry was created." />
+        <column name="bulk_rows_loaded" type="BIGINT" required="false" default="0" description="The number of rows that are bulk loaded in an extract." />
         <index name="idx_er_ld_src_nd">
             <index-column name="load_id"/>
             <index-column name="source_node_id"/>
@@ -838,8 +839,8 @@
         <column name="sql_message" type="LONGVARCHAR" description="For a request in error, this is the error message that describes the error." />
         <column name="last_update_by" type="VARCHAR" size="50"  description="The user who last updated this entry." />
         <column name="last_update_time" type="TIMESTAMP" required="true" description="Timestamp when a user or the system last updated this entry." />
-        <column name="batch_bulk_load_count" type="BIGINT" required="true" default="0" description="The number of batches that were loaded with the bulk loader."/>
-        
+        <column name="batch_bulk_load_count" type="BIGINT" required="true" default="0" description="The number of batches that were loaded with the bulk loader." />
+        <column name="row_bulk_load_count" type="BIGINT" required="true" default="0" description="The number of rows that were loaded with the bulk loader."/>
     </table>
     
     <table name="transform_column" description="Defines the column mappings and optional data transformation for a data loader transformation.">

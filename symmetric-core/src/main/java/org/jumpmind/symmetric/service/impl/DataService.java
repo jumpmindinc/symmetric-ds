@@ -506,11 +506,12 @@ public class DataService extends AbstractService implements IDataService {
                     new Object[] { batchId, batchCount, batchId, batchCount, batchId, batchCount,
                             batchId, batchCount, batchId, batchCount, batchId, batchCount, new Date(),
                             batchId, batchCount, batchId, batchCount, batchId, batchCount, loadId, sourceNodeId, new Date(), batchId,
-                            isBulkLoaded, batchId, batchId, loadId, sourceNodeId },
+                            isBulkLoaded, batchId, batchId, loadId, sourceNodeId, loadId, sourceNodeId },
                     new int[] { idType, Types.NUMERIC, idType, Types.NUMERIC, idType, Types.NUMERIC,
                             idType, Types.NUMERIC, idType, Types.NUMERIC, idType, Types.NUMERIC, Types.TIMESTAMP,
                             idType, Types.NUMERIC, idType, Types.NUMERIC, idType, Types.NUMERIC, idType,
-                            Types.VARCHAR, Types.TIMESTAMP, idType, Types.NUMERIC, idType, idType, idType, Types.VARCHAR });
+                            Types.VARCHAR, Types.TIMESTAMP, idType, Types.NUMERIC, idType, idType, idType, Types.VARCHAR, idType,
+                            Types.VARCHAR });
         } else {
             String sql = getSql("updateTableReloadStatusDataLoadedNoParams");
             sql = FormatUtils.replace("batchId", String.valueOf(batchId), sql);
@@ -803,6 +804,7 @@ public class DataService extends AbstractService implements IDataService {
             request.setLastUpdateTime(rs.getDateTime("last_update_time"));
             request.setLastUpdatedBy(rs.getString("last_update_by"));
             request.setNumBatchesBulkLoaded(rs.getInt("batch_bulk_load_count"));
+            request.setNumRowsBulkLoaded(rs.getLong("row_bulk_load_count"));
             return request;
         }
     }

@@ -1460,7 +1460,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         if (platform.supportsParametersInSelect()) {
             transaction.prepareAndExecute(getSql("updateExtractRequestLoadTime"), outgoingBatch.getBatchId(), new Date(),
                     outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0,
-                    outgoingBatch.getLoadMillis(), outgoingBatch.getBatchId(), new Date(), outgoingBatch.getBatchId(),
+                    outgoingBatch.getLoadMillis(), outgoingBatch.getBatchId(), new Date(), outgoingBatch.isBulkLoaderFlag() == true ? outgoingBatch
+                            .getLoadRowCount() : 0, outgoingBatch.getBatchId(),
                     outgoingBatch.getBatchId(), outgoingBatch.getNodeId(), outgoingBatch.getLoadId(), engine.getNodeId());
         } else {
             String sql = getSql("updateExtractRequestLoadTimeNoParamsInSelect");
@@ -1468,6 +1469,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             sql = FormatUtils.replace("rowCount",
                     String.valueOf(outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0), sql);
             sql = FormatUtils.replace("loadMillis", String.valueOf(outgoingBatch.getLoadMillis()), sql);
+            sql = FormatUtils.replace("bulkRowsLoaded",
+                    String.valueOf(outgoingBatch.isBulkLoaderFlag() == true ? (outgoingBatch.getReloadRowCount() > 0 ? outgoingBatch.getDataRowCount() : 0)
+                            : 0), sql);
             transaction.prepareAndExecute(sql, outgoingBatch.getBatchId(), new Date(), outgoingBatch.getBatchId(),
                     outgoingBatch.getBatchId(), outgoingBatch.getNodeId(), outgoingBatch.getLoadId(), engine.getNodeId());
         }
@@ -2188,6 +2192,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             request.setExtractedMillis(row.getLong("extracted_millis"));
             request.setExtractThreadId(row.getInteger("extract_thread_id"));
             request.setLoadThreadId(row.getInteger("load_thread_id"));
+            request.setNumRowsBulkLoaded(row.getLong("bulk_rows_loaded"));
             return request;
         }
     }

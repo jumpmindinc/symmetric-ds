@@ -49,6 +49,7 @@ public class TableReloadStatus {
     protected String lastUpdatedBy;
     protected Date lastUpdateTime = new Date();
     protected int numBatchesBulkLoaded;
+    protected long numRowsBulkLoaded;
 
     @Override
     public int hashCode() {
@@ -314,5 +315,13 @@ public class TableReloadStatus {
 
     public void setNumBatchesBulkLoaded(int numBatchesBulkLoaded) {
         this.numBatchesBulkLoaded = numBatchesBulkLoaded;
+    }
+
+    public long getNumRowsBulkLoaded() {
+        return numRowsBulkLoaded;
+    }
+
+    public void setNumRowsBulkLoaded(long numRowsBulkLoaded) {
+        this.numRowsBulkLoaded = numRowsBulkLoaded;
     }
 }
