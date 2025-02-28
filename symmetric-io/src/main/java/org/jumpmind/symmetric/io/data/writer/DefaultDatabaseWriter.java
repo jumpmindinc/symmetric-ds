@@ -1029,7 +1029,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
         if (writerSettings.isLogSqlParamsOnError()) {
             data.writeCsvDataDetails(failureMessage);
         }
-        log.info(failureMessage.toString(), e);
+        log.error(failureMessage.toString(), e);
     }
 
     protected void logDataTruncation(CsvData data, StringBuilder failureMessage) {
