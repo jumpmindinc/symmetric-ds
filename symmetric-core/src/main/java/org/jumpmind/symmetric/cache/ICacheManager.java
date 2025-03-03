@@ -126,4 +126,6 @@ public interface ICacheManager {
     public void flushTransformCache();
 
     public Map<String, Collection<String>> getReadyQueues(boolean refreshCache);
+
+    public void flushReadyQueuesCache();
 }

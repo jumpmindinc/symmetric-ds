@@ -404,4 +404,10 @@ public class CacheManager implements ICacheManager {
         initializeOutgoingBatchCache();
         return outgoingBatchCache.getReadyQueues(refreshCache);
     }
+
+    @Override
+    public void flushReadyQueuesCache() {
+        initializeOutgoingBatchCache();
+        outgoingBatchCache.flushReadyQueuesCache();
+    }
 }
