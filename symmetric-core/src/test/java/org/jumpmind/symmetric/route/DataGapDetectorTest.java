@@ -294,13 +294,12 @@ public class DataGapDetectorTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testGapInGapFull() throws Exception {
         detector.setFullGapAnalysis(true);
         when(contextService.is(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(true);
-        String sql = ArgumentMatchers.anyString();
-        @SuppressWarnings("unchecked")
-        ISqlRowMapper<Long> mapper = (ISqlRowMapper<Long>) ArgumentMatchers.any();
-        when(sqlTemplate.query(sql, mapper, (Object[]) ArgumentMatchers.any())).thenAnswer(new Answer<List<Long>>() {
+        when(sqlTemplate.query(ArgumentMatchers.any(), ArgumentMatchers.isA(ISqlRowMapper.class), ArgumentMatchers.any(Object[].class))).thenAnswer(
+                new Answer<List<Long>>() {
             public List<Long> answer(InvocationOnMock invocation) {
                 List<Long> dataIds = new ArrayList<Long>();
                 long startId = (Long) invocation.getArguments()[2];
