@@ -318,8 +318,7 @@ public class DataServiceTest {
         doNothing().when(outgoingBatchService).insertOutgoingBatch(ArgumentMatchers.any(), ArgumentMatchers.any());
         when(engine.getStatisticManager()).thenReturn(statisticManager);
         doNothing().when(statisticManager).incrementNodesLoaded(1);
-        when(sqlTransaction.prepareAndExecute(ArgumentMatchers.anyString(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(),
-                ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(1);
+        when(sqlTransaction.prepareAndExecute(ArgumentMatchers.anyString(), ArgumentMatchers.any(Object[].class))).thenReturn(1);
         when(sqlTransaction.prepareAndExecute(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(1);
         when(sqlTemplate.queryForObject(ArgumentMatchers.anyString(), (ISqlRowMapper<TableReloadStatus>) ArgumentMatchers.any(), ArgumentMatchers.anyLong(),
                 ArgumentMatchers.anyString())).thenReturn(tableReloadStatus);
