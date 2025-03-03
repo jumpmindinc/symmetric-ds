@@ -924,7 +924,7 @@ public class DataService extends AbstractService implements IDataService {
             Channel normalChannel = channels.get(channelId);
             Channel reloadChannel = channels.get(trigger != null ? trigger.getReloadChannelId()
                     : Constants.CHANNEL_RELOAD);
-            if (normalChannel.isFileSyncFlag()) {
+            if (normalChannel != null && normalChannel.isFileSyncFlag()) {
                 if (reloadChannel != null && reloadChannel.isFileSyncFlag()) {
                     channelId = reloadChannel.getChannelId();
                 }
