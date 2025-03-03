@@ -1,6 +1,6 @@
 nodeid,aaa
-binary,BASE64
 channel,test
+binary,BASE64
 batch,1
 catalog,
 schema,
