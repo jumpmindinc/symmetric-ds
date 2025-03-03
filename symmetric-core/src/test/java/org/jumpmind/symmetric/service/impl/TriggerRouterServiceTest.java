@@ -159,7 +159,7 @@ public class TriggerRouterServiceTest {
         doReturn(replacements).when(parameterService).getAllParameters();
         doNothing().when(extensionService).addExtensionPoint(failureListener);
         doReturn(dummyTriggerList).when(sqlTemplate).query(ArgumentMatchers.anyString(), ArgumentMatchers.any(),
-                (Object) ArgumentMatchers.any());
+                ArgumentMatchers.any(Object[].class));
         TriggerRouterService triggerRouterService = new TriggerRouterService(engine);
         List<Trigger> actualTriggerList = triggerRouterService.getTriggers(true);
         List<Trigger> expectedTriggerList = new ArrayList<Trigger>();
