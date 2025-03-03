@@ -344,7 +344,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         batches.filterBatchesForChannels(suspendIgnoreChannelsList.getSuspendChannels());
         // Remove non-load batches so that an initial load finishes before
         // any other batches are loaded.
-        if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true) && !QueueThread.getQueueName(queue).equals(Constants.QUEUE_RELOAD)) {
+        if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true) && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
             if (batches.containsLoadBatches()) {
                 if (!(parameterService.is(ParameterConstants.INITIAL_LOAD_UNBLOCK_CHANNELS_ON_ERROR, true) && batches.containsBatchesInError())) {
                     batches.removeNonLoadBatches();

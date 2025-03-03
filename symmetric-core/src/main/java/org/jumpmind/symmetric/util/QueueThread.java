@@ -48,7 +48,7 @@ public class QueueThread {
     }
 
     public static String getQueueName(String queue) {
-        int index = queue.indexOf(Constants.DELIMITER_QUEUE_THREAD);
+        int index = queue == null ? -1 : queue.indexOf(Constants.DELIMITER_QUEUE_THREAD);
         if (index != -1) {
             return queue.substring(0, index);
         }
