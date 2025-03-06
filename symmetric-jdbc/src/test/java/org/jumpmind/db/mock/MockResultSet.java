@@ -10,7 +10,6 @@ import java.sql.Clob;
 import java.sql.Date;
 import java.sql.NClob;
 import java.sql.Ref;
-import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.RowId;
 import java.sql.SQLException;
@@ -22,8 +21,7 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Map;
 
-
-public class MockResultSet implements ResultSet {
+public class MockResultSet implements java.sql.ResultSet {
     
     public MockResultSet() {
         
@@ -126,15 +124,17 @@ public class MockResultSet implements ResultSet {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Get rid of warning: [deprecation] getBigDecimal(String,int) in ResultSet has been deprecated
+    @Deprecated
     public BigDecimal getBigDecimal(int arg0, int arg1) throws SQLException {
-        // TODO Auto-generated method stub
-        return null;
+        throw new UnsupportedOperationException("Parent ResultSet has been deprecated the getBigDecimal method");
     }
 
     @Override
+    @SuppressWarnings("deprecation") // warning: [deprecation] getBigDecimal(String,int) in ResultSet has been deprecated
+    @Deprecated
     public BigDecimal getBigDecimal(String arg0, int arg1) throws SQLException {
-        // TODO Auto-generated method stub
-        return null;
+        throw new UnsupportedOperationException("Parent ResultSet has been deprecated the getBigDecimal method");
     }
 
     @Override
@@ -540,15 +540,17 @@ public class MockResultSet implements ResultSet {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Get rid of warning: [deprecation] getUnicodeStream(String) in ResultSet has been deprecated
+    @Deprecated
     public InputStream getUnicodeStream(int arg0) throws SQLException {
-        // TODO Auto-generated method stub
-        return null;
+        throw new UnsupportedOperationException("Parent ResultSet has been deprecated the getBigDecimal method");
     }
 
     @Override
+    @SuppressWarnings("deprecation") // Get rid of warning: [deprecation] getUnicodeStream(String) in ResultSet has been deprecated
+    @Deprecated
     public InputStream getUnicodeStream(String arg0) throws SQLException {
-        // TODO Auto-generated method stub
-        return null;
+        throw new UnsupportedOperationException("Parent ResultSet has been deprecated the getBigDecimal method");
     }
 
     @Override

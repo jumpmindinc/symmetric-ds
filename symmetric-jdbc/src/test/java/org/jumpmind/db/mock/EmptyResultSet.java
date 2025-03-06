@@ -119,18 +119,6 @@ public class EmptyResultSet extends MockResultSet {
     }
 
     @Override
-    public BigDecimal getBigDecimal(int arg0, int arg1) throws SQLException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public BigDecimal getBigDecimal(String arg0, int arg1) throws SQLException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
     public InputStream getBinaryStream(int arg0) throws SQLException {
         // TODO Auto-generated method stub
         return null;
@@ -528,18 +516,6 @@ public class EmptyResultSet extends MockResultSet {
 
     @Override
     public URL getURL(String arg0) throws SQLException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public InputStream getUnicodeStream(int arg0) throws SQLException {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public InputStream getUnicodeStream(String arg0) throws SQLException {
         // TODO Auto-generated method stub
         return null;
     }
