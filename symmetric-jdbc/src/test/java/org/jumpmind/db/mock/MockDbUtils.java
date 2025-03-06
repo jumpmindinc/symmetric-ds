@@ -10,17 +10,20 @@ import java.sql.SQLException;
 import org.jumpmind.db.DdlReaderTestConstants;
 import org.mockito.ArgumentMatchers;
 
-import com.nuodb.jdbc.EmptyResultSet;
-
 /**
- * Helper class with static methods for mocking resultsets and other database objects in MockDbDataSource
+ * Helper class with static methods for mocking result sets and other database objects in MockDbDataSource
  */
 public final class MockDbUtils {
+    public static EmptyResultSet buildEmptyResultSet() {
+        EmptyResultSet resultSet = new EmptyResultSet();
+        return resultSet;
+    }
+
     /**
-     * Mocks up a null result set for a PreparedStatement (no data returned!). Use with MockDbDataSource.enqueue()
+     * Mocks up an empty result set for a PreparedStatement. Use with MockDbDataSource.enqueue()
      */
     public static MockDbPreparedStatement buildPreparedStatementNoResults(String sql, int repeatOutput) {
-        return buildPreparedStatement(sql, new EmptyResultSet(), repeatOutput);
+        return buildPreparedStatement(sql, buildEmptyResultSet(), repeatOutput);
     }
 
     /**
@@ -32,10 +35,10 @@ public final class MockDbUtils {
     }
 
     /**
-     * Mocks up a null result set for a Statement (no data returned!). Use with MockDbDataSource.enqueue()
+     * Mocks up an empty result set for a Statement. Use with MockDbDataSource.enqueue()
      */
     public static MockDbStatement buildStatementNoResults(String sql, int repeatOutput) {
-        return buildStatement(sql, new EmptyResultSet(), repeatOutput);
+        return buildStatement(sql, buildEmptyResultSet(), repeatOutput);
     }
 
     /**
@@ -273,5 +276,4 @@ public final class MockDbUtils {
                 triggerInfoQuery, rs, 1);
         return ps;
     }
-
 }
