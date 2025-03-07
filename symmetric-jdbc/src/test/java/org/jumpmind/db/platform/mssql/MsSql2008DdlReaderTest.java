@@ -79,7 +79,6 @@ class MsSql2008DdlReaderTest {
     protected final String SAMPLE_TABLE_NAME = "testTableName";
     protected final String SAMPLE_INDEX_NAME = "testIndexName";
     public final int MsSqlDatabasePlatform_VERSION10 = 10; // SQL Server 2008
-//    protected MsSql2008DatabasePlatform platform;
     protected IDatabasePlatform platform;
     protected Pattern mssql2008IsoDatePattern;
     /*

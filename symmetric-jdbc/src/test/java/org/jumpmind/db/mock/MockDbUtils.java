@@ -187,7 +187,6 @@ public final class MockDbUtils {
         when(stmtrs1.next()).thenReturn(true).thenReturn(false);
         when(stmtrs1.getMetaData()).thenReturn(stmt1RsMetaData);
         when(stmt1RsMetaData.isAutoIncrement(ArgumentMatchers.anyInt())).thenReturn(isAutoIncrement);
-        // when(stmtrs1.getString(1)).thenReturn(DdlReaderTestConstants.TESTNAMECAPS);
         return stmtrs1;
     }
 

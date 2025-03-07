@@ -27,7 +27,6 @@ import org.jumpmind.db.sql.SqlException;
  */
 public class MockDbConnection implements Connection {
     protected MockDbDataSource parentDataSource;
-    // protected ArrayList<ResultSet> metaDataResults;
     private String catalog;
     private String schema;
     private int transactionIsolationLevel;
@@ -100,7 +99,7 @@ public class MockDbConnection implements Connection {
     }
 
     /**
-     * Pulls mocked Statement out of the queue.
+     * Pulls mocked Statement with it's pre-staged result set out of the queue.
      */
     @Override
     public Statement createStatement() throws SQLException {
