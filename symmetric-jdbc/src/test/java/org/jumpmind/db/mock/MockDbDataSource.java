@@ -72,7 +72,7 @@ public class MockDbDataSource implements DataSource {
             return null;
         }
         ResultSet resultSet = this.metaDataSets.remove(0);
-        System.out.println("dequeueMetaDataResultSet - Dispensed one resultSet entry from the metaData queue;");
+        // System.out.println("dequeueMetaDataResultSet - Dispensed one resultSet entry from the metaData queue;");
         return resultSet;
     }
 
@@ -95,44 +95,22 @@ public class MockDbDataSource implements DataSource {
         // System.out.println("dequeueStatement - Dispensed one item from the statements queue;");
         return statement;
     }
-    // public ISqlTemplate createMockSqlTemplate(DatabaseInfo databaseInfo) {
-    // MsSqlJdbcSqlTemplate testTemplate = new MsSqlJdbcSqlTemplate(this, this.sqlTemplateSettings, databaseInfo);
-    // MsSqlJdbcSqlTemplate sqlTemplate = Mockito.spy(testTemplate);
-    // doReturn(this.databaseMajorVersion).when(sqlTemplate).getDatabaseMajorVersion();
-    // doReturn(this).when(sqlTemplate).getDataSource();
-    // return sqlTemplate;
-    // }
-    //
-    // public ISqlTemplate createMockSqlTemplateDirty(DatabaseInfo databaseInfo) {
-    // MsSqlJdbcSqlTemplate testTemplate = new MsSqlJdbcSqlTemplate(this, this.sqlTemplateSettings, databaseInfo);
-    // testTemplate.setIsolationLevel(1);
-    // MsSqlJdbcSqlTemplate sqlTemplate = Mockito.spy(testTemplate);
-    // doReturn(this.databaseMajorVersion).when(sqlTemplate).getDatabaseMajorVersion();
-    // doReturn(this).when(sqlTemplate).getDataSource();
-    // // sqlTemplate.setIsolationLevel(1);
-    // // doReturn(1).when(sqlTemplate).getIsolationLevel();
-    // return sqlTemplate;
-    // }
 
-    // this.ddlBuilder = createDdlBuilder();
-    // this.sqlTemplate = createSqlTemplate();
-    // this.sqlTemplateDirty = createSqlTemplateDirty();
-    // this.ddlReader = createDdlReader();
     @Override
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-        // TODO Auto-generated method stub
+
         return null;
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        // TODO Auto-generated method stub
+
         return false;
     }
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        // TODO Auto-generated method stub
+
         return null;
     }
 
@@ -148,7 +126,7 @@ public class MockDbDataSource implements DataSource {
 
     @Override
     public PrintWriter getLogWriter() throws SQLException {
-        // TODO Auto-generated method stub
+
         return null;
     }
 
@@ -159,12 +137,12 @@ public class MockDbDataSource implements DataSource {
 
     @Override
     public void setLogWriter(PrintWriter out) throws SQLException {
-        // TODO Auto-generated method stub
+
     }
 
     @Override
     public void setLoginTimeout(int seconds) throws SQLException {
-        // TODO Auto-generated method stub
+
     }
 
     /**
