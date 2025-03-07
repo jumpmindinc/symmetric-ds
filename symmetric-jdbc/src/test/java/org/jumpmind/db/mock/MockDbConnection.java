@@ -48,81 +48,54 @@ public class MockDbConnection implements Connection {
         }
     }
 
-    // Mock set up helper Queue-up a mock ResultSet object to be returned by the dequeueDatabaseMetaData() method
-    // public void enqueueMetaResultSet(ResultSet rs) {
-    // this.metaDataResults.add(rs);
-    // }
-
-    // Mock set up helper
-    // public ResultSet dequeueMetaResultSet() {
-    // if (this.metaDataResults.size() < 1) {
-    // System.out.println("dequeueDatabaseMetaData - No more pre-defined ResultSets in the metaDataResults queue!");
-    // return null;
-    // }
-    // ResultSet rs = this.metaDataResults.remove(0);
-    // System.out.println("dequeueMetaResultSet - Dispensed one pre-defined ResultSet from the metaDataResults queue;");
-    // return rs;
-    // }
-
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public void abort(Executor executor) throws SQLException {
-        // Mock stub
     }
 
     @Override
     public void clearWarnings() throws SQLException {
-        // Mock stub
     }
 
     @Override
     public void close() throws SQLException {
-        // Mock stub
     }
 
     @Override
     public void commit() throws SQLException {
-        // Mock stub
     }
 
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public Blob createBlob() throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public Clob createClob() throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public NClob createNClob() throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public SQLXML createSQLXML() throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
@@ -152,7 +125,6 @@ public class MockDbConnection implements Connection {
 
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
@@ -168,22 +140,18 @@ public class MockDbConnection implements Connection {
 
     @Override
     public Properties getClientInfo() throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public String getClientInfo(String name) throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public int getHoldability() throws SQLException {
-        // TODO Auto-generated method stub
         return 0;
     }
-
 
     @Override
     public DatabaseMetaData getMetaData() {
@@ -192,7 +160,6 @@ public class MockDbConnection implements Connection {
 
     @Override
     public int getNetworkTimeout() throws SQLException {
-        // TODO Auto-generated method stub
         return 0;
     }
 
@@ -208,19 +175,16 @@ public class MockDbConnection implements Connection {
 
     @Override
     public Map<String, Class<?>> getTypeMap() throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public SQLWarning getWarnings() throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public boolean isClosed() throws SQLException {
-        // Mock stub
         return false;
     }
 
@@ -231,36 +195,31 @@ public class MockDbConnection implements Connection {
 
     @Override
     public boolean isValid(int timeout) throws SQLException {
-        // Mock stub
         return true;
     }
 
     @Override
     public String nativeSQL(String sql) throws SQLException {
-        // Mock stub
         return sql;
     }
 
     @Override
     public CallableStatement prepareCall(String sql) throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        // TODO Auto-generated method stub
         return null;
     }
 
     /**
-     * Pulls mocked PreparedStatment out of the queue.
+     * Pulls mocked PreparedStatement with it's pre-staged result set out of the queue.
      */
     @Override
     public PreparedStatement prepareStatement(String sql) throws SQLException {
@@ -303,17 +262,14 @@ public class MockDbConnection implements Connection {
 
     @Override
     public void releaseSavepoint(Savepoint savepoint) throws SQLException {
-        // Mock stub
     }
 
     @Override
     public void rollback() throws SQLException {
-        // Mock stub
     }
 
     @Override
     public void rollback(Savepoint savepoint) throws SQLException {
-        // Mock stub
     }
 
     @Override
@@ -328,22 +284,18 @@ public class MockDbConnection implements Connection {
 
     @Override
     public void setClientInfo(Properties properties) throws SQLClientInfoException {
-        // TODO Auto-generated method stub
     }
 
     @Override
     public void setClientInfo(String name, String value) throws SQLClientInfoException {
-        // TODO Auto-generated method stub
     }
 
     @Override
     public void setHoldability(int holdability) throws SQLException {
-        // TODO Auto-generated method stub
     }
 
     @Override
     public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
-        // TODO Auto-generated method stub
     }
 
     @Override
@@ -373,6 +325,5 @@ public class MockDbConnection implements Connection {
 
     @Override
     public void setTypeMap(Map<String, Class<?>> map) throws SQLException {
-        // TODO Auto-generated method stub
     }
 }

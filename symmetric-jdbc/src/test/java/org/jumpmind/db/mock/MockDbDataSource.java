@@ -14,7 +14,7 @@ import javax.sql.DataSource;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 
 /**
- * Main class in the hierarchy of Mock classes allowing to inject any results into test subject (DatabasePlatform, DdlReader, DdlBuilder, etc.).
+ * Main class in the hierarchy of Mock classes allowing to pre-stage any result sets for test subjects (DatabasePlatform, DdlReader, DdlBuilder, etc.).
  */
 public class MockDbDataSource implements DataSource {
     protected MockDbConnection mockConnection;

@@ -108,14 +108,14 @@ public class MockResultSet implements java.sql.ResultSet {
     @SuppressWarnings("deprecation") // Get rid of warning: [deprecation] getBigDecimal(String,int) in ResultSet has been deprecated
     @Deprecated
     public BigDecimal getBigDecimal(int arg0, int arg1) throws SQLException {
-        throw new UnsupportedOperationException("Parent ResultSet has been deprecated the getBigDecimal method");
+        throw new UnsupportedOperationException("Parent ResultSet had deprecated the getBigDecimal method");
     }
 
     @Override
-    @SuppressWarnings("deprecation") // warning: [deprecation] getBigDecimal(String,int) in ResultSet has been deprecated
+    @SuppressWarnings("deprecation") // warning: [deprecation] getBigDecimal(String,int) in ResulSet has been deprecated
     @Deprecated
     public BigDecimal getBigDecimal(String arg0, int arg1) throws SQLException {
-        throw new UnsupportedOperationException("Parent ResultSet has been deprecated the getBigDecimal method");
+        throw new UnsupportedOperationException("Parent ResultSet had deprecated the getBigDecimal method");
     }
 
     @Override
@@ -457,14 +457,14 @@ public class MockResultSet implements java.sql.ResultSet {
     @SuppressWarnings("deprecation") // Get rid of warning: [deprecation] getUnicodeStream(String) in ResultSet has been deprecated
     @Deprecated
     public InputStream getUnicodeStream(int arg0) throws SQLException {
-        throw new UnsupportedOperationException("Parent ResultSet has been deprecated the getBigDecimal method");
+        throw new UnsupportedOperationException("Parent ResultSet had deprecated the getUnicodeStream method");
     }
 
     @Override
     @SuppressWarnings("deprecation") // Get rid of warning: [deprecation] getUnicodeStream(String) in ResultSet has been deprecated
     @Deprecated
     public InputStream getUnicodeStream(String arg0) throws SQLException {
-        throw new UnsupportedOperationException("Parent ResultSet has been deprecated the getBigDecimal method");
+        throw new UnsupportedOperationException("Parent ResultSet had deprecated the getUnicodeStream method");
     }
 
     @Override
