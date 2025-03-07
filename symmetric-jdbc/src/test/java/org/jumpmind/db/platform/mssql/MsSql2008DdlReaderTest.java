@@ -109,11 +109,6 @@ class MsSql2008DdlReaderTest {
         mssql2008IsoTimestampPattern = Pattern.compile("TO_DATE\\('([^']*)'\\, 'YYYY\\-MM\\-DD HH24:MI:SS'\\)");
     }
 
-    // @AfterAll
-    // public void tearDown() throws Exception {
-    //
-    // }
-
     /**
      * Helper builds new instance of the MsSqlDdlReader and mocks results for anticipated query listing user-defined types
      */
