@@ -43,7 +43,7 @@ public class DatabaseXmlTest {
     public void testSymmetricSchemaIsValidAgainstDtd() throws ParserConfigurationException, SAXException, IOException {
         String symmetricSchemaXmlLocation = "/symmetric-ds/symmetric-core/src/main/resources/symmetric-schema.xml";
         String symmetricDtdLocation = "/symmetric-ds/symmetric-assemble/database.dtd";
-        String repositoryMarker = "/symmetric-ds/";
+        String repositoryMarker = "\\symmetric-ds\\";
         String symmetricSchemaXmlPath = "";
         String symmetricDtdPath = "";
         try {
