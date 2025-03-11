@@ -22,10 +22,10 @@ package org.jumpmind.db.model;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -39,24 +39,53 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 public class DatabaseXmlTest {
+    public final boolean enablePrint = true;
+
+    /**
+     * Helper finds root directory for this code on file system starting from either the current directory or specified path.
+     */
+    public static String getRepositoryRootDir(String currentDirectory, String topProjectMarker) {
+        Path directoryPath = Paths.get("").toAbsolutePath();
+        if (currentDirectory != null) {
+            directoryPath = Paths.get(currentDirectory);
+        }
+
+        String currentPath= directoryPath.toString();
+        if (topProjectMarker == null || currentPath==null || currentPath.length() < topProjectMarker.length()) {
+            return currentPath;
+        }
+        String marker = topProjectMarker;
+        if (!marker.startsWith(File.separator)) {
+            marker = File.separator + marker;
+        }
+        int markerPos = currentPath.indexOf(marker);
+        if(markerPos>=0) {
+            return currentPath.substring(0, markerPos);
+        }
+        return currentPath;
+    }
+
     @Test
     public void testSymmetricSchemaIsValidAgainstDtd() throws ParserConfigurationException, SAXException, IOException {
         String symmetricSchemaXmlLocation = "/symmetric-ds/symmetric-core/src/main/resources/symmetric-schema.xml";
         String symmetricDtdLocation = "/symmetric-ds/symmetric-assemble/database.dtd";
-        String repositoryMarker = "\\symmetric-ds\\";
+        String repositoryMarker = File.separator + "symmetric-ds" + File.separator;
         String symmetricSchemaXmlPath = "";
         String symmetricDtdPath = "";
         try {
-            String currentDirectory = Paths.get("").toAbsolutePath().toString();
-            String[] paths = currentDirectory.split(repositoryMarker);
-            // System.out.println("testSymmetricSchemaIsValidAgainstDtd - Started. Directory=" + currentDirectory + "; Project=" +projectDirectoryMarker);
-            assertEquals(2, paths.length);
-            symmetricSchemaXmlPath = paths[0] + symmetricSchemaXmlLocation;
-            symmetricDtdPath = paths[0] + symmetricDtdLocation;
+            String repoRootDir = getRepositoryRootDir(null, repositoryMarker);
+            assertNotNull(repoRootDir);
+            symmetricSchemaXmlPath = repoRootDir + symmetricSchemaXmlLocation;
+            symmetricDtdPath = repoRootDir + symmetricDtdLocation;
             File symmetricSchemaXmlFile = new File(symmetricSchemaXmlPath);
-            File symmetricDtdFile = new File(symmetricDtdPath);
-            // System.out.println("testSymmetricSchemaIsValidAgainstDtd - absolutePath=" + absolutePath);
             assertTrue(symmetricSchemaXmlFile.exists());
+            File symmetricDtdFile = new File(symmetricDtdPath);
+            if (enablePrint) {
+                System.out.println("testSymmetricSchemaIsValidAgainstDtd - repoRootDir=" + repoRootDir + ", symmetricSchemaXmlPath=" + symmetricSchemaXmlPath
+                        + ", symmetricDtdPath="
+                        + symmetricDtdPath);
+            }
+            assertTrue(symmetricDtdFile.exists());
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             // Enable DTD validation:
             factory.setValidating(true);
@@ -74,11 +103,15 @@ public class DatabaseXmlTest {
             });
             Document doc = builder.parse(symmetricSchemaXmlFile);
             assertNotNull(doc);
-            // System.out.println("testSymmetricSchemaIsValidAgainstDtd - XML is valid against the DTD. Path=" + absolutePath);
+            if (enablePrint) {
+                System.out.println("testSymmetricSchemaIsValidAgainstDtd - XML is valid against the DTD. symmetricDtdPath=" + symmetricDtdPath);
+            }
         } catch (Exception e) {
-            System.out.println("testSymmetricSchemaIsValidAgainstDtd - Validation error: " + e.getMessage() + "; Path=" + symmetricSchemaXmlPath);
+            System.out.println("testSymmetricSchemaIsValidAgainstDtd - Validation error: " + e.getMessage() + "; symmetricSchemaXmlPath="
+                    + symmetricSchemaXmlPath + " symmetricDtdPath=" + symmetricDtdPath);
             e.printStackTrace();
         }
         // assertTrue(list.toString(), list.indexOf(t4) < list.indexOf(t3));
     }
 }
+
