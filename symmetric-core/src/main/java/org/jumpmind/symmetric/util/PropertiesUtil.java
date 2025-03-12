@@ -43,11 +43,15 @@ public class PropertiesUtil {
         return enginesDir;
     }
 
+    public static File findPropertiesFileForEngineWithName(String engineName) {
+        return findPropertiesFileForEngineWithName(engineName, null);
+    }
+
     public static File findPropertiesFileForEngineWithName(String engineName, Map<String, String> replacementValues) {
         if (replacementValues == null) {
             replacementValues = new HashMap<String, String>();
         }
-        boolean replacementValuesProvided = !replacementValues.isEmpty();
+        boolean isEmptyReplacementValues = replacementValues.isEmpty();
         File[] files = findEnginePropertiesFiles();
         for (int i = 0; i < files.length; i++) {
             File file = files[i];
@@ -55,7 +59,7 @@ public class PropertiesUtil {
             try (FileInputStream is = new FileInputStream(file)) {
                 properties.load(is);
                 SymmetricUtils.replaceSystemAndEnvironmentVariables(properties);
-                if (!replacementValuesProvided) {
+                if (isEmptyReplacementValues) {
                     replacementValues.clear();
                     replacementValues.put("nodeGroupId", SymmetricUtils.substituteScripts(
                             properties.getProperty(ParameterConstants.NODE_GROUP_ID), replacementValues));
