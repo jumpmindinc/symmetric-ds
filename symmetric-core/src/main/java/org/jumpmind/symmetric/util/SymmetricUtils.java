@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,9 @@ import org.jumpmind.util.CollectionUtils;
 import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import bsh.EvalError;
+import bsh.Interpreter;
 
 final public class SymmetricUtils {
     private static final Logger log = LoggerFactory.getLogger(SymmetricUtils.class);
@@ -132,6 +136,51 @@ final public class SymmetricUtils {
             str = FormatUtils.replace("sourceSchemaName", schemaName, str);
         }
         return str;
+    }
+
+    public static String substituteScripts(String value, Map<String, String> replacementValues) {
+        if (log.isDebugEnabled()) {
+            log.debug("substituteScripts starting value is: {}", value);
+        }
+        if (replacementValues == null) {
+            replacementValues = new HashMap<String, String>();
+        }
+        int startTick = StringUtils.indexOf(value, '`');
+        if (startTick != -1) {
+            int endTick = StringUtils.lastIndexOf(value, '`');
+            if (endTick != -1 && startTick != endTick) {
+                // there's a bean shell script present in this case
+                String script = StringUtils.substring(value, startTick + 1, endTick);
+                if (log.isDebugEnabled()) {
+                    log.debug("Script found.  Script is is: {}", script);
+                }
+                Interpreter interpreter = new Interpreter();
+                try {
+                    interpreter.set("hostName", AppUtils.getHostName());
+                    interpreter.set("log", log);
+                    interpreter.set("nodeGroupId", replacementValues.get("nodeGroupId"));
+                    interpreter.set("syncUrl", replacementValues.get("syncUrl"));
+                    interpreter.set("registrationUrl", replacementValues.get("registrationUrl"));
+                    interpreter.set("externalId", replacementValues.get("externalId"));
+                    interpreter.set("engineName", replacementValues.get("engineName"));
+                    Object scriptResult = interpreter.eval(script);
+                    if (scriptResult == null) {
+                        scriptResult = "";
+                    }
+                    if (log.isDebugEnabled()) {
+                        log.debug("Script output is: {}", scriptResult);
+                    }
+                    value = StringUtils.substring(value, 0, startTick) + scriptResult.toString() +
+                            StringUtils.substring(value, endTick + 1);
+                } catch (EvalError e) {
+                    throw new RuntimeException(e.getMessage(), e);
+                }
+                if (log.isDebugEnabled()) {
+                    log.debug("substituteScripts return value is {}", value);
+                }
+            }
+        }
+        return value;
     }
 
     public static void logNotices() {
