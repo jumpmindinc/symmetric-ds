@@ -300,20 +300,20 @@ public class DataGapDetectorTest {
         when(contextService.is(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(true);
         when(sqlTemplate.query(ArgumentMatchers.any(), ArgumentMatchers.isA(ISqlRowMapper.class), ArgumentMatchers.any(Object[].class))).thenAnswer(
                 new Answer<List<Long>>() {
-            public List<Long> answer(InvocationOnMock invocation) {
-                List<Long> dataIds = new ArrayList<Long>();
-                long startId = (Long) invocation.getArguments()[2];
-                long endId = (Long) invocation.getArguments()[3];
-                if (startId == 5 && endId == 10) {
-                    dataIds.add(6L);
-                } else if (startId == 15 && endId == 20) {
-                    dataIds.add(18L);
-                } else if (startId == 21 && endId == 50000020) {
-                    dataIds.add(23L);
-                }
-                return dataIds;
-            }
-        });
+                    public List<Long> answer(InvocationOnMock invocation) {
+                        List<Long> dataIds = new ArrayList<Long>();
+                        long startId = (Long) invocation.getArguments()[2];
+                        long endId = (Long) invocation.getArguments()[3];
+                        if (startId == 5 && endId == 10) {
+                            dataIds.add(6L);
+                        } else if (startId == 15 && endId == 20) {
+                            dataIds.add(18L);
+                        } else if (startId == 21 && endId == 50000020) {
+                            dataIds.add(23L);
+                        }
+                        return dataIds;
+                    }
+                });
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(5, 10));

@@ -49,9 +49,8 @@ public class DatabaseXmlTest {
         if (currentDirectory != null) {
             directoryPath = Paths.get(currentDirectory);
         }
-
-        String currentPath= directoryPath.toString();
-        if (topProjectMarker == null || currentPath==null || currentPath.length() < topProjectMarker.length()) {
+        String currentPath = directoryPath.toString();
+        if (topProjectMarker == null || currentPath == null || currentPath.length() < topProjectMarker.length()) {
             return currentPath;
         }
         String marker = topProjectMarker;
@@ -59,7 +58,7 @@ public class DatabaseXmlTest {
             marker = File.separator + marker;
         }
         int markerPos = currentPath.indexOf(marker);
-        if(markerPos>=0) {
+        if (markerPos >= 0) {
             return currentPath.substring(0, markerPos);
         }
         return currentPath;
@@ -114,4 +113,3 @@ public class DatabaseXmlTest {
         // assertTrue(list.toString(), list.indexOf(t4) < list.indexOf(t3));
     }
 }
-

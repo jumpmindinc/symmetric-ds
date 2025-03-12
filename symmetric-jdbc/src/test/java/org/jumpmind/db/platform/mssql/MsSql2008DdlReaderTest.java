@@ -149,7 +149,6 @@ class MsSql2008DdlReaderTest {
         tableNameResults = testReader.getTableNames(SAMPLE_CATALOG_NAME, SAMPLE_SCHEMA_NAME, null);
         assertEquals(tableNames, tableNameResults);
     }
-    
 
     @ParameterizedTest
     @Disabled

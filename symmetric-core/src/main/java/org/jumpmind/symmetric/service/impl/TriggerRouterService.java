@@ -375,7 +375,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         synchronized (activeTriggerHistories) {
             for (TriggerHistory triggerHistory : activeTriggerHistories) {
                 if ((!triggerHistory.getTriggerId().equals(trigger.getTriggerId()) ||
-                        ((trigger.isSourceTableNameWildCarded() || trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded() || trigger.isSourceTableNameExpanded()) &&
+                        ((trigger.isSourceTableNameWildCarded() || trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded() || trigger
+                                .isSourceTableNameExpanded()) &&
                                 (oldhist == null || triggerHistory.getTriggerHistoryId() != oldhist.getTriggerHistoryId()))) &&
                         ((triggerHistory.getNameForDeleteTrigger() != null && triggerHistory.getNameForDeleteTrigger().equals(triggerName)) ||
                                 (triggerHistory.getNameForInsertTrigger() != null && triggerHistory.getNameForInsertTrigger().equals(triggerName)) ||
