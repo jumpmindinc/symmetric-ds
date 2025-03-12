@@ -39,6 +39,7 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation "com.singlestore:singlestore-jdbc-client:1.0.2"
         testImplementation "net.snowflake:snowflake-jdbc:3.13.34"
         testImplementation "org.duckdb:duckdb_jdbc:1.1.2"
+        testImplementation "com.exasol:exasol-jdbc:25.2.2"
         
         testImplementation "com.amazonaws:aws-java-sdk-core:1.12.719"
         testImplementation "com.amazonaws:aws-java-sdk-redshiftserverless:1.12.719"
