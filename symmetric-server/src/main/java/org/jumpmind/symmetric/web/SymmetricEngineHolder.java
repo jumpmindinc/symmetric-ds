@@ -320,7 +320,7 @@ public class SymmetricEngineHolder {
     public void uninstallEngine(ISymmetricEngine engine) {
         Node node = engine.getNodeService().getCachedIdentity();
         String engineName = engine.getEngineName();
-        File file = PropertiesUtil.findPropertiesFileForEngineWithName(engineName);
+        File file = PropertiesUtil.findPropertiesFileForEngineWithName(engineName, engine.getParameterService().getReplacementValues());
         engine.uninstall();
         engine.destroy();
         if (file != null) {

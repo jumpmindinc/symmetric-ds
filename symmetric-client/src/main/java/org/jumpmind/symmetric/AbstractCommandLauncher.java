@@ -207,7 +207,7 @@ public abstract class AbstractCommandLauncher {
                         line.getOptionValue(OPTION_PROPERTIES_FILE));
             }
         } else if (line.hasOption(OPTION_ENGINE)) {
-            propertiesFile = PropertiesUtil.findPropertiesFileForEngineWithName(line.getOptionValue(OPTION_ENGINE));
+            propertiesFile = PropertiesUtil.findPropertiesFileForEngineWithName(line.getOptionValue(OPTION_ENGINE), null);
             if (propertiesFile == null || (propertiesFile != null && !propertiesFile.exists())) {
                 throw new SymmetricException(
                         "Could not find the properties file for the engine specified: %s",
