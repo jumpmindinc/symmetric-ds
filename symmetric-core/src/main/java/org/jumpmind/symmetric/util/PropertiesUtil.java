@@ -24,7 +24,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
@@ -42,13 +44,30 @@ public class PropertiesUtil {
     }
 
     public static File findPropertiesFileForEngineWithName(String engineName) {
+        return findPropertiesFileForEngineWithName(engineName, null);
+    }
+
+    public static File findPropertiesFileForEngineWithName(String engineName, Map<String, String> replacementValues) {
+        if (replacementValues == null) {
+            replacementValues = new HashMap<String, String>();
+        }
+        boolean isEmptyReplacementValues = replacementValues.isEmpty();
         File[] files = findEnginePropertiesFiles();
         for (int i = 0; i < files.length; i++) {
             File file = files[i];
             Properties properties = new Properties();
             try (FileInputStream is = new FileInputStream(file)) {
                 properties.load(is);
-                if (engineName.equals(properties.getProperty(ParameterConstants.ENGINE_NAME))) {
+                SymmetricUtils.replaceSystemAndEnvironmentVariables(properties);
+                if (isEmptyReplacementValues) {
+                    replacementValues.clear();
+                    replacementValues.put("nodeGroupId", SymmetricUtils.substituteScripts(
+                            properties.getProperty(ParameterConstants.NODE_GROUP_ID), replacementValues));
+                    replacementValues.put("externalId", SymmetricUtils.substituteScripts(
+                            properties.getProperty(ParameterConstants.EXTERNAL_ID), replacementValues));
+                }
+                if (engineName.equals(SymmetricUtils.substituteScripts(
+                        properties.getProperty(ParameterConstants.ENGINE_NAME), replacementValues))) {
                     return file;
                 }
             } catch (IOException ex) {
