@@ -20,7 +20,7 @@ configurations.all {
 }
 
 dependencies {
-    sshAntTask 'org.apache.ant:ant-jsch:1.10.14', 'com.github.mwiede.jsch:0.2.17'
+    sshAntTask 'org.apache.ant:ant-jsch:1.10.15'
 }
 
 allprojects {
