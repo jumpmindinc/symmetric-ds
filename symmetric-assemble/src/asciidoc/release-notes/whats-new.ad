@@ -21,7 +21,7 @@ Users should request loads that either create tables or clear tables and defer c
 will not be present and it can use multiple threads.
 --
 
-== Bulk Extract and Load Improvements
+=== Bulk Extract and Load Improvements
 --
 Bulk extract using native tools is now supported for SQL-Server and SAP (Sybase) ASE using the bcp bulk copy utility.
 Bulk loading using the bcp bulk copy utility is now supported on SAP ASE in addition to SQL-Server.
