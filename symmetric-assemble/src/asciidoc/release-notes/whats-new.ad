@@ -41,6 +41,9 @@ Web console users can now authenticate with single sign-on (SSO) using the OAuth
 identity provider.  A role mapping feature allows the user's role from OIDC to be mapped into a web console role.
 --
 
+=== Exasol Database Support
+Migrate data and replicate changes to Exasol database. Exasol is an in-memory relational database built for high performance analytics. Even though it was designed to run in memory, it persists data to disk following ACID rules and follows SQL query standards. Support for Exasol makes it a compelling data migration target for building a data warehouse.
+
 endif::pro[]
 
 === Channel Improvements
