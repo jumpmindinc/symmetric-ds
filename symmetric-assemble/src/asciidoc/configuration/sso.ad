@@ -62,13 +62,17 @@ IMPORTANT: You must have values for the LDAP URL, Base DN, and Search Attributes
 
 ==== SAML
 
-To configure a <<Users>> authentication on SymmetricDS using SAML, you have to set four <<Parameters>>.
+To configure a <<Users>> authentication on SymmetricDS using SAML, you have to set the following three <<Parameters>>.
 
 console.auth.saml.sp.nameid.format:: Specifies constraints on the name identifier to be used to represent the requested subject during SAML authentication.
 
 console.auth.saml.idp.entityid:: Identifier of the SAML identity provider entity (must be a URI).
 
 console.auth.saml.idp.sso.service.url:: SSO endpoint info of the SAML identity provider. URL target of the identity provider where the service provider will send the authentication request message.
+
+You also must set one of the following two <<Parameters>> so that SymmetricDS can access the identity provider's public x509 certificate.
+
+console.auth.saml.idp.metadata.url:: Metadata endpoint info of the SAML IdP. When set, SymmetricDS will obtain the public x509 certificate(s) from this URL.
 
 console.auth.saml.idp.cert:: Path to the public x509 certificate of the SAML identity provider.
 
@@ -97,12 +101,12 @@ To do this, make sure that the current node is one that you set the parameters f
 
 image::images/sso/saml-authentication.png[]
 
-IMPORTANT: You must have values for all four of the required parameter fields or the test will fail.
+IMPORTANT: You must have values for all three of the required parameter fields as well as the metadata URL or certificate path or else the test will fail.
 
-If you have only specified the first four parameters, the console user's ID must match the name ID returned by the identity provider for authentication to succeed.
+If you did not specify the role group map, then the console user's ID must match the name ID returned by the identity provider for authentication to succeed.
 The console user must also be configured to use SAML authentication.
 
-When configuring SymmetricDS as a service provider, specify the below endpoints in your identity provider's settings. You can obtain the service provider metadata in XML format by visiting the Metadata URL.
+When configuring SymmetricDS as a service provider, specify the below endpoints in your identity provider's settings. You can obtain the service provider metadata in XML format (including the public x509 certificate) by visiting the Service Provider Metadata URL.
 
 |===
 
