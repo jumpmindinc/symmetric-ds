@@ -103,6 +103,8 @@ image::images/sso/saml-authentication.png[]
 
 IMPORTANT: You must have values for all three of the required parameter fields as well as the metadata URL or certificate path or else the test will fail.
 
+If the above parameters are insufficient, it's possible to adjust a wider variety of SAML settings using the `console.auth.saml.properties.file` parameter. This parameter can be set to a path to a file containing properties for the https://github.com/SAML-Toolkits/java-saml?tab=readme-ov-file#properties-file[OneLogin Java SAML Toolkit] which SymmetricDS uses behind the scenes. The values in this file will override any default values built into SymmetricDS or the Toolkit, but not any values set by parameters.
+
 If you did not specify the role group map, then the console user's ID must match the name ID returned by the identity provider for authentication to succeed.
 The console user must also be configured to use SAML authentication.
 
