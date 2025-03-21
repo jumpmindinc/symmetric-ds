@@ -23,22 +23,32 @@ package org.jumpmind.db.platform.ase;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTransaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AseJdbcSqlTransaction extends JdbcSqlTransaction {
+    protected final Logger log = LoggerFactory.getLogger(getClass());
+
     public AseJdbcSqlTransaction(JdbcSqlTemplate sqltemplate) {
         super(sqltemplate);
     }
 
     @Override
     public void allowInsertIntoAutoIncrementColumns(boolean allow, Table table, String quote, String catalogSeparator, String schemaSepartor) {
-        if (table != null && table.getAutoIncrementColumns().length > 0) {
-            if (allow) {
-                execute(String.format("SET IDENTITY_INSERT %s ON",
-                        table.getQualifiedTableName(quote, catalogSeparator, schemaSepartor)));
-            } else {
-                execute(String.format("SET IDENTITY_INSERT %s OFF",
-                        table.getQualifiedTableName(quote, catalogSeparator, schemaSepartor)));
-            }
+        if (table == null) {
+            return;
+        }
+        String fullName = table.getQualifiedTableName(quote, catalogSeparator, schemaSepartor);
+        if (table.getAutoIncrementColumns().length < 1) {
+            log.debug("Skipped IDENTITY_INSERT mode for table={}", fullName);
+            return;
+        }
+        if (allow) {
+            log.debug("Enabled IDENTITY_INSERT for table={}", fullName);
+            execute(String.format("SET IDENTITY_INSERT %s ON", fullName));
+        } else {
+            log.debug("Disabled IDENTITY_INSERT for table={}", fullName);
+            execute(String.format("SET IDENTITY_INSERT %s OFF", fullName));
         }
     }
 }
