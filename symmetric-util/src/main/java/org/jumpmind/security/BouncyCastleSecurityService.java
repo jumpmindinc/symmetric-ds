@@ -99,13 +99,17 @@ public class BouncyCastleSecurityService extends SecurityService {
     /**
      * Bouncy Castle library is needed for signing a public key to generate a certificate
      */
-    protected X509Certificate generateV1Certificate(String host, KeyPair pair) throws Exception {
+    protected X509Certificate generateV1Certificate(String host, KeyPair pair, int lifetimeInDays) throws Exception {
         host = host == null || host.equals("0.0.0.0") ? AppUtils.getHostName() : host;
         String certString = String.format("CN=%s, OU=SymmetricDS, O=JumpMind", host);
         SubjectPublicKeyInfo publicKeyInfo = new BouncyCastleHelper().getInstance(pair.getPublic());
+        if (lifetimeInDays < 1) {
+            log.warn("Invalid lifetime for certificate: {} days. Setting lifetime to 25 years.", lifetimeInDays);
+            lifetimeInDays = 9125;
+        }
         X509v1CertificateBuilder builder = new X509v1CertificateBuilder(new X500Name(certString), BigInteger.valueOf(System.currentTimeMillis()),
-                new Date(System.currentTimeMillis() - 86400000), new Date(System.currentTimeMillis() + 788400000000l), new X500Name(certString),
-                publicKeyInfo);
+                new Date(System.currentTimeMillis() - 86400000), new Date(System.currentTimeMillis() + (lifetimeInDays * 86400000l)),
+                new X500Name(certString), publicKeyInfo);
         AlgorithmIdentifier sigAlgId = new DefaultSignatureAlgorithmIdentifierFinder().find("SHA256WithRSAEncryption");
         AlgorithmIdentifier digAlgId = new DefaultDigestAlgorithmIdentifierFinder().find(sigAlgId);
         ContentSigner signer = new BcRSAContentSignerBuilder(sigAlgId, digAlgId)
@@ -117,22 +121,22 @@ public class BouncyCastleSecurityService extends SecurityService {
     @Override
     public synchronized void installDefaultSslCert(String host) {
         String alias = System.getProperty(SecurityConstants.SYSPROP_KEYSTORE_CERT_ALIAS, SecurityConstants.ALIAS_SYM_PRIVATE_KEY);
-        installDefaultSslCert(host, alias);
+        installDefaultSslCert(host, alias, 9125);
     }
 
     @Override
-    public synchronized void installDefaultSamlSslCert(String host) {
-        installDefaultSslCert(host, SecurityConstants.ALIAS_SAML_PRIVATE_KEY);
+    public synchronized void installDefaultSamlSslCert(String host, int lifetimeInDays) {
+        installDefaultSslCert(host, SecurityConstants.ALIAS_SAML_PRIVATE_KEY, lifetimeInDays);
     }
 
-    private void installDefaultSslCert(String host, String alias) {
+    private void installDefaultSslCert(String host, String alias, int lifetimeInDays) {
         try {
             KeyStore keyStore = getKeyStore();
             KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(getKeyStorePassword().toCharArray());
             Entry entry = keyStore.getEntry(alias, param);
             if (entry == null) {
                 new BouncyCastleHelper().checkProviderInstalled();
-                PrivateKeyEntry privateEntry = createDefaultSslCert(host);
+                PrivateKeyEntry privateEntry = createDefaultSslCert(host, lifetimeInDays);
                 if (alias.equals(SecurityConstants.ALIAS_SAML_PRIVATE_KEY)) {
                     log.info("Installing a default SSL certificate for SAML: {}",
                             ((X509Certificate) privateEntry.getCertificate()).getSubjectX500Principal().getName());
@@ -152,11 +156,15 @@ public class BouncyCastleSecurityService extends SecurityService {
 
     @Override
     public PrivateKeyEntry createDefaultSslCert(String host) {
+        return createDefaultSslCert(host, 9125);
+    }
+
+    private PrivateKeyEntry createDefaultSslCert(String host, int lifetimeInDays) {
         PrivateKeyEntry entry = null;
         new BouncyCastleHelper().checkProviderInstalled();
         try {
             KeyPair pair = generateRSAKeyPair();
-            X509Certificate cert = generateV1Certificate(host, pair);
+            X509Certificate cert = generateV1Certificate(host, pair, lifetimeInDays);
             X509Certificate[] serverChain = new X509Certificate[] { cert };
             entry = new PrivateKeyEntry(pair.getPrivate(), serverChain);
         } catch (RuntimeException e) {
@@ -291,11 +299,19 @@ public class BouncyCastleSecurityService extends SecurityService {
 
     @Override
     public synchronized X509Certificate getCurrentSslCert() {
+        return getCurrentSslCert(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE_CERT_ALIAS, SecurityConstants.ALIAS_SYM_PRIVATE_KEY));
+    }
+
+    @Override
+    public synchronized X509Certificate getCurrentSamlSslCert() {
+        return getCurrentSslCert(SecurityConstants.ALIAS_SAML_PRIVATE_KEY);
+    }
+
+    private synchronized X509Certificate getCurrentSslCert(String alias) {
         X509Certificate cert = null;
         try {
             KeyStore keyStore = getKeyStore();
             KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(getKeyStorePassword().toCharArray());
-            String alias = System.getProperty(SecurityConstants.SYSPROP_KEYSTORE_CERT_ALIAS, SecurityConstants.ALIAS_SYM_PRIVATE_KEY);
             Entry entry = keyStore.getEntry(alias, param);
             if (entry instanceof PrivateKeyEntry) {
                 cert = (X509Certificate) keyStore.getCertificate(alias);

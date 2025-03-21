@@ -38,7 +38,7 @@ public interface ISecurityService {
 
     public void installDefaultSslCert(String host);
 
-    public void installDefaultSamlSslCert(String host);
+    public void installDefaultSamlSslCert(String host, int lifetimeInDays);
 
     public void installSslCert(KeyStore.PrivateKeyEntry entry);
 
@@ -49,6 +49,8 @@ public interface ISecurityService {
     public PrivateKeyEntry createSslCert(byte[] content, String fileType, String alias, String password);
 
     public X509Certificate getCurrentSslCert();
+
+    public X509Certificate getCurrentSamlSslCert();
 
     public String exportTrustedCert(String alias);
 
