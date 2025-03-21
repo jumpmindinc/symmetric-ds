@@ -74,6 +74,10 @@ public final class FormatUtils {
     public final static String WILDCARD_SEPARATOR_ESCAPED = WILDCARD_SEPARATOR + WILDCARD_SEPARATOR;
     public final static String NEGATE_TOKEN_ESCAPED = NEGATE_TOKEN + NEGATE_TOKEN;
     public final static int MAX_CHARS_TO_LOG = 1000;
+    private static final int KILOBYTE = 1024;
+    private static final double KILOBYTE_AS_DOUBLE = KILOBYTE;
+    private static final int MEGABYTE = KILOBYTE * KILOBYTE;
+    private static final int GIGABYTE = KILOBYTE * MEGABYTE;
     private static Pattern pattern = Pattern.compile("\\$\\((.+?)\\)");
     private static boolean isInfamousTurkey = false;
     static {
@@ -156,6 +160,17 @@ public final class FormatUtils {
         } else {
             return String.format(format, arg);
         }
+    }
+
+    public static String formatSize(long bytes) {
+        if (bytes < KILOBYTE) {
+            return bytes + " B";
+        } else if (bytes < MEGABYTE) {
+            return String.format("%.2f KB", bytes / KILOBYTE_AS_DOUBLE);
+        } else if (bytes < GIGABYTE) {
+            return String.format("%.2f MB", bytes / (KILOBYTE_AS_DOUBLE * KILOBYTE));
+        }
+        return String.format("%.2f GB", bytes / (KILOBYTE_AS_DOUBLE * MEGABYTE));
     }
 
     public static boolean toBoolean(String value) {

@@ -107,6 +107,7 @@ import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGroupLink;
 import org.jumpmind.symmetric.service.impl.UpdateService;
 import org.jumpmind.util.AppUtils;
+import org.jumpmind.util.FormatUtils;
 import org.jumpmind.util.LogSummary;
 import org.jumpmind.util.ZipBuilder;
 import org.slf4j.Logger;
@@ -435,7 +436,8 @@ public class SnapshotUtil {
         }
         log.info("Writing runtime stats");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        writeRuntimeStats(engine, tmpDir);
+        File logDir = getOrCreateLogDir();
+        writeRuntimeStats(engine, tmpDir, logDir);
         log.info("Writing job stats");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         writeJobsStats(engine, tmpDir);
@@ -445,16 +447,6 @@ public class SnapshotUtil {
         }
         checkpoint(engine, listener, stepNumber++, totalSteps);
         writeDirectoryStaging(engine, tmpDir);
-        File logDir = LogSummaryAppenderUtils.getLogDir();
-        if (logDir == null || !logDir.exists()) {
-            logDir = new File("logs");
-        }
-        if (!logDir.exists()) {
-            logDir = new File("../logs");
-        }
-        if (!logDir.exists()) {
-            logDir = new File("target");
-        }
         checkpoint(engine, listener, stepNumber++, totalSteps);
         if (logDir.exists()) {
             log.info("Copying log files");
@@ -622,7 +614,7 @@ public class SnapshotUtil {
         }
     }
 
-    protected static void writeRuntimeStats(ISymmetricEngine engine, File tmpDir) {
+    protected static void writeRuntimeStats(ISymmetricEngine engine, File tmpDir, File logDir) {
         try {
             Properties runtimeProperties = new Properties();
             DataSource dataSource = engine.getDatabasePlatform().getDataSource();
@@ -689,6 +681,7 @@ public class SnapshotUtil {
             runtimeProperties.setProperty("jvm.arguments", arguments.toString());
             runtimeProperties.setProperty("jvm.bits", System.getProperty("sun.arch.data.model", System.getProperty("com.ibm.vm.bitmode")));
             runtimeProperties.setProperty("hostname", AppUtils.getHostName());
+            addUsableDiskSpaceProperties(runtimeProperties, engine, tmpDir, logDir);
             runtimeProperties.setProperty("instance.id", engine.getClusterService().getInstanceId());
             runtimeProperties.setProperty("server.id", engine.getClusterService().getServerId());
             try {
@@ -707,6 +700,29 @@ public class SnapshotUtil {
         } catch (Exception e) {
             log.warn("Failed to export runtime-stats information", e);
         }
+    }
+
+    protected static File getOrCreateLogDir() {
+        File logDir = LogSummaryAppenderUtils.getLogDir();
+        if (logDir == null || !logDir.exists()) {
+            logDir = new File("logs");
+        }
+        if (!logDir.exists()) {
+            logDir = new File("../logs");
+        }
+        if (!logDir.exists()) {
+            logDir = new File("target");
+        }
+        return logDir;
+    }
+
+    protected static void addUsableDiskSpaceProperties(Properties properties, ISymmetricEngine engine, File tmpDir, File logDir) {
+        properties.setProperty("log.directory.space.usable",
+                FormatUtils.formatSize(logDir.getUsableSpace()));
+        properties.setProperty("staging.directory.space.usable",
+                FormatUtils.formatSize(engine.getStagingManager().getStagingDirectory().getUsableSpace()));
+        properties.setProperty("temp.directory.space.usable",
+                FormatUtils.formatSize(tmpDir.getUsableSpace()));
     }
 
     protected static void writeProperties(Properties properties, File tmpDir, String fileName) {

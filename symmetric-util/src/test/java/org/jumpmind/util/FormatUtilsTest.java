@@ -20,10 +20,13 @@
  */
 package org.jumpmind.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.*;
 import org.junit.jupiter.api.Test;
 
 public class FormatUtilsTest {
@@ -73,5 +76,17 @@ public class FormatUtilsTest {
         assertTrue(FormatUtils.isWildCardMatch("item_price", "*item*"));
         assertTrue(FormatUtils.isWildCardMatch("item_price", "item*"));
         assertFalse(FormatUtils.isWildCardMatch("c$table3", "*$table"));
+    }
+
+    @Test
+    public void testFormatSize() {
+        assertEquals("1.00 KB", FormatUtils.formatSize(1024));
+        assertEquals("1.00 MB", FormatUtils.formatSize(1024 * 1024));
+        assertEquals("1.00 GB", FormatUtils.formatSize(1024 * 1024 * 1024));
+        assertEquals("1024.00 GB", FormatUtils.formatSize(1024L * 1024 * 1024 * 1024));
+        assertEquals("1070596096.00 GB", FormatUtils.formatSize(1024L * 1024 * 1024 * 1024 * 1024 * 1021));
+        assertEquals("0 B", FormatUtils.formatSize(0));
+        assertEquals("-1234567890 B", FormatUtils.formatSize(-1234567890L));
+        assertEquals("1.15 GB", FormatUtils.formatSize(1234567890L));
     }
 }
