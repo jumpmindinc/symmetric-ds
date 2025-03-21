@@ -107,7 +107,6 @@ import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGroupLink;
 import org.jumpmind.symmetric.service.impl.UpdateService;
 import org.jumpmind.util.AppUtils;
-import org.jumpmind.util.FormatUtils;
 import org.jumpmind.util.LogSummary;
 import org.jumpmind.util.ZipBuilder;
 import org.slf4j.Logger;
@@ -718,11 +717,11 @@ public class SnapshotUtil {
 
     protected static void addUsableDiskSpaceProperties(Properties properties, ISymmetricEngine engine, File tmpDir, File logDir) {
         properties.setProperty("log.directory.space.usable",
-                FormatUtils.formatSize(logDir.getUsableSpace()));
+                FileUtils.byteCountToDisplaySize(logDir.getUsableSpace()));
         properties.setProperty("staging.directory.space.usable",
-                FormatUtils.formatSize(engine.getStagingManager().getStagingDirectory().getUsableSpace()));
+                FileUtils.byteCountToDisplaySize(engine.getStagingManager().getStagingDirectory().getUsableSpace()));
         properties.setProperty("temp.directory.space.usable",
-                FormatUtils.formatSize(tmpDir.getUsableSpace()));
+                FileUtils.byteCountToDisplaySize(tmpDir.getUsableSpace()));
     }
 
     protected static void writeProperties(Properties properties, File tmpDir, String fileName) {
