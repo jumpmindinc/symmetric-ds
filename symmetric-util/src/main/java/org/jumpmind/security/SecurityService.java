@@ -209,7 +209,7 @@ public class SecurityService implements ISecurityService {
     }
 
     @Override
-    public void installDefaultSamlSslCert(String host) {
+    public void installDefaultSamlSslCert(String host, int lifetimeInDays) {
     }
 
     @Override
@@ -229,6 +229,11 @@ public class SecurityService implements ISecurityService {
 
     @Override
     public X509Certificate getCurrentSslCert() {
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public X509Certificate getCurrentSamlSslCert() {
         throw new NotImplementedException();
     }
 
