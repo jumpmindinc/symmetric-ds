@@ -105,7 +105,7 @@ public class BouncyCastleSecurityService extends SecurityService {
         SubjectPublicKeyInfo publicKeyInfo = new BouncyCastleHelper().getInstance(pair.getPublic());
         if (lifetimeInDays < 1) {
             log.warn("Invalid lifetime for certificate: {} days. Setting lifetime to 25 years.", lifetimeInDays);
-            lifetimeInDays = 9125;
+            lifetimeInDays = SecurityConstants.DEFAULT_CERT_LIFETIME_IN_DAYS;
         }
         X509v1CertificateBuilder builder = new X509v1CertificateBuilder(new X500Name(certString), BigInteger.valueOf(System.currentTimeMillis()),
                 new Date(System.currentTimeMillis() - 86400000), new Date(System.currentTimeMillis() + (lifetimeInDays * 86400000l)),
@@ -121,7 +121,7 @@ public class BouncyCastleSecurityService extends SecurityService {
     @Override
     public synchronized void installDefaultSslCert(String host) {
         String alias = System.getProperty(SecurityConstants.SYSPROP_KEYSTORE_CERT_ALIAS, SecurityConstants.ALIAS_SYM_PRIVATE_KEY);
-        installDefaultSslCert(host, alias, 9125);
+        installDefaultSslCert(host, alias, SecurityConstants.DEFAULT_CERT_LIFETIME_IN_DAYS);
     }
 
     @Override
@@ -156,7 +156,7 @@ public class BouncyCastleSecurityService extends SecurityService {
 
     @Override
     public PrivateKeyEntry createDefaultSslCert(String host) {
-        return createDefaultSslCert(host, 9125);
+        return createDefaultSslCert(host, SecurityConstants.DEFAULT_CERT_LIFETIME_IN_DAYS);
     }
 
     private PrivateKeyEntry createDefaultSslCert(String host, int lifetimeInDays) {
