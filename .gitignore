@@ -1,7 +1,22 @@
-/.DS_Store
 /.project
 *.iml
 .clover/*
 /.idea/*
 *.ipr
 *.iws
+
+# Visual Studio Code related temporary files and personal preferences
+.vscode-test
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.vsix
+
+# Apple file system temporary files and personal preferences
+.DS_Store
+.AppleDouble
+.LSOverride
