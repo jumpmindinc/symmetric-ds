@@ -246,53 +246,55 @@ public class SymmetricEngineHolder {
             String registrationUrl = properties.getProperty(ParameterConstants.REGISTRATION_URL);
             if (StringUtils.isNotBlank(registrationUrl)) {
                 Collection<ServerSymmetricEngine> all = getEngines().values();
-                for (ISymmetricEngine currentEngine : all) {
-                    if (currentEngine.getParameterService().getSyncUrl().equals(registrationUrl)) {
-                        String serverNodeGroupId = currentEngine.getParameterService().getNodeGroupId();
-                        String clientNodeGroupId = properties.getProperty(ParameterConstants.NODE_GROUP_ID);
-                        String externalId = properties.getProperty(ParameterConstants.EXTERNAL_ID);
-                        IConfigurationService configurationService = currentEngine.getConfigurationService();
-                        ITriggerRouterService triggerRouterService = currentEngine.getTriggerRouterService();
-                        List<NodeGroup> groups = configurationService.getNodeGroups();
-                        boolean foundGroup = false;
-                        for (NodeGroup nodeGroup : groups) {
-                            if (nodeGroup.getNodeGroupId().equals(clientNodeGroupId)) {
-                                foundGroup = true;
-                            }
-                        }
-                        if (!foundGroup) {
-                            configurationService.saveNodeGroup(new NodeGroup(clientNodeGroupId));
-                            NodeGroupLink serverToClientLink = new NodeGroupLink(serverNodeGroupId, clientNodeGroupId, NodeGroupLinkAction.W);
-                            configurationService.saveNodeGroupLink(serverToClientLink);
-                            NodeGroupLink clientToServerLink = new NodeGroupLink(clientNodeGroupId, serverNodeGroupId, NodeGroupLinkAction.P);
-                            configurationService.saveNodeGroupLink(clientToServerLink);
-                            Router serverToClientRouter = new Router("", serverToClientLink);
-                            serverToClientRouter.setRouterId(serverToClientRouter.createDefaultName());
-                            Router clientToServerRouter = new Router("", clientToServerLink);
-                            clientToServerRouter.setRouterId(clientToServerRouter.createDefaultName());
-                            triggerRouterService.saveRouter(serverToClientRouter);
-                            triggerRouterService.saveRouter(clientToServerRouter);
-                            triggerRouterService.syncTriggers();
-                        } else {
-                            boolean foundLink = false;
-                            List<NodeGroupLink> links = configurationService.getNodeGroupLinksFor(serverNodeGroupId, false);
-                            for (NodeGroupLink nodeGroupLink : links) {
-                                if (nodeGroupLink.getTargetNodeGroupId().equals(clientNodeGroupId)) {
-                                    foundLink = true;
+                synchronized (getEngines()) {
+                    for (ISymmetricEngine currentEngine : all) {
+                        if (currentEngine.getParameterService().getSyncUrl().equals(registrationUrl)) {
+                            String serverNodeGroupId = currentEngine.getParameterService().getNodeGroupId();
+                            String clientNodeGroupId = properties.getProperty(ParameterConstants.NODE_GROUP_ID);
+                            String externalId = properties.getProperty(ParameterConstants.EXTERNAL_ID);
+                            IConfigurationService configurationService = currentEngine.getConfigurationService();
+                            ITriggerRouterService triggerRouterService = currentEngine.getTriggerRouterService();
+                            List<NodeGroup> groups = configurationService.getNodeGroups();
+                            boolean foundGroup = false;
+                            for (NodeGroup nodeGroup : groups) {
+                                if (nodeGroup.getNodeGroupId().equals(clientNodeGroupId)) {
+                                    foundGroup = true;
                                 }
                             }
-                            if (!foundLink) {
-                                configurationService.saveNodeGroupLink(new NodeGroupLink(serverNodeGroupId, clientNodeGroupId, NodeGroupLinkAction.W));
+                            if (!foundGroup) {
+                                configurationService.saveNodeGroup(new NodeGroup(clientNodeGroupId));
+                                NodeGroupLink serverToClientLink = new NodeGroupLink(serverNodeGroupId, clientNodeGroupId, NodeGroupLinkAction.W);
+                                configurationService.saveNodeGroupLink(serverToClientLink);
+                                NodeGroupLink clientToServerLink = new NodeGroupLink(clientNodeGroupId, serverNodeGroupId, NodeGroupLinkAction.P);
+                                configurationService.saveNodeGroupLink(clientToServerLink);
+                                Router serverToClientRouter = new Router("", serverToClientLink);
+                                serverToClientRouter.setRouterId(serverToClientRouter.createDefaultName());
+                                Router clientToServerRouter = new Router("", clientToServerLink);
+                                clientToServerRouter.setRouterId(clientToServerRouter.createDefaultName());
+                                triggerRouterService.saveRouter(serverToClientRouter);
+                                triggerRouterService.saveRouter(clientToServerRouter);
                                 triggerRouterService.syncTriggers();
+                            } else {
+                                boolean foundLink = false;
+                                List<NodeGroupLink> links = configurationService.getNodeGroupLinksFor(serverNodeGroupId, false);
+                                for (NodeGroupLink nodeGroupLink : links) {
+                                    if (nodeGroupLink.getTargetNodeGroupId().equals(clientNodeGroupId)) {
+                                        foundLink = true;
+                                    }
+                                }
+                                if (!foundLink) {
+                                    configurationService.saveNodeGroupLink(new NodeGroupLink(serverNodeGroupId, clientNodeGroupId, NodeGroupLinkAction.W));
+                                    triggerRouterService.syncTriggers();
+                                }
                             }
-                        }
-                        IRegistrationService registrationService = currentEngine.getRegistrationService();
-                        if (!registrationService.isAutoRegistration() && !registrationService.isRegistrationOpen(clientNodeGroupId, externalId)) {
-                            Node node = new Node(properties);
-                            if (TableConstants.getTables("").contains(TableConstants.SYM_CONSOLE_USER)) {
-                                node.setDeploymentType(Constants.DEPLOYMENT_TYPE_PROFESSIONAL);
+                            IRegistrationService registrationService = currentEngine.getRegistrationService();
+                            if (!registrationService.isAutoRegistration() && !registrationService.isRegistrationOpen(clientNodeGroupId, externalId)) {
+                                Node node = new Node(properties);
+                                if (TableConstants.getTables("").contains(TableConstants.SYM_CONSOLE_USER)) {
+                                    node.setDeploymentType(Constants.DEPLOYMENT_TYPE_PROFESSIONAL);
+                                }
+                                registrationService.openRegistration(node);
                             }
-                            registrationService.openRegistration(node);
                         }
                     }
                 }
