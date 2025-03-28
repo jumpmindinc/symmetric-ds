@@ -26,9 +26,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
@@ -36,6 +40,7 @@ import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.Function;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.PlatformFunction;
 import org.jumpmind.db.model.PlatformTrigger;
@@ -445,5 +450,110 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
             // TODO Log something here once in a while
         }
         return platformTrigger;
+    }
+
+    @Override
+    protected Collection<IIndex> readIndices(Connection connection, DatabaseMetaDataWrapper metaData,
+            String tableName) throws SQLException {
+        Collection<IIndex> indices = super.readIndices(connection, metaData, tableName);
+        if (metaData.getMetaData().getDatabaseMajorVersion() < 13
+                || indices == null || indices.isEmpty()) {
+            return indices;
+        }
+        String sql = "SELECT\n"
+                + "    i.relname AS INDEX_NAME,\n"
+                + "    ix.indnkeyatts AS NUM_OF_INDEX_COLUMNS,\n"
+                + "    ix.indkey AS ALL_INDEX_COLUMNS,\n"
+                + "    array_to_string(\n"
+                + "        array(\n"
+                + "            SELECT a.attname\n"
+                + "            FROM pg_attribute a\n"
+                + "            WHERE a.attrelid = t.oid\n"
+                + "            AND a.attnum > 0\n"
+                + "            ORDER BY a.attnum\n"
+                + "        ), ', ') AS COLUMN_NAMES\n"
+                + "FROM\n"
+                + "    pg_class t\n"
+                + "JOIN\n"
+                + "    pg_index ix ON t.oid = ix.indrelid\n"
+                + "JOIN\n"
+                + "    pg_class i ON i.oid = ix.indexrelid\n"
+                + "LEFT JOIN\n"
+                + "    pg_constraint c ON (ix.indrelid = c.conrelid\n"
+                + "                        AND ix.indexrelid = c.conindid\n"
+                + "                        AND c.contype IN ('p', 'u', 'x'))\n"
+                + "WHERE\n"
+                + "    t.relkind = 'r'\n"
+                + "    AND t.relname = ?\n"
+                + "    AND ix.indnkeyatts > 0\n"
+                + "    AND array_length(ix.indkey, 1) > ix.indnkeyatts\n"
+                + "ORDER BY\n"
+                + "    i.relname";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, tableName);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    readIndex(indices, rs);
+                }
+            }
+        }
+        return indices;
+    }
+
+    protected void readIndex(Collection<IIndex> indices, ResultSet rs) throws SQLException {
+        IIndex index = findIndex(rs.getString("INDEX_NAME"), indices);
+        int numOfIndexColumns = rs.getInt("NUM_OF_INDEX_COLUMNS"); // Does not contain INCLUDE columns
+        String[] allIndexColumns = rs.getString("ALL_INDEX_COLUMNS").trim().split(" ");
+        String[] columnNames = rs.getString("COLUMN_NAMES").split(", ");
+        List<IndexColumn> indexColumns = getIndexColumnsFromSql(numOfIndexColumns, allIndexColumns, columnNames);
+        List<IndexColumn> includeIndexColumns = getIncludeIndexColumnsFromSql(numOfIndexColumns, allIndexColumns, columnNames);
+        removeExistingIndexColumns(index, indexColumns, includeIndexColumns);
+        includeIndexColumns.forEach(includeIndexColumn -> {
+            index.addIncludedColumn(includeIndexColumn);
+        });
+    }
+
+    protected void removeExistingIndexColumns(IIndex index, List<IndexColumn> indexColumns, List<IndexColumn> includeIndexColumns) {
+        List<IndexColumn> filterExistingColumns = includeIndexColumns.stream()
+                .filter(includeColumn -> {
+                    return !indexColumns.contains(includeColumn);
+                })
+                .collect(Collectors.toList());
+        filterExistingColumns.forEach(filterColumn -> {
+            index.removeColumn(
+                    findIndexColumn(filterColumn.getName(), index.getColumns()));
+        });
+    }
+
+    protected List<IndexColumn> getIncludeIndexColumnsFromSql(int numOfIndexColumns, String[] allIndexColumns, String[] columnNames) {
+        return IntStream.range(numOfIndexColumns, allIndexColumns.length)
+                .mapToObj(j -> {
+                    int columnPosition = Integer.parseInt(allIndexColumns[j]);
+                    return new IndexColumn(columnNames[columnPosition - 1]);
+                })
+                .collect(Collectors.toList());
+    }
+
+    protected List<IndexColumn> getIndexColumnsFromSql(int numOfIndexColumns, String[] allIndexColumns, String[] columnNames) {
+        return IntStream.range(0, numOfIndexColumns)
+                .mapToObj(i -> {
+                    int columnPosition = Integer.parseInt(allIndexColumns[i]);
+                    return new IndexColumn(columnNames[columnPosition - 1]);
+                })
+                .collect(Collectors.toList());
+    }
+
+    protected IndexColumn findIndexColumn(String columnName, IndexColumn[] indexColumns) {
+        return Arrays.stream(indexColumns)
+                .filter(indexColumn -> StringUtils.equals(indexColumn.getName(), columnName))
+                .findFirst()
+                .orElse(null);
+    }
+
+    protected IIndex findIndex(String indexName, Collection<IIndex> indices) {
+        return indices.stream()
+                .filter(index -> StringUtils.equals(index.getName(), indexName))
+                .findFirst()
+                .orElse(null);
     }
 }
