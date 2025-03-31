@@ -49,6 +49,7 @@ public class SequenceService extends AbstractService implements ISequenceService
                 createSqlReplacementTokens()));
     }
 
+    @Override
     public void init() {
         Map<String, Sequence> sequences = getAll();
         if (sequences.get(Constants.SEQUENCE_OUTGOING_BATCH_LOAD_ID) == null) {
@@ -85,6 +86,7 @@ public class SequenceService extends AbstractService implements ISequenceService
         }
     }
 
+    @Override
     public synchronized long nextVal(String name) {
         if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) && getSequenceDefinition(name).getCacheSize() > 0) {
             return nextValFromCache(null, name);
@@ -92,6 +94,7 @@ public class SequenceService extends AbstractService implements ISequenceService
         return nextValFromDatabase(name, 1);
     }
 
+    @Override
     public synchronized long nextVal(ISqlTransaction transaction, final String name) {
         if (transaction != null) {
             transaction.addSqlTransactionListener(new SqlTransactionListenerAdapter() {
@@ -124,6 +127,7 @@ public class SequenceService extends AbstractService implements ISequenceService
 
     protected long nextValFromDatabase(final String name, long size) {
         return new DoTransaction<Long>() {
+            @Override
             public Long execute(ISqlTransaction transaction) {
                 return nextValFromDatabase(transaction, name, size);
             }
@@ -133,20 +137,30 @@ public class SequenceService extends AbstractService implements ISequenceService
     protected long nextValFromDatabase(ISqlTransaction transaction, String name, long size) {
         if (transaction == null) {
             return nextValFromDatabase(name, size);
-        } else {
-            long sequenceTimeoutInMs = parameterService.getLong(
-                    ParameterConstants.SEQUENCE_TIMEOUT_MS, 5000);
-            long ts = System.currentTimeMillis();
-            do {
+        }
+        long sequenceTimeoutInMs = parameterService.getLong(ParameterConstants.SEQUENCE_TIMEOUT_MS, 5000);
+        long ts = System.currentTimeMillis();
+        int attemptNo = 0;
+        do {
+            attemptNo++;
+            try {
                 long nextVal = tryToGetNextVal(transaction, name, size);
                 if (nextVal > 0) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Produced the next value for sequence={}, attemptNo={}, value={}", name, attemptNo, nextVal);
+                    }
                     return nextVal;
                 }
-            } while (System.currentTimeMillis() - sequenceTimeoutInMs < ts);
-            throw new IllegalStateException(String.format(
-                    "Timed out after %d ms trying to get the next val for %s",
-                    System.currentTimeMillis() - ts, name));
-        }
+            } catch (Exception ex) {
+                if (System.currentTimeMillis() - sequenceTimeoutInMs < ts) {
+                    log.info("Delay in producing the next value for sequence={}, attemptNo={}, details={}", name, attemptNo, ex.getMessage());
+                } else {
+                    log.error("Failed to produce the next value for sequence={}, attemptNo={}, details={}", name, attemptNo, ex.getMessage());
+                }
+            }
+        } while (System.currentTimeMillis() - sequenceTimeoutInMs < ts);
+        throw new IllegalStateException(String.format("Timed out after %d ms trying to produce the next value for sequence=%s, attemptNo=%d",
+                System.currentTimeMillis() - ts, name, attemptNo));
     }
 
     protected long tryToGetNextVal(ISqlTransaction transaction, String name, long size) {
@@ -176,11 +190,12 @@ public class SequenceService extends AbstractService implements ISequenceService
             range = new CachedRange(nextVal, endVal, sequence.getIncrementBy());
             nextVal = endVal;
         }
-        int updateCount = transaction.prepareAndExecute(getSql("updateCurrentValueSql"), nextVal,
-                new Date(), name, currVal);
+        int updateCount = transaction.prepareAndExecute(getSql("updateCurrentValueSql"), nextVal, new Date(), name, currVal);
         if (updateCount != 1) {
-            nextVal = -1;
-        } else if (range != null) {
+            return -1;
+        }
+        transaction.commit();
+        if (range != null) {
             sequenceCache.put(name, range);
             nextVal = range.getCurrentValue();
         }
@@ -197,6 +212,7 @@ public class SequenceService extends AbstractService implements ISequenceService
      *            Number of sequence numbers to obtain
      * @return Starting sequence number for the entire range that was obtained
      */
+    @Override
     public synchronized long nextRange(ISqlTransaction transaction, String name, long size) {
         Sequence sequence = getSequenceDefinition(name);
         if (size <= 0) {
@@ -243,6 +259,7 @@ public class SequenceService extends AbstractService implements ISequenceService
         return startingValue;
     }
 
+    @Override
     public synchronized long nextRange(String name, long size) {
         return nextRange(null, name, size);
     }
@@ -253,6 +270,7 @@ public class SequenceService extends AbstractService implements ISequenceService
             return sequence;
         }
         return new DoTransaction<Sequence>() {
+            @Override
             public Sequence execute(ISqlTransaction transaction) {
                 return getSequenceDefinition(transaction, name);
             }
@@ -274,6 +292,7 @@ public class SequenceService extends AbstractService implements ISequenceService
         return sequence;
     }
 
+    @Override
     public synchronized long currVal(ISqlTransaction transaction, String name) {
         if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
             CachedRange range = sequenceCache.get(name);
@@ -284,6 +303,7 @@ public class SequenceService extends AbstractService implements ISequenceService
         return transaction.queryForLong(getSql("getCurrentValueSql"), name);
     }
 
+    @Override
     public synchronized long currVal(final String name) {
         if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
             CachedRange range = sequenceCache.get(name);
@@ -292,12 +312,14 @@ public class SequenceService extends AbstractService implements ISequenceService
             }
         }
         return new DoTransaction<Long>() {
+            @Override
             public Long execute(ISqlTransaction transaction) {
                 return currVal(transaction, name);
             }
         }.execute();
     }
 
+    @Override
     public void create(Sequence sequence) {
         sqlTemplate.update(getSql("insertSequenceSql"), sequence.getSequenceName(), sequence.getCurrentValue(),
                 sequence.getIncrementBy(), sequence.getMinValue(), sequence.getMaxValue(), sequence.isCycle() ? 1 : 0,
@@ -377,6 +399,7 @@ public class SequenceService extends AbstractService implements ISequenceService
     }
 
     static class SequenceRowMapper implements ISqlRowMapper<Sequence> {
+        @Override
         public Sequence mapRow(Row rs) {
             Sequence sequence = new Sequence();
             sequence.setCreateTime(rs.getDateTime("create_time"));
