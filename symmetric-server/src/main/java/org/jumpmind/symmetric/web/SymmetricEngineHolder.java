@@ -25,6 +25,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -245,7 +246,7 @@ public class SymmetricEngineHolder {
         try {
             String registrationUrl = properties.getProperty(ParameterConstants.REGISTRATION_URL);
             if (StringUtils.isNotBlank(registrationUrl)) {
-                Collection<ServerSymmetricEngine> all = getEngines().values();
+                Collection<ServerSymmetricEngine> all = new ArrayList<ServerSymmetricEngine>(getEngines().values());
                 for (ISymmetricEngine currentEngine : all) {
                     if (currentEngine.getParameterService().getSyncUrl().equals(registrationUrl)) {
                         String serverNodeGroupId = currentEngine.getParameterService().getNodeGroupId();
