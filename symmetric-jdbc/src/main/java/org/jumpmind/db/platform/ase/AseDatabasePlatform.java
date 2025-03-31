@@ -21,6 +21,7 @@
 package org.jumpmind.db.platform.ase;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 
 /*
@@ -170,10 +171,13 @@ public class AseDatabasePlatform extends AbstractJdbcDatabasePlatform {
             if (settings.isRightTrimCharValues()) {
                 stringValue = StringUtils.stripEnd(stringValue, null);
             }
-            if (fitToColumn && size > 0 && stringValue.length() > size) {
+            if (fitToColumn && size > 0 && stringValue != null && stringValue.length() > size) {
                 stringValue = stringValue.substring(0, size);
             }
             objectValue = stringValue;
+            if (stringValue != null && typeName.equalsIgnoreCase("unitext")) {
+                objectValue = stringValue.getBytes(StandardCharsets.UTF_16LE);
+            }
             return objectValue;
         } else {
             return super.getObjectValue(value, column, encoding, useVariableDates, fitToColumn);
