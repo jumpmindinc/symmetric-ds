@@ -51,6 +51,7 @@ import org.jumpmind.db.model.Trigger.TriggerType;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
 import org.jumpmind.db.platform.DatabaseMetaDataWrapper;
+import org.jumpmind.db.platform.DdlException;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
@@ -496,6 +497,9 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
                     readIndex(indices, rs);
                 }
             }
+        } catch (SQLException ex) {
+            log.error("Failed to get index metadata for table {} due to {}.", tableName, ex.getMessage());
+            throw new DdlException(ex);
         }
         return indices;
     }
