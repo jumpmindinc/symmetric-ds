@@ -5,3 +5,14 @@
 /.idea/*
 *.ipr
 *.iws
+
+# VSCode IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.vscode-test
+.history/
+*.vsix
