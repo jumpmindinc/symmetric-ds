@@ -243,6 +243,7 @@ abstract public class AbstractService implements IService {
             FilterOption option = criterion.getOption();
             String optionSql = option.toSql();
             String prefix = null;
+            boolean checkErrorFlag = false;
             switch (criterion.getPropertyId()) {
                 case "nodeId":
                     prefix = "node_id " + optionSql;
@@ -251,7 +252,9 @@ abstract public class AbstractService implements IService {
                     prefix = "batch_id " + optionSql;
                     break;
                 case "status":
-                    prefix = "status " + optionSql;
+                    checkErrorFlag = (option == FilterOption.EQUALS || option == FilterOption.IN_LIST)
+                            && criterion.getValues().contains(Status.ER.toString());
+                    prefix = (checkErrorFlag ? "(error_flag = 1 or " : "") + "status " + optionSql;
                     break;
                 case "channelId":
                     prefix = "channel_id " + optionSql;
@@ -273,6 +276,9 @@ abstract public class AbstractService implements IService {
                     if (option == FilterOption.BETWEEN) {
                         where.append(" and :" + id++);
                     }
+                }
+                if (checkErrorFlag) {
+                    where.append(")");
                 }
             }
         }

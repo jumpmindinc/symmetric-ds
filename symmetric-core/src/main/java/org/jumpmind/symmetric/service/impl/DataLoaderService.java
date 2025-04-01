@@ -29,6 +29,7 @@ import static org.jumpmind.symmetric.model.ProcessType.PUSH_HANDLER_LOAD;
 import static org.jumpmind.symmetric.model.ProcessType.PUSH_HANDLER_TRANSFER;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -704,6 +705,8 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                     StringUtils.isNotBlank(ex.getMessage()) ? ": " + ex.getMessage() : "");
         } else if (ex instanceof StagingLowFreeSpace) {
             log.error("Loading is disabled because disk is almost full: {}", ex.getMessage());
+        } else if (ex instanceof FileNotFoundException && parameterService.is(ParameterConstants.STREAM_TO_FILE_ENABLED)) {
+            log.error("Cannot write to staging directory, check file permissions.", ex);
         } else if (!(ex instanceof ConflictException) && !(ex instanceof SqlException) && !(ex instanceof CancellationException)) {
             log.error("Failed to process incoming batch from node '" + sourceNodeId + "'", ex);
         } else {
