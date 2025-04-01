@@ -61,6 +61,36 @@ import org.jumpmind.db.sql.Row;
  * Reads a database model from a PostgreSql database.
  */
 public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
+    private String includeColumnsQuery = "SELECT\n"
+            + "    i.relname AS INDEX_NAME,\n"
+            + "    ix.indnkeyatts AS NUM_OF_INDEX_COLUMNS,\n"
+            + "    ix.indkey AS ALL_INDEX_COLUMNS,\n"
+            + "    array_to_string(\n"
+            + "        array(\n"
+            + "            SELECT a.attname\n"
+            + "            FROM pg_attribute a\n"
+            + "            WHERE a.attrelid = t.oid\n"
+            + "            AND a.attnum > 0\n"
+            + "            ORDER BY a.attnum\n"
+            + "        ), ', ') AS COLUMN_NAMES\n"
+            + "FROM\n"
+            + "    pg_class t\n"
+            + "JOIN\n"
+            + "    pg_index ix ON t.oid = ix.indrelid\n"
+            + "JOIN\n"
+            + "    pg_class i ON i.oid = ix.indexrelid\n"
+            + "LEFT JOIN\n"
+            + "    pg_constraint c ON (ix.indrelid = c.conrelid\n"
+            + "                        AND ix.indexrelid = c.conindid\n"
+            + "                        AND c.contype IN ('p', 'u', 'x'))\n"
+            + "WHERE\n"
+            + "    t.relkind = 'r'\n"
+            + "    AND t.relname = ?\n"
+            + "    AND ix.indnkeyatts > 0\n"
+            + "    AND array_length(ix.indkey, 1) > ix.indnkeyatts\n"
+            + "ORDER BY\n"
+            + "    i.relname";
+
     public PostgreSqlDdlReader(IDatabasePlatform platform) {
         super(platform);
         setDefaultCatalogPattern(null);
@@ -461,36 +491,7 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
                 || indices == null || indices.isEmpty()) {
             return indices;
         }
-        String sql = "SELECT\n"
-                + "    i.relname AS INDEX_NAME,\n"
-                + "    ix.indnkeyatts AS NUM_OF_INDEX_COLUMNS,\n"
-                + "    ix.indkey AS ALL_INDEX_COLUMNS,\n"
-                + "    array_to_string(\n"
-                + "        array(\n"
-                + "            SELECT a.attname\n"
-                + "            FROM pg_attribute a\n"
-                + "            WHERE a.attrelid = t.oid\n"
-                + "            AND a.attnum > 0\n"
-                + "            ORDER BY a.attnum\n"
-                + "        ), ', ') AS COLUMN_NAMES\n"
-                + "FROM\n"
-                + "    pg_class t\n"
-                + "JOIN\n"
-                + "    pg_index ix ON t.oid = ix.indrelid\n"
-                + "JOIN\n"
-                + "    pg_class i ON i.oid = ix.indexrelid\n"
-                + "LEFT JOIN\n"
-                + "    pg_constraint c ON (ix.indrelid = c.conrelid\n"
-                + "                        AND ix.indexrelid = c.conindid\n"
-                + "                        AND c.contype IN ('p', 'u', 'x'))\n"
-                + "WHERE\n"
-                + "    t.relkind = 'r'\n"
-                + "    AND t.relname = ?\n"
-                + "    AND ix.indnkeyatts > 0\n"
-                + "    AND array_length(ix.indkey, 1) > ix.indnkeyatts\n"
-                + "ORDER BY\n"
-                + "    i.relname";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (PreparedStatement ps = connection.prepareStatement(includeColumnsQuery)) {
             ps.setString(1, tableName);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
