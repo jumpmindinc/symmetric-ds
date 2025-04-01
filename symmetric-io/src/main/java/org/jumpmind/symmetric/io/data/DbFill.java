@@ -433,7 +433,7 @@ public class DbFill {
                 for (int i = 0; i < numRowsToGenerate; i++) {
                     for (Table table : orderedTables) {
                         if (table.hasAutoIncrementColumn()) {
-                            log.info("Turning on identity insert for table " + table.getName());
+                            log.debug("Turning on identity insert for table " + table.getName());
                             tran.allowInsertIntoAutoIncrementColumns(true, table, quote, catalogSeparator, schemaSeparator);
                         }
                         int dmlType = INSERT;
@@ -864,19 +864,14 @@ public class DbFill {
         } else if (type == Types.FLOAT) {
             objectValue = randomFloat();
         } else if (type == Types.DOUBLE) {
-            objectValue = randomDouble();
-            if (StringUtils.containsIgnoreCase(column.getJdbcTypeName(), "money")) {
-                BigDecimal bd = BigDecimal.valueOf((Double) objectValue);
-                bd = bd.setScale(2, RoundingMode.HALF_UP);
-                objectValue = bd.toString();
-            }
+            objectValue = checkForMoney(column, randomDouble());
         } else if (type == Types.TINYINT) {
             objectValue = randomTinyInt();
         } else if (type == Types.NUMERIC || type == Types.DECIMAL
                 || type == Types.REAL) {
             // big decimal is very slow if too big
             int size = column.getSizeAsInt() > 32 ? 32 : column.getSizeAsInt();
-            objectValue = randomBigDecimal(size, column.getScale());
+            objectValue = checkForMoney(column, randomBigDecimal(size, column.getScale()));
         } else if (type == Types.BOOLEAN || type == Types.BIT) {
             objectValue = randomBoolean();
         } else if (type == Types.BLOB || type == Types.LONGVARBINARY || type == Types.BINARY
@@ -921,6 +916,24 @@ public class DbFill {
             if ("UUID".equalsIgnoreCase(column.getJdbcTypeName())) {
                 objectValue = randomUUID();
             }
+        }
+        return objectValue;
+    }
+
+    private Object checkForMoney(Column column, Object objectValue) {
+        if (StringUtils.containsIgnoreCase(column.getJdbcTypeName(), "money")) {
+            BigDecimal bd;
+            if (objectValue instanceof BigDecimal) {
+                bd = ((BigDecimal) objectValue).abs();
+            } else {
+                bd = BigDecimal.valueOf((Double) objectValue);
+            }
+            int wholeDigits = bd.precision() - bd.scale();
+            if ((StringUtils.containsIgnoreCase(column.getJdbcTypeName(), "smallmoney") && wholeDigits > 5) || wholeDigits > 14) {
+                bd = bd.divide(BigDecimal.TEN);
+            }
+            bd = bd.setScale(2, RoundingMode.HALF_UP);
+            objectValue = bd.toString();
         }
         return objectValue;
     }
