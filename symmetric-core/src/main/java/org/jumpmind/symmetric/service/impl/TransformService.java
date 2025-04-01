@@ -265,37 +265,6 @@ public class TransformService extends AbstractService implements ITransformServi
 
     public List<TransformTableNodeGroupLink> getConfigExtractTransforms(NodeGroupLink nodeGroupLink) {
         List<TransformTableNodeGroupLink> transforms = new ArrayList<TransformTableNodeGroupLink>();
-        if (extensionService.getExtensionPoint(INodePasswordFilter.class) != null) {
-            String tableName = TableConstants.getTableName(parameterService.getTablePrefix(), TableConstants.SYM_NODE_SECURITY);
-            TransformTableNodeGroupLink transform = new TransformTableNodeGroupLink();
-            transform.setSourceTableName(tableName);
-            transform.setTargetTableName(tableName);
-            transform.setTransformPoint(TransformPoint.EXTRACT);
-            TransformColumn column = new TransformColumn("node_password", "node_password", false);
-            column.setTransformType("bsh");
-            column.setTransformExpression(String.format(NODE_FILTER_BSH, "onNodeSecurityRender"));
-            transform.addTransformColumn(column);
-            transform.setNodeGroupLink(nodeGroupLink);
-            transforms.add(transform);
-        }
-        if (extensionService.getExtensionPoint(ISmtpPasswordFilter.class) != null) {
-            String tableName = TableConstants.getTableName(parameterService.getTablePrefix(), TableConstants.SYM_PARAMETER);
-            TransformTableNodeGroupLink transform = new TransformTableNodeGroupLink();
-            transform.setSourceTableName(tableName);
-            transform.setTargetTableName(tableName);
-            transform.setTransformPoint(TransformPoint.EXTRACT);
-            TransformColumn column = new TransformColumn("param_value", "param_value", false);
-            column.setTransformType("bsh");
-            column.setTransformExpression(String.format(SMTP_PASSWORD_BSH, "onSmtpPasswordRender"));
-            transform.addTransformColumn(column);
-            transform.setNodeGroupLink(nodeGroupLink);
-            transforms.add(transform);
-        }
-        return transforms;
-    }
-
-    public List<TransformTableNodeGroupLink> getConfigLoadTransforms(NodeGroupLink nodeGroupLink) {
-        List<TransformTableNodeGroupLink> transforms = new ArrayList<TransformTableNodeGroupLink>();
         TransformColumn column = new TransformColumn("heartbeat_time", "heartbeat_time", false);
         column.setTransformType("variable");
         column.setTransformExpression("system_timestamp");
@@ -312,10 +281,10 @@ public class TransformService extends AbstractService implements ITransformServi
             transform = new TransformTableNodeGroupLink();
             transform.setSourceTableName(tableName);
             transform.setTargetTableName(tableName);
-            transform.setTransformPoint(TransformPoint.LOAD);
+            transform.setTransformPoint(TransformPoint.EXTRACT);
             column = new TransformColumn("node_password", "node_password", false);
             column.setTransformType("bsh");
-            column.setTransformExpression(String.format(NODE_FILTER_BSH, "onNodeSecuritySave"));
+            column.setTransformExpression(String.format(NODE_FILTER_BSH, "onNodeSecurityRender"));
             transform.addTransformColumn(column);
             transform.setNodeGroupLink(nodeGroupLink);
             transforms.add(transform);
@@ -325,8 +294,39 @@ public class TransformService extends AbstractService implements ITransformServi
             transform = new TransformTableNodeGroupLink();
             transform.setSourceTableName(tableName);
             transform.setTargetTableName(tableName);
-            transform.setTransformPoint(TransformPoint.LOAD);
+            transform.setTransformPoint(TransformPoint.EXTRACT);
             column = new TransformColumn("param_value", "param_value", false);
+            column.setTransformType("bsh");
+            column.setTransformExpression(String.format(SMTP_PASSWORD_BSH, "onSmtpPasswordRender"));
+            transform.addTransformColumn(column);
+            transform.setNodeGroupLink(nodeGroupLink);
+            transforms.add(transform);
+        }
+        return transforms;
+    }
+
+    public List<TransformTableNodeGroupLink> getConfigLoadTransforms(NodeGroupLink nodeGroupLink) {
+        List<TransformTableNodeGroupLink> transforms = new ArrayList<TransformTableNodeGroupLink>();
+        if (extensionService.getExtensionPoint(INodePasswordFilter.class) != null) {
+            String tableName = TableConstants.getTableName(parameterService.getTablePrefix(), TableConstants.SYM_NODE_SECURITY);
+            TransformTableNodeGroupLink transform = new TransformTableNodeGroupLink();
+            transform.setSourceTableName(tableName);
+            transform.setTargetTableName(tableName);
+            transform.setTransformPoint(TransformPoint.LOAD);
+            TransformColumn column = new TransformColumn("node_password", "node_password", false);
+            column.setTransformType("bsh");
+            column.setTransformExpression(String.format(NODE_FILTER_BSH, "onNodeSecuritySave"));
+            transform.addTransformColumn(column);
+            transform.setNodeGroupLink(nodeGroupLink);
+            transforms.add(transform);
+        }
+        if (extensionService.getExtensionPoint(ISmtpPasswordFilter.class) != null) {
+            String tableName = TableConstants.getTableName(parameterService.getTablePrefix(), TableConstants.SYM_PARAMETER);
+            TransformTableNodeGroupLink transform = new TransformTableNodeGroupLink();
+            transform.setSourceTableName(tableName);
+            transform.setTargetTableName(tableName);
+            transform.setTransformPoint(TransformPoint.LOAD);
+            TransformColumn column = new TransformColumn("param_value", "param_value", false);
             column.setTransformType("bsh");
             column.setTransformExpression(String.format(SMTP_PASSWORD_BSH, "onSmtpPasswordSave"));
             transform.addTransformColumn(column);
