@@ -656,4 +656,19 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
         }
         return type;
     }
+
+    @Override
+    protected void writeExternalIndexCreate(Table table, IIndex index, StringBuilder ddl) {
+        super.writeExternalIndexCreate(table, index, ddl);
+        if (index.getIncludedColumns() != null && index.getIncludedColumnCount() > 0) {
+            ddl.append(" INCLUDE (");
+            for (int i = 0; i < index.getIncludedColumnCount(); i++) {
+                if (i > 0) {
+                    ddl.append(", ");
+                }
+                printIdentifier(index.getIncludedColumns()[i].getName(), ddl);
+            }
+            ddl.append(")");
+        }
+    }
 }

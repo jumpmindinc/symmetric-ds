@@ -21,6 +21,8 @@
 package org.jumpmind.db.platform.postgresql;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -34,6 +36,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -1174,6 +1178,78 @@ class PostgreSqlDdlReaderTest {
         expectedTable.addColumn(testColumn);
         expectedTable.addIndex(testIndex);
         assertEquals(expectedTable, testTable);
+    }
+
+    @Test
+    void testRemoveExistingIndexColumns() {
+        IIndex index = new UniqueIndex("testIndex");
+        IndexColumn indexColumn1 = new IndexColumn("indexColumn1");
+        IndexColumn indexColumn2 = new IndexColumn("indexColumn2");
+        IndexColumn includedIndexColumn = new IndexColumn("includedIndexColumn");
+        index.addColumn(indexColumn1);
+        index.addColumn(indexColumn2);
+        index.addColumn(includedIndexColumn);
+        List<IndexColumn> indexColumnList = List.of(indexColumn1, indexColumn2);
+        List<IndexColumn> includedIndexColumnList = List.of(includedIndexColumn);
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        assertEquals(indexColumnList.size() + includedIndexColumnList.size(), index.getColumnCount());
+        assertEquals(0, index.getIncludedColumnCount());
+        ddlReader.removeExistingIndexColumns(index, indexColumnList, includedIndexColumnList);
+        assertEquals(indexColumnList.size(), index.getColumnCount());
+    }
+
+    @Test
+    void testGetIncludeIndexColumnsFromSql() {
+        int numOfIndexColumns = 1;
+        String[] allIndexColumns = { "2", "1", "3" };
+        String[] columnNames = { "id", "createdBy", "createdOn" };
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        List<IndexColumn> result = ddlReader.getIncludeIndexColumnsFromSql(numOfIndexColumns, allIndexColumns, columnNames);
+        assertEquals(allIndexColumns.length - numOfIndexColumns, result.size());
+        assertEquals(columnNames[0], result.get(0).getName());
+        assertEquals(columnNames[2], result.get(1).getName());
+        List<IndexColumn> result2 = ddlReader.getIncludeIndexColumnsFromSql(0, new String[] {}, new String[] {});
+        assertTrue(result2.isEmpty());
+    }
+
+    @Test
+    void testGetIndexColumnsFromSql() {
+        int numOfIndexColumns = 2;
+        String[] allIndexColumns = { "2", "1", "3" };
+        String[] columnNames = { "id", "createdBy", "createdOn" };
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        List<IndexColumn> result = ddlReader.getIndexColumnsFromSql(numOfIndexColumns, allIndexColumns, columnNames);
+        assertEquals(numOfIndexColumns, result.size());
+        assertEquals(columnNames[1], result.get(0).getName());
+        assertEquals(columnNames[0], result.get(1).getName());
+        List<IndexColumn> result2 = ddlReader.getIndexColumnsFromSql(0, new String[] {}, new String[] {});
+        assertTrue(result2.isEmpty());
+    }
+
+    @Test
+    void testFindIndexColumn() {
+        IndexColumn indexColumn1 = new IndexColumn("indexColumn1");
+        IndexColumn indexColumn2 = new IndexColumn("indexColumn2");
+        IndexColumn indexColumn3 = new IndexColumn("indexColumn3");
+        IndexColumn[] indexColumns = new IndexColumn[] { indexColumn1, indexColumn2, indexColumn3 };
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        IndexColumn result = ddlReader.findIndexColumn("indexColumn2", indexColumns);
+        assertEquals(indexColumn2, result);
+        assertNull(ddlReader.findIndexColumn("dne", indexColumns));
+        assertNull(ddlReader.findIndexColumn("indexColumn1", new IndexColumn[] {}));
+    }
+
+    @Test
+    void testFindIndex() {
+        IIndex index1 = new UniqueIndex("index1");
+        IIndex index2 = new NonUniqueIndex("index2");
+        IIndex index3 = new UniqueIndex("index3");
+        List<IIndex> indices = Arrays.asList(index1, index2, index3);
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        IIndex result = ddlReader.findIndex("index2", indices);
+        assertEquals(index2, result);
+        assertNull(ddlReader.findIndex("dne", indices));
+        assertNull(ddlReader.findIndex("index2", Collections.emptyList()));
     }
 
     protected String getResultSetSchemaName() {
