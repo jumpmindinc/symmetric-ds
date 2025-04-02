@@ -348,6 +348,7 @@ final public class ParameterConstants {
     public final static String STORES_UPPERCASE_NAMES_IN_CATALOG = "stores.uppercase.names.in.catalog";
     public final static String DB_MASTER_COLLATION = "db.master.collation";
     public final static String SEQUENCE_TIMEOUT_MS = "sequence.timeout.ms";
+    public final static String SEQUENCE_CACHE_EXPIRES_MS = "sequence.cache.expires.ms";
     public final static String SYNCHRONIZE_ALL_JOBS = "jobs.synchronized.enable";
     public final static String FILE_SYNC_ENABLE = "file.sync.enable";
     public final static String FILE_SYNC_FAST_SCAN = "file.sync.fast.scan";

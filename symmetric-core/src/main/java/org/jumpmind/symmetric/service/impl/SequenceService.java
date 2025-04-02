@@ -29,6 +29,7 @@ import java.util.Map;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
+import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlTransactionListenerAdapter;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.common.Constants;
@@ -40,6 +41,10 @@ import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.ISequenceService;
 
 public class SequenceService extends AbstractService implements ISequenceService {
+    private final int SEQUENCE_TIMEOUT_MS_DEFAULT = 5000;
+    private final int SEQUENCE_EXPIRATION_MS_DEFAULT = 30000;
+    private final int SEQUENCE_EXPIRATION_MS_MAX = 60000;
+    private int sequenceCacheItemExpirationMs;
     private Map<String, Sequence> sequenceDefinitionCache = new HashMap<String, Sequence>();
     private Map<String, CachedRange> sequenceCache = new HashMap<String, CachedRange>();
 
@@ -47,6 +52,7 @@ public class SequenceService extends AbstractService implements ISequenceService
         super(parameterService, symmetricDialect);
         setSqlMap(new SequenceServiceSqlMap(symmetricDialect.getPlatform(),
                 createSqlReplacementTokens()));
+        sequenceCacheItemExpirationMs = 0;
     }
 
     @Override
@@ -71,6 +77,15 @@ public class SequenceService extends AbstractService implements ISequenceService
             long maxRequestId = sqlTemplate.queryForLong(getSql("maxCompareRequestSql"));
             initSequence(Constants.SEQUENCE_COMPARE_ID, maxRequestId, 0);
         }
+        if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+            sequenceCacheItemExpirationMs = parameterService.getInt(ParameterConstants.SEQUENCE_CACHE_EXPIRES_MS, SEQUENCE_EXPIRATION_MS_DEFAULT);
+            if (sequenceCacheItemExpirationMs > SEQUENCE_EXPIRATION_MS_MAX) {
+                log.warn("The {} parameter value {} exceeds maximum of {}. Ignored.", ParameterConstants.SEQUENCE_CACHE_EXPIRES_MS,
+                        sequenceCacheItemExpirationMs,
+                        SEQUENCE_EXPIRATION_MS_MAX);
+                sequenceCacheItemExpirationMs = SEQUENCE_EXPIRATION_MS_MAX;
+            }
+        }
     }
 
     private void initSequence(String name, long initialValue, int cacheSize) {
@@ -88,7 +103,7 @@ public class SequenceService extends AbstractService implements ISequenceService
 
     @Override
     public synchronized long nextVal(String name) {
-        if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) && getSequenceDefinition(name).getCacheSize() > 0) {
+        if (isSequenceCached(name)) {
             return nextValFromCache(null, name);
         }
         return nextValFromDatabase(name, 1);
@@ -104,20 +119,44 @@ public class SequenceService extends AbstractService implements ISequenceService
                 }
             });
         }
-        if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) && getSequenceDefinition(transaction, name).getCacheSize() > 0) {
+        if (isSequenceCached(name)) {
             return nextValFromCache(transaction, name);
         }
         return nextValFromDatabase(transaction, name, 1);
     }
 
+    protected boolean isSequenceCached(String name) {
+        Sequence sequence = sequenceDefinitionCache.get(name);
+        if (sequence == null) {
+            return false;
+        }
+        if (sequence.getCacheSize() < 1) {
+            return false;
+        }
+        CachedRange range = sequenceCache.get(name);
+        if (range == null) {
+            return false;
+        }
+        if (sequenceCacheItemExpirationMs > 0 && range.isExpired()) {
+            if (log.isDebugEnabled()) {
+                log.debug("Cached range [{} - {}] for sequence {} has expired, losing {} values.", range.getCurrentValue(), range.getEndValue(), name, range
+                        .getRemainingCount());
+            }
+            sequenceCache.remove(name);
+            return false;
+        }
+        return true;
+    }
+
     protected long nextValFromCache(ISqlTransaction transaction, String name) {
         CachedRange range = sequenceCache.get(name);
-        if (range != null) {
-            long currentValue = range.getCurrentValue();
-            if (currentValue < range.getEndValue()) {
-                currentValue += range.getIncrementBy();
-                range.setCurrentValue(currentValue);
-                return currentValue;
+        if (range != null && (sequenceCacheItemExpirationMs == 0 || !range.isExpired())) {
+            if (log.isDebugEnabled()) {
+                log.debug("Cache hit. Using one value from range [{} - {}] for sequence={}, remainingCount={}", range.getCurrentValue(), range.getEndValue(),
+                        name, range.getRemainingCount());
+            }
+            if (range.getRemainingCount() > 0) {
+                return range.claim(1);
             } else {
                 sequenceCache.remove(name);
             }
@@ -138,34 +177,49 @@ public class SequenceService extends AbstractService implements ISequenceService
         if (transaction == null) {
             return nextValFromDatabase(name, size);
         }
-        long sequenceTimeoutInMs = parameterService.getLong(ParameterConstants.SEQUENCE_TIMEOUT_MS, 5000);
+        long sequenceDbTimeoutInMs = parameterService.getLong(ParameterConstants.SEQUENCE_TIMEOUT_MS, SEQUENCE_TIMEOUT_MS_DEFAULT);
         long ts = System.currentTimeMillis();
         int attemptNo = 0;
         do {
             attemptNo++;
             try {
-                long nextVal = tryToGetNextVal(transaction, name, size);
-                if (nextVal > 0) {
+                CachedRange range = tryToGetNextVal(transaction, name, size);
+                if (range != null) {
+                    sequenceCache.put(name, range);
+                    long nextVal = range.claim(size);
                     if (log.isDebugEnabled()) {
-                        log.debug("Produced the next value for sequence={}, attemptNo={}, value={}", name, attemptNo, nextVal);
+                        log.debug("Produced the next value for sequence={}, size={}, attemptNo={}, value={}", name, size, attemptNo, nextVal);
                     }
                     return nextVal;
                 }
-            } catch (Exception ex) {
-                if (System.currentTimeMillis() - sequenceTimeoutInMs < ts) {
-                    log.info("Delay in producing the next value for sequence={}, attemptNo={}, details={}", name, attemptNo, ex.getMessage());
+            } catch (SqlException ex) {
+                String errorMessage = ex.getMessage();
+                if (System.currentTimeMillis() - sequenceDbTimeoutInMs < ts &&
+                        !(errorMessage.toUpperCase().contains("DEADLOCK"))) {
+                    log.info("Delay in producing the next value for sequence={}, size={}, attemptNo={}, details={}", name, size, attemptNo, errorMessage);
                 } else {
-                    log.error("Failed to produce the next value for sequence={}, attemptNo={}, details={}", name, attemptNo, ex.getMessage());
+                    String finalMessage = String.format("Failed to produce the next value for sequence=%s, size=%d", name, size);
+                    log.error("{}, attemptNo={}, details={}", finalMessage, attemptNo, errorMessage);
+                    throw new IllegalStateException(finalMessage, ex);
                 }
             }
-        } while (System.currentTimeMillis() - sequenceTimeoutInMs < ts);
-        throw new IllegalStateException(String.format("Timed out after %d ms trying to produce the next value for sequence=%s, attemptNo=%d",
-                System.currentTimeMillis() - ts, name, attemptNo));
+        } while (System.currentTimeMillis() - sequenceDbTimeoutInMs < ts);
+        throw new IllegalStateException(String.format("Timed out after %d ms trying to produce the next value for sequence=%s, size=%d, attemptNo=%d",
+                System.currentTimeMillis() - ts, name, size, attemptNo));
     }
 
-    protected long tryToGetNextVal(ISqlTransaction transaction, String name, long size) {
+    /**
+     * Updates internal table in the runtime database to claim a number of sequential values (specified by demandedSize). Sets the current_value column to the
+     * end of the cached range (these values had not been used yet, but are reserved for this server). Warning: In a clustered environment a large
+     * sequence.getCacheSize() together with a very small sequenceCacheItemExpirationMs will lead to excessive churn, increasing risk of database deadlocks!
+     * 
+     * @return Range of reserved values as CachedRange
+     */
+    protected CachedRange tryToGetNextVal(ISqlTransaction transaction, String name, long demandedSize) {
+        transaction.commit();
         long currVal = currVal(transaction, name);
         Sequence sequence = getSequenceDefinition(transaction, name);
+        long size = (demandedSize > sequence.getCacheSize() + 1) ? demandedSize : sequence.getCacheSize();
         long nextVal = currVal + (sequence.getIncrementBy() * size);
         if (nextVal > sequence.getMaxValue()) {
             if (sequence.isCycle()) {
@@ -184,22 +238,19 @@ public class SequenceService extends AbstractService implements ISequenceService
                                 + "No more numbers can be handed out.", name));
             }
         }
-        CachedRange range = null;
-        if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) && sequence.getCacheSize() > 0) {
-            long endVal = nextVal + (sequence.getIncrementBy() * (sequence.getCacheSize() - 1));
-            range = new CachedRange(nextVal, endVal, sequence.getIncrementBy());
-            nextVal = endVal;
-        }
         int updateCount = transaction.prepareAndExecute(getSql("updateCurrentValueSql"), nextVal, new Date(), name, currVal);
         if (updateCount != 1) {
-            return -1;
+            if (log.isDebugEnabled()) {
+                log.debug("Contention detected, should re-try. Unable to reserve range of values for sequence={}, start={}, size={}", name, currVal, size);
+            }
+            return null;
         }
         transaction.commit();
-        if (range != null) {
-            sequenceCache.put(name, range);
-            nextVal = range.getCurrentValue();
+        long endVal = currVal + (sequence.getIncrementBy() * (size - 1));
+        if (log.isDebugEnabled()) {
+            log.debug("Reserved range of values [{} - {}] for sequence={}, size={}", currVal, endVal, name, currVal, size);
         }
-        return nextVal;
+        return new CachedRange(currVal, endVal, sequence.getIncrementBy(), System.currentTimeMillis() + sequenceCacheItemExpirationMs);
     }
 
     /**
@@ -223,24 +274,31 @@ public class SequenceService extends AbstractService implements ISequenceService
         }
         long startingValue = 0;
         long rangeNeeded = size * sequence.getIncrementBy();
-        if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) && sequence.getCacheSize() > 0) {
+        if (sequence.getCacheSize() > 0) {
             CachedRange range = sequenceCache.get(name);
-            if (range != null) {
+            if (range != null && (sequenceCacheItemExpirationMs == 0 || !range.isExpired())) {
                 long currentValue = range.getCurrentValue();
                 long endValue = range.getEndValue();
                 long rangeAvailable = endValue - currentValue;
-                long rangeEndValue = currentValue + rangeNeeded;
-                if (currentValue < endValue && rangeEndValue <= sequence.getMaxValue()) {
-                    startingValue = currentValue + sequence.getIncrementBy();
-                    if (rangeNeeded <= rangeAvailable) {
-                        range.setCurrentValue(currentValue + rangeNeeded);
-                        rangeNeeded = 0;
-                    } else {
-                        rangeNeeded -= rangeAvailable;
-                        size = rangeNeeded / sequence.getIncrementBy();
+                long remainingCount = range.getRemainingCount();
+                if (remainingCount >= size) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Cache hit for sequence={}, currentValue={}, size={}", name, currentValue, size);
+                    }
+                    if (remainingCount == size) {
                         sequenceCache.remove(name);
                     }
+                    return range.claim(size);
+                }
+                if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Discarding unexpired but too small range of values for sequence={}, currentValue={}, remainingCount={}", name, currentValue,
+                                remainingCount);
+                    }
+                    sequenceCache.remove(name);
                 } else {
+                    rangeNeeded -= rangeAvailable;
+                    size = rangeNeeded / sequence.getIncrementBy();
                     sequenceCache.remove(name);
                 }
             }
@@ -294,7 +352,7 @@ public class SequenceService extends AbstractService implements ISequenceService
 
     @Override
     public synchronized long currVal(ISqlTransaction transaction, String name) {
-        if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+        if (isSequenceCached(name)) {
             CachedRange range = sequenceCache.get(name);
             if (range != null) {
                 return range.getCurrentValue();
@@ -305,9 +363,12 @@ public class SequenceService extends AbstractService implements ISequenceService
 
     @Override
     public synchronized long currVal(final String name) {
-        if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+        if (isSequenceCached(name)) {
             CachedRange range = sequenceCache.get(name);
             if (range != null) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Lookup-Cache hit for sequence={}, currentValue={}, size={}", name, range.getCurrentValue(), range.getRemainingCount());
+                }
                 return range.getCurrentValue();
             }
         }
@@ -348,11 +409,13 @@ public class SequenceService extends AbstractService implements ISequenceService
         long currentValue;
         long endValue;
         int incrementBy;
+        long expires;
 
-        public CachedRange(long currentValue, long endValue, int incrementBy) {
+        public CachedRange(long currentValue, long endValue, int incrementBy, long expires) {
             this.currentValue = currentValue;
             this.endValue = endValue;
             this.incrementBy = incrementBy;
+            this.expires = expires;
         }
 
         public long getCurrentValue() {
@@ -369,6 +432,24 @@ public class SequenceService extends AbstractService implements ISequenceService
 
         public int getIncrementBy() {
             return incrementBy;
+        }
+
+        public long getExpires() {
+            return expires;
+        }
+
+        public boolean isExpired() {
+            return (this.expires < System.currentTimeMillis());
+        }
+
+        public long claim(long size) {
+            long currVal = this.currentValue;
+            this.currentValue = this.currentValue + size * this.incrementBy;
+            return currVal;
+        }
+
+        public long getRemainingCount() {
+            return (endValue - this.currentValue) / this.incrementBy;
         }
     }
 
