@@ -273,6 +273,8 @@ public class TransformService extends AbstractService implements ITransformServi
         transform.setSourceTableName(tableName);
         transform.setTargetTableName(tableName);
         transform.setTransformPoint(TransformPoint.EXTRACT);
+        transform.addTransformColumn(new TransformColumn("node_id", "node_id", true));
+        transform.addTransformColumn(new TransformColumn("host_name", "host_name", true));
         transform.addTransformColumn(column);
         transform.setNodeGroupLink(nodeGroupLink);
         transforms.add(transform);
