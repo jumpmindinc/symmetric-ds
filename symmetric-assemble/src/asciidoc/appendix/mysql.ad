@@ -102,12 +102,12 @@ When registering a MySQL database with SymmetricDS, bulk loading will be enabled
 
 To succesfully bulk load, once your MySQL database is registered with SymmetricDS, go to the top of the screen and select the MySQL node you want to bulk load from the drop down list of your nodes.
 
-image::images/appendix/mysql-selecting-node-1.PNG[]
-image::images/appendix/mysql-selecting-node-2.PNG[]
+image::images/appendix/mysql-selecting-node-1.png[]
+image::images/appendix/mysql-selecting-node-2.png[]
 
 Then, go to the Manage tab, and go to Startup Parameters and set mysql.bulk.load.local to true, and restart SymmetricDS.
 
-image::images/appendix/mysql-bulk-load-local-true.PNG[]
+image::images/appendix/mysql-bulk-load-local-true.png[]
 
 In order to bulk load, your MySQL database must have the local_infile variable set to ON. In order to set this, you can run the query below to set the variable and have it remain on, even upon the restarting of your database.
 
