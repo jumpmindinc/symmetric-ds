@@ -843,8 +843,16 @@ public class DataService extends AbstractService implements IDataService {
     public Map<Integer, ExtractRequest> insertReloadEvents(Node targetNode, boolean reverse, List<TableReloadRequest> reloadRequests, ProcessInfo processInfo,
             List<TriggerRouter> triggerRouters, Map<Integer, ExtractRequest> extractRequests,
             IReloadGenerator reloadGenerator) {
-        if (engine.getClusterService().lock(ClusterConstants.SYNC_TRIGGERS)) {
-            try {
+        if (!engine.getClusterService().lock(ClusterConstants.SYNC_TRIGGERS)) {
+            log.warn("Not attempting to insert reload events because sync trigger is currently running.");
+            return extractRequests;
+        }
+        if (!engine.getClusterService().lock(ClusterConstants.ROUTE)) {
+            log.warn("Not attempting to insert reload events because Router job is currently running.");
+            engine.getClusterService().unlock(ClusterConstants.SYNC_TRIGGERS);
+            return extractRequests;
+        }
+        try {
                 INodeService nodeService = engine.getNodeService();
                 ITriggerRouterService triggerRouterService = engine.getTriggerRouterService();
                 synchronized (triggerRouterService) {
@@ -1077,11 +1085,9 @@ public class DataService extends AbstractService implements IDataService {
                     engine.getDataExtractorService().releaseMissedExtractRequests();
                 }
             } finally {
+                engine.getClusterService().unlock(ClusterConstants.ROUTE);
                 engine.getClusterService().unlock(ClusterConstants.SYNC_TRIGGERS);
             }
-        } else {
-            log.info("Not attempting to insert reload events because sync trigger is currently running");
-        }
         return extractRequests;
     }
 
@@ -1245,7 +1251,12 @@ public class DataService extends AbstractService implements IDataService {
             batchCount++;
             TableReloadRequest t = reloadRequests.get(ParameterConstants.ALL + ParameterConstants.ALL);
             if (t != null && StringUtils.isBlank(t.getReloadSelect())) {
-                long curBatchId = engine.getSequenceService().currVal(transaction, Constants.SEQUENCE_OUTGOING_BATCH);
+                long curBatchId = 0;
+                if (platform.supportsMultiThreadedTransactions()) {
+                    curBatchId = engine.getSequenceService().currVal(Constants.SEQUENCE_OUTGOING_BATCH);
+                } else {
+                    curBatchId = engine.getSequenceService().currVal(transaction, Constants.SEQUENCE_OUTGOING_BATCH);
+                }
                 /*
                  * Mark incoming batches as OK at the target node because we marked outgoing batches as OK at the source
                  */
@@ -2209,7 +2220,12 @@ public class DataService extends AbstractService implements IDataService {
     public long insertDataAndDataEventAndOutgoingBatch(ISqlTransaction transaction, Data data, String nodeId, boolean isLoad,
             long loadId, String createBy, Status status, String overrideChannelId, long estimatedBatchRowCount) {
         data.setPreRouted(true);
-        long dataId = insertData(transaction, data);
+        long dataId = 0;
+        if (platform.supportsMultiThreadedTransactions()) {
+            dataId = insertData(data);
+        } else {
+            dataId = insertData(transaction, data);
+        }
         String channelId = null;
         if (isLoad) {
             if (overrideChannelId != null) {
