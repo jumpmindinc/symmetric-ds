@@ -67,7 +67,7 @@ public class ExtractDataReader implements IDataReader {
         this.sourcesToUse = new ArrayList<IExtractDataReaderSource>();
         this.sourcesToUse.add(source);
         this.platform = platform;
-        this.targetPlatform = platform;
+        this.targetPlatform = targetPlatform;
         this.isSybaseASE = platform.getName().equals(DatabaseNamesConstants.ASE);
     }
 
