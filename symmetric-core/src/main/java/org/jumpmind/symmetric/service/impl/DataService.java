@@ -650,6 +650,34 @@ public class DataService extends AbstractService implements IDataService {
         }
     }
 
+    private void updateTableReloadStatusFinalizeCount(ISqlTransaction transaction, long loadId, String sourceNodeId, int finalizeBatchCount) {
+        Object[] args = new Object[] { finalizeBatchCount, new Date(), loadId, sourceNodeId };
+        String sql = getSql("updateTableReloadStatusFinalizeCount");
+        int[] types = new int[] { Types.NUMERIC, Types.TIMESTAMP, symmetricDialect.getSqlTypeForIds(), Types.VARCHAR };
+        if (transaction == null) {
+            try {
+                transaction = sqlTemplate.startSqlTransaction();
+                transaction.prepareAndExecute(sql, args, types);
+                transaction.commit();
+            } catch (Error ex) {
+                if (transaction != null) {
+                    transaction.rollback();
+                }
+                throw ex;
+            } catch (RuntimeException ex) {
+                if (transaction != null) {
+                    transaction.rollback();
+                }
+                throw ex;
+            } finally {
+                close(transaction);
+            }
+        } else {
+            transaction.prepareAndExecute(sql,
+                    finalizeBatchCount, new Date(), loadId, sourceNodeId);
+        }
+    }
+
     public void createTableReloadStatus(ISqlTransaction transaction, long loadId, boolean isFullLoad, String sourceNodeId, String targetNodeId) {
         Date now = new Date();
         Object[] argsDelete = new Object[] { loadId, sourceNodeId };
@@ -1131,8 +1159,8 @@ public class DataService extends AbstractService implements IDataService {
                         }
                         engine.getStatisticManager().incrementNodesLoaded(1);
                         if (reloadRequests != null && reloadRequests.size() > 0) {
-                            transaction.prepareAndExecute(getSql("updateTableReloadStatusFinalizeCount"),
-                                    finalizeBatchCount, new Date(), loadId, sourceNode.getNodeId());
+                            updateTableReloadStatusFinalizeCount(platform.supportsMultiThreadedTransactions() ? null : transaction, loadId, sourceNode
+                                    .getNodeId(), finalizeBatchCount);
                             int rowsAffected = transaction.prepareAndExecute(getSql("updateProcessedTableReloadRequest"), new Date(), loadId);
                             if (rowsAffected == 0) {
                                 List<TableReloadRequest> requests = transaction.query(getSql("selectTableReloadRequestsByLoadId"),
