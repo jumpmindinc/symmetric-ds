@@ -179,7 +179,9 @@ The sync URL setting controls the web address where the endpoint can be reached 
 
 If the capture type is not set to trigger-based, then it's possible to have SymmetricDS install its tables in a separate runtime database. The default runtime database is H2, a lightweight embedded single-user database. There are a variety of other database types that can be used for the runtime database.
 
-The registration server option determines which endpoint all other endpoints will register with. The registration server stores the set of configuration that will be synchronized to all other endpoints. Whenever a new endpoint starts up, it will connect to the registration server in order to join the network and receive its configuration.
+The registration server option is an advanced option that determines the root-level registration server. This endpoint does not register with any other endpoint. It stores the set of configuration that will be synchronized to all other endpoints.
+
+The registers with option is another advanced option that determines which endpoint the endpoint will register with. When the endpoint starts up, it will connect to this endpoint in order to join the network and receive its configuration.
 
 ==== Advanced Endpoint Settings
 
