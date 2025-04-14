@@ -38,10 +38,12 @@ public class ExtractDataReaderFactory implements IExtractDataReaderFactory {
         this.engine = engine;
     }
 
-    public ExtractDataReader getReader(IDatabasePlatform platform, IExtractDataReaderSource source, Node sourceNode, Node targetNode) {
+    @Override
+    public ExtractDataReader getReader(IDatabasePlatform platform, IExtractDataReaderSource source, Node sourceNode, Node targetNode,
+            IDatabasePlatform targetPlatform) {
         ISymmetricDialect symmetricDialect = engine.getSymmetricDialect();
         boolean isUsingUnitypes = symmetricDialect.getParameterService().is(ParameterConstants.DBDIALECT_SYBASE_ASE_CONVERT_UNITYPES_FOR_SYNC);
         List<IExtractDataFilter> filters = engine.getExtensionService().getExtensionPointList(IExtractDataFilter.class);
-        return new ExtractDataReader(platform, source, filters, isUsingUnitypes);
+        return new ExtractDataReader(platform, source, filters, isUsingUnitypes, targetPlatform);
     }
 }
