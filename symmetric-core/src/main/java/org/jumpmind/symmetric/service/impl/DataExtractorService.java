@@ -222,6 +222,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     /**
      * Extract the SymmetricDS configuration for the passed in {@link Node}.
      */
+    @Override
     public void extractConfigurationStandalone(Node targetNode, Writer writer, String... tablesToExclude) {
         Node sourceNode = nodeService.findIdentity();
         if (targetNode != null && sourceNode != null) {
@@ -287,7 +288,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             }
             SelectFromTableSource source = new SelectFromTableSource(engine, batch, initialLoadEvents);
             source.setConfiguration(true);
-            ExtractDataReader dataReader = new ExtractDataReader(symmetricDialect.getPlatform(), source);
+            ExtractDataReader dataReader = new ExtractDataReader(symmetricDialect.getPlatform(), source, symmetricDialect.getTargetPlatform());
             ProtocolDataWriter dataWriter = new ProtocolDataWriter(nodeService.findIdentityNodeId(), writer, targetNode.requires13Compatiblity(), false, false);
             List<TransformTableNodeGroupLink> transformsList = transformService.getConfigExtractTransforms(nodeGroupLink);
             TransformTable[] transforms = transformsList.toArray(new TransformTable[transformsList.size()]);
@@ -373,6 +374,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return batches.getBatches();
     }
 
+    @Override
     public List<OutgoingBatchWithPayload> extractToPayload(ProcessInfo processInfo,
             Node targetNode, PayloadType payloadType, boolean useJdbcTimestampFormat,
             boolean useUpsertStatements, boolean useDelimiterIdentifiers) {
@@ -411,11 +413,13 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return Collections.emptyList();
     }
 
+    @Override
     public List<OutgoingBatch> extract(ProcessInfo extractInfo, Node targetNode,
             IOutgoingTransport transport) {
         return extract(extractInfo, targetNode, null, transport);
     }
 
+    @Override
     public List<OutgoingBatch> extract(ProcessInfo extractInfo, Node targetNode, String queue,
             IOutgoingTransport transport) {
         /*
@@ -509,6 +513,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     /**
      * This method will extract an outgoing batch, but will not update the outgoing batch status
      */
+    @Override
     public boolean extractOnlyOutgoingBatch(String nodeId, long batchId, Writer writer) {
         boolean extracted = false;
         Node targetNode = null;
@@ -1033,6 +1038,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return lock;
     }
 
+    @Override
     public StagingFileLock acquireStagingFileLock(OutgoingBatch batch) {
         boolean stagingFileAcquired = false;
         StagingFileLock fileLock = null;
@@ -1113,7 +1119,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 new Class[] { ISymmetricEngine.class, OutgoingBatch.class, Node.class, Node.class, ProcessInfo.class, boolean.class });
         IExtractDataReaderFactory factory = AppUtils.newInstance(IExtractDataReaderFactory.class, ExtractDataReaderFactory.class,
                 new Object[] { engine }, new Class[] { ISymmetricEngine.class });
-        return factory.getReader(platform, source, sourceNode, targetNode);
+        return factory.getReader(platform, source, sourceNode, targetNode, engine.getSymmetricDialect().getTargetPlatform());
     }
 
     protected Statistics getExtractStats(IDataWriter writer, OutgoingBatch currentBatch) {
@@ -1569,6 +1575,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 String.valueOf(batch.getExtractDeleteRowCount()), String.valueOf(batch.getFailedDataId()) }, ',');
     }
 
+    @Override
     public boolean extractBatchRange(Writer writer, String nodeId, long startBatchId,
             long endBatchId) {
         boolean foundBatch = false;
@@ -1597,6 +1604,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return foundBatch;
     }
 
+    @Override
     public boolean extractBatchRange(Writer writer, String nodeId, Date startBatchTime,
             Date endBatchTime, String... channelIds) {
         boolean foundBatch = false;
@@ -1639,6 +1647,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return transformExtractWriter;
     }
 
+    @Override
     public RemoteNodeStatuses queueWork(boolean force) {
         final RemoteNodeStatuses statuses = new RemoteNodeStatuses(configurationService.getChannels(false));
         Node identity = nodeService.findIdentity();
@@ -1853,6 +1862,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         }
     }
 
+    @Override
     public ExtractRequest requestExtractRequest(ISqlTransaction transaction, String nodeId, String queue,
             TriggerRouter triggerRouter, long startBatchId, long endBatchId, long loadId, String table, long rows, long parentRequestId) {
         long requestId = 0;
@@ -1895,6 +1905,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     /**
      * This is a callback method used by the NodeCommunicationService that extracts an initial load in the background.
      */
+    @Override
     public void execute(NodeCommunication nodeCommunication, RemoteNodeStatus status) {
         if (!isApplicable(nodeCommunication)) {
             log.debug("{} failed isApplicable check and will not run.", this);
@@ -2091,6 +2102,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         }
     }
 
+    @Override
     public void releaseMissedExtractRequests() {
         List<Long> requestIds = sqlTemplateDirty.query(getSql("selectExtractChildRequestIdsMissed"), new LongMapper(), Status.NE.name(), Status.OK.name(),
                 engine.getNodeId(), engine.getNodeId());
@@ -2164,6 +2176,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     class ExtractRequestMapper implements ISqlRowMapper<ExtractRequest> {
+        @Override
         public ExtractRequest mapRow(Row row) {
             ExtractRequest request = new ExtractRequest();
             request.setNodeId(row.getString("node_id"));
