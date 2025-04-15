@@ -75,6 +75,11 @@ public interface IDatabasePlatform {
     public DatabaseInfo getDatabaseInfo();
 
     /**
+     * Performs the shutdown operation for the platform.
+     */
+    public void shutdown();
+
+    /**
      * Returns a new ddl builder for the this platform.
      */
     public IDdlBuilder getDdlBuilder();

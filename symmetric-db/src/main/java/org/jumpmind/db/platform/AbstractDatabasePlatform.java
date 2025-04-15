@@ -141,6 +141,11 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     }
 
     @Override
+    public void shutdown() {
+        // Default implementation does nothing. Override at the specific platforms as needed.
+    }
+
+    @Override
     public DatabaseInfo getDatabaseInfo() {
         return getDdlBuilder().getDatabaseInfo();
     }
@@ -1458,10 +1463,12 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         return true;
     }
 
+    @Override
     public DatabaseVersion getDatabaseVersion() {
         return databaseVersion;
     }
 
+    @Override
     public void setDatabaseVersion(DatabaseVersion databaseVersion) {
         this.databaseVersion = databaseVersion;
     }

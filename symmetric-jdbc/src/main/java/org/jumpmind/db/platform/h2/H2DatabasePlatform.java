@@ -82,20 +82,23 @@ public class H2DatabasePlatform extends AbstractJdbcDatabasePlatform implements 
         return new H2JdbcSqlTemplate(dataSource, settings, null, getDatabaseInfo());
     }
 
+    @Override
     public String getName() {
         return DatabaseNamesConstants.H2;
     }
 
+    @Override
     public String getDefaultSchema() {
         if (StringUtils.isBlank(defaultSchema)) {
-            defaultSchema = (String) getSqlTemplate().queryForObject("select SCHEMA()", String.class);
+            defaultSchema = getSqlTemplate().queryForObject("select SCHEMA()", String.class);
         }
         return defaultSchema;
     }
 
+    @Override
     public String getDefaultCatalog() {
         if (StringUtils.isBlank(defaultCatalog)) {
-            defaultCatalog = (String) getSqlTemplate().queryForObject("select DATABASE()", String.class);
+            defaultCatalog = getSqlTemplate().queryForObject("select DATABASE()", String.class);
         }
         return defaultCatalog;
     }
@@ -118,6 +121,11 @@ public class H2DatabasePlatform extends AbstractJdbcDatabasePlatform implements 
     }
 
     @Override
+    public void shutdown() {
+        shutdownAndCompact();
+    }
+
+    @Override
     public boolean supportsMultiThreadedTransactions() {
         return false;
     }
@@ -133,5 +141,14 @@ public class H2DatabasePlatform extends AbstractJdbcDatabasePlatform implements 
             sql = sql.substring(0, sql.length() - 1);
         }
         return sql + " limit " + limit + " offset " + offset + ";";
+    }
+
+    private void shutdownAndCompact() {
+        try {
+            log.info("Shutting down H2 database with COMPACT option");
+            getSqlTemplate().update("SHUTDOWN COMPACT");
+        } catch (SqlException exception) {
+            log.info("Caught an exception during H2 shutdown and compact, with message: " + exception.getMessage());
+        }
     }
 }
