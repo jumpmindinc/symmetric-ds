@@ -122,7 +122,8 @@ in a row updated the value to the same value it already was. There is a global p
 ----
 trigger.update.capture.changed.data.only.enabled=false
 ----
-This property is currently only supported on MySQL, DB2, SQL Server, and Oracle.
+// WARNING: if docs for this parameter are updated, also update symmetric-default.properties
+This property is currently only supported on MySQL, DB2, SQL Server, PostgreSQL, and Oracle.
 ====
 
 include::{includedir}/configuration/table-triggers/wildcards.ad[]

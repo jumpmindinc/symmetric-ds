@@ -40,13 +40,14 @@ import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DefaultParameterParser {
     private static final String COMMENT = "#";
+    private static final String COMMENT_PRIVATE = "##";
     private static final String DATABASE_OVERRIDABLE = "DatabaseOverridable:";
     private static final String TAGS = "Tags:";
     private static final String TYPE = "Type:";
@@ -89,6 +90,8 @@ public class DefaultParameterParser {
                     if (!extraLine) {
                         currentMetaData = new ParameterMetaData();
                     }
+                } else if (line.trim().startsWith(COMMENT_PRIVATE)) {
+                    // exclude private comment from documentation
                 } else if (line.trim().startsWith(COMMENT) && line.length() > 1) {
                     line = line.substring(line.indexOf(COMMENT) + 1);
                     if (line.contains(DATABASE_OVERRIDABLE)) {
