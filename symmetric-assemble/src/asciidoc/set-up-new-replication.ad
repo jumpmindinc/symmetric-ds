@@ -87,11 +87,13 @@ Configure transforms that will be applied to data as it gets extracted from the 
 
 image::images/canvas/TransformDialog.png[]
 
+If a source table and a target table share the same name and the source table is configured to sync to the selected target catalog and schema, then there will be a dashed line to indicate how data will be synchronized by default. Transforming the source table will override this auto mapping.
+
 Create a transform by dragging a line from a source table to a target table, or by clicking a source table and then clicking a target table. The catalog and schema fields determine which tables are displayed on either side and the filter fields can be used to narrow down the tables on each side separately. Additionally, tables with or without transform mappings can be hidden using the radio buttons on the right.
 
-Once a transform has been created, it can be selected by clicking the source table, the target table, or the line connecting the two tables. Clicking the source or target table will also select all other transforms that connect to that table. A transform can be deselected by clicking the background or selecting a different transform.
+Once a transform has been created, a solid line will appear connecting the source and target tables. A transform or an auto mapping can be selected by clicking the source table, the target table, or the line connecting the two tables. Clicking the source or target table will also select all other transforms and auto mappings that connect to that table. To deselect, click the background or select a different transform or auto mapping.
 
-Once a transform has been selected, a few options appear on the right. The Delete button will delete all selected transforms. The Edit button opens a dialog that allows the table-level details of the transform to be edited. The Map Columns button opens a different dialog that allows the columns to be mapped from source to target.
+Once a transform or auto mapping has been selected, a few options appear on the right. The Delete button will delete all selected transforms, but it will not delete auto mappings. The Edit button opens a dialog that allows the table-level details of the transform to be edited. The Map Columns button opens a different dialog that allows the columns to be mapped from source to target. If an auto mapping is modified, it will be replaced by a transform.
 
 [.float-group]
 --
