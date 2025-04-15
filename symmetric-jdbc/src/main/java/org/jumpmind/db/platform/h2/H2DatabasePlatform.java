@@ -148,7 +148,7 @@ public class H2DatabasePlatform extends AbstractJdbcDatabasePlatform implements 
             log.info("Shutting down H2 database with COMPACT option");
             getSqlTemplate().update("SHUTDOWN COMPACT");
         } catch (SqlException exception) {
-            log.info("Caught an exception during H2 shutdown and compact, with message: " + exception.getMessage());
+            log.info("Caught {} during H2 shutdown and compact, with message: {}", exception.getClass().getName(), exception.getMessage());
         }
     }
 }
