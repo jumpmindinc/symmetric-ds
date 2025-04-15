@@ -181,7 +181,7 @@ If the capture type is not set to trigger-based, then it's possible to have Symm
 
 The registration server option is an advanced option that determines the root-level registration server. This endpoint does not register with any other endpoint. It stores the set of configuration that will be synchronized to all other endpoints.
 
-The registers with option is another advanced option that determines which endpoint the endpoint will register with. When the endpoint starts up, it will connect to this endpoint in order to join the network and receive its configuration.
+The "registers with" option is another advanced option that determines which endpoint the endpoint will register with. When the endpoint starts up, it will connect to this endpoint in order to join the network and receive its configuration.
 
 ==== Advanced Endpoint Settings
 
