@@ -53,6 +53,7 @@ public class ExtractDataReader implements IDataReader {
     protected Map<Batch, Statistics> statistics = new HashMap<Batch, Statistics>();
     protected IDatabasePlatform platform;
     protected List<IExtractDataReaderSource> sourcesToUse;
+    protected IDatabasePlatform targetPlatform;
     protected IExtractDataReaderSource currentSource;
     protected List<IExtractDataFilter> filters;
     protected Batch batch;
@@ -62,25 +63,29 @@ public class ExtractDataReader implements IDataReader {
     protected boolean isSybaseASE;
     protected boolean isUsingUnitypes;
 
-    public ExtractDataReader(IDatabasePlatform platform, IExtractDataReaderSource source) {
+    public ExtractDataReader(IDatabasePlatform platform, IExtractDataReaderSource source, IDatabasePlatform targetPlatform) {
         this.sourcesToUse = new ArrayList<IExtractDataReaderSource>();
         this.sourcesToUse.add(source);
         this.platform = platform;
+        this.targetPlatform = targetPlatform;
         this.isSybaseASE = platform.getName().equals(DatabaseNamesConstants.ASE);
     }
 
-    public ExtractDataReader(IDatabasePlatform platform, IExtractDataReaderSource source, List<IExtractDataFilter> filters, boolean isUsingUnitypes) {
+    public ExtractDataReader(IDatabasePlatform platform, IExtractDataReaderSource source, List<IExtractDataFilter> filters,
+            boolean isUsingUnitypes, IDatabasePlatform targetPlatform) {
         this.sourcesToUse = new ArrayList<IExtractDataReaderSource>();
         this.sourcesToUse.add(source);
         this.platform = platform;
+        this.targetPlatform = targetPlatform;
         this.filters = filters;
         this.isUsingUnitypes = isUsingUnitypes;
         this.isSybaseASE = platform.getName().equals(DatabaseNamesConstants.ASE);
     }
 
-    public ExtractDataReader(IDatabasePlatform platform, List<IExtractDataReaderSource> sources) {
+    public ExtractDataReader(IDatabasePlatform platform, List<IExtractDataReaderSource> sources, IDatabasePlatform targetPlatform) {
         this.sourcesToUse = new ArrayList<IExtractDataReaderSource>(sources);
         this.platform = platform;
+        this.targetPlatform = targetPlatform;
         isSybaseASE = platform.getName().equals(DatabaseNamesConstants.ASE);
     }
 
@@ -216,7 +221,8 @@ public class ExtractDataReader implements IDataReader {
                 Map<String, Object> columnDataMap = CollectionUtils
                         .toMap(columnNames, objectValues);
                 Column[] pkColumns = table.getPrimaryKeyColumns();
-                ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+                ISqlTemplate sqlTemplate = targetPlatform.getSqlTemplate();
+                // ISqlTemplate sqlTemplate = platform.getSqlTemplate();
                 Object[] args = new Object[pkColumns.length];
                 for (int i = 0; i < pkColumns.length; i++) {
                     args[i] = columnDataMap.get(pkColumns[i].getName());

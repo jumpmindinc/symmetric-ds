@@ -26,5 +26,6 @@ import org.jumpmind.symmetric.io.data.reader.IExtractDataReaderSource;
 import org.jumpmind.symmetric.model.Node;
 
 public interface IExtractDataReaderFactory {
-    public ExtractDataReader getReader(IDatabasePlatform platform, IExtractDataReaderSource source, Node sourceNode, Node targetNode);
+    public ExtractDataReader getReader(IDatabasePlatform platform, IExtractDataReaderSource source, Node sourceNode,
+            Node targetNode, IDatabasePlatform targetPlatform);
 }
