@@ -44,7 +44,7 @@ a `initial_load_delete_stmt`.
             
 initial.load.create.first:: By default, an initial load will not create the table on the target if it doesn't already exist. 
 If the desired behavior is to create the table on the target if it is not present, set the parameter
-`intial.load.create.first` to true. SymmetricDS will attempt to create the table and indexes on the target database before 
+`initial.load.create.first` to true. SymmetricDS will attempt to create the table and indexes on the target database before 
 doing the initial load. Note that individual create batches are created to represent each of the table creates.
 +
 Sometimes when creating tables across different database platforms default values do not translate.  You can turn off the use of default values

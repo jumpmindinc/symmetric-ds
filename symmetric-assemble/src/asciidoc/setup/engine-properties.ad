@@ -24,7 +24,7 @@ NOTE: You can use the variable `$(hostName)` to represent the host name of the m
 NOTE:  You can also use BSH script for the external id, engine name, node group id, sync URL, and registration URL.  Use back ticks to indicate the
 BSH expression, and note that only one BSH expression is supporter for a given property line.  The script can be prefixed or suffixed with fixed text.
 For example, if you wish to based the external id off of just a part of the hostname (e.g., substring of hostName):
-external.id=store-\`import org.apache.commons.lang.StringUtils; return StringUtils.substring(hostName,2,4);\`
+external.id=store-\`import org.apache.commons.lang3.StringUtils; return StringUtils.substring(hostName,2,4);\`
 
 NOTE: You can also set both environmental variables and system properties directly in the engine file. Environmental variables refer to external variables supplied by the Operating System, and system properties are variables that can be passed into the JVM. For example, if the environment variable you're using is USERNAME, you would use $(USERNAME) in the engine file. Note, this is case sensitive.		
 		
