@@ -126,7 +126,9 @@ public class BouncyCastleSecurityService extends SecurityService {
 
     @Override
     public synchronized void installDefaultSamlSslCert(String host, int lifetimeInDays) {
-        installDefaultSslCert(host, SecurityConstants.ALIAS_SAML_PRIVATE_KEY, lifetimeInDays);
+        synchronized (BouncyCastleSecurityService.class) {
+            installDefaultSslCert(host, SecurityConstants.ALIAS_SAML_PRIVATE_KEY, lifetimeInDays);
+        }
     }
 
     private void installDefaultSslCert(String host, String alias, int lifetimeInDays) {
