@@ -293,6 +293,8 @@ public class SnapshotUtil {
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, 10000, "order by start_time desc", new File(tmpDir, "sym_node_host_stats.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_STATS));
+        extract(export, 10000, "order by start_time desc", new File(tmpDir, "sym_node_host_job_stats.csv"),
+                TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_JOB_STATS));
         checkpoint(engine, listener, stepNumber++, totalSteps);
         if (parameterService.is(ParameterConstants.FILE_SYNC_ENABLE)) {
             extract(export, 5000, "order by relative_dir, file_name", new File(tmpDir, "sym_file_snapshot.csv"),
