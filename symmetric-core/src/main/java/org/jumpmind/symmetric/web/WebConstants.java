@@ -108,6 +108,18 @@ public class WebConstants {
     public static final String REG_PASSWORD = "regPassword";
     public static final String PUSH_REGISTRATION = "pushRegistration";
     public static final String API_KEY_HEADER = "X-REST-API-KEY";
+    public static final String URL_PUSH = "push";
+    public static final String URL_PULL = "pull";
+    public static final String URL_PING = "ping";
+    public static final String URL_REGISTRATION = "registration";
+    public static final String URL_COPY = "copy";
+    public static final String URL_CONFIG = "config";
+    public static final String URL_PUSHSTATUS = "pushstatus";
+    public static final String URL_BANDWIDTH = "bandwidth";
+    public static final String URL_FILESYNC_PUSH = "filesync/push";
+    public static final String URL_FILESYNC_PULL = "filesync/pull";
+    public static final String URL_COMPARE_PUSH = "compare/push";
+    public static final String URL_COMPARE_PULL = "compare/pull";
 
     public static String getHttpMessage(int httpCode) {
         String httpMessage = null;
