@@ -45,7 +45,7 @@ Click the *Edit Script* button to edit the script for the extension.
 
 [source,java]
 ----
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 isExtractColumnTransform() {
     return true;
@@ -80,7 +80,7 @@ values
    ('mask', 'bsh', 
     'org.jumpmind.symmetric.io.data.transform.ISingleValueColumnTransform',
     'corp', 1, 1, '
-    import org.apache.commons.lang.StringUtils;
+    import org.apache.commons.lang3.StringUtils;
     
     isExtractColumnTransform() {
         return true;
