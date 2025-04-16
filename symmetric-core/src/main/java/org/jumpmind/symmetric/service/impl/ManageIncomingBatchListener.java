@@ -225,7 +225,7 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                 enableSyncTriggers(context);
                 if (ex instanceof CancellationException) {
                     log.info("Cancelling batch " + this.currentBatch.getNodeBatchId());
-                } else if (ExceptionUtils.is(ex, ParseException.class, ProtocolException.class, ZipException.class, BadPaddingException.class,
+                } else if (ex instanceof ParseException || ExceptionUtils.is(ex, ProtocolException.class, ZipException.class, BadPaddingException.class,
                         IllegalBlockSizeException.class)) {
                     this.currentBatch.setSqlCode(ErrorConstants.PROTOCOL_VIOLATION_CODE);
                     this.currentBatch.setSqlState(ErrorConstants.PROTOCOL_VIOLATION_STATE);
