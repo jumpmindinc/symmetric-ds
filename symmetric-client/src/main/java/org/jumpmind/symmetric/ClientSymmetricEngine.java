@@ -476,6 +476,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             }
         }
         springContext = null;
+        platform.shutdown();
         if (dataSource != null && dataSource instanceof BasicDataSource) {
             try {
                 ((BasicDataSource) dataSource).close();
@@ -484,10 +485,12 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         }
     }
 
+    @Override
     public List<File> listSnapshots() {
         File snapshotsDir = SnapshotUtil.getSnapshotDirectory(this);
         List<File> files = new ArrayList<>(FileUtils.listFiles(snapshotsDir, new String[] { "zip" }, false));
         Collections.sort(files, new Comparator<File>() {
+            @Override
             public int compare(File o1, File o2) {
                 return -o1.compareTo(o2);
             }
@@ -499,6 +502,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         return springContext;
     }
 
+    @Override
     public File snapshot(IProgressListener listener) {
         return SnapshotUtil.createSnapshot(this, listener);
     }
