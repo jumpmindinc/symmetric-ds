@@ -231,28 +231,31 @@ public class ColumnsAccordingToTriggerHistory {
         if (transform.getColumnPolicy().equals(ColumnPolicy.SPECIFIED)) {
             columnNamesToRemoveList.addAll(Arrays.asList(table.getColumnNames()));
         }
-        for (TransformColumn transformColumn : transform.getTransformColumns()) {
-            if (StringUtils.isNotBlank(transformColumn.getSourceColumnName())) {
-                Column column = table.getColumnWithName(transformColumn.getSourceColumnName());
-                if (column != null) {
-                    columnNamesToRemoveList.remove(column.getName());
-                    column.setName(transformColumn.getTargetColumnName());
-                    if (RemoveColumnTransform.NAME.equals(transformColumn.getTransformType())) {
-                        columnNamesToRemoveList.add(column.getName());
-                    } else {
+        List<TransformColumn> transformColumns = transform.getTransformColumns();
+        if (transformColumns != null) {
+            for (TransformColumn transformColumn : transformColumns) {
+                if (StringUtils.isNotBlank(transformColumn.getSourceColumnName())) {
+                    Column column = table.getColumnWithName(transformColumn.getSourceColumnName());
+                    if (column != null) {
                         columnNamesToRemoveList.remove(column.getName());
+                        column.setName(transformColumn.getTargetColumnName());
+                        if (RemoveColumnTransform.NAME.equals(transformColumn.getTransformType())) {
+                            columnNamesToRemoveList.add(column.getName());
+                        } else {
+                            columnNamesToRemoveList.remove(column.getName());
+                        }
+                        column.setPrimaryKey(transformColumn.isPk());
                     }
+                } else {
+                    Column column = new Column(transformColumn.getTargetColumnName());
                     column.setPrimaryKey(transformColumn.isPk());
+                    column.setTypeCode(Types.VARCHAR);
+                    column.setJdbcTypeCode(Types.VARCHAR);
+                    column.setJdbcTypeName("VARCHAR");
+                    column.setSize("100");
+                    table.addColumn(column);
+                    columnNamesToRemoveList.remove(column.getName());
                 }
-            } else {
-                Column column = new Column(transformColumn.getTargetColumnName());
-                column.setPrimaryKey(transformColumn.isPk());
-                column.setTypeCode(Types.VARCHAR);
-                column.setJdbcTypeCode(Types.VARCHAR);
-                column.setJdbcTypeName("VARCHAR");
-                column.setSize("100");
-                table.addColumn(column);
-                columnNamesToRemoveList.remove(column.getName());
             }
         }
         for (String columnName : columnNamesToRemoveList) {
