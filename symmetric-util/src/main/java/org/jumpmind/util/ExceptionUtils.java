@@ -50,7 +50,7 @@ public class ExceptionUtils {
         return cause;
     }
 
-    public static boolean is(Exception e, Class<?>... exceptions) {
+    public static boolean is(Throwable e, Class<?>... exceptions) {
         if (e != null) {
             Throwable cause = getRootCause(e);
             for (Class<?> ex : exceptions) {

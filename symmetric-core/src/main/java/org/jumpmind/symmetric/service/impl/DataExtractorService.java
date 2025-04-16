@@ -59,6 +59,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipException;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
@@ -637,7 +640,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                             if (transferInfo != null && transferInfo.getStatus() != ProcessStatus.OK) {
                                 transferInfo.setStatus(ProcessStatus.ERROR);
                             }
-                            if (e instanceof ExecutionException) {
+                            if (ExceptionUtils.is(e, BadPaddingException.class, IllegalBlockSizeException.class)) {
+                                throw new ProtocolException(e);
+                            } else if (e instanceof ExecutionException) {
                                 if (isNotBlank(e.getMessage()) && e.getMessage().contains("string truncation")) {
                                     throw new RuntimeException(
                                             "There is a good chance that the truncation error you are receiving is because contains_big_lobs on the '"
