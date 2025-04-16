@@ -29,6 +29,9 @@ import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.zip.ZipException;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -221,11 +224,8 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                 enableSyncTriggers(context);
                 if (ex instanceof CancellationException) {
                     log.info("Cancelling batch " + this.currentBatch.getNodeBatchId());
-                } else if (ex instanceof IOException || ex instanceof TransportException
-                        || ex instanceof IoException) {
-                    log.warn("Failed to load batch " + this.currentBatch.getNodeBatchId(), ex);
-                    this.currentBatch.setSqlMessage(ex);
-                } else if (ex instanceof ParseException || ex instanceof ProtocolException || ex.getCause() instanceof ZipException) {
+                } else if (ExceptionUtils.is(ex, ParseException.class, ProtocolException.class, ZipException.class, BadPaddingException.class,
+                        IllegalBlockSizeException.class)) {
                     this.currentBatch.setSqlCode(ErrorConstants.PROTOCOL_VIOLATION_CODE);
                     this.currentBatch.setSqlState(ErrorConstants.PROTOCOL_VIOLATION_STATE);
                     if (isNewErrorForCurrentBatch) {
@@ -233,6 +233,10 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                     } else {
                         log.error(String.format("Failed to parse batch %s", this.currentBatch.getNodeBatchId()), ex);
                     }
+                } else if (ex instanceof IOException || ex instanceof TransportException
+                        || ex instanceof IoException) {
+                    log.warn("Failed to load batch " + this.currentBatch.getNodeBatchId(), ex);
+                    this.currentBatch.setSqlMessage(ex);
                 } else {
                     SQLException se = ExceptionUtils.unwrapSqlException(ex);
                     if (ex instanceof ConflictException) {
