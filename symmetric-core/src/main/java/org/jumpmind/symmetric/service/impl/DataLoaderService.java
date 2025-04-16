@@ -68,6 +68,7 @@ import org.jumpmind.exception.InvalidRetryException;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.extension.IProcessInfoListener;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.Constants;
@@ -638,7 +639,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                 engine.getDataService().reloadMissingForeignKeyRowsReverse(sourceNode.getNodeId(), ctx.getTable(), ctx.getData(), null,
                         parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION_REVERSE_PEERS));
             }
-            logOrRethrow(ex, sourceNode.getNodeId());
+            logOrRethrow(ex, sourceNode.getNodeId(), transport.getUrl().endsWith(WebConstants.URL_REGISTRATION));
         } finally {
             transport.close();
             for (ILoadSyncLifecycleListener l : extensionService
@@ -674,7 +675,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
         }
     }
 
-    protected void logOrRethrow(Throwable ex, String sourceNodeId) throws IOException {
+    protected void logOrRethrow(Throwable ex, String sourceNodeId, boolean isRegistration) throws IOException {
         // Throwing exception will mean acks are not sent, so only certain exceptions should be thrown
         if (ex instanceof RegistrationRequiredException) {
             throw (RegistrationRequiredException) ex;
@@ -700,6 +701,12 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
             throw (AuthenticationException) ex;
         } else if (ex instanceof AuthenticationExpiredException) {
             throw (AuthenticationExpiredException) ex;
+        } else if (isRegistration) {
+            if (ex instanceof IOException) {
+                throw (IOException) ex;
+            } else {
+                throw new SymmetricException(ex);
+            }
         } else if (ex instanceof ProtocolException) {
             log.error("Failed to process incoming batch from node '{}': {}{}", sourceNodeId, ex.getClass().getSimpleName(),
                     StringUtils.isNotBlank(ex.getMessage()) ? ": " + ex.getMessage() : "");
