@@ -108,6 +108,8 @@ public interface IOutgoingBatchService {
 
     public int countOutgoingBatchesUnsent();
 
+    public int countOutgoingBatchesUnsentOfflineNodes(String minsBeforeOfflineParam);
+
     public int[] countOutgoingNonSystemBatchesRowsUnsent();
 
     public int countOutgoingBatchesInError(String channelId);

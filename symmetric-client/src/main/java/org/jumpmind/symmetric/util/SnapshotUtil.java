@@ -661,6 +661,9 @@ public class SnapshotUtil {
                     df.format(engine.getOutgoingBatchService().countOutgoingBatchesInError()));
             runtimeProperties.setProperty("batch.outgoing.tosend.count",
                     df.format(engine.getOutgoingBatchService().countOutgoingBatchesUnsent()));
+            runtimeProperties.setProperty("batch.outgoing.tosend.offline.count",
+                    df.format(engine.getOutgoingBatchService().countOutgoingBatchesUnsentOfflineNodes(
+                            ParameterConstants.OFFLINE_NODE_DETECTION_PERIOD_MINUTES)));
             runtimeProperties.setProperty("batch.incoming.errors.count",
                     df.format(engine.getIncomingBatchService().countIncomingBatchesInError()));
             List<DataGap> gaps = engine.getDataService().findDataGapsUnchecked();
