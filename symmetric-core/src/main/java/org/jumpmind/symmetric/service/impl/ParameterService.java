@@ -175,8 +175,14 @@ public class ParameterService extends AbstractParameterService implements IParam
     }
 
     protected TypedProperties rereadApplicationParameters() {
+        return rereadApplicationParameters(true);
+    }
+
+    protected TypedProperties rereadApplicationParameters(boolean includeSystemProperties) {
         TypedProperties p = this.factory.reload();
-        p.putAll(systemProperties);
+        if (includeSystemProperties) {
+            p.putAll(systemProperties);
+        }
         p.putAll(rereadDatabaseParameters(p));
         rereadOfflineNodeParameters();
         return p;

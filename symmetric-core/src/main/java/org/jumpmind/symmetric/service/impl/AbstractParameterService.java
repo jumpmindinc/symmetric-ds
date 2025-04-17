@@ -21,6 +21,8 @@
 package org.jumpmind.symmetric.service.impl;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashMap;
@@ -142,6 +144,8 @@ abstract public class AbstractParameterService {
 
     protected abstract TypedProperties rereadApplicationParameters();
 
+    protected abstract TypedProperties rereadApplicationParameters(boolean includeSystemProperties);
+
     public synchronized void rereadParameters() {
         lastTimeParameterWereCached = 0;
         getParameters();
@@ -171,6 +175,31 @@ abstract public class AbstractParameterService {
 
     public TypedProperties getAllParameters() {
         return getParameters();
+    }
+
+    public TypedProperties getAllParametersChanged() {
+        Properties defaultParameters = new Properties();
+        try (InputStream in = getClass().getResourceAsStream("/symmetric-default.properties")) {
+            defaultParameters.load(in);
+        } catch (IOException e) {
+            log.error("Failed to load properties", e);
+        }
+        try (InputStream in = getClass().getResourceAsStream("/symmetric-console-default.properties")) {
+            defaultParameters.load(in);
+        } catch (IOException e) {
+            log.error("Failed to load properties", e);
+        }
+        TypedProperties effectiveParameters = rereadApplicationParameters(false);
+        SymmetricUtils.replaceSystemAndEnvironmentVariables(effectiveParameters);
+        TypedProperties changedParameters = new TypedProperties();
+        for (String key : effectiveParameters.stringPropertyNames()) {
+            String defaultValue = defaultParameters.getProperty(key);
+            String currentValue = effectiveParameters.getProperty(key);
+            if (defaultValue == null && currentValue != null || (defaultValue != null && !defaultValue.equals(currentValue))) {
+                changedParameters.put(key, currentValue == null ? "" : currentValue);
+            }
+        }
+        return changedParameters;
     }
 
     public Date getLastTimeParameterWereCached() {

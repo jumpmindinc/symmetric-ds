@@ -81,6 +81,8 @@ public interface IParameterService {
 
     public TypedProperties getAllParameters();
 
+    public TypedProperties getAllParametersChanged();
+
     public boolean isRegistrationServer();
 
     public boolean isRemoteNodeRegistrationServer(Node remoteNode);

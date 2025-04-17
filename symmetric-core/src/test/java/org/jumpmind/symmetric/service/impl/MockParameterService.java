@@ -101,6 +101,11 @@ public class MockParameterService extends AbstractParameterService implements IP
     }
 
     @Override
+    protected TypedProperties rereadApplicationParameters(boolean includeSystemProperties) {
+        return rereadApplicationParameters();
+    }
+
+    @Override
     public void deleteParameterWithUpdate(String externalId,
             String nodeGroupId, String key) {
     }
