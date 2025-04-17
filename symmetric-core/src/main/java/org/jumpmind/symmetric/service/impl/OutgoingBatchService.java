@@ -61,6 +61,7 @@ import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
+import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.ISequenceService;
 import org.jumpmind.symmetric.util.QueueThread;
 import org.jumpmind.util.AppUtils;
@@ -76,9 +77,11 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
     private IClusterService clusterService;
     private IExtensionService extensionService;
     private ICacheManager cacheManager;
+    private IParameterService parameterService;
 
     public OutgoingBatchService(ISymmetricEngine engine) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
+        this.parameterService = engine.getParameterService();
         this.nodeService = engine.getNodeService();
         this.configurationService = engine.getConfigurationService();
         this.sequenceService = engine.getSequenceService();
@@ -420,6 +423,19 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
 
     public int countOutgoingBatchesUnsent() {
         return sqlTemplateDirty.queryForInt(getSql("countOutgoingBatchesUnsentSql"));
+    }
+
+    @Override
+    public int countOutgoingBatchesUnsentOfflineNodes(String minsBeforeOfflineParam) {
+        int unsentBatchCount = 0;
+        int minutesBeforeOffline = parameterService.getInt(minsBeforeOfflineParam);
+        if (minutesBeforeOffline < 0) {
+            return unsentBatchCount;
+        }
+        for (String offlineNodeId : nodeService.findOfflineNodeIds(minutesBeforeOffline)) {
+            unsentBatchCount += countUnsentBatchesByTargetNode(offlineNodeId, true);
+        }
+        return unsentBatchCount;
     }
 
     public int[] countOutgoingNonSystemBatchesRowsUnsent() {
