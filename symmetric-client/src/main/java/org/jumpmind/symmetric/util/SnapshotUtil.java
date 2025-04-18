@@ -348,8 +348,10 @@ public class SnapshotUtil {
             }
             for (String name : new String[] { "db.password", "target.db.password", "smtp.password", "redshift.bulk.load.s3.access.key",
                     "redshift.bulk.load.s3.secret.key", "opensearch.load.aws.access.key", "opensearch.load.aws.secret.key", "cloud.bulk.load.s3.access.key",
-                    "cloud.bulk.load.s3.secret.key", "cloud.bulk.load.azure.sas.token", "registration.secret" }) {
-                changedParameters.remove(name);
+                    "cloud.bulk.load.s3.secret.key", "cloud.bulk.load.azure.sas.token", "registration.secret", "file.sync.s3.secret.key" }) {
+                if (changedParameters.containsKey(name)) {
+                    changedParameters.put(name, StringUtils.repeat("*", changedParameters.getProperty(name, "").length()));
+                }
             }
             writeProperties(changedParameters, tmpDir, "parameters-changed.properties");
         } catch (Exception e) {
