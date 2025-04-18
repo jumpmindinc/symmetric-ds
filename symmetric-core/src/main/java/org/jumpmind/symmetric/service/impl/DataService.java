@@ -995,6 +995,7 @@ public class DataService extends AbstractService implements IDataService {
                         // Insert new table reload request
                         tableReloadRequest.setLoadId(0l);
                         tableReloadRequest.setProcessed(false);
+                        tableReloadRequest.setCreateTime(null);
                         insertTableReloadRequest(tableReloadRequest);
                         // Start a new load
                         loadId = 0l;
