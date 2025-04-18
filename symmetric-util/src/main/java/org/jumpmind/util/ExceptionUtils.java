@@ -23,6 +23,8 @@ package org.jumpmind.util;
 import java.sql.SQLException;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
+
 public class ExceptionUtils {
     public static SQLException unwrapSqlException(Throwable e) {
         List<Throwable> exs = org.apache.commons.lang3.exception.ExceptionUtils.getThrowableList(e);
@@ -60,5 +62,20 @@ public class ExceptionUtils {
             }
         }
         return false;
+    }
+
+    public static String unwrapMessages(Throwable e) {
+        StringBuilder sb = new StringBuilder();
+        while (e != null) {
+            sb.append(e.getClass().getSimpleName());
+            if (!StringUtils.isBlank(e.getMessage())) {
+                sb.append(": ").append(e.getMessage());
+            }
+            e = e.getCause();
+            if (e != null) {
+                sb.append("\n");
+            }
+        }
+        return sb.toString();
     }
 }

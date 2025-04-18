@@ -302,7 +302,7 @@ public class TableReloadStatus {
     }
 
     public int getTotalBatchCount() {
-        return this.setupBatchCount + this.dataBatchCount + this.finalizeBatchCount;
+        return Integer.max(setupBatchCount, 0) + Integer.max(dataBatchCount, 0) + Integer.max(finalizeBatchCount, 0);
     }
 
     public int getTotalBatchLoaded() {

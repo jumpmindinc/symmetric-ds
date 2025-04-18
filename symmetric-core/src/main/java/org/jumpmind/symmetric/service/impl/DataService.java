@@ -24,7 +24,6 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import java.nio.charset.Charset;
 import java.sql.DataTruncation;
-import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -112,6 +111,7 @@ import org.jumpmind.symmetric.service.IFileSyncService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGroupLink;
+import org.jumpmind.util.ExceptionUtils;
 import org.jumpmind.util.FormatUtils;
 
 /**
@@ -768,15 +768,9 @@ public class DataService extends AbstractService implements IDataService {
         }
     }
 
-    protected int updateTableReloadRequestsError(long loadId, String sourceNodeId, SqlException e) {
-        if (e.getCause() instanceof SQLException) {
-            SQLException ex = (SQLException) e.getCause();
-            return sqlTemplate.update(getSql("updateTableReloadStatusError"), ex.getErrorCode(), ex.getSQLState(),
-                    ex.getMessage(), loadId, sourceNodeId);
-        } else {
-            return sqlTemplate.update(getSql("updateTableReloadStatusError"), e.getErrorCode(), null, e.getMessage(),
-                    loadId, sourceNodeId);
-        }
+    protected int updateTableReloadRequestsError(long loadId, String sourceNodeId, int errorCode, String sqlState, String message) {
+        return sqlTemplate.update(getSql("updateTableReloadStatusError"), errorCode, sqlState, message,
+                loadId, sourceNodeId);
     }
 
     protected class TableReloadRequestMapper implements ISqlRowMapper<TableReloadRequest> {
@@ -1186,11 +1180,10 @@ public class DataService extends AbstractService implements IDataService {
                             transaction.rollback();
                         }
                         if (ex instanceof InvalidSqlException) {
-                            log.warn("Cancelling load " + loadId);
-                            if (ex.getCause() instanceof SqlException) {
-                                log.error(ex.getCause().getMessage());
-                                updateTableReloadRequestsError(loadId, sourceNode.getNodeId(), (SqlException) ex.getCause());
-                            }
+                            InvalidSqlException e = (InvalidSqlException) ex;
+                            updateTableReloadRequestsError(loadId, sourceNode.getNodeId(), e.getErrorCode(), e.getSQLState(),
+                                    ExceptionUtils.unwrapMessages(ex));
+                            log.warn("Cancelling load " + loadId, e);
                             updateTableReloadRequestsCancelled(loadId, sourceNode.getNodeId());
                         } else if (ex instanceof RuntimeException) {
                             throw (RuntimeException) ex;
@@ -1677,7 +1670,7 @@ public class DataService extends AbstractService implements IDataService {
                             }
                         }
                         if (rowCount == -1) {
-                            rowCount = getDataCountForReload(table, targetNode, selectSql);
+                            rowCount = getDataCountForReload(table, targetNode, selectSql, loadId);
                         }
                         long transformMultiplier = getTransformMultiplier(table, triggerRouter);
                         long startBatchId = 0;
@@ -1736,7 +1729,7 @@ public class DataService extends AbstractService implements IDataService {
         return requests;
     }
 
-    protected long getDataCountForReload(Table table, Node targetNode, String selectSql) throws SqlException {
+    protected long getDataCountForReload(Table table, Node targetNode, String selectSql, long loadId) throws SqlException {
         long rowCount = -1;
         if (parameterService.is(ParameterConstants.INITIAL_LOAD_USE_ESTIMATED_COUNTS) &&
                 (selectSql == null || StringUtils.isBlank(selectSql) || selectSql.replace(" ", "").equals("1=1"))) {
@@ -1761,8 +1754,7 @@ public class DataService extends AbstractService implements IDataService {
             try {
                 rowCount = getTargetPlatform().getSqlTemplateDirty().queryForLong(sql);
             } catch (SqlException ex) {
-                log.error("Failed to execute row count SQL while starting reload.  " + ex.getMessage() + ", SQL: \"" + sql + "\"");
-                throw new InvalidSqlException(ex);
+                throw new InvalidSqlException("Failed to execute row count SQL for load ID " + loadId + " with: " + sql, ex);
             }
         }
         return rowCount;
