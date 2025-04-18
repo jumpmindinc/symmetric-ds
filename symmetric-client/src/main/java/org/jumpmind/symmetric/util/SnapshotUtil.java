@@ -70,7 +70,6 @@ import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.extension.IProgressListener;
-import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -337,11 +336,13 @@ public class SnapshotUtil {
             }
             Properties effectiveParameters = engine.getParameterService().getAllParameters();
             Properties changedParameters = new Properties();
-            Map<String, ParameterMetaData> parameters = ParameterConstants.getParameterMetaData();
-            for (String key : parameters.keySet()) {
+            Properties sysProp = System.getProperties();
+            Map<String, String> env = System.getenv();
+            for (String key : effectiveParameters.stringPropertyNames()) {
                 String defaultValue = defaultParameters.getProperty(key);
                 String currentValue = effectiveParameters.getProperty(key);
-                if (defaultValue == null && currentValue != null || (defaultValue != null && !defaultValue.equals(currentValue))) {
+                if ((defaultValue == null && currentValue != null || (defaultValue != null && !defaultValue.equals(currentValue))) && ((!sysProp.containsKey(
+                        key) && !env.containsKey(key)) || defaultParameters.containsKey(key))) {
                     changedParameters.put(key, currentValue == null ? "" : currentValue);
                 }
             }
