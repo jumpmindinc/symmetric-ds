@@ -57,11 +57,11 @@ public class Firebird21SymmetricDialect extends Firebird20SymmetricDialect {
     public void dropRequiredDatabaseObjects() {
         String hex = this.parameterService.getTablePrefix() + "_" + "hex";
         if (installed(SQL_FUNCTION_INSTALLED, hex)) {
-        	if (databaseMajorVersion >= 5) {
-        		uninstall(SQL_DROP_FUNCTION, hex);
-        	} else {
-        		uninstall(SQL_DROP_EXTERNAL_FUNCTION, hex);
-        	}
+            if (databaseMajorVersion >= 4) {
+                uninstall(SQL_DROP_FUNCTION, hex);
+            } else {
+                uninstall(SQL_DROP_EXTERNAL_FUNCTION, hex);
+            }
         }
     }
 }
