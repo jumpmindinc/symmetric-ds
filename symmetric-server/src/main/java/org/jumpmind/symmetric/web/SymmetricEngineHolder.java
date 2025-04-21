@@ -496,7 +496,7 @@ public class SymmetricEngineHolder {
     }
 
     public int getEngineCount() {
-        return engines.size() + enginesFailed.size();
+        return engines.size();
     }
 
     public Set<SymmetricEngineStarter> getEnginesStarting() {
