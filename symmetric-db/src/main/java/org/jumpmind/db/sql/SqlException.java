@@ -50,6 +50,15 @@ public class SqlException extends RuntimeException {
         }
     }
 
+    public String getSQLState() {
+        Throwable rootCause = getRootCause();
+        if (rootCause instanceof SQLException) {
+            return ((SQLException) rootCause).getSQLState();
+        } else {
+            return null;
+        }
+    }
+
     public Throwable getRootCause() {
         Throwable rootCause = null;
         Throwable cause = getCause();
