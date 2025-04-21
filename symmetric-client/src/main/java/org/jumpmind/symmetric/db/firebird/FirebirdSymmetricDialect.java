@@ -39,7 +39,7 @@ import org.springframework.jdbc.UncategorizedSQLException;
  * Database dialect for <a href="http://www.firebirdsql.org/">Firebird</a>.
  */
 public class FirebirdSymmetricDialect extends AbstractSymmetricDialect implements ISymmetricDialect {
-    static final String SQL_DROP_FUNCTION = "DROP EXTERNAL FUNCTION $(functionName)";
+    static final String SQL_DROP_EXTERNAL_FUNCTION = "DROP EXTERNAL FUNCTION $(functionName)";
     static final String SQL_FUNCTION_INSTALLED = "select count(*) from rdb$functions where rdb$function_name = upper('$(functionName)')";
     static final String SYNC_TRIGGERS_DISABLED_USER_VARIABLE = "sync_triggers_disabled";
     static final String SYNC_TRIGGERS_DISABLED_NODE_VARIABLE = "sync_node_disabled";
@@ -79,11 +79,11 @@ public class FirebirdSymmetricDialect extends AbstractSymmetricDialect implement
     public void dropRequiredDatabaseObjects() {
         String escape = this.parameterService.getTablePrefix() + "_" + "escape";
         if (installed(SQL_FUNCTION_INSTALLED, escape)) {
-            uninstall(SQL_DROP_FUNCTION, escape);
+            uninstall(SQL_DROP_EXTERNAL_FUNCTION, escape);
         }
         String hex = this.parameterService.getTablePrefix() + "_" + "hex";
         if (installed(SQL_FUNCTION_INSTALLED, hex)) {
-            uninstall(SQL_DROP_FUNCTION, hex);
+            uninstall(SQL_DROP_EXTERNAL_FUNCTION, hex);
         }
     }
 

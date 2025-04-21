@@ -474,7 +474,9 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             }
         }
         springContext = null;
-        platform.shutdown();
+        if (platform != null) {
+        	platform.shutdown();
+        }
         if (dataSource != null && dataSource instanceof BasicDataSource) {
             try {
                 ((BasicDataSource) dataSource).close();
