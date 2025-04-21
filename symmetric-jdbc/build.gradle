@@ -24,7 +24,7 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation "org.hsqldb:hsqldb:$hsqldbVersion"
         testImplementation "org.xerial:sqlite-jdbc:$sqliteVersion"
         testImplementation "jdbc.db2:db2jcc:9.7"
-        testImplementation "org.firebirdsql.jdbc:jaybird:5.0.4.java11"
+        testImplementation "org.firebirdsql.jdbc:jaybird:6.0.1"
         testImplementation "jakarta.resource:jakarta.resource-api:2.1.0"
         testImplementation "jdbc.informix:ifxjdbc:1.0"
         testImplementation "jdbc.informix:ifxlang:1.0"
