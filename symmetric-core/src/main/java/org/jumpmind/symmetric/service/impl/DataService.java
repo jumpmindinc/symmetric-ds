@@ -769,7 +769,7 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     protected int updateTableReloadRequestsError(long loadId, String sourceNodeId, int errorCode, String sqlState, String message) {
-        return sqlTemplate.update(getSql("updateTableReloadStatusError"), errorCode, sqlState, message,
+        return sqlTemplate.update(getSql("updateTableReloadStatusError"), errorCode, StringUtils.left(sqlState, 10), message,
                 loadId, sourceNodeId);
     }
 
