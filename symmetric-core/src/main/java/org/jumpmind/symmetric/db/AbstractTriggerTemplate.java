@@ -126,7 +126,7 @@ abstract public class AbstractTriggerTemplate {
                     || type == Types.TINYINT || type == Types.SMALLINT || type == Types.INTEGER || type == Types.BIGINT
                     || type == Types.NUMERIC || type == Types.BINARY || type == Types.VARBINARY
                     || (type == Types.BLOB && !requiresWrappedBlobTemplateForBlobType()) || type == Types.LONGVARBINARY
-                    || type == Types.DECIMAL || type == Types.FLOAT || type == Types.DOUBLE || type == Types.REAL
+                    || type == Types.DECIMAL || type == Types.FLOAT || (type == Types.DOUBLE && !typeName.equalsIgnoreCase("money")) || type == Types.REAL
                     || type == ColumnTypes.MSSQL_NTEXT || type == Types.DATE || type == Types.TIME || type == Types.TIMESTAMP
                     || type == Types.BIT || type == Types.BOOLEAN) {
                 return false;
