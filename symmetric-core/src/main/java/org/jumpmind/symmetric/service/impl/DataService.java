@@ -539,6 +539,28 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     @Override
+    public void updateTableReloadStatusFailed(long loadId, String sourceNodeId, long batchId) {
+        ISqlTransaction transaction = null;
+        try {
+            transaction = sqlTemplate.startSqlTransaction();
+            updateTableReloadStatusFailed(transaction, loadId, sourceNodeId, batchId);
+            transaction.commit();
+        } catch (Error ex) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw ex;
+        } catch (RuntimeException ex) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw ex;
+        } finally {
+            close(transaction);
+        }
+    }
+
+    @Override
     public void updateTableReloadStatusFailed(ISqlTransaction transaction, long loadId, String sourceNodeId, long batchId) {
         int idType = symmetricDialect.getSqlTypeForIds();
         if (platform.supportsParametersInSelect()) {

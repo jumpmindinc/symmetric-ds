@@ -923,6 +923,13 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                 writer = wrapWithTransformWriter(sourceNode, targetNode, extractInfo, dataWriter, useStagingDataWriter);
                                 new DataProcessor(dataReader, writer, listener, "extract").process(ctx);
                             } else {
+                                currentBatch.setStatus(Status.ER);
+                                currentBatch.setErrorFlag(true);
+                                currentBatch.setSqlMessage(ExceptionUtils.unwrapMessages(e));
+                                outgoingBatchService.updateOutgoingBatch(currentBatch);
+                                if (currentBatch.isLoadFlag()) {
+                                    dataService.updateTableReloadStatusFailed(currentBatch.getLoadId(), sourceNode.getNodeId(), currentBatch.getBatchId());
+                                }
                                 throw e;
                             }
                         }
@@ -953,6 +960,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         }
                     }
                 } catch (RuntimeException ex) {
+                    // TODO: update outgoing batch with error
                     IStagedResource resource = getStagedResource(currentBatch);
                     if (resource != null) {
                         resource.close();
