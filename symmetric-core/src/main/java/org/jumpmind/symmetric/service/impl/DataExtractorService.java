@@ -960,7 +960,6 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         }
                     }
                 } catch (RuntimeException ex) {
-                    // TODO: update outgoing batch with error
                     IStagedResource resource = getStagedResource(currentBatch);
                     if (resource != null) {
                         resource.close();
