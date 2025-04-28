@@ -304,6 +304,8 @@ public class SnapshotUtil {
         log.info("Writing runtime data - console and events");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, new File(tmpDir, "sym_console_event.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_EVENT));
+        extract(export, 10000, "order by start_time desc", new File(tmpDir, "sym_console_table_stats.csv"),
+                TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_TABLE_STATS));
         extract(export, new File(tmpDir, "sym_monitor_event.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_MONITOR_EVENT));
         log.info("Writing runtime data - parameters");
         checkpoint(engine, listener, stepNumber++, totalSteps);
