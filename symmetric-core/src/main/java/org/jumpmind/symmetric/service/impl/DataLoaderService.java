@@ -639,7 +639,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                 engine.getDataService().reloadMissingForeignKeyRowsReverse(sourceNode.getNodeId(), ctx.getTable(), ctx.getData(), null,
                         parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION_REVERSE_PEERS));
             }
-            logOrRethrow(ex, sourceNode.getNodeId(), transport.getUrl().endsWith(WebConstants.URL_REGISTRATION));
+            logOrRethrow(ex, sourceNode.getNodeId(), transport.getUrl() == null || transport.getUrl().endsWith(WebConstants.URL_REGISTRATION));
         } finally {
             transport.close();
             for (ILoadSyncLifecycleListener l : extensionService
