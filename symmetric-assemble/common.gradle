@@ -14,7 +14,7 @@ configurations.all {
             details.useVersion '9.5'
         }
         if (details.requested.group == 'io.swagger.core.v3') {
-            details.useVersion '2.2.15'
+            details.useVersion '2.2.30'
         }
     }
 }
@@ -287,12 +287,12 @@ subprojects { subproject ->
         commonsCliVersion = '1.6.0'
         commonsDbcpVersion = '2.12.0'
         commonsFileuploadVersion = '2.0.0-M1'
-        commonsIoVersion = '2.16.1'
-        commonsLangVersion = '3.14.0'
+        commonsIoVersion = '2.18.0'
+        commonsLangVersion = '3.17.0'
         commonsTextVersion = '1.12.0'
         commonsCodecVersion = '1.16.1'
-        commonsCollectionVersion = '4.5.0-M1'
-        commonsVfs = '2.9.0'
+        commonsCollectionVersion = '4.5.0-M3'
+        commonsVfs = '2.10.0'
         hamcrestVersion = '1.3'
         h2Version = '2.2.224'
         derbyVersion = '10.16.1.1'
@@ -315,14 +315,14 @@ subprojects { subproject ->
         powerMockVersion = '2.0.9'
         mysqlVersion = '8.4.0'
         servletVersion = '4.0.1'
-        springVersion = '6.2.3'
-        springBootVersion = '3.4.3'
+        springVersion = '6.2.6'
+        springBootVersion = '3.4.5'
         jtdsVersion = '1.3.1'
         bouncyCastleVersion = '1.78.1'
         animalSnifferVersion = '1.23'
         jnaVersion = '5.14.0'
-        jettyVersion = '12.0.16'
-        websocketVersion = '2.1.1'
+        jettyVersion = '12.0.19'
+        websocketVersion = '2.2.0'
         env = System.getenv()
     }
 
