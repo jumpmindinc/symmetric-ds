@@ -24,7 +24,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Table;
@@ -64,6 +66,7 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
     private static final String CTX_KEY_MY_NODE_SECURITY = "MyNodeSecurity." + SUFFIX;
     private static final String CTX_KEY_CANCEL_LOAD = "CancelLoad." + SUFFIX;
     private static final String CTX_KEY_INITAL_LOAD_ID = "InitialLoadId." + SUFFIX;
+    private static final String CREATE_OR_ALTER_TABLE_PATTERN = " *(alter|create) +.*";
     private ISymmetricEngine engine;
     private ConfigurationChangedHelper helper;
     private String tablePrefixLower;
@@ -118,7 +121,19 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
 
     @Override
     public void afterWrite(DataContext context, Table table, CsvData data) {
-        if (data.getDataEventType() == DataEventType.CREATE) {
+        if (DataEventType.SQL.equals(data.getDataEventType())) {
+            String[] parsedData = data.getParsedData(CsvData.ROW_DATA);
+            if (parsedData != null && parsedData.length > 0) {
+                List<String> sqlStatements = helper.getSqlStatements(parsedData[0]);
+                Pattern createOrAlterPattern = Pattern.compile(CREATE_OR_ALTER_TABLE_PATTERN, Pattern.CASE_INSENSITIVE);
+                Optional<String> matchingSql = sqlStatements.stream()
+                        .filter(sql -> createOrAlterPattern.matcher(sql).matches())
+                        .findFirst();
+                if (matchingSql.isPresent() && helper.isSyncTriggersAllowed(context)) {
+                    helper.setSyncTriggersNeeded(context);
+                }
+            }
+        } else if (data.getDataEventType() == DataEventType.CREATE) {
             @SuppressWarnings("unchecked")
             Set<Table> tables = (Set<Table>) context.get(CTX_KEY_RESYNC_TABLE_NEEDED);
             if (tables == null) {
