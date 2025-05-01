@@ -66,7 +66,7 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
     private static final String CTX_KEY_MY_NODE_SECURITY = "MyNodeSecurity." + SUFFIX;
     private static final String CTX_KEY_CANCEL_LOAD = "CancelLoad." + SUFFIX;
     private static final String CTX_KEY_INITAL_LOAD_ID = "InitialLoadId." + SUFFIX;
-    private static final String CREATE_OR_ALTER_TABLE_PATTERN = " *(alter|create) +.*";
+    private static final String CREATE_OR_ALTER_TABLE_PATTERN = " *(alter|create) +table +.*";
     private ISymmetricEngine engine;
     private ConfigurationChangedHelper helper;
     private String tablePrefixLower;

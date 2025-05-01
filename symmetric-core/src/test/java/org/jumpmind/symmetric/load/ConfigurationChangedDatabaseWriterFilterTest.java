@@ -46,12 +46,28 @@ public class ConfigurationChangedDatabaseWriterFilterTest {
     }
 
     @Test
+    void testAfterWriteForAlterNoTableSqlEvent() {
+        String[] testData = new String[] {
+                "INSERT INTO TEST VALUES (1);\n " + "ALTER INDEX TEST ON USERS(NAME);\n" + "INSERT INTO TEST VALUES (2);" };
+        callAfterWriteWithSqlEvent(testData, true);
+        assertNull(context.get(CTX_KEY_RESYNC_NEEDED));
+    }
+
+    @Test
     void testAfterWriteForCreateSqlEvent() {
         String[] testData = new String[] {
                 "INSERT INTO OTHER VALUES (1);\n " + "CREATE TABLE TEST (ID int);\n" + "INSERT INTO ANOTHER VALUES (1);" };
         assertNull(context.get(CTX_KEY_RESYNC_NEEDED));
         callAfterWriteWithSqlEvent(testData, true);
         assertEquals(true, context.get(CTX_KEY_RESYNC_NEEDED));
+    }
+
+    @Test
+    void testAfterWriteForCreateNoTableSqlEvent() {
+        String[] testData = new String[] {
+                "INSERT INTO OTHER VALUES (1);\n " + "CREATE INDEX TEST ON USERS(NAME);\n" + "INSERT INTO ANOTHER VALUES (1);" };
+        callAfterWriteWithSqlEvent(testData, true);
+        assertNull(context.get(CTX_KEY_RESYNC_NEEDED));
     }
 
     @Test
