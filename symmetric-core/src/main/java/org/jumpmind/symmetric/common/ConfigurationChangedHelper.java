@@ -20,6 +20,8 @@
  */
 package org.jumpmind.symmetric.common;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +30,7 @@ import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.ext.IConfigurationChangedListener;
@@ -345,6 +348,34 @@ public class ConfigurationChangedHelper {
             return values[index];
         }
         return null;
+    }
+
+    public List<String> getSqlStatements(String script) {
+        List<String> sqlStatements = new ArrayList<String>();
+        SqlScriptReader scriptReader = new SqlScriptReader(new StringReader(script));
+        scriptReader.setStripOutComments(true);
+        try {
+            String sql = scriptReader.readSqlStatement();
+            while (sql != null) {
+                if (StringUtils.startsWithIgnoreCase(sql, "delimiter")) {
+                    String delimiter = StringUtils.trimToNull(sql.substring("delimiter".length()));
+                    if (delimiter != null) {
+                        scriptReader.setDelimiter(delimiter);
+                    }
+                } else {
+                    sqlStatements.add(sql);
+                }
+                sql = scriptReader.readSqlStatement();
+            }
+            return sqlStatements;
+        } finally {
+            try {
+                if (scriptReader != null) {
+                    scriptReader.close();
+                }
+            } catch (IOException e) {
+            }
+        }
     }
 
     public boolean isNewContext(Context context) {
