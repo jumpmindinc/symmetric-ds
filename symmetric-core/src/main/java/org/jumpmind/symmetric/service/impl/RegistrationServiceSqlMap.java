@@ -62,16 +62,18 @@ public class RegistrationServiceSqlMap extends AbstractSqlMap {
                 ""
                         + "update $(registration_request)                                                                    "
                         + "  set attempt_count=?,                                                                                      "
-                        + "  last_update_by=?, last_update_time=?, registered_node_id=?, status=?, error_message=?   "
-                        + "  where                                                                                                 "
-                        + "  node_group_id=? and external_id=? and host_name=? and status in ('RQ','ER','RJ')");
+                        + "  last_update_by=?, last_update_time=?, registered_node_id=?, status=?, error_message=?   ");
         putSql("selectRegistrationRequestSql",
                 ""
                         + "select node_group_id, external_id, status, host_name, ip_address, error_message,     "
                         + "  attempt_count, registered_node_id, create_time, last_update_by, last_update_time   "
-                        + "  from $(registration_request)                                                       "
-                        + "  where status in ('RQ','ER')                                                        ");
+                        + "  from $(registration_request)                                                       ");
         putSql("deleteRegistrationRequestSql",
                 "delete from $(registration_request) where node_group_id=? and external_id=? and host_name=? and status=?");
+        putSql("whereStatusIsRequestOrErrorSql", "where status in ('RQ','ER')");
+        putSql("whereNodeGroupIdAndExternalIdSql", "where node_group_id=? and external_id=?");
+        putSql("wherePkSql", "where node_group_id=? and external_id=? and create_time=?");
+        putSql("whereNodeGroupIdExternalIdHostNameStatusSql",
+                "where node_group_id=? and external_id=? and host_name=? and status in ('RQ','ER','RJ')");
     }
 }

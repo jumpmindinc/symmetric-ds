@@ -122,9 +122,13 @@ public interface IRegistrationService {
 
     public List<RegistrationRequest> getRegistrationRequests(boolean includeNodesWithOpenRegistrations, boolean includeRejects);
 
+    public RegistrationRequest getLatestRegistrationRequest(String nodeGroupId, String externalId);
+
     public boolean deleteRegistrationRequest(RegistrationRequest request);
 
     public void saveRegistrationRequest(RegistrationRequest request);
+
+    public void updateRegistrationRequest(RegistrationRequest request);
 
     public boolean isRegisteredWithServer();
 
