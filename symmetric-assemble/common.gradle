@@ -32,7 +32,7 @@ allprojects {
          
     repositories {
         maven {
-            url "https://maven.jumpmind.com/repo"
+            url = "https://maven.jumpmind.com/repo"
             metadataSources {
                 mavenPom()
                 artifact()
@@ -40,11 +40,11 @@ allprojects {
         }
 
         mavenCentral()
-        maven { url "https://maven.vaadin.com/vaadin-addons" }
-        maven { url 'https://plugins.gradle.org/m2' }
-        maven { url "https://packages.confluent.io/maven/" }
-        maven { url "https://repository.mulesoft.org/nexus/content/repositories/public/" }
-        maven { url "https://repo1.maven.org/maven2/" }
+        maven { url = "https://maven.vaadin.com/vaadin-addons" }
+        maven { url = 'https://plugins.gradle.org/m2' }
+        maven { url = "https://packages.confluent.io/maven/" }
+        maven { url = "https://repository.mulesoft.org/nexus/content/repositories/public/" }
+        maven { url = "https://repo1.maven.org/maven2/" }
     }
         
     ext {
@@ -101,10 +101,10 @@ subprojects { subproject ->
     jacocoTestReport {
 		executionData(file("${project.buildDir}/jacoco/*.exec"))
     	reports {
-    		xml.enabled true
-	        html.enabled true
-	        xml.destination file("${buildDir}/reports/jacoco.xml")
-	        html.destination file("${buildDir}/reports/jacoco.html")
+    		xml.required = true
+	        html.required = true
+	        xml.outputLocation = file("${buildDir}/reports/jacoco.xml")
+	        html.outputLocation = file("${buildDir}/reports/jacoco.html")
 
     	}    	
 	}
@@ -133,8 +133,10 @@ subprojects { subproject ->
 		}
     }
 
-    sourceCompatibility=JavaVersion.VERSION_17
-    targetCompatibility=JavaVersion.VERSION_17
+	java {
+    	sourceCompatibility=JavaVersion.VERSION_17
+    	targetCompatibility=JavaVersion.VERSION_17
+    }
     
     compileJava {
     	options.compilerArgs += '-Xlint:deprecation'
@@ -173,8 +175,11 @@ subprojects { subproject ->
 
     idea {
         module {
-            testResourceDirs = []
-            testSourceDirs = [ file('src/test/java'), file('src/test/groovy')]
+            // testResources = []
+            testResources.from()
+            // testSources = [ file('src/test/java'), file('src/test/groovy')]
+            testSources.from(file('src/test/java'))
+            testSources.from(file('src/test/groovy'))
             resourceDirs += file('src/test/resources')
             downloadJavadoc = true
             downloadSources = true
@@ -201,7 +206,7 @@ subprojects { subproject ->
     
     
     task sourcesJar(type: Jar, dependsOn:classes) {
-        classifier = 'sources'
+        archiveClassifier = 'sources'
         from sourceSets.main.allSource
     }
     
@@ -218,8 +223,8 @@ subprojects { subproject ->
 	        	maven {
 	        		name = "jumpmindMaven"
 		    		credentials {
-		                username deployUser
-		                password deployPassword
+		                username = deployUser
+		                password = deployPassword
 		            }
 	            	url = deployUploadUrl
 	        	}
@@ -232,17 +237,17 @@ subprojects { subproject ->
     }
 
     task deploy {
-        description 'Shortcut for Maven users'
+        description = 'Shortcut for Maven users'
         dependsOn tasks.publish
     }
 
     task testJar(type: Jar) {
-        classifier "test"
+        archiveClassifier = "test"
         from sourceSets.test.output
     }
     
     test {
-        ignoreFailures true
+        ignoreFailures = true
         minHeapSize = "128m"
         maxHeapSize = "512m"
         useJUnitPlatform {

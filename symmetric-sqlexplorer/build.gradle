@@ -1,8 +1,8 @@
 buildscript {
     repositories { 
-       maven { url 'https://plugins.gradle.org/m2/' }
-       maven { url "https://maven.vaadin.com/vaadin-addons" }         
-       maven { url "https://mvnrepository.com/artifact" }
+       maven { url = 'https://plugins.gradle.org/m2/' }
+       maven { url = "https://maven.vaadin.com/vaadin-addons" }         
+       maven { url = "https://mvnrepository.com/artifact" }
     }
 }
 
