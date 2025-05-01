@@ -262,9 +262,9 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "            tableName := split_part(tableName, '.', 2);\n" +
 "        end if;\n" +
 "        tableName := trim(both '\"' from tableName);\n" +
-"        select trigger_hist_id, source_table_name into histId, tableName from sym_trigger_hist where upper(source_table_name) = upper(tableName) and inactive_time is null;\n" +
+"        select trigger_hist_id, source_table_name into histId, tableName from $(defaultSchema)$(prefixName)_trigger_hist where upper(source_table_name) = upper(tableName) and inactive_time is null;\n" +
 "        if (histId is not null) then\n" +
-"            select channel_id into channelId from sym_trigger where upper(source_table_name) = upper(tableName);\n" +
+"            select channel_id into channelId from $(defaultSchema)$(prefixName)_trigger where upper(source_table_name) = upper(tableName);\n" +
 "            if (channelId is null) then\n" +
 "                channelId := 'config';\n" +
 "            end if;\n" +
@@ -288,7 +288,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "for cmd in select * from pg_event_trigger_dropped_objects() loop\n" +
 "    if (upper(cmd.object_identity) not like upper('$(prefixName)%') and upper(cmd.object_identity) not like upper('%.$(prefixName)%') and" + 
 "    upper(cmd.object_identity) not like upper('f$(prefixName)%') and upper(cmd.object_identity) not like upper('%.f$(prefixName)%') and cmd.original) then\n" +
-"        select trigger_hist_id into histId from sym_trigger_hist where upper(source_table_name) = upper('$(prefixName)_node') and inactive_time is null;\n" +
+"        select trigger_hist_id into histId from $(defaultSchema)$(prefixName)_trigger_hist where upper(source_table_name) = upper('$(prefixName)_node') and inactive_time is null;\n" +
 "        insert into $(defaultSchema)$(prefixName)_data\n" +
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "        values ('$(prefixName)_node', '" + DataEventType.SQL.getCode() + "', histId,\n" +
@@ -329,13 +329,13 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "                tableName := split_part(tableName, '.', 2);\n" +
 "            end if;\n" +
 "            tableName := trim(both '\"' from tableName);\n" +
-"            select trigger_hist_id, source_table_name into histId, tableName from sym_trigger_hist where upper(source_table_name) = upper(tableName) and inactive_time is null;\n" +
+"            select trigger_hist_id, source_table_name into histId, tableName from $(defaultSchema)$(prefixName)_trigger_hist where upper(source_table_name) = upper(tableName) and inactive_time is null;\n" +
 "        end if;\n" +
 "        if (histId is null) then\n" +
 "            tableName := '$(prefixName)_node';\n" +
-"            select trigger_hist_id into histId from sym_trigger_hist where upper(source_table_name) = upper(tableName) and inactive_time is null;\n" +
+"            select trigger_hist_id into histId from $(defaultSchema)$(prefixName)_trigger_hist where upper(source_table_name) = upper(tableName) and inactive_time is null;\n" +
 "        end if;\n" +
-"        select channel_id into channelId from sym_trigger where upper(source_table_name) = upper(tableName);\n" +
+"        select channel_id into channelId from $(defaultSchema)$(prefixName)_trigger where upper(source_table_name) = upper(tableName);\n" +
 "        if (channelId is null) then\n" +
 "            channelId := 'config';\n" +
 "        end if;\n" +
@@ -358,7 +358,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "for cmd in select * from pg_event_trigger_dropped_objects() loop\n" +
 "    if (upper(cmd.object_identity) not like upper('$(prefixName)%') and upper(cmd.object_identity) not like upper('%.$(prefixName)%') and" + 
 "    upper(cmd.object_identity) not like upper('f$(prefixName)%') and upper(cmd.object_identity) not like upper('%.f$(prefixName)%') and cmd.original) then\n" +
-"        select trigger_hist_id into histId from sym_trigger_hist where upper(source_table_name) = upper('$(prefixName)_node') and inactive_time is null;\n" +
+"        select trigger_hist_id into histId from $(defaultSchema)$(prefixName)_trigger_hist where upper(source_table_name) = upper('$(prefixName)_node') and inactive_time is null;\n" +
 "        insert into $(defaultSchema)$(prefixName)_data\n" +
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "        values ('$(prefixName)_node', '" + DataEventType.SQL.getCode() + "', histId,\n" +
