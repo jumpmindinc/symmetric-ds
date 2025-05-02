@@ -176,9 +176,9 @@ for more details.
 
 include::manage/jobs.ad[]
 
-=== Installed Triggers
+=== Table Capture
 
-include::manage/installed-triggers.ad[]
+include::manage/table-capture.ad[]
 
 ifdef::pro[]
 === Outgoing Loads

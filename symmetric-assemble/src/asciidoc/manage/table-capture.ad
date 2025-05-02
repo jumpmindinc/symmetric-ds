@@ -6,12 +6,12 @@ This is necessary because if a trigger is rebuilt after columns are added or rem
 has not yet been delivered, we need a record of what columns were in play at the time the data had been captured.
 
 ifdef::pro[]
-The Installed Triggers Screen is used to view tables that have successfully been installed with triggers.
+The Manage Table Capture Screen is used to view tables that have successfully been set up for replication. This applies to trigger-based, log-based, and time-based capture.
 
-This screen allows you to *Rebuild* an individual database trigger or *Rebuild All* database triggers.  It also allows you to *Drop* triggers.  Only reason 
-you might need to drop triggers to alter a table or perform a batch job where you don't want data to be captured.
+This screen allows you to *Reconfigure* an individual table for capture or *Reconfigure All* tables for capture.  It also allows you to *Inactivate* capture for tables.  Only reason 
+you might need to inactivate capture is to alter a table or perform a batch job where you don't want data to be captured.
 
-image::images/manage/manage-installed-triggers.png[]
+image::images/manage/manage-table-capture.png[]
 endif::pro[]
 
 The <<TRIGGER_HIST>> table records the reason a trigger was rebuilt. The following reasons

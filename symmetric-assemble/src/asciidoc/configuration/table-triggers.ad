@@ -15,7 +15,7 @@ endif::pro[]
 
 ifdef::pro[]
 The next step in defining the synchronization scenario is to define which tables should be synchronized.  The simplest
-way to do this is by using the *Auto Create...* button on the Configure -> Table Triggers screen.  The Auto Create functionality
+way to do this is by using the *Auto Create...* button on the Configure -> Table Capture screen.  The Auto Create functionality
 introspects the master node's database and looks for available tables to synchronize.  
 
 Note that you will be configuring tables to synchronize for specific <<Routers>>.  You will get a chance to select tables for each configured Router.  Select the channel you desire from the dropdown, 
@@ -23,7 +23,7 @@ select the tables that should be synchronized using that channel, and then click
 button.  A summary will be presented at the end of the configuration.  Click *Finish* to create the triggers.  
 
 The Auto Create functionality can be used repeatedly to select different table, router and channel combinations.  If you are configuring a new set of tables triggers that should use an independent 
-Trigger definition be sure to enter values for either the _Trigger Prefix_ or the _Trigger Suffix_ fields.  These will be used to create a unique _Trigger Id_.   
+Trigger definition be sure to enter values for either the _Capture Prefix_ or the _Capture Suffix_ fields.  These will be used to create a unique _Trigger Id_.   
 
 image::images/triggers/triggers-auto-create.png[]
 
@@ -39,7 +39,7 @@ ifdef::pro[]
 .Required Fields
 endif::pro[]
 
-Trigger Id:: Unique identifier for a trigger.
+Identifier:: Unique identifier for a trigger.
 Source Catalog:: Optional name for the catalog the configured table is in.  If the name includes * then a wildcard match on the table name will be attempted.  \
 Wildcard names can include a list of names that are comma separated.  The ! symbol may be used to indicate a NOT match condition.
 Parameter values can be substituted using `$(name)` syntax.  See <<Variables>>.
@@ -110,7 +110,7 @@ ifdef::pro[]
 TIP: Use the <<Add Table(s) Wizard>> to setup a complete synchronization scenario with default trigger settings.
 
 .Auto Create Triggers
-TIP: By using the "Auto Create" button the on the "Table Triggers" screen you can create all your triggers through a single dialog.
+TIP: By using the "Auto Create" button the on the "Table Capture" screen you can create all your triggers through a single dialog.
 endif::pro[]
 
 [TIP]
