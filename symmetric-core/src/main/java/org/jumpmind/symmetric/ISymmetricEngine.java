@@ -34,6 +34,7 @@ import org.jumpmind.extension.IProgressListener;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.job.IJobManager;
 import org.jumpmind.symmetric.model.NodeStatus;
+import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
@@ -76,6 +77,8 @@ public interface ISymmetricEngine {
     public void destroy();
 
     public void uninstall();
+
+    public void uninstall(ProcessInfo processInfo);
 
     /**
      * @return the URL that represents this engine
