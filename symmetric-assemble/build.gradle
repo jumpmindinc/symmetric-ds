@@ -117,10 +117,10 @@ task codeCoverageReport(type: JacocoReport) {
     }
 	//controls what reports are generated. XML is needed for sonarqube to run. HTML is for a human readable option to check things
     reports {
-        xml.enabled true
-        html.enabled true        
-        xml.destination file("${rootDir}/build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml")
-        html.destination file("${rootDir}/build/reports/jacoco/codeCoverageReport/codeCoverageReport.html")
+        xml.required = true
+        html.required = true        
+        xml.outputLocation = file("${rootDir}/build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml")
+        html.outputLocation = file("${rootDir}/build/reports/jacoco/codeCoverageReport/codeCoverageReport.html")
     }
 }
 
