@@ -643,6 +643,12 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         }
         List<OutgoingBatch> list = (List<OutgoingBatch>) sqlTemplateDirty.query(sql, maxNumberOfBatchesToSelect,
                 new OutgoingBatchMapper(includeDisabledChannels), params, types);
+        int batchCount = list.size();
+        if (batchCount == maxNumberOfBatchesToSelect) {
+            log.warn("The {} parameter limited the number of outgoing batch rows to {}. "
+                    + "This could prevent batches on a channel with an earlier processing_order from being processed.",
+                    ParameterConstants.OUTGOING_BATCH_MAX_BATCHES_TO_SELECT, batchCount);
+        }
         OutgoingBatches batches = new OutgoingBatches(list);
         List<NodeChannel> channels = new ArrayList<NodeChannel>(configurationService.getNodeChannels(nodeId, true));
         batches.sortChannels(channels);
@@ -664,7 +670,7 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         batches.setBatches(keepers);
         long executeTimeInMs = System.currentTimeMillis() - ts;
         if (executeTimeInMs > Constants.LONG_OPERATION_THRESHOLD) {
-            log.info("Selecting {} outgoing batch rows for node {} on queue '{}' took {} ms", list.size(), nodeId, channelThread,
+            log.info("Selecting {} outgoing batch rows for node {} on queue '{}' took {} ms", batchCount, nodeId, channelThread,
                     executeTimeInMs);
         }
         return batches;
