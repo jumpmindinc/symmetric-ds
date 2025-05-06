@@ -25,6 +25,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.LongConsumer;
@@ -552,8 +553,13 @@ public class PurgeService extends AbstractService implements IPurgeService {
     private long purgeTriggerHist() {
         Calendar retentionCutoff = Calendar.getInstance();
         retentionCutoff.add(Calendar.MINUTE, -parameterService.getInt(ParameterConstants.PURGE_TRIGGER_HIST_RETENTION_MINUTES));
-        log.info("Purging trigger histories that are inactive and older than {}", fastFormat.format(retentionCutoff.getTime()));
-        long count = sqlTemplate.update(getSql("deleteInactiveTriggerHistSql"), retentionCutoff.getTime());
+        Date retentionCutoffDate = retentionCutoff.getTime();
+        Timestamp minDataCreateTime = sqlTemplateDirty.queryForObject(getSql("minDataCreateTime"), Timestamp.class);
+        if (minDataCreateTime != null && minDataCreateTime.before(retentionCutoffDate)) {
+            retentionCutoffDate = minDataCreateTime;
+        }
+        log.info("Purging trigger histories that are inactive and older than {}", fastFormat.format(retentionCutoffDate));
+        long count = sqlTemplate.update(getSql("deleteInactiveTriggerHistSql"), retentionCutoffDate);
         if (count > 0) {
             log.info("Purged {} trigger histories", count);
         }
