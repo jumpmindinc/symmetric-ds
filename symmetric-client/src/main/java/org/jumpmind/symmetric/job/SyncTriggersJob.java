@@ -38,7 +38,7 @@ public class SyncTriggersJob extends AbstractJob {
     public JobDefaults getDefaults() {
         return new JobDefaults()
                 .schedule(EVERY_NIGHT_AT_MIDNIGHT)
-                .description("Sync trigger config with physical database triggers");
+                .description("Sets up tables for capture (log- or trigger-based)");
     }
 
     @Override

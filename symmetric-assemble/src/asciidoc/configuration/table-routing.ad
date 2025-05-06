@@ -78,7 +78,7 @@ endif::pro[]
 ifdef::pro[]
 .Required Fields
 endif::pro[]
-Table Trigger:: The table trigger determines the source of data.
+Table Capture:: The table trigger determines the source of data.
 Router:: The router determines where data will be sent.
 
 Initial Load Select:: A SQL expression used in the WHERE clause of the SELECT that extracts the table during initial load.  Leave blank to retrieve all rows. For correlated joins, reference the table using the "t" alias. Variables are substituted for `$(groupId)`, `$(nodeId)`, and `$(externalId)`. See <<Variables>> section for formatting and manipulation of variables.

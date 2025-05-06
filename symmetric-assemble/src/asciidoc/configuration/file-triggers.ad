@@ -15,7 +15,7 @@ ifdef::pro[]
 .Required Fields
 endif::pro[]
 
-File Trigger Id:: Unique identifier for a trigger.
+Identifier:: Unique identifier for a trigger.
 Channel:: The channel_id of the channel that data changes will flow through.
 Reload Channel Id:: The channel_id of the channel that will be used for reloads.
 Base Directory:: The base directory on the source node that files will be synchronized from.
