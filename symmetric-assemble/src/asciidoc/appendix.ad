@@ -274,7 +274,7 @@ To migrate to a new server, use the following steps:
 * Install the service on the new server (See <<Running as a Service>>.)
 * Start the SymmetricDS service.
 
-IMPORTANT: If any files are excluded from the migration, be careful to at least copy the "security/keystore", "conf/sym_service.conf", and "bin/setenv" files that contain the encryption key and keystore password.
+IMPORTANT: If any files are excluded from the migration, be careful to at least copy the "security/keystore", "conf/sym_service.conf", and "bin/setenv" files that contain the encryption key and keystore password. In addition, if your SymmetricDS installation contains a "db" sub-directory, then it must be copied over in order to preserve SymmetricDS's embedded database(s).
 
 If the registration server is moved, new nodes will need to use a registration.url property that references the sync.url of the new registration server.
 Optionally, the existing nodes can also be updated with the new registration.url, but they will continue to sync with nodes based on the sync_url
