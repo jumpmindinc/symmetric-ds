@@ -337,7 +337,11 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
         // two sets of parentheses
         if (defaultValue != null) {
             while (defaultValue.startsWith("(") && defaultValue.endsWith(")")) {
-                defaultValue = defaultValue.substring(1, defaultValue.length() - 1);
+                String substring = defaultValue.substring(1, defaultValue.length() - 1);
+                if (substring.indexOf("(") > substring.indexOf(")") || substring.lastIndexOf("(") > substring.lastIndexOf(")")) {
+                    break;
+                }
+                defaultValue = substring;
             }
             if (column.getMappedTypeCode() == Types.TIMESTAMP) {
                 // Sql Server maintains the default values for DATE/TIME jdbc
