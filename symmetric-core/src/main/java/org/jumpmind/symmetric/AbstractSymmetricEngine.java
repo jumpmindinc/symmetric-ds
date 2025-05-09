@@ -841,21 +841,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         int dropStatementsToRunCount = SqlScript.calculateTotalStatements(dropTablesSql,
                 databaseInfo.getSqlCommandDelimiter(), databaseInfo.isTriggersContainJava());
         SqlScript dropTablesScript = new SqlScript(dropTablesSql, getSqlTemplate(), false, null);
-        dropTablesScript.setListener(new ISqlResultsListener() {
-            @Override
-            public void sqlBefore(String sql, int lineNumber) {
-            }
-
-            @Override
-            public void sqlApplied(String sql, int rowsUpdated, int rowsRetrieved, int lineNumber) {
-                processInfo.setCurrentDataCount(
-                        Math.round((dropTablesWeight * (lineNumber + 1)) / (float) dropStatementsToRunCount) + dropTriggersWeight + 11);
-            }
-
-            @Override
-            public void sqlErrored(String sql, SqlException ex, int lineNumber, boolean dropStatement, boolean sequenceCreate) {
-            }
-        });
+        dropTablesScript.setListener(generateDropTablesListener(processInfo, dropTablesWeight, dropStatementsToRunCount, dropTriggersWeight + 11));
         dropTablesScript.execute(platform.getDatabaseInfo().isRequiresAutoCommitForDdl());
         processInfo.setCurrentDataCount(dropTriggersWeight + dropTablesWeight + 11);
         symmetricDialect.dropRequiredDatabaseObjects();
@@ -865,6 +851,25 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         parameterService.setDatabaseHasBeenInitialized(false);
         processInfo.setCurrentDataCount(totalStepCount);
         log.info("Finished uninstalling SymmetricDS database objects from the database");
+    }
+
+    private static ISqlResultsListener generateDropTablesListener(ProcessInfo processInfo, int dropTablesWeight,
+            int dropStatementsToRunCount, int otherDataCount) {
+        return new ISqlResultsListener() {
+            @Override
+            public void sqlBefore(String sql, int lineNumber) {
+            }
+
+            @Override
+            public void sqlApplied(String sql, int rowsUpdated, int rowsRetrieved, int lineNumber) {
+                processInfo.setCurrentDataCount(
+                        Math.round((dropTablesWeight * (lineNumber + 1)) / (float) dropStatementsToRunCount) + otherDataCount);
+            }
+
+            @Override
+            public void sqlErrored(String sql, SqlException ex, int lineNumber, boolean dropStatement, boolean sequenceCreate) {
+            }
+        };
     }
 
     public synchronized void stop() {
