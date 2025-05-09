@@ -274,8 +274,16 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
     public PermissionResult getLogMinePermission() {
         PermissionResult result = new PermissionResult(PermissionType.LOG_MINE, "UNIMPLEMENTED");
         String walLevel = getSqlTemplate().queryForString("select current_setting('wal_level')");
-        boolean hasReplicationPermission = getSqlTemplate().queryForInt(
-                "select count(*) from pg_roles where (rolsuper or rolreplication) and pg_has_role(current_user, oid, 'member')") > 0;
+        boolean hasReplicationPermission = false;
+        try {
+            dropTestReplicationSlot("sym_test_replication");
+            hasReplicationPermission = getSqlTemplate().queryForInt(
+                    "select count(*) from pg_create_logical_replication_slot('sym_test_replication', 'test_decoding')") > 0;
+        } catch (Throwable e) {
+            log.info(e.getMessage(), e);
+        } finally {
+            dropTestReplicationSlot("sym_test_replication");
+        }
         if ("logical".equals(walLevel) && hasReplicationPermission) {
             result.setStatus(Status.PASS);
         } else {
@@ -294,6 +302,18 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
             }
         }
         return result;
+    }
+
+    private boolean dropTestReplicationSlot(String replicationSlotName) {
+        boolean ret = false;
+        if (getSqlTemplate().queryForInt("select count(*) from pg_replication_slots where slot_name='" + replicationSlotName + "'") > 0) {
+            try {
+                ret = getSqlTemplate().queryForInt(
+                        "select count(*) from pg_drop_replication_slot('" + replicationSlotName + "')") > 0;
+            } catch (Throwable e) {
+            }
+        }
+        return ret;
     }
 
     @Override
