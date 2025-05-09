@@ -64,6 +64,8 @@ public class PurgeServiceSqlMap extends AbstractSqlMap {
                 "and not exists (select 1 from $(outgoing_batch) b where b.batch_id = $(data_event).batch_id and b.status != ?)");
 
         putSql("minDataId", "select min(data_id) from $(data)");
+        
+        putSql("minDataCreateTime", "select min(create_time) from $(data)");
 
         putSql("minDataEventId", "select min(data_id) from $(data_event)");
         
