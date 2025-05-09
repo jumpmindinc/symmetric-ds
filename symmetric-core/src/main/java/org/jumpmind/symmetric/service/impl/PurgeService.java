@@ -556,6 +556,8 @@ public class PurgeService extends AbstractService implements IPurgeService {
         Date retentionCutoffDate = retentionCutoff.getTime();
         Timestamp minDataCreateTime = sqlTemplateDirty.queryForObject(getSql("minDataCreateTime"), Timestamp.class);
         if (minDataCreateTime != null && minDataCreateTime.before(retentionCutoffDate)) {
+            log.warn("Skipping inactive trigger histories created between {} and {} because of a backlog of captured data",
+                    fastFormat.format(minDataCreateTime), fastFormat.format(retentionCutoffDate));
             retentionCutoffDate = minDataCreateTime;
         }
         log.info("Purging trigger histories that are inactive and older than {}", fastFormat.format(retentionCutoffDate));
