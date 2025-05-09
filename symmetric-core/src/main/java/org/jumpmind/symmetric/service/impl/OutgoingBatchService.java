@@ -409,6 +409,17 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         }
     }
 
+    @Override
+    public OutgoingBatch findOutgoingBatchFirstCommon(long batchId) {
+        List<OutgoingBatch> list = (List<OutgoingBatch>) sqlTemplateDirty.query(getSql("selectOutgoingBatchPrefixSql", "findOutgoingBatchFirstCommonSql"),
+                new OutgoingBatchMapper(true), new Object[] { batchId }, new int[] { symmetricDialect.getSqlTypeForIds() });
+        OutgoingBatch batch = null;
+        if (!list.isEmpty()) {
+            batch = list.get(0);
+        }
+        return batch;
+    }
+
     public int countOutgoingBatchesInError() {
         return sqlTemplateDirty.queryForInt(getSql("countOutgoingBatchesErrorsSql"));
     }

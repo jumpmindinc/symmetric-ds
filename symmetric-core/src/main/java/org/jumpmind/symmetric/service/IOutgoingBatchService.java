@@ -47,6 +47,8 @@ public interface IOutgoingBatchService {
 
     public OutgoingBatch findOutgoingBatch(long batchId, String nodeId);
 
+    public OutgoingBatch findOutgoingBatchFirstCommon(long batchId);
+
     public OutgoingBatches getOutgoingBatches(String nodeId, boolean includeDisabledChannels);
 
     public OutgoingBatches getOutgoingBatches(String nodeId, String channelId, boolean includeDisabledChannels);
