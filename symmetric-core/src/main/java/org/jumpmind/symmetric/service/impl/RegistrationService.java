@@ -341,7 +341,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
     }
 
     public List<RegistrationRequest> getRegistrationRequests(boolean includeNodesWithOpenRegistrations, boolean includeRejects) {
-        String sql = getSql("selectRegistrationRequestSql");
+        String sql = getSql("selectRegistrationRequestSql", "whereStatusIsRequestOrErrorSql");
         if (includeRejects) {
             sql = sql.replace(")", ",'" + RegistrationRequest.RegistrationStatus.RJ.name() + "')");
         }
@@ -360,6 +360,19 @@ public class RegistrationService extends AbstractService implements IRegistratio
             }
         }
         return requests;
+    }
+
+    public RegistrationRequest getLatestRegistrationRequest(String nodeGroupId, String externalId) {
+        RegistrationRequest latestRequest = null;
+        String sql = getSql("selectRegistrationRequestSql", "whereNodeGroupIdAndExternalIdSql");
+        List<RegistrationRequest> requests = sqlTemplate.query(sql, new RegistrationRequestMapper(),
+                new Object[] { nodeGroupId, externalId }, new int[] { Types.VARCHAR, Types.VARCHAR });
+        for (RegistrationRequest request : requests) {
+            if (latestRequest == null || request.getCreateTime().after(latestRequest.getCreateTime())) {
+                latestRequest = request;
+            }
+        }
+        return latestRequest;
     }
 
     public boolean deleteRegistrationRequest(RegistrationRequest request) {
@@ -382,6 +395,9 @@ public class RegistrationService extends AbstractService implements IRegistratio
                 request.setAttemptCount(registrationRequest.getAttemptCount() + 1);
                 if (registrationRequest.getStatus().equals(RegistrationStatus.RJ) && request.getStatus().equals(RegistrationStatus.RQ)) {
                     request.setStatus(RegistrationStatus.RJ);
+                } else if (registrationRequest.getStatus().equals(RegistrationStatus.ER) && request.getStatus().equals(RegistrationStatus.OK)) {
+                    request.setStatus(RegistrationStatus.ER);
+                    request.setErrorMessage(registrationRequest.getErrorMessage());
                 }
                 foundOne = true;
                 break;
@@ -390,7 +406,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         int count = 0;
         if (foundOne) {
             count = sqlTemplate.update(
-                    getSql("updateRegistrationRequestSql"),
+                    getSql("updateRegistrationRequestSql", "whereNodeGroupIdExternalIdHostNameStatusSql"),
                     new Object[] { request.getAttemptCount(), request.getLastUpdateBy(),
                             request.getLastUpdateTime(), request.getRegisteredNodeId(),
                             request.getStatus().name(), request.getErrorMessage(), nodeGroupId,
@@ -408,6 +424,17 @@ public class RegistrationService extends AbstractService implements IRegistratio
                                     Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                                     Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP });
         }
+    }
+
+    public void updateRegistrationRequest(RegistrationRequest request) {
+        sqlTemplate.update(
+                getSql("updateRegistrationRequestSql", "wherePkSql"),
+                new Object[] { request.getAttemptCount(), request.getLastUpdateBy(),
+                        request.getLastUpdateTime(), request.getRegisteredNodeId(),
+                        request.getStatus().name(), request.getErrorMessage(), request.getNodeGroupId(),
+                        request.getExternalId(), request.getCreateTime() }, new int[] {
+                                Types.NUMERIC, Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR,
+                                Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP });
     }
 
     public String getRedirectionUrlFor(String externalId) {
@@ -437,13 +464,21 @@ public class RegistrationService extends AbstractService implements IRegistratio
     public void markNodeAsRegistered(String nodeId) {
         sqlTemplate.update(getSql("registerNodeSecuritySql"), new Object[] { new Date(), nodeId });
         nodeService.flushNodeAuthorizedCache();
+        Node node = nodeService.findNode(nodeId);
+        if (node != null) {
+            RegistrationRequest request = getLatestRegistrationRequest(node.getNodeGroupId(), node.getExternalId());
+            if (!RegistrationStatus.OK.equals(request.getStatus()) || request.getErrorMessage() != null) {
+                request.setStatus(RegistrationStatus.OK);
+                request.setErrorMessage(null);
+                updateRegistrationRequest(request);
+            }
+        }
         List<INodeRegistrationListener> registrationListeners = extensionService.getExtensionPointList(INodeRegistrationListener.class);
         for (INodeRegistrationListener l : registrationListeners) {
             l.registrationSyncTriggers();
         }
         log.info("Completed registration of node {}", nodeId);
         if (engine.getCacheManager().isUsingTargetExternalId(false)) {
-            Node node = nodeService.findNode(nodeId);
             if (node != null) {
                 log.info("Syncing triggers for node {} using target external ID of {}", node.toString(), node.getExternalId());
                 engine.getTriggerRouterService().syncTriggers(node.getExternalId(), false);
