@@ -88,6 +88,7 @@ public class DbExport {
     private boolean useJdbcTimestampFormat = true;
     private boolean useReadUncommitted;
     private IDatabasePlatform platform;
+    private long rowCount;
 
     public DbExport(IDatabasePlatform platform) {
         this.platform = platform;
@@ -158,6 +159,7 @@ public class DbExport {
             tables[i] = tables[i].copy();
         }
         WriterWrapper writerWrapper = null;
+        rowCount = 0;
         try {
             writerWrapper = new WriterWrapper(output);
             tables = Database.sortByForeignKeys(tables);
@@ -439,6 +441,10 @@ public class DbExport {
         this.useReadUncommitted = useReadUncommitted;
     }
 
+    public long getRowCount() {
+        return rowCount;
+    }
+
     protected String getDatabaseName() {
         Compatible mappedCompatible = compatible;
         if (mappedCompatible == Compatible.MSSQL) {
@@ -628,6 +634,7 @@ public class DbExport {
                     }
                     write("\t</row>\n");
                 }
+                rowCount++;
             } catch (IOException e) {
                 throw new IoException(e);
             }
