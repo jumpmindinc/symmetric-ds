@@ -56,8 +56,8 @@ import javax.sql.rowset.serial.SerialBlob;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
-import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.PermissionResult;
@@ -138,17 +138,20 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
         return sqlTemplateDirty;
     }
 
+    @Override
     public String getName() {
         return DatabaseNamesConstants.POSTGRESQL;
     }
 
+    @Override
     public String getDefaultSchema() {
         if (StringUtils.isBlank(defaultSchema)) {
-            defaultSchema = (String) getSqlTemplate().queryForObject("select current_schema()", String.class);
+            defaultSchema = getSqlTemplate().queryForObject("select current_schema()", String.class);
         }
         return defaultSchema;
     }
 
+    @Override
     public String getDefaultCatalog() {
         return null;
     }
@@ -167,49 +170,61 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
             final String baseTypeName = jdbcTypeName;
             final int baseType = jdbcBaseType;
             return new Array() {
+                @Override
                 public String getBaseTypeName() {
                     return baseTypeName;
                 }
 
+                @Override
                 public void free() {
                 }
 
+                @Override
                 public int getBaseType() {
                     return baseType;
                 }
 
+                @Override
                 public Object getArray() {
                     return null;
                 }
 
+                @Override
                 public Object getArray(Map<String, Class<?>> map) {
                     return null;
                 }
 
+                @Override
                 public Object getArray(long index, int count) {
                     return null;
                 }
 
+                @Override
                 public Object getArray(long index, int count, Map<String, Class<?>> map) {
                     return null;
                 }
 
+                @Override
                 public ResultSet getResultSet() {
                     return null;
                 }
 
+                @Override
                 public ResultSet getResultSet(Map<String, Class<?>> map) {
                     return null;
                 }
 
+                @Override
                 public ResultSet getResultSet(long index, int count) {
                     return null;
                 }
 
+                @Override
                 public ResultSet getResultSet(long index, int count, Map<String, Class<?>> map) {
                     return null;
                 }
 
+                @Override
                 public String toString() {
                     return value;
                 }
@@ -274,8 +289,16 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
     public PermissionResult getLogMinePermission() {
         PermissionResult result = new PermissionResult(PermissionType.LOG_MINE, "UNIMPLEMENTED");
         String walLevel = getSqlTemplate().queryForString("select current_setting('wal_level')");
-        boolean hasReplicationPermission = getSqlTemplate().queryForInt(
-                "select count(*) from pg_roles where (rolsuper or rolreplication) and pg_has_role(current_user, oid, 'member')") > 0;
+        boolean hasReplicationPermission = false;
+        try {
+            dropTestReplicationSlot("sym_test_replication");
+            hasReplicationPermission = getSqlTemplate().queryForInt(
+                    "select count(*) from pg_create_logical_replication_slot('sym_test_replication', 'test_decoding')") > 0;
+        } catch (Throwable e) {
+            log.info(e.getMessage(), e);
+        } finally {
+            dropTestReplicationSlot("sym_test_replication");
+        }
         if ("logical".equals(walLevel) && hasReplicationPermission) {
             result.setStatus(Status.PASS);
         } else {
@@ -294,6 +317,18 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
             }
         }
         return result;
+    }
+
+    private boolean dropTestReplicationSlot(String replicationSlotName) {
+        boolean ret = false;
+        if (getSqlTemplate().queryForInt("select count(*) from pg_replication_slots where slot_name='" + replicationSlotName + "'") > 0) {
+            try {
+                ret = getSqlTemplate().queryForInt(
+                        "select count(*) from pg_drop_replication_slot('" + replicationSlotName + "')") > 0;
+            } catch (Throwable e) {
+            }
+        }
+        return ret;
     }
 
     @Override
@@ -441,7 +476,7 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     public String getCharSetName() {
-        return (String) getSqlTemplate().queryForObject("select pg_encoding_to_char(encoding) from pg_database\r\n"
+        return getSqlTemplate().queryForObject("select pg_encoding_to_char(encoding) from pg_database\r\n"
                 + "where datname = current_database()", String.class);
     }
 
