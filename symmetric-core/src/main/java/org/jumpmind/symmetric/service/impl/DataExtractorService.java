@@ -875,15 +875,18 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             long extractTimeInMs = 0l;
             long byteCount = 0l;
             long transformTimeInMs = 0l;
+            boolean isClusterLocalStaging = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) &&
+                    !parameterService.is(ParameterConstants.CLUSTER_STAGING_ENABLED);
+            boolean isPreviouslyExtracted = false;
             if (currentBatch.getStatus() == Status.IG) {
                 cleanupIgnoredBatch(sourceNode, targetNode, currentBatch, writer);
-            } else if (currentBatch.getStatus() == Status.RQ || !isPreviouslyExtracted(currentBatch, false)) {
+            } else if (currentBatch.getStatus() == Status.RQ || !(isPreviouslyExtracted = isPreviouslyExtracted(currentBatch, false))) {
                 BatchLock lock = null;
                 try {
                     log.debug("{} attempting to acquire lock for batch {}", targetNode.getNodeId(), currentBatch.getBatchId());
                     lock = acquireLock(currentBatch, useStagingDataWriter);
                     log.debug("{} acquired lock for batch {}", targetNode.getNodeId(), currentBatch.getBatchId());
-                    if (currentBatch.getStatus() == Status.RQ || !isPreviouslyExtracted(currentBatch, true)) {
+                    if (currentBatch.getStatus() == Status.RQ || !(isPreviouslyExtracted = isPreviouslyExtracted(currentBatch, true))) {
                         log.debug("{} extracting batch {}", targetNode.getNodeId(), currentBatch.getBatchId());
                         currentBatch.setExtractCount(currentBatch.getExtractCount() + 1);
                         if (currentBatch.getExtractStartTime() == null) {
@@ -954,7 +957,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                 statisticManager.incrementDataBytesSent(currentBatch.getChannelId(), byteCount);
                                 statisticManager.incrementDataSent(currentBatch.getChannelId(), stats.get(DataWriterStatisticConstants.ROWCOUNT));
                             }
-                            if (currentBatch.isCommonFlag()) {
+                            if (currentBatch.isCommonFlag() && !isClusterLocalStaging) {
                                 outgoingBatchService.updateCommonBatchExtractStatistics(currentBatch);
                             }
                         }
@@ -977,6 +980,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         log.debug("{} released lock for batch {}", targetNode.getNodeId(), currentBatch.getBatchId());
                     }
                 }
+            }
+            if (currentBatch.isCommonFlag() && isClusterLocalStaging && isPreviouslyExtracted) {
+                updateCommonBatchExtractStatistics(currentBatch);
             }
             if (updateBatchStatistics) {
                 currentBatch = requeryIfEnoughTimeHasPassed(ts, currentBatch);
@@ -1005,6 +1011,22 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             }
         }
         return currentBatch;
+    }
+
+    protected void updateCommonBatchExtractStatistics(OutgoingBatch currentBatch) {
+        OutgoingBatch firstBatch = outgoingBatchService.findOutgoingBatchFirstCommon(currentBatch.getBatchId());
+        if (firstBatch != null) {
+            currentBatch.setByteCount(firstBatch.getByteCount());
+            currentBatch.setDataRowCount(firstBatch.getDataRowCount());
+            currentBatch.setDataInsertRowCount(firstBatch.getDataInsertRowCount());
+            currentBatch.setDataUpdateRowCount(firstBatch.getDataUpdateRowCount());
+            currentBatch.setDataDeleteRowCount(firstBatch.getDataDeleteRowCount());
+            currentBatch.setOtherRowCount(firstBatch.getOtherRowCount());
+            currentBatch.setExtractRowCount(firstBatch.getExtractRowCount());
+            currentBatch.setExtractInsertRowCount(firstBatch.getExtractInsertRowCount());
+            currentBatch.setExtractUpdateRowCount(firstBatch.getExtractUpdateRowCount());
+            currentBatch.setExtractDeleteRowCount(firstBatch.getExtractDeleteRowCount());
+        }
     }
 
     protected String getSemaphoreKey(OutgoingBatch batch, boolean useStagingDataWriter) {
