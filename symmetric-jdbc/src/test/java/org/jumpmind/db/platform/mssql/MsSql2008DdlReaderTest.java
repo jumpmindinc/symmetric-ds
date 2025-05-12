@@ -151,6 +151,22 @@ class MsSql2008DdlReaderTest {
     }
 
     @ParameterizedTest
+    @DisplayName("Parse Default Values")
+    @CsvSource(
+            value = { "'default'|default|" + Types.VARCHAR, "N'default'|default|" + Types.NVARCHAR,
+                    "coalesce([column_0]+' ','')|coalesce([column_0]+' ','')|" + Types.LONGVARCHAR, },
+            delimiter = '|')
+    void testParseDefaultValue(String originalDefault, String parsedDefault, int mappedTypeCode) throws Exception {
+        MockDbDataSource mockDataSource = new MockDbDataSource(MsSqlDatabasePlatform_VERSION10);
+        MsSqlDdlReader testReader = createMsSqlDdlReader(mockDataSource);
+        Column column = new Column();
+        column.setDefaultValue(originalDefault);
+        column.setMappedTypeCode(mappedTypeCode);
+        testReader.parseDefaultValue(column);
+        assertEquals(parsedDefault, column.getDefaultValue());
+    }
+
+    @ParameterizedTest
     @Disabled
     @CsvSource({ "INSERT,1,0,0", "UPDATE,0,1,0", "DELETE,0,0,1", })
     void testGetTriggers(String triggerTypeParam, String isInsert, String isUpdate, String isDelete) throws Exception {
