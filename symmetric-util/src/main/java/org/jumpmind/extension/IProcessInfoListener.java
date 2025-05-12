@@ -21,5 +21,5 @@
 package org.jumpmind.extension;
 
 public interface IProcessInfoListener {
-    public void changeDataCount(long currentDataCount);
+    public void changeDataCount(long totalDataCount, long currentDataCount);
 }

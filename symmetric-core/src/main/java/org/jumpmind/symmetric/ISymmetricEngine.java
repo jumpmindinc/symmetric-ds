@@ -30,11 +30,11 @@ import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.extension.IProcessInfoListener;
 import org.jumpmind.extension.IProgressListener;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.job.IJobManager;
 import org.jumpmind.symmetric.model.NodeStatus;
-import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
@@ -78,7 +78,7 @@ public interface ISymmetricEngine {
 
     public void uninstall();
 
-    public void uninstall(ProcessInfo processInfo);
+    public void uninstall(IProcessInfoListener listener);
 
     /**
      * @return the URL that represents this engine

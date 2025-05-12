@@ -51,6 +51,7 @@ import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlScript;
 import org.jumpmind.db.sql.SqlScriptReader;
+import org.jumpmind.extension.IProcessInfoListener;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityServiceFactory;
@@ -75,6 +76,8 @@ import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.model.NodeStatus;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
+import org.jumpmind.symmetric.model.ProcessInfoKey;
+import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
@@ -773,14 +776,18 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     public synchronized void uninstall() {
-        uninstall(new ProcessInfo());
+        uninstall(null);
     }
 
-    public synchronized void uninstall(ProcessInfo processInfo) {
+    public synchronized void uninstall(IProcessInfoListener listener) {
         log.info("Attempting an uninstall of all SymmetricDS database objects from the database");
         final int dropTriggersWeight = 20;
         final int dropTablesWeight = 80;
         final int totalStepCount = dropTriggersWeight + dropTablesWeight + 13;
+        ProcessInfo processInfo = statisticManager.newProcessInfo(new ProcessInfoKey(getNodeId(), null, ProcessType.UNINSTALL));
+        if (listener != null) {
+            processInfo.setListener(listener);
+        }
         processInfo.setTotalDataCount(totalStepCount);
         stop();
         processInfo.incrementCurrentDataCount();
