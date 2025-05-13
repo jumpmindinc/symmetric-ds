@@ -167,7 +167,7 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
         for (TableReloadStatus status : statuses) {
             if (!status.isCompleted() && !status.isCancelled()) {
                 TableReloadRequest request = engine.getDataService().getTableReloadRequest(status.getLoadId());
-                if (StringUtils.isBlank(request.getReloadSelect())) {
+                if (request != null && StringUtils.isBlank(request.getReloadSelect())) {
                     cancelLoad(status);
                 }
             }
