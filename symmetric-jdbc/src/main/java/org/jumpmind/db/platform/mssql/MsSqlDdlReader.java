@@ -369,12 +369,31 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
                     defaultValue = defaultValue.substring(0, defaultValue.length() - 1);
                 }
             } else if (TypeMap.isTextType(column.getMappedTypeCode())) {
-                if (defaultValue.startsWith("N'") && defaultValue.endsWith("'")) {
-                    defaultValue = defaultValue.substring(2, defaultValue.length() - 1);
+                String unescapedValue = unescapeTextValue(defaultValue, column);
+                if (log.isTraceEnabled()) {
+                    log.trace("Unescaped default value for column={}, Original={}, Result={}", column.getName(), defaultValue, unescapedValue);
                 }
-                defaultValue = unescape(defaultValue, "'", "''");
+                defaultValue = unescapedValue;
             }
             column.setDefaultValue(defaultValue);
+        }
+    }
+
+    /**
+     * Removes outer quotes and un-escapes Transact-SQL text value. Might need additional parsing of each quoted string item in the future.
+     */
+    protected String unescapeTextValue(String defaultValue, Column column) {
+        if (defaultValue.endsWith("'") && (defaultValue.startsWith("N'") || defaultValue.startsWith("'"))) {
+            int newStartPos = 0;
+            int newEndPos = defaultValue.length() - 1;
+            if (defaultValue.startsWith("N'")) {
+                newStartPos = 2;
+            } else {
+                newStartPos = 1;
+            }
+            return unescape(defaultValue.substring(newStartPos, newEndPos), "'", "''");
+        } else {
+            return defaultValue;
         }
     }
 
