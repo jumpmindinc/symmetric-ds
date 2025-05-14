@@ -364,10 +364,10 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
                 if ((column.getScale() == 0) && defaultValue.endsWith(".")) {
                     defaultValue = defaultValue.substring(0, defaultValue.length() - 1);
                 }
-            } else if (TypeMap.isTextType( column.getMappedTypeCode())) {
+            } else if (TypeMap.isTextType(column.getMappedTypeCode())) {
                 String unescapedValue = unescapeTextValue(defaultValue, column);
                 if (log.isTraceEnabled()) {
-                    log.trace("Unescaped default value fro column={}, Original={}, Result={}", column.getName(), defaultValue, unescapedValue);
+                    log.trace("Unescaped default value for column={}, Original={}, Result={}", column.getName(), defaultValue, unescapedValue);
                 }
                 defaultValue = unescapedValue;
             }
