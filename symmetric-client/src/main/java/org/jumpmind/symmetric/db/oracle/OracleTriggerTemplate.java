@@ -256,7 +256,7 @@ public class OracleTriggerTemplate extends AbstractTriggerTemplate {
 "select $(oracleQueryHint) $(oracleToClob)$(columns) from $(schemaName)$(tableName) t where $(whereClause)");
 
         sqlTemplates.put("filteredDdlTriggerTemplate",
-"create or replace trigger $(triggerName) after ddl on schema\n" +
+"create or replace trigger $(triggerName) after ddl or truncate on schema\n" +
 "declare\n" +
 "tableName varchar(255);\n" +
 "histId number(22);\n" +
@@ -319,7 +319,7 @@ public class OracleTriggerTemplate extends AbstractTriggerTemplate {
 "end;\n");
         
         sqlTemplates.put("allDdlTriggerTemplate",
-"create or replace trigger $(triggerName) after ddl on schema\n" +
+"create or replace trigger $(triggerName) after ddl or truncate on schema\n" +
 "declare\n" +
 "tableName varchar(255);\n" +
 "histId number(22);\n" +
@@ -403,6 +403,7 @@ public class OracleTriggerTemplate extends AbstractTriggerTemplate {
         }
     }
 
+    @Override
     protected String toClobExpression(Table table) {
         if (symmetricDialect.getParameterService().is(ParameterConstants.DBDIALECT_ORACLE_USE_NTYPES_FOR_SYNC)) {
             return "to_nclob('')||";
