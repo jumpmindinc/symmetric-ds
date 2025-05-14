@@ -55,6 +55,7 @@ import org.jumpmind.symmetric.io.data.transform.IsBlankTransform;
 import org.jumpmind.symmetric.io.data.transform.IsEmptyTransform;
 import org.jumpmind.symmetric.io.data.transform.IsNullTransform;
 import org.jumpmind.symmetric.io.data.transform.JavaColumnTransform;
+import org.jumpmind.symmetric.io.data.transform.JsonColumnTransform;
 import org.jumpmind.symmetric.io.data.transform.LeftColumnTransform;
 import org.jumpmind.symmetric.io.data.transform.LookupColumnTransform;
 import org.jumpmind.symmetric.io.data.transform.MathColumnTransform;
@@ -123,6 +124,7 @@ public class TransformService extends AbstractService implements ITransformServi
         columnTransformMap.put(IsNullTransform.NAME, new IsNullTransform());
         columnTransformMap.put(IsBlankTransform.NAME, new IsBlankTransform());
         columnTransformMap.put(DeletedColumnListColumnTransform.NAME, new DeletedColumnListColumnTransform());
+        columnTransformMap.put(JsonColumnTransform.NAME, new JsonColumnTransform());
     }
 
     public TransformService(ISymmetricEngine engine, ISymmetricDialect symmetricDialect) {

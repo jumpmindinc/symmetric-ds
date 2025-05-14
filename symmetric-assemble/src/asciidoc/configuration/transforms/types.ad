@@ -24,6 +24,7 @@ Calculate the difference between the old and new source number and apply the dif
 |<<isBlank Transform,isBlank>>|If value is empty after trimming spaces, then replace its value.
 |<<isEmpty Transform,isEmpty>>|If value is empty, then replace its value.
 |<<Java Transform,java>>|Run Java code to return a value.
+|<<JSON Transform,json>>|Convert the row to JSON format.
 |<<Null Value Transform,isNull>>|If value is null, then replace its value.
 |<<Left Transform,left>>|Copy the leftmost characters of the value.
 |<<Lookup Transform,lookup>>|Run a SQL query to return a value.
@@ -651,6 +652,54 @@ INSERT INTO SYM_TRANSFORM_COLUMN (
 } else {
     return sourceValues.get("NEWKEY");
 }', 0, current_timestamp, 'Documentation', current_timestamp);
+----
+endif::pro[]
+
+===== JSON Transform
+
+Convert the row to JSON format. Use the transform expression to optionally exclude
+columns, add a data header, or add an ID. If an ID is specified, then a data header
+must also be specified.
+
+.Transform Expression Variables
+|===
+|Variable Name|Description
+
+|excludeColumnNames|Names of columns to exclude from the JSON
+|idHeader|Name of the header to include the ID's value under
+|idColumnName|Name of the column containing the ID's value
+|dataHeader|Name of the header to include the JSON data under
+
+|===
+
+.Transform Expression and Resulting JSON Example
+====
+
+----
+"excludeColumnNames==col_1,col_2","idHeader==_id","idColumnName==id","dataHeader==data"
+
+{
+  "_id":"example1",
+  "data":{
+    "id":"example1",
+    "col_0":"val_0",
+    "col_3":"val_3"
+  }
+}
+----
+====
+
+ifndef::pro[]
+[source, SQL]
+----
+INSERT INTO SYM_TRANSFORM_COLUMN (
+	transform_id, include_on, target_column_name, source_column_name, pk,
+	transform_type, transform_expression, transform_order, last_update_time,
+	last_update_by, create_time
+) VALUES (
+	'testjson', '*', 'json_column', null, 0, 'json',
+	'"excludeColumnNames==col_0,col_1","idHeader==_id","idColumnName==id","dataHeader==data"',
+	0, current_timestamp, 'Documentation', current_timestamp);
 ----
 endif::pro[]
 
