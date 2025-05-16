@@ -141,6 +141,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         });
     }
 
+    @Override
     public String getSymmetricDdlChanges() {
         Database modelFromXml = readSymmetricSchemaFromXml();
         Database modelFromDatabase = readSymmetricSchemaFromDatabase();
@@ -162,6 +163,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         sqlReplacementTokens.put("selectDataUsingStartDataIdHint", "");
     }
 
+    @Override
     public Map<String, String> getSqlReplacementTokens() {
         return sqlReplacementTokens;
     }
@@ -169,14 +171,17 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     /*
      * Provide a default implementation of this method using DDLUtils, getMaxColumnNameLength()
      */
+    @Override
     public int getMaxTriggerNameLength() {
         int max = getPlatform().getDatabaseInfo().getMaxColumnNameLength();
         return max < MAX_SYMMETRIC_SUPPORTED_TRIGGER_SIZE && max > 0 ? max : MAX_SYMMETRIC_SUPPORTED_TRIGGER_SIZE;
     }
 
+    @Override
     public void verifyDatabaseIsCompatible() {
     }
 
+    @Override
     public void initTablesAndDatabaseObjects() {
         createRequiredDatabaseObjects();
         createOrAlterTablesIfNecessary();
@@ -187,6 +192,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         String ddl = FormatUtils.replace("functionName", objectName, sql);
         ddl = FormatUtils.replace("version", Version.versionWithUnderscores(), ddl);
         ddl = FormatUtils.replace("defaultSchema", platform.getDefaultSchema(), ddl);
+        ddl = FormatUtils.replace("prefixName", parameterService.getTablePrefix(), ddl);
         return ddl;
     }
 
@@ -217,12 +223,14 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         }
     }
 
+    @Override
     public void dropTablesAndDatabaseObjects() {
         Database modelFromDatabase = readSymmetricSchemaFromDatabase();
         platform.dropDatabase(modelFromDatabase, true);
         dropRequiredDatabaseObjects();
     }
 
+    @Override
     final public boolean doesTriggerExist(StringBuilder sqlBuffer, String catalogName, String schema, String tableName, String triggerName) {
         if (StringUtils.isNotBlank(triggerName)) {
             try {
@@ -236,16 +244,20 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         }
     }
 
+    @Override
     public boolean doesDdlTriggerExist(String catalogName, String schema, String triggerName) {
         return false;
     }
 
+    @Override
     public abstract void dropRequiredDatabaseObjects();
 
+    @Override
     public void createRequiredDatabaseObjects() {
         createRequiredDatabaseObjectsImpl(null);
     };
 
+    @Override
     public String getCreateRequiredDatabaseObjectsDDL() {
         StringBuilder ddl = new StringBuilder();
         createRequiredDatabaseObjectsImpl(ddl);
@@ -255,27 +267,33 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     protected void createRequiredDatabaseObjectsImpl(StringBuilder ddl) {
     }
 
+    @Override
     abstract public BinaryEncoding getBinaryEncoding();
 
     abstract protected boolean doesTriggerExistOnPlatform(StringBuilder seqlBuffer, String catalogName, String schema, String tableName, String triggerName);
 
+    @Override
     public String getTransactionTriggerExpression(String defaultCatalog, String defaultSchema, Trigger trigger) {
         return "null";
     }
 
+    @Override
     public String getTransactionId(ISqlTransaction transaction) {
         return null;
     }
 
+    @Override
     public String createInitialLoadSqlFor(Node node, TriggerRouter trigger, Table table, TriggerHistory triggerHistory, Channel channel,
             String overrideSelectSql) {
         return triggerTemplate.createInitalLoadSql(node, trigger, table, triggerHistory, channel, overrideSelectSql).trim();
     }
 
+    @Override
     public boolean[] getColumnPositionUsingTemplate(Table originalTable, TriggerHistory triggerHistory) {
         return triggerTemplate.getColumnPositionUsingTemplate(originalTable, triggerHistory);
     }
 
+    @Override
     public String createPurgeSqlFor(Node node, TriggerRouter triggerRouter, TriggerHistory triggerHistory) {
         return createPurgeSqlFor(node, triggerRouter, triggerHistory, null);
     }
@@ -322,16 +340,19 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return sqlStatements;
     }
 
+    @Override
     public String createCsvDataSql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause) {
         return triggerTemplate.createCsvDataSql(trigger, triggerHistory, platform.getTableFromCache(trigger.getSourceCatalogName(),
                 trigger.getSourceSchemaName(), trigger.getSourceTableName(), false), channel, whereClause).trim();
     }
 
+    @Override
     public String createCsvPrimaryKeySql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause) {
         return triggerTemplate.createCsvPrimaryKeySql(trigger, triggerHistory, platform.getTableFromCache(trigger.getSourceCatalogName(),
                 trigger.getSourceSchemaName(), trigger.getSourceTableName(), false), channel, whereClause).trim();
     }
 
+    @Override
     public Set<String> getSqlKeywords() {
         if (sqlKeywords == null) {
             this.sqlKeywords = this.platform.getSqlTemplate().getSqlKeywords();
@@ -344,6 +365,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return "drop trigger " + schemaName + triggerName;
     }
 
+    @Override
     public void removeTrigger(StringBuilder sqlBuffer, String catalogName, String schemaName, String triggerName, String tableName) {
         ISqlTransaction transaction = null;
         try {
@@ -360,6 +382,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         }
     }
 
+    @Override
     public void removeTrigger(StringBuilder sqlBuffer, String catalogName, String schemaName, String triggerName, String tableName,
             ISqlTransaction transaction) {
         String sql = getDropTriggerSql(sqlBuffer, catalogName, schemaName, triggerName, tableName);
@@ -370,6 +393,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         }
     }
 
+    @Override
     public void removeDdlTrigger(StringBuilder sqlBuffer, String catalogName, String schemaName, String triggerName) {
     }
 
@@ -381,6 +405,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         }
     }
 
+    @Override
     public void createTrigger(final StringBuilder sqlBuffer, final DataEventType dml, final Trigger trigger, final TriggerHistory hist,
             final Channel channel, final String tablePrefix, final Table table) {
         ISqlTransaction transaction = null;
@@ -401,6 +426,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     /*
      * Create the configured trigger. The catalog will be changed to the source schema if the source schema is configured.
      */
+    @Override
     public void createTrigger(final StringBuilder sqlBuffer, final DataEventType dml, final Trigger trigger, final TriggerHistory hist,
             final Channel channel, final String tablePrefix, final Table table, ISqlTransaction transaction) {
         String previousCatalog = null;
@@ -461,6 +487,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
                 platform.getDefaultSchema());
     }
 
+    @Override
     public void createDdlTrigger(final String tablePrefix, StringBuilder sqlBuffer, String triggerName, String runtimeCatalog, String runtimeSchema) {
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS)) {
             String triggerSql = triggerTemplate.createDdlTrigger(tablePrefix, runtimeCatalog, runtimeSchema,
@@ -516,6 +543,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return triggerTemplate.createPostDdlTriggerDDL(tablePrefix, triggerName);
     }
 
+    @Override
     public String getCreateSymmetricDDL() {
         Database database = readSymmetricSchemaFromXml();
         IDdlBuilder builder = platform.getDdlBuilder();
@@ -529,6 +557,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     /*
      * @return true if SQL was executed.
      */
+    @Override
     public boolean createOrAlterTablesIfNecessary(String... tableNames) {
         try {
             log.info("Checking if SymmetricDS tables need created or altered");
@@ -593,6 +622,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         }
     }
 
+    @Override
     public Database readSymmetricSchemaFromXml() {
         try {
             Database database = merge(readDatabaseFromXml("/symmetric-schema.xml"), readDatabaseFromXml("/console-schema.xml"));
@@ -638,10 +668,12 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return database;
     }
 
+    @Override
     public IDatabasePlatform getPlatform() {
         return this.platform;
     }
 
+    @Override
     public IDatabasePlatform getTargetPlatform() {
         return targetDialect.getPlatform();
     }
@@ -654,6 +686,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return targetDialect.getPlatform();
     }
 
+    @Override
     public String getName() {
         if (!this.equals(targetDialect)) {
             return targetDialect.getName();
@@ -661,6 +694,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return databaseName;
     }
 
+    @Override
     public String getVersion() {
         if (!this.equals(targetDialect)) {
             return targetDialect.getVersion();
@@ -668,6 +702,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return databaseMajorVersion + "." + databaseMinorVersion;
     }
 
+    @Override
     public int getMajorVersion() {
         if (!this.equals(targetDialect)) {
             return targetDialect.getMajorVersion();
@@ -675,6 +710,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return databaseMajorVersion;
     }
 
+    @Override
     public int getMinorVersion() {
         if (!this.equals(targetDialect)) {
             return targetDialect.getMinorVersion();
@@ -682,6 +718,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return databaseMinorVersion;
     }
 
+    @Override
     public String getProductVersion() {
         if (!this.equals(targetDialect)) {
             return targetDialect.getProductVersion();
@@ -689,6 +726,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return databaseProductVersion;
     }
 
+    @Override
     public boolean supportsTransactionViews() {
         return supportsTransactionViews;
     }
@@ -696,6 +734,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     /*
      * Indicates if this dialect supports subselects in delete statements.
      */
+    @Override
     public boolean supportsSubselectsInDelete() {
         return supportsSubselectsInDelete;
     }
@@ -703,23 +742,28 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     /*
      * Indicates if this dialect supports subselects in update statements.
      */
+    @Override
     public boolean supportsSubselectsInUpdate() {
         return supportsSubselectsInUpdate;
     }
 
+    @Override
     public boolean supportsDdlTriggers() {
         return supportsDdlTriggers;
     }
 
+    @Override
     public long insertWithGeneratedKey(String sql, SequenceIdentifier sequenceId) {
         return insertWithGeneratedKey(sql, sequenceId, null, null);
     }
 
+    @Override
     public long insertWithGeneratedKey(final String sql, final SequenceIdentifier identifier, Object... args) {
         return platform.getSqlTemplate().insertWithGeneratedKey(sql, getSequenceKeyName(identifier), getSequenceKeyName(identifier), args,
                 null);
     }
 
+    @Override
     public String getSequenceName(SequenceIdentifier identifier) {
         switch (identifier) {
             case REQUEST:
@@ -732,6 +776,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return null;
     }
 
+    @Override
     public String getSequenceKeyName(SequenceIdentifier identifier) {
         switch (identifier) {
             case REQUEST:
@@ -749,6 +794,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return -1;
     }
 
+    @Override
     @Deprecated
     public Column[] orderColumns(String[] columnNames, Table table) {
         Column[] unorderedColumns = table.getColumns();
@@ -765,43 +811,53 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return orderedColumns;
     }
 
+    @Override
     @Deprecated
     public void disableSyncTriggers(ISqlTransaction transaction) {
         disableSyncTriggers(transaction, null);
     }
 
+    @Override
     public boolean supportsTransactionId() {
         return false;
     }
 
+    @Override
     public boolean isBlobSyncSupported() {
         return true;
     }
 
+    @Override
     public boolean isClobSyncSupported() {
         return true;
     }
 
+    @Override
     public boolean isTransactionIdOverrideSupported() {
         return true;
     }
 
+    @Override
     public String getEngineName() {
         return parameterService.getEngineName();
     }
 
+    @Override
     public boolean supportsOpenCursorsAcrossCommit() {
         return true;
     }
 
+    @Override
     public String getInitialLoadTableAlias() {
         return "t";
     }
 
+    @Override
     public String preProcessTriggerSqlClause(String sqlClause) {
         return sqlClause;
     }
 
+    @Override
     public void truncateTable(String tableName) {
         String quote = platform.getDdlBuilder().isDelimitedIdentifierModeOn() ? platform.getDatabaseInfo().getDelimiterToken() : "";
         boolean success = false;
@@ -823,18 +879,22 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         }
     }
 
+    @Override
     public boolean areDatabaseTransactionsPendingSince(long time) {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public Date getEarliestTransactionStartTime() {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public String getDatabaseTimeSQL() {
         return platform.scrubSql("select current_timestamp");
     }
 
+    @Override
     public long getDatabaseTime() {
         try {
             Date dateTime = this.platform.getSqlTemplate().queryForObject(getDatabaseTimeSQL(), java.util.Date.class);
@@ -849,10 +909,12 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         }
     }
 
+    @Override
     public String getSourceNodeExpression() {
         return null;
     }
 
+    @Override
     final public String getDataHasChangedCondition(Trigger trigger) {
         if (parameterService.is(ParameterConstants.TRIGGER_UPDATE_CAPTURE_CHANGED_DATA_ONLY)) {
             return getDbSpecificDataHasChangedCondition(trigger);
@@ -865,14 +927,17 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return Constants.ALWAYS_TRUE_CONDITION;
     }
 
+    @Override
     public boolean needsToSelectLobData() {
         return false;
     }
 
+    @Override
     public boolean canGapsOccurInCapturedDataIds() {
         return true;
     }
 
+    @Override
     public String massageDataExtractionSql(String sql, boolean isContainsBigLob) {
         String textColumnExpression = parameterService.getString(ParameterConstants.DATA_EXTRACTOR_TEXT_COLUMN_EXPRESSION);
         if (isNotBlank(textColumnExpression)) {
@@ -883,6 +948,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return sql;
     }
 
+    @Override
     public String getDriverName() {
         if (targetDialect != this) {
             return targetDialect.getDriverName();
@@ -890,6 +956,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return driverName;
     }
 
+    @Override
     public String getDriverVersion() {
         if (targetDialect != this) {
             return targetDialect.getDriverVersion();
@@ -897,14 +964,17 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return driverVersion;
     }
 
+    @Override
     public String massageForLob(String sql, boolean isContainsBigLob) {
         return sql;
     }
 
+    @Override
     public boolean isInitialLoadTwoPassLob(Table table) {
         return false;
     }
 
+    @Override
     public String getInitialLoadTwoPassLobSql(String sql, Table table, boolean isFirstPass) {
         List<Column> columns = table.getLobColumns(this.platform);
         boolean isFirstColumn = true;
@@ -947,21 +1017,26 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return null;
     }
 
+    @Override
     public boolean escapesTemplatesForDatabaseInserts() {
         return false;
     }
 
+    @Override
     public String getMasterCollation() {
         return parameterService.getString(ParameterConstants.DB_MASTER_COLLATION, "");
     }
 
+    @Override
     public boolean supportsBatchUpdates() {
         return true;
     }
 
+    @Override
     public void cleanupTriggers() {
     }
 
+    @Override
     public AbstractTriggerTemplate getTriggerTemplate() {
         return triggerTemplate;
     }
@@ -972,14 +1047,17 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         }
     }
 
+    @Override
     public String getTablePrefix() {
         return parameterService.getTablePrefix();
     }
 
+    @Override
     public String getTemplateNumberPrecisionSpec() {
         return null;
     }
 
+    @Override
     public int getSqlTypeForIds() {
         return Types.NUMERIC;
     }
@@ -989,10 +1067,12 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         return parameterService;
     }
 
+    @Override
     public void setExtensionService(IExtensionService extensionService) {
         this.extensionService = extensionService;
     }
 
+    @Override
     public PermissionType[] getSymTablePermissions() {
         PermissionType[] permissions = { PermissionType.CREATE_TABLE, PermissionType.DROP_TABLE, PermissionType.CREATE_TRIGGER,
                 PermissionType.DROP_TRIGGER };
