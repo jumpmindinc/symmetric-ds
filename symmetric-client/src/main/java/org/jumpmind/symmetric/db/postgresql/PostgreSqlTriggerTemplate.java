@@ -23,10 +23,14 @@ package org.jumpmind.symmetric.db.postgresql;
 import java.util.HashMap;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
+import org.jumpmind.symmetric.model.Channel;
+import org.jumpmind.symmetric.model.Trigger;
+import org.jumpmind.symmetric.model.TriggerHistory;
 
 public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
     String delimiter;
@@ -81,7 +85,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         newColumnPrefix = "" ;
         otherColumnTemplate = stringColumnTemplate;
         sqlTemplates = new HashMap<String,String>();
-        sqlTemplates.put("insertTriggerTemplate" ,
+        sqlTemplates.put(INSERT_TRIGGER_TEMPLATE,
 "create or replace function $(schemaName)f$(triggerName)() returns trigger as $function$                                                                                                                \n" +
 "                                begin                                                                                                                                                                  \n" +
 "                                  $(custom_before_insert_text) \n" +
@@ -131,10 +135,10 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 
         
         sqlTemplates.put("insertPostTriggerTemplate" ,
-"create trigger $(triggerName) after insert on $(schemaName)$(tableName)                                                                                                                                \n" +
+"create or replace trigger $(triggerName) after insert on $(schemaName)$(tableName)                                                                                                                                \n" +
 "                                for each row execute procedure $(schemaName)f$(triggerName)();                                                                                                         " );
 
-        sqlTemplates.put("updateTriggerTemplate" ,
+        sqlTemplates.put(UPDATE_TRIGGER_TEMPLATE ,
 "create or replace function $(schemaName)f$(triggerName)() returns trigger as $function$                                                                                                                \n" +
 "                                declare var_row_data text; \n" +        
 "                                declare var_old_data text; \n" +
@@ -197,10 +201,10 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "                                $function$ language plpgsql" + getSecurityClause() + ";");
 
         sqlTemplates.put("updatePostTriggerTemplate" ,
-"create trigger $(triggerName) after update on $(schemaName)$(tableName)                                                                                                                                \n" +
+"create or replace trigger $(triggerName) after update on $(schemaName)$(tableName)                                                                                                                                \n" +
 "                                for each row execute procedure $(schemaName)f$(triggerName)();                                                                                                         " );
 
-        sqlTemplates.put("deleteTriggerTemplate" ,
+        sqlTemplates.put(DELETE_TRIGGER_TEMPLATE,
 "create or replace function $(schemaName)f$(triggerName)() returns trigger as $function$                                                                                                                \n" +
 "                                begin                                                                                                                                                                  \n" +
 "                                  $(custom_before_delete_text) \n" +
@@ -226,9 +230,9 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "                                $function$ language plpgsql" + getSecurityClause() + ";");
 
         sqlTemplates.put("deletePostTriggerTemplate" ,
-"create trigger $(triggerName) after delete on $(schemaName)$(tableName)                                                                                                                                \n" +
+"create or replace trigger $(triggerName) after delete on $(schemaName)$(tableName)                                                                                                                                \n" +
 "                                for each row execute procedure $(schemaName)f$(triggerName)();                                                                                                         " );
-
+  
         sqlTemplates.put("initialLoadSqlTemplate" ,
 "select $(columns) from $(schemaName)$(tableName) t where $(whereClause)                                                                                                                                " );
 
@@ -393,5 +397,48 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         }
         return "";
     }
+ 
+    @Override
+    public String createPostTriggerDDL(DataEventType dml, Trigger trigger, TriggerHistory history,
+            Channel channel, String tablePrefix, Table originalTable, String defaultCatalog,
+            String defaultSchema) {
+        String ddl = "";
 
+        if(dml == DataEventType.DELETE && trigger.isSyncOnDelete() 
+                && (!originalTable.getName().startsWith(tablePrefix) || !originalTable.getSchema().contentEquals( defaultSchema))) {
+            ddl = createPostTriggerDDLForTruncate(dml, trigger, history, channel, tablePrefix, originalTable, defaultCatalog, defaultSchema);
+            if(ddl == null || ddl.length() < 1) {
+                ddl="";            
+            }
+            else
+            {
+                ddl = replaceTemplateVariables(dml, trigger, history, channel, tablePrefix, originalTable, originalTable, defaultCatalog, defaultSchema, ddl);
+            }            
+        }
+        return ddl + super.createPostTriggerDDL(dml, trigger, history, channel, tablePrefix, originalTable, defaultCatalog, defaultSchema);
+    }
+    
+
+    public String createPostTriggerDDLForTruncate(DataEventType dml, Trigger trigger, TriggerHistory history,
+            Channel channel, String tablePrefix, Table originalTable, String defaultCatalog,
+            String defaultSchema) {
+        String ddl = ""; 
+          String truncateTriggerName = getTruncateTriggerNameLikeDelete(history);
+          if(truncateTriggerName == null || truncateTriggerName.length() < 1) {
+            return ddl;
+        }
+          String sharedTruncateEventFunction = "\""+originalTable.getSchema() +"\".f"+ tablePrefix+"_on_truncate_table_confgured_for_replication";
+          ddl = "create or replace trigger "+ truncateTriggerName + "  after truncate on "+ originalTable.getFullyQualifiedTableName()
+                  + " for each STATEMENT execute function "+sharedTruncateEventFunction+"(); ";
+          log.debug("Injecting trigger for truncate event: {}", ddl);
+        
+        return ddl ;
+    }
+
+    protected final String getTruncateTriggerNameLikeDelete(TriggerHistory history) {
+        String deleteTriggerName = history.getNameForDeleteTrigger();
+        return deleteTriggerName.replace("_ON_D_FOR_","_ON_T_FOR_").toLowerCase(); 
+    }
+ 
+    
 }
