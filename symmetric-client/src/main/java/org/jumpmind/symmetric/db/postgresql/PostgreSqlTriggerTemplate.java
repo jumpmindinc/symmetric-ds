@@ -31,14 +31,16 @@ import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerHistory;
+import org.jumpmind.util.FormatUtils;
 
 public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
-    String delimiter;
+    String sqlBatchDelimiter;
     String infinityDateExpression;
+    protected static String sharedTruncateEventFunction;
 
     public PostgreSqlTriggerTemplate(ISymmetricDialect symmetricDialect) {
         super(symmetricDialect);
-        delimiter = symmetricDialect.getParameterService().getString(ParameterConstants.TRIGGER_CAPTURE_DDL_DELIMITER, "$");
+        sqlBatchDelimiter = symmetricDialect.getParameterService().getString(ParameterConstants.TRIGGER_CAPTURE_DDL_DELIMITER, "$");
         infinityDateExpression = symmetricDialect.getParameterService().is(ParameterConstants.POSTGRES_CONVERT_INFINITY_DATE_TO_NULL, true) ? "''"
                 : "cast($(tableAlias).\"$(columnName)\" as varchar)";
         //@formatter:off        
@@ -83,8 +85,70 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         oldTriggerValue = "old" ;
         oldColumnPrefix = "" ;
         newColumnPrefix = "" ;
+        sharedTruncateEventFunction = "f"+this.symmetricDialect.getTablePrefix()+"_on_truncate_table_configured_for_replication";
         otherColumnTemplate = stringColumnTemplate;
         sqlTemplates = new HashMap<String,String>();
+        sqlTemplates.put(sharedTruncateEventFunction,"CREATE OR REPLACE FUNCTION $(defaultSchema)"+sharedTruncateEventFunction+"() RETURNS TRIGGER AS $$ "
+                + "\nDECLARE "
+                + "\n    eventDdl VARCHAR(3000); "
+                + "\n    argumentNo int:=0; "
+                + "\n    triggersDisabled int:=0; "                
+                + "\n    tableSchema varchar(255); "
+                + "\n    tableName varchar(255); "
+                + "\n    channelId varchar(128); "
+                + "\n    triggerId varchar(128); "
+                + "\n    histId int:=0; "
+                + "\nBEGIN  "
+                + "\n    tableSchema := TG_TABLE_SCHEMA; "
+                + "\n    tableName := TG_TABLE_NAME;  "
+                + "\n    if (tableSchema IS NOT NULL and LENGTH(tableSchema)>0) then "
+                + "\n        eventDdl := 'TRUNCATE TABLE ' || tableSchema || '.'|| tableName; "
+                + "\n    else "
+                + "\n        eventDdl := 'TRUNCATE TABLE ' || tableName; "
+                + "\n    end if; "
+                + "\n    if(TG_NARGS > 1) THEN "
+                + "\n        for argumentNo in 1..TG_NARGS-1 LOOP  "
+                + "\n            eventDdl := eventDdl || ' ' ||  TG_ARGV[argumentNo ]; "
+                + "\n            argumentNo := argumentNo+1; "
+                + "\n        END LOOP; "
+                + "\n    end if; "
+                + "\n    if (tableName like '%.%') then "
+                + "\n           tableSchema := split_part(tableName, '.', 1); "
+                + "\n           tableName := split_part(tableName, '.', 2); "
+                + "\n    end if; "
+                + "\n    tableSchema := trim(both '\\\"' from tableSchema); "
+                + "\n    tableName := trim(both '\\\"' from tableName); "
+                + "\n    select $(defaultSchema)$(prefixName)_triggers_disabled() into triggersDisabled;"
+                + "\n    if( triggersDisabled<>1 ) then "
+                + "\n      select tr.trigger_id, tr.channel_id, max(th.trigger_hist_id) "
+                + "\n      into triggerId, channelId, histId "
+                + "\n      from $(defaultSchema)$(prefixName)_trigger tr  "
+                + "\n      join $(defaultSchema)$(prefixName)_trigger_hist th "
+                + "\n        on th.trigger_id = tr.trigger_id and th.inactive_time is null "
+                + "\n      where tr.source_schema_name = lower(tableSchema) and tr.source_table_name = lower(tableName) "
+                + "\n      group by tr.trigger_id, tr.channel_id "
+                + "\n      limit 1; "
+                + "\n      if (channelId is null) then  "
+                + "\n        RAISE EXCEPTION 'Unable to capture TRUNCATE event because SymmetricDS configuration is incomplete (channel is NULL)! Table=%', tableName "
+                + "\n            USING MESSAGE = 'Run SyncTriggers job in SymmetricDS (Disabling this trigger will cause data to be out-of-sync!)'; "
+                + "\n        RETURN NEW;  "
+                + "\n      end if; "
+                + "\n      INSERT INTO $(defaultSchema)$(prefixName)_data(table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, transaction_id, create_time) "
+                + "\n      VALUES (tableName, 'S', histId, "
+                + "\n         '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(eventDdl,'\\','\\\\'),'\"','\\\"') || chr(13) || chr(10) || '\",ddl',"
+                + "\n         channelId, 'source',"
+                + "\n         TO_CHAR(CURRENT_TIMESTAMP, 'truncate-YYYY-MM-DD')||'T'||TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI:MSOF'),  CURRENT_TIMESTAMP); "
+                + "\n      RAISE NOTICE 'Captured truncate event for the % table; Schema=%, tableName=%, Channel=%, event.DDL=%', tableName, tableSchema, tableName, channelId, eventDdl;"
+                + "\n    else "
+                + "\n      RAISE NOTICE 'Skipped truncate event for the % table, because replication is disabled; Schema=%, tableName=%', tableName, tableSchema, tableName;"
+                + "\n    end if; "
+                + "\n    RETURN NEW;  "
+                + "\nEND $$ LANGUAGE plpgsql" + getSecurityClause() + ";");
+        
+        sqlTemplates.put("post"+sharedTruncateEventFunction+"Template",
+                "create or replace trigger $(triggerName) after truncate on $(sourceTableName)"
+                + " for each STATEMENT execute function $(defaultSchema)$(sharedFunctionName)(); ");         
+        
         sqlTemplates.put(INSERT_TRIGGER_TEMPLATE,
 "create or replace function $(schemaName)f$(triggerName)() returns trigger as $function$                                                                                                                \n" +
 "                                begin                                                                                                                                                                  \n" +
@@ -275,7 +339,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "            insert into $(defaultSchema)$(prefixName)_data\n" +
 "            (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "            values (tableName, '" + DataEventType.SQL.getCode() + "', histId,\n" +
-"            '\"delimiter " + delimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
+"            '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
 "            channelId, $(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression(symmetricDialect) + ");\n" +
 "        end if;\n" +
 "    end if;\n" +
@@ -296,7 +360,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "        insert into $(defaultSchema)$(prefixName)_data\n" +
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "        values ('$(prefixName)_node', '" + DataEventType.SQL.getCode() + "', histId,\n" +
-"        '\"delimiter " + delimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
+"        '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
 "        'config', $(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression(symmetricDialect) + ");\n" +
 "    end if;\n" +
 "end loop;\n" +
@@ -346,7 +410,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "        insert into $(defaultSchema)$(prefixName)_data\n" +
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "        values (tableName, '" + DataEventType.SQL.getCode() + "', histId,\n" +
-"        '\"delimiter " + delimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
+"        '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
 "        channelId, $(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression(symmetricDialect) + ");\n" +
 "    end if;\n" +
 "end loop;\n" +
@@ -366,7 +430,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "        insert into $(defaultSchema)$(prefixName)_data\n" +
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "        values ('$(prefixName)_node', '" + DataEventType.SQL.getCode() + "', histId,\n" +
-"        '\"delimiter " + delimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
+"        '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
 "        'config', $(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression(symmetricDialect) + ");\n" +
 "    end if;\n" +
 "end loop;\n" +
@@ -397,7 +461,16 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         }
         return "";
     }
- 
+
+    @Override
+    public String createDdlTrigger(String tablePrefix, String defaultCatalog, String defaultSchema, String triggerName) {
+        String ddl = createSharedTruncateCaptureFunction(  tablePrefix,   defaultCatalog,   defaultSchema);
+        if (ddl == null) {
+            ddl = "";
+        }
+        return ddl + super.createDdlTrigger(  tablePrefix,   defaultCatalog,   defaultSchema,   triggerName);
+    }
+    
     @Override
     public String createPostTriggerDDL(DataEventType dml, Trigger trigger, TriggerHistory history,
             Channel channel, String tablePrefix, Table originalTable, String defaultCatalog,
@@ -406,39 +479,80 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 
         if(dml == DataEventType.DELETE && trigger.isSyncOnDelete() 
                 && (!originalTable.getName().startsWith(tablePrefix) || !originalTable.getSchema().contentEquals( defaultSchema))) {
-            ddl = createPostTriggerDDLForTruncate(dml, trigger, history, channel, tablePrefix, originalTable, defaultCatalog, defaultSchema);
-            if(ddl == null || ddl.length() < 1) {
-                ddl="";            
-            }
-            else
-            {
-                ddl = replaceTemplateVariables(dml, trigger, history, channel, tablePrefix, originalTable, originalTable, defaultCatalog, defaultSchema, ddl);
-            }            
+            ddl = createPostTriggerDDLForTruncate(  trigger, history, channel,   tablePrefix, originalTable, defaultCatalog, defaultSchema);
+            if (ddl == null) {
+                ddl = "";
+            }         
         }
         return ddl + super.createPostTriggerDDL(dml, trigger, history, channel, tablePrefix, originalTable, defaultCatalog, defaultSchema);
     }
-    
 
-    public String createPostTriggerDDLForTruncate(DataEventType dml, Trigger trigger, TriggerHistory history,
-            Channel channel, String tablePrefix, Table originalTable, String defaultCatalog,
+    public String createPostTriggerDDLForTruncate( Trigger trigger, TriggerHistory history, Channel channel, String tablePrefix, Table originalTable, String defaultCatalog,
             String defaultSchema) {
         String ddl = ""; 
-          String truncateTriggerName = getTruncateTriggerNameLikeDelete(history);
-          if(truncateTriggerName == null || truncateTriggerName.length() < 1) {
+        String truncateTriggerName = getTruncateTriggerNameLikeDelete(history);
+        if(truncateTriggerName == null || truncateTriggerName.length() < 1) {
             return ddl;
+        }                                                                                                   
+
+        String truncateTriggerTemplate = "post"+sharedTruncateEventFunction+"Template";
+        ddl = sqlTemplates.get(truncateTriggerTemplate);
+        if (StringUtils.isBlank(ddl)) {
+            log.warn("Missing definition of a trigger statement {} for truncate events.", truncateTriggerTemplate);
+            return "";
         }
-          String sharedTruncateEventFunction = "\""+originalTable.getSchema() +"\".f"+ tablePrefix+"_on_truncate_table_confgured_for_replication";
-          ddl = "create or replace trigger "+ truncateTriggerName + "  after truncate on "+ originalTable.getFullyQualifiedTableName()
-                  + " for each STATEMENT execute function "+sharedTruncateEventFunction+"(); ";
-          log.debug("Injecting trigger for truncate event: {}", ddl);
+        ddl = FormatUtils.replace("triggerName", truncateTriggerName, ddl);
+        ddl = FormatUtils.replace("sourceTableName", originalTable.getFullyQualifiedTableName(), ddl);
+        ddl = FormatUtils.replace("sharedFunctionName", sharedTruncateEventFunction, ddl);
+        ddl = replaceTemplateVariables(DataEventType.DELETE, trigger, history, channel, tablePrefix, originalTable, originalTable, defaultCatalog, defaultSchema, ddl);
         
+        if(log.isDebugEnabled()) {
+            log.debug("Injected trigger for truncate events on table={}, DDL={}", originalTable.getName(), ddl);
+        }else{
+            log.info("Injected trigger for truncate events on table={}.", originalTable.getName());
+        }
         return ddl ;
     }
 
-    protected final String getTruncateTriggerNameLikeDelete(TriggerHistory history) {
+    protected String getTruncateTriggerNameLikeDelete(TriggerHistory history) {
         String deleteTriggerName = history.getNameForDeleteTrigger();
         return deleteTriggerName.replace("_ON_D_FOR_","_ON_T_FOR_").toLowerCase(); 
     }
- 
     
+    protected PostgreSqlSymmetricDialect getPostgresDialect() {
+        if(this.symmetricDialect==null || !(this.symmetricDialect instanceof PostgreSqlSymmetricDialect)) {
+            log.error("Invalid symmetricDialect object detected! dialect={}", this.symmetricDialect);
+            throw new RuntimeException("Invalid symmetricDialect object detected!");
+        }
+        return (PostgreSqlSymmetricDialect)this.symmetricDialect;
+    }
+
+    public String createSharedTruncateCaptureFunction(String tablePrefix, String defaultCatalog, String defaultSchema) {
+        PostgreSqlSymmetricDialect dialect = getPostgresDialect();
+        if (dialect.isFunctionInstalled(sharedTruncateEventFunction)) {
+            log.debug("Detected shared function {} for capturing table truncate events. Name={}", sharedTruncateEventFunction);
+            return "";
+        }  
+        String ddl = sqlTemplates.get(sharedTruncateEventFunction);
+        if (StringUtils.isBlank(ddl)) {
+            log.warn("Missing definition of the shared function {} for capturing table truncate events.", sharedTruncateEventFunction);
+            return "";
+        }
+        ddl = FormatUtils.replace("prefixName", tablePrefix, ddl);
+        ddl = replaceDefaultSchemaAndCatalog(ddl, defaultCatalog, defaultSchema);
+        if(log.isDebugEnabled()) {
+            log.debug("Injected shared function {} for capturing table truncate events. DDL={}", sharedTruncateEventFunction, ddl);
+        }else{
+            log.info("Injected shared function {} for capturing table truncate events.", sharedTruncateEventFunction);
+        }
+        return ddl;
+    }
+    
+    public String getTruncateSharedFunctionName() {
+        return sharedTruncateEventFunction;
+    }
+    
+    public String getEntry(String key) {
+        return sqlTemplates.get(key);
+    }
 }
