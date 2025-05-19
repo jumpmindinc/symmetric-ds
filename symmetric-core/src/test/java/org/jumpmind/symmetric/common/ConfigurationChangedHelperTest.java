@@ -10,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ConfigurationChangedHelperTest {
-
     private ConfigurationChangedHelper helper;
     private ISymmetricEngine engine;
 

@@ -15,7 +15,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class ConfigurationChangedDatabaseWriterFilterTest {
-
     private static final String SUFFIX = ConfigurationChangedHelper.class.getSimpleName();
     private static final String CTX_KEY_RESYNC_ALLOWED = "ResyncAllowed." + SUFFIX;
     private static final String CTX_KEY_RESYNC_NEEDED = "Resync." + SUFFIX;
