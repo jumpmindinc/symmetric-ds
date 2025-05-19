@@ -46,6 +46,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.HashMap;
@@ -286,7 +287,11 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
                     .getMinorVersion() + "', protocol '" + nameVersion.getProtocol()
                     + "'");
         } catch (Throwable ex) {
-            throw new SqlException("Error while reading the database metadata: " + ex.getMessage(), ex);
+            if (ex instanceof SQLFeatureNotSupportedException) {
+                log.warn("A common JDBC feature was not supported by the database. Found while determining the database version subprotocol.");
+            } else {
+                throw new SqlException("Error while reading the database metadata: " + ex.getMessage(), ex);
+            }
         }
         return nameVersion;
     }
