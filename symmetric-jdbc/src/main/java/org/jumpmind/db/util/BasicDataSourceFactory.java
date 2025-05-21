@@ -49,7 +49,7 @@ public class BasicDataSourceFactory {
         synchronized (DriverManager.class) {
             Enumeration<Driver> drivers = DriverManager.getDrivers();
             while (drivers.hasMoreElements()) {
-                Driver driver2 = (Driver) drivers.nextElement();
+                Driver driver2 = drivers.nextElement();
                 /*
                  * MySQL and Maria DB drivers cannot co-exist because they use the same JDBC URL.
                  */
@@ -167,6 +167,8 @@ public class BasicDataSourceFactory {
             }
             dataSource.setConnectionInitSqls(initSqlList);
         }
+        dataSource.setConnectionFactoryClassName(properties.get(
+                BasicDataSourcePropertyConstants.DB_POOL_CONNECTION_FACTORY_DRIVER_CLASS, null));
         return dataSource;
     }
 }
