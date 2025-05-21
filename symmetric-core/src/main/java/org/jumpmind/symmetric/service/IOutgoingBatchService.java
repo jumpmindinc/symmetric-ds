@@ -126,6 +126,8 @@ public interface IOutgoingBatchService {
 
     public int countUnsentBatchesByTargetNode(String nodeId, boolean includeHeartbeats);
 
+    public Map<String, Long> countUnsentBatchesBlocked();
+
     public List<OutgoingBatchSummary> findOutgoingBatchSummary(OutgoingBatch.Status... statuses);
 
     public List<OutgoingBatchSummary> findOutgoingBatchSummaryByChannel(OutgoingBatch.Status... statuses);

@@ -129,6 +129,11 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
                 "select count(distinct b.node_id) from $(outgoing_batch) b inner join $(data_event) e on e.batch_id = b.batch_id " +
                         "inner join $(data) d on d.data_id = e.data_id " +
                         "where b.channel_id = 'heartbeat' and b.status != 'OK' and d.source_node_id is null");
+        putSql("countUnsentBatchesBlocked", "select count(*) as batch_count, count(distinct b1.node_id) as node_count from sym_outgoing_batch b1 "
+                + "inner join sym_outgoing_batch b2 "
+                + "on b1.batch_id >= b2.batch_id and b1.node_id = b2.node_id and b1.channel_id = b2.channel_id "
+                + "where b2.error_flag = 1 "
+                + "and b1.status != 'OK'");
         putSql("selectOutgoingBatchSummaryPrefixSql",
                 "select b.status ");
         putSql("selectOutgoingBatchSummaryByNodePrefixSql",

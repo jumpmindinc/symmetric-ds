@@ -500,6 +500,20 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
     }
 
     @Override
+    public Map<String, Long> countUnsentBatchesBlocked() {
+        Map<String, Long> result = new HashMap<String, Long>();
+        List<Row> rows = sqlTemplateDirty.query(getSql("countUnsentBatchesBlocked"));
+        if (!rows.isEmpty()) {
+            Row row = rows.get(0);
+            for (String key : row.keySet()) {
+                Long count = row.getLong(key);
+                result.put(key.toLowerCase(), count == null ? 0 : count);
+            }
+        }
+        return result;
+    }
+
+    @Override
     public int countOutgoingBatches(List<String> nodeIds, List<String> channels,
             List<OutgoingBatch.Status> statuses, List<Long> loads) {
         Map<String, Object> params = new HashMap<String, Object>();
