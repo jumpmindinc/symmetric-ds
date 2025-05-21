@@ -194,7 +194,7 @@ abstract public class AbstractParameterService {
             String value = getString(ParameterConstants.SYNC_URL);
             value = SymmetricUtils.substituteScripts(value, getReplacementValues());
             if (value != null) {
-                value = value.trim();
+                value = value.trim().replaceAll("[/\\\\]+$", "");
             }
             syncUrl = value;
             if (log.isDebugEnabled()) {
