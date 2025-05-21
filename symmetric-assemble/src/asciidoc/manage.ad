@@ -255,6 +255,7 @@ include::manage/incoming-batches.ad[]
 include::manage/staging.ad[]
 
 ifdef::pro[]
+include::manage/compare.ad[]
 include::manage/processes.ad[]
 endif::pro[]
 

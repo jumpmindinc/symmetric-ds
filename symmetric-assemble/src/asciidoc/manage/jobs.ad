@@ -141,5 +141,10 @@ See <<File Synchronization>> and <<Pull Threads>> for more details.
 
 The Initial Load Extract Job processes <<EXTRACT_REQUEST>>s.  See <<Initial Load Extract In Background>> for more details.
 
-        
-        
+==== Compare Job
+
+The Compare Job processes <<COMPARE_REQUEST>>s.  If it finds uncompleted requests, it will keep the job running
+(compare.immediate.if.request.found) after pausing briefly (compare.immediate.time.ms)
+instead waiting for the next scheduled job interval.
+It uses a number of threads from a pool on each server (compare.thread.per.server.count) to service requests in parallel.
+Each request uses multiple threads, but less than the entire pool size by default (compare.queue.per.request.count).

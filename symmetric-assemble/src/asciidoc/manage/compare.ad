@@ -1,0 +1,66 @@
+=== Compare Repair
+
+The compare and repair screen submits and monitors requests for comparison and optionally repairs data between source and target nodes.
+Requests sync between nodes and are processed by the <<Compare Job>>.
+The following features are supported with comparison:
+
+* Table with a primary key, unique index, or sync key names
+* Excluded or included column names, configured by capture or specified transform
+* Table with a natural key can be used while ignoring surrogate and foreign keys
+* Subsets if the table routing is configured with an initial load select
+* Transforms that rename column names
+
+The following features are NOT supported with comparison:
+
+* Tables without a way to uniquely identify a row
+* Transforms or filters that modify data
+* Subsets without an initial load select
+
+.Panel Controls
+
+Compare Data:: Click button to use a wizard dialog to request a compare operation.
+Resubmit:: Select a completed request and click button to copy request into a new request.
+Cancel:: Select a running request and click button to stop running and cancel it.
+Active Only:: Enable checkbox to filter the view for requests that are submitted or running.
+Auto Refresh:: Enable checkbox to update the view of requests periodically with the latest status information.
+
+==== Compare Wizard
+
+The compare wizard dialog builds a request for comparison between a source and target node for all tables or select tables.
+
+image::images/manage/compare-wizard.png[]
+
+.Required Fields
+
+Row counts:: Use row counts to determine if tables match, which is faster but doesn't compare rows.
+Row checksums:: Use checksums on the data to determine if tables match, which is slower but more accurate.
+Scale for decimals:: Limit the number of digits to the right of the decimal point for comparison of decimal types.
+Scale for timestamps:: Limit the number of digits to the right of the decimal point on fractional seconds for comparison of timestamps.
+Digits for floating points:: Limit the number of digits to the right of the decimal point for comparison of floating point types.
+Use in-flight data:: Enable for a busy system to exclude outstanding data to sync from comparison.
+Use chunking:: Enable for efficient use of the network by working with chunks of a table instead of sending all rows for comparison.
+Checksum algorithm:: Algorithm that summarizes data to check if data matches.
+CRC32 is a trusted data hash algorithm.
+PureJavaCrc32 is a Java native implementation of CRC32 that may be 1.8 to 10 times faster with small pieces of data.
+Adler32 is slightly faster than CRC32 but has a higher chance of collisions.
+XXHash32 is 10 times faster than CRC32 and more resistant to collisions.
+Exclude surrogate keys:: Enable for tables with natural keys that should be compared while surrogate keys should be excluded.
+The natural key must have a unique index or be configured as sync key names.
+Primary and foreign key columns are considered surrogates that are excluded from comparison.
+Immediately or schedule:: Run the request immediately or schedule for a future date and time.
+Action to take:: Select an action to report and optionally repair data.
+
+[cols="1,6", options="header"]
+|===
+|Action
+|Description
+
+|Level 1 report| Only reports whether or not each table matched without any further statistics.
+
+|Level 2 report| For each table, reports on the row counts that are matching, different, missing, or extra.
+
+|Level 3 report| In addition to the above, provides a script of differences that apply as insert, update, or delete.
+
+|Repair data| In addition to the above, applies the script to repair the data.
+
+|===
