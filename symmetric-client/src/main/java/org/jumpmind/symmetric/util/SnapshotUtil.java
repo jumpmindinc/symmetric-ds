@@ -737,6 +737,10 @@ public class SnapshotUtil {
                 runtimeProperties.setProperty("file.descriptor.max.count", mbeanServer.getAttribute(oName, "MaxFileDescriptorCount").toString());
             } catch (Exception e) {
             }
+            ISnapshotHelper helper = engine.getExtensionService().getExtensionPoint(ISnapshotHelper.class);
+            if (helper != null) {
+                runtimeProperties.putAll(helper.getRuntimeProperties());
+            }
             writeProperties(runtimeProperties, tmpDir, "runtime-stats.properties");
         } catch (Exception e) {
             log.warn("Failed to export runtime-stats information", e);
