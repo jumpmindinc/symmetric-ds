@@ -276,11 +276,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             MDC.put("engineName", engineName);
         }
         this.platform = createDatabasePlatform(properties);
-        this.parameterService = new ParameterService(platform, propertiesFactory,
-                properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym"));
-        boolean parameterTableExists = this.platform.readTableFromDatabase(null, null,
-                TableConstants.getTableName(properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER)) != null;
-        if (parameterTableExists) {
+        String tablePrefix = properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym");
+        this.parameterService = new ParameterService(platform, propertiesFactory, tablePrefix);
+        String paramTableName = TableConstants.getTableName(properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER);
+        if (isTablePresentInDatabase(null, null, paramTableName)) {
             this.parameterService.setDatabaseHasBeenInitialized(true);
             this.parameterService.rereadParameters();
         }
@@ -362,6 +361,18 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
     }
 
+    protected boolean isTablePresentInDatabase(String catalogName, String schemaName, String tableName) {
+        String tableInfo = String.format("Table in catalog=%s, schema=%s, table=%s", catalogName, schemaName, tableName);
+        try {
+            boolean present = this.platform.readTableFromDatabase(catalogName, schemaName, tableName) != null;
+            log.debug("Table check completed. {}, Found={}", tableInfo, present);
+            return present;
+        } catch (Exception ex) {
+            log.warn("Failed to read table from database! " + tableInfo, ex);
+            return false;
+        }
+    }
+
     protected void registerSymDSDriver(TypedProperties engineProperties) {
         try {
             Class<?> driverClass = Thread.currentThread().getContextClassLoader().loadClass("org.jumpmind.driver.Driver");
@@ -405,20 +416,24 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     abstract protected IJobManager createJobManager();
 
+    @Override
     public String getSyncUrl() {
         return parameterService.getSyncUrl();
     }
 
+    @Override
     public Properties getProperties() {
         Properties p = new Properties();
         p.putAll(parameterService.getAllParameters());
         return p;
     }
 
+    @Override
     public String getEngineName() {
         return parameterService.getEngineName();
     }
 
+    @Override
     public void setup() {
         if (!setup) {
             setupDatabase(false);
@@ -439,6 +454,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
     }
 
+    @Override
     public void setupDatabase(boolean force) {
         log.info("Initializing SymmetricDS database");
         boolean isAutoConfigDatabase = parameterService.is(ParameterConstants.AUTO_CONFIGURE_DATABASE);
@@ -595,12 +611,14 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return loaded;
     }
 
+    @Override
     public synchronized boolean start() {
         return start(true);
     }
 
     private boolean isFirstStart = true;
 
+    @Override
     public synchronized boolean start(boolean startJobs) {
         isInitialized = false;
         lastException = null;
@@ -756,6 +774,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return node;
     }
 
+    @Override
     public String getEngineDescription(String msg) {
         if (lastRestartTime == null) {
             return "";
@@ -769,6 +788,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 symmetricDialect.getDriverVersion(), formattedUptime);
     }
 
+    @Override
     public synchronized void uninstall() {
         log.info("Attempting an uninstall of all SymmetricDS database objects from the database");
         stop();
@@ -819,6 +839,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         log.info("Finished uninstalling SymmetricDS database objects from the database");
     }
 
+    @Override
     public synchronized void stop() {
         log.info("Stopping SymmetricDS externalId={} version={} database={}",
                 new Object[] { parameterService == null ? "?" : parameterService.getExternalId(), Version.version(),
@@ -871,6 +892,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
     }
 
+    @Override
     public synchronized void destroy() {
         removeMeFromMap(registeredEnginesByName);
         removeMeFromMap(registeredEnginesByUrl);
@@ -889,56 +911,67 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
     }
 
+    @Override
     public String reloadNode(String nodeId, String createBy) {
         return dataService.reloadNode(nodeId, false, createBy);
     }
 
+    @Override
     public String sendSQL(String nodeId, String catalogName, String schemaName, String tableName,
             String sql) {
         return dataService.sendSQL(nodeId, catalogName, schemaName, tableName, sql);
     }
 
+    @Override
     public RemoteNodeStatuses push() {
         MDC.put("engineName", getEngineName());
         return pushService.pushData(true);
     }
 
+    @Override
     public boolean syncTriggers() {
         MDC.put("engineName", getEngineName());
         return triggerRouterService.syncTriggers();
     }
 
+    @Override
     public boolean forceTriggerRebuild() {
         MDC.put("engineName", getEngineName());
         return triggerRouterService.syncTriggers(true);
     }
 
+    @Override
     public NodeStatus getNodeStatus() {
         return nodeService.getNodeStatus();
     }
 
+    @Override
     public void removeAndCleanupNode(String nodeId) {
         log.info("Removing node {}", nodeId);
         nodeService.deleteNode(nodeId, false);
         log.info("Done removing node ID {}", nodeId);
     }
 
+    @Override
     public RemoteNodeStatuses pull() {
         MDC.put("engineName", getEngineName());
         return pullService.pullData(true);
     }
 
+    @Override
     public void route() {
         MDC.put("engineName", getEngineName());
         routerService.routeData(true);
     }
 
+    @Override
     public void purge() {
         MDC.put("engineName", getEngineName());
         purgeService.purgeOutgoing(true);
         purgeService.purgeIncoming(true);
     }
 
+    @Override
     public boolean isConfigured() {
         boolean configurationValid = false;
         String errorMessage = null;
@@ -1010,16 +1043,19 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return configurationValid;
     }
 
+    @Override
     public void heartbeat(boolean force) {
         MDC.put("engineName", getEngineName());
         dataService.heartbeat(force);
     }
 
+    @Override
     public void openRegistration(String nodeGroupId, String externalId) {
         MDC.put("engineName", getEngineName());
         registrationService.openRegistration(nodeGroupId, externalId);
     }
 
+    @Override
     public void clearCaches() {
         getExtensionService().refresh();
         getTriggerRouterService().clearCache();
@@ -1035,151 +1071,188 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         getFileSyncService().clearCache();
     }
 
+    @Override
     public void reOpenRegistration(String nodeId) {
         MDC.put("engineName", getEngineName());
         registrationService.reOpenRegistration(nodeId);
     }
 
+    @Override
     public boolean isRegistered() {
         return nodeService.findIdentity() != null;
     }
 
+    @Override
     public boolean isStarted() {
         return started;
     }
 
+    @Override
     public boolean isStarting() {
         return starting;
     }
 
+    @Override
     public boolean isInitialized() {
         return isInitialized;
     }
 
+    @Override
     public IConfigurationService getConfigurationService() {
         return configurationService;
     }
 
+    @Override
     public IParameterService getParameterService() {
         return parameterService;
     }
 
+    @Override
     public INodeService getNodeService() {
         return nodeService;
     }
 
+    @Override
     public IRegistrationService getRegistrationService() {
         return registrationService;
     }
 
+    @Override
     public IClusterService getClusterService() {
         return clusterService;
     }
 
+    @Override
     public IPurgeService getPurgeService() {
         return purgeService;
     }
 
+    @Override
     public IDataService getDataService() {
         return dataService;
     }
 
+    @Override
     public IJobManager getJobManager() {
         return this.jobManager;
     }
 
+    @Override
     public IOutgoingBatchService getOutgoingBatchService() {
         return outgoingBatchService;
     }
 
+    @Override
     public IAcknowledgeService getAcknowledgeService() {
         return this.acknowledgeService;
     }
 
+    @Override
     public IBandwidthService getBandwidthService() {
         return bandwidthService;
     }
 
+    @Override
     public IDataExtractorService getDataExtractorService() {
         return this.dataExtractorService;
     }
 
+    @Override
     public IDataExtractorService getFileSyncExtractorService() {
         return this.fileSyncExtractorService;
     }
 
+    @Override
     public IDataLoaderService getDataLoaderService() {
         return this.dataLoaderService;
     }
 
+    @Override
     public IIncomingBatchService getIncomingBatchService() {
         return this.incomingBatchService;
     }
 
+    @Override
     public IPullService getPullService() {
         return this.pullService;
     }
 
+    @Override
     public IPushService getPushService() {
         return this.pushService;
     }
 
+    @Override
     public IOfflinePullService getOfflinePullService() {
         return this.offlinePullService;
     }
 
+    @Override
     public IOfflinePushService getOfflinePushService() {
         return this.offlinePushService;
     }
 
+    @Override
     public IRouterService getRouterService() {
         return this.routerService;
     }
 
+    @Override
     public ISecurityService getSecurityService() {
         return securityService;
     }
 
+    @Override
     public IStatisticService getStatisticService() {
         return statisticService;
     }
 
+    @Override
     public IStatisticManager getStatisticManager() {
         return statisticManager;
     }
 
+    @Override
     public ITriggerRouterService getTriggerRouterService() {
         return triggerRouterService;
     }
 
+    @Override
     public String getDeploymentType() {
         return deploymentType;
     }
 
+    @Override
     public String getDeploymentSubType() {
         return deploymentSubType;
     }
 
+    @Override
     public ITransformService getTransformService() {
         return this.transformService;
     }
 
+    @Override
     public ILoadFilterService getLoadFilterService() {
         return this.loadFilterService;
     }
 
+    @Override
     public IInitialLoadService getInitialLoadService() {
         return initialLoadService;
     }
 
+    @Override
     public IConcurrentConnectionManager getConcurrentConnectionManager() {
         return concurrentConnectionManager;
     }
 
+    @Override
     public String getTablePrefix() {
         return parameterService.getTablePrefix();
     }
 
+    @Override
     public ITransportManager getTransportManager() {
         return transportManager;
     }
@@ -1188,34 +1261,42 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return offlineTransportManager;
     }
 
+    @Override
     public IExtensionService getExtensionService() {
         return extensionService;
     }
 
+    @Override
     public IContextService getContextService() {
         return contextService;
     }
 
+    @Override
     public IStagingManager getStagingManager() {
         return stagingManager;
     }
 
+    @Override
     public ISequenceService getSequenceService() {
         return sequenceService;
     }
 
+    @Override
     public INodeCommunicationService getNodeCommunicationService() {
         return nodeCommunicationService;
     }
 
+    @Override
     public IGroupletService getGroupletService() {
         return groupletService;
     }
 
+    @Override
     public Throwable getLastException() {
         return lastException;
     }
 
+    @Override
     public String getLastExceptionMessage() {
         return lastException == null ? null : lastException.getMessage();
     }
@@ -1260,31 +1341,38 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
     }
 
+    @Override
     public Date getLastRestartTime() {
         return lastRestartTime;
     }
 
+    @Override
     public ISqlTemplate getSqlTemplate() {
         return getSymmetricDialect().getPlatform().getSqlTemplate();
     }
 
+    @Override
     public Logger getLog() {
         return log;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public <T> T getDataSource() {
         return (T) getSymmetricDialect().getPlatform().getDataSource();
     }
 
+    @Override
     public IDatabasePlatform getDatabasePlatform() {
         return getSymmetricDialect().getPlatform();
     }
 
+    @Override
     public IFileSyncService getFileSyncService() {
         return fileSyncService;
     }
 
+    @Override
     public IUpdateService getUpdateService() {
         return updateService;
     }
