@@ -292,7 +292,7 @@ subprojects { subproject ->
         commonsTextVersion = '1.10.0'
         commonsCodecVersion = '1.15'
         commonsCollectionVersion = '4.4'
-        commonsVfs = '2.9.0'
+        commonsVfs = '2.10.0'
         hamcrestVersion = '1.3'
         h2Version = '2.1.214'
         derbyVersion = '10.14.2.0'
