@@ -278,9 +278,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.platform = createDatabasePlatform(properties);
         this.parameterService = new ParameterService(platform, propertiesFactory,
                 properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym"));
-        boolean parameterTableExists = this.platform.readTableFromDatabase(null, null,
-                TableConstants.getTableName(properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER)) != null;
-        if (parameterTableExists) {
+        Table paramTable = this.platform.readTableFromDatabase(null, null,
+                TableConstants.getTableName(properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER));
+        if (paramTable != null) {
+            log.debug("Reading parameters because found {}", paramTable.getFullyQualifiedTableName());
             this.parameterService.setDatabaseHasBeenInitialized(true);
             this.parameterService.rereadParameters();
         }
@@ -451,7 +452,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 symmetricDialect.initTablesAndDatabaseObjects();
             }
         } else {
-            if (hasSoftwareVersionChanged()) {
+            if (hasSoftwareVersionChanged() && !Version.isDevelopment(Version.version())) {
                 throw new SymmetricException("Upgrade of SymmetricDS runtime tables to version " + Version.version() +
                         " is required.  Enable " + ParameterConstants.AUTO_CONFIGURE_DATABASE
                         + " parameter for automatic upgrade of tables or perform manual upgrade with symadmin.");

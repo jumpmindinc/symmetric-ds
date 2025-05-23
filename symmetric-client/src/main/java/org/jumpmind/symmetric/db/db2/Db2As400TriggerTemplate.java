@@ -237,7 +237,7 @@ public class Db2As400TriggerTemplate extends Db2TriggerTemplate {
     public String createInitalLoadSql(Node node, TriggerRouter triggerRouter, Table originalTable, TriggerHistory triggerHistory, Channel channel,
             String overrideSelectSql) {
         String sql = super.createInitalLoadSql(node, triggerRouter, originalTable, triggerHistory, channel, overrideSelectSql);
-        boolean includeRRN = this.symmetricDialect.getParameterService().is(ParameterConstants.INCLUDE_ROWIDENTIFIER_AS_COLUMN, true);
+        boolean includeRRN = this.symmetricDialect.getParameterService().is(ParameterConstants.INCLUDE_ROWIDENTIFIER_AS_COLUMN);
         if (includeRRN) {
             sql = sql.replace("\"RRN\"", "RRN(t)");
         }
