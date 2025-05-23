@@ -56,6 +56,7 @@ public class SymmetricBootPropertySetupListener implements ApplicationListener<A
         setIfNotBlank(ServerConstants.SERVER_COOKIE_NAME, "server.servlet.session.cookie.name", sysProps, bootProps,
                 getCookieName(httpEnabled, httpsEnabled, httpPort, httpsPort));
         setIfNotBlank("org.eclipse.jetty.server.Request.maxFormContentSize", "server.jetty.max-http-form-post-size", sysProps, bootProps);
+        setIfNotBlank("org.eclipse.jetty.server.Request.maxFormKeys", "server.jetty.max-form-keys", sysProps, bootProps);
         bootProps.put("server.jetty.connection-idle-timeout", sysProps.getInt(ServerConstants.SERVER_CONNECTION_IDLE_TIMEOUT,
                 SymmetricWebServer.DEFAULT_MAX_IDLE_TIME));
         bootProps.put("server.servlet.jsp.init-parameters.listings", sysProps.is(ServerConstants.SERVER_ALLOW_DIR_LISTING));
