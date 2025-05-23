@@ -99,6 +99,7 @@ import org.jumpmind.symmetric.transport.http.HttpConnection;
 import org.jumpmind.symmetric.util.ModuleException;
 import org.jumpmind.symmetric.util.ModuleManager;
 import org.jumpmind.symmetric.util.PropertiesUtil;
+import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.FormatUtils;
 import org.jumpmind.util.JarBuilder;
@@ -477,10 +478,21 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
 
     private void importConfig(CommandLine line, List<String> args) {
         String fileName = popArg(args, "file name");
+        boolean isCsv = fileName.toLowerCase().endsWith(".csv");
+        boolean isSql = fileName.toLowerCase().endsWith(".sql");
+        if (!isCsv && !isSql) {
+            System.err.println("ERROR: Expected a .csv or .sql file.");
+            System.exit(1);
+        }
         try {
             File configFile = new File(fileName);
-            if (fileName.toLowerCase().endsWith(".csv")) {
+            if (isCsv) {
                 String content = FileUtils.readFileToString(configFile, Charset.defaultCharset());
+                if (!SymmetricUtils.importContainsCurrentGroup(getSymmetricEngine(), content, true)) {
+                    System.err.println(String.format("ERROR: Imported .csv file doesn't contain current node group (%s)",
+                            engine.getParameterService().getNodeGroupId()));
+                    System.exit(1);
+                }
                 IDataLoaderService service = getSymmetricEngine().getDataLoaderService();
                 List<IncomingBatch> batches = service.loadDataBatch(content);
                 for (IncomingBatch batch : batches) {
@@ -489,13 +501,15 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                         System.exit(1);
                     }
                 }
-            } else if (fileName.toLowerCase().endsWith(".sql")) {
+            } else {
                 URL url = configFile.toURI().toURL();
+                if (!SymmetricUtils.importContainsCurrentGroup(getSymmetricEngine(), url, false)) {
+                    System.err.println(String.format("ERROR: Imported .sql file doesn't contain current node group (%s)",
+                            engine.getParameterService().getNodeGroupId()));
+                    System.exit(1);
+                }
                 SqlScript script = new SqlScript(url, getSymmetricEngine().getDatabasePlatform().getSqlTemplate());
                 script.execute();
-            } else {
-                System.err.println("ERROR: Expected a .csv or .sql file.");
-                System.exit(1);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);

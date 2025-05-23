@@ -34,8 +34,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -140,6 +142,7 @@ import org.jumpmind.symmetric.transport.IConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
 import org.jumpmind.symmetric.util.PropertiesUtil;
+import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.ExceptionUtils;
 import org.jumpmind.util.FormatUtils;
@@ -560,6 +563,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         String sqlScripts = parameterService
                 .getString(ParameterConstants.AUTO_CONFIGURE_REG_SVR_SQL_SCRIPT);
         if (!StringUtils.isBlank(sqlScripts)) {
+            boolean containsCurrentGroup = false;
+            Map<String, URL> fileUrlMap = new LinkedHashMap<String, URL>();
             String[] sqlScriptList = sqlScripts.split(",");
             for (String sqlScript : sqlScriptList) {
                 sqlScript = sqlScript.trim();
@@ -580,16 +585,27 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                         }
                     }
                     if (fileUrl != null) {
-                        log.info("Executing {} '{}' ({})", ParameterConstants.AUTO_CONFIGURE_REG_SVR_SQL_SCRIPT, sqlScript, fileUrl);
-                        new SqlScript(fileUrl, symmetricDialect.getPlatform().getSqlTemplate(),
-                                true, SqlScriptReader.QUERY_ENDS, getSymmetricDialect().getPlatform()
-                                        .getSqlScriptReplacementTokens()).execute();
-                        loaded = true;
+                        fileUrlMap.put(sqlScript, fileUrl);
+                        if (!containsCurrentGroup) {
+                            containsCurrentGroup = SymmetricUtils.importContainsCurrentGroup(this, fileUrl, false);
+                        }
                     } else {
                         log.warn("Could not find the {}: '{}' to execute.  We would have run it if we had found it",
                                 ParameterConstants.AUTO_CONFIGURE_REG_SVR_SQL_SCRIPT, sqlScript);
                     }
                 }
+            }
+            if (!containsCurrentGroup) {
+                throw new SymmetricException("Invalid %s. The script doesn't contain the current node group (%s).",
+                        ParameterConstants.AUTO_CONFIGURE_REG_SVR_SQL_SCRIPT, parameterService.getNodeGroupId());
+            }
+            for (Entry<String, URL> fileUrlEntry : fileUrlMap.entrySet()) {
+                String sqlScript = fileUrlEntry.getKey();
+                URL fileUrl = fileUrlEntry.getValue();
+                log.info("Executing {} '{}' ({})", ParameterConstants.AUTO_CONFIGURE_REG_SVR_SQL_SCRIPT, sqlScript, fileUrl);
+                new SqlScript(fileUrl, symmetricDialect.getPlatform().getSqlTemplate(), true, SqlScriptReader.QUERY_ENDS,
+                        getSymmetricDialect().getPlatform().getSqlScriptReplacementTokens()).execute();
+                loaded = true;
             }
         }
         return loaded;
