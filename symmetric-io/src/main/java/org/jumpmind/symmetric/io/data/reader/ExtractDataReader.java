@@ -284,7 +284,6 @@ public class ExtractDataReader implements IDataReader {
                 Object[] objectValues = platform.getObjectValues(batch.getBinaryEncoding(), rowData, orderedColumns);
                 Map<String, Object> columnDataMap = CollectionUtils.toMap(columnNames, objectValues);
                 Column[] pkColumns = table.getPrimaryKeyColumns();
-                ISqlTemplate sqlTemplate = platform.getSqlTemplate();
                 Object[] args = new Object[pkColumns.length];
                 for (int i = 0; i < pkColumns.length; i++) {
                     if (pkColumns[i].getJdbcTypeName() != null && (isUniType(pkColumns[i].getJdbcTypeName()))) {
@@ -302,26 +301,22 @@ public class ExtractDataReader implements IDataReader {
                         args[i] = columnDataMap.get(pkColumns[i].getName());
                     }
                 }
-                String sql = buildSelect(table, uniColumns, pkColumns);
-                Row row = sqlTemplate.queryForRow(sql, args);
-                if (row != null) {
-                    for (Column uniColumn : uniColumns) {
-                        try {
-                            int index = ArrayUtils.indexOf(columnNames, uniColumn.getName());
-                            if (rowData[index] != null && !uniColumn.getJdbcTypeName().equalsIgnoreCase("unitext")) {
-                                String utf16String = null;
-                                String baseString = rowData[index];
-                                baseString = "fffe" + baseString;
-                                utf16String = new String(Hex.decodeHex(baseString), "UTF-16");
-                                String utf8String = new String(utf16String.getBytes(Charset.defaultCharset()), Charset.defaultCharset());
-                                rowData[index] = utf8String;
-                            }
-                        } catch (UnsupportedEncodingException | DecoderException e) {
-                            e.printStackTrace();
+                for (Column uniColumn : uniColumns) {
+                    try {
+                        int index = ArrayUtils.indexOf(columnNames, uniColumn.getName());
+                        if (rowData[index] != null && !uniColumn.getJdbcTypeName().equalsIgnoreCase("unitext")) {
+                            String utf16String = null;
+                            String baseString = rowData[index];
+                            baseString = "fffe" + baseString;
+                            utf16String = new String(Hex.decodeHex(baseString), "UTF-16");
+                            String utf8String = new String(utf16String.getBytes(Charset.defaultCharset()), Charset.defaultCharset());
+                            rowData[index] = utf8String;
                         }
+                    } catch (UnsupportedEncodingException | DecoderException e) {
+                        e.printStackTrace();
                     }
-                    data.putParsedData(CsvData.ROW_DATA, rowData);
                 }
+                data.putParsedData(CsvData.ROW_DATA, rowData);
             }
         }
         return data;
