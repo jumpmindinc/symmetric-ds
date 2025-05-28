@@ -124,7 +124,7 @@ public class ProcessInfo implements Serializable, Comparable<ProcessInfo>, Clone
     public void setCurrentDataCount(long dataCount) {
         this.currentDataCount = dataCount;
         if (listener != null) {
-            listener.changeDataCount(currentDataCount);
+            listener.changeDataCount(totalDataCount, currentDataCount);
         }
     }
 
@@ -150,7 +150,7 @@ public class ProcessInfo implements Serializable, Comparable<ProcessInfo>, Clone
             totalDataCount = currentDataCount;
         }
         if (listener != null) {
-            listener.changeDataCount(currentDataCount);
+            listener.changeDataCount(totalDataCount, currentDataCount);
         }
     }
 

@@ -46,11 +46,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.db.sql.ISqlResultsListener;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlScript;
 import org.jumpmind.db.sql.SqlScriptReader;
+import org.jumpmind.extension.IProcessInfoListener;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityServiceFactory;
@@ -61,6 +64,7 @@ import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.config.INodeIdCreator;
+import org.jumpmind.symmetric.db.AbstractSymmetricDialect;
 import org.jumpmind.symmetric.db.ISoftwareUpgradeListener;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.ext.ISymmetricEngineLifecycle;
@@ -74,6 +78,8 @@ import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.model.NodeStatus;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
+import org.jumpmind.symmetric.model.ProcessInfoKey;
+import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
@@ -787,38 +793,60 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     public synchronized void uninstall() {
+        uninstall(null);
+    }
+
+    public synchronized void uninstall(IProcessInfoListener listener) {
         log.info("Attempting an uninstall of all SymmetricDS database objects from the database");
+        final int dropTriggersWeight = 20;
+        final int dropTablesWeight = 80;
+        final int totalStepCount = dropTriggersWeight + dropTablesWeight + 13;
+        ProcessInfo processInfo = statisticManager.newProcessInfo(new ProcessInfoKey(getNodeId(), null, ProcessType.UNINSTALL));
+        if (listener != null) {
+            processInfo.setListener(listener);
+        }
+        processInfo.setTotalDataCount(totalStepCount);
         stop();
+        processInfo.incrementCurrentDataCount();
         log.info("Just cleaned {} files in the staging area during the uninstall.", getStagingManager().clean(0));
         try {
             String prefix = parameterService.getTablePrefix();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_GROUPLET)) != null) {
                 groupletService.deleteAllGrouplets();
             }
+            processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_TRIGGER_ROUTER)) != null) {
                 triggerRouterService.deleteAllTriggerRouters();
             }
+            processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_FILE_TRIGGER_ROUTER)) != null) {
                 fileSyncService.deleteAllFileTriggerRouters();
             }
+            processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_ROUTER)) != null) {
                 triggerRouterService.deleteAllRouters();
             }
+            processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_CONFLICT)) != null) {
                 dataLoaderService.deleteAllConflicts();
             }
+            processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_TRANSFORM_TABLE)) != null) {
                 transformService.deleteAllTransformTables();
             }
+            processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_ROUTER)) != null) {
                 triggerRouterService.deleteAllRouters();
             }
+            processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_CONFLICT)) != null) {
                 dataLoaderService.deleteAllConflicts();
             }
+            processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_NODE_GROUP_LINK)) != null) {
                 configurationService.deleteAllNodeGroupLinks();
             }
+            processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_LOCK)) != null) {
                 // this should remove all triggers because we have removed all the trigger configuration
                 triggerRouterService.syncTriggers(true);
@@ -826,14 +854,46 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         } catch (SqlException ex) {
             log.warn("Error while trying to remove triggers on tables", ex);
         }
+        processInfo.setCurrentDataCount(dropTriggersWeight + 10);
         // remove any additional triggers that may remain because they were not in trigger history
         symmetricDialect.cleanupTriggers();
+        processInfo.incrementCurrentDataCount();
         log.info("Removing SymmetricDS database objects");
-        symmetricDialect.dropTablesAndDatabaseObjects();
+        Database symSchema = ((AbstractSymmetricDialect) symmetricDialect).readSymmetricSchemaFromDatabase();
+        String dropTablesSql = platform.getDdlBuilder().dropTables(symSchema);
+        DatabaseInfo databaseInfo = platform.getDatabaseInfo();
+        int dropStatementsToRunCount = SqlScript.calculateTotalStatements(dropTablesSql,
+                databaseInfo.getSqlCommandDelimiter(), databaseInfo.isTriggersContainJava());
+        SqlScript dropTablesScript = new SqlScript(dropTablesSql, getSqlTemplate(), false, null);
+        dropTablesScript.setListener(generateDropTablesListener(processInfo, dropTablesWeight, dropStatementsToRunCount, dropTriggersWeight + 11));
+        dropTablesScript.execute(platform.getDatabaseInfo().isRequiresAutoCommitForDdl());
+        processInfo.setCurrentDataCount(dropTriggersWeight + dropTablesWeight + 11);
+        symmetricDialect.dropRequiredDatabaseObjects();
+        processInfo.incrementCurrentDataCount();
         // force cache to be cleared
         nodeService.deleteIdentity();
         parameterService.setDatabaseHasBeenInitialized(false);
+        processInfo.setCurrentDataCount(totalStepCount);
         log.info("Finished uninstalling SymmetricDS database objects from the database");
+    }
+
+    private static ISqlResultsListener generateDropTablesListener(ProcessInfo processInfo, int dropTablesWeight,
+            int dropStatementsToRunCount, int otherDataCount) {
+        return new ISqlResultsListener() {
+            @Override
+            public void sqlBefore(String sql, int lineNumber) {
+            }
+
+            @Override
+            public void sqlApplied(String sql, int rowsUpdated, int rowsRetrieved, int lineNumber) {
+                processInfo.setCurrentDataCount(
+                        Math.round((dropTablesWeight * (lineNumber + 1)) / (float) dropStatementsToRunCount) + otherDataCount);
+            }
+
+            @Override
+            public void sqlErrored(String sql, SqlException ex, int lineNumber, boolean dropStatement, boolean sequenceCreate) {
+            }
+        };
     }
 
     public synchronized void stop() {
