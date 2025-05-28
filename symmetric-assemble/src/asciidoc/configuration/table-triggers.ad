@@ -23,7 +23,9 @@ select the tables that should be synchronized using that channel, and then click
 button.  A summary will be presented at the end of the configuration.  Click *Finish* to create the triggers.  
 
 The Auto Create functionality can be used repeatedly to select different table, router and channel combinations.  If you are configuring a new set of tables triggers that should use an independent 
-Trigger definition be sure to enter values for either the _Capture Prefix_ or the _Capture Suffix_ fields.  These will be used to create a unique _Trigger Id_.   
+Trigger definition be sure to enter values for either the _Capture Id Prefix_ or the _Capture Id Suffix_ fields.  These will be used to create a unique _Trigger Id_.  When table metadata is 
+available and the `create.table.without.foreign.keys` parameter is set to its default value of false, the wizard will check the tables' foreign keys and add any missing parent tables. Unchecking 
+the _Include Foreign Key Parent Tables_ box will prevent this.
 
 image::images/triggers/triggers-auto-create.png[]
 

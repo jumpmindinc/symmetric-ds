@@ -33,7 +33,7 @@ Specify which tables to synchronize using the Select Tables screen. If both endp
 
 image::images/canvas/AddTablesDialog.png[]
 
-Select all of the tables that should be synchronized in the given direction. Use the catalog and schema fields to choose the source and target catalog and schema, and use the filters to narrow down the available and selected tables separately. Clicking the Refresh tables button will re-read the tables from the endpoint. Advanced options include a prefix that SymmetricDS will append to its trigger IDs and an option to use a non-default channel.
+Select all of the tables that should be synchronized in the given direction. Use the catalog and schema fields to choose the source and target catalog and schema, and use the filters to narrow down the available and selected tables separately. Clicking the Refresh tables button will re-read the tables from the endpoint. Advanced options include a prefix that SymmetricDS will append to its trigger IDs, an option to use a non-default channel, and an option to include foreign key parent tables.
 
 image::images/canvas/AddTablesDialog_bidirectional.png[]
 
