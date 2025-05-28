@@ -32,6 +32,7 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.TriggerRouter;
+import org.jumpmind.symmetric.util.SymmetricUtils;
 
 import bsh.EvalError;
 import bsh.Interpreter;
@@ -126,7 +127,7 @@ public class BshDataRouter extends AbstractDataRouter implements IBuiltInExtensi
         bind(interpreter, boundVariableNames, "identityNodeId", engine.getNodeService().findIdentityNodeId());
         bind(interpreter, boundVariableNames, "targetNodes", targetNodes);
         bind(interpreter, boundVariableNames, "engine", engine);
-        Map<String, Object> params = getDataObjectMap(dataMetaData, engine.getSymmetricDialect(),
+        Map<String, Object> params = SymmetricUtils.getDataObjectMap(dataMetaData, engine.getSymmetricDialect(),
                 true);
         if (params != null) {
             for (String param : params.keySet()) {

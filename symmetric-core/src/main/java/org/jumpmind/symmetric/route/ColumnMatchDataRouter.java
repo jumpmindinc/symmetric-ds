@@ -20,22 +20,20 @@
  */
 package org.jumpmind.symmetric.route;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.SyntaxParsingException;
 import org.jumpmind.symmetric.common.TokenConstants;
 import org.jumpmind.symmetric.model.DataMetaData;
+import org.jumpmind.symmetric.model.ColumnMatchExpression;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.TriggerRouter;
+import org.jumpmind.symmetric.util.SymmetricUtils;
 
 /**
  * This data router is invoked when the router_type='column'. The router_expression is always a name value pair of a column on the table that is being
@@ -67,7 +65,6 @@ import org.jumpmind.symmetric.model.TriggerRouter;
  * 'store_id=:REDIRECT_NODE' and the router_type would be 'column'.
  */
 public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRouter, IBuiltInExtensionPoint {
-    private static final String NULL_VALUE = "NULL";
     private ISymmetricEngine engine;
     final static String EXPRESSION_KEY = String.format("%s.Expression.", ColumnMatchDataRouter.class
             .getName());
@@ -85,13 +82,13 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
         if (initialLoadSelectUsed && initialLoad) {
             nodeIds = toNodeIds(nodes, null);
         } else {
-            List<Expression> expressions = getExpressions(dataMetaData.getRouter(), routingContext);
-            Map<String, String> columnValues = getDataMap(dataMetaData, engine.getSymmetricDialect());
+            List<ColumnMatchExpression> expressions = getExpressions(dataMetaData.getRouter(), routingContext);
+            Map<String, String> columnValues = SymmetricUtils.getDataMap(dataMetaData, engine.getSymmetricDialect());
             if (columnValues != null) {
                 Node identity = engine.getNodeService().findIdentity();
-                for (Expression e : expressions) {
-                    String column = e.tokens[0].trim();
-                    String value = e.tokens[1];
+                for (ColumnMatchExpression e : expressions) {
+                    String column = e.getTokens()[0].trim();
+                    String value = e.getTokens()[1];
                     String columnValue = columnValues.get(column);
                     if (value.equalsIgnoreCase(TokenConstants.NODE_ID)) {
                         for (Node node : nodes) {
@@ -126,7 +123,7 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
                             nodeIds = runExpression(e, columnValue, sourceNodeGroupId, nodes,
                                     nodeIds, node);
                         }
-                    } else if (e.hasEquals && value.equalsIgnoreCase(TokenConstants.REDIRECT_NODE)) {
+                    } else if (e.hasEquals() && value.equalsIgnoreCase(TokenConstants.REDIRECT_NODE)) {
                         Map<String, String> redirectMap = getRedirectMap(routingContext);
                         String nodeId = redirectMap.get(columnValue);
                         if (nodeId != null) {
@@ -138,7 +135,7 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
                             compareValue = dataMetaData.getData().getExternalData();
                         } else if (value.startsWith(":")) {
                             compareValue = columnValues.get(value.substring(1));
-                        } else if (value.equals(NULL_VALUE)) {
+                        } else if (value.equals(ColumnMatchExpression.NULL_VALUE)) {
                             compareValue = null;
                         }
                         nodeIds = runExpression(e, columnValue, compareValue, nodes, nodeIds, null);
@@ -157,40 +154,9 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
         return nodeIds;
     }
 
-    protected Set<String> runExpression(Expression e, String columnValue, String compareValue, Set<Node> nodes, Set<String> nodeIds, Node node) {
-        boolean result = false;
-        if (e.hasEquals && ((columnValue == null && compareValue == null) ||
-                (columnValue != null && columnValue.equals(compareValue)))) {
-            result = true;
-        } else if (e.hasNotEquals && ((columnValue == null && compareValue != null) ||
-                (columnValue != null && !columnValue.equals(compareValue)))) {
-            result = true;
-        } else if (e.hasContains && columnValue != null && compareValue != null &&
-                ArrayUtils.contains(columnValue.split(","), compareValue)) {
-            result = true;
-        } else if (e.hasNotContains && columnValue != null && compareValue != null &&
-                !ArrayUtils.contains(columnValue.split(","), compareValue)) {
-            result = true;
-        } else if (e.hasHas && ((columnValue == null && compareValue == null) ||
-                (columnValue != null && columnValue.contains(compareValue)))) {
-            result = true;
-        } else if (e.hasNotHas && !((columnValue == null && compareValue == null) ||
-                (columnValue != null && columnValue.contains(compareValue)))) {
-            result = true;
-        } else if (e.hasStartsWith && ((columnValue == null && compareValue == null) ||
-                (columnValue != null && columnValue.startsWith(compareValue)))) {
-            result = true;
-        } else if (e.hasNotStartsWith && !((columnValue == null && compareValue == null) ||
-                (columnValue != null && columnValue.startsWith(compareValue)))) {
-            result = true;
-        } else if (e.hasEndsWith && ((columnValue == null && compareValue == null) ||
-                (columnValue != null && columnValue.endsWith(compareValue)))) {
-            result = true;
-        } else if (e.hasNotEndsWith && !((columnValue == null && compareValue == null) ||
-                (columnValue != null && columnValue.endsWith(compareValue)))) {
-            result = true;
-        }
-        if (result) {
+    protected Set<String> runExpression(ColumnMatchExpression e, String columnValue, String compareValue,
+            Set<Node> nodes, Set<String> nodeIds, Node node) {
+        if (e.run(columnValue, compareValue)) {
             if (node != null) {
                 nodeIds = addNodeId(node.getNodeId(), nodeIds, nodes);
             } else {
@@ -204,76 +170,15 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
      * Cache parsed expressions in the context to minimize the amount of parsing we have to do when we have lots of throughput.
      */
     @SuppressWarnings("unchecked")
-    protected List<Expression> getExpressions(Router router, SimpleRouterContext context) {
+    protected List<ColumnMatchExpression> getExpressions(Router router, SimpleRouterContext context) {
         final String KEY = EXPRESSION_KEY + router.getRouterId();
-        List<Expression> expressions = (List<Expression>) context.getContextCache().get(
+        List<ColumnMatchExpression> expressions = (List<ColumnMatchExpression>) context.getContextCache().get(
                 KEY);
         if (expressions == null) {
-            expressions = parse(router.getRouterExpression());
+            expressions = ColumnMatchExpression.parse(router.getRouterExpression());
             context.getContextCache().put(KEY, expressions);
         }
         return expressions;
-    }
-
-    public List<Expression> parse(String routerExpression) throws SyntaxParsingException {
-        List<Expression> expressions = new ArrayList<Expression>();
-        if (!StringUtils.isBlank(routerExpression)) {
-            String[] operators = { Expression.NOT_EQUALS, Expression.EQUALS, Expression.NOT_CONTAINS, Expression.CONTAINS, Expression.HAS, Expression.NOT_HAS,
-                    Expression.STARTS_WITH, Expression.NOT_STARTS_WITH, Expression.ENDS_WITH, Expression.NOT_ENDS_WITH };
-            String[] expTokens = routerExpression.split("\\s*(\\s+or|\\s+OR)?(\r\n|\r|\n)(or\\s+|OR\\s+)?\\s*" +
-                    "|\\s+or\\s+" +
-                    "|\\s+OR\\s+");
-            if (expTokens != null) {
-                for (String t : expTokens) {
-                    if (!StringUtils.isBlank(t)) {
-                        boolean isFound = false;
-                        for (String operator : operators) {
-                            if (t.contains(operator)) {
-                                String[] tokens = t.split(operator);
-                                if (tokens.length == 2) {
-                                    tokens[0] = parseColumn(tokens[0]);
-                                    tokens[1] = parseValue(tokens[1]);
-                                    expressions.add(new Expression(operator, tokens));
-                                    isFound = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (!isFound) {
-                            log.warn("The provided column match expression was invalid: {}.  The full expression is {}.", t, routerExpression);
-                            throw new SyntaxParsingException("The provided column match expression was invalid: " + t + ".  The full expression is "
-                                    + routerExpression + ".");
-                        }
-                    }
-                }
-            }
-        } else {
-            log.warn("The provided column match expression is empty");
-        }
-        return expressions;
-    }
-
-    /**
-     * Parse a column (the first half of a column match expression).
-     */
-    private String parseColumn(String value) {
-        return value.trim();
-    }
-
-    /**
-     * Parse a value (the second half of a column match expression).
-     */
-    private String parseValue(String value) {
-        value = value.trim();
-        // Check for ticks around the value.
-        if (value.charAt(0) == '\''
-                && value.charAt(value.length() - 1) == '\'') {
-            // remove first and last tick
-            value = value.substring(1, value.length() - 1);
-            // replace all double ticks with a single tick only if value was surrounded with ticks
-            value = value.replaceAll("''", "'");
-        }
-        return value;
     }
 
     @SuppressWarnings("unchecked")
@@ -286,128 +191,5 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
             ctx.getContextCache().put(CTX_CACHE_KEY, redirectMap);
         }
         return redirectMap;
-    }
-
-    public static class Expression {
-        public static final String EQUALS = "=";
-        public static final String NOT_EQUALS = "!=";
-        public static final String CONTAINS = "contains";
-        public static final String NOT_CONTAINS = "not contains";
-        public static final String HAS = "has";
-        public static final String NOT_HAS = "not has";
-        public static final String STARTS_WITH = "starts with";
-        public static final String NOT_STARTS_WITH = "not starts with";
-        public static final String ENDS_WITH = "ends with";
-        public static final String NOT_ENDS_WITH = "not ends with";
-        boolean hasEquals;
-        boolean hasNotEquals;
-        boolean hasContains;
-        boolean hasNotContains;
-        boolean hasHas;
-        boolean hasNotHas;
-        boolean hasStartsWith;
-        boolean hasNotStartsWith;
-        boolean hasEndsWith;
-        boolean hasNotEndsWith;
-        String[] tokens;
-        String operator;
-
-        public Expression(String operator, String[] tokens) {
-            this.tokens = tokens;
-            this.operator = operator;
-            if (operator.equals(EQUALS)) {
-                hasEquals = true;
-            } else if (operator.equals(NOT_EQUALS)) {
-                hasNotEquals = true;
-            } else if (operator.equals(CONTAINS)) {
-                hasContains = true;
-            } else if (operator.equals(NOT_CONTAINS)) {
-                hasNotContains = true;
-            } else if (operator.equals(HAS)) {
-                hasHas = true;
-            } else if (operator.equals(NOT_HAS)) {
-                hasNotHas = true;
-            } else if (operator.equals(STARTS_WITH)) {
-                hasStartsWith = true;
-            } else if (operator.equals(NOT_STARTS_WITH)) {
-                hasNotStartsWith = true;
-            } else if (operator.equals(ENDS_WITH)) {
-                hasEndsWith = true;
-            } else if (operator.equals(NOT_ENDS_WITH)) {
-                hasNotEndsWith = true;
-            }
-        }
-
-        public String[] getTokens() {
-            return tokens;
-        }
-
-        public String getOperator() {
-            return operator;
-        }
-
-        public boolean hasEquals() {
-            return hasEquals;
-        }
-
-        public boolean hasNotEquals() {
-            return hasEquals;
-        }
-
-        public boolean hasContains() {
-            return hasEquals;
-        }
-
-        public boolean hasNotContains() {
-            return hasEquals;
-        }
-
-        public boolean isHasHas() {
-            return hasHas;
-        }
-
-        public void setHasHas(boolean hasHas) {
-            this.hasHas = hasHas;
-        }
-
-        public boolean isHasNotHas() {
-            return hasNotHas;
-        }
-
-        public void setHasNotHas(boolean hasNotHas) {
-            this.hasNotHas = hasNotHas;
-        }
-
-        public boolean isHasStartsWith() {
-            return hasStartsWith;
-        }
-
-        public void setHasStartsWith(boolean hasStartsWith) {
-            this.hasStartsWith = hasStartsWith;
-        }
-
-        public boolean isHasNotStartsWith() {
-            return hasNotStartsWith;
-        }
-
-        public void setHasNotStartsWith(boolean hasNotStartsWith) {
-            this.hasNotStartsWith = hasNotStartsWith;
-        }
-
-        public boolean isHasEndsWith() {
-            return hasEndsWith;
-        }
-
-        public void setHasEndsWith(boolean hasEndsWith) {
-            this.hasEndsWith = hasEndsWith;
-        }
-
-        public boolean isHasNotEndsWith() {
-            return hasNotEndsWith;
-        }
-
-        public void setHasNotEndsWith(boolean hasNotEndsWith) {
-            this.hasNotEndsWith = hasNotEndsWith;
-        }
     }
 }

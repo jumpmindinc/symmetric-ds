@@ -47,6 +47,7 @@ import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.model.TriggerReBuildReason;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.service.IContextService;
+import org.jumpmind.symmetric.util.SymmetricUtils;
 
 public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
     public abstract List<String> parse(File file, int lineNumber, int tableId);
@@ -65,7 +66,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
     @Override
     public Set<String> routeToNodes(SimpleRouterContext context, DataMetaData dataMetaData, Set<Node> nodes,
             boolean initialLoad, boolean initialLoadSelectUsed, TriggerRouter triggerRouter) {
-        Map<String, String> newData = getNewDataAsString(null, dataMetaData,
+        Map<String, String> newData = SymmetricUtils.getNewDataAsString(null, dataMetaData,
                 getEngine().getSymmetricDialect());
         String targetTableName = dataMetaData.getRouter().getTargetTableName();
         String fileName = newData.get("FILE_NAME");
