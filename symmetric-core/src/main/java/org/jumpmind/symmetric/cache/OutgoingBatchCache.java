@@ -29,6 +29,7 @@ import java.util.concurrent.Semaphore;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.ext.IReloadQueueThreadAssigner;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.ReadyChannels;
 import org.jumpmind.symmetric.service.IConfigurationService;
@@ -42,6 +43,7 @@ public class OutgoingBatchCache {
     private IParameterService parameterService;
     private IConfigurationService configurationService;
     private IOutgoingBatchService outgoingBatchService;
+    private IReloadQueueThreadAssigner extension;
     private Semaphore cacheLock = new Semaphore(1);
     volatile private Map<String, Collection<String>> readyQueuesCache = new HashMap<>();
     volatile private long readyQueuesCacheTime;
@@ -50,6 +52,7 @@ public class OutgoingBatchCache {
         parameterService = engine.getParameterService();
         configurationService = engine.getConfigurationService();
         outgoingBatchService = engine.getOutgoingBatchService();
+        extension = engine.getExtensionService().getExtensionPoint(IReloadQueueThreadAssigner.class);
     }
 
     public Map<String, Collection<String>> getReadyQueues(boolean refreshCache) {
@@ -96,7 +99,7 @@ public class OutgoingBatchCache {
                         readyQueues = new HashSet<>();
                         readyQueueMap.put(nodeId, readyQueues);
                     }
-                    if (Constants.QUEUE_RELOAD.equals(channel.getQueue()) && readyChannels.getThreadIdCount() > 0) {
+                    if (extension != null && Constants.QUEUE_RELOAD.equals(channel.getQueue()) && readyChannels.getThreadIdCount() > 0) {
                         for (Integer threadId : readyChannels.getThreadIds()) {
                             readyQueues.add(channel.getQueue() + Constants.DELIMITER_QUEUE_THREAD + threadId);
                         }
