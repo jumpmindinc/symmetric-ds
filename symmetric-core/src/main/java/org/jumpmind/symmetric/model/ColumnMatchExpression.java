@@ -84,8 +84,8 @@ public class ColumnMatchExpression {
     public static List<ColumnMatchExpression> parse(String expression) throws SyntaxParsingException {
         List<ColumnMatchExpression> expressions = new ArrayList<ColumnMatchExpression>();
         if (!StringUtils.isBlank(expression)) {
-            String[] operators = { NOT_EQUALS, EQUALS, NOT_CONTAINS, CONTAINS, HAS, NOT_HAS, STARTS_WITH,
-                    NOT_STARTS_WITH, ENDS_WITH, NOT_ENDS_WITH };
+            String[] operators = { NOT_EQUALS, EQUALS, NOT_CONTAINS, CONTAINS, NOT_HAS, HAS, NOT_STARTS_WITH,
+                    STARTS_WITH, NOT_ENDS_WITH, ENDS_WITH };
             String[] expTokens = expression.split("\\s*(\\s+or|\\s+OR)?(\r\n|\r|\n)(or\\s+|OR\\s+)?\\s*" +
                     "|\\s+or\\s+" +
                     "|\\s+OR\\s+");
@@ -191,15 +191,15 @@ public class ColumnMatchExpression {
     }
 
     public boolean hasNotEquals() {
-        return hasEquals;
+        return hasNotEquals;
     }
 
     public boolean hasContains() {
-        return hasEquals;
+        return hasContains;
     }
 
     public boolean hasNotContains() {
-        return hasEquals;
+        return hasNotContains;
     }
 
     public boolean isHasHas() {
