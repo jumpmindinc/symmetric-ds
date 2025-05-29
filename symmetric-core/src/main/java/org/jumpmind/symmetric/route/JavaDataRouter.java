@@ -40,7 +40,7 @@ public class JavaDataRouter extends AbstractDataRouter implements IBuiltInExtens
     public final static String CODE_START = "import org.jumpmind.symmetric.route.*;\n"
             + "import org.jumpmind.symmetric.model.*;\n"
             + "import org.jumpmind.symmetric.service.*;\n"
-            + "import java.util.*;\npublic class JavaDataRouterExt extends AbstractDataRouter { \n"
+            + "import java.util.*;\npublic class JavaDataRouterExt extends JavaDataRouter { \n"
             + "   public Set<String> routeToNodes(SimpleRouterContext context, DataMetaData dataMetaData, Set<Node> nodes,\n"
             + "      boolean initialLoad, boolean initialLoadSelectUsed, TriggerRouter triggerRouter) {\n\n";
     public final static String CODE_END = "\n\n   }\n}\n";
@@ -51,6 +51,9 @@ public class JavaDataRouter extends AbstractDataRouter implements IBuiltInExtens
     public JavaDataRouter(ISymmetricEngine engine) {
         this.engine = engine;
         this.dialect = engine.getSymmetricDialect();
+    }
+
+    public JavaDataRouter() {
     }
 
     public Set<String> routeToNodes(SimpleRouterContext context, DataMetaData dataMetaData, Set<Node> nodes,
@@ -73,6 +76,9 @@ public class JavaDataRouter extends AbstractDataRouter implements IBuiltInExtens
             long ts = System.currentTimeMillis();
             String javaCode = CODE_START + router.getRouterExpression() + CODE_END;
             javaRouter = (IDataRouter) engine.getExtensionService().getCompiledClass(javaCode);
+            if (javaRouter instanceof JavaDataRouter) {
+                ((JavaDataRouter) javaRouter).setSymmetricEngine(engine);
+            }
             context.getContextCache().put(ROUTER_KEY, javaRouter);
             context.incrementStat(System.currentTimeMillis() - ts, "javarouter.compile.ms");
         }
@@ -82,5 +88,10 @@ public class JavaDataRouter extends AbstractDataRouter implements IBuiltInExtens
     @Override
     public boolean isDmlOnly() {
         return false;
+    }
+
+    public void setSymmetricEngine(ISymmetricEngine engine) {
+        this.engine = engine;
+        this.dialect = engine.getSymmetricDialect();
     }
 }
