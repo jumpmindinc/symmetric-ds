@@ -139,7 +139,7 @@ subprojects { subproject ->
     }
     
     compileJava {
-    	options.compilerArgs += '-Xlint:deprecation'
+    	options.compilerArgs << '-Xlint:deprecation' << '-parameters'
     }
     
     compileTestJava {
