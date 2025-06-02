@@ -35,7 +35,6 @@ import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.route.SimpleRouterContext.RouterTimer;
-import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.util.FormatUtils;
 
 /**
@@ -73,7 +72,7 @@ public class SubSelectDataRouter extends AbstractDataRouter implements IBuiltInE
         Set<String> nodeIds = null;
         if (!StringUtils.isBlank(subSelect) && !initialLoadSelectUsed) {
             try {
-                Map<String, Object> sqlParams = SymmetricUtils.getDataObjectMap(dataMetaData, symmetricDialect, true);
+                Map<String, Object> sqlParams = getDataObjectMap(dataMetaData, symmetricDialect, true);
                 sqlParams.put("NODE_GROUP_ID", dataMetaData.getRouter().getNodeGroupLink()
                         .getTargetNodeGroupId());
                 sqlParams.put("EXTERNAL_DATA", dataMetaData.getData().getExternalData());

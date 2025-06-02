@@ -37,7 +37,6 @@ import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.TriggerRouter;
-import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +72,7 @@ public class LookupTableDataRouter extends AbstractDataRouter implements IDataRo
             Router router = dataMetaData.getRouter();
             Map<String, String> params = null;
             params = getParams(router, routingContext);
-            Map<String, String> dataMap = SymmetricUtils.getDataMap(dataMetaData, symmetricDialect);
+            Map<String, String> dataMap = getDataMap(dataMetaData, symmetricDialect);
             Map<String, Set<String>> lookupTable = getLookupTable(params, router, routingContext);
             String column = params.get(PARAM_KEY_COLUMN);
             if (dataMap.containsKey(column)) {

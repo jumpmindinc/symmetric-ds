@@ -294,7 +294,7 @@ final public class SymmetricUtils {
         return Constants.DEPLOYMENT_SUB_TYPE_TRIGGER_BASED;
     }
 
-    public static Map<String, String> getDataMap(DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
+    public static Map<String, String> getDataMap(DataMetaData dataMetaData) {
         Map<String, String> data = null;
         DataEventType dml = dataMetaData.getData().getDataEventType();
         if (DataEventType.UPDATE.equals(dml) || DataEventType.INSERT.equals(dml) || DataEventType.DELETE.equals(dml)) {
@@ -309,41 +309,40 @@ final public class SymmetricUtils {
         }
         switch (dml) {
             case UPDATE:
-                data.putAll(getNewDataAsString(null, dataMetaData, symmetricDialect));
-                data.putAll(getOldDataAsString(OLD_, dataMetaData, symmetricDialect));
+                data.putAll(getNewDataAsString(null, dataMetaData));
+                data.putAll(getOldDataAsString(OLD_, dataMetaData));
                 break;
             case INSERT:
-                data.putAll(getNewDataAsString(null, dataMetaData, symmetricDialect));
+                data.putAll(getNewDataAsString(null, dataMetaData));
                 Map<String, String> map = getNullData(OLD_, dataMetaData);
                 data.putAll(map);
                 break;
             case DELETE:
-                data.putAll(getOldDataAsString(null, dataMetaData, symmetricDialect));
-                data.putAll(getOldDataAsString(OLD_, dataMetaData, symmetricDialect));
+                data.putAll(getOldDataAsString(null, dataMetaData));
+                data.putAll(getOldDataAsString(OLD_, dataMetaData));
                 break;
             default:
         }
         if (data != null) {
             if (data.size() == 0) {
-                data.putAll(getPkDataAsString(dataMetaData, symmetricDialect));
+                data.putAll(getPkDataAsString(dataMetaData));
             }
             data.put("EXTERNAL_DATA", dataMetaData.getData().getExternalData());
         }
         return data;
     }
 
-    public static Map<String, String> getNewDataAsString(String prefix, DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
+    public static Map<String, String> getNewDataAsString(String prefix, DataMetaData dataMetaData) {
         String[] rowData = dataMetaData.getData().toParsedRowData();
-        return getDataAsString(prefix, dataMetaData, symmetricDialect, rowData);
+        return getDataAsString(prefix, dataMetaData, rowData);
     }
 
-    public static Map<String, String> getOldDataAsString(String prefix, DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
+    public static Map<String, String> getOldDataAsString(String prefix, DataMetaData dataMetaData) {
         String[] rowData = dataMetaData.getData().toParsedOldData();
-        return getDataAsString(prefix, dataMetaData, symmetricDialect, rowData);
+        return getDataAsString(prefix, dataMetaData, rowData);
     }
 
-    protected static Map<String, String> getDataAsString(String prefix, DataMetaData dataMetaData, ISymmetricDialect symmetricDialect,
-            String[] rowData) {
+    public static Map<String, String> getDataAsString(String prefix, DataMetaData dataMetaData, String[] rowData) {
         String[] columns = dataMetaData.getTriggerHistory().getParsedColumnNames();
         Map<String, String> map = new LinkedCaseInsensitiveMap<String>(columns.length * 2);
         if (rowData != null) {
@@ -358,7 +357,7 @@ final public class SymmetricUtils {
         return map;
     }
 
-    protected static Map<String, String> getPkDataAsString(DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
+    public static Map<String, String> getPkDataAsString(DataMetaData dataMetaData) {
         String[] columns = dataMetaData.getTriggerHistory().getParsedPkColumnNames();
         String[] rowData = dataMetaData.getData().toParsedPkData();
         Map<String, String> map = new LinkedCaseInsensitiveMap<String>(columns.length);
@@ -401,7 +400,7 @@ final public class SymmetricUtils {
                 break;
         }
         if (data.size() == 0) {
-            data.putAll(getPkDataAsString(dataMetaData, symmetricDialect));
+            data.putAll(getPkDataAsString(dataMetaData));
         }
         if (StringUtils.isNotBlank(dataMetaData.getData().getExternalData())) {
             data.put("EXTERNAL_DATA", dataMetaData.getData().getExternalData());
@@ -423,7 +422,7 @@ final public class SymmetricUtils {
                 .toParsedOldData(), upperCase);
     }
 
-    protected static <T> Map<String, T> getNullData(String prefix, DataMetaData dataMetaData) {
+    public static <T> Map<String, T> getNullData(String prefix, DataMetaData dataMetaData) {
         String[] columnNames = dataMetaData.getTriggerHistory().getParsedColumnNames();
         Map<String, T> data = new LinkedCaseInsensitiveMap<T>(columnNames.length * 2);
         for (String columnName : columnNames) {
@@ -434,7 +433,7 @@ final public class SymmetricUtils {
         return data;
     }
 
-    protected static Map<String, Object> getDataAsObject(String prefix, DataMetaData dataMetaData,
+    public static Map<String, Object> getDataAsObject(String prefix, DataMetaData dataMetaData,
             ISymmetricDialect symmetricDialect, String[] rowData, boolean upperCase) {
         if (rowData != null) {
             Map<String, Object> data = new LinkedCaseInsensitiveMap<Object>(rowData.length);
@@ -453,7 +452,7 @@ final public class SymmetricUtils {
         }
     }
 
-    protected static void testColumnNamesMatchValues(DataMetaData dataMetaData, String[] columnNames, Object[] values) {
+    public static void testColumnNamesMatchValues(DataMetaData dataMetaData, String[] columnNames, Object[] values) {
         if (columnNames.length != values.length) {
             String message = String.format(
                     "The router row for table %s had %d columns but expected %d.",
@@ -462,7 +461,7 @@ final public class SymmetricUtils {
         }
     }
 
-    protected static Map<String, Object> getPkDataAsObject(DataMetaData dataMetaData,
+    public static Map<String, Object> getPkDataAsObject(DataMetaData dataMetaData,
             ISymmetricDialect symmetricDialect) {
         String[] rowData = dataMetaData.getData().toParsedPkData();
         if (rowData != null) {

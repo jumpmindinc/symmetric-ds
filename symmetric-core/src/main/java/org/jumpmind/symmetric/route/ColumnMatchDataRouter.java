@@ -33,7 +33,6 @@ import org.jumpmind.symmetric.model.ColumnMatchExpression;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.TriggerRouter;
-import org.jumpmind.symmetric.util.SymmetricUtils;
 
 /**
  * This data router is invoked when the router_type='column'. The router_expression is always a name value pair of a column on the table that is being
@@ -83,7 +82,7 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
             nodeIds = toNodeIds(nodes, null);
         } else {
             List<ColumnMatchExpression> expressions = getExpressions(dataMetaData.getRouter(), routingContext);
-            Map<String, String> columnValues = SymmetricUtils.getDataMap(dataMetaData, engine.getSymmetricDialect());
+            Map<String, String> columnValues = getDataMap(dataMetaData, engine.getSymmetricDialect());
             if (columnValues != null) {
                 Node identity = engine.getNodeService().findIdentity();
                 for (ColumnMatchExpression e : expressions) {

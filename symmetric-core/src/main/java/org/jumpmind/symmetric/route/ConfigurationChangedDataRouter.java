@@ -47,7 +47,6 @@ import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
-import org.jumpmind.symmetric.util.SymmetricUtils;
 
 public class ConfigurationChangedDataRouter extends AbstractDataRouter implements IDataRouter, IBuiltInExtensionPoint {
     public static final String ROUTER_TYPE = "configurationChanged";
@@ -71,7 +70,7 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
         // the list of nodeIds that we will return
         Set<String> nodeIds = new HashSet<String>();
         // the inbound data
-        Map<String, String> columnValues = SymmetricUtils.getDataMap(dataMetaData, engine != null ? engine.getSymmetricDialect() : null);
+        Map<String, String> columnValues = getDataMap(dataMetaData, engine != null ? engine.getSymmetricDialect() : null);
         possibleTargetNodes = helper.filterNodes(possibleTargetNodes, dataMetaData.getTable().getNameLowerCase(), columnValues);
         Node me = findIdentity();
         if (me != null) {

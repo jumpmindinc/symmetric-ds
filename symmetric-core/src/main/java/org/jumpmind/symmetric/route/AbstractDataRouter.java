@@ -21,10 +21,14 @@
 package org.jumpmind.symmetric.route;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
+import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.OutgoingBatch;
+import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +39,60 @@ public abstract class AbstractDataRouter implements IDataRouter {
     protected Logger log = LoggerFactory.getLogger(getClass());
 
     public void contextCommitted(SimpleRouterContext context) {
+    }
+
+    protected Map<String, String> getDataMap(DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
+        return SymmetricUtils.getDataMap(dataMetaData);
+    }
+
+    protected Map<String, String> getNewDataAsString(String prefix, DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
+        return SymmetricUtils.getNewDataAsString(prefix, dataMetaData);
+    }
+
+    protected Map<String, String> getOldDataAsString(String prefix, DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
+        return SymmetricUtils.getOldDataAsString(prefix, dataMetaData);
+    }
+
+    protected Map<String, String> getDataAsString(String prefix, DataMetaData dataMetaData, ISymmetricDialect symmetricDialect,
+            String[] rowData) {
+        return SymmetricUtils.getDataAsString(prefix, dataMetaData, rowData);
+    }
+
+    protected Map<String, String> getPkDataAsString(DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
+        return SymmetricUtils.getPkDataAsString(dataMetaData);
+    }
+
+    protected Map<String, Object> getDataObjectMap(DataMetaData dataMetaData,
+            ISymmetricDialect symmetricDialect, boolean upperCase) {
+        return SymmetricUtils.getDataObjectMap(dataMetaData, symmetricDialect, upperCase);
+    }
+
+    protected Map<String, Object> getNewDataAsObject(String prefix, DataMetaData dataMetaData,
+            ISymmetricDialect symmetricDialect, boolean upperCase) {
+        return SymmetricUtils.getNewDataAsObject(prefix, dataMetaData, symmetricDialect, upperCase);
+    }
+
+    protected Map<String, Object> getOldDataAsObject(String prefix, DataMetaData dataMetaData,
+            ISymmetricDialect symmetricDialect, boolean upperCase) {
+        return SymmetricUtils.getOldDataAsObject(prefix, dataMetaData, symmetricDialect, upperCase);
+    }
+
+    protected <T> Map<String, T> getNullData(String prefix, DataMetaData dataMetaData) {
+        return SymmetricUtils.getNullData(prefix, dataMetaData);
+    }
+
+    protected Map<String, Object> getDataAsObject(String prefix, DataMetaData dataMetaData,
+            ISymmetricDialect symmetricDialect, String[] rowData, boolean upperCase) {
+        return SymmetricUtils.getDataAsObject(prefix, dataMetaData, symmetricDialect, rowData, upperCase);
+    }
+
+    protected void testColumnNamesMatchValues(DataMetaData dataMetaData, String[] columnNames, Object[] values) {
+        SymmetricUtils.testColumnNamesMatchValues(dataMetaData, columnNames, values);
+    }
+
+    protected Map<String, Object> getPkDataAsObject(DataMetaData dataMetaData,
+            ISymmetricDialect symmetricDialect) {
+        return SymmetricUtils.getPkDataAsObject(dataMetaData, symmetricDialect);
     }
 
     protected Set<String> addNodeId(String nodeId, Set<String> nodeIds, Set<Node> nodes) {

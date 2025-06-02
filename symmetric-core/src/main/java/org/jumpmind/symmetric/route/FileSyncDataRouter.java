@@ -40,7 +40,6 @@ import org.jumpmind.symmetric.model.FileSnapshot.LastEventType;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.service.IFileSyncService;
 import org.jumpmind.symmetric.service.IRouterService;
-import org.jumpmind.symmetric.util.SymmetricUtils;
 
 public class FileSyncDataRouter extends AbstractDataRouter implements IBuiltInExtensionPoint {
     public static final String ROUTER_TYPE = "filesync";
@@ -58,7 +57,7 @@ public class FileSyncDataRouter extends AbstractDataRouter implements IBuiltInEx
         } else {
             IFileSyncService fileSyncService = engine.getFileSyncService();
             IRouterService routerService = engine.getRouterService();
-            Map<String, String> newData = SymmetricUtils.getNewDataAsString(null, dataMetaData,
+            Map<String, String> newData = getNewDataAsString(null, dataMetaData,
                     engine.getSymmetricDialect());
             String triggerId = newData.get("TRIGGER_ID");
             String routerId = newData.get("ROUTER_ID");
@@ -68,7 +67,7 @@ public class FileSyncDataRouter extends AbstractDataRouter implements IBuiltInEx
             // Append calculated top relative dir to old data and new data
             // Append top relative dir column name to list of columns in sym_file_snapshot trigger history
             if (triggerId == null) {
-                Map<String, String> oldData = SymmetricUtils.getOldDataAsString(null, dataMetaData,
+                Map<String, String> oldData = getOldDataAsString(null, dataMetaData,
                         engine.getSymmetricDialect());
                 triggerId = oldData.get("TRIGGER_ID");
                 routerId = oldData.get("ROUTER_ID");

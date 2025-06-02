@@ -42,7 +42,6 @@ import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.service.IParameterService;
-import org.jumpmind.symmetric.util.SymmetricUtils;
 
 public class AuditTableDataRouter extends AbstractDataRouter implements IBuiltInExtensionPoint {
     private static final String COLUMN_AUDIT_EVENT = "AUDIT_EVENT";
@@ -85,10 +84,10 @@ public class AuditTableDataRouter extends AbstractDataRouter implements IBuiltIn
             ISqlTemplate template = platform.getSqlTemplate();
             Map<String, Object> values = null;
             if (eventType != DataEventType.DELETE) {
-                values = new HashMap<String, Object>(SymmetricUtils.getNewDataAsObject(null,
+                values = new HashMap<String, Object>(getNewDataAsObject(null,
                         dataMetaData, engine.getSymmetricDialect(), false));
             } else {
-                values = new HashMap<String, Object>(SymmetricUtils.getOldDataAsObject(null,
+                values = new HashMap<String, Object>(getOldDataAsObject(null,
                         dataMetaData, engine.getSymmetricDialect(), false));
             }
             Long sequence = (Long) context.get(auditTableName);
