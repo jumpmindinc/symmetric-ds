@@ -118,8 +118,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
                 + "\n    end if; "
                 + "\n    tableSchema := trim(both '\\\"' from tableSchema); "
                 + "\n    tableName := trim(both '\\\"' from tableName); "
-                + "\n    select $(defaultSchema)$(prefixName)_triggers_disabled() into triggersDisabled;"
-                + "\n    if( triggersDisabled<>1 ) then "
+                + "\n    if( $(replicationEnabledCondition) ) then "
                 + "\n      select tr.trigger_id, tr.channel_id, max(th.trigger_hist_id) "
                 + "\n      into triggerId, channelId, histId "
                 + "\n      from $(defaultSchema)$(prefixName)_trigger tr  "
@@ -476,13 +475,17 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
             Channel channel, String tablePrefix, Table originalTable, String defaultCatalog,
             String defaultSchema) {
         String ddl = "";
-
-        if(dml == DataEventType.DELETE && trigger.isSyncOnDelete() 
-                && (!originalTable.getName().startsWith(tablePrefix) || !originalTable.getSchema().contentEquals( defaultSchema))) {
+        String tableSchema = originalTable.getSchema();
+        boolean internalTable = originalTable.getName().startsWith(tablePrefix) 
+                    && ( StringUtils.isBlank(defaultSchema) == StringUtils.isBlank(tableSchema) )
+                    && defaultSchema.contentEquals( tableSchema);
+        boolean includeTruncateTrigger = (!trigger.isSyncOnDelete() && dml == DataEventType.INSERT  
+                                        || trigger.isSyncOnDelete() && dml == DataEventType.DELETE ); 
+        if( includeTruncateTrigger && !internalTable) {
             ddl = createPostTriggerDDLForTruncate(  trigger, history, channel,   tablePrefix, originalTable, defaultCatalog, defaultSchema);
             if (ddl == null) {
                 ddl = "";
-            }         
+            }
         }
         return ddl + super.createPostTriggerDDL(dml, trigger, history, channel, tablePrefix, originalTable, defaultCatalog, defaultSchema);
     }
@@ -490,7 +493,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
     public String createPostTriggerDDLForTruncate( Trigger trigger, TriggerHistory history, Channel channel, String tablePrefix, Table originalTable, String defaultCatalog,
             String defaultSchema) {
         String ddl = ""; 
-        String truncateTriggerName = getTruncateTriggerNameLikeDelete(history);
+        String truncateTriggerName = generateTruncateTriggerName(trigger, history);
         if(truncateTriggerName == null || truncateTriggerName.length() < 1) {
             return ddl;
         }                                                                                                   
@@ -513,11 +516,30 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         }
         return ddl ;
     }
-
-    protected String getTruncateTriggerNameLikeDelete(TriggerHistory history) {
-        String deleteTriggerName = history.getNameForDeleteTrigger();
-        return deleteTriggerName.replace("_ON_D_FOR_","_ON_T_FOR_").toLowerCase(); 
+ 
+    protected String generateTruncateTriggerName(Trigger trigger, TriggerHistory history) {
+        String truncateTriggerName = null;
+        if (trigger.isSyncOnInsert()) {
+            truncateTriggerName = history.getNameForInsertTrigger();
+            if (!StringUtils.isBlank(truncateTriggerName)) {
+                truncateTriggerName = truncateTriggerName.replace("_ON_I_FOR_", "_ON_T_FOR_");
+            }
+        }
+        if (StringUtils.isBlank(truncateTriggerName) && trigger.isSyncOnUpdate()) {
+            truncateTriggerName = history.getNameForUpdateTrigger();
+            if (!StringUtils.isBlank(truncateTriggerName)) {
+                truncateTriggerName = truncateTriggerName.replace("_ON_U_FOR_", "_ON_T_FOR_");
+            }
+        }
+        if (StringUtils.isBlank(truncateTriggerName) && trigger.isSyncOnDelete()) {
+            truncateTriggerName = history.getNameForDeleteTrigger();
+            if (!StringUtils.isBlank(truncateTriggerName)) {
+                truncateTriggerName = truncateTriggerName.replace("_ON_D_FOR_", "_ON_T_FOR_");
+            }
+        }
+        return truncateTriggerName;
     }
+
     
     protected PostgreSqlSymmetricDialect getPostgresDialect() {
         if(this.symmetricDialect==null || !(this.symmetricDialect instanceof PostgreSqlSymmetricDialect)) {

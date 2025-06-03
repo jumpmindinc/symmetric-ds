@@ -47,7 +47,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
     static final String SYNC_TRIGGERS_DISABLED_VARIABLE = "symmetric.triggers_disabled";
     static final String SYNC_NODE_DISABLED_VARIABLE = "symmetric.node_disabled";
     static final String SQL_DROP_FUNCTION = "drop function $(functionName)";
-    public static final String SQL_FUNCTION_INSTALLED = " select count(*) from information_schema.routines " +
+    static final String SQL_FUNCTION_INSTALLED = " select count(*) from information_schema.routines " +
             " where routine_name = '$(functionName)' and specific_schema = '$(defaultSchema)'";
     static final String SQL_SELECT_TRANSACTIONS = "select min(a.xact_start) from pg_stat_activity a join pg_catalog.pg_locks l on l.pid = a.pid  where l.mode = 'RowExclusiveLock'";
     private Boolean supportsTransactionId = null;
@@ -156,6 +156,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             defaultSchema += ".";
         }
         sql = FormatUtils.replace("prefixName", this.parameterService.getTablePrefix(), sql);
+        sql = FormatUtils.replace("replicationEnabledCondition", getSyncTriggersExpression(), sql);
         sql = FormatUtils.replace("defaultSchema", defaultSchema, sql);
         install(sql, sharedReadLargeObjectFunction, ddl);
         log.info("Created shared function {} for capturing table truncate events.", sharedTruncateEventFunction);
