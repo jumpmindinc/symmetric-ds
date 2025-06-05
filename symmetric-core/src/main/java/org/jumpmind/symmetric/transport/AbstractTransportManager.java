@@ -51,7 +51,12 @@ import org.slf4j.LoggerFactory;
 
 abstract public class AbstractTransportManager {
     protected final Logger log = LoggerFactory.getLogger(getClass());
-    protected final int FORM_KEYS_PER_BATCH = 24;
+    /**
+     * The maximum number of form keys that can be appended to acknowledge a single batch
+     * 
+     * @see AbstractTransportManager#appendAcknowledgementData(IncomingBatch, String, Object, StringBuilder)
+     */
+    protected static final int FORM_KEYS_PER_BATCH = 24;
     protected IExtensionService extensionService;
 
     public AbstractTransportManager() {
@@ -90,57 +95,16 @@ abstract public class AbstractTransportManager {
             maxFormKeys = Math.max(maxFormKeys, FORM_KEYS_PER_BATCH);
         }
         for (IncomingBatch batch : list) {
-            long batchId = batch.getBatchId();
             Object value = batch.getStatus() == Status.OK ? WebConstants.ACK_BATCH_OK : batch.getFailedRowNumber();
             StringBuilder localBuilder = new StringBuilder();
             int localKeyCount;
             if (!requires13Format) {
-                if (batch.getStatus() == Status.RS) {
-                    value = WebConstants.ACK_BATCH_RESEND;
-                }
-                append(localBuilder, WebConstants.ACK_BATCH_NAME + batchId, value);
-                append(localBuilder, WebConstants.ACK_NODE_ID + batchId, nodeId);
-                append(localBuilder, WebConstants.ACK_NETWORK_MILLIS + batchId, batch.getNetworkMillis());
-                append(localBuilder, WebConstants.ACK_FILTER_MILLIS + batchId, batch.getFilterMillis());
-                append(localBuilder, WebConstants.ACK_DATABASE_MILLIS + batchId, batch.getLoadMillis());
-                append(localBuilder, WebConstants.ACK_START_TIME + batchId, batch.getStartTime());
-                append(localBuilder, WebConstants.ACK_BYTE_COUNT + batchId, batch.getByteCount());
-                append(localBuilder, WebConstants.ACK_LOAD_ROW_COUNT + batchId, batch.getLoadRowCount());
-                append(localBuilder, WebConstants.TRANSFORM_TIME + batchId, batch.getTransformLoadMillis());
-                append(localBuilder, WebConstants.ACK_LOAD_INSERT_ROW_COUNT + batchId, batch.getLoadInsertRowCount());
-                append(localBuilder, WebConstants.ACK_LOAD_UPDATE_ROW_COUNT + batchId, batch.getLoadUpdateRowCount());
-                append(localBuilder, WebConstants.ACK_LOAD_DELETE_ROW_COUNT + batchId, batch.getLoadDeleteRowCount());
-                append(localBuilder, WebConstants.ACK_FALLBACK_INSERT_COUNT + batchId, batch.getFallbackInsertCount());
-                append(localBuilder, WebConstants.ACK_FALLBACK_UPDATE_COUNT + batchId, batch.getFallbackUpdateCount());
-                append(localBuilder, WebConstants.ACK_CONFLICT_WIN_COUNT + batchId, batch.getConflictWinCount());
-                append(localBuilder, WebConstants.ACK_CONFLICT_LOSE_COUNT + batchId, batch.getConflictLoseCount());
-                append(localBuilder, WebConstants.ACK_IGNORE_ROW_COUNT + batchId, batch.getIgnoreRowCount());
-                append(localBuilder, WebConstants.ACK_MISSING_DELETE_COUNT + batchId, batch.getMissingDeleteCount());
-                append(localBuilder, WebConstants.ACK_SKIP_COUNT + batchId, batch.getSkipCount());
-                append(localBuilder, WebConstants.ACK_BULK_LOADER_FLAG + batchId, batch.isBulkLoaderFlag());
-                localKeyCount = 20;
-                if (batch.getIgnoreCount() > 0) {
-                    append(localBuilder, WebConstants.ACK_IGNORE_COUNT + batchId, batch.getIgnoreCount());
-                    localKeyCount++;
-                }
-                if (batch.getStatus() == Status.ER) {
-                    String sqlState = batch.getSqlState();
-                    if (sqlState != null && sqlState.length() > 10) {
-                        sqlState = sqlState.replace("JDBC-", "");
-                        if (sqlState.length() > 10) {
-                            sqlState = sqlState.substring(0, 10);
-                        }
-                    }
-                    append(localBuilder, WebConstants.ACK_SQL_STATE + batchId, sqlState);
-                    append(localBuilder, WebConstants.ACK_SQL_CODE + batchId, batch.getSqlCode());
-                    append(localBuilder, WebConstants.ACK_SQL_MESSAGE + batchId, batch.getSqlMessage());
-                    localKeyCount += 3;
-                }
+                localKeyCount = appendAcknowledgementData(batch, nodeId, value, localBuilder);
             } else {
                 if (batch.getStatus() == Status.IG) {
                     value = WebConstants.ACK_BATCH_OK;
                 }
-                append(localBuilder, WebConstants.ACK_BATCH_NAME + batchId, value);
+                append(localBuilder, WebConstants.ACK_BATCH_NAME + batch.getBatchId(), value);
                 localKeyCount = 1;
             }
             if ((maxByteSize > 0 && builder.length() + localBuilder.length() > maxByteSize)
@@ -156,6 +120,52 @@ abstract public class AbstractTransportManager {
         }
         ackDataList.add(builder.toString());
         return ackDataList;
+    }
+
+    protected int appendAcknowledgementData(IncomingBatch batch, String nodeId, Object value, StringBuilder builder) {
+        if (batch.getStatus() == Status.RS) {
+            value = WebConstants.ACK_BATCH_RESEND;
+        }
+        long batchId = batch.getBatchId();
+        append(builder, WebConstants.ACK_BATCH_NAME + batchId, value);
+        append(builder, WebConstants.ACK_NODE_ID + batchId, nodeId);
+        append(builder, WebConstants.ACK_NETWORK_MILLIS + batchId, batch.getNetworkMillis());
+        append(builder, WebConstants.ACK_FILTER_MILLIS + batchId, batch.getFilterMillis());
+        append(builder, WebConstants.ACK_DATABASE_MILLIS + batchId, batch.getLoadMillis());
+        append(builder, WebConstants.ACK_START_TIME + batchId, batch.getStartTime());
+        append(builder, WebConstants.ACK_BYTE_COUNT + batchId, batch.getByteCount());
+        append(builder, WebConstants.ACK_LOAD_ROW_COUNT + batchId, batch.getLoadRowCount());
+        append(builder, WebConstants.TRANSFORM_TIME + batchId, batch.getTransformLoadMillis());
+        append(builder, WebConstants.ACK_LOAD_INSERT_ROW_COUNT + batchId, batch.getLoadInsertRowCount());
+        append(builder, WebConstants.ACK_LOAD_UPDATE_ROW_COUNT + batchId, batch.getLoadUpdateRowCount());
+        append(builder, WebConstants.ACK_LOAD_DELETE_ROW_COUNT + batchId, batch.getLoadDeleteRowCount());
+        append(builder, WebConstants.ACK_FALLBACK_INSERT_COUNT + batchId, batch.getFallbackInsertCount());
+        append(builder, WebConstants.ACK_FALLBACK_UPDATE_COUNT + batchId, batch.getFallbackUpdateCount());
+        append(builder, WebConstants.ACK_CONFLICT_WIN_COUNT + batchId, batch.getConflictWinCount());
+        append(builder, WebConstants.ACK_CONFLICT_LOSE_COUNT + batchId, batch.getConflictLoseCount());
+        append(builder, WebConstants.ACK_IGNORE_ROW_COUNT + batchId, batch.getIgnoreRowCount());
+        append(builder, WebConstants.ACK_MISSING_DELETE_COUNT + batchId, batch.getMissingDeleteCount());
+        append(builder, WebConstants.ACK_SKIP_COUNT + batchId, batch.getSkipCount());
+        append(builder, WebConstants.ACK_BULK_LOADER_FLAG + batchId, batch.isBulkLoaderFlag());
+        int keyCount = 20;
+        if (batch.getIgnoreCount() > 0) {
+            append(builder, WebConstants.ACK_IGNORE_COUNT + batchId, batch.getIgnoreCount());
+            keyCount++;
+        }
+        if (batch.getStatus() == Status.ER) {
+            String sqlState = batch.getSqlState();
+            if (sqlState != null && sqlState.length() > 10) {
+                sqlState = sqlState.replace("JDBC-", "");
+                if (sqlState.length() > 10) {
+                    sqlState = sqlState.substring(0, 10);
+                }
+            }
+            append(builder, WebConstants.ACK_SQL_STATE + batchId, sqlState);
+            append(builder, WebConstants.ACK_SQL_CODE + batchId, batch.getSqlCode());
+            append(builder, WebConstants.ACK_SQL_MESSAGE + batchId, batch.getSqlMessage());
+            keyCount += 3;
+        }
+        return keyCount;
     }
 
     protected static void append(StringBuilder builder, String name, Object value) {
