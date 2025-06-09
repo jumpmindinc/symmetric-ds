@@ -227,6 +227,7 @@ task copyDockerfile(type: Copy) {
 
 task buildImage(type: com.bmuschko.gradle.docker.tasks.image.DockerBuildImage) {
     dependsOn copyDockerfile
+    dependsOn tasks.getByPath(':symmetric-server:serverDistZip')
     inputDir = file("../symmetric-server/build/distributions")
     images = ["jumpmind/symmetricds:latest", "jumpmind/symmetricds:${version}".toString()]
     buildArgs = ["SERVER_ZIP":"symmetric-server-${version}.zip"]
