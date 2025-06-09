@@ -86,7 +86,7 @@ public class DatabaseParameter implements Serializable {
         this.nodeGroupId = nodeGroupId;
     }
 
-    public boolean getInEngineFile() {
+    public boolean isInEngineFile() {
         return inEngineFile;
     }
 
