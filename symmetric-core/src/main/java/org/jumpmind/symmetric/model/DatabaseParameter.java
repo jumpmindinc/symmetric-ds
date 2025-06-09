@@ -30,6 +30,7 @@ public class DatabaseParameter implements Serializable {
     private String value;
     private String externalId = ParameterConstants.ALL;
     private String nodeGroupId = ParameterConstants.ALL;
+    private boolean inEngineFile = false;
 
     public DatabaseParameter() {
     }
@@ -43,6 +44,14 @@ public class DatabaseParameter implements Serializable {
         this.value = value;
         this.externalId = externalId;
         this.nodeGroupId = nodeGroupId;
+    }
+
+    public DatabaseParameter(String key, String value, String externalId, String nodeGroupId, boolean inEngineFile) {
+        this.key = key;
+        this.value = value;
+        this.externalId = externalId;
+        this.nodeGroupId = nodeGroupId;
+        this.inEngineFile = inEngineFile;
     }
 
     public String getKey() {
@@ -75,5 +84,13 @@ public class DatabaseParameter implements Serializable {
 
     public void setNodeGroupId(String nodeGroupId) {
         this.nodeGroupId = nodeGroupId;
+    }
+
+    public boolean getInEngineFile() {
+        return inEngineFile;
+    }
+
+    public void setInEngineFile(boolean inEngineFile) {
+        this.inEngineFile = inEngineFile;
     }
 }
