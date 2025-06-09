@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
@@ -112,7 +113,8 @@ public class DbImportDialog extends ResizableDialog {
         formLayout.setSizeFull();
         importContent.addAndExpand(formLayout);
         formatSelect = new ComboBox<>("Format");
-        formatSelect.setItems(DbImportFormat.values());
+        formatSelect.setItems((format, filter) -> !CommonUiUtils.isFilteredOut(Objects.toString(format, null), filter),
+                DbImportFormat.values());
         formatSelect.setValue(DbImportFormat.SQL);
         formatSelect.addValueChangeListener((e) -> {
             DbImportFormat format = (DbImportFormat) formatSelect.getValue();
@@ -140,11 +142,11 @@ public class DbImportDialog extends ResizableDialog {
         });
         formLayout.add(formatSelect);
         catalogSelect = new ComboBox<>("Catalog");
-        catalogSelect.setItems(getCatalogs());
+        catalogSelect.setItems((catalog, filter) -> !CommonUiUtils.isFilteredOut(catalog, filter), getCatalogs());
         catalogSelect.setValue(databasePlatform.getDefaultCatalog());
         formLayout.add(catalogSelect);
         schemaSelect = new ComboBox<>("Schema");
-        schemaSelect.setItems(getSchemas());
+        schemaSelect.setItems((schema, filter) -> !CommonUiUtils.isFilteredOut(schema, filter), getSchemas());
         if (selectedTablesSet.size() > 0) {
             schemaSelect.setValue(selectedTablesSet.iterator().next().getSchema());
         } else {
@@ -295,7 +297,7 @@ public class DbImportDialog extends ResizableDialog {
 
     protected void populateListOfTablesSelect() {
         listOfTablesSelect.clear();
-        listOfTablesSelect.setItems(getTables());
+        listOfTablesSelect.setItems((table, filter) -> !CommonUiUtils.isFilteredOut(table, filter), getTables());
     }
 
     public String getSelectedSchema() {

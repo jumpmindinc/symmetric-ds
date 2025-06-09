@@ -482,4 +482,11 @@ public final class CommonUiUtils {
         menuBarIcon.getStyle().set("box-sizing", "border-box");
         return menuBarIcon;
     }
+
+    public static boolean isFilteredOut(String text, String filter) {
+        if (StringUtils.isEmpty(filter)) {
+            return false;
+        }
+        return filter.length() > 2 ? !StringUtils.containsIgnoreCase(text, filter) : !StringUtils.startsWithIgnoreCase(text, filter);
+    }
 }
