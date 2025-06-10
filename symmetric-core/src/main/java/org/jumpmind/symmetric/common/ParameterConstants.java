@@ -273,6 +273,7 @@ final public class ParameterConstants {
     public final static String TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN = "http.use.header.security.token";
     public final static String TRANSPORT_TYPE = "transport.type";
     public final static String TRANSPORT_MAX_BYTES_TO_SYNC = "transport.max.bytes.to.sync";
+    public final static String TRANSPORT_MAX_FORM_KEYS = "transport.max.form.keys";
     public final static String TRANSPORT_MAX_ERROR_MILLIS = "transport.max.error.millis";
     public final static String CACHE_TIMEOUT_GROUPLETS_IN_MS = "cache.grouplets.time.ms";
     public final static String CACHE_TIMEOUT_NODE_SECURITY_IN_MS = "cache.node.security.time.ms";

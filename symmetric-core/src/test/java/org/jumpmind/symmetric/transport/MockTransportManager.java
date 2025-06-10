@@ -31,7 +31,7 @@ import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.web.WebConstants;
 
-public class MockTransportManager implements ITransportManager {
+public class MockTransportManager extends AbstractTransportManager implements ITransportManager {
     protected IIncomingTransport incomingTransport;
     protected IOutgoingWithResponseTransport outgoingTransport;
 
@@ -119,7 +119,7 @@ public class MockTransportManager implements ITransportManager {
         return null;
     }
 
-    public List<BatchAck> readAcknowledgement(Map<String, Object> parameters) {
+    public static List<BatchAck> readAcknowledgement(Map<String, ? extends Object> parameters) {
         return null;
     }
 
