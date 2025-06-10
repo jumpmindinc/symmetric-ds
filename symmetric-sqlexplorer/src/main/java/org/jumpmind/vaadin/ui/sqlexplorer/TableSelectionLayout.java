@@ -20,8 +20,6 @@
  */
 package org.jumpmind.vaadin.ui.sqlexplorer;
 
-import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -30,6 +28,8 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.vaadin.ui.common.CommonUiUtils;
+
 import com.vaadin.flow.data.provider.Query;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.component.button.Button;
@@ -87,7 +87,8 @@ public class TableSelectionLayout extends VerticalLayout {
         HorizontalLayout schemaChooserLayout = new HorizontalLayout();
         schemaChooserLayout.setSpacing(true);
         this.add(schemaChooserLayout);
-        catalogSelect = new ComboBox<String>("Catalog", getCatalogs());
+        catalogSelect = new ComboBox<String>("Catalog");
+        catalogSelect.setItems((catalog, filter) -> !CommonUiUtils.isFilteredOut(catalog, filter), getCatalogs());
         schemaChooserLayout.add(catalogSelect);
         if (selectedTablesSet.iterator().hasNext()) {
             catalogSelect.setValue(selectedTablesSet.iterator().next().getCatalog());
@@ -169,7 +170,7 @@ public class TableSelectionLayout extends VerticalLayout {
             refreshTableOfTables();
             return;
         }
-        schemaSelect.setItems(schemas);
+        schemaSelect.setItems((schema, filter) -> !CommonUiUtils.isFilteredOut(schema, filter), schemas);
         if (selectedTablesSet.iterator().hasNext()) {
             schemaSelect.setValue(selectedTablesSet.iterator().next().getSchema());
         } else {
@@ -182,14 +183,9 @@ public class TableSelectionLayout extends VerticalLayout {
         String filter = filterField == null ? "" : filterField.getValue();
         List<String> filteredTables = new ArrayList<String>();
         for (String table : tables) {
-            if ((excludedTables == null || !excludedTables.contains(table.toLowerCase())) && display(getSelectedCatalog(), getSelectedSchema(), table)) {
-                if (!filter.equals("")) {
-                    if (containsIgnoreCase(table, filter)) {
-                        filteredTables.add(table);
-                    }
-                } else {
-                    filteredTables.add(table);
-                }
+            if ((excludedTables == null || !excludedTables.contains(table.toLowerCase())) && display(getSelectedCatalog(), getSelectedSchema(), table)
+                    && !CommonUiUtils.isFilteredOut(table, filter)) {
+                filteredTables.add(table);
             }
         }
         listOfTablesGrid.setItems(filteredTables);

@@ -30,7 +30,7 @@ public class FilterCriterion {
         EQUALS("Equals", "=", "="), NOT_EQUALS("Not Equals", "!=", "<>"), GREATER("Greater Than", ">", ">"), GREATER_EQUAL("Greater Than or Equal", ">=",
                 ">="), LESS("Less Than", "<", "<"), LESS_EQUAL("Less Than or Equal", "<=", "<="), IN_LIST("In List", "in", "in"), NOT_IN_LIST("Not In List",
                         "not in", "not in"), BETWEEN("Between", "between", "between"), CONTAINS("Contains", "contains", "like"), NOT_CONTAINS("Not Contains",
-                                "not contains", "not like");
+                                "not contains", "not like"), STARTS_WITH("Starts With", "starts with", "like");
 
         private String description;
         private String abbrev;
