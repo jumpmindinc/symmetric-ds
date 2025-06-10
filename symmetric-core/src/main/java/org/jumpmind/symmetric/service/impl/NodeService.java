@@ -542,8 +542,11 @@ public class NodeService extends AbstractService implements INodeService {
         int id = 0;
         for (FilterCriterion criterion : filter) {
             Object value = criterion.getValues().get(0);
-            if (criterion.getOption().equals(FilterOption.CONTAINS)) {
+            FilterOption option = criterion.getOption();
+            if (option.equals(FilterOption.CONTAINS)) {
                 value = "%" + value + "%";
+            } else if (option.equals(FilterOption.STARTS_WITH)) {
+                value += "%";
             }
             params.put(String.valueOf(id++), value);
         }

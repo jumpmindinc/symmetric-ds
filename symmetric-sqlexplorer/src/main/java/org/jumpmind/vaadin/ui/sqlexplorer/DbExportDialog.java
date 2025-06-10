@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.jumpmind.db.model.Table;
@@ -158,7 +159,9 @@ public class DbExportDialog extends ResizableDialog {
         FormLayout formLayout = new FormLayout();
         formLayout.setSizeFull();
         optionContent.addAndExpand(formLayout);
-        formatSelect = new ComboBox<DbExportFormat>("Format", Arrays.asList(DbExportFormat.values()));
+        formatSelect = new ComboBox<DbExportFormat>("Format");
+        formatSelect.setItems((format, filter) -> !CommonUiUtils.isFilteredOut(Objects.toString(format, null), filter),
+                Arrays.asList(DbExportFormat.values()));
         formatSelect.setValue(DbExportFormat.SQL);
         formatSelect.addValueChangeListener(event -> {
             switch (formatSelect.getValue()) {
@@ -194,7 +197,9 @@ public class DbExportDialog extends ResizableDialog {
         formLayout.add(formatSelect);
         List<Compatible> compatibilityList = Arrays.asList(Compatible.values());
         compatibilityList.sort((c0, c1) -> c0.name().compareTo(c1.name()));
-        compatibilitySelect = new ComboBox<Compatible>("Compatibility", compatibilityList);
+        compatibilitySelect = new ComboBox<Compatible>("Compatibility");
+        compatibilitySelect.setItems((compatibile, filter) -> !CommonUiUtils.isFilteredOut(Objects.toString(compatibile, null), filter),
+                compatibilityList);
         setDefaultCompatibility();
         formLayout.add(compatibilitySelect);
         createInfo = new Checkbox("Create Tables");
