@@ -25,7 +25,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.jumpmind.db.model.Table;
@@ -39,98 +38,10 @@ import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.TriggerHistory;
-import org.jumpmind.symmetric.route.ColumnMatchDataRouter.Expression;
 import org.jumpmind.symmetric.service.INodeService;
 import org.junit.jupiter.api.Test;
 
 public class ColumnMatchDataRouterTest {
-    @Test
-    public void testExpressionUsingLineFeedsParsing() {
-        ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
-        INodeService nodeService = mock(INodeService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        doReturn(symmetricDialect).when(engine).getSymmetricDialect();
-        doReturn(nodeService).when(engine).getNodeService();
-        ColumnMatchDataRouter router = new ColumnMatchDataRouter(engine);
-        List<Expression> expressions = router.parse("one=two\ntwo=three\rthree!=:EXTERNAL_ID");
-        assertEquals(3, expressions.size());
-        assertEquals("two", expressions.get(0).tokens[1]);
-        assertEquals("three", expressions.get(2).tokens[0]);
-        assertEquals(false, expressions.get(2).hasEquals);
-    }
-
-    @Test
-    public void testExpressionOrParsing() {
-        ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
-        INodeService nodeService = mock(INodeService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        doReturn(symmetricDialect).when(engine).getSymmetricDialect();
-        doReturn(nodeService).when(engine).getNodeService();
-        ColumnMatchDataRouter router = new ColumnMatchDataRouter(engine);
-        List<Expression> expressions = router.parse("one=door OR two=three or three!=:EXTERNAL_ID");
-        assertEquals(3, expressions.size());
-        assertEquals("door", expressions.get(0).tokens[1]);
-        assertEquals("three", expressions.get(2).tokens[0]);
-        assertEquals(false, expressions.get(2).hasEquals);
-    }
-
-    @Test
-    public void testExpressionTickParsing() {
-        ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
-        INodeService nodeService = mock(INodeService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        doReturn(symmetricDialect).when(engine).getSymmetricDialect();
-        doReturn(nodeService).when(engine).getNodeService();
-        ColumnMatchDataRouter router = new ColumnMatchDataRouter(engine);
-        List<Expression> expressions = router.parse("one='two three' OR four='five'\r\nor six=isn't \r\n seven='can''t'" +
-                " or eight='yall \n nine=' ten  ' or eleven  =  'twelve'  ");
-        assertEquals(7, expressions.size());
-        assertEquals("one", expressions.get(0).tokens[0]);
-        assertEquals("two three", expressions.get(0).tokens[1]);
-        assertEquals("four", expressions.get(1).tokens[0]);
-        assertEquals("five", expressions.get(1).tokens[1]);
-        assertEquals("six", expressions.get(2).tokens[0]);
-        assertEquals("isn't", expressions.get(2).tokens[1]);
-        assertEquals("seven", expressions.get(3).tokens[0]);
-        assertEquals("can't", expressions.get(3).tokens[1]);
-        assertEquals("eight", expressions.get(4).tokens[0]);
-        assertEquals("'yall", expressions.get(4).tokens[1]);
-        assertEquals("nine", expressions.get(5).tokens[0]);
-        assertEquals(" ten  ", expressions.get(5).tokens[1]);
-        assertEquals("eleven", expressions.get(6).tokens[0]);
-        assertEquals("twelve", expressions.get(6).tokens[1]);
-    }
-
-    @Test
-    public void testExpressionOrAndLineFeedsParsing() {
-        ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
-        INodeService nodeService = mock(INodeService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        doReturn(symmetricDialect).when(engine).getSymmetricDialect();
-        doReturn(nodeService).when(engine).getNodeService();
-        ColumnMatchDataRouter router = new ColumnMatchDataRouter(engine);
-        List<Expression> expressions = router.parse("one=two OR three=four\r\nor   five!=:EXTERNAL_ID");
-        assertEquals(3, expressions.size());
-        assertEquals("two", expressions.get(0).tokens[1]);
-        assertEquals("three", expressions.get(1).tokens[0]);
-        assertEquals("five", expressions.get(2).tokens[0]);
-        assertEquals(false, expressions.get(2).hasEquals);
-    }
-
-    @Test
-    public void testExpressionWithOrInColumnName() {
-        ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
-        INodeService nodeService = mock(INodeService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        doReturn(symmetricDialect).when(engine).getSymmetricDialect();
-        doReturn(nodeService).when(engine).getNodeService();
-        ColumnMatchDataRouter router = new ColumnMatchDataRouter(engine);
-        List<Expression> expressions = router.parse("ORDER_ID=:EXTERNAL_ID");
-        assertEquals(1, expressions.size());
-        assertEquals("ORDER_ID", expressions.get(0).tokens[0]);
-        assertEquals(":EXTERNAL_ID", expressions.get(0).tokens[1]);
-    }
-
     //
     @Test
     public void testExpressionEqualsNodeId() {

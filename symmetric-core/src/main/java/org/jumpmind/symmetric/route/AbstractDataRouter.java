@@ -20,19 +20,15 @@
  */
 package org.jumpmind.symmetric.route;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
-import org.jumpmind.symmetric.io.data.DataEventType;
-import org.jumpmind.symmetric.io.data.ProtocolException;
 import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.OutgoingBatch;
-import org.jumpmind.util.LinkedCaseInsensitiveMap;
+import org.jumpmind.symmetric.util.DataUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,192 +36,63 @@ import org.slf4j.LoggerFactory;
  * A common superclass for data routers
  */
 public abstract class AbstractDataRouter implements IDataRouter {
-    private static final String OLD_ = "OLD_";
     protected Logger log = LoggerFactory.getLogger(getClass());
 
     public void contextCommitted(SimpleRouterContext context) {
     }
 
     protected Map<String, String> getDataMap(DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
-        Map<String, String> data = null;
-        DataEventType dml = dataMetaData.getData().getDataEventType();
-        switch (dml) {
-            case UPDATE:
-                data = new LinkedCaseInsensitiveMap<String>(dataMetaData.getTable().getColumnCount() * 4);
-                data.putAll(getNewDataAsString(null, dataMetaData, symmetricDialect));
-                data.putAll(getOldDataAsString(OLD_, dataMetaData, symmetricDialect));
-                break;
-            case INSERT:
-                data = new LinkedCaseInsensitiveMap<String>(dataMetaData.getTable().getColumnCount() * 4);
-                data.putAll(getNewDataAsString(null, dataMetaData, symmetricDialect));
-                Map<String, String> map = getNullData(OLD_, dataMetaData);
-                data.putAll(map);
-                break;
-            case DELETE:
-                data = new LinkedCaseInsensitiveMap<String>(dataMetaData.getTable().getColumnCount() * 4);
-                data.putAll(getOldDataAsString(null, dataMetaData, symmetricDialect));
-                data.putAll(getOldDataAsString(OLD_, dataMetaData, symmetricDialect));
-                break;
-            default:
-                data = new LinkedCaseInsensitiveMap<String>(1);
-                break;
-        }
-        if (data != null) {
-            if (data.size() == 0) {
-                data.putAll(getPkDataAsString(dataMetaData, symmetricDialect));
-            }
-            data.put("EXTERNAL_DATA", dataMetaData.getData().getExternalData());
-        }
-        return data;
+        return DataUtils.getDataMap(dataMetaData);
     }
 
     protected Map<String, String> getNewDataAsString(String prefix, DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
-        String[] rowData = dataMetaData.getData().toParsedRowData();
-        return getDataAsString(prefix, dataMetaData, symmetricDialect, rowData);
+        return DataUtils.getNewDataAsString(prefix, dataMetaData);
     }
 
     protected Map<String, String> getOldDataAsString(String prefix, DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
-        String[] rowData = dataMetaData.getData().toParsedOldData();
-        return getDataAsString(prefix, dataMetaData, symmetricDialect, rowData);
+        return DataUtils.getOldDataAsString(prefix, dataMetaData);
     }
 
     protected Map<String, String> getDataAsString(String prefix, DataMetaData dataMetaData, ISymmetricDialect symmetricDialect,
             String[] rowData) {
-        String[] columns = dataMetaData.getTriggerHistory().getParsedColumnNames();
-        Map<String, String> map = new LinkedCaseInsensitiveMap<String>(columns.length * 2);
-        if (rowData != null) {
-            testColumnNamesMatchValues(dataMetaData, columns, rowData);
-            for (int i = 0; i < columns.length; i++) {
-                String columnName = columns[i];
-                columnName = prefix != null ? prefix + columnName : columnName;
-                map.put(columnName, rowData[i]);
-                map.put(columnName.toUpperCase(), rowData[i]);
-            }
-        }
-        return map;
+        return DataUtils.getDataAsString(prefix, dataMetaData, rowData);
     }
 
     protected Map<String, String> getPkDataAsString(DataMetaData dataMetaData, ISymmetricDialect symmetricDialect) {
-        String[] columns = dataMetaData.getTriggerHistory().getParsedPkColumnNames();
-        String[] rowData = dataMetaData.getData().toParsedPkData();
-        Map<String, String> map = new LinkedCaseInsensitiveMap<String>(columns.length);
-        if (rowData != null) {
-            testColumnNamesMatchValues(dataMetaData, columns, rowData);
-            for (int i = 0; i < columns.length; i++) {
-                String columnName = columns[i].toUpperCase();
-                map.put(columnName, rowData[i]);
-            }
-        }
-        return map;
+        return DataUtils.getPkDataAsString(dataMetaData);
     }
 
     protected Map<String, Object> getDataObjectMap(DataMetaData dataMetaData,
             ISymmetricDialect symmetricDialect, boolean upperCase) {
-        Map<String, Object> data = null;
-        DataEventType dml = dataMetaData.getData().getDataEventType();
-        switch (dml) {
-            case UPDATE:
-                data = new LinkedCaseInsensitiveMap<Object>(dataMetaData.getTable().getColumnCount() * 2);
-                data.putAll(getNewDataAsObject(null, dataMetaData, symmetricDialect, upperCase));
-                data.putAll(getOldDataAsObject(OLD_, dataMetaData, symmetricDialect, upperCase));
-                break;
-            case INSERT:
-                data = new LinkedCaseInsensitiveMap<Object>(dataMetaData.getTable().getColumnCount() * 2);
-                data.putAll(getNewDataAsObject(null, dataMetaData, symmetricDialect, upperCase));
-                Map<String, Object> map = getNullData(OLD_, dataMetaData);
-                data.putAll(map);
-                break;
-            case DELETE:
-                data = new LinkedCaseInsensitiveMap<Object>(dataMetaData.getTable().getColumnCount() * 2);
-                data.putAll(getOldDataAsObject(null, dataMetaData, symmetricDialect, upperCase));
-                data.putAll(getOldDataAsObject(OLD_, dataMetaData, symmetricDialect, upperCase));
-                if (data.size() == 0) {
-                    data.putAll(getPkDataAsObject(dataMetaData, symmetricDialect));
-                }
-                break;
-            default:
-                data = new LinkedCaseInsensitiveMap<Object>(1);
-                break;
-        }
-        if (data.size() == 0) {
-            data.putAll(getPkDataAsString(dataMetaData, symmetricDialect));
-        }
-        if (StringUtils.isNotBlank(dataMetaData.getData().getExternalData())) {
-            data.put("EXTERNAL_DATA", dataMetaData.getData().getExternalData());
-        } else {
-            data.put("EXTERNAL_DATA", null);
-        }
-        return data;
+        return DataUtils.getDataObjectMap(dataMetaData, symmetricDialect, upperCase);
     }
 
     protected Map<String, Object> getNewDataAsObject(String prefix, DataMetaData dataMetaData,
             ISymmetricDialect symmetricDialect, boolean upperCase) {
-        return getDataAsObject(prefix, dataMetaData, symmetricDialect, dataMetaData.getData()
-                .toParsedRowData(), upperCase);
+        return DataUtils.getNewDataAsObject(prefix, dataMetaData, symmetricDialect, upperCase);
     }
 
     protected Map<String, Object> getOldDataAsObject(String prefix, DataMetaData dataMetaData,
             ISymmetricDialect symmetricDialect, boolean upperCase) {
-        return getDataAsObject(prefix, dataMetaData, symmetricDialect, dataMetaData.getData()
-                .toParsedOldData(), upperCase);
+        return DataUtils.getOldDataAsObject(prefix, dataMetaData, symmetricDialect, upperCase);
     }
 
     protected <T> Map<String, T> getNullData(String prefix, DataMetaData dataMetaData) {
-        String[] columnNames = dataMetaData.getTriggerHistory().getParsedColumnNames();
-        Map<String, T> data = new LinkedCaseInsensitiveMap<T>(columnNames.length * 2);
-        for (String columnName : columnNames) {
-            columnName = prefix != null ? prefix + columnName : columnName;
-            data.put(columnName, null);
-            data.put(columnName.toUpperCase(), null);
-        }
-        return data;
+        return DataUtils.getNullData(prefix, dataMetaData);
     }
 
     protected Map<String, Object> getDataAsObject(String prefix, DataMetaData dataMetaData,
             ISymmetricDialect symmetricDialect, String[] rowData, boolean upperCase) {
-        if (rowData != null) {
-            Map<String, Object> data = new LinkedCaseInsensitiveMap<Object>(rowData.length);
-            String[] columnNames = dataMetaData.getTriggerHistory().getParsedColumnNames();
-            Object[] objects = symmetricDialect.getPlatform().getObjectValues(
-                    symmetricDialect.getBinaryEncoding(), dataMetaData.getTable(), columnNames,
-                    rowData);
-            testColumnNamesMatchValues(dataMetaData, columnNames, objects);
-            for (int i = 0; i < columnNames.length; i++) {
-                String colName = upperCase ? columnNames[i].toUpperCase() : columnNames[i];
-                data.put(prefix != null ? (prefix + colName) : colName, objects[i]);
-            }
-            return data;
-        } else {
-            return Collections.emptyMap();
-        }
+        return DataUtils.getDataAsObject(prefix, dataMetaData, symmetricDialect, rowData, upperCase);
     }
 
     protected void testColumnNamesMatchValues(DataMetaData dataMetaData, String[] columnNames, Object[] values) {
-        if (columnNames.length != values.length) {
-            String message = String.format(
-                    "The router row for table %s had %d columns but expected %d.",
-                    dataMetaData.getData().getTableName(), values.length, columnNames.length);
-            throw new ProtocolException(message);
-        }
+        DataUtils.testColumnNamesMatchValues(dataMetaData, columnNames, values);
     }
 
     protected Map<String, Object> getPkDataAsObject(DataMetaData dataMetaData,
             ISymmetricDialect symmetricDialect) {
-        String[] rowData = dataMetaData.getData().toParsedPkData();
-        if (rowData != null) {
-            Map<String, Object> data = new LinkedCaseInsensitiveMap<Object>(rowData.length);
-            String[] columnNames = dataMetaData.getTriggerHistory().getParsedPkColumnNames();
-            Object[] objects = symmetricDialect.getPlatform().getObjectValues(
-                    symmetricDialect.getBinaryEncoding(), dataMetaData.getTable(), columnNames,
-                    rowData);
-            testColumnNamesMatchValues(dataMetaData, columnNames, objects);
-            for (int i = 0; i < columnNames.length; i++) {
-                data.put(columnNames[i].toUpperCase(), objects[i]);
-            }
-            return data;
-        } else {
-            return Collections.emptyMap();
-        }
+        return DataUtils.getPkDataAsObject(dataMetaData, symmetricDialect);
     }
 
     protected Set<String> addNodeId(String nodeId, Set<String> nodeIds, Set<Node> nodes) {
