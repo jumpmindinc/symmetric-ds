@@ -128,7 +128,7 @@ public class SnapshotUtil {
         File tmpDir = new File(parameterService.getTempDirectory(), dirName);
         tmpDir.mkdirs();
         log.info("Creating snapshot file in " + tmpDir.getAbsolutePath());
-        int stepNumber = 0, totalSteps = 34;
+        int stepNumber = 0, totalSteps = 36;
         checkpoint(engine, listener, stepNumber++, totalSteps);
         try {
             log.info("Calling beforeSnapshot()");
@@ -236,7 +236,14 @@ public class SnapshotUtil {
         if (nodeSecurities != null && channels != null && nodeSecurities.size() * channels.size() < maxNodeChannels) {
             byChannelId = "channel_id ,";
         }
-        extract(export, maxBatches, "where status = 'OK' order by batch_id desc", new File(exportDir, "outgoing_batch_ok.csv"),
+        Object[] systemChannelIds = new String[] { Constants.CHANNEL_CONFIG, Constants.CHANNEL_SYSTEM,
+                Constants.CHANNEL_MONITOR, Constants.CHANNEL_HEARTBEAT, Constants.CHANNEL_DYNAMIC };
+        extract(export, maxBatches, String.format("where status = 'OK' and channel_id not in ('%s', '%s', '%s', '%s', '%s') order by batch_id desc",
+                systemChannelIds), new File(exportDir, "outgoing_batch_ok.csv"),
+                TableConstants.getTableName(tablePrefix, TableConstants.SYM_OUTGOING_BATCH));
+        checkpoint(engine, listener, stepNumber++, totalSteps);
+        extract(export, maxBatches, String.format("where status = 'OK' and channel_id in ('%s', '%s', '%s', '%s', '%s') order by batch_id desc",
+                systemChannelIds), new File(exportDir, "outgoing_batch_system_ok.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_OUTGOING_BATCH));
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, maxBatches, "where status != 'OK' order by batch_id", new File(exportDir, "outgoing_batch_not_ok.csv"),
@@ -260,7 +267,12 @@ public class SnapshotUtil {
         }
         log.info("Writing runtime data - incoming batch");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, maxBatches, "where status = 'OK' order by create_time desc", new File(exportDir, "incoming_batch_ok.csv"),
+        extract(export, maxBatches, String.format("where status = 'OK' and channel_id not in ('%s', '%s', '%s', '%s', '%s') order by batch_id desc",
+                systemChannelIds), new File(exportDir, "incoming_batch_ok.csv"),
+                TableConstants.getTableName(tablePrefix, TableConstants.SYM_INCOMING_BATCH));
+        checkpoint(engine, listener, stepNumber++, totalSteps);
+        extract(export, maxBatches, String.format("where status = 'OK' and channel_id in ('%s', '%s', '%s', '%s', '%s') order by batch_id desc",
+                systemChannelIds), new File(exportDir, "incoming_batch_system_ok.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_INCOMING_BATCH));
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, maxBatches, "where status != 'OK' order by create_time", new File(exportDir, "incoming_batch_not_ok.csv"),
