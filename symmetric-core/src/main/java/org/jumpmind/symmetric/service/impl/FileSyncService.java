@@ -1373,4 +1373,9 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
     public void save(List<FileSnapshot> changes) {
         // TODO Auto-generated method stub
     }
+
+    @Override
+    public int countEntriesInFileSnapshot() {
+        return sqlTemplate.queryForInt(getSql("countEntriesInFileSnapshot"));
+    }
 }

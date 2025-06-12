@@ -709,6 +709,7 @@ public class SnapshotUtil {
                 runtimeProperties.setProperty("data.gap.start.id", df.format(gaps.get(0).getStartId()));
                 runtimeProperties.setProperty("data.gap.end.id", df.format(gaps.get(gaps.size() - 1).getEndId()));
             }
+            runtimeProperties.setProperty("file.snapshot.entries.count", df.format(engine.getFileSyncService().countEntriesInFileSnapshot()));
             runtimeProperties.setProperty("data.id.min", df.format(engine.getDataService().findMinDataId()));
             runtimeProperties.setProperty("data.id.max", df.format(engine.getDataService().findMaxDataId()));
             String jvmTitle = Runtime.class.getPackage().getImplementationTitle();

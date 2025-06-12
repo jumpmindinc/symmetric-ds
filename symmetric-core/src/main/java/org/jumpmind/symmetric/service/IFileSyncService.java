@@ -91,4 +91,6 @@ public interface IFileSyncService {
     public File getControleFile(File file);
 
     public Object[] getStagingPathComponents(OutgoingBatch fileSyncBatch);
+
+    public int countEntriesInFileSnapshot();
 }
