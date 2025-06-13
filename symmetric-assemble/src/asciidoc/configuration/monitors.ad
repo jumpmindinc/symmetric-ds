@@ -91,6 +91,8 @@ be compared to a threshold value.
 
 |unknownCa|Number of nodes that have recently experienced a "PKIX path building failed" error due to an unknown certificate authority. The duration in the past during which this insight checks for errors is determined by the purge.log.summary.retention.minutes parameter, which defaults to 60 minutes.|✔
 
+|formKeys|Value of 0, 1, or 2 indicating whether acknowledgments are failing during a pull due to too many form keys. A value of 0 indicates that there were no failures. A value of 1 indicates that there were failures and SymmetricDS was able to temporarily resolve them. A value of 2 indicates that there were failures and SymmetricDS was unable to resolve them.|✔
+
 |===
 
 Expression:: An expression used by the monitor to set options specific to the monitor type. For batchError monitors, setting the expression to
