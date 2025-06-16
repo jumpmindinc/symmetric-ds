@@ -160,6 +160,8 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
         if ("YEAR".equals(typeName)) {
             // it is safe to map a YEAR to INTEGER
             return Types.INTEGER;
+        } else if ("INT UNSIGNED".equals(typeName)) {
+            return Types.BIGINT;
         } else if (typeName != null && typeName.endsWith("TEXT")) {
             String catalog = (String) values.get("TABLE_CAT");
             String tableName = (String) values.get("TABLE_NAME");
