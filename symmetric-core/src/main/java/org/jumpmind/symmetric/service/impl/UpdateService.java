@@ -286,11 +286,11 @@ public class UpdateService extends AbstractService implements IUpdateService {
         Map<String, Object> outMap = sqlTemplateDirty.queryForMap(getSql("countOutgoing"), cal.getTime());
         prop.put("out_batches", outMap.get("batch_count"));
         prop.put("out_bytes", outMap.get("byte_count") == null ? 0L : outMap.get("byte_count"));
-        prop.put("out_rows", outMap.get("row_count") == null ? 0L : outMap.get("row_count"));
+        prop.put("out_rows", outMap.get("rows_count") == null ? 0L : outMap.get("rows_count"));
         Map<String, Object> inMap = sqlTemplateDirty.queryForMap(getSql("countIncoming"), cal.getTime());
         prop.put("in_batches", outMap.get("batch_count"));
         prop.put("in_bytes", inMap.get("byte_count") == null ? 0L : inMap.get("byte_count"));
-        prop.put("in_rows", inMap.get("row_count") == null ? 0L : inMap.get("row_count"));
+        prop.put("in_rows", inMap.get("rows_count") == null ? 0L : inMap.get("rows_count"));
     }
 
     protected URL getUpdateUrl() throws MalformedURLException {

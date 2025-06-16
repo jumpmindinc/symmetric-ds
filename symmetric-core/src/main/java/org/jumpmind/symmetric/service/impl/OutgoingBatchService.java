@@ -453,7 +453,7 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         int[] batchesRows = new int[2];
         for (Row row : sqlTemplateDirty.query(getSql("countOutgoingNonSystemBatchesUnsentSql"))) {
             batchesRows[0] = row.getInt("batch_count");
-            batchesRows[1] = row.getInt("row_count");
+            batchesRows[1] = row.getInt("rows_count");
         }
         return batchesRows;
     }
