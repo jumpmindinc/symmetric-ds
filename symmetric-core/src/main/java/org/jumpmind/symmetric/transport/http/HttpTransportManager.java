@@ -60,6 +60,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HttpTransportManager extends AbstractTransportManager implements ITransportManager {
     private static final Logger log = LoggerFactory.getLogger(HttpTransportManager.class);
+    public static final int DEFAULT_MAX_FORM_KEYS = 100000;
     protected ISymmetricEngine engine;
     protected Map<String, String> sessionIdByUri = new HashMap<String, String>();
     protected boolean useHeaderSecurityToken;
@@ -119,7 +120,7 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
         if (list != null && list.size() > 0) {
             int maxFormKeys = engine.getParameterService().getInt(ParameterConstants.TRANSPORT_MAX_FORM_KEYS);
             if (backOffPostCount > 0 && maxFormKeys <= 0) {
-                maxFormKeys = 100000;
+                maxFormKeys = DEFAULT_MAX_FORM_KEYS;
             }
             for (int i = 0; i < backOffPostCount && maxFormKeys > 1; i++) {
                 maxFormKeys /= 2;
@@ -136,11 +137,11 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
                         } else {
                             backOffPostCount++;
                             if (maxFormKeys > FORM_KEYS_PER_BATCH) {
-                                log.info("Ack received a {} response from node {}. The form key limit will be reduced from {} to {} during the next attempt.",
+                                log.warn("Ack received a {} response from node {}. The form key limit will be reduced from {} to {} during the next attempt.",
                                         statusCode, remote.getNodeId(), maxFormKeys, Math.max(maxFormKeys / 2, FORM_KEYS_PER_BATCH));
                             } else {
-                                log.info("Ack received a {} response from node {}. A form key limit of 50000 will take effect during the next attempt.",
-                                        statusCode, remote.getNodeId());
+                                log.warn("Ack received a {} response from node {}. A form key limit of {} will take effect during the next attempt.",
+                                        statusCode, remote.getNodeId(), DEFAULT_MAX_FORM_KEYS / 2);
                             }
                         }
                     }
