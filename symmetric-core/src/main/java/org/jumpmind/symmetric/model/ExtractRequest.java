@@ -55,6 +55,7 @@ public class ExtractRequest implements Serializable {
     private long loadedMillis;
     private long parentRequestId;
     private long numRowsBulkLoaded;
+    private Date loadedTime;
     private Integer extractThreadId;
     private Integer loadThreadId;
 
@@ -284,6 +285,14 @@ public class ExtractRequest implements Serializable {
 
     public long getNumRowsBulkLoaded() {
         return this.numRowsBulkLoaded;
+    }
+
+    public Date getLoadedTime() {
+        return loadedTime;
+    }
+
+    public void setLoadedTime(Date loadedTime) {
+        this.loadedTime = loadedTime;
     }
 
     @Override
