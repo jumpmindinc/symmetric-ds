@@ -116,8 +116,10 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
     @Override
     public boolean createOrAlterTablesIfNecessary(String... tableNames) {
         boolean altered = super.createOrAlterTablesIfNecessary(tableNames);
-        altered = altered || alterTableIdentityGapIfNecessary();
-        altered = altered || alterTableLockingSchemeIfNecessary();
+        if (altered) {
+            alterTableIdentityGapIfNecessary();
+            alterTableLockingSchemeIfNecessary();
+        }
         return altered;
     }
 
@@ -179,6 +181,7 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_MONITOR_EVENT).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_EXTRACT_REQUEST).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_NODE_HOST).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_NODE_SECURITY).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_LOCK).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_JOB).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_FILE_SNAPSHOT).toLowerCase());
