@@ -66,6 +66,9 @@ Sync Conditions:: A procedure language expression included in the trigger text t
 ----
  $(newTriggerValue).status = '2'
 ----
+ifdef::pro[]
+For log-based and time-based capture, sync conditions use the same syntax as a <<Column Match Router>> expression. Sync conditions can reference the old and new values for each column as well as constant values.
+endif::pro[]
 
 Sync On Insert Condition:: Conditional expression for the insert trigger to determine if a change is captured or not.  See Sync Conditions.
 Sync On Update Condition:: Conditional expression for the update trigger to determine if a change is captured or not.  See Sync Conditions.

@@ -136,7 +136,7 @@ Implement this extension point to get status callbacks during trigger creation.
 Implement this extension point and set the name of the Spring bean on the batch_algorithm column of the Channel table to use. This extension point gives fine grained control over how a channel is batched.
 
 ==== IDataRouter
-Implement this extension point and set the name of the Spring bean on the router_type column of the Router table to use. This extension point gives the ability to programmatically decide which nodes data should be routed to.
+Implement this extension point and use the name of the Spring bean, or the Extension ID for an Extension, on the router_type column of the Router table to use. This extension point gives the ability to programmatically decide which nodes data should be routed to.
 
 ==== IHeartbeatListener
 Implement this extension point to get callbacks during the heartbeat job.

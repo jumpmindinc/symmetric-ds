@@ -30,12 +30,12 @@ public class UpdateServiceSqlMap extends AbstractSqlMap {
         // @formatter:off
 
         putSql("countOutgoing",
-            "select count(*) as batch_count, sum(byte_count) as byte_count, sum(data_row_count) as row_count " +
+            "select count(*) as batch_count, sum(byte_count) as byte_count, sum(data_row_count) as rows_count " +
             "from $(outgoing_batch) " +
             "where status = 'OK' and channel_id not in ('config', 'heartbeat') and last_update_time >= ?");
         
         putSql("countIncoming",
-            "select count(*) as batch_count, sum(byte_count) as byte_count, sum(data_row_count) as row_count " +
+            "select count(*) as batch_count, sum(byte_count) as byte_count, sum(data_row_count) as rows_count " +
             "from $(incoming_batch) " +
             "where status = 'OK' and channel_id not in ('config', 'heartbeat') and last_update_time >= ?");
 

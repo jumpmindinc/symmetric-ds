@@ -121,6 +121,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         setSqlMap(new FileSyncServiceSqlMap(platform, createSqlReplacementTokens()));
     }
 
+    @Override
     public boolean refreshFromDatabase() {
         Date date1 = sqlTemplate.queryForObject(getSql("selectMaxFileTriggerLastUpdateTime"), Date.class);
         Date date2 = sqlTemplate.queryForObject(getSql("selectMaxRouterLastUpdateTime"), Date.class);
@@ -139,6 +140,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         return false;
     }
 
+    @Override
     public void trackChanges(boolean force) {
         if (force || engine.getClusterService().lock(ClusterConstants.FILE_SYNC_TRACKER)) {
             try {
@@ -254,10 +256,12 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                             fileTriggerRouter.getFileTrigger().createIOFileFilter());
                     FileTriggerFileModifiedListener listener = new FileTriggerFileModifiedListener(fileTriggerRouter, ctxDate,
                             currentDate, processInfo, useCrc, new FileModifiedCallback(maxRowsBeforeCommit) {
+                                @Override
                                 public void commit(DirectorySnapshot dirSnapshot) {
                                     saveDirectorySnapshot(fileTriggerRouter, dirSnapshot, ignoreFiles);
                                 }
 
+                                @Override
                                 public DirectorySnapshot getLastDirectorySnapshot(String relativeDir) {
                                     return getDirectorySnapshot(fileTriggerRouter, relativeDir);
                                 }
@@ -322,15 +326,18 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         sqlTemplate.update(getSql("deleteFileIncoming"));
     }
 
+    @Override
     public List<FileTrigger> getFileTriggers() {
         return sqlTemplate.query(getSql("selectFileTriggersSql"), new FileTriggerMapper());
     }
 
+    @Override
     public FileTrigger getFileTrigger(String triggerId) {
         return sqlTemplate.queryForObject(getSql("selectFileTriggersSql", "triggerIdWhere"),
                 new FileTriggerMapper(), triggerId);
     }
 
+    @Override
     public List<FileTriggerRouter> getFileTriggerRoutersForCurrentNode(boolean refreshCache) {
         String myNodeGroupId = parameterService.getNodeGroupId();
         List<FileTriggerRouter> allValues = getFileTriggerRouters(refreshCache);
@@ -353,6 +360,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         return sqlTemplate.query(getSql("selectFileTriggerRoutersSql"), new FileTriggerRouterMapper());
     }
 
+    @Override
     public FileTriggerRouter getFileTriggerRouter(String triggerId, String routerId, boolean refreshCache) {
         List<FileTriggerRouter> allValues = getFileTriggerRouters(refreshCache);
         for (FileTriggerRouter ftr : allValues) {
@@ -363,10 +371,12 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         return null;
     }
 
+    @Override
     public void clearCache() {
         cacheManager.flushFileTriggerRouters();
     }
 
+    @Override
     public void saveFileTrigger(FileTrigger fileTrigger) {
         fileTrigger.setLastUpdateTime(new Date());
         if (0 >= sqlTemplate.update(
@@ -408,6 +418,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
+    @Override
     public void saveFileTriggerAsCopy(String originalId, FileTrigger fileTrigger) {
         String newId = fileTrigger.getTriggerId();
         List<FileTrigger> fileTriggers = sqlTemplate.query(getSql("selectFileTriggersSql", "triggerIdWhereLike"),
@@ -426,12 +437,14 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
+    @Override
     public void renameFileTrigger(String oldId, FileTrigger fileTrigger) {
         saveFileTrigger(fileTrigger);
         sqlTemplate.update(getSql("updateFileTriggerIdSql"), fileTrigger.getTriggerId(), oldId);
         deleteFileTrigger(oldId);
     }
 
+    @Override
     public void saveFileTriggerRouter(FileTriggerRouter fileTriggerRouter) {
         fileTriggerRouter.setLastUpdateTime(new Date());
         if (0 >= sqlTemplate.update(
@@ -463,27 +476,32 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         clearCache();
     }
 
+    @Override
     public void renameFileTriggerRouter(String oldTriggerId, String oldRouterId, FileTriggerRouter fileTriggerRouter) {
         deleteFileTriggerRouter(oldTriggerId, oldRouterId);
         saveFileTriggerRouter(fileTriggerRouter);
     }
 
+    @Override
     public void deleteFileTriggerRouter(String triggerId, String routerId) {
         sqlTemplate.update(getSql("deleteFileTriggerRouterSql"), triggerId, routerId);
         clearCache();
     }
 
+    @Override
     public void deleteAllFileTriggerRouters() {
         sqlTemplate.update(getSql("deleteAllFileTriggerRoutersSql"));
         clearCache();
     }
 
+    @Override
     public void deleteFileTriggerRouter(FileTriggerRouter fileTriggerRouter) {
-        sqlTemplate.update(getSql("deleteFileTriggerRouterSql"), (Object) fileTriggerRouter
+        sqlTemplate.update(getSql("deleteFileTriggerRouterSql"), fileTriggerRouter
                 .getFileTrigger().getTriggerId(), fileTriggerRouter.getRouter().getRouterId());
         clearCache();
     }
 
+    @Override
     public void deleteFileTrigger(FileTrigger fileTrigger) {
         deleteFileTrigger(fileTrigger.getTriggerId());
     }
@@ -498,6 +516,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         clearCache();
     }
 
+    @Override
     public DirectorySnapshot getDirectorySnapshot(FileTriggerRouter fileTriggerRouter) {
         return new DirectorySnapshot(fileTriggerRouter, sqlTemplate.query(
                 getSql("selectFileSnapshotSql"), new FileSnapshotMapper(), fileTriggerRouter
@@ -602,6 +621,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                                 Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR });
     }
 
+    @Override
     synchronized public RemoteNodeStatuses pullFilesFromNodes(boolean force) {
         CommunicationType communicationType = engine.getParameterService().is(ParameterConstants.NODE_OFFLINE) ? CommunicationType.OFF_FSPULL
                 : CommunicationType.FILE_PULL;
@@ -610,6 +630,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                 ClusterConstants.FILE_SYNC_PULL, communicationType);
     }
 
+    @Override
     synchronized public RemoteNodeStatuses pushFilesToNodes(boolean force) {
         CommunicationType communicationType = engine.getParameterService().is(ParameterConstants.NODE_OFFLINE) ? CommunicationType.OFF_FSPUSH
                 : CommunicationType.FILE_PUSH;
@@ -626,6 +647,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                 fileSyncBatch.getNodeId(), fileSyncBatch.getBatchId()), zipName.toString() };
     }
 
+    @Override
     public List<OutgoingBatch> sendFiles(ProcessInfo processInfo, Node targetNode,
             IOutgoingTransport outgoingTransport) {
         List<OutgoingBatch> batchesToProcess = getBatchesToProcess(targetNode);
@@ -784,6 +806,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         return batchesToProcess;
     }
 
+    @Override
     public void acknowledgeFiles(OutgoingBatch outgoingBatch) {
         log.debug("Acknowledging file_sync outgoing batch-{}", outgoingBatch.getBatchId());
         List<File> filesToDelete = new ArrayList<File>();
@@ -799,14 +822,13 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                 FileSnapshot fileSnapshot = new FileSnapshot();
                 fileSnapshot.setTriggerId(columnData.get("TRIGGER_ID"));
                 fileSnapshot.setRouterId(columnData.get("ROUTER_ID"));
-                fileSnapshot.setFileModifiedTime(Long.parseLong(columnData
-                        .get("FILE_MODIFIED_TIME")));
                 fileSnapshot.setFileName(columnData.get("FILE_NAME"));
                 fileSnapshot.setRelativeDir(columnData.get("RELATIVE_DIR"));
-                fileSnapshot.setLastEventType(LastEventType.fromCode(columnData
-                        .get("LAST_EVENT_TYPE")));
-                FileTriggerRouter triggerRouter = this.getFileTriggerRouter(
-                        fileSnapshot.getTriggerId(), fileSnapshot.getRouterId(), false);
+                fileSnapshot.setLastEventType(LastEventType.fromCode(columnData.get("LAST_EVENT_TYPE")));
+                if (columnData.get("FILE_MODIFIED_TIME") != null) {
+                    fileSnapshot.setFileModifiedTime(Long.parseLong(columnData.get("FILE_MODIFIED_TIME")));
+                }
+                FileTriggerRouter triggerRouter = this.getFileTriggerRouter(fileSnapshot.getTriggerId(), fileSnapshot.getRouterId(), false);
                 if (triggerRouter != null) {
                     FileTrigger fileTrigger = triggerRouter.getFileTrigger();
                     if (fileTrigger.isDeleteAfterSync()) {
@@ -846,6 +868,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
+    @Override
     public void loadFilesFromPush(String nodeId, InputStream in, OutputStream out) {
         INodeService nodeService = engine.getNodeService();
         Node local = nodeService.findIdentity();
@@ -885,6 +908,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
+    @Override
     public void execute(NodeCommunication nodeCommunication, RemoteNodeStatus status) {
         Node identity = engine.getNodeService().findIdentity();
         if (identity != null) {
@@ -1271,6 +1295,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
     }
 
     class FileTriggerMapper implements ISqlRowMapper<FileTrigger> {
+        @Override
         public FileTrigger mapRow(Row rs) {
             FileTrigger fileTrigger = new FileTrigger();
             fileTrigger.setBaseDir(getEffectiveBaseDir(rs.getString("base_dir")));
@@ -1295,6 +1320,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
     }
 
     class FileTriggerRouterMapper implements ISqlRowMapper<FileTriggerRouter> {
+        @Override
         public FileTriggerRouter mapRow(Row rs) {
             FileTriggerRouter fileTriggerRouter = new FileTriggerRouter();
             String triggerId = rs.getString("trigger_id");
@@ -1321,6 +1347,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
     }
 
     static class FileSnapshotMapper implements ISqlRowMapper<FileSnapshot> {
+        @Override
         public FileSnapshot mapRow(Row rs) {
             FileSnapshot fileSnapshot = new FileSnapshot();
             fileSnapshot.setCrc32Checksum(rs.getLong("crc32_checksum"));
@@ -1345,5 +1372,10 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
     @Override
     public void save(List<FileSnapshot> changes) {
         // TODO Auto-generated method stub
+    }
+
+    @Override
+    public int countEntriesInFileSnapshot() {
+        return sqlTemplate.queryForInt(getSql("countEntriesInFileSnapshot"));
     }
 }

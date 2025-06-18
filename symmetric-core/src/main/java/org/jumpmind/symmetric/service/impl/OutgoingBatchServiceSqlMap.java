@@ -108,17 +108,17 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
         putSql("countOutgoingBatchesByChannelSql",
                 "select count(*) as batch_count, channel_id from $(outgoing_batch) where node_id = ? and channel_id <> 'heartbeat' and status in ('ER','RQ','NE','QY','RT') group by channel_id order by batch_count desc, channel_id");
         putSql("countOutgoingRowsByTargetNodeSql",
-                "select sum(data_row_count) as row_count from $(outgoing_batch) where node_id = ? and channel_id <> 'heartbeat' and status in ('ER','RQ','NE','QY','RT')");
+                "select sum(data_row_count) as rows_count from $(outgoing_batch) where node_id = ? and channel_id <> 'heartbeat' and status in ('ER','RQ','NE','QY','RT')");
         putSql("countOutgoingBatchesByTargetNodeSql",
-                "select count(*) as row_count from $(outgoing_batch) where node_id = ? and status != 'OK'");
+                "select count(*) as rows_count from $(outgoing_batch) where node_id = ? and status != 'OK'");
         putSql("countOutgoingBatchesByTargetNodeExcludingHeartbeatsSql",
-                "select count(*) as row_count from $(outgoing_batch) where node_id = ? and channel_id <> 'heartbeat' and status in ('ER','RQ','NE','QY','RT')");
+                "select count(*) as rows_count from $(outgoing_batch) where node_id = ? and channel_id <> 'heartbeat' and status in ('ER','RQ','NE','QY','RT')");
         putSql("countOutgoingBatchesErrorsSql",
                 "select count(*) from $(outgoing_batch) where error_flag=1");
         putSql("countOutgoingBatchesUnsentSql",
                 "select count(*) from $(outgoing_batch) where status != 'OK'");
         putSql("countOutgoingNonSystemBatchesUnsentSql",
-                "select count(batch_id) as batch_count, sum(data_row_count) as row_count from $(outgoing_batch) where status != 'OK' and channel_id not in ('heartbeat', 'monitor', 'config')");
+                "select count(batch_id) as batch_count, sum(data_row_count) as rows_count from $(outgoing_batch) where status != 'OK' and channel_id not in ('heartbeat', 'monitor', 'config')");
         putSql("getOutgoingBatchesLatestUpdateSql",
                 "select max(last_update_time) from $(outgoing_batch) where status = 'OK' and channel_id not in ('heartbeat', 'monitor', 'config')");
         putSql("countOutgoingBatchesWithStatusSql",

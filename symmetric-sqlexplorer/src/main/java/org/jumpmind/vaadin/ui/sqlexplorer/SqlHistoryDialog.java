@@ -104,7 +104,7 @@ public class SqlHistoryDialog extends ResizableDialog {
         final Set<SqlHistory> histories = new TreeSet<SqlHistory>(settingsProvider.get().getSqlHistory());
         List<SqlHistory> filteredHistories = new ArrayList<SqlHistory>();
         for (SqlHistory history : histories) {
-            if (StringUtils.isBlank(filter) || history.getSqlStatement().toLowerCase().contains(filter.toLowerCase())) {
+            if (!CommonUiUtils.isFilteredOut(history.getSqlStatement(), filter)) {
                 filteredHistories.add(history);
             }
         }

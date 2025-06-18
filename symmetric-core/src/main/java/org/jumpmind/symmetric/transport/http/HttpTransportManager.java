@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -59,10 +60,12 @@ import org.slf4j.LoggerFactory;
  */
 public class HttpTransportManager extends AbstractTransportManager implements ITransportManager {
     private static final Logger log = LoggerFactory.getLogger(HttpTransportManager.class);
+    public static final int DEFAULT_MAX_FORM_KEYS = 100000;
     protected ISymmetricEngine engine;
     protected Map<String, String> sessionIdByUri = new HashMap<String, String>();
     protected boolean useHeaderSecurityToken;
     protected boolean useSessionAuth;
+    protected int backOffPostCount;
 
     public HttpTransportManager() {
     }
@@ -113,19 +116,48 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
 
     public int sendAcknowledgement(Node remote, List<IncomingBatch> list, Node local,
             String securityToken, Map<String, String> requestProperties, String registrationUrl) throws IOException {
+        int statusCode = HttpConnection.HTTP_OK;
         if (list != null && list.size() > 0) {
-            String data = getAcknowledgementData(remote.requires13Compatiblity(), local.getNodeId(), list);
-            log.debug("Sending ack: {}", data);
-            return sendMessage("ack", remote, local, data, securityToken, requestProperties, registrationUrl);
+            int maxFormKeys = engine.getParameterService().getInt(ParameterConstants.TRANSPORT_MAX_FORM_KEYS);
+            if (backOffPostCount > 0 && maxFormKeys <= 0) {
+                maxFormKeys = DEFAULT_MAX_FORM_KEYS;
+            }
+            for (int i = 0; i < backOffPostCount && maxFormKeys > 1; i++) {
+                maxFormKeys /= 2;
+            }
+            int maxByteSize = engine.getParameterService().getInt(ParameterConstants.TRANSPORT_MAX_BYTES_TO_SYNC);
+            for (String data : getAcknowledgementData(remote.requires13Compatiblity(), local.getNodeId(), list, maxFormKeys, maxByteSize)) {
+                log.debug("Sending ack: {}", data);
+                statusCode = sendMessage("ack", remote, local, data, securityToken, requestProperties, registrationUrl);
+                if (statusCode != HttpConnection.HTTP_OK) {
+                    if (statusCode == HttpURLConnection.HTTP_BAD_REQUEST || statusCode == HttpURLConnection.HTTP_ENTITY_TOO_LARGE) {
+                        if (maxFormKeys > 0 && maxFormKeys <= FORM_KEYS_PER_BATCH) {
+                            log.error("Ack received a {} response from node {}. The form key limit of {} cannot be reduced any further.",
+                                    statusCode, remote.getNodeId(), FORM_KEYS_PER_BATCH);
+                        } else {
+                            backOffPostCount++;
+                            if (maxFormKeys > FORM_KEYS_PER_BATCH) {
+                                log.warn("Ack received a {} response from node {}. The form key limit will be reduced from {} to {} during the next attempt.",
+                                        statusCode, remote.getNodeId(), maxFormKeys, Math.max(maxFormKeys / 2, FORM_KEYS_PER_BATCH));
+                            } else {
+                                log.warn("Ack received a {} response from node {}. A form key limit of {} will take effect during the next attempt.",
+                                        statusCode, remote.getNodeId(), DEFAULT_MAX_FORM_KEYS / 2);
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
         }
-        return HttpConnection.HTTP_OK;
+        return statusCode;
     }
 
     public void writeAcknowledgement(OutputStream out, Node remote, List<IncomingBatch> list, Node local,
             String securityToken) throws IOException {
-        String data = getAcknowledgementData(remote.requires13Compatiblity(), local.getNodeId(), list);
-        log.debug("Sending ack: {}", data);
-        writeMessage(out, data);
+        for (String data : getAcknowledgementData(remote.requires13Compatiblity(), local.getNodeId(), list, -1, -1)) {
+            log.debug("Sending ack: {}", data);
+            writeMessage(out, data);
+        }
     }
 
     protected int sendMessage(String action, Node remote, Node local, String data,
