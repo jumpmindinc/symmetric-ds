@@ -238,7 +238,7 @@ task publishDockerLatest(type: com.bmuschko.gradle.docker.tasks.image.DockerPush
 }
 
 task publishDocker(type: com.bmuschko.gradle.docker.tasks.image.DockerPushImage) {
-    dependsOn publishDockerLatest
+    dependsOn buildImage
     images.empty()
     images.add("jumpmind/symmetricds:${version}".toString())
     doLast {
