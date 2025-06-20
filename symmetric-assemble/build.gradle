@@ -241,6 +241,7 @@ task publishDocker(type: com.bmuschko.gradle.docker.tasks.image.DockerPushImage)
     dependsOn buildImage
     images.empty()
     images.add("jumpmind/symmetricds:${version}".toString())
+    images.add("jumpmind/symmetricds:${majorMinorVersion}".toString())
     doLast {
         println "Pushing Docker Image to the jumpmind/symmetricds Repository"
     }
