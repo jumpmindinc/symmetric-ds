@@ -24,13 +24,14 @@ import java.sql.Connection;
 
 import javax.sql.DataSource;
 
+import org.jumpmind.db.model.Column;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDdlBuilder;
 import org.jumpmind.db.platform.IDdlReader;
 import org.jumpmind.db.platform.PermissionResult;
-import org.jumpmind.db.platform.PermissionType;
 import org.jumpmind.db.platform.PermissionResult.Status;
+import org.jumpmind.db.platform.PermissionType;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.SqlException;
@@ -74,6 +75,7 @@ public class HanaDatabasePlatform extends AbstractJdbcDatabasePlatform {
         return new HanaDdlReader(this);
     }
 
+    @Override
     protected ISqlTemplate createSqlTemplateDirty() {
         JdbcSqlTemplate template = (JdbcSqlTemplate) super.createSqlTemplateDirty();
         template.setIsolationLevel(Connection.TRANSACTION_READ_COMMITTED);
@@ -109,5 +111,10 @@ public class HanaDatabasePlatform extends AbstractJdbcDatabasePlatform {
             sql = sql.substring(0, sql.length() - 1);
         }
         return sql + " limit " + limit + " offset " + offset;
+    }
+
+    @Override
+    public boolean canColumnBeUsedInWhereClause(Column column) {
+        return super.canColumnBeUsedInWhereClause(column) && !isLob(column);
     }
 }

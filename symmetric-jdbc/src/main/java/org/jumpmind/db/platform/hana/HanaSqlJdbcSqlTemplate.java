@@ -23,6 +23,7 @@ package org.jumpmind.db.platform.hana;
 import javax.sql.DataSource;
 
 import org.jumpmind.db.platform.DatabaseInfo;
+import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.db.sql.SymmetricLobHandler;
@@ -31,6 +32,11 @@ public class HanaSqlJdbcSqlTemplate extends JdbcSqlTemplate {
     public HanaSqlJdbcSqlTemplate(DataSource dataSource, SqlTemplateSettings settings, SymmetricLobHandler lobHandler,
             DatabaseInfo databaseInfo) {
         super(dataSource, settings, lobHandler, databaseInfo);
+        primaryKeyViolationCodes = new int[] { 301 };
+        foreignKeyViolationCodes = new int[] { 461 };
+        foreignKeyChildExistsViolationCodes = new int[] { 462 };
+        deadlockCodes = new int[] { 133 };
+        uniqueKeyViolationNameRegex = new String[] { "unique constraint violated.* indexname=(.*)" };
     }
 
     @Override
@@ -38,7 +44,13 @@ public class HanaSqlJdbcSqlTemplate extends JdbcSqlTemplate {
         return "select current_identity_value() FROM dummy;";
     }
 
+    @Override
     protected boolean allowsNullForIdentityColumn() {
         return false;
+    }
+
+    @Override
+    public String getDatabaseProductName() {
+        return DatabaseNamesConstants.HANA;
     }
 }

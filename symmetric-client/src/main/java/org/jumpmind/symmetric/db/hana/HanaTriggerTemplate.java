@@ -29,12 +29,12 @@ public class HanaTriggerTemplate extends AbstractTriggerTemplate {
     public HanaTriggerTemplate(ISymmetricDialect symmetricDialect) {
         super(symmetricDialect);
         emptyColumnTemplate = "''";
-        stringColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else replace(replace($(tableAlias).\"$(columnName)\",'\\\\','\\\\\\\\'),'\"','\\\\\"') end \n";
+        stringColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else concat(concat('\"', replace(replace($(tableAlias).\"$(columnName)\",'\\','\\\\'),'\"','\\\"')), '\"') end \n";
         numberColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else concat(concat('\"',cast($(tableAlias).\"$(columnName)\" as char)),'\"') end \n";
         datetimeColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else concat(concat('\"',cast($(tableAlias).\"$(columnName)\" as char)),'\"') end\n";
         clobColumnTemplate = stringColumnTemplate;
         blobColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else '\"' || bintohex($(tableAlias).\"$(columnName)\") || '\"' end \n";
-        booleanColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else concat(concat('\"',cast($(tableAlias).\"$(columnName)\" as unsigned)),'\"')) end \n";
+        booleanColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else concat(concat('\"',cast($(tableAlias).\"$(columnName)\" as char)),'\"') end \n";
         triggerConcatCharacter = "||";
         newTriggerValue = ":new";
         oldTriggerValue = ":old";

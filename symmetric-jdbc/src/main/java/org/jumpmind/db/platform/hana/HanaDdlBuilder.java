@@ -31,8 +31,14 @@ import org.jumpmind.db.platform.IDdlBuilder;
 public class HanaDdlBuilder extends AbstractDdlBuilder implements IDdlBuilder {
     public HanaDdlBuilder() {
         super(DatabaseNamesConstants.HANA);
+        databaseInfo.setGeneratedColumnsSupported(true);
+        databaseInfo.setSystemIndicesReturned(true);
+        databaseInfo.setAutoIncrementUpdateAllowed(true);
+        databaseInfo.addNativeTypeMapping(Types.VARCHAR, "NVARCHAR", Types.NVARCHAR);
+        databaseInfo.addNativeTypeMapping(Types.CHAR, "NCHAR", Types.NCHAR);
         databaseInfo.addNativeTypeMapping(Types.LONGVARBINARY, "BLOB", Types.BLOB);
-        databaseInfo.addNativeTypeMapping(Types.LONGVARCHAR, "CLOB", Types.CLOB);
+        databaseInfo.addNativeTypeMapping(Types.LONGVARCHAR, "NCLOB", Types.NCLOB);
+        databaseInfo.addNativeTypeMapping(Types.CLOB, "NCLOB", Types.NCLOB);
     }
 
     @Override
