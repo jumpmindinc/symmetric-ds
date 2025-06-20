@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric;
 
+import org.eclipse.jetty.ee10.webapp.WebAppContext;
 import org.eclipse.jetty.server.AbstractConnector;
 import org.eclipse.jetty.server.ConnectionFactory;
 import org.eclipse.jetty.server.Connector;
@@ -31,7 +32,6 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
-import org.eclipse.jetty.webapp.WebAppContext;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.common.ServerConstants;

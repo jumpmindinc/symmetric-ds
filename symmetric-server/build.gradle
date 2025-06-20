@@ -42,7 +42,7 @@ apply from: symAssembleDir + '/asciidoc.gradle'
         }
 
         provided "jakarta.websocket:jakarta.websocket-api:$websocketVersion"
-        provided "org.eclipse.jetty.http2:http2-server:$jettyVersion"
+        provided "org.eclipse.jetty.http2:jetty-http2-server:$jettyVersion"
         provided "org.eclipse.jetty:jetty-alpn-server:$jettyVersion"
         provided "org.eclipse.jetty:jetty-alpn-java-server:$jettyVersion"
         testImplementation project(path: ':symmetric-util', configuration: 'testArtifacts')
