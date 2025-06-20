@@ -196,23 +196,27 @@ public class DbCompare {
                     Map<String, Object> recordToDelete = new HashMap<String, Object>();
                     // need to find a way to determine which row, source or target, has the uni key
                     if (targetTableContainUnitypes) {
-                        for (String key : targetRow.keySet()) {
-                            if (key.startsWith("_uni_")) {
-                                recordToAdd.put(key.substring(5), targetRow.get(key));
-                                recordToDelete.put(key, targetRow.get(key));
+                        if (targetRow != null) {
+                            for (String key : targetRow.keySet()) {
+                                if (key.startsWith("_uni_")) {
+                                    recordToAdd.put(key.substring(5), targetRow.get(key));
+                                    recordToDelete.put(key, targetRow.get(key));
+                                }
                             }
+                            modifyRowForUnitypes(targetRow, recordToAdd, true);
+                            modifyRowForUnitypes(targetRow, recordToDelete, false);
                         }
-                        modifyRowForUnitypes(targetRow, recordToAdd, true);
-                        modifyRowForUnitypes(targetRow, recordToDelete, false);
                     } else if (sourceTableContainUnitypes) {
-                        for (String key : sourceRow.keySet()) {
-                            if (key.startsWith("_uni_")) {
-                                recordToAdd.put(key.substring(5), sourceRow.get(key));
-                                recordToDelete.put(key, sourceRow.get(key));
+                        if (sourceRow != null) {
+                            for (String key : sourceRow.keySet()) {
+                                if (key.startsWith("_uni_")) {
+                                    recordToAdd.put(key.substring(5), sourceRow.get(key));
+                                    recordToDelete.put(key, sourceRow.get(key));
+                                }
                             }
+                            modifyRowForUnitypes(sourceRow, recordToAdd, true);
+                            modifyRowForUnitypes(sourceRow, recordToDelete, false);
                         }
-                        modifyRowForUnitypes(sourceRow, recordToAdd, true);
-                        modifyRowForUnitypes(sourceRow, recordToDelete, false);
                     }
                     keyCheck = System.currentTimeMillis() - keyCheck;
                     log.debug("Took " + keyCheck + " milliseconds to check for unitype keys and adjust.");
