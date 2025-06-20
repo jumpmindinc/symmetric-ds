@@ -97,22 +97,24 @@ public class DbValueComparator {
     public static String convertString(String string, Column column, boolean isPrimaryKey) {
         String stringToConvert = string;
         String utf8String = null;
-        try {
-            if (stringToConvert.contains("\"")) {
-                stringToConvert = stringToConvert.substring(1, stringToConvert.length() - 1);
-            }
-            if (!stringToConvert.toLowerCase().matches(".*[a-z].*") && !isPrimaryKey) {
-                stringToConvert = new String(Hex.decodeHex(stringToConvert));
+        if (stringToConvert != null) {
+            try {
                 if (stringToConvert.contains("\"")) {
                     stringToConvert = stringToConvert.substring(1, stringToConvert.length() - 1);
                 }
+                if (!stringToConvert.toLowerCase().matches(".*[a-z].*") && !isPrimaryKey) {
+                    stringToConvert = new String(Hex.decodeHex(stringToConvert));
+                    if (stringToConvert.contains("\"")) {
+                        stringToConvert = stringToConvert.substring(1, stringToConvert.length() - 1);
+                    }
+                }
+                stringToConvert = "fffe" + stringToConvert;
+                utf8String = new String(Hex.decodeHex(stringToConvert), StandardCharsets.UTF_16);
+            } catch (DecoderException e) {
+                log.warn("Failed to decode the following record " + stringToConvert + " from column " + column.getName()
+                        + " of type " + column.getJdbcTypeName() + " using mapped type of " + column.getMappedType()
+                        + ". Original string was " + string, e);
             }
-            stringToConvert = "fffe" + stringToConvert;
-            utf8String = new String(Hex.decodeHex(stringToConvert), StandardCharsets.UTF_16);
-        } catch (DecoderException e) {
-            log.warn("Failed to decode the following record " + stringToConvert + " from column " + column.getName() + " of type " + column.getJdbcTypeName()
-                    + " using mapped type of "
-                    + column.getMappedType() + ". Original string was " + string, e);
         }
         return utf8String;
     }
