@@ -115,10 +115,10 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
 
     @Override
     public boolean createOrAlterTablesIfNecessary(String... tableNames) {
-        boolean altered = super.createOrAlterTablesIfNecessary(tableNames);
-        altered = altered || alterTableIdentityGapIfNecessary();
-        altered = altered || alterTableLockingSchemeIfNecessary();
-        return altered;
+        boolean alteredTables = super.createOrAlterTablesIfNecessary(tableNames);
+        boolean alteredIdentityGap = alterTableIdentityGapIfNecessary();
+        boolean alteredLockingScheme = alterTableLockingSchemeIfNecessary();
+        return alteredTables || alteredIdentityGap || alteredLockingScheme;
     }
 
     public boolean alterTableIdentityGapIfNecessary() {
@@ -178,10 +178,14 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_INCOMING_BATCH).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_MONITOR_EVENT).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_EXTRACT_REQUEST).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_NODE).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_NODE_SECURITY).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_NODE_HOST).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_LOCK).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_JOB).toLowerCase());
         tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_FILE_SNAPSHOT).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_TABLE_RELOAD_REQUEST).toLowerCase());
+        tables.add(TableConstants.getTableName(prefix, TableConstants.SYM_TABLE_RELOAD_STATUS).toLowerCase());
         return tables;
     }
 
