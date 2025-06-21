@@ -4,9 +4,9 @@ buildscript {
     }
 
     dependencies {
-        classpath 'org.asciidoctor:asciidoctorj-pdf:1.6.2'
-        classpath 'org.asciidoctor:asciidoctor-gradle-jvm:3.3.2'
-		classpath 'com.diffplug.spotless:spotless-plugin-gradle:6.4.2'
+        //classpath 'org.asciidoctor:asciidoctorj-pdf:1.6.2'
+        classpath 'org.asciidoctor:asciidoctor-gradle-jvm:4.0.4'
+        classpath 'com.diffplug.spotless:spotless-plugin-gradle:7.0.3'
 		classpath 'com.bmuschko:gradle-docker-plugin:9.3.4'
         classpath 'io.github.humblerookie:gradle-github-plugin:0.5.0'
         classpath 'org.jacoco:org.jacoco.ant:0.8.5'
@@ -14,8 +14,9 @@ buildscript {
 }
 
 plugins {
-    id "org.sonarqube" version "4.3.1.3277"
+    id "org.sonarqube" version "6.1.0.5360"
 	id 'com.vaadin' version "$vaadinPluginVersion" apply false
+	id 'org.asciidoctor.jvm.convert' version '4.0.4' apply false
 }
 
 apply plugin: 'java-library'

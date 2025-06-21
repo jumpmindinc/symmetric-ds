@@ -83,12 +83,60 @@ apply from: symAssembleDir + '/asciidoc.gradle'
                     include 'bin/dbcompare'
                     include 'bin/sym_service'
                     include 'bin/setenv'
-                    fileMode 0755
+                    filePermissions {
+                    	user {
+                    		read = true
+                    		write = true
+                    		execute = true
+                    	}
+                    	group {
+                    		read = true
+                    		write = false
+                    		execute = true
+                    	}
+                    	other {
+                    		read = true
+                    		write = false
+                    		execute = true
+                    	}
+                    }
                 }
                 from ('src/main/deploy') {
                     include 'security/*'
-                    fileMode 0600
-                    dirMode 0700
+                    filePermissions {
+                    	user {
+                    		read = true
+                    		write = true
+                    		execute = false
+                    	}
+                    	group {
+                    		read = false
+                    		write = false
+                    		execute = false
+                    	}
+                    	other {
+                    		read = false
+                    		write = false
+                    		execute = false
+                    	}
+                    }
+                    dirPermissions {
+                    	user {
+                    		read = true
+                    		write = true
+                    		execute = true
+                    	}
+                    	group {
+                    		read = false
+                    		write = false
+                    		execute = false
+                    	}
+                    	other {
+                    		read = false
+                    		write = false
+                    		execute = false
+                    	}
+                    }
                 }
                 into('doc') { from ("../symmetric-server/build/doc") }
                 into('lib') {
