@@ -21,12 +21,12 @@
 package org.jumpmind.symmetric.db.hana;
 
 import org.jumpmind.db.model.Table;
-import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.AbstractSymmetricDialect;
+import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.service.IParameterService;
 
 public class HanaSymmetricDialect extends AbstractSymmetricDialect {
@@ -70,6 +70,7 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
         return "SESSION_CONTEXT('" + SYNC_TRIGGERS_DISABLED_USER_VARIABLE + "')  is null";
     }
 
+    @Override
     public String getTransactionTriggerExpression(String defaultCatalog, String defaultSchema, Trigger trigger) {
         return parameterService.getTablePrefix() + "_" + "transaction_id()";
     }
