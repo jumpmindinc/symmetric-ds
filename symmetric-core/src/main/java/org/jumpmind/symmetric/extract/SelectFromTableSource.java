@@ -164,8 +164,10 @@ public class SelectFromTableSource extends SelectFromSource {
                 }
                 isDefaultRouter = dataRouter instanceof DefaultDataRouter;
                 if (routingContext == null) {
-                    NodeChannel channel = batch != null ? configurationService.getNodeChannel(batch.getChannelId(), false)
-                            : new NodeChannel(triggerRouter.getTrigger().getChannelId());
+                    NodeChannel channel = batch != null ? configurationService.getNodeChannel(batch.getChannelId(), false) : null;
+                    if (channel == null) {
+                        channel = new NodeChannel(triggerRouter.getTrigger().getChannelId());
+                    }
                     routingContext = new SimpleRouterContext(batch == null ? null : batch.getTargetNodeId(), channel);
                 }
                 sourceTable = columnsAccordingToTriggerHistory.lookup(triggerRouter.getRouter().getRouterId(), history, false, true, false, false);
