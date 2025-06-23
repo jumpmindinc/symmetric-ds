@@ -1476,23 +1476,13 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     @Override
-    public List<ExtractRequest> getPendingTablesForExtractByLoadId(long loadId) {
-        return sqlTemplate.query(getSql("selectIncompleteTablesForExtractByLoadId"), new ExtractRequestMapper(), loadId, engine.getNodeId());
+    public List<ExtractRequest> getTablesForExtractByLoadId(long loadId) {
+        return sqlTemplate.query(getSql("selectTablesForExtractByLoadId"), new ExtractRequestMapper(), loadId, engine.getNodeId());
     }
 
     @Override
-    public List<ExtractRequest> getCompletedTablesForExtractByLoadId(long loadId) {
-        return sqlTemplate.query(getSql("selectCompletedTablesForExtractByLoadId"), new ExtractRequestMapper(), loadId, engine.getNodeId());
-    }
-
-    @Override
-    public List<ExtractRequest> getPendingTablesForExtractByLoadIdAndNodeId(long loadId, String nodeId) {
-        return sqlTemplate.query(getSql("selectIncompleteTablesForExtractByLoadIdAndNodeId"), new ExtractRequestMapper(), loadId, nodeId);
-    }
-
-    @Override
-    public List<ExtractRequest> getCompletedTablesForExtractByLoadIdAndNodeId(long loadId, String nodeId) {
-        return sqlTemplate.query(getSql("selectCompletedTablesForExtractByLoadIdAndNodeId"), new ExtractRequestMapper(), loadId, nodeId);
+    public List<ExtractRequest> getTablesForExtractByLoadIdAndNodeId(long loadId, String nodeId) {
+        return sqlTemplate.query(getSql("selectTablesForExtractByLoadIdAndNodeId"), new ExtractRequestMapper(), loadId, nodeId);
     }
 
     @Override
@@ -2237,6 +2227,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             request.setParentRequestId(row.getLong("parent_request_id"));
             request.setExtractedRows(row.getLong("extracted_rows"));
             request.setExtractedMillis(row.getLong("extracted_millis"));
+            request.setLoadedTime(row.getDateTime("loaded_time"));
             request.setExtractThreadId(row.getInteger("extract_thread_id"));
             request.setLoadThreadId(row.getInteger("load_thread_id"));
             request.setNumRowsBulkLoaded(row.getLong("bulk_rows_loaded"));
