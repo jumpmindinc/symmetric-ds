@@ -90,7 +90,7 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
             String sql = "CREATE OR REPLACE function $(functionName)                                                                                                                                                             "
                     + "   returns output1 varchar(50) LANGUAGE SQLSCRIPT AS                                                                                                                                                 "
                     + "   begin                                                                                                                                                              "
-                    + "      select transaction_id into output1 from M_TRANSACTIONS where connection_id = CURRENT_CONNECTION;                                                                                                         "
+                    + "      select transaction_id into output1 from M_TRANSACTIONS where connection_id = CURRENT_CONNECTION and transaction_id != -1;                                                                                                         "
                     + "   end;    ";
             install(sql, transactionId, ddl);
         }
