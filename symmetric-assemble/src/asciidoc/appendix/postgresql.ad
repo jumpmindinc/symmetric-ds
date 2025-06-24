@@ -58,15 +58,27 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA {SYMMETRIC_SCHEMA} TO  {APPLICATION USER}
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA {SYMMETRIC_SCHEMA} TO  {APPLICATION USER}
 
 ----
+To support multiple database client connections initiated by SymmetricDS, inspect and increase number of connections allows by the PostgreSQL server by setting the system parameter and restarting PostgreSQL server.
+
+[source, Sql]
+----
+ALTER SYSTEM SET max_connections = 300;
+SHOW max_connections;
+----
 
 ifdef::pro[]
 ==== Log Miner
 When using Log Miner instead of triggers, it will use the logical decoding feature introduced in PostgreSQL version 9.4.
-The WAL level should be set to "logical" on the Postgres server.
-Edit postgresql.conf and restart Postgres after changing:
+The WAL level should be set to "logical" on the Postgres server (requires restart of the PostgreSQL server).
+Either edit the postgresql.conf or run commands below and restart PostgreSQL after changing:
 
-   wal_level = logical
-   max_replication_slots = 10
+[source, Sql]
+----
+ALTER SYSTEM SET wal_level = logical;
+ALTER SYSTEM SET max_replication_slots = 10;
+SHOW wal_level;
+SHOW max_replication_slots;
+----
 
 If the SymmetricDS user is not a superuser, the following role attribute needs to be added:
 
@@ -99,7 +111,78 @@ endif::pro[]
 |Point, Lseg, Box, Path, Polygon, Circle|Yes
 |===
 
+
+==== Truncate Table Event Capture
+
+SymmetricDS supports capturing the Truncate Table event on PostgreSQL. To use this feature set the *postgres.trigger.capture.truncate.event* startup parameter to true and configure tables for replication. Restart of SymmetricDS service and rebuilding of all triggers is required for this change to take effect. 
+It is important that both database connections for the source and target SymmetricDS nodes have same default schema name. 
+
+==== DDL Event Capture
+
+PostgreSQL is among a few databases which support creating triggers to capture DDL events and TRUNCATE TABLE events. SymmetricDS will capture and replicate these events when the *trigger.capture.ddl.changes* startup parameter is configured (=true). Restart of SymmetricDS service and rebuilding of all triggers is required for this change to take effect. This feature requires deep understanding on how PostgreSQL created and changes database objects and should be tested & implemented in close cooperation with the database administrator. User account for SymmetricDS connection to the source database must have SUPERUSER level access because of the DDL event triggers. Permissions at the target node may be setup at the SUPERUSER level or a lower level, but must accommodate all DDL events, expected to be issued at the source.
+Note: turn off this parameter and verify DDL triggers have been removed before conducting database maintenance! 
+By default, only tables configured for replication have table-level DDL events captured (alter table, drop table, etc.). 
+
+It may be helpful to locate SymmetricDS runtime tables in a dedicated schema, by adding the *currentSchema=<your_schema>* JDBC driver parameter to the database connection string (db.url parameter). Specified schema must already exist or SymmetricDS will fail to connect and/or check permissions required to set up runtime tables.
+[source, Sql]
+----
+db.url=jdbc:postgresql://localhost:13432/lab63pg13admin*?currentSchema=sds*
+----
+
+Additionally, the *trigger.capture.ddl.check.trigger.hist* parameter can be set to false, to capture all table-level DDL events, even when for tables not yet configured in SymmetricDS for replication.
+[source, Sql]
+----
+trigger.capture.ddl.check.trigger.hist=false
+----
+
+Note that the trigger.capture.ddl.check.trigger.hist parameter has no effect on the Truncate Table events, which are controlled by the postgres.trigger.capture.truncate.event parameter. The truncate table event requires a designated trigger, hence the source table must be configured for replication in SymmetricDS.
+
+==== DDL Event Capture
+
+DBAs may need to temporarily disable capture of DDL events in order to perform changes or maintenances focused only one database. To ignore capturing DDL events set the following session-level PostgreSQL variable:
+[source, Sql]
+----
+SELECT set_config('symmetric.triggers_disabled', '1', false);
+
+<DDL script here>
+
+SELECT set_config('symmetric.triggers_disabled', '0', false);
+---
+
+For custom stores procedures and functions performing DDL (such as create temporary work table) user the PERFORM command:
+[source, Sql]
+----
+PERFORM set_config('symmetric.triggers_disabled', '1', false);
+
+<SQL commands inside a Routine, Stored procedure or Function>
+
+PERFORM set_config('symmetric.triggers_disabled', '0', false);
+---
+
+
+
 ==== Bulk Loading
 
-SymmetricDS has bulk loading capability available for Postgres. When registering a PostgreSQL database with SymmetricDS, bulk loading will be enabled by default. SymmetricDS specifies data loader types on a channel by channel basis.
+SymmetricDS has bulk loading capability available for PostgreSQL. When registering a PostgreSQL database with SymmetricDS, bulk loading will be enabled by default. SymmetricDS specifies data loader types on a channel by channel basis.
 To utilize Postgres Bulk loading versus straight JDBC insert, specify "bulk" in the data_loader_type column of sym_channel.
+
+ifdef::pro[]
+
+Also, SymmetricDS has a binary data import mode, which speeds up import of data into PostgreSQL even more. Set the *postgres.bulk.copy.binary* parameter to true to activate this mode. If data is not compatible, a message will be added to the log file and loading will continue in a regular text-based mode.
+
+.PostgreSQL data types compatible with the binary data import mode
+|===
+|Data Type|Supported?
+
+|SmallInt, Integer, BigInt|Yes
+|Decimal, Numeric|Yes
+|Real|Yes
+|Boolean|Yes
+|Bit|Yes
+|Character, Character varying, Char, Varchar, Text, JSON|Yes
+|JSONb|Yes
+|Time|Yes
+|Date, Timestamp, TimestampZ|Yes*, Gregorian calendar dates (after October 15, 1582)
+|===
+
+endif::pro[]

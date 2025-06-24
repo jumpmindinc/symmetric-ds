@@ -54,12 +54,14 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
     protected static String sharedTriggersDisabledFunction;
     protected static String sharedNodeDisabledFunction;
     protected static String sharedReadLargeObjectFunction;
+    protected static boolean versionSupportsReplaceTriggers;
 
 
     public PostgreSqlSymmetricDialect(IParameterService parameterService, IDatabasePlatform platform) {
         super(parameterService, platform);
         this.triggerTemplate = new PostgreSqlTriggerTemplate(this);
         this.supportsDdlTriggers = databaseMajorVersion > 9 || (databaseMajorVersion == 9 && databaseMinorVersion >= 3);
+        versionSupportsReplaceTriggers = databaseMajorVersion >= 14;
         if (parameterService.is(ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW)) {
             try {
                 getEarliestTransactionStartTime();
@@ -91,7 +93,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             }
         }
         if (!isFunctionInstalled(sharedTriggersDisabledFunction)) {
-            String sql = "CREATE or REPLACE FUNCTION $(functionName)() RETURNS INTEGER AS $$ "
+            String sql = "CREATE OR REPLACE FUNCTION $(functionName)() RETURNS INTEGER AS $$ "
                     + "   DECLARE "
                     + "     triggerDisabled INTEGER; "
                     + "   BEGIN "
@@ -105,7 +107,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             log.debug("Created shared function {} for tracking when triggers are disabled.", sharedTriggersDisabledFunction);
         }
         if (!isFunctionInstalled(sharedNodeDisabledFunction)) {
-            String sql = "CREATE or REPLACE FUNCTION $(functionName)() RETURNS VARCHAR AS $$ "
+            String sql = "CREATE OR REPLACE FUNCTION $(functionName)() RETURNS VARCHAR AS $$ "
                     + "   DECLARE "
                     + "     nodeId VARCHAR(50); "
                     + "   BEGIN "
@@ -138,7 +140,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             install(sql, sharedReadLargeObjectFunction, ddl);
             log.info("Created shared function {} for processing LOBs", sharedReadLargeObjectFunction);
         }
-        if (parameterService.is(ParameterConstants.TRIGGER_CAPTURE_DDL_CHANGES)) {
+        if (parameterService.is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE)) {
             createSharedTruncateCaptureFunctions(ddl);
         }
     }
@@ -183,7 +185,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
          String sharedTruncateEventFunction = templatesMap.getTruncateSharedFunctionName();
          if (isFunctionInstalled(sharedTruncateEventFunction)) {
              uninstall(SQL_DROP_FUNCTION + "() cascade", sharedTruncateEventFunction);
-             log.error("Removed shared function for capturing table truncate events={}", sharedTruncateEventFunction);
+             log.info("Removed shared function for capturing table truncate events={}", sharedTruncateEventFunction);
          }
      }
 
@@ -366,5 +368,9 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
 
     public boolean isFunctionInstalled(String functionName) {
         return installed(SQL_FUNCTION_INSTALLED, functionName);
+    }
+
+    public boolean supportsReplaceTriggers() {
+        return versionSupportsReplaceTriggers;
     }
 }

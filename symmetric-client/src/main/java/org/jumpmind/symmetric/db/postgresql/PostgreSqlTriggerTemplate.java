@@ -31,17 +31,26 @@ import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerHistory;
+import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.util.FormatUtils;
 
 public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
     String sqlBatchDelimiter;
     String infinityDateExpression;
-    protected static String sharedTruncateEventFunction;
+    protected static String createTriggerCommandBeginning = "create trigger ";
+    protected static String sharedTruncateEventFunctionName;
+    protected static String currentTimestampAndZoneExpression = "CURRENT_TIMESTAMP";
+    protected static String invokerSecurityClause = " ";
 
     public PostgreSqlTriggerTemplate(ISymmetricDialect symmetricDialect) {
         super(symmetricDialect);
-        sqlBatchDelimiter = symmetricDialect.getParameterService().getString(ParameterConstants.TRIGGER_CAPTURE_DDL_DELIMITER, "$");
-        infinityDateExpression = symmetricDialect.getParameterService().is(ParameterConstants.POSTGRES_CONVERT_INFINITY_DATE_TO_NULL, true) ? "''"
+        IParameterService parameterService = symmetricDialect.getParameterService();
+        PostgreSqlSymmetricDialect pgDialect = castCurrentDialectToPostgres();
+        createTriggerCommandBeginning = getCreateTriggerCommandBeginning(pgDialect);
+        currentTimestampAndZoneExpression = getCurrentTimestampAndZoneExpression(pgDialect);
+        invokerSecurityClause = getSecurityClause(pgDialect);
+        sqlBatchDelimiter = parameterService.getString(ParameterConstants.TRIGGER_CAPTURE_DDL_DELIMITER, "$");
+        infinityDateExpression = parameterService.is(ParameterConstants.POSTGRES_CONVERT_INFINITY_DATE_TO_NULL, true) ? "''"
                 : "cast($(tableAlias).\"$(columnName)\" as varchar)";
         //@formatter:off        
         geometryColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else '\"' || replace(replace(cast(ST_AsEWKT($(tableAlias).\"$(columnName)\") as varchar),$$\\$$,$$\\\\$$),'\"',$$\\\"$$) || '\"' end" ;
@@ -85,10 +94,10 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         oldTriggerValue = "old" ;
         oldColumnPrefix = "" ;
         newColumnPrefix = "" ;
-        sharedTruncateEventFunction = "f"+this.symmetricDialect.getTablePrefix()+"_on_truncate_table_configured_for_replication";
+        sharedTruncateEventFunctionName = "f"+this.symmetricDialect.getTablePrefix()+"_on_truncate_table_configured_for_replication";
         otherColumnTemplate = stringColumnTemplate;
         sqlTemplates = new HashMap<String,String>();
-        sqlTemplates.put(sharedTruncateEventFunction,"CREATE OR REPLACE FUNCTION $(defaultSchema)"+sharedTruncateEventFunction+"() RETURNS TRIGGER AS $$ "
+        sqlTemplates.put(sharedTruncateEventFunctionName,"CREATE OR REPLACE FUNCTION $(defaultSchema)"+sharedTruncateEventFunctionName+"() RETURNS TRIGGER AS $$ "
                 + "\nDECLARE "
                 + "\n    eventDdl VARCHAR(3000); "
                 + "\n    argumentNo int:=0; "
@@ -128,7 +137,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
                 + "\n      group by tr.trigger_id, tr.channel_id "
                 + "\n      limit 1; "
                 + "\n      if (channelId is null) then  "
-                + "\n        RAISE EXCEPTION 'Unable to capture TRUNCATE event because SymmetricDS configuration is incomplete (channel is NULL)! Table=%', tableName "
+                + "\n        RAISE EXCEPTION 'Unable to capture truncate event for table, because SymmetricDS configuration is incomplete (channel is NULL)! Schema=%, Table=%, Command=%', tableSchema, tableName, eventDdl "
                 + "\n            USING MESSAGE = 'Run SyncTriggers job in SymmetricDS (Disabling this trigger will cause data to be out-of-sync!)'; "
                 + "\n        RETURN NEW;  "
                 + "\n      end if; "
@@ -136,16 +145,16 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
                 + "\n      VALUES (tableName, 'S', histId, "
                 + "\n         '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(eventDdl,'\\','\\\\'),'\"','\\\"') || chr(13) || chr(10) || '\",ddl',"
                 + "\n         channelId, 'source',"
-                + "\n         TO_CHAR(CURRENT_TIMESTAMP, 'truncate-YYYY-MM-DD')||'T'||TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI:MSOF'),  CURRENT_TIMESTAMP); "
-                + "\n      RAISE NOTICE 'Captured truncate event for the % table; Schema=%, tableName=%, Channel=%, event.DDL=%', tableName, tableSchema, tableName, channelId, eventDdl;"
+                + "\n         TO_CHAR(CURRENT_TIMESTAMP, 'truncate-YYYY-MM-DD')||'T'||TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI:MSOF'), " + currentTimestampAndZoneExpression + "); "
+                + "\n      RAISE NOTICE 'Captured truncate event for table; Schema=%, Table=%, Channel=%, Command=%', tableSchema, tableName, channelId, eventDdl;"
                 + "\n    else "
-                + "\n      RAISE NOTICE 'Skipped truncate event for the % table, because replication is disabled; Schema=%, tableName=%', tableName, tableSchema, tableName;"
+                + "\n      RAISE NOTICE 'Skipped truncate event for table, because replication is disabled; Schema=%, Table=%, Command=%', tableSchema, tableName, eventDdl;"
                 + "\n    end if; "
                 + "\n    RETURN NEW;  "
-                + "\nEND $$ LANGUAGE plpgsql" + getSecurityClause() + ";");
+                + "\nEND $$ LANGUAGE plpgsql" + invokerSecurityClause + ";");
         
-        sqlTemplates.put("post"+sharedTruncateEventFunction+"Template",
-                "create or replace trigger $(triggerName) after truncate on $(sourceTableName)"
+        sqlTemplates.put("post"+sharedTruncateEventFunctionName+"Template",
+                createTriggerCommandBeginning + "$(triggerName) after truncate on $(sourceTableName)"
                 + " for each STATEMENT execute function $(defaultSchema)$(sharedFunctionName)(); ");         
         
         sqlTemplates.put(INSERT_TRIGGER_TEMPLATE,
@@ -164,13 +173,13 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "                                      $(txIdExpression),                                                                                                                                               \n" +
 "                                      $(defaultSchema)$(prefixName)_node_disabled(),                                                                                                                   \n" +
 "                                      $(externalSelect),                                                                                                                                               \n" +
-"                                      " + getCreateTimeExpression(symmetricDialect) + "                                                                                                                \n" +
+"                                      " + currentTimestampAndZoneExpression + "                                                                                                                \n" +
 "                                    );                                                                                                                                                                 \n" +
 "                                  end if;                                                                                                                                                              \n" +
 "                                  $(custom_on_insert_text)                                                                                                                                             \n" +
 "                                  return null;                                                                                                                                                         \n" +
 "                                end;                                                                                                                                                                   \n" +
-"                                $function$ language plpgsql" + getSecurityClause() + ";");
+"                                $function$ language plpgsql" + invokerSecurityClause + ";");
 
         sqlTemplates.put("insertReloadTriggerTemplate" ,
 "create or replace function $(schemaName)f$(triggerName)() returns trigger as $function$                                                                                                                \n" +
@@ -188,17 +197,17 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "                                      $(txIdExpression),                                                                                                                                               \n" +
 "                                      $(defaultSchema)$(prefixName)_node_disabled(),                                                                                                                   \n" +
 "                                      $(externalSelect),                                                                                                                                               \n" +
-"                                      " + getCreateTimeExpression(symmetricDialect) + "                                                                                                                \n" +
+"                                      " + currentTimestampAndZoneExpression + "                                                                                                                \n" +
 "                                    );                                                                                                                                                                 \n" +
 "                                  end if;                                                                                                                                                              \n" +
 "                                  $(custom_on_insert_text)                                                                                                                                             \n" +
 "                                  return null;                                                                                                                                                         \n" +
 "                                end;                                                                                                                                                                   \n" +
-"                                $function$ language plpgsql" + getSecurityClause() + ";");
+"                                $function$ language plpgsql" + invokerSecurityClause + ";");
 
         
         sqlTemplates.put("insertPostTriggerTemplate" ,
-"create or replace trigger $(triggerName) after insert on $(schemaName)$(tableName)                                                                                                                                \n" +
+createTriggerCommandBeginning + "$(triggerName) after insert on $(schemaName)$(tableName)                                                                                                                                \n" +
 "                                for each row execute procedure $(schemaName)f$(triggerName)();                                                                                                         " );
 
         sqlTemplates.put(UPDATE_TRIGGER_TEMPLATE ,
@@ -224,14 +233,14 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "                                      $(txIdExpression),                                                                                                                                               \n" +
 "                                      $(defaultSchema)$(prefixName)_node_disabled(),                                                                                                                   \n" +
 "                                      $(externalSelect),                                                                                                                                               \n" +
-"                                      " + getCreateTimeExpression(symmetricDialect) + "                                                                                                                \n" +
+"                                      " + currentTimestampAndZoneExpression + "                                                                                                                \n" +
 "                                    );                                                                                                                                                                 \n" +
 "                                  end if;                                                                                                                                                              \n" +
 "                                  end if;                                                                                                                                                              \n" +
 "                                  $(custom_on_update_text)                                                                                                                                             \n" +
 "                                  return null;                                                                                                                                                         \n" +
 "                                end;                                                                                                                                                                   \n" +
-"                                $function$ language plpgsql" + getSecurityClause() + ";");
+"                                $function$ language plpgsql" + invokerSecurityClause + ";");
 
         sqlTemplates.put("updateReloadTriggerTemplate" ,
 "create or replace function $(schemaName)f$(triggerName)() returns trigger as $function$                                                                                                                \n" +
@@ -254,17 +263,17 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "                                      $(txIdExpression),                                                                                                                                               \n" +
 "                                      $(defaultSchema)$(prefixName)_node_disabled(),                                                                                                                   \n" +
 "                                      $(externalSelect),                                                                                                                                               \n" +
-"                                      " + getCreateTimeExpression(symmetricDialect) + "                                                                                                                \n" +
+"                                      " + currentTimestampAndZoneExpression + "                                                                                                                \n" +
 "                                    );                                                                                                                                                                 \n" +
 "                                  end if;                                                                                                                                                              \n" +
 "                                  end if;                                                                                                                                                              \n" +
 "                                  $(custom_on_update_text)                                                                                                                                             \n" +
 "                                  return null;                                                                                                                                                         \n" +
 "                                end;                                                                                                                                                                   \n" +
-"                                $function$ language plpgsql" + getSecurityClause() + ";");
+"                                $function$ language plpgsql" + invokerSecurityClause + ";");
 
         sqlTemplates.put("updatePostTriggerTemplate" ,
-"create or replace trigger $(triggerName) after update on $(schemaName)$(tableName)                                                                                                                                \n" +
+createTriggerCommandBeginning + "$(triggerName) after update on $(schemaName)$(tableName)                                                                                                                                \n" +
 "                                for each row execute procedure $(schemaName)f$(triggerName)();                                                                                                         " );
 
         sqlTemplates.put(DELETE_TRIGGER_TEMPLATE,
@@ -284,16 +293,16 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "                                      $(txIdExpression),                                                                                                                                               \n" +
 "                                      $(defaultSchema)$(prefixName)_node_disabled(),                                                                                                                   \n" +
 "                                      $(externalSelect),                                                                                                                                               \n" +
-"                                      " + getCreateTimeExpression(symmetricDialect) + "                                                                                                                \n" +
+"                                      " + currentTimestampAndZoneExpression + "                                                                                                                \n" +
 "                                    );                                                                                                                                                                 \n" +
 "                                  end if;                                                                                                                                                              \n" +
 "                                  $(custom_on_delete_text)                                                                                                                                             \n" +
 "                                  return null;                                                                                                                                                         \n" +
 "                                end;                                                                                                                                                                   \n" +
-"                                $function$ language plpgsql" + getSecurityClause() + ";");
+"                                $function$ language plpgsql" + invokerSecurityClause + ";");
 
         sqlTemplates.put("deletePostTriggerTemplate" ,
-"create or replace trigger $(triggerName) after delete on $(schemaName)$(tableName)                                                                                                                                \n" +
+createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(tableName)                                                                                                                                \n" +
 "                                for each row execute procedure $(schemaName)f$(triggerName)();                                                                                                         " );
   
         sqlTemplates.put("initialLoadSqlTemplate" ,
@@ -339,12 +348,12 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "            (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "            values (tableName, '" + DataEventType.SQL.getCode() + "', histId,\n" +
 "            '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
-"            channelId, $(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression(symmetricDialect) + ");\n" +
+"            channelId, $(defaultSchema)$(prefixName)_node_disabled(), " + currentTimestampAndZoneExpression + ");\n" +
 "        end if;\n" +
 "    end if;\n" +
 "end loop;\n" +
 "end;\n" +
-"$function$ language plpgsql" + getSecurityClause() + ";" +
+"$function$ language plpgsql" + invokerSecurityClause + ";" +
 "create or replace function f$(triggerName)_drop() returns event_trigger as\n" +
 "$function$\n" +
 "declare cmd record;\n" +
@@ -360,11 +369,11 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "        values ('$(prefixName)_node', '" + DataEventType.SQL.getCode() + "', histId,\n" +
 "        '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
-"        'config', $(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression(symmetricDialect) + ");\n" +
+"        'config', $(defaultSchema)$(prefixName)_node_disabled(), " + currentTimestampAndZoneExpression + ");\n" +
 "    end if;\n" +
 "end loop;\n" +
 "end;\n" +
-"$function$ language plpgsql" + getSecurityClause() + ";");
+"$function$ language plpgsql" + invokerSecurityClause + ";");
 
         sqlTemplates.put("allDdlTriggerTemplate",
 "create or replace function f$(triggerName)() returns event_trigger as\n" +
@@ -410,11 +419,11 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "        values (tableName, '" + DataEventType.SQL.getCode() + "', histId,\n" +
 "        '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
-"        channelId, $(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression(symmetricDialect) + ");\n" +
+"        channelId, $(defaultSchema)$(prefixName)_node_disabled(), " + currentTimestampAndZoneExpression + ");\n" +
 "    end if;\n" +
 "end loop;\n" +
 "end;\n" +
-"$function$ language plpgsql" + getSecurityClause() + ";" +
+"$function$ language plpgsql" + invokerSecurityClause + ";" +
 "create or replace function f$(triggerName)_drop() returns event_trigger as\n" +
 "$function$\n" +
 "declare cmd record;\n" +
@@ -430,11 +439,11 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
 "        values ('$(prefixName)_node', '" + DataEventType.SQL.getCode() + "', histId,\n" +
 "        '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(rowData,'\\','\\\\'),'\"','\\\"') || '\",ddl',\n" +
-"        'config', $(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression(symmetricDialect) + ");\n" +
+"        'config', $(defaultSchema)$(prefixName)_node_disabled(), " + currentTimestampAndZoneExpression + ");\n" +
 "    end if;\n" +
 "end loop;\n" +
 "end;\n" +
-"$function$ language plpgsql" + getSecurityClause() + ";");
+"$function$ language plpgsql" + invokerSecurityClause + ";");
         
         sqlTemplates.put("postDdlTriggerTemplate", "create event trigger $(triggerName) on ddl_command_end execute procedure f$(triggerName)();" + 
 "create event trigger $(triggerName)_drop on sql_drop execute procedure f$(triggerName)_drop();");
@@ -445,8 +454,8 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         return true;
     }
     
-    protected final String getCreateTimeExpression(ISymmetricDialect symmetricDialect) {
-        String timezone = symmetricDialect.getParameterService().getString(ParameterConstants.DATA_CREATE_TIME_TIMEZONE);
+    protected final String getCurrentTimestampAndZoneExpression(PostgreSqlSymmetricDialect pgDialect ) {
+        String timezone = pgDialect.getParameterService().getString(ParameterConstants.DATA_CREATE_TIME_TIMEZONE);
         if (StringUtils.isEmpty(timezone)) {
             return "CURRENT_TIMESTAMP";
         } else {
@@ -454,8 +463,15 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         }    
     }
     
-    protected final String getSecurityClause() {
-        if (symmetricDialect.getParameterService().is(ParameterConstants.POSTGRES_SECURITY_DEFINER, false)) {
+    protected final String getCreateTriggerCommandBeginning(PostgreSqlSymmetricDialect pgDialect ) {
+        if (pgDialect.supportsReplaceTriggers() && pgDialect.getParameterService().is(ParameterConstants.ALLOW_TRIGGER_CREATE_OR_REPLACE, true)) {
+            return "create or replace trigger ";
+        }        
+        return "create trigger";
+    }
+    
+    protected final String getSecurityClause(PostgreSqlSymmetricDialect pgDialect ) {
+        if (pgDialect.getParameterService().is(ParameterConstants.POSTGRES_SECURITY_DEFINER, false)) {
             return " security definer";
         }
         return "";
@@ -480,11 +496,12 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
                     && ( StringUtils.isBlank(defaultSchema) == StringUtils.isBlank(tableSchema) )
                     && defaultSchema.contentEquals( tableSchema);
         boolean includeTruncateTrigger = (!trigger.isSyncOnDelete() && dml == DataEventType.INSERT  
-                                        || trigger.isSyncOnDelete() && dml == DataEventType.DELETE ); 
+                                                || trigger.isSyncOnDelete() && dml == DataEventType.DELETE ); 
         if( includeTruncateTrigger && !internalTable) {
-            ddl = createPostTriggerDDLForTruncate(  trigger, history, channel,   tablePrefix, originalTable, defaultCatalog, defaultSchema);
-            if (ddl == null) {
-                ddl = "";
+                ddl = createPostTriggerDDLForTruncate(  trigger, history, channel,   tablePrefix, originalTable, defaultCatalog, defaultSchema);
+                if (ddl == null) {
+                    ddl = "";
+                
             }
         }
         return ddl + super.createPostTriggerDDL(dml, trigger, history, channel, tablePrefix, originalTable, defaultCatalog, defaultSchema);
@@ -498,7 +515,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
             return ddl;
         }                                                                                                   
 
-        String truncateTriggerTemplate = "post"+sharedTruncateEventFunction+"Template";
+        String truncateTriggerTemplate = "post"+sharedTruncateEventFunctionName+"Template";
         ddl = sqlTemplates.get(truncateTriggerTemplate);
         if (StringUtils.isBlank(ddl)) {
             log.warn("Missing definition of a trigger statement {} for truncate events.", truncateTriggerTemplate);
@@ -506,7 +523,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         }
         ddl = FormatUtils.replace("triggerName", truncateTriggerName, ddl);
         ddl = FormatUtils.replace("sourceTableName", originalTable.getFullyQualifiedTableName(), ddl);
-        ddl = FormatUtils.replace("sharedFunctionName", sharedTruncateEventFunction, ddl);
+        ddl = FormatUtils.replace("sharedFunctionName", sharedTruncateEventFunctionName, ddl);
         ddl = replaceTemplateVariables(DataEventType.DELETE, trigger, history, channel, tablePrefix, originalTable, originalTable, defaultCatalog, defaultSchema, ddl);
         
         if(log.isDebugEnabled()) {
@@ -539,39 +556,49 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
         }
         return truncateTriggerName;
     }
-
     
-    protected PostgreSqlSymmetricDialect getPostgresDialect() {
-        if(this.symmetricDialect==null || !(this.symmetricDialect instanceof PostgreSqlSymmetricDialect)) {
-            log.error("Invalid symmetricDialect object detected! dialect={}", this.symmetricDialect);
-            throw new RuntimeException("Invalid symmetricDialect object detected!");
+    protected PostgreSqlSymmetricDialect castCurrentDialectToPostgres() {
+        if(this.symmetricDialect==null ) {
+            String errMsg = String.format("Current symmetricDialect object should not be null!");
+            log.error(errMsg);
+            throw new RuntimeException(errMsg );
+        }        
+        if(!(this.symmetricDialect instanceof PostgreSqlSymmetricDialect)) {
+            String className = this.symmetricDialect == null ? "null" : this.symmetricDialect.getClass().getName() ;
+            String errMsg = String.format("Current symmetricDialect object is incompatible with PostgreSqlSymmetricDialect! Dialect=%s", className);
+            log.error(errMsg);
+            throw new RuntimeException(errMsg );
         }
         return (PostgreSqlSymmetricDialect)this.symmetricDialect;
     }
 
     public String createSharedTruncateCaptureFunction(String tablePrefix, String defaultCatalog, String defaultSchema) {
-        PostgreSqlSymmetricDialect dialect = getPostgresDialect();
-        if (dialect.isFunctionInstalled(sharedTruncateEventFunction)) {
-            log.debug("Detected shared function {} for capturing table truncate events. Name={}", sharedTruncateEventFunction);
+        PostgreSqlSymmetricDialect pgDialect = castCurrentDialectToPostgres();
+        if (!(pgDialect.getParameterService().is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE))){
+            return "";
+        }
+        if (pgDialect.isFunctionInstalled(sharedTruncateEventFunctionName)) {
+            log.debug("Detected shared function {} for capturing table truncate events. Name={}", sharedTruncateEventFunctionName);
             return "";
         }  
-        String ddl = sqlTemplates.get(sharedTruncateEventFunction);
+        String ddl = sqlTemplates.get(sharedTruncateEventFunctionName);
         if (StringUtils.isBlank(ddl)) {
-            log.warn("Missing definition of the shared function {} for capturing table truncate events.", sharedTruncateEventFunction);
+            log.warn("Missing definition of the shared function {} for capturing table truncate events.", sharedTruncateEventFunctionName);
             return "";
         }
         ddl = FormatUtils.replace("prefixName", tablePrefix, ddl);
+        ddl = FormatUtils.replace("replicationEnabledCondition", pgDialect.getSyncTriggersExpression(), ddl);
         ddl = replaceDefaultSchemaAndCatalog(ddl, defaultCatalog, defaultSchema);
         if(log.isDebugEnabled()) {
-            log.debug("Injected shared function {} for capturing table truncate events. DDL={}", sharedTruncateEventFunction, ddl);
+            log.debug("Injected shared function {} for capturing table truncate events. DDL={}", sharedTruncateEventFunctionName, ddl);
         }else{
-            log.info("Injected shared function {} for capturing table truncate events.", sharedTruncateEventFunction);
+            log.info("Injected shared function {} for capturing table truncate events.", sharedTruncateEventFunctionName);
         }
         return ddl;
     }
     
     public String getTruncateSharedFunctionName() {
-        return sharedTruncateEventFunction;
+        return sharedTruncateEventFunctionName;
     }
     
     public String getEntry(String key) {

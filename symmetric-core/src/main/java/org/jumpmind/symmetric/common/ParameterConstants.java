@@ -443,6 +443,7 @@ final public class ParameterConstants {
     public final static String SNAPSHOT_MAX_BATCHES = "snapshot.max.batches";
     public final static String SNAPSHOT_MAX_NODE_CHANNELS = "snapshot.max.node.channels";
     public final static String SNAPSHOT_OPERATION_TIMEOUT_MS = "snapshot.operation.timeout.ms";
+    public final static String POSTGRES_TRIGGER_CAPTURE_TRUNCATE = "postgres.trigger.capture.truncate.event";
     public final static String POSTGRES_SECURITY_DEFINER = "postgres.security.definer";
     public final static String POSTGRES_CONVERT_INFINITY_DATE_TO_NULL = "postgres.convert.infinity.date.to.null";
     public final static String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
