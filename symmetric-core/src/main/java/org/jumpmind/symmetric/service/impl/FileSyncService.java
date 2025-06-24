@@ -970,7 +970,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                     ((FileOutgoingTransport) transport).setProcessedBatches(batches);
                 }
                 if (transport.isOpen()) {
-                    List<BatchAck> batchAcks = readAcks(batches, transport,
+                    List<BatchAck> batchAcks = readAcks(batches, status.getNodeId(), transport,
                             transportManager, engine.getAcknowledgeService(), null);
                     status.updateOutgoingStatus(batches, batchAcks);
                 }

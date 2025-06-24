@@ -85,4 +85,6 @@ public interface IDataExtractorService {
 
     public void updateExtractRequestStatuses(ISqlTransaction transaction, long loadId, String sourceNodeId,
             String fromStatus, String toStatus);
+
+    public void incrementBackOffCount(String nodeId);
 }
