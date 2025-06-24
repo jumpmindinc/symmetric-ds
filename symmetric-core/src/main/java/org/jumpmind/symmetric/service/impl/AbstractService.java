@@ -356,7 +356,7 @@ abstract public class AbstractService implements IService {
     /**
      * Try a configured number of times to get the ACK through.
      */
-    protected void sendAck(Node remote, Node local, NodeSecurity localSecurity,
+    protected boolean sendAck(Node remote, Node local, NodeSecurity localSecurity,
             List<IncomingBatch> list, ITransportManager transportManager, String queue) throws IOException {
         assertNotNull(remote, "Node remote cannot be null. Maybe there is a missing sym_node row.");
         assertNotNull(local, "Node local cannot be null. Maybe there is a missing sym_node row.");
@@ -364,6 +364,7 @@ abstract public class AbstractService implements IService {
         Exception exception = null;
         int statusCode = -1;
         int numberOfStatusSendRetries = parameterService.getInt(ParameterConstants.DATA_LOADER_NUM_OF_ACK_RETRIES);
+        boolean success = true;
         for (int i = 0; i < numberOfStatusSendRetries && statusCode != WebConstants.SC_OK; i++) {
             try {
                 Map<String, String> requestProperties = null;
@@ -375,9 +376,13 @@ abstract public class AbstractService implements IService {
                         localSecurity.getNodePassword(), requestProperties, parameterService.getRegistrationUrl());
                 exception = null;
             } catch (Exception e) {
+                success = false;
                 exception = e;
             }
-            if (statusCode != WebConstants.SC_OK) {
+            if (statusCode == WebConstants.SC_OK) {
+                success = true;
+            } else {
+                success = false;
                 String httpMessage = WebConstants.getHttpMessage(statusCode);
                 boolean retry = statusCode != WebConstants.REGISTRATION_REQUIRED && statusCode != WebConstants.REGISTRATION_PENDING &&
                         statusCode != WebConstants.SYNC_DISABLED && statusCode != WebConstants.SC_FORBIDDEN && statusCode != WebConstants.SC_AUTH_EXPIRED;
@@ -406,9 +411,10 @@ abstract public class AbstractService implements IService {
                 }
             }
         }
+        return success;
     }
 
-    protected List<BatchAck> readAcks(List<OutgoingBatch> batches, IOutgoingWithResponseTransport transport,
+    protected List<BatchAck> readAcks(List<OutgoingBatch> batches, String nodeId, IOutgoingWithResponseTransport transport,
             ITransportManager transportManager, IAcknowledgeService acknowledgeService, IDataExtractorService dataExtratorService)
             throws IOException {
         Set<Long> batchIds = new HashSet<Long>(batches.size());
@@ -441,6 +447,7 @@ abstract public class AbstractService implements IService {
             log.debug("Saving ack: {}, {}", batchInfo.getBatchId(), (batchInfo.isResend() ? "RS" : batchInfo.isOk() ? "OK" : "ER"));
             acknowledgeService.ack(batchInfo);
         }
+        boolean isMissingAck = false;
         for (Long batchId : batchIds) {
             if (batchId < batchIdInError) {
                 for (OutgoingBatch outgoingBatch : batches) {
@@ -461,9 +468,13 @@ abstract public class AbstractService implements IService {
                         } else {
                             log.warn(message.toString());
                         }
+                        isMissingAck = true;
                     }
                 }
             }
+        }
+        if (isMissingAck && dataExtratorService != null) {
+            dataExtratorService.incrementBackOffCount(nodeId);
         }
         return batchAcks;
     }
