@@ -65,6 +65,9 @@ public interface ITransportManager {
     public IIncomingTransport getConfigTransport(Node remote, Node local, String securityToken,
             String symmetricVersion, String configVersion, String registrationUrl) throws IOException;
 
+    public IIncomingTransport getBandwidthPullTransport(Node remote, Node local, String securityToken,
+            Map<String, String> requestProperties, String registrationUrl, long sampleSize) throws IOException;
+
     public IOutgoingWithResponseTransport getBandwidthPushTransport(Node remote, Node local, String securityToken,
             Map<String, String> requestProperties, String registrationUrl) throws IOException;
 

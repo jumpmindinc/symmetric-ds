@@ -84,6 +84,12 @@ public class HttpBandwidthBalancerTest {
                         return sampleSize / Double.parseDouble(url);
                     }
 
+                    @Override
+                    public double getDownloadKbpsFor(Node remoteNode, Node localNode, long sampleSize,
+                            long maxTestDuration) {
+                        return 0;
+                    }
+
                     public double getUploadKbpsFor(Node remoteNode, Node localNode, long sampleSize, long maxTestDuration) {
                         return -1.0d;
                     }

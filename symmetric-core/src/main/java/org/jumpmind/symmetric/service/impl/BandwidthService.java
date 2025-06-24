@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
@@ -38,6 +37,7 @@ import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.service.IBandwidthService;
 import org.jumpmind.symmetric.transport.BandwidthTestResults;
+import org.jumpmind.symmetric.transport.IIncomingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.transport.http.HttpConnection;
 import org.slf4j.Logger;
@@ -59,9 +59,22 @@ public class BandwidthService implements IBandwidthService {
     }
 
     public double getDownloadKbpsFor(String syncUrl, long sampleSize, long maxTestDuration) {
+        return getDownloadKbpsForImpl(syncUrl, null, null, sampleSize, maxTestDuration);
+    }
+
+    public double getDownloadKbpsFor(Node remoteNode, Node localNode, long sampleSize, long maxTestDuration) {
+        return getDownloadKbpsForImpl(remoteNode.getSyncUrl(), remoteNode, localNode, sampleSize, maxTestDuration);
+    }
+
+    protected double getDownloadKbpsForImpl(String syncUrl, Node remoteNode, Node localNode, long sampleSize, long maxTestDuration) {
         double downloadSpeed = -1d;
         try {
-            BandwidthTestResults bw = getDownloadResultsFor(syncUrl, sampleSize, maxTestDuration);
+            BandwidthTestResults bw;
+            if (remoteNode != null && localNode != null) {
+                bw = getDownloadResultsFor(remoteNode, localNode, sampleSize, maxTestDuration);
+            } else {
+                bw = getDownloadResultsFor(syncUrl, sampleSize, maxTestDuration);
+            }
             downloadSpeed = (int) bw.getKbps();
         } catch (SocketTimeoutException e) {
             log.warn("Socket timeout while attempting to contact {}", syncUrl);
@@ -90,6 +103,32 @@ public class BandwidthService implements IBandwidthService {
         return bw;
     }
 
+    protected BandwidthTestResults getDownloadResultsFor(Node remoteNode, Node localNode, long sampleSize,
+            long maxTestDuration) throws IOException {
+        IIncomingTransport incoming = null;
+        try {
+            NodeSecurity identitySecurity = engine.getNodeService().findNodeSecurity(localNode.getNodeId(), true);
+            incoming = engine.getTransportManager().getBandwidthPullTransport(remoteNode, localNode, identitySecurity.getNodePassword(),
+                    new HashMap<String, String>(), engine.getParameterService().getRegistrationUrl(), sampleSize);
+            byte[] buffer = new byte[1024];
+            BandwidthTestResults bw = new BandwidthTestResults();
+            bw.start();
+            try (InputStream is = incoming.openStream()) {
+                int r;
+                while (-1 != (r = is.read(buffer)) && bw.getElapsed() <= maxTestDuration) {
+                    bw.transmitted(r);
+                }
+            }
+            bw.stop();
+            log.info("{} was calculated to have a download bandwidth of {} kbps", remoteNode.getSyncUrl(), bw.getKbps());
+            return bw;
+        } finally {
+            if (incoming != null) {
+                incoming.close();
+            }
+        }
+    }
+
     public double getUploadKbpsFor(Node remoteNode, Node localNode, long sampleSize, long maxTestDuration) throws IOException {
         double uploadSpeed = -1d;
         try {
@@ -106,11 +145,9 @@ public class BandwidthService implements IBandwidthService {
     protected BandwidthTestResults getUploadResultsFor(Node remoteNode, Node localNode, long sampleSize, long maxTestDuration) throws IOException {
         IOutgoingWithResponseTransport outgoing = null;
         try {
-            Map<String, String> requestProperties = new HashMap<String, String>();
-            requestProperties.put("direction", "push");
             NodeSecurity identitySecurity = engine.getNodeService().findNodeSecurity(localNode.getNodeId(), true);
-            outgoing = engine.getTransportManager().getBandwidthPushTransport(
-                    remoteNode, localNode, identitySecurity.getNodePassword(), requestProperties, engine.getParameterService().getRegistrationUrl());
+            outgoing = engine.getTransportManager().getBandwidthPushTransport(remoteNode, localNode,
+                    identitySecurity.getNodePassword(), new HashMap<String, String>(), engine.getParameterService().getRegistrationUrl());
             outgoing.getSuspendIgnoreChannelLists(engine.getConfigurationService(), Constants.CHANNEL_DEFAULT, remoteNode);
             long startTime = System.currentTimeMillis();
             BufferedWriter writer = outgoing.openWriter();
@@ -157,7 +194,7 @@ public class BandwidthService implements IBandwidthService {
             double dlSpeed = 0d;
             if (isPullEnabled(localNode, remoteNode)) {
                 try {
-                    dlSpeed = engine.getBandwidthService().getDownloadKbpsFor(remoteNode.getSyncUrl(), payload, 5000);
+                    dlSpeed = engine.getBandwidthService().getDownloadKbpsFor(remoteNode, localNode, payload, 5000);
                     bw.setKbps(dlSpeed);
                 } catch (Exception e) {
                     bw.setFailure(true);

@@ -359,9 +359,52 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     }
 
     @Override
+    public IIncomingTransport getBandwidthPullTransport(Node remote, Node local, String securityToken,
+            Map<String, String> requestProperties, String registrationUrl, long sampleSize) throws IOException {
+        StringBuilder urlBuilder = new StringBuilder(buildURL(WebConstants.URL_BANDWIDTH, remote, local, securityToken, registrationUrl));
+        boolean supportsPropertiesInHeader = !Version.isOlderThanVersion(remote.getSymmetricVersion(), "3.16.4");
+        if (!supportsPropertiesInHeader) {
+            if (requestProperties != null) {
+                for (Map.Entry<String, String> entry : requestProperties.entrySet()) {
+                    append(urlBuilder, entry.getKey(), entry.getValue());
+                }
+            }
+            append(urlBuilder, WebConstants.DIRECTION, WebConstants.URL_PULL);
+            append(urlBuilder, WebConstants.SAMPLE_SIZE, String.valueOf(sampleSize));
+        }
+        String localNodeId = local.getNodeId();
+        HttpConnection conn = createGetConnectionFor(new URL(urlBuilder.toString()), localNodeId, securityToken);
+        if (supportsPropertiesInHeader) {
+            if (requestProperties != null) {
+                for (Map.Entry<String, String> entry : requestProperties.entrySet()) {
+                    conn.addRequestProperty(entry.getKey(), entry.getValue());
+                }
+            }
+            conn.addRequestProperty(WebConstants.HEADER_DIRECTION, WebConstants.URL_PULL);
+            conn.addRequestProperty(WebConstants.HEADER_SAMPLE_SIZE, String.valueOf(sampleSize));
+        }
+        return new HttpIncomingTransport(this, conn, engine.getParameterService(), localNodeId, securityToken);
+    }
+
+    @Override
     public IOutgoingWithResponseTransport getBandwidthPushTransport(Node remote, Node local, String securityToken,
             Map<String, String> requestProperties, String registrationUrl) throws IOException {
-        URL url = new URL(resolveURL(remote.getSyncUrl(), registrationUrl) + "/" + WebConstants.URL_BANDWIDTH + "?direction=push");
+        StringBuilder urlBuilder = new StringBuilder(buildURL(WebConstants.URL_BANDWIDTH, remote, local, securityToken, registrationUrl));
+        boolean supportsPropertiesInHeader = !Version.isOlderThanVersion(remote.getSymmetricVersion(), "3.16.4");
+        if (supportsPropertiesInHeader) {
+            if (requestProperties == null) {
+                requestProperties = new HashMap<String, String>();
+            }
+            requestProperties.put(WebConstants.HEADER_DIRECTION, WebConstants.URL_PUSH);
+        } else {
+            if (requestProperties != null) {
+                for (Map.Entry<String, String> entry : requestProperties.entrySet()) {
+                    append(urlBuilder, entry.getKey(), entry.getValue());
+                }
+            }
+            append(urlBuilder, WebConstants.DIRECTION, WebConstants.URL_PUSH);
+        }
+        URL url = new URL(urlBuilder.toString());
         return new HttpOutgoingTransport(this, url, getHttpTimeOutInMs(), getHttpConnectTimeOutInMs(), isUseCompression(remote),
                 getCompressionStrategy(), getCompressionLevel(), local.getNodeId(),
                 securityToken, isOutputStreamEnabled(), getOutputStreamSize(), false, requestProperties);
