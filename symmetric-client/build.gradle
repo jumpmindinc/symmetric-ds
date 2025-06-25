@@ -27,7 +27,7 @@ apply from: symAssembleDir + '/common.gradle'
         compileOnly "org.hsqldb:hsqldb:$hsqldbVersion"
         compileOnly "org.xerial:sqlite-jdbc:$sqliteVersion"
 
-    compileOnly ("org.apache.hbase:hbase-client:2.4.17") {
+        compileOnly ("org.apache.hbase:hbase-client:2.4.17") {
             exclude group: 'log4j'
             exclude group: 'org.slf4j'
             exclude group: 'ch.qos.logback'
