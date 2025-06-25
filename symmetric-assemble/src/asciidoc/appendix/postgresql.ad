@@ -58,7 +58,7 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA {SYMMETRIC_SCHEMA} TO  {APPLICATION USER}
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA {SYMMETRIC_SCHEMA} TO  {APPLICATION USER}
 
 ----
-To support multiple database client connections initiated by SymmetricDS, inspect and increase number of connections allows by the PostgreSQL server by setting the system parameter and restarting PostgreSQL server.
+To support multiple database client connections initiated by SymmetricDS, inspect and increase number of connections allowed by the PostgreSQL server. Review  and change the max_connections system parameter (restart the PostgreSQL server to take effect!).
 
 [source, Sql]
 ----
