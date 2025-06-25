@@ -274,6 +274,9 @@ public class OracleDdlReader extends AbstractJdbcDdlReader {
                 defaultValue = defaultValue.substring(2, defaultValue.length() - 2);
             }
             column.setDefaultValue(unescape(defaultValue, "'", "''"));
+            if (column.getMappedTypeCode() == Types.SQLXML) {
+                column.setGenerated(false);
+            }
         }
         return column;
     }

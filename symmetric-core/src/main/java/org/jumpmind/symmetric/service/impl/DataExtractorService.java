@@ -180,6 +180,7 @@ import org.slf4j.MDC;
 public class DataExtractorService extends AbstractService implements IDataExtractorService,
         INodeCommunicationExecutor {
     final static long MS_PASSED_BEFORE_BATCH_REQUERIED = 5000;
+    final static long BACKOFF_BYTE_THRESHOLD = 2048;
 
     protected enum ExtractMode {
         FOR_SYM_CLIENT, FOR_PAYLOAD_CLIENT, EXTRACT_ONLY
@@ -201,6 +202,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     private IClusterService clusterService;
     private Map<String, BatchLock> locks = new ConcurrentHashMap<String, BatchLock>();
     private CustomizableThreadFactory threadPoolFactory;
+    private long backOffCount;
 
     public DataExtractorService(ISymmetricEngine engine) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
@@ -626,9 +628,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                 transferInfo.setStatus(ProcessStatus.OK);
                                 break;
                             }
-                            if (streamToFileEnabled || mode == ExtractMode.FOR_PAYLOAD_CLIENT || (currentBatch.isExtractJobFlag() && parameterService.is(
-                                    ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB))) {
-                                if (totalBytesSend > initialLoadMaxBytesToSync) {
+                            if (streamToFileEnabled || mode == ExtractMode.FOR_PAYLOAD_CLIENT) {
+                                Channel channel = configurationService.getChannel(currentBatch.getChannelId());
+                                if (channel != null && channel.isReloadFlag() && totalBytesSend != 0 &&
+                                        totalBytesSend + currentBatch.getByteCount() > initialLoadMaxBytesToSync) {
                                     if (!logMaxBytesReached) {
                                         logMaxBytesReached = true;
                                         log.info(
@@ -636,6 +639,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                                         + "The remaining batches will be send on a subsequent sync.",
                                                 new Object[] { i, futures.size(), targetNode.getNodeId(), totalBytesSend, initialLoadMaxBytesToSync });
                                     }
+                                    changeBatchStatus(Status.NE, currentBatch, mode);
                                     transferInfo.setStatus(ProcessStatus.OK);
                                     break;
                                 }
@@ -645,6 +649,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                 currentBatch = sendOutgoingBatch(transferInfo, targetNode, currentBatch, isRetry,
                                         dataWriter, writer, mode);
                                 totalBytesSend += currentBatch.getByteCount();
+                                log.debug("Sent batch {} with {} bytes, total bytes sent is {}", currentBatch.getNodeBatchId(), currentBatch.getByteCount(),
+                                        totalBytesSend);
                             }
                             processedBatches.add(currentBatch);
                             if (currentBatch.getStatus() != Status.OK) {
@@ -765,7 +771,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         extractInfo.setCurrentLoadId(extractBatch.getLoadId());
         extractInfo.setTotalDataCount(extractBatch.getDataRowCount());
         FutureOutgoingBatch outgoingBatch = new FutureOutgoingBatch(extractBatch, false);
-        final long maxBytesToSync = parameterService.getLong(ParameterConstants.TRANSPORT_MAX_BYTES_TO_SYNC);
+        final long maxBytesToSync = getTransportMaxBytesToSync();
         final boolean streamToFileEnabled = parameterService.is(ParameterConstants.STREAM_TO_FILE_ENABLED);
         if (!status.shouldExtractSkip) {
             if (extractBatch.isExtractJobFlag() && extractBatch.getStatus() != Status.IG) {
@@ -796,16 +802,17 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                     outgoingBatch = new FutureOutgoingBatch(
                             extractOutgoingBatch(extractInfo, targetNode, dataWriter, extractBatch, streamToFileEnabled, true, mode, null),
                             isRetry);
-                    status.batchExtractCount++;
-                    status.byteExtractCount += extractBatch.getByteCount();
-                    if (status.byteExtractCount >= maxBytesToSync && status.batchExtractCount < activeBatches.size()) {
+                    if (status.byteExtractCount != 0 && status.byteExtractCount + extractBatch.getByteCount() >= maxBytesToSync) {
                         log.info(
                                 "Reached the total byte threshold after {} of {} batches were extracted for node '{}' (extracted {} bytes, the max is {}).  "
                                         + "The remaining batches will be extracted on a subsequent sync.",
                                 new Object[] { status.batchExtractCount, activeBatches.size(), targetNode.getNodeId(), status.byteExtractCount,
                                         maxBytesToSync });
-                        status.shouldExtractSkip = true;
+                        status.shouldExtractSkip = outgoingBatch.isExtractSkipped = true;
+                        changeBatchStatus(Status.NE, extractBatch, mode);
                     }
+                    status.batchExtractCount++;
+                    status.byteExtractCount += extractBatch.getByteCount();
                 } catch (Exception e) {
                     status.shouldExtractSkip = outgoingBatch.isExtractSkipped = true;
                     throw e;
@@ -836,7 +843,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             long batchStatusUpdateMillis = parameterService.getLong(ParameterConstants.OUTGOING_BATCH_UPDATE_STATUS_MILLIS);
             int batchStatusUpdateDataCount = parameterService.getInt(ParameterConstants.OUTGOING_BATCH_UPDATE_STATUS_DATA_COUNT);
             Channel channel = configurationService.getChannel(currentBatch.getChannelId());
-            if (currentBatch.getStatus() == Status.RQ ||
+            if (currentBatch.getStatus() == Status.RQ || currentBatch.getStatus() == Status.NE ||
                     currentBatch.getStatus() == Status.LD ||
                     currentBatch.getLastUpdatedTime() == null ||
                     System.currentTimeMillis() - batchStatusUpdateMillis >= currentBatch.getLastUpdatedTime().getTime() ||
@@ -961,6 +968,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                 outgoingBatchService.updateCommonBatchExtractStatistics(currentBatch);
                             }
                         }
+                        log.debug("Extracted batch {} has {} bytes", currentBatch.getNodeBatchId(), currentBatch.getByteCount());
                     }
                 } catch (RuntimeException ex) {
                     IStagedResource resource = getStagedResource(currentBatch);
@@ -980,6 +988,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         log.debug("{} released lock for batch {}", targetNode.getNodeId(), currentBatch.getBatchId());
                     }
                 }
+            }
+            if (isPreviouslyExtracted) {
+                log.debug("Previously extracted batch {} has {} bytes", currentBatch.getNodeBatchId(), currentBatch.getByteCount());
             }
             if (currentBatch.isCommonFlag() && isClusterLocalStaging && isPreviouslyExtracted) {
                 updateCommonBatchExtractStatistics(currentBatch);
@@ -2197,6 +2208,27 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
 
     protected ProcessType getProcessType() {
         return ProcessType.INITIAL_LOAD_EXTRACT_JOB;
+    }
+
+    protected long getTransportMaxBytesToSync() {
+        long maxBytesToSync = parameterService.getLong(ParameterConstants.TRANSPORT_MAX_BYTES_TO_SYNC);
+        for (int i = 0; i < backOffCount && maxBytesToSync > BACKOFF_BYTE_THRESHOLD; i++) {
+            maxBytesToSync /= 2;
+        }
+        return maxBytesToSync;
+    }
+
+    @Override
+    public void incrementBackOffCount(String nodeId) {
+        long adjustedMaxBytesToSync = getTransportMaxBytesToSync();
+        if (adjustedMaxBytesToSync > BACKOFF_BYTE_THRESHOLD) {
+            backOffCount++;
+            log.info("Ack missing in response from node {}. The max bytes to sync will be reduced from {} to {} during next attempt.",
+                    nodeId, adjustedMaxBytesToSync, adjustedMaxBytesToSync / 2);
+        } else {
+            log.info("Ack missing in response from node {}. The max bytes to sync of {} cannot be reduced any further.",
+                    nodeId, adjustedMaxBytesToSync);
+        }
     }
 
     class ExtractRequestMapper implements ISqlRowMapper<ExtractRequest> {

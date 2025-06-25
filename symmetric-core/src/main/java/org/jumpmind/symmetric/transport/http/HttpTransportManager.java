@@ -27,7 +27,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -130,10 +129,11 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
                 log.debug("Sending ack: {}", data);
                 statusCode = sendMessage("ack", remote, local, data, securityToken, requestProperties, registrationUrl);
                 if (statusCode != HttpConnection.HTTP_OK) {
-                    if (statusCode == HttpURLConnection.HTTP_BAD_REQUEST || statusCode == HttpURLConnection.HTTP_ENTITY_TOO_LARGE) {
+                    if (statusCode != WebConstants.REGISTRATION_REQUIRED && statusCode != WebConstants.REGISTRATION_PENDING
+                        && statusCode != WebConstants.SYNC_DISABLED && statusCode != WebConstants.SC_FORBIDDEN && statusCode != WebConstants.SC_AUTH_EXPIRED) {
                         if (maxFormKeys > 0 && maxFormKeys <= FORM_KEYS_PER_BATCH) {
                             log.error("Ack received a {} response from node {}. The form key limit of {} cannot be reduced any further.",
-                                    statusCode, remote.getNodeId(), FORM_KEYS_PER_BATCH);
+                                    statusCode, remote.getNodeId(), maxFormKeys);
                         } else {
                             backOffPostCount++;
                             if (maxFormKeys > FORM_KEYS_PER_BATCH) {
