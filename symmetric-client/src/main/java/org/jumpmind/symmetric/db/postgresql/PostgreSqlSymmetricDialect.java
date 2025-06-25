@@ -51,11 +51,10 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             " where routine_name = '$(functionName)' and specific_schema = '$(defaultSchema)'";
     static final String SQL_SELECT_TRANSACTIONS = "select min(a.xact_start) from pg_stat_activity a join pg_catalog.pg_locks l on l.pid = a.pid  where l.mode = 'RowExclusiveLock'";
     private Boolean supportsTransactionId = null;
-    protected static String sharedTriggersDisabledFunction;
-    protected static String sharedNodeDisabledFunction;
-    protected static String sharedReadLargeObjectFunction;
-    protected static boolean versionSupportsReplaceTriggers;
-
+    protected String sharedTriggersDisabledFunction;
+    protected String sharedNodeDisabledFunction;
+    protected String sharedReadLargeObjectFunction;
+    protected boolean versionSupportsReplaceTriggers;
 
     public PostgreSqlSymmetricDialect(IParameterService parameterService, IDatabasePlatform platform) {
         super(parameterService, platform);
@@ -164,7 +163,6 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         log.info("Created shared function {} for capturing table truncate events.", sharedTruncateEventFunction);
     }
 
-
     @Override
     public void dropRequiredDatabaseObjects() {
         if (isFunctionInstalled(sharedTriggersDisabledFunction)) {
@@ -181,13 +179,13 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
     }
 
     public void dropSharedTruncateCaptureFunctions() {
-         PostgreSqlTriggerTemplate templatesMap = (PostgreSqlTriggerTemplate) this.triggerTemplate;
-         String sharedTruncateEventFunction = templatesMap.getTruncateSharedFunctionName();
-         if (isFunctionInstalled(sharedTruncateEventFunction)) {
-             uninstall(SQL_DROP_FUNCTION + "() cascade", sharedTruncateEventFunction);
-             log.info("Removed shared function for capturing table truncate events={}", sharedTruncateEventFunction);
-         }
-     }
+        PostgreSqlTriggerTemplate templatesMap = (PostgreSqlTriggerTemplate) this.triggerTemplate;
+        String sharedTruncateEventFunction = templatesMap.getTruncateSharedFunctionName();
+        if (isFunctionInstalled(sharedTruncateEventFunction)) {
+            uninstall(SQL_DROP_FUNCTION + "() cascade", sharedTruncateEventFunction);
+            log.info("Removed shared function for capturing table truncate events={}", sharedTruncateEventFunction);
+        }
+    }
 
     @Override
     public boolean requiresAutoCommitFalseToSetFetchSize() {

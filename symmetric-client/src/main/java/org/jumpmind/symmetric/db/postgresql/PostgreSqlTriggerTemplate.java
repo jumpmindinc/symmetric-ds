@@ -35,17 +35,17 @@ import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.util.FormatUtils;
 
 public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
-    String sqlBatchDelimiter;
-    String infinityDateExpression;
-    protected static String createTriggerCommandBeginning = "create trigger ";
-    protected static String sharedTruncateEventFunctionName;
-    protected static String currentTimestampAndZoneExpression = "CURRENT_TIMESTAMP";
-    protected static String invokerSecurityClause = " ";
+    protected String sqlBatchDelimiter;
+    protected String infinityDateExpression;
+    protected String createTriggerCommandBeginning = "create trigger ";
+    protected String sharedTruncateEventFunctionName;
+    protected String currentTimestampAndZoneExpression = "CURRENT_TIMESTAMP";
+    protected String invokerSecurityClause = " ";
 
     public PostgreSqlTriggerTemplate(ISymmetricDialect symmetricDialect) {
         super(symmetricDialect);
         IParameterService parameterService = symmetricDialect.getParameterService();
-        PostgreSqlSymmetricDialect pgDialect = castCurrentDialectToPostgres();
+        PostgreSqlSymmetricDialect pgDialect = (PostgreSqlSymmetricDialect) this.symmetricDialect;
         createTriggerCommandBeginning = getCreateTriggerCommandBeginning(pgDialect);
         currentTimestampAndZoneExpression = getCurrentTimestampAndZoneExpression(pgDialect);
         invokerSecurityClause = getSecurityClause(pgDialect);
@@ -495,13 +495,12 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
         boolean internalTable = originalTable.getName().startsWith(tablePrefix) 
                     && ( StringUtils.isBlank(defaultSchema) == StringUtils.isBlank(tableSchema) )
                     && defaultSchema.contentEquals( tableSchema);
-        boolean includeTruncateTrigger = (!trigger.isSyncOnDelete() && dml == DataEventType.INSERT  
-                                                || trigger.isSyncOnDelete() && dml == DataEventType.DELETE ); 
-        if( includeTruncateTrigger && !internalTable) {
-                ddl = createPostTriggerDDLForTruncate(  trigger, history, channel,   tablePrefix, originalTable, defaultCatalog, defaultSchema);
-                if (ddl == null) {
-                    ddl = "";
-                
+        boolean includeTruncateTrigger = (!trigger.isSyncOnDelete() && dml == DataEventType.INSERT)  
+                                       || (trigger.isSyncOnDelete() && dml == DataEventType.DELETE); 
+        if (includeTruncateTrigger && !internalTable) {
+            ddl = createPostTriggerDDLForTruncate(  trigger, history, channel,   tablePrefix, originalTable, defaultCatalog, defaultSchema);
+            if (ddl == null) {
+                ddl = "";                
             }
         }
         return ddl + super.createPostTriggerDDL(dml, trigger, history, channel, tablePrefix, originalTable, defaultCatalog, defaultSchema);
@@ -526,7 +525,7 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
         ddl = FormatUtils.replace("sharedFunctionName", sharedTruncateEventFunctionName, ddl);
         ddl = replaceTemplateVariables(DataEventType.DELETE, trigger, history, channel, tablePrefix, originalTable, originalTable, defaultCatalog, defaultSchema, ddl);
         
-        if(log.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             log.debug("Injected trigger for truncate events on table={}, DDL={}", originalTable.getName(), ddl);
         }else{
             log.info("Injected trigger for truncate events on table={}.", originalTable.getName());
@@ -556,24 +555,9 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
         }
         return truncateTriggerName;
     }
-    
-    protected PostgreSqlSymmetricDialect castCurrentDialectToPostgres() {
-        if(this.symmetricDialect==null ) {
-            String errMsg = String.format("Current symmetricDialect object should not be null!");
-            log.error(errMsg);
-            throw new RuntimeException(errMsg );
-        }        
-        if(!(this.symmetricDialect instanceof PostgreSqlSymmetricDialect)) {
-            String className = this.symmetricDialect == null ? "null" : this.symmetricDialect.getClass().getName() ;
-            String errMsg = String.format("Current symmetricDialect object is incompatible with PostgreSqlSymmetricDialect! Dialect=%s", className);
-            log.error(errMsg);
-            throw new RuntimeException(errMsg );
-        }
-        return (PostgreSqlSymmetricDialect)this.symmetricDialect;
-    }
 
     public String createSharedTruncateCaptureFunction(String tablePrefix, String defaultCatalog, String defaultSchema) {
-        PostgreSqlSymmetricDialect pgDialect = castCurrentDialectToPostgres();
+        PostgreSqlSymmetricDialect pgDialect = (PostgreSqlSymmetricDialect)this.symmetricDialect;
         if (!(pgDialect.getParameterService().is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE))){
             return "";
         }
