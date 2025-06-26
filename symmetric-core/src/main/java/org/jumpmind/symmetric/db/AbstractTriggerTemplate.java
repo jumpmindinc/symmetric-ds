@@ -56,12 +56,12 @@ import org.slf4j.LoggerFactory;
 abstract public class AbstractTriggerTemplate {
     protected final Logger log = LoggerFactory.getLogger(getClass());
     protected static final String ORIG_TABLE_ALIAS = "orig";
-    static final String INSERT_TRIGGER_TEMPLATE = "insertTriggerTemplate";
-    static final String UPDATE_TRIGGER_TEMPLATE = "updateTriggerTemplate";
-    static final String INSERT_WITH_RELOAD_TRIGGER_TEMPLATE = "insertReloadTriggerTemplate";
-    static final String UPDATE_WITH_RELOAD_TRIGGER_TEMPLATE = "updateReloadTriggerTemplate";
-    static final String DELETE_TRIGGER_TEMPLATE = "deleteTriggerTemplate";
-    static final String INITIAL_LOAD_SQL_TEMPLATE = "initialLoadSqlTemplate";
+    protected static final String INSERT_TRIGGER_TEMPLATE = "insertTriggerTemplate";
+    protected static final String UPDATE_TRIGGER_TEMPLATE = "updateTriggerTemplate";
+    protected static final String INSERT_WITH_RELOAD_TRIGGER_TEMPLATE = "insertReloadTriggerTemplate";
+    protected static final String UPDATE_WITH_RELOAD_TRIGGER_TEMPLATE = "updateReloadTriggerTemplate";
+    protected static final String DELETE_TRIGGER_TEMPLATE = "deleteTriggerTemplate";
+    protected static final String INITIAL_LOAD_SQL_TEMPLATE = "initialLoadSqlTemplate";
     protected Map<String, String> sqlTemplates;
     protected String emptyColumnTemplate = "''";
     protected String stringColumnTemplate;
