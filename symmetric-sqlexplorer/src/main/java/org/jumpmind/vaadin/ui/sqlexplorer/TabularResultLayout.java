@@ -327,7 +327,7 @@ public class TabularResultLayout extends VerticalLayout {
                     csvExport = new CsvExport<List<Object>>(target);
                     csvExport.setFileName(db.getName() + "-export.csv");
                     csvExport.setTitle(sql);
-                    downloadAnchor.setHref(csvExport.getFileDownloader());
+                    downloadAnchor.setHref(csvExport.getDownloadHandler());
                 }
                 generateNewExport = false;
                 UI.getCurrent().getPage().executeJs("$0.click();", downloadAnchor.getElement());
@@ -738,7 +738,7 @@ public class TabularResultLayout extends VerticalLayout {
                     columnNames.add(columnName);
                     Integer colNum = Integer.valueOf(columnCounter[0] - 1 - skipColumnIndexes.size());
                     columnVisibilityToggler.addColumn(grid.addColumn(row -> row.get(colNum)).setKey(columnName)
-                            .setHeader(columnName).setClassNameGenerator(row -> {
+                            .setHeader(columnName).setPartNameGenerator(row -> {
                                 if (row.get(colNum) == null) {
                                     return "italics";
                                 }
