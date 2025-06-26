@@ -119,23 +119,22 @@ It is important that both database connections for the source and target Symmetr
 
 ==== DDL Event Capture
 
-PostgreSQL is among a few databases which support creating triggers to capture DDL events and TRUNCATE TABLE events. SymmetricDS will capture and replicate these events when the *trigger.capture.ddl.changes* startup parameter is configured (=true). Restart of SymmetricDS service and rebuilding of all triggers is required for this change to take effect. This feature requires deep understanding on how PostgreSQL created and changes database objects and should be tested & implemented in close cooperation with the database administrator. User account for SymmetricDS connection to the source database must have SUPERUSER level access because of the DDL event triggers. Permissions at the target node may be setup at the SUPERUSER level or a lower level, but must accommodate all DDL events, expected to be issued at the source.
-Note: turn off this parameter and verify DDL triggers have been removed before conducting database maintenance! 
-By default, only tables configured for replication have table-level DDL events captured (alter table, drop table, etc.). 
-
-It may be helpful to locate SymmetricDS runtime tables in a dedicated schema, by adding the *currentSchema=<your_schema>* JDBC driver parameter to the database connection string (db.url parameter). Specified schema must already exist or SymmetricDS will fail to connect and/or check permissions required to set up runtime tables.
-[source, Sql]
-----
-db.url=jdbc:postgresql://localhost:13432/lab63pg13admin*?currentSchema=sds*
-----
-
-Additionally, the *trigger.capture.ddl.check.trigger.hist* parameter can be set to false, to capture all table-level DDL events, even when for tables not yet configured in SymmetricDS for replication.
+PostgreSQL is among a few databases which support creating triggers to capture DDL events and TRUNCATE TABLE events. SymmetricDS will capture and replicate these events when the *trigger.capture.ddl.changes* startup parameter is configured (=true). Restart of SymmetricDS service and rebuilding of all triggers is required for this change to take effect. This feature requires deep understanding of how PostgreSQL creates and changes database objects. This type of replication should be tested in a non-Production environment. Both testing and implementation should be done in close cooperation with your database administrator. User account for SymmetricDS connection to the source database must have the SUPERUSER level access because of the DDL event triggers. Permissions at the target node may be setup at the SUPERUSER level or a lower level, but must accommodate all DDL events, expected to be issued at the source.
+Note: turn off this parameter and verify that all DDL triggers have been removed before conducting database maintenance!
+By default, only tables configured for replication have table-level DDL events captured (alter table, drop table, etc.). The *trigger.capture.ddl.check.trigger.hist* parameter can be set to false, to capture all table-level DDL events, even when for tables not yet configured in SymmetricDS for replication.
 [source, Sql]
 ----
 trigger.capture.ddl.check.trigger.hist=false
 ----
 
 Note that the trigger.capture.ddl.check.trigger.hist parameter has no effect on the Truncate Table events, which are controlled by the postgres.trigger.capture.truncate.event parameter. The truncate table event requires a designated trigger, hence the source table must be configured for replication in SymmetricDS.
+
+
+Some administrators find it helpful to place SymmetricDS runtime tables in a dedicated schema, by adding the *currentSchema=<your_schema>* JDBC driver parameter to the database connection string (db.url parameter). Specified schema must already exist or SymmetricDS will fail to connect and/or check permissions required to set up internal runtime tables.
+[source, Sql]
+----
+db.url=jdbc:postgresql://localhost:13432/lab63pg13admin*?currentSchema=sds*
+----
 
 ==== DDL Event Capture
 
