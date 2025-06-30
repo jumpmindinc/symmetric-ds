@@ -24,6 +24,7 @@ import java.sql.Types;
 import java.util.Date;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -36,6 +37,7 @@ import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.db.SequenceIdentifier;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.util.FormatUtils;
 
 /*
  * Support for PostgreSQL
@@ -49,11 +51,16 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             " where routine_name = '$(functionName)' and specific_schema = '$(defaultSchema)'";
     static final String SQL_SELECT_TRANSACTIONS = "select min(a.xact_start) from pg_stat_activity a join pg_catalog.pg_locks l on l.pid = a.pid  where l.mode = 'RowExclusiveLock'";
     private Boolean supportsTransactionId = null;
+    protected String sharedTriggersDisabledFunction;
+    protected String sharedNodeDisabledFunction;
+    protected String sharedReadLargeObjectFunction;
+    protected boolean versionSupportsReplaceTriggers;
 
     public PostgreSqlSymmetricDialect(IParameterService parameterService, IDatabasePlatform platform) {
         super(parameterService, platform);
         this.triggerTemplate = new PostgreSqlTriggerTemplate(this);
         this.supportsDdlTriggers = databaseMajorVersion > 9 || (databaseMajorVersion == 9 && databaseMinorVersion >= 3);
+        versionSupportsReplaceTriggers = databaseMajorVersion >= 14;
         if (parameterService.is(ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW)) {
             try {
                 getEarliestTransactionStartTime();
@@ -64,6 +71,9 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             }
         }
         platform.getDatabaseInfo().setGeneratedColumnsSupported(databaseMajorVersion >= 12);
+        sharedTriggersDisabledFunction = this.parameterService.getTablePrefix() + "_triggers_disabled";
+        sharedNodeDisabledFunction = this.parameterService.getTablePrefix() + "_node_disabled";
+        sharedReadLargeObjectFunction = this.parameterService.getTablePrefix() + "_largeobject";
     }
 
     @Override
@@ -81,100 +91,99 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
                 transaction.close();
             }
         }
-        String triggersDisabled = this.parameterService.getTablePrefix() + "_" + "triggers_disabled";
-        if (!installed(SQL_FUNCTION_INSTALLED, triggersDisabled)) {
-            String sql = "CREATE or REPLACE FUNCTION $(functionName)() RETURNS INTEGER AS $$                                                                                                                     "
-                    +
-                    "                                DECLARE                                                                                                                                                                "
-                    +
-                    "                                  triggerDisabled INTEGER;                                                                                                                                             "
-                    +
-                    "                                BEGIN                                                                                                                                                                  "
-                    +
-                    "                                  select current_setting('symmetric.triggers_disabled') into triggerDisabled;                                                                                          "
-                    +
-                    "                                  return triggerDisabled;                                                                                                                                              "
-                    +
-                    "                                EXCEPTION WHEN OTHERS THEN                                                                                                                                             "
-                    +
-                    "                                  return 0;                                                                                                                                                            "
-                    +
-                    "                                END;                                                                                                                                                                   "
-                    +
-                    "                                $$ LANGUAGE plpgsql;                                                                                                                                                   ";
-            install(sql, triggersDisabled, ddl);
+        if (!isFunctionInstalled(sharedTriggersDisabledFunction)) {
+            String sql = "CREATE OR REPLACE FUNCTION $(functionName)() RETURNS INTEGER AS $$ "
+                    + "   DECLARE "
+                    + "     triggerDisabled INTEGER; "
+                    + "   BEGIN "
+                    + "     select current_setting('" + SYNC_TRIGGERS_DISABLED_VARIABLE + "') into triggerDisabled; "
+                    + "     return triggerDisabled;    "
+                    + "   EXCEPTION WHEN OTHERS THEN   "
+                    + "     return 0;  "
+                    + "   END; "
+                    + "   $$ LANGUAGE plpgsql;";
+            install(sql, sharedTriggersDisabledFunction, ddl);
+            log.debug("Created shared function {} for tracking when triggers are disabled.", sharedTriggersDisabledFunction);
         }
-        String nodeDisabled = this.parameterService.getTablePrefix() + "_" + "node_disabled";
-        if (!installed(SQL_FUNCTION_INSTALLED, nodeDisabled)) {
-            String sql = "CREATE or REPLACE FUNCTION $(functionName)() RETURNS VARCHAR AS $$                                                                                                                     "
-                    +
-                    "                                DECLARE                                                                                                                                                                "
-                    +
-                    "                                  nodeId VARCHAR(50);                                                                                                                                                  "
-                    +
-                    "                                BEGIN                                                                                                                                                                  "
-                    +
-                    "                                  select current_setting('symmetric.node_disabled') into nodeId;                                                                                                       "
-                    +
-                    "                                  return nodeId;                                                                                                                                                       "
-                    +
-                    "                                EXCEPTION WHEN OTHERS THEN                                                                                                                                             "
-                    +
-                    "                                  return '';                                                                                                                                                           "
-                    +
-                    "                                END;                                                                                                                                                                   "
-                    +
-                    "                                $$ LANGUAGE plpgsql;                                                                                                                                                   ";
-            install(sql, nodeDisabled, ddl);
+        if (!isFunctionInstalled(sharedNodeDisabledFunction)) {
+            String sql = "CREATE OR REPLACE FUNCTION $(functionName)() RETURNS VARCHAR AS $$ "
+                    + "   DECLARE "
+                    + "     nodeId VARCHAR(50); "
+                    + "   BEGIN "
+                    + "     select current_setting('" + SYNC_NODE_DISABLED_VARIABLE
+                    + "') into nodeId; "
+                    + "     return nodeId; "
+                    + "   EXCEPTION WHEN OTHERS THEN "
+                    + "     return ''; "
+                    + "   END; "
+                    + "   $$ LANGUAGE plpgsql;";
+            install(sql, sharedNodeDisabledFunction, ddl);
+            log.debug("Created shared function {} for tracking when node replication is disabled.", sharedNodeDisabledFunction);
         }
-        String largeObjects = this.parameterService.getTablePrefix() + "_" + "largeobject";
-        if (!installed(SQL_FUNCTION_INSTALLED, largeObjects)) {
-            String sql = "CREATE OR REPLACE FUNCTION $(functionName)(objectId oid) RETURNS text AS $$                                                                                                            "
-                    +
-                    "                                DECLARE                                                                                                                                                                "
-                    +
-                    "                                  encodedBlob text;                                                                                                                                                    "
-                    +
-                    "                                  encodedBlobPage text;                                                                                                                                                "
-                    +
-                    "                                BEGIN                                                                                                                                                                  "
-                    +
-                    "                                  encodedBlob := '';                                                                                                                                                   "
-                    +
-                    "                                  FOR encodedBlobPage IN SELECT pg_catalog.encode(data, 'escape')                                                                                                                 "
-                    +
-                    "                                  FROM pg_largeobject WHERE loid = objectId ORDER BY pageno LOOP                                                                                                       "
-                    +
-                    "                                    encodedBlob := encodedBlob || encodedBlobPage;                                                                                                                     "
-                    +
-                    "                                  END LOOP;                                                                                                                                                            "
-                    +
-                    "                                  RETURN pg_catalog.encode(pg_catalog.decode(encodedBlob, 'escape'), 'base64');                                                                                                              "
-                    +
-                    "                                EXCEPTION WHEN OTHERS THEN                                                                                                                                             "
-                    +
-                    "                                  RETURN '';                                                                                                                                                           "
-                    +
-                    "                                END                                                                                                                                                                    "
-                    +
-                    "                                $$ LANGUAGE plpgsql;                                                                                                                                                   ";
-            install(sql, largeObjects, ddl);
+        if (!isFunctionInstalled(sharedReadLargeObjectFunction)) {
+            String sql = "CREATE OR REPLACE FUNCTION $(functionName)(objectId oid) RETURNS text AS $$  "
+                    + "   DECLARE      "
+                    + "     encodedBlob text;    "
+                    + "     encodedBlobPage text;      "
+                    + "   BEGIN        "
+                    + "     encodedBlob := '';   "
+                    + "     FOR encodedBlobPage IN SELECT pg_catalog.encode(data, 'escape') "
+                    + "     FROM pg_largeobject WHERE loid = objectId ORDER BY pageno LOOP       "
+                    + "       encodedBlob := encodedBlob || encodedBlobPage;     "
+                    + "     END LOOP;  "
+                    + "     RETURN pg_catalog.encode(pg_catalog.decode(encodedBlob, 'escape'), 'base64');    "
+                    + "   EXCEPTION WHEN OTHERS THEN   "
+                    + "     RETURN ''; "
+                    + "   END          "
+                    + "   $$ LANGUAGE plpgsql;   ";
+            install(sql, sharedReadLargeObjectFunction, ddl);
+            log.info("Created shared function {} for processing LOBs", sharedReadLargeObjectFunction);
         }
+        if (parameterService.is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE)) {
+            createSharedTruncateCaptureFunctions(ddl);
+        }
+    }
+
+    public void createSharedTruncateCaptureFunctions(StringBuilder ddl) {
+        PostgreSqlTriggerTemplate templatesMap = (PostgreSqlTriggerTemplate) this.triggerTemplate;
+        String sharedTruncateEventFunction = templatesMap.getTruncateSharedFunctionName();
+        if (isFunctionInstalled(sharedTruncateEventFunction)) {
+            log.info("Detected shared function {} for capturing table truncate events.", sharedTruncateEventFunction);
+            return;
+        }
+        String sql = templatesMap.getEntry(sharedTruncateEventFunction);
+        String defaultSchema = platform.getDefaultSchema();
+        if (!StringUtils.isBlank(defaultSchema)) {
+            defaultSchema += ".";
+        }
+        sql = FormatUtils.replace("prefixName", this.parameterService.getTablePrefix(), sql);
+        sql = FormatUtils.replace("replicationEnabledCondition", getSyncTriggersExpression(), sql);
+        sql = FormatUtils.replace("defaultSchema", defaultSchema, sql);
+        install(sql, sharedReadLargeObjectFunction, ddl);
+        log.info("Created shared function {} for capturing table truncate events.", sharedTruncateEventFunction);
     }
 
     @Override
     public void dropRequiredDatabaseObjects() {
-        String triggersDisabled = this.parameterService.getTablePrefix() + "_" + "triggers_disabled";
-        if (installed(SQL_FUNCTION_INSTALLED, triggersDisabled)) {
-            uninstall(SQL_DROP_FUNCTION + "() cascade", triggersDisabled);
+        if (isFunctionInstalled(sharedTriggersDisabledFunction)) {
+            uninstall(SQL_DROP_FUNCTION + "() cascade", sharedTriggersDisabledFunction);
         }
-        String nodeDisabled = this.parameterService.getTablePrefix() + "_" + "node_disabled";
-        if (installed(SQL_FUNCTION_INSTALLED, nodeDisabled)) {
-            uninstall(SQL_DROP_FUNCTION + "() cascade", nodeDisabled);
+        if (isFunctionInstalled(sharedNodeDisabledFunction)) {
+            uninstall(SQL_DROP_FUNCTION + "() cascade", sharedNodeDisabledFunction);
         }
         String largeObjects = this.parameterService.getTablePrefix() + "_" + "largeobject";
-        if (installed(SQL_FUNCTION_INSTALLED, largeObjects)) {
+        if (isFunctionInstalled(largeObjects)) {
             uninstall(SQL_DROP_FUNCTION + "(objectId oid) cascade", largeObjects);
+        }
+        dropSharedTruncateCaptureFunctions();
+    }
+
+    public void dropSharedTruncateCaptureFunctions() {
+        PostgreSqlTriggerTemplate templatesMap = (PostgreSqlTriggerTemplate) this.triggerTemplate;
+        String sharedTruncateEventFunction = templatesMap.getTruncateSharedFunctionName();
+        if (isFunctionInstalled(sharedTruncateEventFunction)) {
+            uninstall(SQL_DROP_FUNCTION + "() cascade", sharedTruncateEventFunction);
+            log.info("Removed shared function for capturing table truncate events={}", sharedTruncateEventFunction);
         }
     }
 
@@ -254,6 +263,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         }
     }
 
+    @Override
     public void disableSyncTriggers(ISqlTransaction transaction, String nodeId) {
         transaction.prepareAndExecute("select set_config('" + SYNC_TRIGGERS_DISABLED_VARIABLE + "', '1', false)");
         if (nodeId == null) {
@@ -262,6 +272,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         transaction.prepareAndExecute("select set_config('" + SYNC_NODE_DISABLED_VARIABLE + "', '" + nodeId + "', false)");
     }
 
+    @Override
     public void enableSyncTriggers(ISqlTransaction transaction) {
         transaction.prepareAndExecute("select set_config('" + SYNC_TRIGGERS_DISABLED_VARIABLE
                 + "', '', false)");
@@ -269,10 +280,12 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
                 + "', '', false)");
     }
 
+    @Override
     public String getSyncTriggersExpression() {
         return "$(defaultSchema)" + parameterService.getTablePrefix() + "_triggers_disabled() = 0";
     }
 
+    @Override
     public String getSyncTriggersOnIncomingExpression() {
         return "$(defaultSchema)" + parameterService.getTablePrefix() + "_triggers_disabled() != 2";
     }
@@ -327,6 +340,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
                 && parameterService.is(ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW);
     }
 
+    @Override
     public void cleanDatabase() {
     }
 
@@ -348,5 +362,13 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
     @Override
     public long getCurrentSequenceValue(SequenceIdentifier identifier) {
         return platform.getSqlTemplate().queryForLong("select last_value from " + getSequenceName(identifier) + "_seq");
+    }
+
+    public boolean isFunctionInstalled(String functionName) {
+        return installed(SQL_FUNCTION_INSTALLED, functionName);
+    }
+
+    public boolean supportsReplaceTriggers() {
+        return versionSupportsReplaceTriggers;
     }
 }

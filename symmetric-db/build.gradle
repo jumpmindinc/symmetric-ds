@@ -14,6 +14,7 @@ apply from: symAssembleDir + '/common.gradle'
             exclude group: 'org.slf4j'
             exclude group: 'com.google.guava'
             exclude group: 'io.netty'
+            exclude group: 'com.fasterxml.jackson.core'
         }
 
         testImplementation project(path: ':symmetric-util', configuration: 'testArtifacts')

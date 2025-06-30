@@ -14,7 +14,7 @@ apply from: symAssembleDir + '/asciidoc.gradle'
         api "com.sun.xml.bind:jaxb-impl:4.0.5"
         api "org.jdom:jdom2:$jdomVersion"
         api "org.apache.commons:commons-fileupload2-core:$commonsFileuploadVersion"
-        api "org.apache.commons:commons-fileupload2-jakarta:$commonsFileuploadVersion"
+        api "org.apache.commons:commons-fileupload2-jakarta-servlet6:$commonsFileuploadVersion"
 
         provided project(":symmetric-wrapper")
         provided "jakarta.jms:jakarta.jms-api:3.1.0"
