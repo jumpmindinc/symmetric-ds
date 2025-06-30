@@ -120,15 +120,16 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
             if (StringUtils.isNotBlank(extra)) {
                 Column column = table.findColumn(columnName);
                 if (column != null) {
-                    if (supportsGeneratedColumns && column.isGenerated()) {
-                        if (extra.equalsIgnoreCase("DEFAULT_GENERATED")) {
+                    if (column.getMappedTypeCode() == Types.TIMESTAMP && extra.toLowerCase().contains("on update")) {
+                        column.setAutoUpdate(true);
+                        column.setGenerated(false);
+                    } else if (supportsGeneratedColumns && column.isGenerated()) {
+                        if (extra.toUpperCase().contains("DEFAULT_GENERATED")) {
                             column.setGenerated(false);
                             column.setExpressionAsDefaultValue(true);
                         } else if (column.getDefaultValue() == null || column.getDefaultValue().equalsIgnoreCase("NULL")) {
                             column.setDefaultValue(row.getString("generation_expression"));
                         }
-                    } else if (column.getMappedTypeCode() == Types.TIMESTAMP) {
-                        column.setAutoUpdate(extra.toLowerCase().startsWith("on update"));
                     } else if (extra.equalsIgnoreCase("auto_increment")) {
                         column.setAutoIncrement(true);
                     }
