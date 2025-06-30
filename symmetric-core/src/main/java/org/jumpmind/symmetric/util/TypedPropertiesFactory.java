@@ -30,6 +30,7 @@ import java.util.Properties;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.util.AppUtils;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
@@ -38,10 +39,12 @@ import org.springframework.core.io.Resource;
 public class TypedPropertiesFactory implements ITypedPropertiesFactory {
     protected File propertiesFile;
     protected Properties properties;
+    private final int MINS_IN_ONE_WEEK = 10080;
 
     public TypedPropertiesFactory() {
     }
 
+    @Override
     public void init(File propertiesFile, Properties properties) {
         this.propertiesFile = propertiesFile;
         this.properties = properties;
@@ -56,10 +59,18 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
         factoryBean.setLocations(buildLocations(propertiesFile));
         try {
             TypedProperties properties = new TypedProperties(factoryBean.getObject());
+            limitPurgeStatsRetentionMinutesMinimum(properties);
             SymmetricUtils.replaceSystemAndEnvironmentVariables(properties);
             return properties;
         } catch (IOException e) {
             throw new IoException(e);
+        }
+    }
+
+    private void limitPurgeStatsRetentionMinutesMinimum(TypedProperties p) {
+        String purgeStatsMinutes = p.get(ParameterConstants.PURGE_STATS_RETENTION_MINUTES);
+        if (purgeStatsMinutes != null && Integer.valueOf(purgeStatsMinutes) < MINS_IN_ONE_WEEK) {
+            p.setProperty(ParameterConstants.PURGE_STATS_RETENTION_MINUTES, MINS_IN_ONE_WEEK);
         }
     }
 
