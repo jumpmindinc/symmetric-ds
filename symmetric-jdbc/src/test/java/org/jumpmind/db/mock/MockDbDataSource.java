@@ -82,7 +82,7 @@ public class MockDbDataSource implements DataSource {
             return null;
         }
         MockDbPreparedStatement preparedStatement = this.preparedStatements.remove(0);
-        // System.out.println("dequeuePreparedStatement - Dispensed one item from the preparedStatements queue;");
+        System.out.println("dequeuePreparedStatement - Dispensed one item from the preparedStatements queue;");
         return preparedStatement;
     }
 

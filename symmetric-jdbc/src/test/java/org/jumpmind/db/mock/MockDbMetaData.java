@@ -220,7 +220,7 @@ public class MockDbMetaData implements DatabaseMetaData {
 
     @Override
     public String getDatabaseProductVersion() throws SQLException {
-        throw new NotImplementedException("No mock data/results defined for this method!");
+        return String.format("%d", this.databaseMajorVersion);
     }
 
     @Override
@@ -240,12 +240,12 @@ public class MockDbMetaData implements DatabaseMetaData {
 
     @Override
     public String getDriverName() throws SQLException {
-        throw new NotImplementedException("No mock data/results defined for this method!");
+        return "MockedDriverInMockDbMetaData";
     }
 
     @Override
     public String getDriverVersion() throws SQLException {
-        throw new NotImplementedException("No mock data/results defined for this method!");
+        return "MockedDriverInMockDbMetaData";
     }
 
     /**
