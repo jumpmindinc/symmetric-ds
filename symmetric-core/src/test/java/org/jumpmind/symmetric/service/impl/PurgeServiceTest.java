@@ -122,7 +122,7 @@ public class PurgeServiceTest {
         when(parameterService.getInt(ParameterConstants.PURGE_EXTRACT_REQUESTS_RETENTION_MINUTES)).thenReturn(1);
         when(parameterService.getInt(ParameterConstants.PURGE_REGISTRATION_REQUEST_RETENTION_MINUTES)).thenReturn(1);
         when(parameterService.getInt(ParameterConstants.PURGE_TRIGGER_HIST_RETENTION_MINUTES)).thenReturn(1440);
-        when(parameterService.getInt(ParameterConstants.PURGE_STATS_RETENTION_MINUTES)).thenReturn(1440);
+        when(parameterService.getInt(ParameterConstants.PURGE_STATS_RETENTION_MINUTES)).thenReturn(10080);
         extensionService = mock(ExtensionService.class);
         ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
         clusterService = mock(ClusterService.class);

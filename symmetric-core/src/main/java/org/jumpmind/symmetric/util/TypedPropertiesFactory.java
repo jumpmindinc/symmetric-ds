@@ -77,12 +77,14 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
     @Override
     public TypedProperties reload(File propFile) {
         TypedProperties typedProperties = new TypedProperties(propFile);
+        limitPurgeStatsRetentionMinutesMinimum(typedProperties);
         return typedProperties;
     }
 
     @Override
     public TypedProperties reload(Properties properties) {
         TypedProperties typedProperties = new TypedProperties(properties);
+        limitPurgeStatsRetentionMinutesMinimum(typedProperties);
         return typedProperties;
     }
 
