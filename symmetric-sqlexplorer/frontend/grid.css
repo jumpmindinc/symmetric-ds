@@ -17,10 +17,6 @@
 	max-height: 31px;
 }
 
-.italics { 
-	font-style: italic;
-}
-
 .marked, .v-grid-row-marked {
 	color: red;
 	font-weight: bold;
