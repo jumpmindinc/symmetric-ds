@@ -154,9 +154,9 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
         } else if (typeName != null && typeName.equalsIgnoreCase("UNITEXT")) {
             return Types.LONGVARBINARY;
         } else if (typeName != null && typeName.equalsIgnoreCase("UNICHAR")) {
-            return Types.LONGVARBINARY;
+            return Types.VARBINARY;
         } else if (typeName != null && typeName.equalsIgnoreCase("UNIVARCHAR")) {
-            return Types.LONGVARBINARY;
+            return Types.VARBINARY;
         } else {
             return super.mapUnknownJdbcTypeForColumn(values);
         }

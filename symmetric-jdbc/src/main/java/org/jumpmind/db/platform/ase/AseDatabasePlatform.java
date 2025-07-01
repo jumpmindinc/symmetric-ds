@@ -145,21 +145,6 @@ public class AseDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
-    public boolean isClob(Column column) {
-        int type = column.getJdbcTypeCode();
-        return type == Types.CLOB || type == Types.NCLOB || type == Types.LONGVARCHAR || type == ColumnTypes.LONGNVARCHAR;
-    }
-
-    @Override
-    public boolean isBlob(Column column) {
-        int type = column.getJdbcTypeCode();
-        if (settings.isTreatBinaryAsLob()) {
-            return type == Types.BLOB || type == Types.BINARY || type == Types.VARBINARY || type == Types.LONGVARBINARY || type == -10;
-        }
-        return type == Types.BLOB || type == Types.LONGVARBINARY || type == -10;
-    }
-
-    @Override
     public PermissionResult getCreateSymTriggerPermission() {
         String delimiter = getDatabaseInfo().getDelimiterToken();
         delimiter = delimiter != null ? delimiter : "";
