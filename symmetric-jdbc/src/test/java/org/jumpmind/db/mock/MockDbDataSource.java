@@ -58,8 +58,18 @@ public class MockDbDataSource implements DataSource {
         this.preparedStatements.add(preparedStatement);
     }
 
+    // Helper method to simplify staging query result:
+    public void enqueuePreparedStatement(String sql, ResultSet mockResultSet, int repeatOutput) {
+        this.enqueue(MockDbUtils.buildPreparedStatement(sql, mockResultSet, repeatOutput));
+    }
+
     public void enqueue(MockDbStatement statement) {
         this.statements.add(statement);
+    }
+
+    // Helper method to simplify staging query result:
+    public void enqueueStatement(String sql, ResultSet mockResultSet, int repeatOutput) {
+        this.enqueue(MockDbUtils.buildStatement(sql, mockResultSet, repeatOutput));
     }
 
     public void enqueueMetaData(ResultSet resultSet) {
