@@ -69,7 +69,7 @@ public class DbTree extends TreeGrid<DbTreeNode> {
         this.databaseProvider = databaseProvider;
         this.settingsProvider = settingsProvider;
         setWidthFull();
-        setClassNameGenerator(new DbTreeClassNameGenerator());
+        setPartNameGenerator(new DbTreePartNameGenerator());
         addThemeName("dbTree");
         expandedNodes = new LinkedHashSet<DbTreeNode>();
         addComponentHierarchyColumn(new ValueProvider<DbTreeNode, Label>() {
@@ -342,7 +342,7 @@ public class DbTree extends TreeGrid<DbTreeNode> {
         }
     }
 
-    class DbTreeClassNameGenerator implements SerializableFunction<DbTreeNode, String> {
+    class DbTreePartNameGenerator implements SerializableFunction<DbTreeNode, String> {
         private static final long serialVersionUID = 1L;
 
         @Override

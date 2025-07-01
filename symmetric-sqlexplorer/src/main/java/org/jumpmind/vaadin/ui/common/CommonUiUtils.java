@@ -280,7 +280,7 @@ public final class CommonUiUtils {
                     columnNames.add(columnName);
                     int colNum = columnCounter[0] - 1 - skipColumnIndexes.size();
                     columnVisibilityToggler.addColumn(grid.addColumn(row -> row.get(colNum)).setKey(columnName)
-                            .setHeader(columnName).setClassNameGenerator(row -> {
+                            .setHeader(columnName).setPartNameGenerator(row -> {
                                 if (row.get(colNum) == null) {
                                     return "italics";
                                 }

@@ -50,3 +50,11 @@
     background: #DFDFDF;
     font-weight: bold;
 }
+
+vaadin-grid::part(bold) {
+    font-weight: bold;
+}
+
+vaadin-grid::part(italics) { 
+    font-style: italic;
+}

@@ -28,6 +28,8 @@ import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.vaadin.flow.server.streams.DownloadHandler;
+
 public class CsvExport<T> {
     protected IDataProvider<T> gridData = null;
     protected String fileName;
@@ -71,7 +73,7 @@ public class CsvExport<T> {
         this.title = title;
     }
 
-    public ExportFileDownloader getFileDownloader() {
+    public DownloadHandler getDownloadHandler() {
         convertToCsv();
         FileOutputStream outStream = null;
         File file = null;
@@ -80,7 +82,7 @@ public class CsvExport<T> {
             file = File.createTempFile(prefix, ".csv");
             outStream = new FileOutputStream(file);
             outStream.write(cellData.toString().getBytes());
-            return new ExportFileDownloader(fileName, csvMimeContentType, file);
+            return DownloadHandler.forFile(file, fileName);
         } catch (Exception e) {
             log.error("", e);
             return null;
