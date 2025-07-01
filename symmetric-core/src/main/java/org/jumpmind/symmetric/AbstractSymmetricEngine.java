@@ -506,23 +506,26 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             stagingManager.clean(0);
         }
         node = nodeService.findIdentity();
-        if (node == null && parameterService.isRegistrationServer()
-                && parameterService.is(ParameterConstants.AUTO_INSERT_REG_SVR_IF_NOT_FOUND, false)) {
-            log.info("Inserting rows for node, security, identity and group for registration server");
-            String nodeId = parameterService.getExternalId();
-            node = new Node(parameterService, symmetricDialect, platform.getName());
-            node.setNodeId(node.getExternalId());
-            nodeService.save(node);
-            nodeService.insertNodeIdentity(nodeId);
-            node = nodeService.findIdentity();
-            nodeService.insertNodeGroup(node.getNodeGroupId(), null);
-            NodeSecurity nodeSecurity = nodeService.findOrCreateNodeSecurity(nodeId);
-            nodeSecurity.setInitialLoadTime(new Date());
-            nodeSecurity.setInitialLoadEndTime(new Date());
-            nodeSecurity.setRegistrationTime(new Date());
-            nodeSecurity.setInitialLoadEnabled(false);
-            nodeSecurity.setRegistrationEnabled(false);
-            nodeService.updateNodeSecurity(nodeSecurity);
+        if (parameterService.isRegistrationServer()) {
+            if (node == null && parameterService.is(ParameterConstants.AUTO_INSERT_REG_SVR_IF_NOT_FOUND, false)) {
+                log.info("Inserting rows for node, security, identity and group for registration server");
+                String nodeId = parameterService.getExternalId();
+                node = new Node(parameterService, symmetricDialect, platform.getName());
+                node.setNodeId(node.getExternalId());
+                nodeService.save(node);
+                nodeService.insertNodeIdentity(nodeId);
+                node = nodeService.findIdentity();
+                nodeService.insertNodeGroup(node.getNodeGroupId(), null);
+                NodeSecurity nodeSecurity = nodeService.findOrCreateNodeSecurity(nodeId);
+                nodeSecurity.setInitialLoadTime(new Date());
+                nodeSecurity.setInitialLoadEndTime(new Date());
+                nodeSecurity.setRegistrationTime(new Date());
+                nodeSecurity.setInitialLoadEnabled(false);
+                nodeSecurity.setRegistrationEnabled(false);
+                nodeService.updateNodeSecurity(nodeSecurity);
+            } else if (node != null) {
+                disableRegistrationIfNecessary(node.getNodeId());
+            }
         }
     }
 
@@ -616,6 +619,16 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             }
         }
         return loaded;
+    }
+
+    protected void disableRegistrationIfNecessary(String registrationServerNodeId) {
+        NodeSecurity nodeSecurity = nodeService.findNodeSecurity(registrationServerNodeId);
+        if (nodeSecurity != null && nodeSecurity.isRegistrationEnabled()) {
+            log.info("Node {} is a registration server and its registration_enabled flag in {} is set to 1. Setting it back to 0.",
+                    registrationServerNodeId, TableConstants.getTableName(getTablePrefix(), TableConstants.SYM_NODE_SECURITY));
+            nodeSecurity.setRegistrationEnabled(false);
+            nodeService.updateNodeSecurity(nodeSecurity);
+        }
     }
 
     public synchronized boolean start() {

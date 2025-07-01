@@ -101,7 +101,7 @@ public class PullService extends AbstractOfflineDetectorService implements IPull
                                             .getCreatedAtNodeId());
                                 }
                             }
-                            if (availableThreads > 0 && meetsMinimumTime && !m2mLockout && nodeSecurity != null && !nodeSecurity.isRegistrationEnabled()) {
+                            if (availableThreads > 0 && meetsMinimumTime && !m2mLockout && isAllowedToPull(nodeSecurity, identity.getNodeId())) {
                                 if (nodeCommunicationService.execute(nodeCommunication, statuses, this)) {
                                     availableThreads--;
                                 }
@@ -134,6 +134,11 @@ public class PullService extends AbstractOfflineDetectorService implements IPull
             }
         }
         return filteredNodes;
+    }
+
+    protected boolean isAllowedToPull(NodeSecurity nodeSecurity, String currentNodeId) {
+        return nodeSecurity != null
+                && (!nodeSecurity.isRegistrationEnabled() || !currentNodeId.equals(nodeSecurity.getCreatedAtNodeId()));
     }
 
     public void execute(NodeCommunication nodeCommunication, RemoteNodeStatus status) {
