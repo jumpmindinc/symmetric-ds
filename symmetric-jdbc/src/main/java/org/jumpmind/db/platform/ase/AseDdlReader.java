@@ -154,9 +154,9 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
         } else if (typeName != null && typeName.equalsIgnoreCase("UNITEXT")) {
             return Types.LONGVARBINARY;
         } else if (typeName != null && typeName.equalsIgnoreCase("UNICHAR")) {
-            return Types.LONGVARBINARY;
+            return Types.VARBINARY;
         } else if (typeName != null && typeName.equalsIgnoreCase("UNIVARCHAR")) {
-            return Types.LONGVARBINARY;
+            return Types.VARBINARY;
         } else {
             return super.mapUnknownJdbcTypeForColumn(values);
         }
@@ -339,6 +339,7 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
                 + "ON db.dbid = db_id() "
                 + "WHERE tab.name = ? AND db.name = ? ";
         triggers = sqlTemplate.query(sql, new ISqlRowMapper<Trigger>() {
+            @Override
             public Trigger mapRow(Row row) {
                 Trigger trigger = new Trigger();
                 trigger.setName(row.getString("trigger_name"));
@@ -373,6 +374,7 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
                     + "WHERE id = ? "
                     + "ORDER BY colid ";
             sqlTemplate.query(sourceSql, new ISqlRowMapper<Trigger>() {
+                @Override
                 public Trigger mapRow(Row row) {
                     trigger.setSource(trigger.getSource() + "\n" + row.getString("text"));
                     return trigger;

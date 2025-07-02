@@ -54,7 +54,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
-import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.PermissionResult;
@@ -142,21 +141,6 @@ public class AseDatabasePlatform extends AbstractJdbcDatabasePlatform {
     @Override
     public boolean canColumnBeUsedInWhereClause(Column column) {
         return !isLob(column) && super.canColumnBeUsedInWhereClause(column);
-    }
-
-    @Override
-    public boolean isClob(Column column) {
-        int type = column.getJdbcTypeCode();
-        return type == Types.CLOB || type == Types.NCLOB || type == Types.LONGVARCHAR || type == ColumnTypes.LONGNVARCHAR;
-    }
-
-    @Override
-    public boolean isBlob(Column column) {
-        int type = column.getJdbcTypeCode();
-        if (settings.isTreatBinaryAsLob()) {
-            return type == Types.BLOB || type == Types.BINARY || type == Types.VARBINARY || type == Types.LONGVARBINARY || type == -10;
-        }
-        return type == Types.BLOB || type == Types.LONGVARBINARY || type == -10;
     }
 
     @Override
