@@ -303,9 +303,10 @@ public class ExtractDataReader implements IDataReader {
                             String utf8Str = new String(utf16Str.getBytes("UTF-8"), "UTF-8");
                             rowData[index] = utf8Str;
                         } catch (UnsupportedEncodingException | DecoderException e) {
-                            log.warn("Failed to decode UTF-16 to UTF-8 for column '{}' with value '{}': {}",
+                            log.warn("Failed to decode UTF-16 to UTF-8 for column '{}' with value '{}' in table '{}': {}",
                                     uniColumn.getName(),
                                     rowData[index],
+                                    table.getFullyQualifiedTableName(),
                                     e.getMessage());
                         }
                     }
