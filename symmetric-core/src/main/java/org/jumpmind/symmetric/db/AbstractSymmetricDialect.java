@@ -323,13 +323,21 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     }
 
     public String createCsvDataSql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause) {
-        return triggerTemplate.createCsvDataSql(trigger, triggerHistory, platform.getTableFromCache(trigger.getSourceCatalogName(),
-                trigger.getSourceSchemaName(), trigger.getSourceTableName(), false), channel, whereClause).trim();
+        return createCsvDataSql(trigger, triggerHistory, channel, whereClause, platform.getTableFromCache(trigger.getSourceCatalogName(),
+            trigger.getSourceSchemaName(), trigger.getSourceTableName(), false));
+    }
+
+    public String createCsvDataSql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause, Table table) {
+        return triggerTemplate.createCsvDataSql(trigger, triggerHistory, table, channel, whereClause).trim();
     }
 
     public String createCsvPrimaryKeySql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause) {
         return triggerTemplate.createCsvPrimaryKeySql(trigger, triggerHistory, platform.getTableFromCache(trigger.getSourceCatalogName(),
                 trigger.getSourceSchemaName(), trigger.getSourceTableName(), false), channel, whereClause).trim();
+    }
+
+    public String createCsvPrimaryKeySql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause, Table table) {
+        return triggerTemplate.createCsvPrimaryKeySql(trigger, triggerHistory, table, channel, whereClause).trim();
     }
 
     public Set<String> getSqlKeywords() {
