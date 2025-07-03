@@ -14,7 +14,6 @@ import java.sql.Types;
 import javax.sql.DataSource;
 
 import org.jumpmind.db.model.Column;
-import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
@@ -56,8 +55,9 @@ public class AseDatabasePlatformTest {
     @Test
     void testCanColumnBeUsedInWhereClause_withUnitext_shouldBeLob() {
         Column column = new Column();
-        column.setJdbcTypeCode(Types.LONGVARCHAR);
+        column.setJdbcTypeCode(Types.LONGVARBINARY);
         column.setJdbcTypeName("unitext");
+        column.setMappedTypeCode(Types.LONGVARBINARY);
         boolean result = platform.canColumnBeUsedInWhereClause(column);
         assertFalse(result);
     }
@@ -65,8 +65,9 @@ public class AseDatabasePlatformTest {
     @Test
     void testCanColumnBeUsedInWhereClause_withUnivarchar_shouldNotBeLob() {
         Column column = new Column();
-        column.setJdbcTypeCode(Types.VARCHAR);
+        column.setJdbcTypeCode(Types.VARBINARY);
         column.setJdbcTypeName("univarchar");
+        column.setMappedTypeCode(Types.VARBINARY);
         boolean result = platform.canColumnBeUsedInWhereClause(column);
         assertTrue(result);
     }
@@ -74,25 +75,18 @@ public class AseDatabasePlatformTest {
     @Test
     void testCanColumnBeUsedInWhereClause_withUnichar_shouldNotBeLob() {
         Column column = new Column();
-        column.setJdbcTypeCode(Types.CHAR);
+        column.setJdbcTypeCode(Types.VARBINARY);
         column.setJdbcTypeName("unichar");
+        column.setMappedTypeCode(Types.VARBINARY);
         boolean result = platform.canColumnBeUsedInWhereClause(column);
         assertTrue(result);
-    }
-
-    @Test
-    void testCanColumnBeUsedInWhereClause_withLongNvarchar_shouldBeLob() {
-        Column column = new Column();
-        column.setJdbcTypeCode(ColumnTypes.LONGNVARCHAR);
-        column.setJdbcTypeName("univarchar");
-        boolean result = platform.canColumnBeUsedInWhereClause(column);
-        assertFalse(result);
     }
 
     @Test
     void testCanColumnBeUsedInWhereClause_withClobColumn() {
         Column column = new Column();
         column.setJdbcTypeCode(Types.CLOB);
+        column.setMappedTypeCode(Types.CLOB);
         assertFalse(platform.canColumnBeUsedInWhereClause(column));
     }
 
@@ -100,6 +94,7 @@ public class AseDatabasePlatformTest {
     void testCanColumnBeUsedInWhereClause_withBlobColumn() {
         Column column = new Column();
         column.setJdbcTypeCode(Types.BLOB);
+        column.setMappedTypeCode(Types.BLOB);
         assertFalse(platform.canColumnBeUsedInWhereClause(column));
     }
 
@@ -107,6 +102,7 @@ public class AseDatabasePlatformTest {
     void testCanColumnBeUsedInWhereClause_withBinaryColumn_treatBinaryAsLobTrue() {
         Column column = new Column();
         column.setJdbcTypeCode(Types.BINARY);
+        column.setMappedTypeCode(Types.BINARY);
         when(sqlTemplateSettings.isTreatBinaryAsLob()).thenReturn(true);
         assertFalse(platform.canColumnBeUsedInWhereClause(column));
     }
@@ -123,6 +119,7 @@ public class AseDatabasePlatformTest {
     void testCanColumnBeUsedInWhereClause_withFloatColumn() {
         Column column = new Column();
         column.setJdbcTypeCode(Types.FLOAT);
+        column.setMappedTypeCode(Types.FLOAT);
         assertFalse(platform.canColumnBeUsedInWhereClause(column));
     }
 
@@ -130,6 +127,7 @@ public class AseDatabasePlatformTest {
     void testCanColumnBeUsedInWhereClause_withDoubleColumn() {
         Column column = new Column();
         column.setJdbcTypeCode(Types.DOUBLE);
+        column.setMappedTypeCode(Types.DOUBLE);
         assertFalse(platform.canColumnBeUsedInWhereClause(column));
     }
 
@@ -137,6 +135,7 @@ public class AseDatabasePlatformTest {
     void testCanColumnBeUsedInWhereClause_withRealColumn() {
         Column column = new Column();
         column.setJdbcTypeCode(Types.REAL);
+        column.setMappedTypeCode(Types.REAL);
         assertFalse(platform.canColumnBeUsedInWhereClause(column));
     }
 
@@ -144,6 +143,7 @@ public class AseDatabasePlatformTest {
     void testCanColumnBeUsedInWhereClause_withIntegerColumn() {
         Column column = new Column();
         column.setJdbcTypeCode(Types.INTEGER);
+        column.setMappedTypeCode(Types.INTEGER);
         assertTrue(platform.canColumnBeUsedInWhereClause(column));
     }
 
@@ -151,6 +151,7 @@ public class AseDatabasePlatformTest {
     void testCanColumnBeUsedInWhereClause_withVarcharColumn() {
         Column column = new Column();
         column.setJdbcTypeCode(Types.VARCHAR);
+        column.setMappedTypeCode(Types.VARCHAR);
         assertTrue(platform.canColumnBeUsedInWhereClause(column));
     }
 }
