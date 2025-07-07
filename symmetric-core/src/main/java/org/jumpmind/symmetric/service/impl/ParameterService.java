@@ -49,7 +49,6 @@ public class ParameterService extends AbstractParameterService implements IParam
     private ISqlTemplate sqlTemplate;
     private Date lastUpdateTime;
     private List<DatabaseParameter> offlineParameters;
-    private final int MINS_IN_ONE_WEEK = 10080;
 
     public ParameterService(IDatabasePlatform platform, ITypedPropertiesFactory factory, String tablePrefix) {
         this.tablePrefix = tablePrefix;
@@ -86,9 +85,6 @@ public class ParameterService extends AbstractParameterService implements IParam
 
     public void saveParameter(String externalId, String nodeGroupId, String key, Object paramValue, String lastUpdateBy) {
         paramValue = paramValue != null ? paramValue.toString() : null;
-        if (key.equals(ParameterConstants.PURGE_STATS_RETENTION_MINUTES) && Integer.parseInt((String) paramValue) < MINS_IN_ONE_WEEK) {
-            paramValue = MINS_IN_ONE_WEEK;
-        }
         if (extensionService != null) {
             for (IParameterSaveFilter filter : extensionService.getExtensionPointList(IParameterSaveFilter.class)) {
                 paramValue = filter.filterSaveParameter(key, (String) paramValue);
