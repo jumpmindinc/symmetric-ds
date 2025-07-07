@@ -1128,6 +1128,10 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                                 }
                             } else {
                                 isError = true;
+                                if (listener.isErrorSuppressed()) {
+                                    loadInfo.setStatus(ProcessStatus.OK);
+                                    loadInfo.setCurrentBatchId(0);
+                                }
                                 if (listener.currentBatch != null && listener.currentBatch.getSqlCode() == ErrorConstants.PROTOCOL_VIOLATION_CODE) {
                                     log.info("The batch {} may be corrupt in staging, so removing it.", batchInStaging.getNodeBatchId());
                                     resource.delete();

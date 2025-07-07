@@ -33,7 +33,6 @@ import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
-import org.jumpmind.symmetric.model.RegistrationRequest.RegistrationStatus;
 import org.jumpmind.symmetric.model.BatchAck;
 import org.jumpmind.symmetric.model.BatchAckResult;
 import org.jumpmind.symmetric.model.Channel;
@@ -41,6 +40,7 @@ import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.OutgoingBatches;
 import org.jumpmind.symmetric.model.RegistrationRequest;
+import org.jumpmind.symmetric.model.RegistrationRequest.RegistrationStatus;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IRegistrationService;
@@ -155,6 +155,7 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
                             try {
                                 engine.getDataService().reloadMissingForeignKeyRows(outgoingBatch.getBatchId(), outgoingBatch.getNodeId(),
                                         outgoingBatch.getFailedDataId(), outgoingBatch.getFailedLineNumber());
+                                suppressError = true;
                             } catch (Exception e) {
                                 log.error("Failed to request a reload of missing foreign key rows for batch " + outgoingBatch.getNodeBatchId() +
                                         " data ID " + outgoingBatch.getFailedDataId(), e);
@@ -188,8 +189,10 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
                     }
                     if (suppressError) {
                         outgoingBatch.setErrorFlag(false);
+                        outgoingBatch.setStatus(Status.LD);
                     } else {
-                        log.error("The outgoing batch {} failed: {}", outgoingBatch.getNodeBatchId(), getErrorMessage(batch));
+                        log.error("The outgoing batch {} failed at line {} on data {}: {}", outgoingBatch.getNodeBatchId(), outgoingBatch.getFailedLineNumber(),
+                                outgoingBatch.getFailedDataId(), getErrorMessage(batch));
                         RouterStats routerStats = engine.getStatisticManager().getRouterStatsByBatch(batch.getBatchId());
                         if (routerStats != null) {
                             log.info("Router stats for batch " + outgoingBatch.getBatchId() + ": " + routerStats);

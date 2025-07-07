@@ -987,6 +987,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
         failureMessage.append(data.getDataEventType().toString().toLowerCase());
         failureMessage.append(" event in batch ");
         failureMessage.append(batch.getNodeBatchId());
+        failureMessage.append(" at line ").append(batch.getLineCount());
         failureMessage.append(" on channel '");
         failureMessage.append(batch.getChannelId());
         failureMessage.append("'.\n");
