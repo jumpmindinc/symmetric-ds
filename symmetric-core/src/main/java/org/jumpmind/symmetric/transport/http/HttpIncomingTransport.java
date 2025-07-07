@@ -125,6 +125,7 @@ public class HttpIncomingTransport implements IIncomingTransport {
             connection = openConnectionCheckRedirects();
         }
         int code = connection.getResponseCode();
+        httpTransportManager.checkResponseCode(connection, code);
         switch (code) {
             case WebConstants.REGISTRATION_NOT_OPEN:
                 throw new RegistrationNotOpenException();

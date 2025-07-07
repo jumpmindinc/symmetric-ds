@@ -46,6 +46,7 @@ import org.jumpmind.symmetric.model.BatchId;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.transport.AbstractTransportManager;
+import org.jumpmind.symmetric.transport.IHttpConnectionHandler;
 import org.jumpmind.symmetric.transport.IIncomingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.transport.ITransportManager;
@@ -201,6 +202,10 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     public HttpConnection openConnection(URL url, String nodeId, String securityToken)
             throws IOException {
         HttpConnection conn = new HttpConnection(url);
+        IHttpConnectionHandler handler = extensionService.getExtensionPoint(IHttpConnectionHandler.class);
+        if (handler != null) {
+            handler.prepare(conn);
+        }
         conn.setRequestProperty(WebConstants.HEADER_ACCEPT_CHARSET, StandardCharsets.UTF_8.name());
         boolean hasSession = false;
         if (useSessionAuth) {
@@ -214,6 +219,13 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
             conn.setRequestProperty(WebConstants.HEADER_SECURITY_TOKEN, securityToken);
         }
         return conn;
+    }
+
+    public void checkResponseCode(HttpConnection conn, int responseCode) {
+        IHttpConnectionHandler handler = extensionService.getExtensionPoint(IHttpConnectionHandler.class);
+        if (handler != null) {
+            handler.checkResponse(conn, responseCode);
+        }
     }
 
     public void updateSession(HttpConnection conn) {
