@@ -467,7 +467,7 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
         if (pgDialect.supportsReplaceTriggers() && pgDialect.getParameterService().is(ParameterConstants.ALLOW_TRIGGER_CREATE_OR_REPLACE, true)) {
             return "create or replace trigger ";
         }        
-        return "create trigger";
+        return "create trigger ";
     }
     
     protected final String getSecurityClause(PostgreSqlSymmetricDialect pgDialect ) {
