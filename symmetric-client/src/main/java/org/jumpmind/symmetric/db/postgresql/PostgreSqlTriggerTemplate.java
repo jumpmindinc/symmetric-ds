@@ -496,7 +496,8 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
                     && ( StringUtils.isBlank(defaultSchema) == StringUtils.isBlank(tableSchema) )
                     && defaultSchema.contentEquals( tableSchema);
         PostgreSqlSymmetricDialect pgDialect = (PostgreSqlSymmetricDialect)this.symmetricDialect;        
-        boolean includeTruncateTrigger = pgDialect.getParameterService().is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE) 
+        boolean includeTruncateTrigger = pgDialect.supportsReplaceTriggers() 
+                                         && pgDialect.getParameterService().is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE)
                                          && ( (!trigger.isSyncOnDelete() && dml == DataEventType.INSERT)  
                                             || (trigger.isSyncOnDelete() && dml == DataEventType.DELETE)); 
         if (includeTruncateTrigger && !internalTable) {
@@ -560,7 +561,7 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
 
     public String createSharedTruncateCaptureFunction(String tablePrefix, String defaultCatalog, String defaultSchema) {
         PostgreSqlSymmetricDialect pgDialect = (PostgreSqlSymmetricDialect)this.symmetricDialect;
-        if (!(pgDialect.getParameterService().is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE))){
+        if (!(pgDialect.getParameterService().is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE) || !pgDialect.supportsReplaceTriggers())){
             return "";
         }
         if (pgDialect.isFunctionInstalled(sharedTruncateEventFunctionName)) {

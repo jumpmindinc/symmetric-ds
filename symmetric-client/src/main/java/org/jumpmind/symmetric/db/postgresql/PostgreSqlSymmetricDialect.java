@@ -140,7 +140,11 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             log.info("Created shared function {} for processing LOBs", sharedReadLargeObjectFunction);
         }
         if (parameterService.is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE)) {
-            createSharedTruncateCaptureFunctions(ddl);
+            if (supportsReplaceTriggers()) {
+                createSharedTruncateCaptureFunctions(ddl);
+            } else {
+                log.warn("SymmetricDS does not support truncate table event triggers on PostgreSQL older than version 14!");
+            }
         } else {
             dropSharedTruncateCaptureFunction();
         }
