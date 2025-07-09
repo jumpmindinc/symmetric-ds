@@ -141,6 +141,8 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         }
         if (parameterService.is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE)) {
             createSharedTruncateCaptureFunctions(ddl);
+        } else {
+            dropSharedTruncateCaptureFunction();
         }
     }
 
@@ -175,10 +177,10 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         if (isFunctionInstalled(largeObjects)) {
             uninstall(SQL_DROP_FUNCTION + "(objectId oid) cascade", largeObjects);
         }
-        dropSharedTruncateCaptureFunctions();
+        dropSharedTruncateCaptureFunction();
     }
 
-    public void dropSharedTruncateCaptureFunctions() {
+    public void dropSharedTruncateCaptureFunction() {
         PostgreSqlTriggerTemplate templatesMap = (PostgreSqlTriggerTemplate) this.triggerTemplate;
         String sharedTruncateEventFunction = templatesMap.getTruncateSharedFunctionName();
         if (isFunctionInstalled(sharedTruncateEventFunction)) {
