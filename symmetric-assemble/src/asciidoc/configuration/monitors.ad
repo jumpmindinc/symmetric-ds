@@ -49,6 +49,8 @@ be compared to a threshold value.
 
 |licenseRows|Percentage from 0 to 100 of rows used out of the maximum number of rows allowed by the license.|
 
+|postgresWal|Size in MB of the backlog of PostgreSQL Write-Ahead Logging (WAL) changes that haven't yet been mined by the PostgreSQL log miner.|
+
 |jvm64Bit|Value of 0 or 1 indicating whether or not the operating system is 64-bit and the JVM is 32-bit.|✔
 
 |jvmCrash|Number of Java crash files found that were created or modified in the last 24 hours.|✔
