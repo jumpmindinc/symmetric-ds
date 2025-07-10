@@ -343,7 +343,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     @Override
     public String createCsvDataSql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause) {
         return createCsvDataSql(trigger, triggerHistory, channel, whereClause, platform.getTableFromCache(trigger.getSourceCatalogName(),
-            trigger.getSourceSchemaName(), trigger.getSourceTableName(), false));
+                trigger.getSourceSchemaName(), trigger.getSourceTableName(), false));
     }
 
     public String createCsvDataSql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause, Table table) {
@@ -356,7 +356,6 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
                 trigger.getSourceSchemaName(), trigger.getSourceTableName(), false), channel, whereClause).trim();
     }
 
-    
     public String createCsvPrimaryKeySql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause, Table table) {
         return triggerTemplate.createCsvPrimaryKeySql(trigger, triggerHistory, table, channel, whereClause).trim();
     }

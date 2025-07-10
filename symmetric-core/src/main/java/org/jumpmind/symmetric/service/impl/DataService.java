@@ -3031,7 +3031,8 @@ public class DataService extends AbstractService implements IDataService {
         return data;
     }
 
-    protected String getCsvDataFor(ISqlTransaction transaction, Trigger trigger, TriggerHistory triggerHistory, String whereClause, boolean pkOnly, Table table) {
+    protected String getCsvDataFor(ISqlTransaction transaction, Trigger trigger, TriggerHistory triggerHistory, String whereClause, boolean pkOnly,
+            Table table) {
         String data = null;
         String sql = null;
         try {
