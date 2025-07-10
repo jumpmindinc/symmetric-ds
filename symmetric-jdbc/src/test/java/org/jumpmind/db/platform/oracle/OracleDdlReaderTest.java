@@ -24,8 +24,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -62,6 +60,8 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
@@ -591,6 +591,7 @@ class OracleDdlReaderTest {
         ResultSet stmtrs2 = mock(ResultSet.class);
         ResultSet stmtrs3 = mock(ResultSet.class);
         ResultSet stmtrs4 = mock(ResultSet.class);
+        ResultSet stmtrs5 = mock(ResultSet.class);
         ResultSetMetaData rsMetaData = mock(ResultSetMetaData.class);
         ResultSetMetaData rsMetaData2 = mock(ResultSetMetaData.class);
         ResultSetMetaData rsMetaData3 = mock(ResultSetMetaData.class);
@@ -599,6 +600,7 @@ class OracleDdlReaderTest {
         PreparedStatement stmt2 = mock(PreparedStatement.class);
         PreparedStatement stmt3 = mock(PreparedStatement.class);
         PreparedStatement stmt4 = mock(PreparedStatement.class);
+        PreparedStatement stmt5 = mock(PreparedStatement.class);
         when(spyTemplate.getDataSource().getConnection()).thenReturn(connection);
         doReturn(spyTemplate).when(spyPlatform).createSqlTemplate();
         when(spyPlatform.createSqlTemplateDirty()).thenReturn(spyTemplate);
@@ -665,7 +667,7 @@ class OracleDdlReaderTest {
         when(rs3.getMetaData()).thenReturn(rsMetaData3);
         when(rsMetaData3.getColumnCount()).thenReturn(0);
         when(connection.prepareStatement(ArgumentMatchers.anyString())).thenReturn(stmt1).thenReturn(stmt2).thenReturn(stmt3)
-                .thenReturn(stmt4);
+                .thenReturn(stmt4).thenReturn(stmt5);
         when(stmt1.executeQuery()).thenReturn(stmtrs1);
         when(stmtrs1.next()).thenReturn(true).thenReturn(false);
         when(stmtrs1.getString(1)).thenReturn(DdlReaderTestConstants.TESTNAMECAPS);
@@ -688,10 +690,12 @@ class OracleDdlReaderTest {
         when(rs4.getString(3)).thenReturn(DdlReaderTestConstants.COLUMN_NAME_TEST_VALUE);
         when(rs4.next()).thenReturn(true).thenReturn(false);
         when(stmt3.executeQuery()).thenReturn(stmtrs3);
-        when(stmtrs3.next()).thenReturn(true);
+        when(stmtrs3.next()).thenReturn(true).thenReturn(false);
         when(stmt4.executeQuery()).thenReturn(stmtrs4);
-        when(stmtrs4.next()).thenReturn(true);
-        doReturn(1).when(spyTemplate).queryForInt(ArgumentMatchers.anyString(), (Object) ArgumentMatchers.any());
+        when(stmtrs4.next()).thenReturn(true).thenReturn(false);
+        when(stmt5.executeQuery()).thenReturn(stmtrs5);
+        when(stmtrs5.next()).thenReturn(true).thenReturn(false);
+        doReturn(1).when(spyTemplate).queryForInt(ArgumentMatchers.anyString(), (Object) ArgumentMatchers.any(), (Object) ArgumentMatchers.any());
         Table testTable = spyReader.readTable(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
         Table expectedTable = new Table();
         expectedTable.setName(DdlReaderTestConstants.TESTNAME);

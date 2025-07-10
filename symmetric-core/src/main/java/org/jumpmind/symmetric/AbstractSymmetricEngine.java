@@ -469,7 +469,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 log.info("SymmetricDS is not configured to auto-create the database");
             }
         }
-        autoConfigRegistrationServer();
         try {
             configurationService.initDefaultChannels();
         } catch (SqlException e) {
@@ -483,6 +482,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
         clusterService.init();
         sequenceService.init();
+        autoConfigRegistrationServer();
         log.info("Done initializing SymmetricDS database");
     }
 

@@ -140,7 +140,13 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             log.info("Created shared function {} for processing LOBs", sharedReadLargeObjectFunction);
         }
         if (parameterService.is(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE)) {
-            createSharedTruncateCaptureFunctions(ddl);
+            if (supportsReplaceTriggers()) {
+                createSharedTruncateCaptureFunctions(ddl);
+            } else {
+                log.warn("SymmetricDS does not support truncate table event triggers on PostgreSQL older than version 14!");
+            }
+        } else {
+            dropSharedTruncateCaptureFunction();
         }
     }
 
@@ -175,10 +181,10 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         if (isFunctionInstalled(largeObjects)) {
             uninstall(SQL_DROP_FUNCTION + "(objectId oid) cascade", largeObjects);
         }
-        dropSharedTruncateCaptureFunctions();
+        dropSharedTruncateCaptureFunction();
     }
 
-    public void dropSharedTruncateCaptureFunctions() {
+    public void dropSharedTruncateCaptureFunction() {
         PostgreSqlTriggerTemplate templatesMap = (PostgreSqlTriggerTemplate) this.triggerTemplate;
         String sharedTruncateEventFunction = templatesMap.getTruncateSharedFunctionName();
         if (isFunctionInstalled(sharedTruncateEventFunction)) {

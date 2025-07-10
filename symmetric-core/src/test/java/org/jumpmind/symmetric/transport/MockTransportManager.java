@@ -145,6 +145,12 @@ public class MockTransportManager extends AbstractTransportManager implements IT
     }
 
     @Override
+    public IIncomingTransport getBandwidthPullTransport(Node remote, Node local, String securityToken,
+            Map<String, String> requestProperties, String registrationUrl, long sampleSize) throws IOException {
+        return null;
+    }
+
+    @Override
     public IOutgoingWithResponseTransport getBandwidthPushTransport(Node remote, Node local, String securityToken, Map<String, String> requestProperties,
             String registrationUrl)
             throws IOException {

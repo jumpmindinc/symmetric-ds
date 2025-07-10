@@ -36,6 +36,8 @@ import org.jumpmind.symmetric.service.impl.BandwidthService;
 public interface IBandwidthService {
     public double getDownloadKbpsFor(String url, long sampleSize, long maxTestDuration);
 
+    public double getDownloadKbpsFor(Node remoteNode, Node localNode, long sampleSize, long maxTestDuration);
+
     public double getUploadKbpsFor(Node remoteNode, Node localNode, long sampleSize, long maxTestDuration) throws IOException;
 
     public List<BandwidthService.BandwidthResults> diagnoseDownloadBandwidth(Node localNode, Node remoteNode);

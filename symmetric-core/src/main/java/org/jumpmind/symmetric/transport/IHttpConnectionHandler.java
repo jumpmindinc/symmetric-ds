@@ -18,28 +18,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.vaadin.ui.common;
+package org.jumpmind.symmetric.transport;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import org.jumpmind.extension.IExtensionPoint;
+import org.jumpmind.symmetric.transport.http.HttpConnection;
 
-import com.vaadin.flow.server.StreamResource;
+public interface IHttpConnectionHandler extends IExtensionPoint {
+    public void prepare(HttpConnection conn);
 
-public class ExportFileDownloader extends StreamResource {
-    private static final long serialVersionUID = 1L;
-    protected String contentType;
-    protected String fileName;
-
-    public ExportFileDownloader(final String fileName, final String contentType, final File file) throws FileNotFoundException {
-        super(fileName, () -> {
-            try {
-                return new FileInputStream(file);
-            } catch (FileNotFoundException e) {
-                return null;
-            }
-        });
-        this.contentType = contentType;
-        this.fileName = fileName;
-    }
+    public void checkResponse(HttpConnection conn, int responseCode);
 }

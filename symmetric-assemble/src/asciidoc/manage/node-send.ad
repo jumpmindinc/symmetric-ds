@@ -5,6 +5,7 @@ BSH Scripts:: Beanshell scripts can be sent to be executed on a target node
 Table Schema:: The schema the source node can be replicated to the target node individually
 ifdef::pro[]
 Configuration:: The configuration is sent, similar to exporting the configuration and importing it, which excludes node, user, role, and privilege tables.
+CA Certificate:: The CA certificate is sent to the target node and installed into its trusted keystore (`security/cacerts`). The target node must run version 3.12.2 or newer and be no more than two tiers below the current node.
 endif::pro[]
 
 ifndef::pro[]

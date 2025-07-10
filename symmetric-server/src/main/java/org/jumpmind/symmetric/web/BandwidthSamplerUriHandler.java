@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.Objects;
 import java.util.zip.GZIPInputStream;
 
 import jakarta.servlet.ServletException;
@@ -53,12 +54,12 @@ public class BandwidthSamplerUriHandler extends AbstractUriHandler {
 
     public void handle(HttpServletRequest req, HttpServletResponse res) throws IOException,
             ServletException {
-        String direction = req.getParameter("direction");
-        if (direction != null && direction.equals("pull")) {
+        String direction = Objects.toString(req.getHeader(WebConstants.HEADER_DIRECTION), req.getParameter(WebConstants.DIRECTION));
+        if (direction != null && direction.equals(WebConstants.URL_PULL)) {
             handlePull(req, res);
-        } else if (direction != null && direction.equals("push")) {
+        } else if (direction != null && direction.equals(WebConstants.URL_PUSH)) {
             handlePush(req, res);
-        } else {
+        } else if (!"HEAD".equals(req.getMethod())) {
             throw new IOException("Unknown direction: " + direction);
         }
     }
@@ -66,11 +67,12 @@ public class BandwidthSamplerUriHandler extends AbstractUriHandler {
     private void handlePull(HttpServletRequest req, HttpServletResponse res) throws IOException {
         long testSlowBandwidthDelay = parameterService != null ? parameterService
                 .getLong("test.slow.bandwidth.delay") : defaultTestSlowBandwidthDelay;
+        String sampleSizeString = Objects.toString(req.getHeader(WebConstants.HEADER_SAMPLE_SIZE), req.getParameter(WebConstants.SAMPLE_SIZE));
         long sampleSize = 1000;
         try {
-            sampleSize = Long.parseLong(req.getParameter("sampleSize"));
+            sampleSize = Long.parseLong(sampleSizeString);
         } catch (Exception ex) {
-            log.warn("Unable to parse sampleSize of {}", req.getParameter("sampleSize"));
+            log.warn("Unable to parse sample size of {}", sampleSizeString);
         }
         ServletOutputStream os = res.getOutputStream();
         for (int i = 0; i < sampleSize; i++) {

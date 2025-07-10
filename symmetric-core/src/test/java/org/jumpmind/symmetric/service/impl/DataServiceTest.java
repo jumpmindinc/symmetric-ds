@@ -706,9 +706,9 @@ public class DataServiceTest {
         when(st.buildDynamicSql(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.anyBoolean(), ArgumentMatchers.anyBoolean())).thenReturn(
                 "where pk = ?;");
         when(symmetricDialect.createCsvPrimaryKeySql(ArgumentMatchers.any(), ArgumentMatchers.any(),
-                ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn("queryPk");
+                ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn("queryPk");
         when(symmetricDialect.createCsvDataSql(ArgumentMatchers.any(), ArgumentMatchers.any(),
-                ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn("queryData");
+                ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn("queryData");
         IConfigurationService configurationService = mock(IConfigurationService.class);
         when(engine.getConfigurationService()).thenReturn(configurationService);
         Row row = new Row(0);

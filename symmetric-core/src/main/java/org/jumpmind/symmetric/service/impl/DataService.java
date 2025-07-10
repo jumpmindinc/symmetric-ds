@@ -3031,16 +3031,16 @@ public class DataService extends AbstractService implements IDataService {
         return data;
     }
 
-    protected String getCsvDataFor(ISqlTransaction transaction, Trigger trigger, TriggerHistory triggerHistory, String whereClause, boolean pkOnly) {
+    protected String getCsvDataFor(ISqlTransaction transaction, Trigger trigger, TriggerHistory triggerHistory, String whereClause, boolean pkOnly, Table table) {
         String data = null;
         String sql = null;
         try {
             if (pkOnly) {
                 sql = symmetricDialect.createCsvPrimaryKeySql(trigger, triggerHistory,
-                        engine.getConfigurationService().getChannel(trigger.getChannelId()), whereClause);
+                        engine.getConfigurationService().getChannel(trigger.getChannelId()), whereClause, table);
             } else {
                 sql = symmetricDialect.createCsvDataSql(trigger, triggerHistory,
-                        engine.getConfigurationService().getChannel(trigger.getChannelId()), whereClause);
+                        engine.getConfigurationService().getChannel(trigger.getChannelId()), whereClause, table);
             }
         } catch (NotImplementedException e) {
         }
@@ -3064,6 +3064,12 @@ public class DataService extends AbstractService implements IDataService {
             data = data.trim();
         }
         return data;
+    }
+
+    protected String getCsvDataFor(ISqlTransaction transaction, Trigger trigger, TriggerHistory triggerHistory, String whereClause, boolean pkOnly) {
+        Table table = platform.getTableFromCache(trigger.getSourceCatalogName(),
+                trigger.getSourceSchemaName(), trigger.getSourceTableName(), false);
+        return getCsvDataFor(transaction, trigger, triggerHistory, whereClause, pkOnly, table);
     }
 
     @Override
@@ -3890,9 +3896,9 @@ public class DataService extends AbstractService implements IDataService {
                             : whereClause.substring(0, 100));
             // Look this record up:
             transaction = sqlTemplate.startSqlTransaction();
-            actualRowData = getCsvDataFor(transaction, trigger, hist, whereClause, false);
+            actualRowData = getCsvDataFor(transaction, trigger, hist, whereClause, false, table);
             if (actualRowData != null && data.getDataEventType() == DataEventType.INSERT) {
-                pkData = getCsvDataFor(transaction, trigger, hist, whereClause, true);
+                pkData = getCsvDataFor(transaction, trigger, hist, whereClause, true, table);
             }
             close(transaction);
             transaction = null;

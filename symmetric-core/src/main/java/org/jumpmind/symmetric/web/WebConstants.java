@@ -108,6 +108,10 @@ public class WebConstants {
     public static final String REG_PASSWORD = "regPassword";
     public static final String PUSH_REGISTRATION = "pushRegistration";
     public static final String API_KEY_HEADER = "X-REST-API-KEY";
+    public static final String DIRECTION = "direction";
+    public static final String SAMPLE_SIZE = "sampleSize";
+    public static final String HEADER_DIRECTION = "Direction";
+    public static final String HEADER_SAMPLE_SIZE = "Sample-Size";
     public static final String URL_PUSH = "push";
     public static final String URL_PULL = "pull";
     public static final String URL_PING = "ping";
