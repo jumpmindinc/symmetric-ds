@@ -848,6 +848,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             }
             processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_LOCK)) != null) {
+                if (parameterService.is(ParameterConstants.TRIGGER_CAPTURE_DDL_CHANGES)) {
+                    parameterService.saveParameter(parameterService.getExternalId(), parameterService.getNodeGroupId(),
+                            ParameterConstants.TRIGGER_CAPTURE_DDL_CHANGES, false, Constants.SYSTEM_USER);
+                }
                 // this should remove all triggers because we have removed all the trigger configuration
                 triggerRouterService.syncTriggers(true);
             }
