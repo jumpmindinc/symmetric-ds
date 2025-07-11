@@ -58,9 +58,9 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
 
     public PostgreSqlSymmetricDialect(IParameterService parameterService, IDatabasePlatform platform) {
         super(parameterService, platform);
+        versionSupportsReplaceTriggers = databaseMajorVersion >= 14;
         this.triggerTemplate = new PostgreSqlTriggerTemplate(this);
         this.supportsDdlTriggers = databaseMajorVersion > 9 || (databaseMajorVersion == 9 && databaseMinorVersion >= 3);
-        versionSupportsReplaceTriggers = databaseMajorVersion >= 14;
         if (parameterService.is(ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW)) {
             try {
                 getEarliestTransactionStartTime();
@@ -71,6 +71,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             }
         }
         platform.getDatabaseInfo().setGeneratedColumnsSupported(databaseMajorVersion >= 12);
+        platform.getDatabaseInfo().setTriggersCreateOrReplaceSupported(versionSupportsReplaceTriggers);
         sharedTriggersDisabledFunction = this.parameterService.getTablePrefix() + "_triggers_disabled";
         sharedNodeDisabledFunction = this.parameterService.getTablePrefix() + "_node_disabled";
         sharedReadLargeObjectFunction = this.parameterService.getTablePrefix() + "_largeobject";
