@@ -236,7 +236,7 @@ public class ParameterService extends AbstractParameterService implements IParam
         }
     }
 
-    public int getHashOfParameterValues(String[] parameterNames) {
+    public int hashParameterValues(String[] parameterNames) {
         if (parameterNames == null || parameterNames.length < 1) {
             log.debug("No parameters in the list to hash!");
             return 0;
