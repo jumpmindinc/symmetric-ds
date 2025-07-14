@@ -136,6 +136,16 @@ public class OracleDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
+    protected void genericizeDefaultValuesAndUpdatePlatformColumn(Column column) {
+        super.genericizeDefaultValuesAndUpdatePlatformColumn(column);
+        String defaultValue = column.getDefaultValue();
+        if ("sysdate".equalsIgnoreCase(defaultValue)) {
+            column.setDefaultValue("CURRENT_TIMESTAMP");
+            column.findPlatformColumn(platform.getName()).setDefaultValue(defaultValue);
+        }
+    }
+
+    @Override
     protected Integer mapUnknownJdbcTypeForColumn(Map<String, Object> values) {
         String typeName = (String) values.get("TYPE_NAME");
         if (typeName != null && typeName.startsWith("DATE")) {
