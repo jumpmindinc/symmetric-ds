@@ -32,6 +32,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,6 +49,7 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -2841,7 +2843,7 @@ public class DataService extends AbstractService implements IDataService {
             log.info("Could not determine foreign table rows to fix foreign key violation for "
                     + "batch {} table {}", batchName, data.getTableName());
         }
-        Collections.reverse(foreignTableRows);
+        sortTableRowsByForeignKeys(foreignTableRows);
         Set<TableRow> visited = new HashSet<TableRow>();
         boolean foundAllRows = true;
         for (TableRow foreignTableRow : foreignTableRows) {
@@ -2882,6 +2884,27 @@ public class DataService extends AbstractService implements IDataService {
                     "_incoming_error set resolve_ignore = 1 where batch_id = " + batchId + " and node_id = '" + engine.getNodeId() +
                     "' and failed_row_number = " + rowNumber);
         }
+    }
+
+    protected void sortTableRowsByForeignKeys(List<TableRow> tableRows) {
+        List<Table> tables = new ArrayList<Table>();
+        for (TableRow tableRow : tableRows) {
+            tables.add(tableRow.getTable());
+        }
+        List<Table> sortedTables = Database.sortByForeignKeys(tables);
+        Map<Table, Integer> tableMap = new HashMap<Table, Integer>();
+        int index = 0;
+        for (Table table : sortedTables) {
+            tableMap.put(table, index++);
+        }
+        Collections.sort(tableRows, new Comparator<TableRow>() {
+            @Override
+            public int compare(TableRow t1, TableRow t2) {
+                Integer i1 = tableMap.get(t1.getTable());
+                Integer i2 = tableMap.get(t2.getTable());
+                return i1 == null ? -1 : i2 == null ? 1 : i1.compareTo(i2);
+            }
+        });
     }
 
     @Override
