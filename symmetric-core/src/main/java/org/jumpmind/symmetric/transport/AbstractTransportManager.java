@@ -152,7 +152,7 @@ abstract public class AbstractTransportManager {
             append(builder, WebConstants.ACK_IGNORE_COUNT + batchId, batch.getIgnoreCount());
             keyCount++;
         }
-        if (batch.getStatus() == Status.ER) {
+        if (batch.getStatus() == Status.ER || batch.getStatus() == Status.LD) {
             String sqlState = batch.getSqlState();
             if (sqlState != null && sqlState.length() > 10) {
                 sqlState = sqlState.replace("JDBC-", "");

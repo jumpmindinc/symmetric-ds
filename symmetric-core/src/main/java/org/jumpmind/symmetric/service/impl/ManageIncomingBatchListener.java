@@ -74,6 +74,7 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
     protected List<IncomingBatch> batchesProcessed = new ArrayList<IncomingBatch>();
     protected IncomingBatch currentBatch;
     protected boolean isNewErrorForCurrentBatch;
+    protected boolean isNewErrorSuppressed;
     protected ProcessInfo processInfo;
     private ISymmetricEngine engine;
     private IParameterService parameterService;
@@ -229,7 +230,7 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                     this.currentBatch.setSqlCode(ErrorConstants.PROTOCOL_VIOLATION_CODE);
                     this.currentBatch.setSqlState(ErrorConstants.PROTOCOL_VIOLATION_STATE);
                     if (isNewErrorForCurrentBatch) {
-                        this.currentBatch.setErrorFlag(false);
+                        suppressError();
                     } else {
                         log.error(String.format("Failed to parse batch %s", this.currentBatch.getNodeBatchId()), ex);
                     }
@@ -278,7 +279,7 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                     } else if (isNewErrorForCurrentBatch && (this.currentBatch.getSqlCode() == ErrorConstants.FK_VIOLATION_CODE
                             || this.currentBatch.getSqlCode() == ErrorConstants.DEADLOCK_CODE
                             || this.currentBatch.getSqlCode() == ErrorConstants.CONFLICT_CODE)) {
-                        this.currentBatch.setErrorFlag(false);
+                        suppressError();
                     } else {
                         log.error(String.format("Failed to load batch %s", this.currentBatch.getNodeBatchId()), ex);
                     }
@@ -359,6 +360,12 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
         }
     }
 
+    protected void suppressError() {
+        currentBatch.setErrorFlag(false);
+        currentBatch.setStatus(Status.LD);
+        isNewErrorSuppressed = true;
+    }
+
     public void batchProgressUpdate(DataContext context) {
     }
 
@@ -375,5 +382,9 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
 
     public boolean isNewErrorForCurrentBatch() {
         return isNewErrorForCurrentBatch;
+    }
+
+    public boolean isErrorSuppressed() {
+        return isNewErrorSuppressed;
     }
 }
