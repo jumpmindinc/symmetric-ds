@@ -848,10 +848,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             }
             processInfo.incrementCurrentDataCount();
             if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_LOCK)) != null) {
-                if (parameterService.is(ParameterConstants.TRIGGER_CAPTURE_DDL_CHANGES)) {
-                    parameterService.saveParameter(parameterService.getExternalId(), parameterService.getNodeGroupId(),
-                            ParameterConstants.TRIGGER_CAPTURE_DDL_CHANGES, false, Constants.SYSTEM_USER);
-                }
+                disableParameter(ParameterConstants.TRIGGER_CAPTURE_DDL_CHANGES);
+                disableParameter(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE);
                 // this should remove all triggers because we have removed all the trigger configuration
                 triggerRouterService.syncTriggers(true);
             }
@@ -879,6 +877,13 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         parameterService.setDatabaseHasBeenInitialized(false);
         processInfo.setCurrentDataCount(totalStepCount);
         log.info("Finished uninstalling SymmetricDS database objects from the database");
+    }
+
+    private void disableParameter(String parameter) {
+        if (parameterService.is(parameter)) {
+            parameterService.saveParameter(parameterService.getExternalId(), parameterService.getNodeGroupId(),
+                    parameter, false, Constants.SYSTEM_USER);
+        }
     }
 
     private static ISqlResultsListener generateDropTablesListener(ProcessInfo processInfo, int dropTablesWeight,
