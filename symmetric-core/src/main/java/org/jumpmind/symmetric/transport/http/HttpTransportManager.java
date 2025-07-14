@@ -131,7 +131,8 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
                 statusCode = sendMessage("ack", remote, local, data, securityToken, requestProperties, registrationUrl);
                 if (statusCode != HttpConnection.HTTP_OK) {
                     if (statusCode != WebConstants.REGISTRATION_REQUIRED && statusCode != WebConstants.REGISTRATION_PENDING
-                        && statusCode != WebConstants.SYNC_DISABLED && statusCode != WebConstants.SC_FORBIDDEN && statusCode != WebConstants.SC_AUTH_EXPIRED) {
+                            && statusCode != WebConstants.SYNC_DISABLED && statusCode != WebConstants.SC_FORBIDDEN
+                            && statusCode != WebConstants.SC_AUTH_EXPIRED) {
                         if (maxFormKeys > 0 && maxFormKeys <= FORM_KEYS_PER_BATCH) {
                             log.error("Ack received a {} response from node {}. The form key limit of {} cannot be reduced any further.",
                                     statusCode, remote.getNodeId(), maxFormKeys);

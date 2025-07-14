@@ -74,6 +74,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
     private IExtensionService extensionService;
     private IContextService contextService;
     private FastDateFormat fastFormat = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss.SSS");
+    private final int MINS_IN_ONE_WEEK = 10080;
 
     public PurgeService(IParameterService parameterService, ISymmetricDialect symmetricDialect, IClusterService clusterService,
             IDataService dataService, ISequenceService sequenceService, IStatisticManager statisticManager, IExtensionService extensionService,
@@ -859,8 +860,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
 
     public void purgeStats(boolean force) {
         Calendar retentionCutoff = Calendar.getInstance();
-        retentionCutoff.add(Calendar.MINUTE,
-                -parameterService.getInt(ParameterConstants.PURGE_STATS_RETENTION_MINUTES));
+        retentionCutoff.add(Calendar.MINUTE, -Integer.max(parameterService.getInt(ParameterConstants.PURGE_STATS_RETENTION_MINUTES), MINS_IN_ONE_WEEK));
         if (force || clusterService.lock(ClusterConstants.PURGE_STATISTICS)) {
             try {
                 int purgedCount = sqlTemplate.update(getSql("purgeNodeHostChannelStatsSql"),
