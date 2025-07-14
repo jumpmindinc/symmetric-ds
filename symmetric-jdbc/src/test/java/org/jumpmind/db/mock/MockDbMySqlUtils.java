@@ -62,7 +62,6 @@ public final class MockDbMySqlUtils {
         return testColumn;
     }
 
-
     /**
      * Mocks up table column information ResultSet for a table (targeting determineExtraColumnInfo call). Use with MockDbDataSource.enqueuePreparedStatement()
      */
@@ -148,5 +147,4 @@ public final class MockDbMySqlUtils {
         }
         return rs;
     }
-
 }

@@ -39,10 +39,10 @@ public class MySqlDdlReaderTest extends MySqlDdlReader {
         return testReader;
     }
 
-
     @ParameterizedTest
     @CsvSource({ "LastWritten, DEFAULT CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP NOT NULL, timestamp, ", })
-    void testDetermineExtraColumnInfo_With_Default_Current_TimeStamp_On_Update(String columnName, String extra, String columnType, String generationExpression) throws Exception {
+    void testDetermineExtraColumnInfo_With_Default_Current_TimeStamp_On_Update(String columnName, String extra, String columnType, String generationExpression)
+            throws Exception {
         MockDbDataSource mockDataSource = new MockDbDataSource(MySqlDatabasePlatform_VERSION8);
         MySqlDdlReader testReader = createMySqlDdlReader(mockDataSource);
         Column testColumn = MockDbMySqlUtils.generateMySqlColumn(columnName, extra, columnType,
@@ -59,6 +59,7 @@ public class MySqlDdlReaderTest extends MySqlDdlReader {
         assertEquals(true, testColumn.isAutoUpdate());
         assertEquals(columnName, testColumn.getName());
     }
+
     @ParameterizedTest
     @CsvSource({ "LastWritten, on update CURRENT_TIMESTAMP NOT NULL, timestamp, ", })
     void testDetermineExtraColumnInfo_On_Update_Current_Time(String columnName, String extra, String columnType, String generationExpression) throws Exception {
@@ -78,6 +79,7 @@ public class MySqlDdlReaderTest extends MySqlDdlReader {
         assertEquals(true, testColumn.isAutoUpdate());
         assertEquals(columnName, testColumn.getName());
     }
+
     @ParameterizedTest
     @CsvSource({ "LastWritten, DEFAULT_GENERATED, timestamp, ", })
     void testDetermineExtraColumnInfo_Default_Current_Time(String columnName, String extra, String columnType, String generationExpression) throws Exception {
@@ -98,6 +100,7 @@ public class MySqlDdlReaderTest extends MySqlDdlReader {
         assertEquals(true, testColumn.isExpressionAsDefaultValue());
         assertEquals(columnName, testColumn.getName());
     }
+
     @ParameterizedTest
     @CsvSource({ "LastWritten, , timestamp, ", })
     void testDetermineExtraColumnInfo_Time_Not_Null(String columnName, String extra, String columnType, String generationExpression) throws Exception {
@@ -119,6 +122,7 @@ public class MySqlDdlReaderTest extends MySqlDdlReader {
         assertEquals(columnName, testColumn.getName());
         assertEquals(true, testColumn.isRequired());
     }
+
     @ParameterizedTest
     @CsvSource({ "Id, auto_increment, int, ", })
     void testDetermineExtraColumnInfo_Auto_Increment(String columnName, String extra, String columnType, String generationExpression) throws Exception {
