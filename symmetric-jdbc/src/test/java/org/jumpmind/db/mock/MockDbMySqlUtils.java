@@ -34,19 +34,22 @@ public final class MockDbMySqlUtils {
             String testColumnMappedType,
             int platformColumnSize,
             String platformColumnType,
-            boolean generated) {
+            boolean generated,
+            boolean autoIncrement,
+            boolean autoUpdate) {
         Column testColumn = new Column();
         testColumn.setDefaultValue(columnDefault);
         testColumn.setName(columnName);
         testColumn.setJdbcTypeName(jdbcTypeName);
         testColumn.setSize(columnSize);
-        testColumn.setAutoIncrement(false);
+        testColumn.setAutoIncrement(autoIncrement);
         testColumn.setJdbcTypeCode(jdbcTypeCode);
         testColumn.setMappedType(testColumnMappedType);
         testColumn.setPrecisionRadix(10);
         testColumn.setPrimaryKeySequence(1);
         testColumn.setPrimaryKey(true);
         testColumn.setGenerated(generated);
+        testColumn.setAutoUpdate(autoUpdate);
         PlatformColumn platformColumn = new PlatformColumn();
         testColumn.addPlatformColumn(platformColumn);
         platformColumn.setDecimalDigits(-1);
