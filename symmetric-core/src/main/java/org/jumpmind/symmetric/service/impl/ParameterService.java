@@ -57,10 +57,12 @@ public class ParameterService extends AbstractParameterService implements IParam
         this.sqlTemplate = platform.getSqlTemplate();
     }
 
+    @Override
     public String getTablePrefix() {
         return this.tablePrefix;
     }
 
+    @Override
     public boolean refreshFromDatabase() {
         Date date = sqlTemplate.queryForObject(sql.getSql("selectMaxLastUpdateTime"), Date.class);
         if (date != null) {
@@ -79,10 +81,12 @@ public class ParameterService extends AbstractParameterService implements IParam
     /**
      * Save a parameter that applies to {@link ParameterConstants#ALL} external ids and all node groups.
      */
+    @Override
     public void saveParameter(String key, Object paramValue, String lastUpdateBy) {
         this.saveParameter(ParameterConstants.ALL, ParameterConstants.ALL, key, paramValue, lastUpdateBy);
     }
 
+    @Override
     public void saveParameter(String externalId, String nodeGroupId, String key, Object paramValue, String lastUpdateBy) {
         paramValue = paramValue != null ? paramValue.toString() : null;
         if (extensionService != null) {
@@ -111,6 +115,7 @@ public class ParameterService extends AbstractParameterService implements IParam
         rereadParameters();
     }
 
+    @Override
     public void deleteParameterWithUpdate(String externalId, String nodeGroupId, String key) {
         String oldSql = sql.getSql("deleteParameterSql");
         String newSql = "";
@@ -139,6 +144,7 @@ public class ParameterService extends AbstractParameterService implements IParam
         rereadParameters();
     }
 
+    @Override
     public void saveParameters(String externalId, String nodeGroupId, Map<String, Object> parameters, String lastUpdateBy) {
         Set<String> keys = parameters.keySet();
         for (String key : keys) {
@@ -150,6 +156,7 @@ public class ParameterService extends AbstractParameterService implements IParam
         final TypedProperties properties = new TypedProperties();
         final IParameterFilter filter = extensionService != null ? extensionService.getExtensionPoint(IParameterFilter.class) : null;
         sqlTemplate.query(sql.getSql(sqlKey), new ISqlRowMapper<Object>() {
+            @Override
             public Object mapRow(Row row) {
                 String key = row.getString("param_key");
                 String value = row.getString("param_value");
@@ -165,15 +172,18 @@ public class ParameterService extends AbstractParameterService implements IParam
         return properties;
     }
 
+    @Override
     public boolean isRegistrationServer() {
         return StringUtils.isBlank(getRegistrationUrl())
                 || getRegistrationUrl().equalsIgnoreCase(getSyncUrl());
     }
 
+    @Override
     public boolean isRemoteNodeRegistrationServer(Node remoteNode) {
         return getRegistrationUrl().equalsIgnoreCase(remoteNode.getSyncUrl());
     }
 
+    @Override
     protected TypedProperties rereadApplicationParameters() {
         TypedProperties p = this.factory.reload();
         p.putAll(systemProperties);
@@ -188,19 +198,23 @@ public class ParameterService extends AbstractParameterService implements IParam
         }
     }
 
+    @Override
     public List<DatabaseParameter> getDatabaseParametersForAll() {
         return sqlTemplate.query(sql.getSql("selectParametersSql"), new DatabaseParameterMapper());
     }
 
+    @Override
     public List<DatabaseParameter> getDatabaseParametersFor(String paramKey) {
         return sqlTemplate.query(sql.getSql("selectParametersByKeySql"),
                 new DatabaseParameterMapper(), paramKey);
     }
 
+    @Override
     public TypedProperties getDatabaseParameters(String externalId, String nodeGroupId) {
         return readParametersFromDatabase("selectParametersByNodeGroupAndExternalIdSql", externalId, nodeGroupId);
     }
 
+    @Override
     public List<DatabaseParameter> getOfflineNodeParameters() {
         if (offlineParameters == null) {
             rereadOfflineNodeParameters();
@@ -211,6 +225,7 @@ public class ParameterService extends AbstractParameterService implements IParam
     class DatabaseParameterMapper implements ISqlRowMapper<DatabaseParameter> {
         IParameterFilter filter = extensionService != null ? extensionService.getExtensionPoint(IParameterFilter.class) : null;
 
+        @Override
         public DatabaseParameter mapRow(Row row) {
             String key = row.getString("param_key");
             String value = row.getString("param_value");
@@ -219,5 +234,29 @@ public class ParameterService extends AbstractParameterService implements IParam
             }
             return new DatabaseParameter(key, value, row.getString("external_id"), row.getString("node_group_id"));
         }
+    }
+
+    public int getHashOfParameterValues(String[] parameterNames) {
+        if (parameterNames == null || parameterNames.length < 1) {
+            log.debug("No parameters in the list to hash!");
+            return 0;
+        }
+        int combinedHash = 0;
+        for (String paramName : parameterNames) {
+            if (paramName == null || paramName.length() < 1) {
+                log.debug("Ignoring blank parameter name!");
+                continue;
+            }
+            combinedHash ^= paramName.hashCode();
+            String paramValue = getString(paramName, "");
+            if (paramValue == null || paramValue.length() < 1) {
+                log.debug("Ignoring empty value for parameter={}", paramName);
+                continue;
+            }
+            combinedHash ^= paramValue.hashCode();
+            log.debug("Hashing parameter {}={}", paramName, paramValue);
+        }
+        log.debug("Combined hash of {} parameters={}", parameterNames.length, combinedHash);
+        return combinedHash;
     }
 }

@@ -75,6 +75,8 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         sharedTriggersDisabledFunction = this.parameterService.getTablePrefix() + "_triggers_disabled";
         sharedNodeDisabledFunction = this.parameterService.getTablePrefix() + "_node_disabled";
         sharedReadLargeObjectFunction = this.parameterService.getTablePrefix() + "_largeobject";
+        log.debug("Detected database version: major={}, minor={}, SupportsReplaceTriggers={}", databaseMajorVersion, databaseMinorVersion,
+                versionSupportsReplaceTriggers);
     }
 
     @Override
@@ -149,6 +151,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         } else {
             dropSharedTruncateCaptureFunction();
         }
+        log.debug("Done checking required database objects. supportsReplaceTriggers={}", supportsReplaceTriggers());
     }
 
     public void createSharedTruncateCaptureFunctions(StringBuilder ddl) {
@@ -190,7 +193,9 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         String sharedTruncateEventFunction = templatesMap.getTruncateSharedFunctionName();
         if (isFunctionInstalled(sharedTruncateEventFunction)) {
             uninstall(SQL_DROP_FUNCTION + "() cascade", sharedTruncateEventFunction);
-            log.info("Removed shared function for capturing table truncate events={}", sharedTruncateEventFunction);
+            log.info("Removed the shared function for capturing table truncate events={}", sharedTruncateEventFunction);
+        } else {
+            log.debug("Did not detect, hence will not drop, the shared function for capturing table truncate events={}", sharedTruncateEventFunction);
         }
     }
 
