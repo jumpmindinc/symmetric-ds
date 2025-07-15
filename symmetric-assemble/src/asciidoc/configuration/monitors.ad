@@ -51,11 +51,13 @@ be compared to a threshold value.
 
 |postgresWal|Size in MB of the backlog of PostgreSQL Write-Ahead Logging (WAL) changes that haven't yet been mined by the PostgreSQL log miner.|
 
+|jvmOutOfMemoryMonitor|Number of times a java.lang.OutOfMemoryError appears in the wrapper.log file within the last 24 hours.|
+
 |jvm64Bit|Value of 0 or 1 indicating whether or not the operating system is 64-bit and the JVM is 32-bit.|✔
 
 |jvmCrash|Number of Java crash files found that were created or modified in the last 24 hours.|✔
 
-|jvmOutOfMemory|Number of times a java.lang.OutOfMemoryError appears in the wrapper.log file.|✔
+|jvmOutOfMemory|Number of times a java.lang.OutOfMemoryError appears in the wrapper.log file within the last 24 hours.|✔
 
 |jvmThreads|Number of threads that are blocked or calling the same method.|✔
 
