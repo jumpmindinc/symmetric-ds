@@ -33,6 +33,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -200,10 +201,26 @@ public class DbExport {
         }
     }
 
+    private void removeMissingColumns(Table table, Row row) {
+        List<Column> columnsToRemove = new ArrayList<Column>();
+        Set<String> columnNamesFromRow = row.keySet();
+        for (Column column : table.getColumns()) {
+            if (columnNamesFromRow.stream().noneMatch(columnName -> StringUtils.equalsIgnoreCase(columnName, column.getName()))) {
+                columnsToRemove.add(column);
+            }
+        }
+        for (Column column : columnsToRemove) {
+            table.removeColumn(column);
+        }
+    }
+
     protected void writeTable(final WriterWrapper writerWrapper, Table table, String sql)
             throws IOException {
         removeExcludedColumns(table);
-        writerWrapper.startTable(table);
+        boolean startTableAfterQuery = sql != null && !noData;
+        if (!startTableAfterQuery) {
+            writerWrapper.startTable(table);
+        }
         if (!noData) {
             if (sql == null) {
                 if (excludeColumns == null || excludeColumns.length == 0) {
@@ -225,12 +242,21 @@ public class DbExport {
                     @Override
                     public Object mapRow(Row row) {
                         if (rows > 0) {
-                            writerWrapper.writeRow(row);
-                            rows--;
+                            if (startTableAfterQuery && rows == maxRows) {
+                                removeMissingColumns(table, row);
+                                writerWrapper.startTable(table);
+                            }
+                            if (table.getColumnCount() > 0) {
+                                writerWrapper.writeRow(row);
+                                rows--;
+                            }
                         }
                         return Boolean.TRUE;
                     }
                 });
+                if (startTableAfterQuery && !writerWrapper.startedWriting) {
+                    writerWrapper.startTable(table);
+                }
             }
         }
         writerWrapper.finishTable(table);
