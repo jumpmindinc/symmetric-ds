@@ -58,8 +58,18 @@ public class MockDbDataSource implements DataSource {
         this.preparedStatements.add(preparedStatement);
     }
 
+    // Helper method to simplify staging query result:
+    public void enqueuePreparedStatement(String sql, ResultSet mockResultSet, int repeatOutput) {
+        this.enqueue(MockDbUtils.buildPreparedStatement(sql, mockResultSet, repeatOutput));
+    }
+
     public void enqueue(MockDbStatement statement) {
         this.statements.add(statement);
+    }
+
+    // Helper method to simplify staging query result:
+    public void enqueueStatement(String sql, ResultSet mockResultSet, int repeatOutput) {
+        this.enqueue(MockDbUtils.buildStatement(sql, mockResultSet, repeatOutput));
     }
 
     public void enqueueMetaData(ResultSet resultSet) {
@@ -82,7 +92,7 @@ public class MockDbDataSource implements DataSource {
             return null;
         }
         MockDbPreparedStatement preparedStatement = this.preparedStatements.remove(0);
-        // System.out.println("dequeuePreparedStatement - Dispensed one item from the preparedStatements queue;");
+        System.out.println("dequeuePreparedStatement - Dispensed one item from the preparedStatements queue;");
         return preparedStatement;
     }
 
