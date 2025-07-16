@@ -151,11 +151,15 @@ At any time, it is possible to reset the Configure Canvas to its original state 
 
 Once the configuration is complete, it must be deployed to take effect. Click the Deploy button to open the Deploy Wizard.
 
+==== Missing Table Check
+
+When the Deploy Wizard opens, SymmetricDS will validate the configuration and check whether the configured tables exist in each source database. When importing configuration from a different environment, the missing table check will verify that these same tables exist in the current environment. If any tables are missing, then the first screen of the Deploy Wizard will list the missing tables and provide options to either keep or remove their configuration.
+
 ==== Endpoint Overview
 
 image::images/wizard-deploy/EndpointScreen.png[]
 
-The first screen of the Deploy Wizard contains an overview of every undeployed endpoint. Each endpoint has several settings to configure as well as a permissions check to pass. As soon as the Deploy Wizard opens, it will start checking whether each endpoint's user has the permissions that SymmetricDS requires.
+This screen contains an overview of every undeployed endpoint. Each endpoint has several settings to configure as well as a permissions check to pass. As soon as the Deploy Wizard displays this screen, it will start checking whether each endpoint's user has the permissions that SymmetricDS requires.
 
 The external ID setting should be set to a name that will be used to refer to the individual endpoint. By default, it is the same as the group ID, which refers to the group that will contain this endpoint.
 
