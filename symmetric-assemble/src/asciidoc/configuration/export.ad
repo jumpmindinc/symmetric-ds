@@ -1,9 +1,12 @@
 
 === Export
 
-Export your configuration at any time through the web console.   Use the drop down to select the format you would like to use for the export.
+Export your configuration at any time through the web console. Open the Configure tab, then click the Details tab. On the Overview screen you there is an [export] button. Use the drop down to select the format you would like to use for the export.
 
 
 Exporting your configuration might be useful in order to save a configuration in source control or to be used as an import 
 into another environment.  Export and Import are frequently used to migrate configuration between test and production environments.
+
+
+Consider setting the topbar.system.text=YOUR_ENRIONMENT_NAME parameter in the engine properties file to help visually separate environments with identical configuration.
 
