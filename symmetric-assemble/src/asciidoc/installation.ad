@@ -438,6 +438,34 @@ The `conf/sym_service.conf` file has a parameter to start the service in client 
 wrapper.app.parameter.3=--client
 ----
 
+ifdef::pro[]
+=== Automation
+
+The installer has the option to save the user inputs as a script for automatic installation. The script is used with the installer on the command line to reproduce the same installation.  On the final step of the installer, click the "Generate an automatic installation script" button and save the file (for example, save it as "auto-install.xml").  Place this file in the same directory with the installer and use the following command line:
+
+[source, cli]
+----
+java -jar symmetric-pro-X.Y.Z-setup.jar auto-install.xml
+----
+
+The uninstall program is found in the SymmetricDS installation directory as `Uninstaller/uninstaller.jar`.  Similar to the install program, it can be run as a graphical user interface (GUI) or command line.  From the command line, it can run with the following options:
+
+[source, cli]
+----
+java -Dsym.uninstall.nodes=true -jar Uninstaller/uninstaller.jar -c -f
+----
+
+.Uninstall options
+[cols="1,3"]
+|===
+|Option|Description
+|-Dsym.uninstall.nodes| Whether or not to uninstall nodes from database (true or false, defaults to false)
+|-c | Run on command line without GUI
+|-f | Force removal of the installation directory
+|===
+
+endif::pro[]
+
 === Upgrade Considerations
 
 Upgrading an existing SymmetricDS instance depends on the deployment option used originally.
