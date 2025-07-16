@@ -1493,18 +1493,18 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return cacheManager;
     }
 
-    private boolean isStartupDbParametersDifferentFromLastStart() {
+    protected boolean isStartupDbParametersDifferentFromLastStart() {
         boolean dbParamsDifferent = false;
         try {
             String priorHashDbParams = contextService.getString(ContextConstants.STARTUP_DB_SETUP_HASH);
             String currentHashDbParams = "0x" + Integer.toHexString(parameterService.hashParameterValues(ContextConstants.STARTUP_DB_SETUP_PARAMS));
             if (currentHashDbParams.equals(priorHashDbParams)) {
+                log.debug("No change in SymmetricDS startup database parameters. Hash {} == {}", currentHashDbParams,
+                        priorHashDbParams);
+            } else {
                 dbParamsDifferent = true;
                 contextService.save(ContextConstants.STARTUP_DB_SETUP_HASH, currentHashDbParams);
                 log.info("Detected change in SymmetricDS startup database parameters. Hash {} != {}", currentHashDbParams,
-                        priorHashDbParams);
-            } else {
-                log.debug("No change in SymmetricDS startup database parameters. Hash {} == {}", currentHashDbParams,
                         priorHashDbParams);
             }
         } catch (Exception e) {
