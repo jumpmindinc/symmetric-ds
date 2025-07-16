@@ -165,6 +165,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     private boolean starting = false;
     private boolean dbSetupDone = false;
     private boolean isInitialized = false;
+    private boolean isStartupDbParametersDifferentFromLastStart = false;
     private Throwable lastException = null;
     protected String deploymentType;
     protected String deploymentSubType;
@@ -438,7 +439,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (dbSetupDone) {
             return;
         }
-        setupDatabase(isStartupDbParametersDifferentFromLastStart());
+        isStartupDbParametersDifferentFromLastStart = detectStartupDbParametersDifferentFromLastStart();
+        setupDatabase(isStartupDbParametersDifferentFromLastStart);
         parameterService.setDatabaseHasBeenInitialized(true);
         String databaseVersion = this.getNodeService().findIdentity() != null ? this.getNodeService().findIdentity().getSymmetricVersion() : null;
         String softwareVersion = Version.version();
@@ -461,10 +463,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         boolean isAutoConfigDatabase = parameterService.is(ParameterConstants.AUTO_CONFIGURE_DATABASE);
         boolean isAutoConfigDatabaseFast = parameterService.is(ParameterConstants.AUTO_CONFIGURE_DATABASE_FAST);
         if (force || isAutoConfigDatabase) {
-            if (isAutoConfigDatabaseFast && !hasSoftwareVersionChanged()) {
+            if (!force && isAutoConfigDatabaseFast && !hasSoftwareVersionChanged()) {
                 log.info("Version matches for tables and objects");
             } else {
-                log.info("Checking tables and objects");
+                log.info("Checking tables and objects. force={}", force);
                 symmetricDialect.initTablesAndDatabaseObjects();
             }
         } else {
@@ -663,9 +665,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                                 "Starting registered node [group={}, id={}, nodeId={}]",
                                 new Object[] { node.getNodeGroupId(), node.getNodeId(),
                                         node.getExternalId() });
-                        boolean force = parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP_FORCE);
-                        if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP, true) || force ||
-                                triggerRouterService.getActiveTriggerHistories().size() == 0) {
+                        boolean force = isStartupDbParametersDifferentFromLastStart
+                                || parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP_FORCE);
+                        if (force || parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP, true)
+                                || triggerRouterService.getActiveTriggerHistories().size() == 0) {
                             triggerRouterService.syncTriggers(force);
                         } else {
                             log.info(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP
@@ -1493,23 +1496,24 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return cacheManager;
     }
 
-    protected boolean isStartupDbParametersDifferentFromLastStart() {
+    protected boolean detectStartupDbParametersDifferentFromLastStart() {
         boolean dbParamsDifferent = false;
         try {
-            String priorHashDbParams = contextService.getString(ContextConstants.STARTUP_DB_SETUP_HASH);
-            String currentHashDbParams = "0x" + Integer.toHexString(parameterService.hashParameterValues(ContextConstants.STARTUP_DB_SETUP_PARAMS));
-            if (currentHashDbParams.equals(priorHashDbParams)) {
-                log.debug("No change in SymmetricDS startup database parameters. Hash {} == {}", currentHashDbParams,
+            int hashDbParams = parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS);
+            String currentHashDbParamsAsString = "0x" + Integer.toHexString(hashDbParams);
+            String priorHashDbParams = contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH);
+            if (currentHashDbParamsAsString.equals(priorHashDbParams)) {
+                log.debug("No change in SymmetricDS startup database parameters. Hash {} == {}", currentHashDbParamsAsString,
                         priorHashDbParams);
             } else {
                 dbParamsDifferent = true;
-                contextService.save(ContextConstants.STARTUP_DB_SETUP_HASH, currentHashDbParams);
-                log.info("Detected change in SymmetricDS startup database parameters. Hash {} != {}", currentHashDbParams,
+                contextService.save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, currentHashDbParamsAsString);
+                log.info("Detected change in SymmetricDS startup database parameters. Hash {} != {}", currentHashDbParamsAsString,
                         priorHashDbParams);
             }
         } catch (Exception e) {
             dbParamsDifferent = true;
-            log.error("Unable to get last hash of SymmetricDS startup database parameters!", e);
+            log.warn("Unable to get last hash of SymmetricDS startup database parameters! Assuming there are differences.", e);
         }
         return dbParamsDifferent;
     }
