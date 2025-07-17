@@ -354,7 +354,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             if (batches.containsLoadBatches()) {
                 if (!(parameterService.is(ParameterConstants.INITIAL_LOAD_UNBLOCK_CHANNELS_ON_ERROR, true) && batches.containsBatchesInError())) {
                     batches.removeNonLoadBatches();
-                    log.info("Removing non-load batches from queue {} for target node", queue, targetNode);
+                    log.info("Pausing non-load batches from queue {} for target node {} because a load is active", queue, targetNode);
                 }
             } else {
                 NodeSecurity nodeSecurity = nodeService.findNodeSecurity(targetNode.getNodeId(), true);
@@ -369,7 +369,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         TableReloadStatus status = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(loadId, engine.getNodeId());
                         if (status != null && status.getDataBatchLoaded() < status.getDataBatchCount()) {
                             batches.removeNonLoadBatches();
-                            log.info("Removing non-load batches from queue {} for target node {} because load ID {} was found", queue, targetNode,
+                            log.info("Pausing non-load batches from queue {} for target node {} because load ID {} is active", queue, targetNode,
                                     status.getLoadId());
                         }
                     }
