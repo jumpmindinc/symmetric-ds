@@ -312,7 +312,7 @@ subprojects { subproject ->
         gsonVersion = '2.10.1'
         jacksonVersion = '2.19.1'
         guavaVersion = '33.2.0-android'
-        junitVersion = '5.10.2'
+        junitVersion = '5.12.2'
         spotBugsVersion = '4.8.5'
         log4jVersion = '2.23.1'
         slf4jVersion = '2.0.13'
