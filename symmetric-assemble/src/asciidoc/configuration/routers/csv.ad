@@ -1,10 +1,9 @@
 ===== CSV Router
 
-This router is used to route csv files to a specified target database table.
+This router is used to route CSV (comma separated values) files to a specified target database table.
+The base name of the file is used as the table name, which can changed using <<Transforms>>.
 
 ifdef::pro[]
-
-Consider a csv file that needs to be routed to a target table. To specify the target table, click on "Show Advanced Options" and enter your table name.
 
 image::images/csv-router.png[]
 
@@ -25,6 +24,11 @@ insert into SYM_ROUTER (router_id, target_table_name,
 ----
 
 endif::pro[]
+
+The first line of the file should list the column names for the table.
+For a new file, all lines after the first one are routed as inserts into the table.
+For a modified file, all lines after the last line read are routed as inserts into the table.
+The last line read is recorded to the <<CONTEXT>> table.
 
 IMPORTANT: The CSV Router routes from file to database so a file trigger must be created to specify the directory or path that the file trigger should watch. (see <<File Triggers>>)
 
