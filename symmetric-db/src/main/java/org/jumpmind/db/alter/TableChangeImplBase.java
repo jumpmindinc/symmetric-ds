@@ -40,11 +40,14 @@ package org.jumpmind.db.alter;
  */
 
 import org.jumpmind.db.model.Table;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base class for change implementations.
  */
 public abstract class TableChangeImplBase implements TableChange {
+    protected Logger log = LoggerFactory.getLogger(getClass());
     /** The affected table. */
     private Table table;
 
@@ -55,6 +58,9 @@ public abstract class TableChangeImplBase implements TableChange {
      *            The table
      */
     public TableChangeImplBase(Table table) {
+        if (table == null) {
+            throw new java.lang.NullPointerException();
+        }
         this.table = table;
     }
 
@@ -63,6 +69,7 @@ public abstract class TableChangeImplBase implements TableChange {
      * 
      * @return The table
      */
+    @Override
     public Table getChangedTable() {
         return table;
     }

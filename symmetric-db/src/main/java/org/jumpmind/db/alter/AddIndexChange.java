@@ -76,6 +76,7 @@ public class AddIndexChange extends TableChangeImplBase {
     /**
      * {@inheritDoc}
      */
+    @Override
     public void apply(Database database, boolean caseSensitive) {
         IIndex newIndex = null;
         try {
@@ -83,6 +84,14 @@ public class AddIndexChange extends TableChangeImplBase {
         } catch (CloneNotSupportedException ex) {
             throw new DdlException(ex);
         }
-        database.findTable(getChangedTable().getName(), caseSensitive).addIndex(newIndex);
+        Table modelTable = this.getChangedTable();
+        Table dbTable = database.findTable(modelTable.getName(), caseSensitive);
+        if (dbTable == null) {
+            String message = String.format("Unable to apply index, because table itself was not found! CaseSensitive=%b, Table=%s, Index=%s",
+                    caseSensitive, modelTable.getFullyQualifiedTableName(), newIndex.getName());
+            log.warn(message);
+            throw new RuntimeException(message);
+        }
+        dbTable.addIndex(newIndex);
     }
 }
