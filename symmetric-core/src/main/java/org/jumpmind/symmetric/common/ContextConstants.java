@@ -20,6 +20,11 @@
  */
 package org.jumpmind.symmetric.common;
 
+import org.jumpmind.symmetric.service.IContextService;
+
+/**
+ * Constants that represent context variables that can be retrieved or saved via the {@link IContextService}
+ */
 final public class ContextConstants {
     private ContextConstants() {
     }
@@ -37,4 +42,5 @@ final public class ContextConstants {
     public static final String LOG_MINER_LOG_FILE_NAME = "log.miner.log.file.name";
     public static final String LOG_MINER_INCOMING_TRANSACTIONS = "log.miner.incoming.transactions";
     public static final String MONITOR_LAST_CHECK_TIMES = "monitor.last.check.times";
+    public final static String STARTUP_DB_OBJECTS_SETUP_HASH = "startup.database.parameters.hash";
 }
