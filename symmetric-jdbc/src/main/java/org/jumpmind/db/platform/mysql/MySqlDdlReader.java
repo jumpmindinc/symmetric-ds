@@ -74,6 +74,10 @@ import org.jumpmind.util.VersionUtil;
 public class MySqlDdlReader extends AbstractJdbcDdlReader {
     private Boolean mariaDbDriver = null;
     private boolean supportsGeneratedColumns;
+    // MySQL has the NO_ZERO_DATE setting (default in version 5.7 and prior) which treats zero-based date/time/timestamp values as NULL, but since this an
+    // illegal ISO value, we replace it with NULL in the model: https://dev.mysql.com/doc/refman/5.7/en/sql-mode.html#sqlmode_no_zero_date
+    public static final String ZERO_NULL_DATE = "0000-00-00";
+    public static final String ZERO_NULL_TIMESTAMP = "0000-00-00 00:00:00";
 
     public MySqlDdlReader(IDatabasePlatform platform) {
         super(platform);
@@ -157,13 +161,18 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
     @Override
     protected Integer mapUnknownJdbcTypeForColumn(Map<String, Object> values) {
         String typeName = (String) values.get("TYPE_NAME");
+        if (typeName == null) {
+            typeName="";
+        } else {
+            typeName= typeName.toUpperCase();
+        }
         Integer type = (Integer) values.get("DATA_TYPE");
         if ("YEAR".equals(typeName)) {
             // it is safe to map a YEAR to INTEGER
             return Types.INTEGER;
-        } else if ("INT UNSIGNED".equals(typeName)) {
+        } else if ("INT UNSIGNED".equals(typeName) || (typeName.startsWith("INT") && typeName.endsWith("UNSIGNED"))) {
             return Types.BIGINT;
-        } else if (typeName != null && typeName.endsWith("TEXT")) {
+        } else if (typeName.endsWith("TEXT")) {
             String catalog = (String) values.get("TABLE_CAT");
             String tableName = (String) values.get("TABLE_NAME");
             String columnName = (String) values.get("COLUMN_NAME");
@@ -184,9 +193,9 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                 return convertTextToLob ? Types.BLOB : Types.LONGVARCHAR;
             }
             return super.mapUnknownJdbcTypeForColumn(values);
-        } else if (type != null && type == Types.OTHER && "UUID".equalsIgnoreCase("UUID")) {
+        } else if (type == Types.OTHER && "UUID".equalsIgnoreCase("UUID")) {
             return Types.VARCHAR;
-        } else if (type != null && type == Types.OTHER) {
+        } else if (type == Types.OTHER) {
             return Types.LONGVARCHAR;
         } else {
             return super.mapUnknownJdbcTypeForColumn(values);
@@ -197,25 +206,30 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
     protected Column readColumn(DatabaseMetaDataWrapper metaData, Map<String, Object> values)
             throws SQLException {
         Column column = super.readColumn(metaData, values);
-        if (column.getMappedTypeCode() == Types.TIMESTAMP) {
-            adjustColumnSize(column, -20);
-        } else if (column.getMappedTypeCode() == Types.TIME) {
-            adjustColumnSize(column, -9);
-        } else if (column.getMappedTypeCode() == Types.DATE) {
-            removeColumnSize(column);
-            if ("0000-00-00".equals(column.getDefaultValue())) {
-                column.setDefaultValue(null);
-                column.getPlatformColumns().get(platform.getName()).setDefaultValue("0000-00-00");
-            }
+        switch (column.getMappedTypeCode()) {
+            case Types.TIMESTAMP:
+                adjustColumnSize(column, -20);
+                if (ZERO_NULL_TIMESTAMP.equals(column.getDefaultValue())) {
+                    column.setDefaultValue(null);
+                    column.setRequired(false);
+                    column.getPlatformColumns().get(platform.getName()).setDefaultValue(ZERO_NULL_TIMESTAMP);
+                }
+                break;
+            case Types.TIME:
+                adjustColumnSize(column, -9);
+                break;
+            case Types.DATE:
+                removeColumnSize(column);
+                if (ZERO_NULL_DATE.equals(column.getDefaultValue())) {
+                    column.setDefaultValue(null);
+                    column.setRequired(false);
+                    column.getPlatformColumns().get(platform.getName()).setDefaultValue(ZERO_NULL_DATE);
+                }
+                break;
+            default:
+                break;
         }
-        // MySQL converts illegal date/time/timestamp values to
-        // "0000-00-00 00:00:00", but this
-        // is an illegal ISO value, so we replace it with NULL
-        if ((column.getMappedTypeCode() == Types.TIMESTAMP)
-                && "0000-00-00 00:00:00".equals(column.getDefaultValue())) {
-            column.setDefaultValue(null);
-        }
-        // make sure the defaultvalue is null when an empty is returned.
+        // Ensure the default value is null when an empty is returned:
         if ("".equals(column.getDefaultValue())) {
             column.setDefaultValue(null);
         }
@@ -288,7 +302,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                         values.put(fkData.getMetaData().getColumnName(i), fkData.getObject(i));
                     }
                     String fkName = (String) values.get("CONSTRAINT_NAME");
-                    ForeignKey fk = (ForeignKey) fks.get(fkName);
+                    ForeignKey fk = fks.get(fkName);
                     if (fk == null) {
                         fk = new ForeignKey(fkName);
                         fk.setForeignTableName((String) values.get("REFERENCED_TABLE_NAME"));
@@ -310,6 +324,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
         }
     }
 
+    @Override
     public List<Trigger> getTriggers(final String catalog, final String schema,
             final String tableName) {
         List<Trigger> triggers = new ArrayList<Trigger>();
@@ -328,6 +343,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                 + "FROM INFORMATION_SCHEMA.TRIGGERS AS TRIG "
                 + "WHERE EVENT_OBJECT_TABLE=? and EVENT_OBJECT_SCHEMA=? ;";
         triggers = sqlTemplate.query(sql, new ISqlRowMapper<Trigger>() {
+            @Override
             public Trigger mapRow(Row row) {
                 Trigger trigger = new Trigger();
                 trigger.setName(row.getString("TRIGGER_NAME"));
@@ -349,6 +365,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
             String name = trigger.getName();
             String sourceSql = "SHOW CREATE TRIGGER `" + catalog + "`." + name;
             sqlTemplate.query(sourceSql, new ISqlRowMapper<Trigger>() {
+                @Override
                 public Trigger mapRow(Row row) {
                     trigger.setSource(row.getString("SQL Original Statement"));
                     return trigger;
