@@ -1513,7 +1513,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             }
         } catch (Exception e) {
             dbParamsDifferent = true;
-            log.warn("Unable to get last hash of SymmetricDS startup database parameters! Assuming there are differences.", e);
+            log.warn("Unable to compare SymmetricDS startup database parameters! Assuming there are differences.", e);
         }
         return dbParamsDifferent;
     }
