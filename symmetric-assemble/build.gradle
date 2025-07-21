@@ -152,7 +152,12 @@ task codeCoverageReport(type: JacocoReport) {
 	dependsOn ':symmetric-wrapper:test'
 	dependsOn ':test'
     // Gather execution data from all subprojects
-    executionData fileTree(project.rootDir.parentFile.parentFile.path).include("**/jacoco/*.exec")
+    executionData = files(
+    subprojects.collect { subproject ->
+        file("${subproject.buildDir}/jacoco/test.exec")
+    }.findAll { it.exists() }
+	)
+	
     allprojects.each {
         sourceSets it.sourceSets.main
     }

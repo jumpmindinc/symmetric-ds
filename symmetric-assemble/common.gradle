@@ -98,15 +98,21 @@ subprojects { subproject ->
 		toolVersion = "0.8.12"
 	}
     
-    jacocoTestReport {
-		executionData(file("${project.buildDir}/jacoco/*.exec"))
-    	reports {
-    		xml.required = true
-	        html.required = true
-	        xml.outputLocation = file("${buildDir}/reports/jacoco.xml")
-	        html.outputLocation = file("${buildDir}/reports/jacoco.html")
+	jacocoTestReport {
+    	def execFiles = fileTree("${project.buildDir}/jacoco").matching {
+        	include("*.exec")
+    	}.files.findAll { it.exists() }
 
-    	}    	
+    	if (!execFiles.isEmpty()) {
+        	executionData files(execFiles)
+    	}
+
+    	reports {
+        	xml.required = true
+        	html.required = true
+        	xml.outputLocation = file("${buildDir}/reports/jacoco.xml")
+        	html.outputLocation = file("${buildDir}/reports/jacoco.html")
+    	}
 	}
 
     configurations { deployerJars }
