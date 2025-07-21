@@ -318,7 +318,7 @@ subprojects { subproject ->
         gsonVersion = '2.10.1'
         jacksonVersion = '2.19.1'
         guavaVersion = '33.2.0-android'
-        junitVersion = '5.12.2'
+        junitVersion = '5.13.3'
         spotBugsVersion = '4.8.5'
         log4jVersion = '2.23.1'
         slf4jVersion = '2.0.13'
@@ -350,6 +350,8 @@ subprojects { subproject ->
 
         testImplementation fileTree(dir: System.getProperty("user.home") + '/.symmetricds/lib', include: '*.jar')
         testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.12.2'
+    	testRuntimeOnly 'org.junit.platform:junit-platform-engine:1.12.2'
         
         testImplementation "org.hamcrest:hamcrest-all:$hamcrestVersion"
         testImplementation "org.mockito:mockito-core:$mockitoVersion"
