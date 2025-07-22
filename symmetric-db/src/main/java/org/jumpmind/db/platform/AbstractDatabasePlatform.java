@@ -409,6 +409,10 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
 
     @Override
     public void resetCachedTableModel() {
+        resetCachedTableModel(true);
+    }
+
+    protected void resetCachedTableModel(boolean clearTableNameCache) {
         this.tableCache = Collections.synchronizedMap(new HashMap<String, Table>());
         lastTimeCachedModelClearedInMs = System.currentTimeMillis();
     }
@@ -421,7 +425,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     @Override
     public Table getTableFromCache(String catalogName, String schemaName, String tableName, boolean forceReread) {
         if (System.currentTimeMillis() - lastTimeCachedModelClearedInMs > clearCacheModelTimeoutInMs) {
-            resetCachedTableModel();
+            resetCachedTableModel(false);
         }
         Map<String, Table> model = tableCache;
         String key = Table.getFullyQualifiedTableName(catalogName, schemaName, tableName);

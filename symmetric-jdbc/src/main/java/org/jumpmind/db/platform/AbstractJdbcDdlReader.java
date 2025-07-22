@@ -65,6 +65,7 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.cache.ObjectDefinitionCache;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
@@ -112,6 +113,8 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     private final List<MetaDataColumnDescriptor> _columnsForIndex;
     /* The platform that this model reader belongs to. */
     protected IDatabasePlatform platform;
+    /* The cache containing definitions of database objects. */
+    protected ObjectDefinitionCache objectDefinitionCache = new ObjectDefinitionCache(this);
     /*
      * Contains default column sizes (minimum sizes that a JDBC-compliant db must support).
      */
@@ -1558,6 +1561,11 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
 
     public List<String> getTableNames(final String catalog, final String schema,
             final String[] tableTypes) {
+        return objectDefinitionCache.getTableNames(catalog, schema, tableTypes);
+    }
+
+    public List<String> getTableNamesFromDatabase(final String catalog, final String schema,
+            final String[] tableTypes) {
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
         List<String> list = sqlTemplate.execute(new IConnectionCallback<List<String>>() {
             public List<String> execute(Connection connection) throws SQLException {
@@ -1580,6 +1588,10 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             }
         });
         return list;
+    }
+
+    public void clearTableNameCache() {
+        objectDefinitionCache.clearTableNameCache();
     }
 
     public List<String> getColumnNames(final String catalog, final String schema, final String tableName) {

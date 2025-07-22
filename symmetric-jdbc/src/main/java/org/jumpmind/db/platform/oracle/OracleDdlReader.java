@@ -454,7 +454,7 @@ public class OracleDdlReader extends AbstractJdbcDdlReader {
         return String.format("%s", tableName).replaceAll("\\_", "/_");
     }
 
-    public List<String> getTableNames(final String catalog, final String schema,
+    public List<String> getTableNamesFromDatabase(final String catalog, final String schema,
             final String[] tableTypes) {
         List<String> tableNames = new ArrayList<String>();
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplate();

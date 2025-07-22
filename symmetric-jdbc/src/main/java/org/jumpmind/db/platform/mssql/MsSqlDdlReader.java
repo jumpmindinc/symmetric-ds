@@ -398,7 +398,7 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    public List<String> getTableNames(final String catalog, final String schema,
+    public List<String> getTableNamesFromDatabase(final String catalog, final String schema,
             final String[] tableTypes) {
         StringBuilder sql = new StringBuilder("select \"TABLE_NAME\" from ");
         if (isNotBlank(catalog)) {
