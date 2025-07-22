@@ -75,8 +75,10 @@ public class ObjectDefinitionCache {
     }
 
     public void clearTableNameCache() {
-        tableNameCache.clear();
-        tableNameCacheTime = System.currentTimeMillis();
+        synchronized (tableNameCacheLock) {
+            tableNameCache.clear();
+            tableNameCacheTime = System.currentTimeMillis();
+        }
     }
 
     private class TableNameCacheKey {
