@@ -253,7 +253,6 @@ subprojects { subproject ->
     }
     
     test {
-        ignoreFailures = true
         minHeapSize = "128m"
         maxHeapSize = "512m"
         useJUnitPlatform {
@@ -263,7 +262,6 @@ subprojects { subproject ->
     }
 
     def integrationTest = tasks.register("integrationTest", Test) {
-        ignoreFailures true
         minHeapSize = "128m"
         maxHeapSize = "512m"
         forkEvery=1
