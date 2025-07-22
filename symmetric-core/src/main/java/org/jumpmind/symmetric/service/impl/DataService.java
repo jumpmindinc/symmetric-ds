@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -2224,6 +2225,53 @@ public class DataService extends AbstractService implements IDataService {
             }
             throw e;
         }
+    }
+
+    /**
+     * @return The trigger histories that were used to insert the create event(s)
+     */
+    @Override
+    public Set<TriggerHistory> insertCreateEventsForOutgoingBatchInError(OutgoingBatch batch, String createBy) {
+        Set<TriggerHistory> triggerHistorySet = new HashSet<TriggerHistory>();
+        if (batch.isLoadFlag()) {
+            triggerHistorySet.addAll(getTriggerHistoriesForOutgoingLoadBatchInError(batch));
+        } else if (batch.getFailedDataId() > 0) {
+            CollectionUtils.addIgnoreNull(triggerHistorySet, getTriggerHistoryForOutgoingCdcBatchInError(batch));
+        }
+        String targetNodeId = batch.getNodeId();
+        Node targetNode = new Node(targetNodeId, null);
+        for (TriggerHistory triggerHistory : triggerHistorySet) {
+            insertCreateEvent(targetNode, triggerHistory, false, -1, createBy, false, false, false);
+        }
+        return triggerHistorySet;
+    }
+
+    protected Set<TriggerHistory> getTriggerHistoriesForOutgoingLoadBatchInError(OutgoingBatch batch) {
+        Set<TriggerHistory> triggerHistorySet = new HashSet<TriggerHistory>();
+        ITriggerRouterService triggerRouterService = engine.getTriggerRouterService();
+        long batchId = batch.getBatchId();
+        for (ExtractRequest extractRequest : engine.getDataExtractorService()
+                .getTablesForExtractByLoadIdAndNodeId(batch.getLoadId(), batch.getNodeId())) {
+            if (batchId >= extractRequest.getStartBatchId() && batchId <= extractRequest.getEndBatchId()) {
+                Trigger trigger = new Trigger(extractRequest.getTriggerId(), null);
+                String tableName = extractRequest.getTableName();
+                for (TriggerHistory triggerHistory : triggerRouterService.getActiveTriggerHistories(trigger)) {
+                    if (triggerHistory.getSourceTableName().equalsIgnoreCase(tableName)) {
+                        triggerHistorySet.add(triggerHistory);
+                    }
+                }
+                break;
+            }
+        }
+        return triggerHistorySet;
+    }
+
+    protected TriggerHistory getTriggerHistoryForOutgoingCdcBatchInError(OutgoingBatch batch) {
+        Data data = findData(batch.getFailedDataId());
+        if (data != null) {
+            return data.getTriggerHistory();
+        }
+        return null;
     }
 
     private String getOptionsForExclusions(boolean excludeIndices, boolean excludeForeignKeys, boolean excludeDefaults) {

@@ -258,6 +258,8 @@ abstract public class AbstractDatabaseWriter implements IDataWriter {
                 if (sourceTable != null) {
                     // If the source table was found but the target table is
                     // still unknown throw an exception
+                    statistics.get(batch).increment(DataWriterStatisticConstants.ROWCOUNT);
+                    statistics.get(batch).increment(DataWriterStatisticConstants.LINENUMBER);
                     throw new TableNotFoundException(String.format("Could not find the target table '%s'",
                             sourceTable.getFullyQualifiedTableName()));
                 } else {

@@ -27,6 +27,7 @@ import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataEventType;
+import org.jumpmind.symmetric.io.data.writer.DataWriterStatisticConstants;
 import org.jumpmind.symmetric.io.data.writer.DatabaseWriterSettings;
 import org.jumpmind.symmetric.io.data.writer.DynamicDefaultDatabaseWriter;
 import org.slf4j.Logger;
@@ -71,6 +72,8 @@ public abstract class AbstractBulkDatabaseWriter extends DynamicDefaultDatabaseW
                         log.info("Did not find the {} table in the target database", qualifiedName);
                     }
                 } else {
+                    statistics.get(batch).increment(DataWriterStatisticConstants.ROWCOUNT);
+                    statistics.get(batch).increment(DataWriterStatisticConstants.LINENUMBER);
                     throw new TableNotFoundException(String.format("Could not find the target table '%s'", qualifiedName));
                 }
             }
