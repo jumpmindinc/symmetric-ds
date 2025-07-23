@@ -74,6 +74,7 @@ import org.jumpmind.util.VersionUtil;
 public class MySqlDdlReader extends AbstractJdbcDdlReader {
     private Boolean mariaDbDriver = null;
     private boolean supportsGeneratedColumns;
+    private boolean allowsZeroDateNullValues;
     // MySQL has the NO_ZERO_DATE setting (default in version 5.7 and prior) which treats zero-based date/time/timestamp values as NULL, but since this an
     // illegal ISO value, we replace it with NULL in the model: https://dev.mysql.com/doc/refman/5.7/en/sql-mode.html#sqlmode_no_zero_date
     public static final String ZERO_NULL_DATE = "0000-00-00";
@@ -87,6 +88,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
         setDefaultColumnPattern("%");
         String versionString = platform.getSqlTemplate().getDatabaseProductVersion();
         supportsGeneratedColumns = !VersionUtil.isOlderThanVersion(versionString, "5.7");
+        allowsZeroDateNullValues = detectAllowsZeroDateNullValues(versionString);
     }
 
     @Override
@@ -96,6 +98,27 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
         } else {
             return super.getResultSetCatalogName();
         }
+    }
+
+    protected boolean detectAllowsZeroDateNullValues(String versionString) {
+        String sql = "SELECT @@GLOBAL.sql_mode";
+        String mySqlMode = platform.getSqlTemplateDirty().queryForString(sql);
+        boolean dbAllowsZeroDateNullValues = false;
+        if (StringUtils.isBlank(mySqlMode)) {
+            dbAllowsZeroDateNullValues = !VersionUtil.isOlderThanVersion(versionString, "5.7.7");
+        } else {
+            if (mySqlMode.contains("NO_ZERO_DATE") || mySqlMode.contains("STRICT_TRANS_TABLES")) {
+                dbAllowsZeroDateNullValues = false;
+            } else {
+                dbAllowsZeroDateNullValues = true;
+            }
+        }
+        if (dbAllowsZeroDateNullValues) {
+            log.info("Global SQL_MODE={}, version={}, AllowsZeroDateNullValues={}", mySqlMode, versionString, dbAllowsZeroDateNullValues);
+        } else {
+            log.debug("Global SQL_MODE={}, version={}, AllowsZeroDateNullValues={}", mySqlMode, versionString, dbAllowsZeroDateNullValues);
+        }
+        return dbAllowsZeroDateNullValues;
     }
 
     @Override
@@ -162,9 +185,9 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
     protected Integer mapUnknownJdbcTypeForColumn(Map<String, Object> values) {
         String typeName = (String) values.get("TYPE_NAME");
         if (typeName == null) {
-            typeName="";
+            typeName = "";
         } else {
-            typeName= typeName.toUpperCase();
+            typeName = typeName.toUpperCase();
         }
         Integer type = (Integer) values.get("DATA_TYPE");
         if ("YEAR".equals(typeName)) {
@@ -209,9 +232,11 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
         switch (column.getMappedTypeCode()) {
             case Types.TIMESTAMP:
                 adjustColumnSize(column, -20);
+                if (allowsZeroDateNullValues) {
+                    column.setRequired(false);
+                }
                 if (ZERO_NULL_TIMESTAMP.equals(column.getDefaultValue())) {
                     column.setDefaultValue(null);
-                    column.setRequired(false);
                     column.getPlatformColumns().get(platform.getName()).setDefaultValue(ZERO_NULL_TIMESTAMP);
                 }
                 break;
@@ -220,9 +245,11 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                 break;
             case Types.DATE:
                 removeColumnSize(column);
+                if (allowsZeroDateNullValues) {
+                    column.setRequired(false);
+                }
                 if (ZERO_NULL_DATE.equals(column.getDefaultValue())) {
                     column.setDefaultValue(null);
-                    column.setRequired(false);
                     column.getPlatformColumns().get(platform.getName()).setDefaultValue(ZERO_NULL_DATE);
                 }
                 break;
