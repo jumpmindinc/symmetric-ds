@@ -105,7 +105,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
         String mySqlMode = platform.getSqlTemplateDirty().queryForString(sql);
         boolean dbAllowsZeroDateNullValues = false;
         if (StringUtils.isBlank(mySqlMode)) {
-            dbAllowsZeroDateNullValues = !VersionUtil.isOlderThanVersion(versionString, "5.7.7");
+            dbAllowsZeroDateNullValues = VersionUtil.isOlderThanVersion(versionString, "5.7");
         } else {
             if (mySqlMode.contains("NO_ZERO_DATE") || mySqlMode.contains("STRICT_TRANS_TABLES")) {
                 dbAllowsZeroDateNullValues = false;
