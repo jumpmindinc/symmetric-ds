@@ -322,9 +322,11 @@ public class NodeService extends AbstractService implements INodeService {
                             Types.TIMESTAMP, Types.BIGINT, Types.VARCHAR, Types.VARCHAR,
                             Types.VARCHAR, Types.VARCHAR, Types.INTEGER, Types.INTEGER,
                             Types.TIMESTAMP, Types.VARCHAR });
-            flushNodeGroupCache();
         }
+        flushNodeGroupCache();
         flushNodeCache();
+        cacheManager.flushTargetNodesCache();
+        cacheManager.flushSourceNodesCache();
     }
 
     public boolean updateNode(Node node) {
