@@ -8,10 +8,14 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.jumpmind.db.DdlReaderTestConstants;
+import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.UniqueIndex;
 import org.mockito.ArgumentMatchers;
 
 /**
- * Helper class with static methods for mocking result sets and other database objects in MockDbDataSource
+ * Helper class with static methods for mocking result sets and other database objects for use with MockDbDataSource
  */
 public final class MockDbUtils {
     public static EmptyResultSet buildEmptyResultSet() {
@@ -274,5 +278,27 @@ public final class MockDbUtils {
         MockDbPreparedStatement ps = buildPreparedStatement(
                 triggerInfoQuery, rs, 1);
         return ps;
+    }
+
+    /**
+     * Creates a Table with 1 column and specified index)
+     */
+    public static Table generateOneColumnTable(Column testColumn, IIndex testIndex) {
+        Table expectedTable = new Table();
+        expectedTable.setName(DdlReaderTestConstants.TESTNAME);
+        expectedTable.setType(DdlReaderTestConstants.TABLE_TYPE_TEST_VALUE);
+        expectedTable.setCatalog(DdlReaderTestConstants.TABLE_CAT_TEST_VALUE);
+        expectedTable.setSchema(DdlReaderTestConstants.TABLE_SCHEMA_TEST_VALUE);
+        expectedTable.setDescription(DdlReaderTestConstants.REMARKS_TEST_VALUE);
+        if (testColumn != null) {
+            expectedTable.addColumn(testColumn);
+        }
+        if (testIndex != null) {
+            expectedTable.addIndex(testIndex);
+            if (testIndex instanceof UniqueIndex) {
+                expectedTable.setPrimaryKeyConstraintName(testIndex.getName());
+            }
+        }
+        return expectedTable;
     }
 }
