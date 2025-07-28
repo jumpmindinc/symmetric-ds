@@ -83,4 +83,12 @@ abstract public class AbstractJdbcDatabasePlatform extends AbstractDatabasePlatf
             }
         }
     }
+
+    @Override
+    protected void resetCachedTableModel(boolean clearTableNameCache) {
+        super.resetCachedTableModel(clearTableNameCache);
+        if (clearTableNameCache && ddlReader instanceof AbstractJdbcDdlReader jdbcDdlReader) {
+            jdbcDdlReader.clearTableNameCache();
+        }
+    }
 }
