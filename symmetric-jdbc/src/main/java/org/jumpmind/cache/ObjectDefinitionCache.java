@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
 
 public class ObjectDefinitionCache {
@@ -56,8 +57,8 @@ public class ObjectDefinitionCache {
         this.ddlReader = ddlReader;
     }
 
-    public List<String> getTableNames(String catalog, String schema, String[] tableTypes) {
-        TableNameCacheKey cacheKey = new TableNameCacheKey(catalog, schema, tableTypes);
+    public List<String> getTableNames(CatalogSchema catalogSchema, String[] tableTypes) {
+        TableNameCacheKey cacheKey = new TableNameCacheKey(catalogSchema, tableTypes);
         long cacheTimeoutInMs = ddlReader.getPlatform().getClearCacheModelTimeoutInMs();
         List<String> tableNames;
         synchronized (tableNameCacheLock) {
@@ -67,7 +68,7 @@ public class ObjectDefinitionCache {
                 if (timedOut) {
                     clearTableNameCache();
                 }
-                tableNames = ddlReader.getTableNamesFromDatabase(catalog, schema, tableTypes);
+                tableNames = ddlReader.getTableNamesFromDatabase(catalogSchema.getCatalog(), catalogSchema.getSchema(), tableTypes);
                 tableNameCache.put(cacheKey, tableNames);
             }
         }
@@ -82,13 +83,11 @@ public class ObjectDefinitionCache {
     }
 
     private class TableNameCacheKey {
-        private String catalog;
-        private String schema;
+        private CatalogSchema catalogSchema;
         private String[] tableTypes;
 
-        public TableNameCacheKey(String catalog, String schema, String[] tableTypes) {
-            this.catalog = catalog;
-            this.schema = schema;
+        public TableNameCacheKey(CatalogSchema catalogSchema, String[] tableTypes) {
+            this.catalogSchema = catalogSchema;
             this.tableTypes = tableTypes;
         }
 
@@ -96,8 +95,7 @@ public class ObjectDefinitionCache {
         public int hashCode() {
             final int prime = 31;
             int result = 1;
-            result = prime * result + ((catalog == null) ? 0 : catalog.hashCode());
-            result = prime * result + ((schema == null) ? 0 : schema.hashCode());
+            result = prime * result + ((catalogSchema == null) ? 0 : catalogSchema.hashCode());
             result = prime * result + Arrays.hashCode(tableTypes);
             return result;
         }
@@ -111,18 +109,11 @@ public class ObjectDefinitionCache {
                 return false;
             }
             TableNameCacheKey other = (TableNameCacheKey) obj;
-            if (catalog == null) {
-                if (other.catalog != null) {
+            if (catalogSchema == null) {
+                if (other.catalogSchema != null) {
                     return false;
                 }
-            } else if (!catalog.equals(other.catalog)) {
-                return false;
-            }
-            if (schema == null) {
-                if (other.schema != null) {
-                    return false;
-                }
-            } else if (!schema.equals(other.schema)) {
+            } else if (!catalogSchema.equals(other.catalogSchema)) {
                 return false;
             }
             if (!Arrays.equals(tableTypes, other.tableTypes)) {

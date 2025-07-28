@@ -66,6 +66,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.cache.ObjectDefinitionCache;
+import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
@@ -1561,7 +1562,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
 
     public List<String> getTableNames(final String catalog, final String schema,
             final String[] tableTypes) {
-        return objectDefinitionCache.getTableNames(catalog, schema, tableTypes);
+        return objectDefinitionCache.getTableNames(new CatalogSchema(catalog, schema), tableTypes);
     }
 
     public List<String> getTableNamesFromDatabase(final String catalog, final String schema,

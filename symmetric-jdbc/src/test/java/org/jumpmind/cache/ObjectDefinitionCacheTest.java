@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.List;
 
+import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,13 +49,14 @@ public class ObjectDefinitionCacheTest {
         ObjectDefinitionCache cache = new ObjectDefinitionCache(ddlReader);
         when(ddlReader.getTableNamesFromDatabase("catalog", "schema", null)).thenReturn(Arrays.asList("table0"));
         when(platform.getClearCacheModelTimeoutInMs()).thenReturn(3600000l);
-        List<String> tableNames = cache.getTableNames("catalog", "schema", null);
+        CatalogSchema catalogSchema = new CatalogSchema("catalog", "schema");
+        List<String> tableNames = cache.getTableNames(catalogSchema, null);
         assertEquals(1, tableNames.size());
         when(ddlReader.getTableNamesFromDatabase("catalog", "schema", null)).thenReturn(Arrays.asList("table0", "table1"));
-        tableNames = cache.getTableNames("catalog", "schema", null);
+        tableNames = cache.getTableNames(catalogSchema, null);
         assertEquals(1, tableNames.size());
         cache.clearTableNameCache();
-        tableNames = cache.getTableNames("catalog", "schema", null);
+        tableNames = cache.getTableNames(catalogSchema, null);
         assertEquals(2, tableNames.size());
         when(platform.getClearCacheModelTimeoutInMs()).thenReturn(5l);
         when(ddlReader.getTableNamesFromDatabase("catalog", "schema", null)).thenReturn(Arrays.asList("table0"));
@@ -62,7 +64,7 @@ public class ObjectDefinitionCacheTest {
             Thread.sleep(10l);
         } catch (InterruptedException e) {
         }
-        tableNames = cache.getTableNames("catalog", "schema", null);
+        tableNames = cache.getTableNames(catalogSchema, null);
         assertEquals(1, tableNames.size());
         assertEquals("table0", tableNames.get(0));
     }
