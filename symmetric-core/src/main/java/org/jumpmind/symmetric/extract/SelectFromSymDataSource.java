@@ -118,9 +118,17 @@ public class SelectFromSymDataSource extends SelectFromSource {
             if (data != null) {
                 TriggerHistory triggerHistory = null;
                 TriggerRouter triggerRouter = null;
+                boolean isFileParserRouter = false;
                 do {
                     triggerHistory = data.getTriggerHistory();
-                    triggerRouter = triggerRoutersByTriggerHist.get(triggerHistory.getTriggerHistoryId());
+                    isFileParserRouter = triggerHistory.getTriggerId().equals(AbstractFileParsingRouter.TRIGGER_ID_FILE_PARSER);
+                    if (isFileParserRouter) {
+                        triggerRouter = new TriggerRouter();
+                        triggerRouter.setTriggerId(triggerHistory.getTriggerId());
+                        triggerRouter.setRouterId(AbstractFileParsingRouter.getRouterIdFromExternalData(data.getExternalData()));
+                    } else {
+                        triggerRouter = triggerRoutersByTriggerHist.get(triggerHistory.getTriggerHistoryId());
+                    }
                     if (triggerRouter == null) {
                         CounterStat counterStat = missingTriggerRoutersByTriggerHist.get(triggerHistory.getTriggerHistoryId());
                         if (counterStat == null) {
@@ -147,7 +155,6 @@ public class SelectFromSymDataSource extends SelectFromSource {
                     data = processReloadEvent(triggerHistory, triggerRouter, data);
                 } else {
                     Trigger trigger = triggerRouter.getTrigger();
-                    boolean isFileParserRouter = triggerHistory.getTriggerId().equals(AbstractFileParsingRouter.TRIGGER_ID_FILE_PARSER);
                     if (lastTriggerHistory == null || lastTriggerHistory.getTriggerHistoryId() != triggerHistory.getTriggerHistoryId() ||
                             lastRouterId == null || !lastRouterId.equals(routerId)) {
                         sourceTable = columnsAccordingToTriggerHistory.lookup(routerId, triggerHistory, false, !isFileParserRouter, false, true);
