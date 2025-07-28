@@ -177,11 +177,11 @@ public class MockStatisticManager implements IStatisticManager {
     }
 
     @Override
-    public void incrementDataBytesLoadedOutgoing(String channelId, long count) {
+    public void incrementDataBytesLoadedOutgoing(String channelId, long count, String nodeId) {
     }
 
     @Override
-    public void incrementDataLoadedOutgoing(String channelId, long count) {
+    public void incrementDataLoadedOutgoing(String channelId, long count, String nodeid) {
     }
 
     @Override
@@ -223,4 +223,24 @@ public class MockStatisticManager implements IStatisticManager {
     public void addJobStats(String jobName, long startTime, long endTime, long processedCount, String errorMessage) {
         // TODO Auto-generated method stub
     }
+
+	@Override
+	public Map<String, Date> getLastDataLoadedTimeMap() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Map<String, Long> getLastDataLoadedRowsMap() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Map<String, Long> getLastDataLoadedBytesMap() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+    
+	
 }

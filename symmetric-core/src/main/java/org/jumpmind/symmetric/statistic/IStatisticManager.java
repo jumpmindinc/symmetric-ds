@@ -69,9 +69,9 @@ public interface IStatisticManager {
 
     public void incrementDataLoadedOutgoingErrors(String channelId, long count);
 
-    public void incrementDataBytesLoadedOutgoing(String channelId, long count);
+    public void incrementDataBytesLoadedOutgoing(String channelId, long count, String targetNodeId);
 
-    public void incrementDataLoadedOutgoing(String channelId, long count);
+    public void incrementDataLoadedOutgoing(String channelId, long count, String targetNodeId);
 
     public void incrementDataBytesSent(String channelId, long count);
 
@@ -142,4 +142,8 @@ public interface IStatisticManager {
     public String getMostRecentActiveTableSynced();
 
     public Map<Integer, Date> getTotalLoadedRows();
+    
+    public Map<String, Date> getLastDataLoadedTimeMap();
+    public Map<String, Long> getLastDataLoadedRowsMap();
+    public Map<String, Long> getLastDataLoadedBytesMap();
 }

@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.statistic;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -75,7 +76,12 @@ public class StatisticManager implements IStatisticManager {
     protected Map<ProcessInfoKey, ProcessInfo> processInfos = new ConcurrentHashMap<ProcessInfoKey, ProcessInfo>();
     protected Map<ProcessInfoKey, ProcessInfo> processInfosThatHaveDoneWork = new ConcurrentHashMap<ProcessInfoKey, ProcessInfo>();
     private Map<Date, Map<String, ChannelStats>> baseChannelStatsInMemory = new LinkedHashMap<Date, Map<String, ChannelStats>>();
-
+    private Set<String> systemChannelIds = new HashSet<String>(Arrays.asList(new String[] { Constants.CHANNEL_CONFIG, Constants.CHANNEL_SYSTEM,
+            Constants.CHANNEL_MONITOR, Constants.CHANNEL_HEARTBEAT, Constants.CHANNEL_DYNAMIC }));
+    private Map<String, Date> lastDataSyncMap = new HashMap<String, Date>();
+    private Map<String, Long> lastDataSyncRowsMap = new HashMap<String, Long>();
+    private Map<String, Long> lastDataSyncBytesMap = new HashMap<String, Long>();
+    
     public StatisticManager(IParameterService parameterService, INodeService nodeService,
             IConfigurationService configurationService, IStatisticService statisticsService,
             IClusterService clusterService) {
@@ -289,7 +295,7 @@ public class StatisticManager implements IStatisticManager {
     }
 
     public void incrementDataLoaded(String channelId, long count) {
-        channelStatsLock.acquireUninterruptibly();
+    	channelStatsLock.acquireUninterruptibly();
         try {
             getChannelStats(channelId).incrementDataLoaded(count);
         } finally {
@@ -315,7 +321,13 @@ public class StatisticManager implements IStatisticManager {
         }
     }
 
-    public void incrementDataLoadedOutgoing(String channelId, long count) {
+    public void incrementDataLoadedOutgoing(String channelId, long count, String nodeId) {
+    	if (!systemChannelIds.contains(channelId)) {
+    		this.lastDataSyncMap.put(nodeId, new Date());
+    		this.lastDataSyncRowsMap.put(nodeId, count);
+    		
+    	}
+        
         channelStatsLock.acquireUninterruptibly();
         try {
             getChannelStats(channelId).incrementDataLoadedOutgoing(count);
@@ -324,8 +336,11 @@ public class StatisticManager implements IStatisticManager {
         }
     }
 
-    public void incrementDataBytesLoadedOutgoing(String channelId, long count) {
-        channelStatsLock.acquireUninterruptibly();
+    public void incrementDataBytesLoadedOutgoing(String channelId, long count, String nodeId) {
+    	if (!systemChannelIds.contains(channelId)) {
+    		this.lastDataSyncBytesMap.put(nodeId, count);
+    	}
+    	channelStatsLock.acquireUninterruptibly();
         try {
             getChannelStats(channelId).incrementDataBytesLoadedOutgoing(count);
         } finally {
@@ -711,5 +726,18 @@ public class StatisticManager implements IStatisticManager {
     public Map<Integer, Date> getTotalLoadedRows() {
         // TODO Auto-generated method stub
         return null;
+    }
+    
+    @Override
+    public Map<String, Date> getLastDataLoadedTimeMap() {
+    	return this.lastDataSyncMap;
+    }
+    @Override
+    public Map<String, Long> getLastDataLoadedRowsMap() {
+    	return this.lastDataSyncRowsMap;
+    }
+    @Override
+    public Map<String, Long> getLastDataLoadedBytesMap() {
+    	return this.lastDataSyncBytesMap;
     }
 }
