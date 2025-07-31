@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 
+import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.Channel;
@@ -84,6 +85,8 @@ public class ConfigurationCache {
                         if (refreshCache || nodeChannels == null) {
                             populateNodeChannelCache(nodeId, refreshCache, channelCacheTimeoutInMs);
                         }
+                    } catch (SqlException e) {
+                        log.error("Failed to retrieve node channels", e);
                     } finally {
                         configurationCacheLock.release();
                     }
@@ -93,6 +96,8 @@ public class ConfigurationCache {
             } else if (configurationCacheLock.tryAcquire()) {
                 try {
                     populateNodeChannelCache(nodeId, true, channelCacheTimeoutInMs);
+                } catch (SqlException e) {
+                    log.error("Failed to retrieve node channels", e);
                 } finally {
                     configurationCacheLock.release();
                 }
@@ -100,7 +105,7 @@ public class ConfigurationCache {
         }
     }
 
-    protected void populateNodeChannelCache(String nodeId, boolean refreshCache, long channelCacheTimeoutInMs) {
+    protected void populateNodeChannelCache(String nodeId, boolean refreshCache, long channelCacheTimeoutInMs) throws SqlException {
         long ts = System.currentTimeMillis();
         List<NodeChannel> nodeChannels = configurationService.getNodeChannelsFromDb(nodeId);
         if (refreshCache) {
@@ -145,6 +150,8 @@ public class ConfigurationCache {
                         if (System.currentTimeMillis() - channelCacheTime >= channelCacheTimeoutInMs || channelsCache == null || refreshCache) {
                             populateChannelCache(channelCacheTimeoutInMs);
                         }
+                    } catch (SqlException e) {
+                        log.error("Failed to retrieve channels", e);
                     } finally {
                         configurationCacheLock.release();
                     }
@@ -154,6 +161,8 @@ public class ConfigurationCache {
             } else if (configurationCacheLock.tryAcquire()) {
                 try {
                     populateChannelCache(channelCacheTimeoutInMs);
+                } catch (SqlException e) {
+                    log.error("Failed to retrieve channels", e);
                 } finally {
                     configurationCacheLock.release();
                 }
@@ -161,7 +170,7 @@ public class ConfigurationCache {
         }
     }
 
-    protected void populateChannelCache(long channelCacheTimeoutInMs) {
+    protected void populateChannelCache(long channelCacheTimeoutInMs) throws SqlException {
         long ts = System.currentTimeMillis();
         channelsCache = configurationService.getChannelsFromDb();
         Collection<String> queues = new HashSet<String>();
@@ -189,7 +198,7 @@ public class ConfigurationCache {
         long cacheTimeoutInMs = parameterService
                 .getLong(ParameterConstants.CACHE_TIMEOUT_NODE_GROUP_LINK_IN_MS);
         if (System.currentTimeMillis() - nodeGroupLinkCacheTime >= cacheTimeoutInMs || nodeGroupLinksCache == null || refreshCache) {
-            if (nodeGroupLinksCache == null) {
+            if (nodeGroupLinksCache == null || refreshCache) {
                 try {
                     configurationCacheLock.acquire();
                     try {
@@ -197,6 +206,8 @@ public class ConfigurationCache {
                                 || nodeGroupLinksCache == null || refreshCache) {
                             populateNodeGroupLinkCache(cacheTimeoutInMs);
                         }
+                    } catch (SqlException e) {
+                        log.error("Failed to retrieve node group links", e);
                     } finally {
                         configurationCacheLock.release();
                     }
@@ -206,6 +217,8 @@ public class ConfigurationCache {
             } else if (configurationCacheLock.tryAcquire()) {
                 try {
                     populateNodeGroupLinkCache(cacheTimeoutInMs);
+                } catch (SqlException e) {
+                    log.error("Failed to retrieve node group links", e);
                 } finally {
                     configurationCacheLock.release();
                 }
@@ -213,7 +226,7 @@ public class ConfigurationCache {
         }
     }
 
-    protected void populateNodeGroupLinkCache(long cacheTimeoutInMs) {
+    protected void populateNodeGroupLinkCache(long cacheTimeoutInMs) throws SqlException {
         long ts = System.currentTimeMillis();
         nodeGroupLinksCache = configurationService.getNodeGroupLinksFromDb();
         nodeGroupLinkCacheTime = System.currentTimeMillis();
@@ -243,6 +256,8 @@ public class ConfigurationCache {
                                 || channelWindowsByChannelCache == null) {
                             populateNodeGroupChannelWindowCache(channelCacheTimeoutInMs);
                         }
+                    } catch (SqlException e) {
+                        log.error("Failed to retrieve node group channel windows", e);
                     } finally {
                         configurationCacheLock.release();
                     }
@@ -252,6 +267,8 @@ public class ConfigurationCache {
             } else if (configurationCacheLock.tryAcquire()) {
                 try {
                     populateNodeGroupChannelWindowCache(channelCacheTimeoutInMs);
+                } catch (SqlException e) {
+                    log.error("Failed to retrieve node group channel windows", e);
                 } finally {
                     configurationCacheLock.release();
                 }
@@ -259,7 +276,7 @@ public class ConfigurationCache {
         }
     }
 
-    protected void populateNodeGroupChannelWindowCache(long channelCacheTimeoutInMs) {
+    protected void populateNodeGroupChannelWindowCache(long channelCacheTimeoutInMs) throws SqlException {
         long ts = System.currentTimeMillis();
         channelWindowsByChannelCache = configurationService.getNodeGroupChannelWindowsFromDb();
         channelWindowsByChannelCacheTime = System.currentTimeMillis();
