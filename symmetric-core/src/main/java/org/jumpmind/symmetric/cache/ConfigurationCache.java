@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -35,11 +36,14 @@ import org.jumpmind.symmetric.model.NodeGroupChannelWindow;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ConfigurationCache {
+    private final Logger log = LoggerFactory.getLogger(ConfigurationCache.class);
     private IParameterService parameterService;
     private IConfigurationService configurationService;
-    private Object configurationCacheLock = new Object();
+    private Semaphore configurationCacheLock = new Semaphore(1);
     volatile private Map<String, List<NodeChannel>> nodeChannelCache;
     volatile private Map<String, Channel> channelsCache;
     volatile private Collection<String> queuesCache;
@@ -56,24 +60,59 @@ public class ConfigurationCache {
     }
 
     public List<NodeChannel> getNodeChannels(String nodeId) {
+        if (nodeId == null) {
+            return new ArrayList<NodeChannel>(0);
+        }
+        checkNodeChannelCache(nodeId);
+        if (nodeChannelCache != null) {
+            return nodeChannelCache.getOrDefault(nodeId, new ArrayList<NodeChannel>(0));
+        }
+        return new ArrayList<NodeChannel>(0);
+    }
+
+    protected void checkNodeChannelCache(String nodeId) {
         long channelCacheTimeoutInMs = parameterService.getLong(ParameterConstants.CACHE_TIMEOUT_CHANNEL_IN_MS);
-        List<NodeChannel> nodeChannels;
-        synchronized (configurationCacheLock) {
-            nodeChannels = nodeChannelCache != null ? nodeChannelCache.get(nodeId) : null;
-            if (System.currentTimeMillis() - nodeChannelCacheTime >= channelCacheTimeoutInMs || nodeChannels == null) {
-                if (System.currentTimeMillis() - nodeChannelCacheTime >= channelCacheTimeoutInMs || nodeChannelCache == null) {
-                    nodeChannelCache = new HashMap<String, List<NodeChannel>>();
-                    nodeChannelCacheTime = System.currentTimeMillis();
+        List<NodeChannel> nodeChannels = nodeChannelCache != null ? nodeChannelCache.get(nodeId) : null;
+        if (System.currentTimeMillis() - nodeChannelCacheTime >= channelCacheTimeoutInMs || nodeChannelCache == null || nodeChannels == null) {
+            if (nodeChannelCache == null || nodeChannels == null) {
+                try {
+                    configurationCacheLock.acquire();
+                    try {
+                        boolean refreshCache = System.currentTimeMillis() - nodeChannelCacheTime >= channelCacheTimeoutInMs
+                                || nodeChannelCache == null;
+                        nodeChannels = nodeChannelCache != null ? nodeChannelCache.get(nodeId) : null;
+                        if (refreshCache || nodeChannels == null) {
+                            populateNodeChannelCache(nodeId, refreshCache, channelCacheTimeoutInMs);
+                        }
+                    } finally {
+                        configurationCacheLock.release();
+                    }
+                } catch (InterruptedException e) {
+                    log.error("Failed to retrieve node channels", e);
                 }
-                if (nodeId != null) {
-                    nodeChannels = configurationService.getNodeChannelsFromDb(nodeId);
-                    nodeChannelCache.put(nodeId, nodeChannels);
-                } else {
-                    nodeChannels = new ArrayList<NodeChannel>(0);
+            } else if (configurationCacheLock.tryAcquire()) {
+                try {
+                    populateNodeChannelCache(nodeId, true, channelCacheTimeoutInMs);
+                } finally {
+                    configurationCacheLock.release();
                 }
             }
         }
-        return nodeChannels;
+    }
+
+    protected void populateNodeChannelCache(String nodeId, boolean refreshCache, long channelCacheTimeoutInMs) {
+        long ts = System.currentTimeMillis();
+        List<NodeChannel> nodeChannels = configurationService.getNodeChannelsFromDb(nodeId);
+        if (refreshCache) {
+            nodeChannelCache = new HashMap<String, List<NodeChannel>>();
+            nodeChannelCacheTime = System.currentTimeMillis();
+        }
+        nodeChannelCache.put(nodeId, nodeChannels);
+        long queryTime = System.currentTimeMillis() - ts;
+        if (queryTime > channelCacheTimeoutInMs) {
+            log.warn("Query time of {} ms exceeded cache time of {} ms for node channels. "
+                    + " This means the query may run on the database constantly.", queryTime, channelCacheTimeoutInMs);
+        }
     }
 
     public long getNodeChannelCacheTime() {
@@ -82,81 +121,180 @@ public class ConfigurationCache {
 
     public Map<String, Channel> getChannels(boolean refreshCache) {
         checkChannelCache(refreshCache);
-        return channelsCache;
+        if (channelsCache != null) {
+            return channelsCache;
+        }
+        return new HashMap<String, Channel>(0);
     }
 
     public Collection<String> getQueues(boolean refreshCache) {
         checkChannelCache(refreshCache);
-        return queuesCache;
+        if (queuesCache != null) {
+            return queuesCache;
+        }
+        return new ArrayList<String>(0);
     }
 
     protected void checkChannelCache(boolean refreshCache) {
         long channelCacheTimeoutInMs = parameterService.getLong(ParameterConstants.CACHE_TIMEOUT_CHANNEL_IN_MS, 60000);
         if (System.currentTimeMillis() - channelCacheTime >= channelCacheTimeoutInMs || channelsCache == null || refreshCache) {
-            synchronized (configurationCacheLock) {
-                if (System.currentTimeMillis() - channelCacheTime >= channelCacheTimeoutInMs || channelsCache == null || refreshCache) {
-                    channelsCache = configurationService.getChannelsFromDb();
-                    Collection<String> queues = new HashSet<String>();
-                    for (Channel channel : channelsCache.values()) {
-                        queues.add(channel.getQueue());
+            if (channelsCache == null) {
+                try {
+                    configurationCacheLock.acquire();
+                    try {
+                        if (System.currentTimeMillis() - channelCacheTime >= channelCacheTimeoutInMs || channelsCache == null || refreshCache) {
+                            populateChannelCache(channelCacheTimeoutInMs);
+                        }
+                    } finally {
+                        configurationCacheLock.release();
                     }
-                    queuesCache = queues;
-                    channelCacheTime = System.currentTimeMillis();
+                } catch (InterruptedException e) {
+                    log.error("Failed to retrieve channels", e);
+                }
+            } else if (configurationCacheLock.tryAcquire()) {
+                try {
+                    populateChannelCache(channelCacheTimeoutInMs);
+                } finally {
+                    configurationCacheLock.release();
                 }
             }
+        }
+    }
+
+    protected void populateChannelCache(long channelCacheTimeoutInMs) {
+        long ts = System.currentTimeMillis();
+        channelsCache = configurationService.getChannelsFromDb();
+        Collection<String> queues = new HashSet<String>();
+        for (Channel channel : channelsCache.values()) {
+            queues.add(channel.getQueue());
+        }
+        queuesCache = queues;
+        channelCacheTime = System.currentTimeMillis();
+        long queryTime = channelCacheTime - ts;
+        if (queryTime > channelCacheTimeoutInMs) {
+            log.warn("Query time of {} ms exceeded cache time of {} ms for channels. "
+                    + " This means the query may run on the database constantly.", queryTime, channelCacheTimeoutInMs);
         }
     }
 
     public List<NodeGroupLink> getNodeGroupLinks(boolean refreshCache) {
+        checkNodeGroupLinkCache(refreshCache);
+        if (nodeGroupLinksCache != null) {
+            return nodeGroupLinksCache;
+        }
+        return new ArrayList<NodeGroupLink>(0);
+    }
+
+    protected void checkNodeGroupLinkCache(boolean refreshCache) {
         long cacheTimeoutInMs = parameterService
                 .getLong(ParameterConstants.CACHE_TIMEOUT_NODE_GROUP_LINK_IN_MS);
-        if (System.currentTimeMillis() - nodeGroupLinkCacheTime >= cacheTimeoutInMs
-                || nodeGroupLinksCache == null || refreshCache) {
-            synchronized (configurationCacheLock) {
-                if (System.currentTimeMillis() - nodeGroupLinkCacheTime >= cacheTimeoutInMs
-                        || nodeGroupLinksCache == null || refreshCache) {
-                    nodeGroupLinksCache = configurationService.getNodeGroupLinksFromDb();
-                    nodeGroupLinkCacheTime = System.currentTimeMillis();
+        if (System.currentTimeMillis() - nodeGroupLinkCacheTime >= cacheTimeoutInMs || nodeGroupLinksCache == null || refreshCache) {
+            if (nodeGroupLinksCache == null) {
+                try {
+                    configurationCacheLock.acquire();
+                    try {
+                        if (System.currentTimeMillis() - nodeGroupLinkCacheTime >= cacheTimeoutInMs
+                                || nodeGroupLinksCache == null || refreshCache) {
+                            populateNodeGroupLinkCache(cacheTimeoutInMs);
+                        }
+                    } finally {
+                        configurationCacheLock.release();
+                    }
+                } catch (InterruptedException e) {
+                    log.error("Failed to retrieve node group links", e);
+                }
+            } else if (configurationCacheLock.tryAcquire()) {
+                try {
+                    populateNodeGroupLinkCache(cacheTimeoutInMs);
+                } finally {
+                    configurationCacheLock.release();
                 }
             }
         }
-        return nodeGroupLinksCache;
+    }
+
+    protected void populateNodeGroupLinkCache(long cacheTimeoutInMs) {
+        long ts = System.currentTimeMillis();
+        nodeGroupLinksCache = configurationService.getNodeGroupLinksFromDb();
+        nodeGroupLinkCacheTime = System.currentTimeMillis();
+        long queryTime = nodeGroupLinkCacheTime - ts;
+        if (queryTime > cacheTimeoutInMs) {
+            log.warn("Query time of {} ms exceeded cache time of {} ms for node group links. "
+                    + " This means the query may run on the database constantly.", queryTime, cacheTimeoutInMs);
+        }
     }
 
     public Map<String, List<NodeGroupChannelWindow>> getNodeGroupChannelWindows() {
+        checkNodeGroupChannelWindowCache();
+        if (channelWindowsByChannelCache != null) {
+            return channelWindowsByChannelCache;
+        }
+        return new HashMap<String, List<NodeGroupChannelWindow>>(0);
+    }
+
+    protected void checkNodeGroupChannelWindowCache() {
         long channelCacheTimeoutInMs = parameterService.getLong(ParameterConstants.CACHE_TIMEOUT_CHANNEL_IN_MS, 60000);
         if (System.currentTimeMillis() - channelWindowsByChannelCacheTime >= channelCacheTimeoutInMs || channelWindowsByChannelCache == null) {
-            synchronized (configurationCacheLock) {
-                if (System.currentTimeMillis() - channelWindowsByChannelCacheTime >= channelCacheTimeoutInMs || channelWindowsByChannelCache == null) {
-                    channelWindowsByChannelCache = configurationService.getNodeGroupChannelWindowsFromDb();
-                    channelWindowsByChannelCacheTime = System.currentTimeMillis();
+            if (channelWindowsByChannelCache == null) {
+                try {
+                    configurationCacheLock.acquire();
+                    try {
+                        if (System.currentTimeMillis() - channelWindowsByChannelCacheTime >= channelCacheTimeoutInMs
+                                || channelWindowsByChannelCache == null) {
+                            populateNodeGroupChannelWindowCache(channelCacheTimeoutInMs);
+                        }
+                    } finally {
+                        configurationCacheLock.release();
+                    }
+                } catch (InterruptedException e) {
+                    log.error("Failed to retrieve node group channel windows", e);
+                }
+            } else if (configurationCacheLock.tryAcquire()) {
+                try {
+                    populateNodeGroupChannelWindowCache(channelCacheTimeoutInMs);
+                } finally {
+                    configurationCacheLock.release();
                 }
             }
         }
-        return channelWindowsByChannelCache;
+    }
+
+    protected void populateNodeGroupChannelWindowCache(long channelCacheTimeoutInMs) {
+        long ts = System.currentTimeMillis();
+        channelWindowsByChannelCache = configurationService.getNodeGroupChannelWindowsFromDb();
+        channelWindowsByChannelCacheTime = System.currentTimeMillis();
+        long queryTime = channelWindowsByChannelCacheTime - ts;
+        if (queryTime > channelCacheTimeoutInMs) {
+            log.warn("Query time of {} ms exceeded cache time of {} ms for node group channel windows. "
+                    + " This means the query may run on the database constantly.", queryTime, channelCacheTimeoutInMs);
+        }
     }
 
     public void flushNodeChannels() {
-        synchronized (configurationCacheLock) {
+        if (configurationCacheLock.tryAcquire()) {
             nodeChannelCacheTime = 0l;
+            configurationCacheLock.release();
         }
     }
 
     public void flushChannels() {
-        synchronized (configurationCacheLock) {
+        if (configurationCacheLock.tryAcquire()) {
             channelCacheTime = 0l;
+            configurationCacheLock.release();
         }
     }
 
     public void flushNodeGroupLinks() {
-        synchronized (configurationCacheLock) {
+        if (configurationCacheLock.tryAcquire()) {
             nodeGroupLinkCacheTime = 0l;
+            configurationCacheLock.release();
         }
     }
 
     public void flushNodeGroupChannelWindows() {
-        synchronized (configurationCacheLock) {
+        if (configurationCacheLock.tryAcquire()) {
             channelWindowsByChannelCacheTime = 0l;
+            configurationCacheLock.release();
         }
     }
 }
