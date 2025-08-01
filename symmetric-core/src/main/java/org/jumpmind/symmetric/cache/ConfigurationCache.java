@@ -41,7 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ConfigurationCache {
-    private final Logger log = LoggerFactory.getLogger(ConfigurationCache.class);
+    private static final Logger log = LoggerFactory.getLogger(ConfigurationCache.class);
     private IParameterService parameterService;
     private IConfigurationService configurationService;
     private Semaphore configurationCacheLock = new Semaphore(1);
@@ -106,14 +106,14 @@ public class ConfigurationCache {
     }
 
     protected void populateNodeChannelCache(String nodeId, boolean refreshCache, long channelCacheTimeoutInMs) throws SqlException {
-        long ts = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         List<NodeChannel> nodeChannels = configurationService.getNodeChannelsFromDb(nodeId);
         if (refreshCache) {
             nodeChannelCache = new HashMap<String, List<NodeChannel>>();
             nodeChannelCacheTime = System.currentTimeMillis();
         }
         nodeChannelCache.put(nodeId, nodeChannels);
-        long queryTime = System.currentTimeMillis() - ts;
+        long queryTime = System.currentTimeMillis() - startTime;
         if (queryTime > channelCacheTimeoutInMs) {
             log.warn("Query time of {} ms exceeded cache time of {} ms for node channels. "
                     + " This means the query may run on the database constantly.", queryTime, channelCacheTimeoutInMs);
@@ -171,7 +171,7 @@ public class ConfigurationCache {
     }
 
     protected void populateChannelCache(long channelCacheTimeoutInMs) throws SqlException {
-        long ts = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         channelsCache = configurationService.getChannelsFromDb();
         Collection<String> queues = new HashSet<String>();
         for (Channel channel : channelsCache.values()) {
@@ -179,7 +179,7 @@ public class ConfigurationCache {
         }
         queuesCache = queues;
         channelCacheTime = System.currentTimeMillis();
-        long queryTime = channelCacheTime - ts;
+        long queryTime = channelCacheTime - startTime;
         if (queryTime > channelCacheTimeoutInMs) {
             log.warn("Query time of {} ms exceeded cache time of {} ms for channels. "
                     + " This means the query may run on the database constantly.", queryTime, channelCacheTimeoutInMs);
@@ -227,10 +227,10 @@ public class ConfigurationCache {
     }
 
     protected void populateNodeGroupLinkCache(long cacheTimeoutInMs) throws SqlException {
-        long ts = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         nodeGroupLinksCache = configurationService.getNodeGroupLinksFromDb();
         nodeGroupLinkCacheTime = System.currentTimeMillis();
-        long queryTime = nodeGroupLinkCacheTime - ts;
+        long queryTime = nodeGroupLinkCacheTime - startTime;
         if (queryTime > cacheTimeoutInMs) {
             log.warn("Query time of {} ms exceeded cache time of {} ms for node group links. "
                     + " This means the query may run on the database constantly.", queryTime, cacheTimeoutInMs);
@@ -277,10 +277,10 @@ public class ConfigurationCache {
     }
 
     protected void populateNodeGroupChannelWindowCache(long channelCacheTimeoutInMs) throws SqlException {
-        long ts = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         channelWindowsByChannelCache = configurationService.getNodeGroupChannelWindowsFromDb();
         channelWindowsByChannelCacheTime = System.currentTimeMillis();
-        long queryTime = channelWindowsByChannelCacheTime - ts;
+        long queryTime = channelWindowsByChannelCacheTime - startTime;
         if (queryTime > channelCacheTimeoutInMs) {
             log.warn("Query time of {} ms exceeded cache time of {} ms for node group channel windows. "
                     + " This means the query may run on the database constantly.", queryTime, channelCacheTimeoutInMs);
