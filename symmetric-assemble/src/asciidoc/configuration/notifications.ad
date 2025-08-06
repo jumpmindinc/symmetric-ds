@@ -3,7 +3,7 @@
 
 A notification sends a message to the user when a monitor event records a system problem.
 First configure a monitor to watch the system and record events with a specific severity level.
-Then, configure a notification to match the severity level and write to the log or send an email.
+Then, configure a notification to match the severity level or monitor ID and write to the log or send an email.
 
 Notification ID:: The notification ID is a unique name to refer to the notification.
 
@@ -36,5 +36,6 @@ endif::pro[]
 
 Expression:: Additional information to configure the notification type.
 Severity Level:: Find monitor events that occur at this severity level or above.
+Filter for Monitors (to Include):: Find monitor events that come from specific monitors. This field is only available for the built-in notification types.
 Enabled:: Whether or not this notification is enabled to run.
 
