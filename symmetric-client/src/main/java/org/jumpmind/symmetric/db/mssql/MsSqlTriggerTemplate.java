@@ -51,6 +51,10 @@ public class MsSqlTriggerTemplate extends AbstractTriggerTemplate {
         String triggerExecuteAs = symmetricDialect.getParameterService().getString(ParameterConstants.MSSQL_TRIGGER_EXECUTE_AS, "self");
         String defaultCatalog = symmetricDialect.getParameterService().is(ParameterConstants.MSSQL_INCLUDE_CATALOG_IN_TRIGGERS, true) ? "$(defaultCatalog)"
                 : "";
+        boolean ddlSendTable = symmetricDialect.getParameterService().is(ParameterConstants.TRIGGER_CAPTURE_DDL_SEND_TABLE);
+        String ddlEventType = ddlSendTable ? DataEventType.CREATE.getCode() : DataEventType.SQL.getCode();
+        String ddlRowData = ddlSendTable ? "''" : "    '\"delimiter " + delimiter + ";' + CHAR(13) + char(10) + replace(replace(@data.value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'nvarchar(max)'),'\\','\\\\'),'\"','\\\"') + '\",ddl'";
+
         // @formatter:off
         emptyColumnTemplate = "''" ;
         stringColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else '\"' + replace(replace(convert("+
@@ -442,8 +446,8 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
 "      set @channelId = 'config'\n" +
 "    insert into " + defaultCatalog + "$(defaultSchema)$(prefixName)_data\n" +
 "    (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
-"    values (@tableName, '" + DataEventType.SQL.getCode() + "', @histId,\n" +
-"    '\"delimiter " + delimiter + ";' + CHAR(13) + char(10) + replace(replace(@data.value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'nvarchar(max)'),'\\','\\\\'),'\"','\\\"') + '\",ddl',\n" +
+"    values (@tableName, '" + ddlEventType + "', @histId,\n" +
+"    " + ddlRowData + ",\n" +
 "    @channelId, " + defaultCatalog + "$(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression() + ")\n" +
 "  end\n" +
 "end\n" + "---- go");

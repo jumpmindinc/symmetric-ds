@@ -293,6 +293,7 @@ final public class ParameterConstants {
     public final static String TRIGGER_CAPTURE_DDL_CHANGES = "trigger.capture.ddl.changes";
     public final static String TRIGGER_CAPTURE_DDL_DELIMITER = "trigger.capture.ddl.delimiter";
     public final static String TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST = "trigger.capture.ddl.check.trigger.hist";
+    public final static String TRIGGER_CAPTURE_DDL_SEND_TABLE = "trigger.capture.ddl.send.table";
     public final static String TRIGGER_USE_INSERT_DELETE_FOR_PRIMARY_KEY_CHANGES = "trigger.use.insert.delete.for.primary.key.changes";
     public final static String DB_METADATA_IGNORE_CASE = "db.metadata.ignore.case";
     public final static String DB_NATIVE_EXTRACTOR = "db.native.extractor";
@@ -481,7 +482,7 @@ final public class ParameterConstants {
     public final static String SYNC_USE_READY_QUEUES = "sync.use.ready.queues";
     public final static String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
     public final static String MSSQL_BULK_LOAD_BCP_CODE_PAGE = "mssql.bulk.load.bcp.code.page";
-
+    
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;
     }
