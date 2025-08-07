@@ -36,12 +36,13 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyManagementException;
 import java.security.KeyStore.TrustedCertificateEntry;
+import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.DSAPublicKey;
 import java.security.interfaces.RSAPublicKey;
@@ -56,10 +57,6 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.HelpFormatter;
@@ -95,7 +92,6 @@ import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IPurgeService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
-import org.jumpmind.symmetric.transport.http.HttpConnection;
 import org.jumpmind.symmetric.util.ModuleException;
 import org.jumpmind.symmetric.util.ModuleManager;
 import org.jumpmind.symmetric.util.PropertiesUtil;
@@ -1110,87 +1106,34 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
 
     private void importCert(CommandLine line, List<String> args) {
         String urlString = popArg(args, "URL");
-        if (!isValidUrl(urlString)) {
-            System.err.println("ERROR: URL is invalid");
-            System.exit(1);
-        }
-        if (!isValidHttpsUrl(urlString)) {
-            System.err.println("ERROR: URL must use HTTPS protocol");
-            System.exit(1);
-        }
-        URL url;
         try {
-            url = new URL(urlString);
-        } catch (MalformedURLException e1) {
+            Certificate[] certs = SymmetricUtils.getCertificates(urlString);
+            if (certs == null) {
+                System.err.println("ERROR: URL must use HTTPS protocol");
+                System.exit(1);
+                return;
+            }
+            for (Certificate cert : certs) {
+                if (cert instanceof X509Certificate) {
+                    try {
+                        String certString = FormatUtils.convertToPem((X509Certificate) cert);
+                        importCert(certString.getBytes(), null, null, line.hasOption(OPTION_ACCEPT_ALL));
+                    } catch (CertificateEncodingException e) {
+                    }
+                }
+            }
+        } catch (MalformedURLException e) {
             System.err.println("ERROR: URL is invalid");
             System.exit(1);
             return;
-        }
-        HttpConnection connection;
-        try {
-            connection = new HttpConnection(url);
-        } catch (IOException ex) {
+        } catch (IOException e) {
             System.err.println("ERROR: Failed to connect to URL");
             System.exit(1);
             return;
-        }
-        connection.setHostnameVerifier((string, session) -> true);
-        SSLContext sslContext;
-        X509TrustManager trustManager;
-        try {
-            sslContext = SSLContext.getInstance("TLS");
-            trustManager = new X509TrustManager() {
-                private X509Certificate[] accepted = {};
-
-                @Override
-                public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {
-                }
-
-                @Override
-                public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {
-                    accepted = xcs;
-                }
-
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                    return accepted;
-                }
-            };
-            sslContext.init(null, new TrustManager[] { trustManager }, null);
-        } catch (Exception e) {
+        } catch (KeyManagementException | NoSuchAlgorithmException e) {
             System.err.println("ERROR: Failed to initialize SSL context");
-            connection.close();
             System.exit(1);
             return;
-        }
-        connection.setSslSocketFactory(sslContext.getSocketFactory());
-        for (Certificate cert : connection.getServerCertificates()) {
-            if (cert instanceof X509Certificate) {
-                try {
-                    String certString = FormatUtils.convertToPem((X509Certificate) cert);
-                    importCert(certString.getBytes(), null, null, line.hasOption(OPTION_ACCEPT_ALL));
-                } catch (CertificateEncodingException e) {
-                }
-            }
-        }
-        connection.disconnect();
-        connection.close();
-    }
-
-    private boolean isValidUrl(String urlString) {
-        try {
-            new URL(urlString);
-            return true;
-        } catch (MalformedURLException e) {
-            return false;
-        }
-    }
-
-    private boolean isValidHttpsUrl(String urlString) {
-        try {
-            return "https".equals(new URL(urlString).getProtocol());
-        } catch (MalformedURLException e) {
-            return false;
         }
     }
 
