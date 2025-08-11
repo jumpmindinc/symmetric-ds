@@ -208,15 +208,19 @@ public class TypedProperties extends Properties {
     }
 
     public static void debugPrintProperties(Logger logger, Properties properties, String keyStartsWith) {
-        if(logger==null || !logger.isDebugEnabled() ) return;
-        if(properties==null ) { 
+        if (logger == null || !logger.isDebugEnabled()) {
+            return;
+        }
+        if (properties == null) {
             logger.debug("debugPrintProperties properties is null");
-            return;}
+            return;
+        }
         Set<Object> keys = properties.keySet();
         for (Object key : keys) {
             if (StringUtils.isEmpty(keyStartsWith) || key.toString().startsWith(keyStartsWith)) {
                 logger.debug("debugPrintProperties {}={}", key, properties.getProperty((String) key));
             }
         }
+        logger.debug("debugPrintProperties properties.size={}", properties.size());
     }
 }
