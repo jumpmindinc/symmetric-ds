@@ -36,7 +36,6 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
-import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -89,7 +88,6 @@ public class BshColumnTransform implements ISingleNewAndOldValueColumnTransform,
             String newValue, String oldValue) throws IgnoreColumnException, IgnoreRowException {
         String transformBeanshellInfo = "";
         try {
-            TypedProperties.debugPrintProperties(log, parameterService.getAllParameters(), "bsh.transform.global.script");
             transformBeanshellInfo = String.format("transform script for column %s, transform_id=%s, BSH=", column.getTargetColumnName(), column
                     .getTransformId());
             Interpreter interpreter = getInterpreter(context);
