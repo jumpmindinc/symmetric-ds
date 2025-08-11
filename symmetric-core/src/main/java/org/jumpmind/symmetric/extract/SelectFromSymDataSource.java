@@ -42,6 +42,7 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.Batch.BatchType;
 import org.jumpmind.symmetric.io.data.CsvData;
@@ -276,11 +277,14 @@ public class SelectFromSymDataSource extends SelectFromSource {
     }
 
     protected boolean processCreateEvent(TriggerHistory triggerHistory, String routerId, Data data) {
-    	Trigger trigger = engine.getTriggerRouterService().getTriggerById(triggerHistory.getTriggerId());
-    	engine.getTriggerRouterService().syncTriggers(Collections.singletonList(trigger), null, true, false, false);
-    	List<TriggerHistory> latestTriggerHistory = engine.getTriggerRouterService().getActiveTriggerHistories(trigger);
-    	for (TriggerHistory th : latestTriggerHistory) {
-    		triggerHistory = th;
+    	if (data.getRowData() != null && data.getRowData().contains(AbstractTriggerTemplate.CREATE_EVENT_DDL_GENERATED)) {
+    		data.putCsvData(CsvData.ROW_DATA, "");
+	    	Trigger trigger = engine.getTriggerRouterService().getTriggerById(triggerHistory.getTriggerId());
+	    	engine.getTriggerRouterService().syncTriggers(Collections.singletonList(trigger), null, true, false, false);
+	    	List<TriggerHistory> latestTriggerHistory = engine.getTriggerRouterService().getActiveTriggerHistories(trigger);
+	    	for (TriggerHistory th : latestTriggerHistory) {
+	    		triggerHistory = th;
+	    	}
     	}
     	
         String oldData = data.getCsvData(CsvData.OLD_DATA);

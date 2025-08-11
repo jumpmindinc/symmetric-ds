@@ -53,7 +53,7 @@ public class MsSqlTriggerTemplate extends AbstractTriggerTemplate {
                 : "";
         boolean ddlSendTable = symmetricDialect.getParameterService().is(ParameterConstants.TRIGGER_CAPTURE_DDL_SEND_TABLE);
         String ddlEventType = ddlSendTable ? DataEventType.CREATE.getCode() : DataEventType.SQL.getCode();
-        String ddlRowData = ddlSendTable ? "''" : "    '\"delimiter " + delimiter + ";' + CHAR(13) + char(10) + replace(replace(@data.value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'nvarchar(max)'),'\\','\\\\'),'\"','\\\"') + '\",ddl'";
+        String ddlRowData = ddlSendTable ? "'" + AbstractTriggerTemplate.CREATE_EVENT_DDL_GENERATED + "'" : "    '\"delimiter " + delimiter + ";' + CHAR(13) + char(10) + replace(replace(@data.value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'nvarchar(max)'),'\\','\\\\'),'\"','\\\"') + '\",ddl'";
 
         // @formatter:off
         emptyColumnTemplate = "''" ;
