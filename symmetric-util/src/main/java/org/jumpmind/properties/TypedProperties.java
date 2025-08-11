@@ -89,7 +89,7 @@ public class TypedProperties extends Properties {
 
     public final void putAll(Properties properties) {
         for (Object key : properties.keySet()) {
-            put((String) key, properties.getProperty((String) key));
+            put(key, properties.getProperty((String) key));
         }
     }
 
@@ -204,6 +204,19 @@ public class TypedProperties extends Properties {
     public static void logPropertiesException(Logger logger, String key, String val) {
         if (StringUtils.isNotBlank(val)) {
             logger.error("Could not parse integer from parameter \"" + key + "\"=\"" + val + "\"");
+        }
+    }
+
+    public static void debugPrintProperties(Logger logger, Properties properties, String keyStartsWith) {
+        if(logger==null || !logger.isDebugEnabled() ) return;
+        if(properties==null ) { 
+            logger.debug("debugPrintProperties properties is null");
+            return;}
+        Set<Object> keys = properties.keySet();
+        for (Object key : keys) {
+            if (StringUtils.isEmpty(keyStartsWith) || key.toString().startsWith(keyStartsWith)) {
+                logger.debug("debugPrintProperties {}={}", key, properties.getProperty((String) key));
+            }
         }
     }
 }

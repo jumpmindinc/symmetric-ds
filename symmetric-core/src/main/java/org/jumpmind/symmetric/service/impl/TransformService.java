@@ -92,40 +92,12 @@ public class TransformService extends AbstractService implements ITransformServi
             "if (filter != null) return filter.%s(currentValue); else return currentValue;"
             + "} else { return currentValue; }"
             + "}";
-    public static final Map<String, IColumnTransform<?>> columnTransformMap = new HashMap<String, IColumnTransform<?>>();
+    public Map<String, IColumnTransform<?>> columnTransformMap = new HashMap<String, IColumnTransform<?>>();
     private IConfigurationService configurationService;
     private IExtensionService extensionService;
     private IParameterService parameterService;
     private Date lastUpdateTime;
     private ICacheManager cacheManager;
-    static {
-        columnTransformMap.put(ParameterColumnTransform.NAME, new ParameterColumnTransform());
-        columnTransformMap.put(VariableColumnTransform.NAME, new VariableColumnTransform());
-        columnTransformMap.put(LookupColumnTransform.NAME, new LookupColumnTransform());
-        columnTransformMap.put(BshColumnTransform.NAME, new BshColumnTransform());
-        columnTransformMap.put(AdditiveColumnTransform.NAME, new AdditiveColumnTransform());
-        columnTransformMap.put(JavaColumnTransform.NAME, new JavaColumnTransform());
-        columnTransformMap.put(ConstantColumnTransform.NAME, new ConstantColumnTransform());
-        columnTransformMap.put(CopyColumnTransform.NAME, new CopyColumnTransform());
-        columnTransformMap.put(IdentityColumnTransform.NAME, new IdentityColumnTransform());
-        columnTransformMap.put(MultiplierColumnTransform.NAME, new MultiplierColumnTransform());
-        columnTransformMap.put(SubstrColumnTransform.NAME, new SubstrColumnTransform());
-        columnTransformMap.put(LeftColumnTransform.NAME, new LeftColumnTransform());
-        columnTransformMap.put(TrimColumnTransform.NAME, new TrimColumnTransform());
-        columnTransformMap.put(BinaryLeftColumnTransform.NAME, new BinaryLeftColumnTransform());
-        columnTransformMap.put(RemoveColumnTransform.NAME, new RemoveColumnTransform());
-        columnTransformMap.put(MathColumnTransform.NAME, new MathColumnTransform());
-        columnTransformMap.put(ValueMapColumnTransform.NAME, new ValueMapColumnTransform());
-        columnTransformMap.put(CopyIfChangedColumnTransform.NAME, new CopyIfChangedColumnTransform());
-        columnTransformMap.put(ColumnsToRowsKeyColumnTransform.NAME, new ColumnsToRowsKeyColumnTransform());
-        columnTransformMap.put(ColumnsToRowsValueColumnTransform.NAME, new ColumnsToRowsValueColumnTransform());
-        columnTransformMap.put(ClarionDateTimeColumnTransform.NAME, new ClarionDateTimeColumnTransform());
-        columnTransformMap.put(IsEmptyTransform.NAME, new IsEmptyTransform());
-        columnTransformMap.put(IsNullTransform.NAME, new IsNullTransform());
-        columnTransformMap.put(IsBlankTransform.NAME, new IsBlankTransform());
-        columnTransformMap.put(DeletedColumnListColumnTransform.NAME, new DeletedColumnListColumnTransform());
-        columnTransformMap.put(JsonColumnTransform.NAME, new JsonColumnTransform());
-    }
 
     public TransformService(ISymmetricEngine engine, ISymmetricDialect symmetricDialect) {
         super(engine.getParameterService(), symmetricDialect);
@@ -133,7 +105,39 @@ public class TransformService extends AbstractService implements ITransformServi
         this.configurationService = engine.getConfigurationService();
         this.extensionService = engine.getExtensionService();
         this.parameterService = engine.getParameterService();
-        for (Entry<String, IColumnTransform<?>> columnTransformEntry : columnTransformMap.entrySet()) {
+        columnTransformMap = generateColumnTransformMap();
+        setSqlMap(new TransformServiceSqlMap(symmetricDialect.getPlatform(), createSqlReplacementTokens()));
+    }
+
+    private Map<String, IColumnTransform<?>> generateColumnTransformMap() {
+        Map<String, IColumnTransform<?>> newColumnTransformMap = new HashMap<String, IColumnTransform<?>>();
+        newColumnTransformMap.put(ParameterColumnTransform.NAME, new ParameterColumnTransform());
+        newColumnTransformMap.put(VariableColumnTransform.NAME, new VariableColumnTransform());
+        newColumnTransformMap.put(LookupColumnTransform.NAME, new LookupColumnTransform());
+        newColumnTransformMap.put(BshColumnTransform.NAME, new BshColumnTransform());
+        newColumnTransformMap.put(AdditiveColumnTransform.NAME, new AdditiveColumnTransform());
+        newColumnTransformMap.put(JavaColumnTransform.NAME, new JavaColumnTransform());
+        newColumnTransformMap.put(ConstantColumnTransform.NAME, new ConstantColumnTransform());
+        newColumnTransformMap.put(CopyColumnTransform.NAME, new CopyColumnTransform());
+        newColumnTransformMap.put(IdentityColumnTransform.NAME, new IdentityColumnTransform());
+        newColumnTransformMap.put(MultiplierColumnTransform.NAME, new MultiplierColumnTransform());
+        newColumnTransformMap.put(SubstrColumnTransform.NAME, new SubstrColumnTransform());
+        newColumnTransformMap.put(LeftColumnTransform.NAME, new LeftColumnTransform());
+        newColumnTransformMap.put(TrimColumnTransform.NAME, new TrimColumnTransform());
+        newColumnTransformMap.put(BinaryLeftColumnTransform.NAME, new BinaryLeftColumnTransform());
+        newColumnTransformMap.put(RemoveColumnTransform.NAME, new RemoveColumnTransform());
+        newColumnTransformMap.put(MathColumnTransform.NAME, new MathColumnTransform());
+        newColumnTransformMap.put(ValueMapColumnTransform.NAME, new ValueMapColumnTransform());
+        newColumnTransformMap.put(CopyIfChangedColumnTransform.NAME, new CopyIfChangedColumnTransform());
+        newColumnTransformMap.put(ColumnsToRowsKeyColumnTransform.NAME, new ColumnsToRowsKeyColumnTransform());
+        newColumnTransformMap.put(ColumnsToRowsValueColumnTransform.NAME, new ColumnsToRowsValueColumnTransform());
+        newColumnTransformMap.put(ClarionDateTimeColumnTransform.NAME, new ClarionDateTimeColumnTransform());
+        newColumnTransformMap.put(IsEmptyTransform.NAME, new IsEmptyTransform());
+        newColumnTransformMap.put(IsNullTransform.NAME, new IsNullTransform());
+        newColumnTransformMap.put(IsBlankTransform.NAME, new IsBlankTransform());
+        newColumnTransformMap.put(DeletedColumnListColumnTransform.NAME, new DeletedColumnListColumnTransform());
+        newColumnTransformMap.put(JsonColumnTransform.NAME, new JsonColumnTransform());
+        for (Entry<String, IColumnTransform<?>> columnTransformEntry : newColumnTransformMap.entrySet()) {
             IColumnTransform<?> columnTransform = columnTransformEntry.getValue();
             if (columnTransform instanceof ParameterColumnTransform parameterColumnTransform) {
                 parameterColumnTransform.setParameterService(parameterService);
@@ -144,19 +148,20 @@ public class TransformService extends AbstractService implements ITransformServi
             }
             addColumnTransform(columnTransformEntry.getKey(), columnTransform);
         }
-        setSqlMap(new TransformServiceSqlMap(symmetricDialect.getPlatform(),
-                createSqlReplacementTokens()));
+        return newColumnTransformMap;
     }
 
     private void addColumnTransform(String name, IColumnTransform<?> columnTransform) {
         extensionService.addExtensionPoint(name, columnTransform);
     }
 
+    @Override
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public Map<String, IColumnTransform<?>> getColumnTransforms() {
         return (Map) extensionService.getExtensionPointMap(IColumnTransform.class);
     }
 
+    @Override
     public boolean refreshFromDatabase() {
         Date date1 = sqlTemplate.queryForObject(getSql("selectMaxTransformTableLastUpdateTime"), Date.class);
         Date date2 = sqlTemplate.queryForObject(getSql("selectMaxTransformColumnLastUpdateTime"), Date.class);
@@ -178,6 +183,7 @@ public class TransformService extends AbstractService implements ITransformServi
         return findTransformsFor(nodeGroupLink, null);
     }
 
+    @Override
     public List<TransformTableNodeGroupLink> findTransformsFor(NodeGroupLink nodeGroupLink,
             TransformPoint transformPoint) {
         Map<NodeGroupLink, Map<TransformPoint, List<TransformTableNodeGroupLink>>> byLinkByTransformPoint = readInCacheIfExpired();
@@ -205,6 +211,7 @@ public class TransformService extends AbstractService implements ITransformServi
         return null;
     }
 
+    @Override
     public List<TransformTableNodeGroupLink> findTransformsFor(String sourceNodeGroupId, String targetNodeGroupId, String table) {
         NodeGroupLink nodeGroupLink = new NodeGroupLink(sourceNodeGroupId, targetNodeGroupId);
         List<TransformTableNodeGroupLink> transformsForNodeGroupLink = findTransformsFor(nodeGroupLink);
@@ -222,6 +229,7 @@ public class TransformService extends AbstractService implements ITransformServi
         return null;
     }
 
+    @Override
     public void clearCache() {
         cacheManager.flushTransformCache();
     }
@@ -280,6 +288,7 @@ public class TransformService extends AbstractService implements ITransformServi
         }
     }
 
+    @Override
     public List<TransformTableNodeGroupLink> getConfigExtractTransforms(NodeGroupLink nodeGroupLink) {
         List<TransformTableNodeGroupLink> transforms = new ArrayList<TransformTableNodeGroupLink>();
         TransformColumn column = new TransformColumn("heartbeat_time", "heartbeat_time", false);
@@ -324,6 +333,7 @@ public class TransformService extends AbstractService implements ITransformServi
         return transforms;
     }
 
+    @Override
     public List<TransformTableNodeGroupLink> getConfigLoadTransforms(NodeGroupLink nodeGroupLink) {
         List<TransformTableNodeGroupLink> transforms = new ArrayList<TransformTableNodeGroupLink>();
         if (extensionService.getExtensionPoint(INodePasswordFilter.class) != null) {
@@ -413,14 +423,17 @@ public class TransformService extends AbstractService implements ITransformServi
         return columns;
     }
 
+    @Override
     public List<TransformTableNodeGroupLink> getTransformTables(boolean includeColumns) {
         return this.getTransformTablesFromDB(includeColumns, true);
     }
 
+    @Override
     public List<TransformTableNodeGroupLink> getTransformTables(boolean includeColumns, boolean replaceTokens) {
         return this.getTransformTablesFromDB(includeColumns, replaceTokens);
     }
 
+    @Override
     public List<TransformColumn> getTransformColumns() {
         return this.getTransformColumnsFromDB();
     }
@@ -432,6 +445,7 @@ public class TransformService extends AbstractService implements ITransformServi
         return columns;
     }
 
+    @Override
     public void saveTransformTable(TransformTableNodeGroupLink transformTable, boolean saveTransformColumns) {
         ISqlTransaction transaction = null;
         try {
@@ -487,6 +501,7 @@ public class TransformService extends AbstractService implements ITransformServi
         }
     }
 
+    @Override
     public void saveTransformTableAsCopy(String originalId, TransformTableNodeGroupLink transformTable) {
         String newId = transformTable.getTransformId();
         List<TransformTableNodeGroupLink> transformTables = sqlTemplate
@@ -518,6 +533,7 @@ public class TransformService extends AbstractService implements ITransformServi
         }
     }
 
+    @Override
     public void renameTransformTable(String oldId, TransformTableNodeGroupLink transformTable) {
         saveTransformTable(transformTable, false);
         ISqlTransaction transaction = null;
@@ -541,11 +557,13 @@ public class TransformService extends AbstractService implements ITransformServi
                 (Object) transformTableId);
     }
 
+    @Override
     public void deleteAllTransformColumns() {
         sqlTemplate.update(getSql("deleteAllTransformColumnsSql"));
         clearCache();
     }
 
+    @Override
     public void deleteTransformTable(String transformTableId) {
         ISqlTransaction transaction = null;
         try {
@@ -570,6 +588,7 @@ public class TransformService extends AbstractService implements ITransformServi
         }
     }
 
+    @Override
     public void deleteAllTransformTables() {
         sqlTemplate.update(getSql("deleteAllTransformTablesSql"));
         clearCache();
@@ -595,6 +614,7 @@ public class TransformService extends AbstractService implements ITransformServi
     }
 
     class TransformTableMapper implements ISqlRowMapper<TransformTableNodeGroupLink> {
+        @Override
         public TransformTableNodeGroupLink mapRow(Row rs) {
             TransformTableNodeGroupLink table = new TransformTableNodeGroupLink();
             table.setTransformId(rs.getString("transform_id"));
@@ -628,6 +648,7 @@ public class TransformService extends AbstractService implements ITransformServi
     }
 
     static class TransformColumnMapper implements ISqlRowMapper<TransformColumn> {
+        @Override
         public TransformColumn mapRow(Row rs) {
             TransformColumn col = new TransformColumn();
             col.setTransformId(rs.getString("transform_id"));

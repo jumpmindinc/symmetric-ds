@@ -169,6 +169,7 @@ public class ParameterService extends AbstractParameterService implements IParam
                 return row;
             }
         }, values);
+        log.debug("Read {} parameters from database", properties.size());
         return properties;
     }
 
