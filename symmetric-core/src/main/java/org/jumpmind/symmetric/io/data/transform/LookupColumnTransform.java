@@ -29,7 +29,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.mapper.StringMapper;
-import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.model.Data;
@@ -38,23 +37,32 @@ import org.jumpmind.util.LinkedCaseInsensitiveMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LookupColumnTransform implements ISingleNewAndOldValueColumnTransform, IBuiltInExtensionPoint {
+public class LookupColumnTransform extends AbstractColumnTransform implements ISingleNewAndOldValueColumnTransform {
     protected final Logger log = LoggerFactory.getLogger(getClass());
     public static final String NAME = "lookup";
     protected static final StringMapper lookupColumnRowMapper = new StringMapper();
 
+    @Override
     public String getName() {
         return NAME;
     }
 
+    @Override
+    public boolean isParameterServiceRequired() {
+        return false;
+    }
+
+    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }
 
+    @Override
     public boolean isLoadColumnTransform() {
         return true;
     }
 
+    @Override
     public NewAndOldValue transform(IDatabasePlatform platform,
             DataContext context,
             TransformColumn column, TransformedData data, Map<String, String> sourceValues,

@@ -25,14 +25,13 @@ import java.util.TimeZone;
 
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Data;
 
-public class VariableColumnTransform implements ISingleNewAndOldValueColumnTransform, IBuiltInExtensionPoint {
+public class VariableColumnTransform extends AbstractColumnTransform implements ISingleNewAndOldValueColumnTransform {
     public static final String NAME = "variable";
     final String SOURCE_NODE_KEY = String.format("%d.SourceNode", hashCode());
     protected static final String TS_PATTERN = "yyyy-MM-dd HH:mm:ss.SSS";
@@ -58,14 +57,22 @@ public class VariableColumnTransform implements ISingleNewAndOldValueColumnTrans
             OPTION_SOURCE_SCHEMA_NAME, OPTION_SOURCE_TABLE_NAME, OPTION_SOURCE_DML_TYPE, OPTION_BATCH_ID, OPTION_BATCH_START_TIME,
             OPTION_DELETE_INDICATOR_FLAG };
 
+    @Override
     public String getName() {
         return NAME;
     }
 
+    @Override
+    public boolean isParameterServiceRequired() {
+        return false;
+    }
+
+    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }
 
+    @Override
     public boolean isLoadColumnTransform() {
         return true;
     }
@@ -74,6 +81,7 @@ public class VariableColumnTransform implements ISingleNewAndOldValueColumnTrans
         return OPTIONS;
     }
 
+    @Override
     public NewAndOldValue transform(IDatabasePlatform platform,
             DataContext context,
             TransformColumn column, TransformedData data, Map<String, String> sourceValues,
