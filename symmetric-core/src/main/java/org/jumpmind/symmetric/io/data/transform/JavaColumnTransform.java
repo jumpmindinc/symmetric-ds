@@ -23,13 +23,13 @@ package org.jumpmind.symmetric.io.data.transform;
 import java.util.Map;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JavaColumnTransform implements ISingleValueColumnTransform, IBuiltInExtensionPoint {
+public class JavaColumnTransform extends AbstractColumnTransform implements ISingleValueColumnTransform
+{
     public final static String CODE_START = "import org.jumpmind.symmetric.io.data.transform.*;\n"
             + "import org.jumpmind.symmetric.io.data.*;\n"
             + "import org.jumpmind.db.platform.*;\n"
@@ -51,18 +51,22 @@ public class JavaColumnTransform implements ISingleValueColumnTransform, IBuiltI
         this.extensionService = extensionService;
     }
 
+    @Override
     public String getName() {
         return NAME;
     }
 
+    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }
 
+    @Override
     public boolean isLoadColumnTransform() {
         return true;
     }
 
+    @Override
     public String transform(IDatabasePlatform platform, DataContext context, TransformColumn column, TransformedData data,
             Map<String, String> sourceValues, String newValue, String oldValue) throws IgnoreColumnException, IgnoreRowException {
         try {
