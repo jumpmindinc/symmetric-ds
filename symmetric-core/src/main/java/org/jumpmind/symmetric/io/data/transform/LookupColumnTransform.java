@@ -48,11 +48,6 @@ public class LookupColumnTransform extends AbstractColumnTransform implements IS
     }
 
     @Override
-    public boolean isParameterServiceRequired() {
-        return false;
-    }
-
-    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }

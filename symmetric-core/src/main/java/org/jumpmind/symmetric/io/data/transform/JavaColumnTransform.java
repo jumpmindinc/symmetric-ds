@@ -57,11 +57,6 @@ public class JavaColumnTransform extends AbstractColumnTransform implements ISin
     }
 
     @Override
-    public boolean isParameterServiceRequired() {
-        return true;
-    }
-
-    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }

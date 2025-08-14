@@ -63,11 +63,6 @@ public class VariableColumnTransform extends AbstractColumnTransform implements 
     }
 
     @Override
-    public boolean isParameterServiceRequired() {
-        return false;
-    }
-
-    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }
