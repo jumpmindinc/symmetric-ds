@@ -24,7 +24,7 @@ import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.service.IParameterService;
 
 public abstract class AbstractColumnTransform implements IBuiltInExtensionPoint {
-    IParameterService parameterService;
+    private IParameterService parameterService;
 
     public AbstractColumnTransform() {
     }

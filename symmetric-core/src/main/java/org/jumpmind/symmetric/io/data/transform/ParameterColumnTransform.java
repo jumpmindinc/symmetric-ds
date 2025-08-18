@@ -24,11 +24,9 @@ import java.util.Map;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.io.data.DataContext;
-import org.jumpmind.symmetric.service.IParameterService;
 
 public class ParameterColumnTransform extends AbstractColumnTransform implements ISingleNewAndOldValueColumnTransform {
     public static final String NAME = "parameter";
-    IParameterService parameterService;
 
     public ParameterColumnTransform() {
     }
