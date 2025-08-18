@@ -41,7 +41,6 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Data;
-import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.util.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +53,7 @@ public class BshColumnTransform extends AbstractColumnTransform implements ISing
     protected final Logger log = LoggerFactory.getLogger(getClass());
     final String INTERPRETER_KEY = String.format("%d.BshInterpreter", hashCode());
     public static final String NAME = "bsh";
-    IParameterService parameterService;
+
     /*
      * Static context object used to maintain objects in memory for reference between BSH transforms.
      */

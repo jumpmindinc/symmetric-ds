@@ -44,10 +44,8 @@
         <Logger name="org.jumpmind" level="INFO" />
         <Logger name="com.mangofactory.swagger.filters.AnnotatedParameterFilter" level="ERROR" />
         <Logger name="org.eclipse.jetty.util.ssl.SslContextFactory" level="ERROR" />
-        <!-- 
         <Logger name="org.jumpmind.symmetric.util.PropertiesFactoryBean" level="ERROR" />
         <Logger name="org.jumpmind.symmetric.service.impl.ParameterService" level="ERROR" />
-        -->
         <Logger name="org.jumpmind.symmetric.db.SqlScript" level="ERROR" />
         <Logger name="org.springframework" level="ERROR" />
         <Logger name="springfox.documentation" level="WARN" />
@@ -62,10 +60,7 @@
         <Logger name="org.atmosphere.util.IOUtils" level="ERROR" />
         <Logger name="com.vaadin.event.EventRouter" level="ERROR" />
         <Logger name="sun.net.www.protocol.http.HttpURLConnection" level="ERROR" />
-
-		<Logger name="org.jumpmind.symmetric.service.impl.ParameterService" level="DEBUG" />
-		<Logger name="org.jumpmind.symmetric.io.data.transform.BshColumnTransform" level="DEBUG" />
-
+        
         <!-- SQL for all statements
         <Logger name="org.jumpmind.db.sql" level="DEBUG" />
         -->
