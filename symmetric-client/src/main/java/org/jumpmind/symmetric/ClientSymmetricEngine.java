@@ -76,6 +76,7 @@ import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SnapshotUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.util.AppUtils;
+import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -384,7 +385,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             log.info("Overriding isolation level to " + settings.getOverrideIsolationLevel());
         }
         settings.setJdbcLobHandling(SqlTemplateSettings.JdbcLobHandling.valueOf(properties.get(ParameterConstants.DBDIALECT_ORACLE_JDBC_LOB_HANDLING,
-                SqlTemplateSettings.JdbcLobHandling.PLAIN.name()).toUpperCase()));
+                FormatUtils.upper(SqlTemplateSettings.JdbcLobHandling.PLAIN.name()))));
         settings.setProperties(properties);
         return settings;
     }
