@@ -62,8 +62,6 @@ public class IsBlankTransform implements ISingleNewAndOldValueColumnTransform, I
         if (StringUtils.isBlank(oldValue)) {
             result.setOldValue(expression);
         }
-        log.warn("Done. column={}, old={}, transformedOld={}, new={}, transformedNew={}", column.getSourceColumnName(), oldValue, result.oldValue, newValue,
-                result.newValue);
         return result;
     }
 }
