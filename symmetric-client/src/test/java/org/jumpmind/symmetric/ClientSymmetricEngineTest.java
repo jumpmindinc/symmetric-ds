@@ -11,7 +11,6 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.junit.jupiter.api.Test;
 
 public class ClientSymmetricEngineTest {
-
     @Test
     void testCreateSqlTemplateSettings_setJdbcLobHandling_noParameter() {
         SqlTemplateSettings settings = ClientSymmetricEngine.createSqlTemplateSettings(new TypedProperties());
@@ -35,5 +34,4 @@ public class ClientSymmetricEngineTest {
         assertEquals("PLAIN", settings.getJdbcLobHandling().name());
         Locale.setDefault(Locale.US); // reset locale
     }
-
 }
