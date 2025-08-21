@@ -37,10 +37,12 @@ public class IsBlankTransform implements ISingleNewAndOldValueColumnTransform, I
         return NAME;
     }
 
+    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }
 
+    @Override
     public boolean isLoadColumnTransform() {
         return true;
     }
@@ -49,14 +51,19 @@ public class IsBlankTransform implements ISingleNewAndOldValueColumnTransform, I
     public NewAndOldValue transform(IDatabasePlatform platform, DataContext context, TransformColumn column,
             TransformedData data, Map<String, String> sourceValues, String newValue, String oldValue)
             throws IgnoreColumnException, IgnoreRowException {
+        String expression = column.getTransformExpression();
+        if (StringUtils.isEmpty(expression)) {
+            expression = null;
+        }
         NewAndOldValue result = new NewAndOldValue(newValue, oldValue);
         if (StringUtils.isBlank(newValue)) {
-            String expression = column.getTransformExpression();
-            if (StringUtils.isEmpty(expression)) {
-                expression = null;
-            }
-            result = new NewAndOldValue(expression, oldValue);
+            result.setNewValue(expression);
         }
+        if (StringUtils.isBlank(oldValue)) {
+            result.setOldValue(expression);
+        }
+        log.warn("Done. column={}, old={}, transformedOld={}, new={}, transformedNew={}", column.getSourceColumnName(), oldValue, result.oldValue, newValue,
+                result.newValue);
         return result;
     }
 }
