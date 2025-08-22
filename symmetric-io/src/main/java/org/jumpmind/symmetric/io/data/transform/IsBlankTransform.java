@@ -51,17 +51,17 @@ public class IsBlankTransform implements ISingleNewAndOldValueColumnTransform, I
     public NewAndOldValue transform(IDatabasePlatform platform, DataContext context, TransformColumn column,
             TransformedData data, Map<String, String> sourceValues, String newValue, String oldValue)
             throws IgnoreColumnException, IgnoreRowException {
+        return new NewAndOldValue(transformValue(column, newValue), transformValue(column, oldValue));
+    }
+
+    private String transformValue(TransformColumn column, String sourceValue) {
         String expression = column.getTransformExpression();
         if (StringUtils.isEmpty(expression)) {
             expression = null;
         }
-        NewAndOldValue result = new NewAndOldValue(newValue, oldValue);
-        if (StringUtils.isBlank(newValue)) {
-            result.setNewValue(expression);
+        if (StringUtils.isBlank(sourceValue)) {
+            return expression;
         }
-        if (StringUtils.isBlank(oldValue)) {
-            result.setOldValue(expression);
-        }
-        return result;
+        return sourceValue;
     }
 }
