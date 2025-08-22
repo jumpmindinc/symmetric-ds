@@ -37,10 +37,12 @@ public class IsEmptyTransform implements ISingleNewAndOldValueColumnTransform, I
         return NAME;
     }
 
+    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }
 
+    @Override
     public boolean isLoadColumnTransform() {
         return true;
     }
@@ -49,14 +51,17 @@ public class IsEmptyTransform implements ISingleNewAndOldValueColumnTransform, I
     public NewAndOldValue transform(IDatabasePlatform platform, DataContext context, TransformColumn column,
             TransformedData data, Map<String, String> sourceValues, String newValue, String oldValue)
             throws IgnoreColumnException, IgnoreRowException {
-        NewAndOldValue result = new NewAndOldValue(newValue, oldValue);
-        if (StringUtils.isEmpty(newValue)) {
-            String expression = column.getTransformExpression();
-            if (StringUtils.isEmpty(expression)) {
-                expression = null;
-            }
-            result = new NewAndOldValue(expression, oldValue);
+        return new NewAndOldValue(transformValue(column, newValue), transformValue(column, oldValue));
+    }
+
+    private String transformValue(TransformColumn column, String sourceValue) {
+        String expression = column.getTransformExpression();
+        if (StringUtils.isEmpty(expression)) {
+            expression = null;
         }
-        return result;
+        if (StringUtils.isEmpty(sourceValue)) {
+            return expression;
+        }
+        return sourceValue;
     }
 }
