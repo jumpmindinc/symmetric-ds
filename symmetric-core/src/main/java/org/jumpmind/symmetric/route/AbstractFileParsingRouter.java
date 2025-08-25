@@ -21,7 +21,9 @@
 package org.jumpmind.symmetric.route;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,6 +35,7 @@ import org.apache.commons.io.FileUtils;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.file.IFileSourceTracker;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
@@ -49,7 +52,7 @@ import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.service.IContextService;
 
 public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
-    public abstract List<String> parse(File file, int lineNumber, int tableId);
+    public abstract List<String> parse(InputStream in, String fileName, int lineNumber, int tableId);
 
     public abstract String getColumnNames();
 
@@ -61,6 +64,8 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
     public final static String EXTERNAL_DATA_FILE_DATA_ID = "D";
     public final static String ROUTER_EXPRESSION_CHANNEL_KEY = "CHANNEL";
     public final static String ROUTER_EXPRESSION_INCLUDE_TRANSACTION_ID = "INCLUDE_TRANSACTION_ID";
+    public final static String ROUTER_EXPRESSION_TAIL_FILE = "TAIL_FILE";
+    public final static String CONTEXT_FILE_SOURCE_TRACKERS = "trackers";
 
     @Override
     public Set<String> routeToNodes(SimpleRouterContext context, DataMetaData dataMetaData, Set<Node> nodes,
@@ -75,6 +80,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
         String routerExpression = dataMetaData.getRouter().getRouterExpression();
         String channelId = "default";
         boolean includeTransactionId = false;
+        boolean tailFile = true;
         String filePath = relativeDir + "/" + fileName;
         IContextService contextService = getEngine().getContextService();
         if (lastEventType.equals(DataEventType.DELETE.toString())) {
@@ -90,27 +96,30 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
                             channelId = keyValue[1];
                         } else if (ROUTER_EXPRESSION_INCLUDE_TRANSACTION_ID.equalsIgnoreCase(keyValue[0])) {
                             includeTransactionId = Boolean.valueOf(keyValue[1]);
+                        } else if (ROUTER_EXPRESSION_TAIL_FILE.equalsIgnoreCase(keyValue[0])) {
+                            tailFile = Boolean.valueOf(keyValue[1]);
                         }
                     }
                 }
             }
             if (triggerId != null) {
-                try {
-                    String baseDir = getEngine().getFileSyncService().getFileTrigger(triggerId).getBaseDir();
-                    File file = createSourceFile(baseDir, relativeDir, fileName);
-                    String nodeList = buildNodeList(nodes);
-                    String externalData = new StringBuilder(EXTERNAL_DATA_TRIGGER_KEY)
-                            .append("=")
-                            .append(triggerId)
-                            .append(",")
-                            .append(EXTERNAL_DATA_ROUTER_KEY)
-                            .append("=")
-                            .append(dataMetaData.getRouter().getRouterId())
-                            .append(",")
-                            .append(EXTERNAL_DATA_FILE_DATA_ID)
-                            .append("=")
-                            .append(dataMetaData.getData().getDataId()).toString();
-                    Map<Integer, String> tableNames = getTableNames(getTargetTableName(targetTableName, fileName), file);
+                String baseDir = getEngine().getFileSyncService().getFileTrigger(triggerId).getBaseDir();
+                IFileSourceTracker tracker = getFileSourceTracker(context, baseDir);
+                File file = createSourceFile(baseDir, relativeDir, fileName, triggerId, dataMetaData.getRouter().getRouterId(), tracker);
+                String nodeList = buildNodeList(nodes);
+                String externalData = new StringBuilder(EXTERNAL_DATA_TRIGGER_KEY)
+                        .append("=")
+                        .append(triggerId)
+                        .append(",")
+                        .append(EXTERNAL_DATA_ROUTER_KEY)
+                        .append("=")
+                        .append(dataMetaData.getRouter().getRouterId())
+                        .append(",")
+                        .append(EXTERNAL_DATA_FILE_DATA_ID)
+                        .append("=")
+                        .append(dataMetaData.getData().getDataId()).toString();
+                try (InputStream in = getInputStream(tracker, file)) {
+                    Map<Integer, String> tableNames = getTableNames(getTargetTableName(targetTableName, fileName), in);
                     int tableIndex = 0;
                     String transactionId = null;
                     if (includeTransactionId) {
@@ -118,8 +127,11 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
                     }
                     for (Map.Entry<Integer, String> tableEntry : tableNames.entrySet()) {
                         String contextId = filePath + "[" + tableEntry.getValue() + "]";
-                        Integer lineNumber = contextService.getString(contextId) == null ? 0 : Integer.valueOf(contextService.getString(contextId));
-                        List<String> dataRows = parse(file, lineNumber, tableEntry.getKey());
+                        Integer lineNumber = 0;
+                        if (tailFile) {
+                            lineNumber = contextService.getString(contextId) == null ? 0 : Integer.valueOf(contextService.getString(contextId));
+                        }
+                        List<String> dataRows = parse(in, fileName, lineNumber, tableEntry.getKey());
                         String columnNames = getColumnNames();
                         for (String row : dataRows) {
                             Data data = new Data();
@@ -137,13 +149,11 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
                             lineNumber++;
                         }
                         if (!dataRows.isEmpty()) {
-                            try {
+                            if (tailFile) {
                                 contextService.save(contextId, lineNumber.toString());
-                                if ((tableNames.size() - 1) == tableIndex) {
-                                    deleteFileIfNecessary(dataMetaData);
-                                }
-                            } catch (Exception e) {
-                                e.printStackTrace();
+                            }
+                            if ((tableNames.size() - 1) == tableIndex) {
+                                deleteFileIfNecessary(dataMetaData);
                             }
                         }
                         log.info("Finished parsing file[table] " + fileName + "[" + tableEntry.getValue() + "]");
@@ -157,7 +167,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
         return new HashSet<String>();
     }
 
-    public Map<Integer, String> getTableNames(String tableName, File file) throws IOException {
+    public Map<Integer, String> getTableNames(String tableName, InputStream in) throws IOException {
         Map<Integer, String> tableNames = new HashMap<Integer, String>();
         tableNames.put(1, (String) tableName);
         return tableNames;
@@ -165,7 +175,12 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
 
     public String getTargetTableName(String targetTableName, String fileName) {
         if (targetTableName == null) {
-            targetTableName = fileName.substring(0, fileName.indexOf("."));
+            int i = fileName.indexOf(".");
+            if (i > 0) {
+                targetTableName = fileName.substring(0, i);
+            } else {
+                targetTableName = fileName;
+            }
         }
         return targetTableName;
     }
@@ -199,13 +214,24 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
         return bookmarkMap;
     }
 
-    public File createSourceFile(String baseDir, String relativeDir, String fileName) {
-        File sourceBaseDir = new File(baseDir);
-        if (!relativeDir.equals(".")) {
-            String sourcePath = relativeDir + "/";
-            sourceBaseDir = new File(sourceBaseDir, sourcePath);
+    public File createSourceFile(String baseDir, String relativeDir, String fileName, String triggerId, String routerId, IFileSourceTracker tracker) {
+        File sourceFile = null;
+        if (tracker != null) {
+            FileSnapshot snapshot = new FileSnapshot();
+            snapshot.setTriggerId(triggerId);
+            snapshot.setRouterId(routerId);
+            snapshot.setRelativeDir(relativeDir);
+            snapshot.setFileName(fileName);
+            sourceFile = tracker.createSourceFile(snapshot);
+        } else {
+            File sourceBaseDir = new File(baseDir);
+            if (!relativeDir.equals(".")) {
+                String sourcePath = relativeDir + "/";
+                sourceBaseDir = new File(sourceBaseDir, sourcePath);
+            }
+            sourceFile = new File(sourceBaseDir, fileName);
         }
-        return new File(sourceBaseDir, fileName);
+        return sourceFile;
     }
 
     protected TriggerHistory getTriggerHistory(String tableName, String columnNames) {
@@ -225,6 +251,37 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
         newTriggerHist.setPkColumnNames(columnNames);
         getEngine().getTriggerRouterService().insert(newTriggerHist);
         return newTriggerHist;
+    }
+
+    protected InputStream getInputStream(IFileSourceTracker tracker, File file) throws IOException {
+        InputStream in = null;
+        if (tracker != null) {
+            in = tracker.getInputStream(file);
+        } else {
+            in = new FileInputStream(file);
+        }
+        return in;
+    }
+
+    protected IFileSourceTracker getFileSourceTracker(SimpleRouterContext context, String baseDir) {
+        IFileSourceTracker tracker = null;
+        for (IFileSourceTracker fileTracker : getFileSourceTrackers(context)) {
+            if (fileTracker.handlesDir(baseDir)) {
+                tracker = fileTracker;
+                break;
+            }
+        }
+        return tracker;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected List<IFileSourceTracker> getFileSourceTrackers(SimpleRouterContext context) {
+        List<IFileSourceTracker> trackers = (List<IFileSourceTracker>) context.get(CONTEXT_FILE_SOURCE_TRACKERS);
+        if (trackers == null) {
+            trackers = getEngine().getExtensionService().getExtensionPointList(IFileSourceTracker.class);
+            context.put(CONTEXT_FILE_SOURCE_TRACKERS, trackers);
+        }
+        return trackers;
     }
 
     public static String getRouterIdFromExternalData(String externalData) {

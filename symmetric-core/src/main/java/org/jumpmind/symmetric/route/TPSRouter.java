@@ -21,8 +21,8 @@
 package org.jumpmind.symmetric.route;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,7 +55,7 @@ public class TPSRouter extends AbstractFileParsingRouter implements IDataRouter,
     }
 
     @Override
-    public List<String> parse(File file, int lineNumber, int tableId) {
+    public List<String> parse(InputStream in, String fileName, int lineNumber, int tableId) {
         List<String> rows = new ArrayList<String>();
         TableDefinitionRecord table = tpsFile.getTableDefinitions(false).get(tableId);
         fields.clear();
@@ -102,7 +102,7 @@ public class TPSRouter extends AbstractFileParsingRouter implements IDataRouter,
                                         position++;
                                     }
                                     if (multipleValues) {
-                                        log.debug("Line number " + currentLine + " in file " + file.getName() + ", field number " + fieldPosition
+                                        log.debug("Line number " + currentLine + " in file " + fileName + ", field number " + fieldPosition
                                                 + " contains array with multiple values");
                                     }
                                 } else {
@@ -175,8 +175,8 @@ public class TPSRouter extends AbstractFileParsingRouter implements IDataRouter,
 
     @Override
     @SuppressFBWarnings("ITU_INAPPROPRIATE_TOSTRING_USE")
-    public Map<Integer, String> getTableNames(String tableName, File file) throws IOException {
-        tpsFile = new TpsFile(file);
+    public Map<Integer, String> getTableNames(String tableName, InputStream in) throws IOException {
+        tpsFile = new TpsFile(in);
         Map<Integer, String> tableNames = new HashMap<Integer, String>();
         int tableNumber = 0;
         for (TableNameRecord tableNameRecord : ((TpsFile) tpsFile).getTableNameRecords()) {

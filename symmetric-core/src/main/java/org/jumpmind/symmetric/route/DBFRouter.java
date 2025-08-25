@@ -20,11 +20,7 @@
  */
 package org.jumpmind.symmetric.route;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,15 +42,13 @@ public class DBFRouter extends AbstractFileParsingRouter implements IDataRouter,
     }
 
     @Override
-    public List<String> parse(File file, int lineNumber, int tableIndex) {
+    public List<String> parse(InputStream in, String fileName, int lineNumber, int tableIndex) {
         List<String> rows = new ArrayList<String>();
-        InputStream fileInputStream = null;
         int currentLine = 1;
         try {
             boolean validateHeader = engine.getParameterService()
                     .is(ParameterConstants.DBF_ROUTER_VALIDATE_HEADER, true);
-            fileInputStream = Files.newInputStream(file.toPath(), StandardOpenOption.READ);
-            dbfReader = new DBFReader(fileInputStream, validateHeader);
+            dbfReader = new DBFReader(in, validateHeader);
             while (dbfReader.hasNextRecord()) {
                 StringBuilder row = new StringBuilder();
                 Object[] record = dbfReader.nextRecord();
@@ -70,15 +64,7 @@ public class DBFRouter extends AbstractFileParsingRouter implements IDataRouter,
                 currentLine++;
             }
         } catch (Exception e) {
-            log.error("Unable to parse DBF file " + file.getName() + " line number " + currentLine, e);
-        } finally {
-            if (fileInputStream != null) {
-                try {
-                    fileInputStream.close();
-                } catch (IOException ioe) {
-                    log.error("Unable to close file " + file.getName(), ioe);
-                }
-            }
+            log.error("Unable to parse DBF file " + fileName + " line number " + currentLine, e);
         }
         return rows;
     }
