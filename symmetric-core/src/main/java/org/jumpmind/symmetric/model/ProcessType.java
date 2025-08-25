@@ -82,4 +82,63 @@ public enum ProcessType {
                 return name();
         }
     }
+    
+    public String toStringShort() {
+        switch (this) {
+            case ANY:
+                return "<Any>";
+            case MANUAL_LOAD:
+                return "Manual Load";
+            case PUSH_JOB_EXTRACT:
+                return "Extracting";
+            case PUSH_JOB_TRANSFER:
+                return "Transfering";
+            case PULL_JOB_TRANSFER:
+                return "Transfering";
+            case PULL_JOB_LOAD:
+                return "Loading";
+            case PULL_CONFIG_JOB:
+                return "Config Pull";
+            case PUSH_HANDLER_TRANSFER:
+                return "Transfering";
+            case PULL_HANDLER_TRANSFER:
+                return "Transfering";
+            case PUSH_HANDLER_LOAD:
+                return "Loading";
+            case PULL_HANDLER_EXTRACT:
+                return "Extracting";
+            case OFFLINE_PUSH:
+                return "Offline Push";
+            case OFFLINE_PULL:
+                return "Offline Pull";
+            case ROUTER_JOB:
+                return "Routing";
+            case ROUTER_READER:
+                return "Routing";
+            case GAP_DETECT:
+                return "Routing";
+            case FILE_SYNC_PULL_JOB:
+                return "File Transfer";
+            case FILE_SYNC_PUSH_JOB:
+                return "File Transfer";
+            case FILE_SYNC_PULL_HANDLER:
+                return "File Write";
+            case FILE_SYNC_PUSH_HANDLER:
+                return "File Write";
+            case FILE_SYNC_TRACKER:
+                return "File Tracker";
+            case REST_PULL_HANLDER:
+                return "REST Pull";
+            case INSERT_LOAD_EVENTS:
+                return "Load Setup";
+            case INITIAL_LOAD_EXTRACT_JOB:
+                return "Load Extracting";
+            case FILE_SYNC_INITIAL_LOAD_EXTRACT_JOB:
+                return "File Load Extracting";
+            case LOG_MINER_JOB:
+                return "Log Miner";
+            default:
+                return name();
+        }
+    }
 };

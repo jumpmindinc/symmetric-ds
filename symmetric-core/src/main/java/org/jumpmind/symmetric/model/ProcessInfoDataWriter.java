@@ -60,6 +60,12 @@ public class ProcessInfoDataWriter extends NestedDataWriter {
         if (batch != null) {
             ProcessType type = processInfo.getProcessType();
             if (type == PULL_HANDLER_EXTRACT || type == PUSH_JOB_EXTRACT || type == INITIAL_LOAD_EXTRACT_JOB) {
+            	try {
+					Thread.sleep(1);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
                 processInfo.setStatus(EXTRACTING);
             } else {
                 processInfo.setStatus(LOADING);
