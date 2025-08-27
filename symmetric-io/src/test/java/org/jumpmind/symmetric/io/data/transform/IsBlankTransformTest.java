@@ -48,63 +48,53 @@ public class IsBlankTransformTest extends AbstractTransformTest {
     }
 
     @Test
-    void testTransform_withDelete_returnsNewAndOldValueWhenNotBlank() throws IgnoreColumnException, IgnoreRowException {
-        NewValue newValue = NewValue.of("new");
-        OldValue oldValue = OldValue.of("old");
-        testTransformDelete(Expected.of(newValue, oldValue), newValue, oldValue, TransformExpression.of("expression"));
-    }
-
-    @Test
-    void testTransform_withDelete_returnsExpressionWhenNewValueIsBlank() throws IgnoreColumnException, IgnoreRowException {
-        String blank = "  ";
+    void testTransform_withDelete_returnsExpressionForNewValueWhenNull() throws IgnoreColumnException, IgnoreRowException {
         String expression = "expression";
         OldValue oldValue = OldValue.of("old");
-        testTransformDelete(Expected.of(NewValue.of(expression), oldValue), NewValue.of(blank), oldValue, TransformExpression.of(expression));
+        testTransformDelete(Expected.of(NewValue.of(expression), oldValue), null, oldValue, TransformExpression.of(expression));
     }
 
     @Test
-    void testTransform_withDelete_returnsNullWhenNewValueIsBlankAndExpressionIsNull() throws IgnoreColumnException, IgnoreRowException {
+    void testTransform_withDelete_returnsNullForNewValueWhenExpressionIsNull() throws IgnoreColumnException, IgnoreRowException {
         OldValue oldValue = OldValue.of("old");
-        testTransformDelete(Expected.of(null, oldValue), NewValue.of("  "), oldValue, TransformExpression.of(null));
+        testTransformDelete(Expected.of(null, oldValue), null, oldValue, TransformExpression.of(null));
     }
 
     @Test
-    void testTransform_withUpdate_returnsNewAndOldValueWhenNotBlank() throws IgnoreColumnException, IgnoreRowException {
+    void testTransform_withUpdate_returnsNewAndOldValue() throws IgnoreColumnException, IgnoreRowException {
         NewValue newValue = NewValue.of("new");
         OldValue oldValue = OldValue.of("old");
         testTransformUpdate(Expected.of(newValue, oldValue), newValue, oldValue, TransformExpression.of("expression"));
     }
 
     @Test
-    void testTransform_withUpdate_returnsExpressionWhenNewValueIsBlank() throws IgnoreColumnException, IgnoreRowException {
-        String blank = "  ";
+    void testTransform_withUpdate_returnsExpressionWhenNewValueIsNull() throws IgnoreColumnException, IgnoreRowException {
         String expression = "expression";
         OldValue oldValue = OldValue.of("old");
-        testTransformUpdate(Expected.of(NewValue.of(expression), oldValue), NewValue.of(blank), oldValue, TransformExpression.of(expression));
+        testTransformUpdate(Expected.of(NewValue.of(expression), oldValue), null, oldValue, TransformExpression.of(expression));
     }
 
     @Test
-    void testTransform_withUpdate_returnsNullWhenNewValueIsBlankAndExpressionIsNull() throws IgnoreColumnException, IgnoreRowException {
+    void testTransform_withUpdate_returnsNullWhenNewValueIsNullAndExpressionIsNull() throws IgnoreColumnException, IgnoreRowException {
         OldValue oldValue = OldValue.of("old");
-        testTransformUpdate(Expected.of(null, oldValue), NewValue.of("  "), oldValue, TransformExpression.of(null));
+        testTransformUpdate(Expected.of(null, oldValue), null, oldValue, TransformExpression.of(null));
     }
 
     @Test
-    void testTransform_withInsert_returnsNewValueWhenNotBlank() throws IgnoreColumnException, IgnoreRowException {
+    void testTransform_withInsert_returnsNewValue() throws IgnoreColumnException, IgnoreRowException {
         NewValue newValue = NewValue.of("new");
         testTransformInsert(Expected.of(newValue, null), newValue, null, TransformExpression.of("expression"));
     }
 
     @Test
-    void testTransform_withInsert_returnsExpressionWhenNewValueIsBlank() throws IgnoreColumnException, IgnoreRowException {
-        String blank = "  ";
+    void testTransform_withInsert_returnsExpressionWhenNewValueIsNull() throws IgnoreColumnException, IgnoreRowException {
         String expression = "expression";
-        testTransformInsert(Expected.of(NewValue.of(expression), null), NewValue.of(blank), null, TransformExpression.of(expression));
+        testTransformInsert(Expected.of(NewValue.of(expression), null), null, null, TransformExpression.of(expression));
     }
 
     @Test
-    void testTransform_withInsert_returnsNullWhenNewValueIsBlankAndExpressionIsNull() throws IgnoreColumnException, IgnoreRowException {
-        testTransformInsert(Expected.of(null, null), NewValue.of("  "), null, TransformExpression.of(null));
+    void testTransform_withInsert_returnsNullWhenNewValueIsNullAndExpressionIsNull() throws IgnoreColumnException, IgnoreRowException {
+        testTransformInsert(Expected.of(null, null), null, null, TransformExpression.of(null));
     }
 
     private void testTransformDelete(Expected expected, NewValue newValue, OldValue oldValue, TransformExpression transformExpression)
