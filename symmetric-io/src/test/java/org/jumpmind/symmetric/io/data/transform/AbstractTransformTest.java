@@ -83,11 +83,11 @@ public abstract class AbstractTransformTest {
             String expectedOld = oldValue == null ? null : oldValue.get();
             if (!Objects.equals(expectedNew, actualNewValue)) {
                 throw new AssertionError(
-                        "Expected new value <" + newValue.get() + "> but was <" + actualNewValue + ">");
+                        "Expected new value <" + expectedNew + "> but was <" + actualNewValue + ">");
             }
             if (!Objects.equals(expectedOld, actualOldValue)) {
                 throw new AssertionError(
-                        "Expected old value <" + oldValue.get() + "> but was <" + actualOldValue + ">");
+                        "Expected old value <" + expectedOld + "> but was <" + actualOldValue + ">");
             }
         }
     }

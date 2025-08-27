@@ -48,6 +48,18 @@ public class IsNullTransformTest extends AbstractTransformTest {
     }
 
     @Test
+    void testTransform_withDelete_returnsOldValueWhenNewValueIsNull() throws IgnoreColumnException, IgnoreRowException {
+        String oldValue = "old";
+        testTransformDelete(Expected.of(NewValue.of(oldValue), null), null, OldValue.of(oldValue), TransformExpression.of("expression"));
+    }
+
+    @Test
+    void testTransform_withDelete_returnsExpressionWhenNewAndOldValueIsNull() throws IgnoreColumnException, IgnoreRowException {
+        String expression = "expression";
+        testTransformDelete(Expected.of(NewValue.of(expression), null), null, null, TransformExpression.of(expression));
+    }
+
+    @Test
     void testTransform_withDelete_returnsOldValueWhenNotNull() throws IgnoreColumnException, IgnoreRowException {
         String oldValue = "old";
         testTransformDelete(Expected.of(NewValue.of(oldValue), null), NewValue.of("new"), OldValue.of(oldValue), TransformExpression.of("expression"));
@@ -147,8 +159,8 @@ public class IsNullTransformTest extends AbstractTransformTest {
                 transformColumn,
                 transformedData,
                 sourceValues,
-                newValue.get(),
-                oldValue.get());
+                ((newValue != null) ? newValue.get() : null),
+                ((oldValue != null) ? oldValue.get() : null));
         expected.assertMatches(result.newValue, result.oldValue);
     }
 }
