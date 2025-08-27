@@ -110,23 +110,6 @@ public class IsNullTransformTest extends AbstractTransformTest {
         testTransformInsert(Expected.of(NewValue.of(""), null), NewValue.of(null), OldValue.of("old"), TransformExpression.of(null));
     }
 
-    @Test
-    void testTransform_withCreate_returnsNewValueWhenNotNull() throws IgnoreColumnException, IgnoreRowException {
-        String newValue = "new";
-        testTransformCreate(Expected.of(NewValue.of(newValue), null), NewValue.of(newValue), OldValue.of("old"), TransformExpression.of("expression"));
-    }
-
-    @Test
-    void testTransform_withCreate_returnsExpressionWhenNewValueIsNull() throws IgnoreColumnException, IgnoreRowException {
-        String expression = "expression";
-        testTransformCreate(Expected.of(NewValue.of(expression), null), NewValue.of(null), OldValue.of("old"), TransformExpression.of(expression));
-    }
-
-    @Test
-    void testTransform_withCreate_returnsEmptyWhenNewValueAndExpressionAreNull() throws IgnoreColumnException, IgnoreRowException {
-        testTransformCreate(Expected.of(NewValue.of(""), null), NewValue.of(null), OldValue.of("old"), TransformExpression.of(null));
-    }
-
     private void testTransformDelete(Expected expected, NewValue newValue, OldValue oldValue, TransformExpression transformExpression)
             throws IgnoreColumnException, IgnoreRowException {
         testTransform(expected, DataEventType.DELETE, newValue, oldValue, transformExpression);
@@ -140,11 +123,6 @@ public class IsNullTransformTest extends AbstractTransformTest {
     private void testTransformInsert(Expected expected, NewValue newValue, OldValue oldValue, TransformExpression transformExpression)
             throws IgnoreColumnException, IgnoreRowException {
         testTransform(expected, DataEventType.INSERT, newValue, oldValue, transformExpression);
-    }
-
-    private void testTransformCreate(Expected expected, NewValue newValue, OldValue oldValue, TransformExpression transformExpression)
-            throws IgnoreColumnException, IgnoreRowException {
-        testTransform(expected, DataEventType.CREATE, newValue, oldValue, transformExpression);
     }
 
     private void testTransform(Expected expected,

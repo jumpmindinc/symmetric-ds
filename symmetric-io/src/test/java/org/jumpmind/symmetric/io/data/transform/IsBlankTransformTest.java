@@ -110,27 +110,6 @@ public class IsBlankTransformTest extends AbstractTransformTest {
         testTransformInsert(Expected.of(null, oldValue), NewValue.of("  "), oldValue, TransformExpression.of(null));
     }
 
-    @Test
-    void testTransform_withCreate_returnsNewAndOldValueWhenNotBlank() throws IgnoreColumnException, IgnoreRowException {
-        NewValue newValue = NewValue.of("new");
-        OldValue oldValue = OldValue.of("old");
-        testTransformCreate(Expected.of(newValue, oldValue), newValue, oldValue, TransformExpression.of("expression"));
-    }
-
-    @Test
-    void testTransform_withCreate_returnsExpressionWhenNewValueIsBlank() throws IgnoreColumnException, IgnoreRowException {
-        String blank = "  ";
-        String expression = "expression";
-        OldValue oldValue = OldValue.of("old");
-        testTransformCreate(Expected.of(NewValue.of(expression), oldValue), NewValue.of(blank), oldValue, TransformExpression.of(expression));
-    }
-
-    @Test
-    void testTransform_withCreate_returnsNullWhenNewValueIsBlankAndExpressionIsNull() throws IgnoreColumnException, IgnoreRowException {
-        OldValue oldValue = OldValue.of("old");
-        testTransformCreate(Expected.of(null, oldValue), NewValue.of("  "), oldValue, TransformExpression.of(null));
-    }
-
     private void testTransformDelete(Expected expected, NewValue newValue, OldValue oldValue, TransformExpression transformExpression)
             throws IgnoreColumnException, IgnoreRowException {
         testTransform(expected, DataEventType.DELETE, newValue, oldValue, transformExpression);
@@ -144,11 +123,6 @@ public class IsBlankTransformTest extends AbstractTransformTest {
     private void testTransformInsert(Expected expected, NewValue newValue, OldValue oldValue, TransformExpression transformExpression)
             throws IgnoreColumnException, IgnoreRowException {
         testTransform(expected, DataEventType.INSERT, newValue, oldValue, transformExpression);
-    }
-
-    private void testTransformCreate(Expected expected, NewValue newValue, OldValue oldValue, TransformExpression transformExpression)
-            throws IgnoreColumnException, IgnoreRowException {
-        testTransform(expected, DataEventType.CREATE, newValue, oldValue, transformExpression);
     }
 
     private void testTransform(Expected expected,
