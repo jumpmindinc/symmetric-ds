@@ -90,24 +90,21 @@ public class IsEmptyTransformTest extends AbstractTransformTest {
     }
 
     @Test
-    void testTransform_withInsert_returnsNewAndOldValueWhenNotEmpty() throws IgnoreColumnException, IgnoreRowException {
+    void testTransform_withInsert_returnsNewValueWhenNotEmpty() throws IgnoreColumnException, IgnoreRowException {
         NewValue newValue = NewValue.of("new");
-        OldValue oldValue = OldValue.of("old");
-        testTransformInsert(Expected.of(newValue, oldValue), newValue, oldValue, TransformExpression.of("expression"));
+        testTransformInsert(Expected.of(newValue, null), newValue, null, TransformExpression.of("expression"));
     }
 
     @Test
     void testTransform_withInsert_returnsExpressionWhenNewValueIsEmpty() throws IgnoreColumnException, IgnoreRowException {
         String empty = "";
         String expression = "expression";
-        OldValue oldValue = OldValue.of("old");
-        testTransformInsert(Expected.of(NewValue.of(expression), oldValue), NewValue.of(empty), oldValue, TransformExpression.of(expression));
+        testTransformInsert(Expected.of(NewValue.of(expression), null), NewValue.of(empty), null, TransformExpression.of(expression));
     }
 
     @Test
     void testTransform_withInsert_returnsNullWhenNewValueIsEmptyAndExpressionIsNull() throws IgnoreColumnException, IgnoreRowException {
-        OldValue oldValue = OldValue.of("old");
-        testTransformInsert(Expected.of(null, oldValue), NewValue.of(""), oldValue, TransformExpression.of(null));
+        testTransformInsert(Expected.of(null, null), NewValue.of(""), null, TransformExpression.of(null));
     }
 
     private void testTransformDelete(Expected expected, NewValue newValue, OldValue oldValue, TransformExpression transformExpression)
@@ -137,8 +134,8 @@ public class IsEmptyTransformTest extends AbstractTransformTest {
                 transformColumn,
                 transformedData,
                 sourceValues,
-                newValue.get(),
-                oldValue.get());
+                ((newValue != null) ? newValue.get() : null),
+                ((oldValue != null) ? oldValue.get() : null));
         expected.assertMatches(result.newValue, result.oldValue);
     }
 }
