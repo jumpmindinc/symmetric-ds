@@ -28,8 +28,7 @@ import org.jumpmind.symmetric.service.IExtensionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class JavaColumnTransform extends AbstractColumnTransform implements ISingleValueColumnTransform
-{
+public class JavaColumnTransform extends AbstractColumnTransform implements ISingleValueColumnTransform {
     public final static String CODE_START = "import org.jumpmind.symmetric.io.data.transform.*;\n"
             + "import org.jumpmind.symmetric.io.data.*;\n"
             + "import org.jumpmind.db.platform.*;\n"
