@@ -294,9 +294,7 @@ public class ExtractDataReader implements IDataReader {
                     if (index >= 0 && rowData[index] != null) {
                         try {
                             String baseString = rowData[index];
-                            if (!baseString.startsWith("fffe")) {
-                                baseString = "fffe" + baseString;
-                            }
+                            baseString = "fffe" + baseString;
                             byte[] utf16Bytes = Hex.decodeHex(baseString);
                             String utf16Str = new String(utf16Bytes, "UTF-16");
                             String utf8Str = new String(utf16Str.getBytes("UTF-8"), "UTF-8");
