@@ -2735,4 +2735,9 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
     public void setTriggerDelimiterReplacementCharacters(String triggerDelimiterReplacementCharacters) {
         this.triggerDelimiterReplacementCharacters = triggerDelimiterReplacementCharacters;
     }
+    
+    @Override
+    public boolean supportDefaultValues() {
+    	return true;
+    }
 }
