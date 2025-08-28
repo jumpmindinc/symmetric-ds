@@ -125,7 +125,11 @@ public class StatisticManager implements IStatisticManager {
 
     public List<ProcessInfo> getProcessInfos() {
         List<ProcessInfo> list = new ArrayList<ProcessInfo>(processInfos.values());
-        Collections.sort(list);
+        try {
+            Collections.sort(list);
+        } catch (IllegalArgumentException e) {
+            log.warn("Failed to sort process infos", e);
+        }
         return list;
     }
 
