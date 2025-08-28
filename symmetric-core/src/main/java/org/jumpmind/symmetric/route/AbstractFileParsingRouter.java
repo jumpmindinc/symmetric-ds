@@ -32,11 +32,13 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.file.IFileSourceTracker;
 import org.jumpmind.symmetric.io.data.CsvData;
+import org.jumpmind.symmetric.io.data.CsvUtils;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.model.Data;
@@ -65,6 +67,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
     public final static String ROUTER_EXPRESSION_CHANNEL_KEY = "CHANNEL";
     public final static String ROUTER_EXPRESSION_INCLUDE_TRANSACTION_ID = "INCLUDE_TRANSACTION_ID";
     public final static String ROUTER_EXPRESSION_TAIL_FILE = "TAIL_FILE";
+    public final static String ROUTER_EXPRESSION_STANDARDIZE_NAMES = "STANDARDIZE_NAMES";
     public final static String CONTEXT_FILE_SOURCE_TRACKERS = "trackers";
 
     @Override
@@ -81,6 +84,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
         String channelId = "default";
         boolean includeTransactionId = false;
         boolean tailFile = true;
+        boolean standardizeNames = true;
         String filePath = relativeDir + "/" + fileName;
         IContextService contextService = getEngine().getContextService();
         if (lastEventType.equals(DataEventType.DELETE.toString())) {
@@ -98,6 +102,8 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
                             includeTransactionId = Boolean.valueOf(keyValue[1]);
                         } else if (ROUTER_EXPRESSION_TAIL_FILE.equalsIgnoreCase(keyValue[0])) {
                             tailFile = Boolean.valueOf(keyValue[1]);
+                        } else if (ROUTER_EXPRESSION_STANDARDIZE_NAMES.equalsIgnoreCase(keyValue[0])) {
+                            standardizeNames = Boolean.valueOf(keyValue[1]);
                         }
                     }
                 }
@@ -120,6 +126,9 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
                         .append(dataMetaData.getData().getDataId()).toString();
                 try (InputStream in = getInputStream(tracker, file)) {
                     Map<Integer, String> tableNames = getTableNames(getTargetTableName(targetTableName, fileName), in);
+                    if (standardizeNames) {
+                        standardizeTableNames(tableNames);
+                    }
                     int tableIndex = 0;
                     String transactionId = null;
                     if (includeTransactionId) {
@@ -133,6 +142,9 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
                         }
                         List<String> dataRows = parse(in, fileName, lineNumber, tableEntry.getKey());
                         String columnNames = getColumnNames();
+                        if (standardizeNames) {
+                            columnNames = standardizeColumnNames(columnNames);
+                        }
                         for (String row : dataRows) {
                             Data data = new Data();
                             data.setChannelId(channelId);
@@ -169,7 +181,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
 
     public Map<Integer, String> getTableNames(String tableName, InputStream in) throws IOException {
         Map<Integer, String> tableNames = new HashMap<Integer, String>();
-        tableNames.put(1, (String) tableName);
+        tableNames.put(1, tableName);
         return tableNames;
     }
 
@@ -183,6 +195,34 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
             }
         }
         return targetTableName;
+    }
+
+    protected String standardizeName(String name) {
+        if (name != null) {
+            name = name.trim().toLowerCase();
+            name = StringUtils.stripAccents(name);
+            name = name.replaceAll("[^\\w_]", "_").replaceAll("_+", "_");
+            name = StringUtils.strip(name, "_");
+            if (name.length() > 0 && StringUtils.isNumeric(name.substring(0, 1))) {
+                name = "_" + name;
+            }
+        }
+        return name;
+    }
+
+    protected Map<Integer, String> standardizeTableNames(Map<Integer, String> tableNames) {
+        for (Map.Entry<Integer, String> entry : tableNames.entrySet()) {
+            entry.setValue(standardizeName(entry.getValue()));
+        }
+        return tableNames;
+    }
+
+    protected String standardizeColumnNames(String names) {
+        String[] tokens = CsvUtils.tokenizeCsvData(names);
+        for (int i = 0; i < tokens.length; i++) {
+            tokens[i] = standardizeName(tokens[i]);
+        }
+        return CsvUtils.escapeCsvData(tokens);
     }
 
     public String buildNodeList(Set<Node> nodes) {
