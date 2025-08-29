@@ -28,9 +28,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -39,6 +45,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -58,6 +68,7 @@ import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.IDataReader;
 import org.jumpmind.symmetric.io.data.reader.ProtocolDataReader;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.transport.http.HttpConnection;
 import org.jumpmind.symmetric.transport.internal.InternalIncomingTransport;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.CollectionUtils;
@@ -404,5 +415,44 @@ final public class SymmetricUtils {
             }
         }
         return foundGroup;
+    }
+
+    public static Certificate[] getCertificates(String urlString)
+            throws MalformedURLException, IOException, NoSuchAlgorithmException, KeyManagementException {
+        URL url = new URL(urlString);
+        if (!"https".equals(url.getProtocol())) {
+            return null;
+        }
+        HttpConnection connection = null;
+        try {
+            connection = new HttpConnection(url);
+            connection.setHostnameVerifier((string, session) -> true);
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            X509TrustManager trustManager = new X509TrustManager() {
+                private X509Certificate[] accepted = {};
+
+                @Override
+                public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {
+                }
+
+                @Override
+                public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {
+                    accepted = xcs;
+                }
+
+                @Override
+                public X509Certificate[] getAcceptedIssuers() {
+                    return accepted;
+                }
+            };
+            sslContext.init(null, new TrustManager[] { trustManager }, null);
+            connection.setSslSocketFactory(sslContext.getSocketFactory());
+            return connection.getServerCertificates();
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+                connection.close();
+            }
+        }
     }
 }
