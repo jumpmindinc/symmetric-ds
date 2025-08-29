@@ -48,12 +48,10 @@ import org.slf4j.LoggerFactory;
 import bsh.Interpreter;
 import bsh.TargetError;
 
-public class BshColumnTransform extends AbstractColumnTransform implements ISingleNewAndOldValueColumnTransform 
-{
+public class BshColumnTransform extends AbstractColumnTransform implements ISingleNewAndOldValueColumnTransform {
     protected final Logger log = LoggerFactory.getLogger(getClass());
     final String INTERPRETER_KEY = String.format("%d.BshInterpreter", hashCode());
     public static final String NAME = "bsh";
-
     /*
      * Static context object used to maintain objects in memory for reference between BSH transforms.
      */
