@@ -1,0 +1,20 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+      - 'release/*'
+    types: [ opened, reopened, edited, synchronize ]
+
+jobs:
+  build-test:
+    uses: ./.github/workflows/build-test.yml
+
+  policy-check:
+    uses: ./.github/workflows/policy-check.yml
+    permissions:
+      pull-requests: write
+
+  sonar-scan:
+    uses: ./.github/workflows/sonar-scan.yml
