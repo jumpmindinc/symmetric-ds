@@ -233,7 +233,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         if (log.isDebugEnabled()) {
             log.debug("Generated create sql: \n{}", createSql);
         }
-        String delimiter = getDdlBuilder().getDatabaseInfo().getSqlCommandDelimiter();
+        String delimiter = getDatabaseInfo().getSqlCommandDelimiter();
         new SqlScript(createSql, getSqlTemplate(), !continueOnError, false, false,
                 getDatabaseInfo().isTriggersContainJava(), delimiter, null)
                 .execute(getDatabaseInfo().isRequiresAutoCommitForDdl());
@@ -282,9 +282,9 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         }
         String alterSql = ddlBuilder.alterDatabase(currentDatabase, desiredDatabase, interceptors);
         if (StringUtils.isNotBlank(alterSql.trim())) {
-            String delimiter = getDdlBuilder().getDatabaseInfo().getSqlCommandDelimiter();
+            String delimiter = getDatabaseInfo().getSqlCommandDelimiter();
             Map<String, String> replacementTokens = new HashMap<String, String>();
-            replacementTokens.put(ddlBuilder.getTriggerDelimiterReplacementCharacters(), getDdlBuilder().getDatabaseInfo().getSqlCommandDelimiter());
+            replacementTokens.put(ddlBuilder.getTriggerDelimiterReplacementCharacters(), getDatabaseInfo().getSqlCommandDelimiter());
             log.info("Running alter sql:\n{}", getAlterSql(alterSql, createTableIncludeApplicationTriggers, replacementTokens, delimiter));
             new SqlScript(alterSql, getSqlTemplate(), !continueOnError, false, false, delimiter, replacementTokens)
                     .execute(getDatabaseInfo().isRequiresAutoCommitForDdl());
@@ -297,7 +297,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         if (replaceTokens) {
             StringBuilder ddl = new StringBuilder();
             SqlScriptReader reader = new SqlScriptReader(new StringReader(alterSql));
-            reader.setDelimiter(getDdlBuilder().getDatabaseInfo().getSqlCommandDelimiter());
+            reader.setDelimiter(getDatabaseInfo().getSqlCommandDelimiter());
             reader.setReplacementTokens(replacementTokens);
             for (String statement = reader.readSqlStatement(); statement != null; statement = reader.readSqlStatement()) {
                 ddl.append(statement).append(delimiter).append(System.lineSeparator());
@@ -487,7 +487,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
             throws DecoderException {
         Object objectValue = value;
         int type = column.getMappedTypeCode();
-        if ((value == null || (getDdlBuilder().getDatabaseInfo().isEmptyStringNulled() && value.equals(""))) && column.isRequired()
+        if ((value == null || (getDatabaseInfo().isEmptyStringNulled() && value.equals(""))) && column.isRequired()
                 && column.isOfTextType()) {
             objectValue = REQUIRED_FIELD_NULL_SUBSTITUTE;
         }
@@ -495,8 +495,8 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
             if (type == Types.DATE || type == Types.TIMESTAMP || type == Types.TIME) {
                 objectValue = parseDate(type, value, useVariableDates);
             } else if (type == Types.CHAR) {
-                if ((StringUtils.isBlank(value) && getDdlBuilder().getDatabaseInfo().isBlankCharColumnSpacePadded())
-                        || (StringUtils.isNotBlank(value) && getDdlBuilder().getDatabaseInfo().isNonBlankCharColumnSpacePadded())) {
+                if ((StringUtils.isBlank(value) && getDatabaseInfo().isBlankCharColumnSpacePadded())
+                        || (StringUtils.isNotBlank(value) && getDatabaseInfo().isNonBlankCharColumnSpacePadded())) {
                     if (column.getSizeAsInt() != column.getCharOctetLength()) {
                         // using multiple-byte character set, the size is maximum number of characters
                         objectValue = StringUtils.rightPad(value, column.getSizeAsInt(), ' ');
@@ -504,7 +504,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
                         // single-byte character set or field defined as number of bytes
                         objectValue = value + StringUtils.repeat(" ", column.getCharOctetLength() - value.getBytes(Charset.defaultCharset()).length);
                     }
-                } else if (getDdlBuilder().getDatabaseInfo().isCharColumnSpaceTrimmed()) {
+                } else if (getDatabaseInfo().isCharColumnSpaceTrimmed()) {
                     objectValue = StringUtils.stripEnd(value, " ");
                 }
             } else if (type == Types.BIGINT) {
@@ -753,7 +753,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         if (StringUtils.isNotBlank(value)) {
             try {
                 boolean useTimestamp = (type == Types.TIMESTAMP)
-                        || (type == Types.DATE && getDdlBuilder().getDatabaseInfo().isDateOverridesToTimestamp());
+                        || (type == Types.DATE && getDatabaseInfo().isDateOverridesToTimestamp());
                 if (useVariableDates && value.startsWith("${curdate")) {
                     long time = Long.parseLong(value.substring(10, value.length() - 1));
                     if (value.substring(9, 10).equals("-")) {
