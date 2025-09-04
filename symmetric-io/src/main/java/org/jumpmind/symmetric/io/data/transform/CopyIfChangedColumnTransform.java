@@ -31,10 +31,12 @@ public class CopyIfChangedColumnTransform extends CopyColumnTransform {
     public final static String NAME = "copyIfChanged";
     public final static String EXPRESSION_IGNORE_COLUMN = "IgnoreColumn";
 
+    @Override
     public String getName() {
         return NAME;
     }
 
+    @Override
     public NewAndOldValue transform(IDatabasePlatform platform, DataContext context,
             TransformColumn column, TransformedData data, Map<String, String> sourceValues,
             String newValue, String oldValue) throws IgnoreColumnException, IgnoreRowException {
