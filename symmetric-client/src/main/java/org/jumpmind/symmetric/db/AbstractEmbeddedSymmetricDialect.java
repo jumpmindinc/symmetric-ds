@@ -42,23 +42,31 @@ abstract public class AbstractEmbeddedSymmetricDialect extends AbstractSymmetric
     @Override
     public String createInitialLoadSqlFor(Node node, TriggerRouter trigger, Table table, TriggerHistory triggerHistory, Channel channel,
             String overrideSelectSql) {
-        String sql = super.createInitialLoadSqlFor(node, trigger, table, triggerHistory, channel, overrideSelectSql);
-        sql = sql.replace("''", "'");
-        return sql;
+        return unescapeTicks(super.createInitialLoadSqlFor(node, trigger, table, triggerHistory, channel, overrideSelectSql));
     }
 
     @Override
     public String createCsvDataSql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause) {
-        String sql = super.createCsvDataSql(trigger, triggerHistory, channel, whereClause);
-        sql = sql.replace("''", "'");
-        return sql;
+        return unescapeTicks(super.createCsvDataSql(trigger, triggerHistory, channel, whereClause));
+    }
+
+    @Override
+    public String createCsvDataSql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause, Table table) {
+        return unescapeTicks(super.createCsvDataSql(trigger, triggerHistory, channel, whereClause, table));
     }
 
     @Override
     public String createCsvPrimaryKeySql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause) {
-        String sql = super.createCsvPrimaryKeySql(trigger, triggerHistory, channel, whereClause);
-        sql = sql.replace("''", "'");
-        return sql;
+        return unescapeTicks(super.createCsvPrimaryKeySql(trigger, triggerHistory, channel, whereClause));
+    }
+
+    @Override
+    public String createCsvPrimaryKeySql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause, Table table) {
+        return unescapeTicks(super.createCsvPrimaryKeySql(trigger, triggerHistory, channel, whereClause, table));
+    }
+
+    protected String unescapeTicks(String sql) {
+        return sql.replace("''", "'");
     }
 
     public void cleanDatabase() {
