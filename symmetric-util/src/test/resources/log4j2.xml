@@ -60,7 +60,7 @@
         <Logger name="org.atmosphere.util.IOUtils" level="ERROR" />
         <Logger name="com.vaadin.event.EventRouter" level="ERROR" />
         <Logger name="sun.net.www.protocol.http.HttpURLConnection" level="ERROR" />
-
+        
         <!-- SQL for all statements
         <Logger name="org.jumpmind.db.sql" level="DEBUG" />
         -->
