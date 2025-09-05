@@ -38,6 +38,8 @@ import org.jumpmind.symmetric.route.SimpleRouterContext;
 public interface IRouterService extends IService {
     public long routeData(boolean force);
 
+    public long getMaxDataIdAlreadyRouted();
+
     public long getUnroutedDataCount();
 
     public boolean shouldDataBeRouted(SimpleRouterContext context, DataMetaData dataMetaData,
