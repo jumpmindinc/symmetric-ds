@@ -20,10 +20,30 @@
  */
 package org.jumpmind.symmetric.db.mssql;
 
+import java.sql.Types;
+
+import org.jumpmind.db.model.Column;
+import org.jumpmind.db.platform.mssql.MsSql2005DdlBuilder;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 
 public class MsSql2005TriggerTemplate extends MsSqlTriggerTemplate {
     public MsSql2005TriggerTemplate(ISymmetricDialect symmetricDialect) {
         super(symmetricDialect);
+    }
+
+    /***
+     * Treats NVARCHAR(MAX), VARCHAR(MAX) columns as regular string type, not as "large objects".
+     */
+    @Override
+    protected boolean isLob(Column column) {
+        int mappedTypeCode = column.getMappedTypeCode();
+        int size = column.getSizeAsInt();
+        String jdbcTypeName = column.getJdbcTypeName();
+        if (mappedTypeCode == Types.LONGVARCHAR
+                && (jdbcTypeName.equalsIgnoreCase("NVARCHAR") && size > MsSql2005DdlBuilder.NVARCHARMAX_LIMIT
+                        || jdbcTypeName.equalsIgnoreCase("VARCHAR") && size > MsSql2005DdlBuilder.VARCHARMAX_LIMIT)) {
+            return false;
+        }
+        return super.isLob(column);
     }
 }

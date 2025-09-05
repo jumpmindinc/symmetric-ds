@@ -44,7 +44,6 @@ import org.jumpmind.symmetric.service.IDataService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-
 public class DataExtractorServiceTest {
     protected ISymmetricEngine engine;
 

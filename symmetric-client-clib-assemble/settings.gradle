@@ -1,5 +1,0 @@
-include "symmetric-client-clib", "symmetric-client-clib-test", "symmetric-client-native"
-
-project(":symmetric-client-clib").projectDir = file("../symmetric-client-clib")
-project(":symmetric-client-clib-test").projectDir = file("../symmetric-client-clib-test")
-project(":symmetric-client-native").projectDir = file("../symmetric-client-native")
