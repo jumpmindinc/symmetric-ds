@@ -1,0 +1,54 @@
+name: Sonar Scan
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  sonar-scan:
+    name: Sonar Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Cache Sonar packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Run build and Sonar analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: ./gradlew clean build -x test -x spotlessJavaCheck sonar --info
+        working-directory: symmetric-assemble
+
+      - name: Find report-task.txt
+        id: find-report-task
+        run: |
+          REPORT_FILE=$(find . -name report-task.txt | head -n 1)
+          echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
+
+      - name: SonarQube Quality Gate check
+        id: sonarqube-quality-gate-check
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        with:
+          scanMetadataReportFile: ${{ steps.find-report-task.outputs.report_file }}
+          pollingTimeoutSec: 600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
