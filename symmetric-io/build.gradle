@@ -9,24 +9,24 @@ apply from: symAssembleDir + '/common.gradle'
         api "net.sourceforge.jeval:jeval:0.9.4"
         api "com.google.code.gson:gson:$gsonVersion"
         api "org.springframework:spring-core:$springVersion"
-        compileOnly ("com.datastax.cassandra:cassandra-driver-core:3.11.1") {
+        compileOnly ("com.datastax.cassandra:cassandra-driver-core:3.11.5") {
             exclude group: 'org.slf4j'
             exclude group: 'com.google.guava'
             exclude group: 'io.netty'
         }
 
-        compileOnly ('com.google.cloud:google-cloud-bigquery:2.10.7') {
+        compileOnly ('com.google.cloud:google-cloud-bigquery:2.10.10') {
             exclude group: 'com.google.protobuf'
             exclude group: 'com.fasterxml.jackson.core'
             exclude group: 'com.fasterxml.jackson.dataformat'
             exclude group: 'com.fasterxml.jackson.databind'
         }
         
-         compileOnly ("org.apache.kafka:kafka-clients:3.1.0") {
+         compileOnly ("org.apache.kafka:kafka-clients:3.1.2") {
             exclude group: 'log4j'
             exclude group: 'org.slf4j'
         }
-        compileOnly ("io.confluent:kafka-avro-serializer:7.1.0") {
+        compileOnly ("io.confluent:kafka-avro-serializer:7.1.11") {
             exclude group: 'com.fasterxml.jackson.core'
             exclude group: 'com.fasterxml.jackson.dataformat'
             exclude group: 'com.fasterxml.jackson.databind'
@@ -34,7 +34,7 @@ apply from: symAssembleDir + '/common.gradle'
             exclude group: 'org.slf4j'
             exclude group: 'io.netty'
         }
-        compileOnly ("org.apache.avro:avro:1.11.0") {
+        compileOnly ("org.apache.avro:avro:1.11.3") {
             exclude group: 'log4j'
             exclude group: 'org.slf4j'
         }

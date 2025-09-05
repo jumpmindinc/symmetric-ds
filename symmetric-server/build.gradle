@@ -10,11 +10,11 @@ apply from: symAssembleDir + '/asciidoc.gradle'
         api "org.springframework:spring-jms:$springVersion"
         api "org.springframework:spring-web:$springVersion"
         api "org.springframework:spring-webmvc:$springVersion"
-        api "jakarta.xml.bind:jakarta.xml.bind-api:4.0.0"
-        api "com.sun.xml.bind:jaxb-impl:3.0.2"
+        api "jakarta.xml.bind:jakarta.xml.bind-api:4.0.2"
+        api "com.sun.xml.bind:jaxb-impl:4.0.5"
         api "org.jdom:jdom2:$jdomVersion"
         api "org.apache.commons:commons-fileupload2-core:$commonsFileuploadVersion"
-        api "org.apache.commons:commons-fileupload2-jakarta:$commonsFileuploadVersion"
+        api "org.apache.commons:commons-fileupload2-jakarta-servlet6:$commonsFileuploadVersion"
 
         provided project(":symmetric-wrapper")
         provided "jakarta.jms:jakarta.jms-api:3.1.0"
@@ -24,7 +24,7 @@ apply from: symAssembleDir + '/asciidoc.gradle'
             exclude group: "com.google.protobuf"
         }
         provided "org.postgresql:postgresql:$postgresqlVersion"
-        provided 'com.oracle.database.jdbc:ojdbc11:23.2.0.0'
+        provided 'com.oracle.database.jdbc:ojdbc11:23.4.0.24.05'
         provided "net.sourceforge.jtds:jtds:$jtdsVersion"
         provided "com.microsoft.sqlserver:mssql-jdbc:$mssqlVersion"
 
@@ -83,6 +83,7 @@ apply from: symAssembleDir + '/asciidoc.gradle'
                     include 'bin/dbcompare'
                     include 'bin/sym_service'
                     include 'bin/setenv'
+                    // fileMode = 0755
                     filePermissions {
                     	user {
                     		read = true
@@ -103,6 +104,7 @@ apply from: symAssembleDir + '/asciidoc.gradle'
                 }
                 from ('src/main/deploy') {
                     include 'security/*'
+                    // fileMode = 0600
                     filePermissions {
                     	user {
                     		read = true
@@ -120,6 +122,7 @@ apply from: symAssembleDir + '/asciidoc.gradle'
                     		execute = false
                     	}
                     }
+                    // dirMode = 0700
                     dirPermissions {
                     	user {
                     		read = true
@@ -164,3 +167,5 @@ apply from: symAssembleDir + '/asciidoc.gradle'
     serverDistZip.dependsOn { ':symmetric-server:jar' }
     serverDistZip.dependsOn { ':symmetric-server:generateDocs' }
     generateAppendixes.dependsOn(project(':symmetric-server').jar)
+    generateAppendixes.dependsOn(project(':symmetric-util').jar)
+    serverDistTar.dependsOn { ':symmetric-server:generateDocs' }

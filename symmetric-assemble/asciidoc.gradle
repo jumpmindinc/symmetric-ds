@@ -193,15 +193,17 @@ task generateDocs(type: Copy) {
         ])
     }
     
-    into('html') {
-        from ("$buildDir/src/asciidoc/html5/tutorials") { include "tutorials.html" }
-        filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: [
-            'appVersion': version,
-            'appMajorVersion': version.substring(0, version.lastIndexOf(".")),
-            'buildTime': new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss').format(new java.util.Date()),
-            'buildYear': new java.text.SimpleDateFormat('yyyy').format(new java.util.Date()),
-            'scmVersion' : scmVersion
-        ])
+    if (!project.properties.containsKey('pro')) {
+        into('html') {
+            from ("$buildDir/src/asciidoc/html5/tutorials") { include "tutorials.html" }
+            filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: [
+                'appVersion': version,
+                'appMajorVersion': version.substring(0, version.lastIndexOf(".")),
+                'buildTime': new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss').format(new java.util.Date()),
+                'buildYear': new java.text.SimpleDateFormat('yyyy').format(new java.util.Date()),
+                'scmVersion' : scmVersion
+            ])
+        }
     }
         
     into('html') {
@@ -220,8 +222,10 @@ task generateDocs(type: Copy) {
         from ("$buildDir/src/asciidoc/pdf") { include "user-guide.pdf" }
     }
 
-    into('pdf') {
-        from ("$buildDir/src/asciidoc/pdf/tutorials") { include "tutorials.pdf" }
+    if (!project.properties.containsKey('pro')) {
+        into('pdf') {
+            from ("$buildDir/src/asciidoc/pdf/tutorials") { include "tutorials.pdf" }
+        }
     }
 
     into('pdf') {
