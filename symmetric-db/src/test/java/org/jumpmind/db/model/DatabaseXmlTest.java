@@ -20,6 +20,7 @@
  */
 package org.jumpmind.db.model;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -45,15 +46,13 @@ public class DatabaseXmlTest {
      * Helper finds root directory for this code on file system starting from either the current directory or specified path.
      */
     public static String getRepositoryRootDir(String currentDirectory, String topProjectMarker) {
-        Path directoryPath = Paths.get("").toAbsolutePath();
-        System.out.println("getRepositoryRootDir >> " + directoryPath.toString() + "   topProjectMarker=" + topProjectMarker);
+        Path directoryPath = Paths.get("").toAbsolutePath();        
         if (currentDirectory != null) {
             directoryPath = Paths.get(currentDirectory);
         }
         String currentPath = directoryPath.toString();
         if (topProjectMarker == null || currentPath == null || currentPath.length() < topProjectMarker.length()) {
-            System.out.println("getRepositoryRootDir >> " + directoryPath.toString() + "   topProjectMarker=" + topProjectMarker);
-            System.out.println("getRepositoryRootDir >> Done1. currentPath=" + currentPath);
+            assertEquals("bad", "getRepositoryRootDir >> Done1. currentPath=" + currentPath + "   topProjectMarker=" + topProjectMarker);
             return currentPath;
         }
         String marker = topProjectMarker;
@@ -63,10 +62,10 @@ public class DatabaseXmlTest {
         int markerPos = currentPath.indexOf(marker);
         if (markerPos >= 0) {
             System.out.println("getRepositoryRootDir >> " + directoryPath.toString() + "   topProjectMarker=" + topProjectMarker);
-            System.out.println("getRepositoryRootDir >> Done2. currentPath=" + currentPath.substring(0, markerPos));
+            System.out.println("getRepositoryRootDir >> Done2. currentPath=" + currentPath.substring(0, markerPos) + "   topProjectMarker=" + topProjectMarker);
             return currentPath.substring(0, markerPos);
         }
-        System.out.println("getRepositoryRootDir >> Done3. currentPath=" + currentPath);
+        System.out.println("getRepositoryRootDir >> Done3. currentPath=" + currentPath + "   topProjectMarker=" + topProjectMarker);
         return currentPath;
     }
 
