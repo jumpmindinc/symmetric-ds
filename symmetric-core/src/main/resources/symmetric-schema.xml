@@ -522,6 +522,8 @@
         <column name="data_bytes_sent" type="BIGINT" default="0" description="The number of bytes that were sent during this time period." />
         <column name="data_sent" type="BIGINT" default="0" description="The number of rows that were sent during this time period." />
         <column name="data_sent_errors" type="BIGINT" default="0" description="The number of errors that occurred while sending during this time period." />
+        <column name="data_received" type="BIGINT" default="0" description="The number of rows that were received during this time period." />
+        <column name="data_bytes_received" type="BIGINT" default="0" description="The number of bytes that were received during this time period." />
         <column name="data_loaded" type="BIGINT" default="0" description="The number of rows that were loaded during this time period." />
         <column name="data_bytes_loaded" type="BIGINT" default="0" description="The number of bytes that were loaded during this time period." />
         <column name="data_loaded_errors" type="BIGINT" default="0" description="The number of errors that occurred while loading during this time period." />

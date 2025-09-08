@@ -1088,9 +1088,12 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                                             : PUSH_HANDLER_LOAD));
                             loadInfo.setCurrentLoadId(transferInfo.getCurrentLoadId());
                             if (batchInStaging.getStatistics() != null) {
-                                loadInfo.setTotalDataCount(batchInStaging.getStatistics().get(DataReaderStatistics.DATA_ROW_COUNT));
+                                long dataRowCount = batchInStaging.getStatistics().get(DataReaderStatistics.DATA_ROW_COUNT);
+                                loadInfo.setTotalDataCount(dataRowCount);
                                 loadInfo.setCurrentLoadId(batchInStaging.getStatistics().get(DataReaderStatistics.LOAD_ID));
+                                statisticManager.incrementDataReceived(batchInStaging.getChannelId(), dataRowCount);
                             }
+                            statisticManager.incrementDataBytesReceived(batchInStaging.getChannelId(), resource.getSize());
                             loadInfo.setStatus(ProcessInfo.ProcessStatus.LOADING);
                             ProtocolDataReader reader = buildDataReader(batchInStaging, resource);
                             processor = new DataProcessor(reader, null, listener, "data load from stage") {

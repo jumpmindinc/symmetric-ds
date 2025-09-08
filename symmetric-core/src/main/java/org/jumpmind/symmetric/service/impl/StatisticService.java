@@ -57,7 +57,8 @@ public class StatisticService extends AbstractService implements IStatisticServi
                         stats.getDataUnRouted(), stats.getDataEventInserted(),
                         stats.getDataExtracted(), stats.getDataBytesExtracted(),
                         stats.getDataExtractedErrors(), stats.getDataSent(),
-                        stats.getDataBytesSent(), stats.getDataSentErrors(), stats.getDataLoaded(),
+                        stats.getDataBytesSent(), stats.getDataSentErrors(), stats.getDataReceived(),
+                        stats.getDataBytesReceived(), stats.getDataLoaded(),
                         stats.getDataBytesLoaded(), stats.getDataLoadedErrors(),
                         stats.getDataLoadedOutgoing(), stats.getDataBytesLoadedOutgoing(),
                         stats.getDataLoadedOutgoingErrors() }, new int[] {
@@ -182,6 +183,8 @@ public class StatisticService extends AbstractService implements IStatisticServi
             stats.setDataSent(rs.getLong("data_sent"));
             stats.setDataBytesSent(rs.getLong("data_bytes_sent"));
             stats.setDataSentErrors(rs.getLong("data_sent_errors"));
+            stats.setDataReceived(rs.getLong("data_received"));
+            stats.setDataBytesReceived(rs.getLong("data_bytes_received"));
             stats.setDataLoaded(rs.getLong("data_loaded"));
             stats.setDataBytesLoaded(rs.getLong("data_bytes_loaded"));
             stats.setDataLoadedErrors(rs.getLong("data_loaded_errors"));
