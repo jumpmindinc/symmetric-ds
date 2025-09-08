@@ -147,22 +147,21 @@ public class StagingPerf {
             skipTask(results, STAT_BATCH_FIND, null);
             throw new RuntimeException(errorMsg);
         }
-        ts = System.currentTimeMillis(); 
+        ts = System.currentTimeMillis();
         resource = stagingMgr.find(STAGE_PATH, batch.getStagedLocation(), batch.getBatchId());
         if (resource == null) {
             String errorMsg = "Failed to locate staging file " + resourceLocation;
             failTask(results, STAT_BATCH_FIND, errorMsg);
             skipTask(results, STAT_BATCH_READ, null);
             throw new RuntimeException(errorMsg);
-        }
-        else {
+        } else {
             resourceLocation = resource.getPath();
             incrementTaskDuration(results, STAT_BATCH_FIND, System.currentTimeMillis() - ts);
             ts = System.currentTimeMillis();
             String testHeaderLine = null;
             try (BufferedReader reader = resource.getReader()) {
                 testHeaderLine = reader.readLine();
-                if(testHeaderLine==null) {
+                if (testHeaderLine == null) {
                     String errorMsg = "Failed to read contents of staging file " + resourceLocation;
                     failTask(results, STAT_BATCH_READ, errorMsg);
                     throw new RuntimeException(errorMsg);
@@ -271,5 +270,4 @@ public class StagingPerf {
             list.add(result);
         }
     }
-
 }
