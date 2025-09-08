@@ -23,6 +23,7 @@ package org.jumpmind.db.platform.mssql;
 import java.sql.Types;
 
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.sql.DmlStatement;
 import org.jumpmind.db.sql.DmlStatementOptions;
 
@@ -57,6 +58,8 @@ public class MsSqlDmlStatement extends DmlStatement {
         int type = column.getMappedTypeCode();
         if (type == Types.FLOAT || type == Types.REAL) {
             return Types.VARCHAR;
+        } else if (type == ColumnTypes.MSSQL_SQL_VARIANT) {
+            return Types.OTHER;
         } else {
             return super.getTypeCode(column, isDateOverrideToTimestamp);
         }

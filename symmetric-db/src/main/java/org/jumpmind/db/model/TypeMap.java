@@ -137,6 +137,7 @@ public abstract class TypeMap {
     public static final String MACADDR = "MACADDR";
     public static final String MACADDR8 = "MACADDR8";
     public static final String UNITEXT = "UNITEXT";
+    public static final String MSSQL_SQL_VARIANT = "SQL_VARIANT";
     /** Maps type names to the corresponding {@link java.sql.Types} constants. */
     private static HashMap<String, Integer> _typeNameToTypeCode = new HashMap<String, Integer>();
     /** Maps {@link java.sql.Types} type code constants to the corresponding type names. */
@@ -180,6 +181,7 @@ public abstract class TypeMap {
         registerJdbcType(ColumnTypes.NCLOB, NCLOB, JdbcTypeCategory.TEXTUAL);
         registerJdbcType(ColumnTypes.NVARCHAR, NVARCHAR, JdbcTypeCategory.TEXTUAL);
         registerJdbcType(ColumnTypes.LONGNVARCHAR, LONGNVARCHAR, JdbcTypeCategory.TEXTUAL);
+        registerJdbcType(ColumnTypes.MSSQL_SQL_VARIANT, MSSQL_SQL_VARIANT, JdbcTypeCategory.SPECIAL);
         // only available in JDK 1.4 and above:
         if (PlatformUtils.supportsJava14JdbcTypes()) {
             registerJdbcType(PlatformUtils.determineBooleanTypeCode(), BOOLEAN, JdbcTypeCategory.NUMERIC);
