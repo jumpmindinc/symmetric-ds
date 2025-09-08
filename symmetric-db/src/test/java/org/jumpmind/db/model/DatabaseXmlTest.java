@@ -46,11 +46,14 @@ public class DatabaseXmlTest {
      */
     public static String getRepositoryRootDir(String currentDirectory, String topProjectMarker) {
         Path directoryPath = Paths.get("").toAbsolutePath();
+        System.out.println("getRepositoryRootDir >> " + directoryPath.toString() + "   topProjectMarker=" + topProjectMarker);
         if (currentDirectory != null) {
             directoryPath = Paths.get(currentDirectory);
         }
         String currentPath = directoryPath.toString();
         if (topProjectMarker == null || currentPath == null || currentPath.length() < topProjectMarker.length()) {
+            System.out.println("getRepositoryRootDir >> " + directoryPath.toString() + "   topProjectMarker=" + topProjectMarker);
+            System.out.println("getRepositoryRootDir >> Done1. currentPath=" + currentPath);
             return currentPath;
         }
         String marker = topProjectMarker;
@@ -59,8 +62,11 @@ public class DatabaseXmlTest {
         }
         int markerPos = currentPath.indexOf(marker);
         if (markerPos >= 0) {
+            System.out.println("getRepositoryRootDir >> " + directoryPath.toString() + "   topProjectMarker=" + topProjectMarker);
+            System.out.println("getRepositoryRootDir >> Done2. currentPath=" + currentPath.substring(0, markerPos));
             return currentPath.substring(0, markerPos);
         }
+        System.out.println("getRepositoryRootDir >> Done3. currentPath=" + currentPath);
         return currentPath;
     }
 
