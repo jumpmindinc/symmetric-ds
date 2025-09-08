@@ -9,11 +9,14 @@ on:
 jobs:
   build-test:
     uses: ./.github/workflows/build-test.yml
+    secrets: inherit
 
   policy-check:
     uses: ./.github/workflows/policy-check.yml
     permissions:
       pull-requests: write
+    secrets: inherit
 
   sonar-scan:
     uses: ./.github/workflows/sonar-scan.yml
+    secrets: inherit
