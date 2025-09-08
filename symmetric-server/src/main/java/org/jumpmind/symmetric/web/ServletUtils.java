@@ -140,7 +140,10 @@ public class ServletUtils {
     }
 
     public static ServerSymmetricEngine findEngine(HttpServletRequest req, ServletContext ctx) {
-        String engineName = getEngineNameFromUrl((HttpServletRequest) req);
+        return findEngine(ctx, getEngineNameFromUrl(req));
+    }
+    
+    public static ServerSymmetricEngine findEngine(ServletContext ctx, String engineName) {
         ServerSymmetricEngine engine = null;
         SymmetricEngineHolder holder = ServletUtils.getSymmetricEngineHolder(ctx);
         if (holder != null) {

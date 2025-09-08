@@ -51,9 +51,6 @@ public class SecurityConstants {
     public static final String ALIAS_SYM_PRIVATE_KEY = "sym";
     public static final String ALIAS_SYM_SECRET_KEY = "sym.secret";
     public static final String ALIAS_SAML_PRIVATE_KEY = "saml";
-    public static final String ALIAS_JWT_PRIVATE_KEY = "jwt.private";
-    public static final String ALIAS_JWT_PUBLIC_KEY = "jwt.public";
-    public static final String ALIAS_JWT_SECRET_KEY = "jwt.secret";
     public static final String EMBEDDED_WEBSERVER_DEFAULT_ROLE = "symmetric";
     public static final String AZURE_KEYVAULT_URI = "azure.keyvault.uri";
     public static final String AZURE_CREDENTIAL_BUILDER_CLASSNAME = "azure.credential.builder.classname";
