@@ -79,4 +79,5 @@ final public class DatabaseNamesConstants {
     public final static String EXASOL = "exasol";
     public final static String SPARKSQL = "sparksql";
     public final static String DATABRICKS = "databricks";
+    public final static String AWSSQS = "awssqs";
 }
