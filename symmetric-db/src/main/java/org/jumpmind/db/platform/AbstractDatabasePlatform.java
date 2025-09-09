@@ -231,7 +231,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         String delimiter = getDdlBuilder().getDatabaseInfo().getSqlCommandDelimiter();
         new SqlScript(createSql, getSqlTemplate(), !continueOnError, false, false,
                 getDatabaseInfo().isTriggersContainJava(), delimiter, null)
-                        .execute(getDatabaseInfo().isRequiresAutoCommitForDdl());
+                .execute(getDatabaseInfo().isRequiresAutoCommitForDdl());
     }
 
     @Override

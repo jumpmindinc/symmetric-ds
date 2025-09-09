@@ -137,12 +137,10 @@ class MsSql2000DdlReaderTest {
         List<String> tableNameResults = new ArrayList<String>();
         List<String> tableNames = new ArrayList<String>();
         tableNames.add(SAMPLE_TABLE_NAME);
-
         tableNameResults = testReader.getTableNames(SAMPLE_CATALOG_NAME, SAMPLE_SCHEMA_NAME, null);
         assertEquals(tableNames, tableNameResults);
     }
- 
- 
+
     @ParameterizedTest
     @CsvSource({ "INSERT,1,0,0", "UPDATE,0,1,0", "DELETE,0,0,1", })
     @DisplayName("getTriggers Single")
@@ -163,7 +161,6 @@ class MsSql2000DdlReaderTest {
         assertEquals(expectedTriggerSource, testTrigger.getSource());
         assertEquals(true, testTrigger.getTriggerType().toString().equals(triggerTypeParam));
     }
-    
 
     @ParameterizedTest
     @Disabled
@@ -1151,5 +1148,4 @@ class MsSql2000DdlReaderTest {
     public IDatabasePlatform getPlatform() {
         return platform;
     }
-
 }
