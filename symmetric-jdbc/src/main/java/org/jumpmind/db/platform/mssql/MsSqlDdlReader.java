@@ -271,7 +271,7 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
             } else if (typeName.toUpperCase().contains("NVARCHAR") && size > 4000) {
                 return Types.LONGNVARCHAR;
             } else if (typeName.toUpperCase().equals("SQL_VARIANT")) {
-                return Types.BINARY;
+                return ColumnTypes.MSSQL_SQL_VARIANT;
             } else if (typeName.equalsIgnoreCase("DATETIMEOFFSET")) {
                 return ColumnTypes.TIMESTAMPTZ;
             } else if (typeName.equalsIgnoreCase("datetime2")) {

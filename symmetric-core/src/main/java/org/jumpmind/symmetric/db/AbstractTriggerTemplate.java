@@ -83,6 +83,7 @@ abstract public class AbstractTriggerTemplate {
     protected String imageColumnTemplate;
     protected String wrappedBlobColumnTemplate;
     protected String booleanColumnTemplate;
+    protected String sqlVariantColumnTemplate;
     protected String triggerConcatCharacter;
     protected String newTriggerValue;
     protected String oldTriggerValue;
@@ -951,6 +952,9 @@ abstract public class AbstractTriggerTemplate {
                     break;
                 case Types.ROWID:
                     templateToUse = stringColumnTemplate;
+                    break;
+                case ColumnTypes.MSSQL_SQL_VARIANT:
+                    templateToUse = sqlVariantColumnTemplate;
                     break;
                 default:
                     if (column.getJdbcTypeName() != null) {

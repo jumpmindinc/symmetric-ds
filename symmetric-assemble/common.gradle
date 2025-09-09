@@ -53,13 +53,13 @@ allprojects {
     
     sonar {
 		properties {
-			property "sonar.organization", "jumpmind"
+			property "sonar.organization", "jumpmindinc"
 		    property "sonar.host.url", "https://sonarcloud.io"
-		    property "sonar.projectKey", "JumpMind_SymmetricDS_Pro"
+		    property "sonar.projectKey", "jumpmindinc_symmetric-ds"
 	        property 'sonar.coverage.jacoco.xmlReportPaths', "${rootDir}/build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml"
 	     	property "sonar.coverage.exclusions", "**/*.ad, **/*.js, **/*.c"
 	     	property "sonar.exclusions","**/ui/**"
-	    	property "sonar.scm.disabled", "true"    
+	    	property "sonar.scm.disabled", "false"    
 		}
 	}
     
