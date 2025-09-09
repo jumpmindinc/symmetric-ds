@@ -1,9 +1,11 @@
 
 == Set Up New Replication
 
-First-time setup is done through the Configure Canvas. The Canvas makes it possible to quickly get connected to one or more endpoints and configure tables, subset rules, and transforms before SymmetricDS is installed in any database. This is all done through a graphical interface that makes it easy to visualize the configuration.
+First-time setup is done through the Configure Diagram. The Diagram makes it possible to quickly get connected to one or more endpoints and configure tables, subset rules, and transforms before SymmetricDS is installed in any database. This is all done through a graphical interface that makes it easy to visualize the configuration.
 
-If you have a CSV or SQL file containing the configuration from another installation of SymmetricDS, it can be imported into the Configure Canvas when setting up a new installation of SymmetricDS. The Canvas can be used to modify the imported configuration if necessary.
+If you have a CSV or SQL file containing the configuration from another installation of SymmetricDS, it can be imported into the Configure Diagram when setting up a new installation of SymmetricDS. The Diagram can be used to modify the imported configuration if necessary.
+
+The Configure Diagram is able to display either a network of endpoints or a list of pipelines depending on which one works best for your use case. In the Network view, there is a central database that stores configuration and participates in replication. The Network view is commonly used for retail stores, remote branches, vehicle management, or ship management. In the Pipelines view, there is an internal hub that stores configuration while replication occurs between separate pairs of data sources. The Pipelines view is commonly used for migrations, high availability, or point-to-point transfers.
 
 === Connect to the First Endpoint
 
@@ -17,13 +19,13 @@ The first step in setting up new replication is to connect to one of the endpoin
 * Specify the user ID to be used to log in to the endpoint.
 * Specify the password to be used to log in to the endpoint.
 
-As the endpoint type and display name change, the changes will be reflected in the Configure Canvas on the left. When proceeding to the next screen, SymmetricDS will verify that it can connect to the endpoint using the provided information.
+As the endpoint type and display name change, the changes will be reflected in the Configure Diagram on the left. When proceeding to the next screen, SymmetricDS will verify that it can connect to the endpoint using the provided information.
 
 === Connect to Additional Endpoints
 
 image::images/canvas/DefineEndpointScreen_second.png[]
 
-The second step in setting up new replication is to connect to a second endpoint that the first endpoint will synchronize with. Use the Endpoint field to choose between existing endpoints or a new endpoint. The initial setup process starts off with just two endpoints, but the Canvas can be used to configure any number of endpoints for synchronization.
+The second step in setting up new replication is to connect to a second endpoint that the first endpoint will synchronize with. Use the Endpoint field to choose between existing endpoints or a new endpoint. The initial setup process starts off with just two endpoints, but the Diagram can be used to configure any number of endpoints for synchronization.
 
 === Table Configuration
 
@@ -43,7 +45,7 @@ image::images/canvas/ViewTablesDialog.png[]
 
 image::images/canvas/RemoveTablesDialog.png[]
 
-Once a group of tables has been configured for synchronization, the Canvas will update and display how many tables are configured to synchronize in each direction. Clicking the X icon to the left of the group of tables will remove these tables from synchronization. Also, there are options to view all selected tables or remove individual tables from being synchronized across a link.
+Once a group of tables has been configured for synchronization, the Diagram will update and display how many tables are configured to synchronize in each direction. Clicking the X icon to the left of the group of tables will remove these tables from synchronization. Also, there are options to view all selected tables or remove individual tables from being synchronized across a link.
 
 === Subset Rule Configuration
 
@@ -131,21 +133,23 @@ The Add Target Column button appears in two places: on the right side of the scr
 
 Once a transform has been configured, it is possible to remove it by clicking the X icon on the left or to edit it by clicking the pencil and paper icon on the right.
 
-=== Additional Configuration Using the Canvas
+=== Additional Configuration Using the Diagram
 
 image::images/canvas/ConfigCanvas.png[]
 
 After the Transform Data screen, the initial setup stage is complete. It is also possible to exit the initial setup stage at any time by clicking the X icon in the top right corner of the sidebar.
 
-Some additional options are available within the Configure Canvas after the initial setup stage. Clicking an endpoint or link will select it. Select an endpoint to view and edit its display name and connection details. Select a link to view and edit tables, subset rules, and transforms. When a link is selected, the Next and Previous buttons can be used to navigate between these three configuration items. In order to edit configuration across a link, the endpoints on either side of the link must have valid connection details.
+Some additional options are available within the Configure Diagram after the initial setup stage. Clicking an endpoint or link will select it. Select an endpoint to view and edit its display name and connection details. Select a link to view and edit tables, subset rules, and transforms. When a link is selected, the Next and Previous buttons can be used to navigate between these three configuration items. In order to edit configuration across a link, the endpoints on either side of the link must have valid connection details.
 
-Clicking the Delete button in the top right corner of the Configure Canvas will remove the selected endpoint or link from the Canvas. To deselect an endpoint or link, click the empty background of the Canvas or close the sidebar. 
+The Delete button in the top right corner of the Configure Diagram functions differently depending on whether the Network or Pipelines view is being used. In the Network view, clicking the Delete button will remove the selected endpoint or link from the Diagram. In the Pipelines view, it will remove the pipeline that the selected endpoint or link is a member of from the Diagram. If either endpoint in the pipeline is undeployed, local, and not a part of any other pipeline, then the endpoint will also be removed.
+
+To deselect an endpoint or link, click the empty background of the Diagram or close the sidebar. 
 
 To add more endpoints, click the Add Replication button. This will create two new endpoints and go through the process of configuring replication between them. It's also possible to use this button to create just one new endpoint which replicates with an existing endpoint, or itself.
 
-Any endpoint can be linked to any other endpoint by clicking one of the four diamonds along the edge of the endpoint and dragging a line to another endpoint (or the same endpoint). To move any endpoint across the Canvas, click and drag the endpoint to the desired location.
+Any endpoint can be linked to any other endpoint by clicking one of the four diamonds along the edge of the endpoint and dragging a line to another endpoint (or the same endpoint). To move any endpoint across the Diagram, click and drag the endpoint to the desired location.
 
-At any time, it is possible to reset the Configure Canvas to its original state by clicking the Reset button in the bottom left corner of the Canvas. If the Canvas is reset before any configuration has been deployed, this will display the welcome screen. Later on, after deployment, resetting the Canvas will load the existing configuration from the database into the Canvas.
+At any time, it is possible to reset the Configure Diagram to its original state by clicking the Reset button in the bottom left corner of the Diagram. If the Diagram is reset before any configuration has been deployed, this will display the welcome screen. Later on, after deployment, resetting the Diagram will load the existing configuration from the database into the Diagram.
 
 === Deployment
 
@@ -181,15 +185,17 @@ Both the application database and the runtime database will go through a permiss
 
 The Deploy Wizard will run a performance test on any local trigger-based endpoints that pass their permissions check. After 5 seconds, the test will be complete and the performance column will contain either a green or a red icon. A green icon indicates that the endpoint has a good enough connection to be deployed locally, while a red icon indicates that it's recommended to deploy the endpoint remotely. Click the icon to view the test results, including an overall score out of 10.
 
-The location setting can be set to either local or remote. Select local to deploy the endpoint within the current installation of SymmetricDS, or select remote if the endpoint will be deployed elsewhere. The Deploy Wizard will create all of the necessary configuration for a remote endpoint, but the endpoint itself must be deployed at a later time using the Connect Database Wizard within a separate installation of SymmetricDS. At least one endpoint must be local in order to proceed with deployment.
-
-The sync URL setting controls the web address where the endpoint can be reached by other endpoints. Typically, it is only changed for networking and load balancing purposes. If the network will be accessing the web console through a proxy or a different hostname than the one shown, the hostname can be overridden. Also, the sync URL determines whether HTTP or HTTPS is used to transfer data. The sync URL can be accessed on the <<Nodes,Manage Nodes>> screen later.
-
 If the capture type is not set to trigger-based, then it's possible to have SymmetricDS install its tables in a separate runtime database. The default runtime database is H2, a lightweight embedded single-user database. There are a variety of other database types that can be used for the runtime database.
+
+The location setting can be set to either local or remote. When using the Pipelines view, this is an advanced setting. Select local to deploy the endpoint within the current installation of SymmetricDS, or select remote if the endpoint will be deployed elsewhere. The Deploy Wizard will create all of the necessary configuration for a remote endpoint, but the endpoint itself must be deployed at a later time using the Connect Database Wizard within a separate installation of SymmetricDS. At least one endpoint must be local in order to proceed with deployment.
+
+The sync URL setting controls the web address where the endpoint can be reached by other endpoints. When using the Pipelines view, this is an advanced setting. Typically, the sync URL is only changed for networking and load balancing purposes. If the network will be accessing the web console through a proxy or a different hostname than the one shown, the hostname can be overridden. Also, the sync URL determines whether HTTP or HTTPS is used to transfer data. The sync URL can be accessed on the <<Nodes,Manage Nodes>> screen later.
 
 The registration server option is an advanced option that determines the root-level registration server. This endpoint does not register with any other endpoint. It stores the set of configuration that will be synchronized to all other endpoints.
 
 The "registers with" option is another advanced option that determines which endpoint the endpoint will register with. When the endpoint starts up, it will connect to this endpoint in order to join the network and receive its configuration.
+
+When deploying for the first time using the Pipelines view with the advanced settings visible, an Enterprise Hub endpoint will be included in the list of endpoints. This is the internal hub endpoint which will serve as the registration server. It will be used to store configuration and monitor each pipeline. By default, the Enterprise Hub will use an embedded H2 runtime database, but it's possible to change it to a different database type.
 
 ==== Advanced Endpoint Settings
 
@@ -197,7 +203,7 @@ Sometimes, there are advanced settings that must be configured before deployment
 
 ==== Overwriting an Existing Installation
 
-Before deployment, the Deploy Wizard will check each runtime database for an existing installation of SymmetricDS. If there is an existing installation, a warning will be displayed. Before each endpoint is deployed, the Deploy Wizard will uninstall the existing installation, if present. This means that any existing configuration will be overwritten by the new configuration that was created in the Configure Canvas.
+Before deployment, the Deploy Wizard will check each runtime database for an existing installation of SymmetricDS. If there is an existing installation, a warning will be displayed. Before each endpoint is deployed, the Deploy Wizard will uninstall the existing installation, if present. This means that any existing configuration will be overwritten by the new configuration that was created in the Configure Diagram.
 
 ==== Configuring Time-Based Replication
 
@@ -211,7 +217,7 @@ If the Deploy Wizard finds a suitable column for a table, its name will be displ
 
 image::images/wizard-deploy/ConfigChangeScreen.png[]
 
-After the endpoint and time-based capture screens, the Deploy Wizard will display a summary of the configuration changes from the Configure Canvas. This summary includes tables, subset rules, and transforms. Any added configuration is shown in green and any removed configuration is shown in red.
+After the endpoint and time-based capture screens, the Deploy Wizard will display a summary of the configuration changes from the Configure Diagram. This summary includes tables, subset rules, and transforms. Any added configuration is shown in green and any removed configuration is shown in red.
 
 ==== License Key Installation
 
@@ -235,4 +241,4 @@ After setting up the admin user for the web console, click Finish to proceed wit
 
 During deployment, the Deploy Wizard will create a properties file for each endpoint. The external ID, engine name, and node group ID in each properties file will be set according to the settings from the <<Endpoint Overview>> screen. For remote endpoints, the properties file will end with `.remote`, which means that SymmetricDS will not start up local engines for these endpoints. For more information, see <<Node Properties File>>.
 
-The Deploy Wizard will install SymmetricDS's tables into each local runtime database and create the configuration for the endpoints, links, tables, subset rules, and transforms that were defined via the Configure Canvas. Endpoint display names become <<Groups>> and links become <<Group Links>>. Tables are backed by <<Table Triggers>>, <<Table Routing>>, and <<Routers>>. Subset rules result in special <<Router Types>> and transforms are split into <<Transforms>> and <<Columns,Transform Columns>>.
+The Deploy Wizard will install SymmetricDS's tables into each local runtime database and create the configuration for the endpoints, links, tables, subset rules, and transforms that were defined via the Configure Diagram. Endpoint display names become <<Groups>> and links become <<Group Links>>. Tables are backed by <<Table Triggers>>, <<Table Routing>>, and <<Routers>>. Subset rules result in special <<Router Types>> and transforms are split into <<Transforms>> and <<Columns,Transform Columns>>.

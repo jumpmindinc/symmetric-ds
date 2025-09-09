@@ -5,11 +5,11 @@ Configuring SymmetricDS is the process of setting up your synchronization scenar
 
 ifdef::pro[]
 
-Under the Configure tab, there are two sections: Canvas and Details.
+Under the Configure tab, there are two sections: Diagram and Details.
 
-The Configure Canvas is a more recent addition to the web console. It provides a graphical interface that can be used to connect to endpoints and configure tables, subset rules, and transforms without affecting the configuration stored in the database. See <<_additional_configuration_using_the_canvas,Additional Configuration Using the Canvas>> to learn how to navigate the Canvas. Changes made in the Canvas do not take effect until they are deployed via the Deploy Wizard. See <<Deployment>> for more information about the Deploy Wizard.
+The Configure Diagram is a more recent addition to the web console. It provides a graphical interface that can be used to connect to endpoints and configure tables, subset rules, and transforms without affecting the configuration stored in the database. See <<_additional_configuration_using_the_diagram,Additional Configuration Using the Diagram>> to learn how to navigate the Diagram. Changes made in the Diagram do not take effect until they are deployed via the Deploy Wizard. See <<Deployment>> for more information about the Deploy Wizard.
 
-In contrast, the Configure Details section contains a set of legacy screens that can be used to edit configuration in more detail. This section contains many configuration options that the Canvas does not have, such as file sync, single sign-on, and monitors. Changes made on the Configure Details screens are written to the database as soon as they are saved.
+In contrast, the Configure Details section contains a set of legacy screens that can be used to edit configuration in more detail. This section contains many configuration options that the Diagram does not have, such as file sync, single sign-on, and monitors. Changes made on the Configure Details screens are written to the database as soon as they are saved.
 
 include::configuration/overview.ad[]
 include::configuration/import.ad[]
