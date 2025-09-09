@@ -33,7 +33,6 @@ jobs:
       - name: Run build and Sonar analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: ./gradlew clean build -x test -x spotlessJavaCheck sonar --info
         working-directory: symmetric-assemble
 
