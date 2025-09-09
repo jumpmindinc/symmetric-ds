@@ -98,19 +98,16 @@ public class MockDbDataSource implements DataSource {
 
     @Override
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-
         return null;
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-
         return false;
     }
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-
         return null;
     }
 
@@ -126,7 +123,6 @@ public class MockDbDataSource implements DataSource {
 
     @Override
     public PrintWriter getLogWriter() throws SQLException {
-
         return null;
     }
 
@@ -137,12 +133,10 @@ public class MockDbDataSource implements DataSource {
 
     @Override
     public void setLogWriter(PrintWriter out) throws SQLException {
-
     }
 
     @Override
     public void setLoginTimeout(int seconds) throws SQLException {
-
     }
 
     /**
