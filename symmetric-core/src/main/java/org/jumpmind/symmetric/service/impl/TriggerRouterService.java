@@ -375,7 +375,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         synchronized (activeTriggerHistories) {
             for (TriggerHistory triggerHistory : activeTriggerHistories) {
                 if ((!triggerHistory.getTriggerId().equals(trigger.getTriggerId()) ||
-                        ((trigger.isSourceTableNameWildCarded() || trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded() || trigger.isSourceTableNameExpanded()) &&
+                        ((trigger.isSourceTableNameWildCarded() || trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded() || trigger
+                                .isSourceTableNameExpanded()) &&
                                 (oldhist == null || triggerHistory.getTriggerHistoryId() != oldhist.getTriggerHistoryId()))) &&
                         ((triggerHistory.getNameForDeleteTrigger() != null && triggerHistory.getNameForDeleteTrigger().equals(triggerName)) ||
                                 (triggerHistory.getNameForInsertTrigger() != null && triggerHistory.getNameForInsertTrigger().equals(triggerName)) ||
@@ -2103,19 +2104,19 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 if (trigger.isSyncOnInsert()) {
                     insertTriggerName = getTriggerName(DataEventType.INSERT,
                             maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
-                                    .toUpperCase();
+                            .toUpperCase();
                     triggerNamesGeneratedThisSession.add(insertTriggerName);
                 }
                 if (trigger.isSyncOnUpdate()) {
                     updateTriggerName = getTriggerName(DataEventType.UPDATE,
                             maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
-                                    .toUpperCase();
+                            .toUpperCase();
                     triggerNamesGeneratedThisSession.add(updateTriggerName);
                 }
                 if (trigger.isSyncOnDelete()) {
                     deleteTriggerName = getTriggerName(DataEventType.DELETE,
                             maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
-                                    .toUpperCase();
+                            .toUpperCase();
                     triggerNamesGeneratedThisSession.add(deleteTriggerName);
                 }
                 TriggerTableSupportingInfo triggerTableSupportingInfo = new TriggerTableSupportingInfo(trigger.getTriggerId(), insertTriggerName,
