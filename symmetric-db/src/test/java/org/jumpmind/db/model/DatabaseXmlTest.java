@@ -20,7 +20,6 @@
  */
 package org.jumpmind.db.model;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -46,13 +45,12 @@ public class DatabaseXmlTest {
      * Helper finds root directory for this code on file system starting from either the current directory or specified path.
      */
     public static String getRepositoryRootDir(String currentDirectory, String topProjectMarker) {
-        Path directoryPath = Paths.get("").toAbsolutePath();        
+        Path directoryPath = Paths.get("").toAbsolutePath();
         if (currentDirectory != null) {
             directoryPath = Paths.get(currentDirectory);
         }
         String currentPath = directoryPath.toString();
         if (topProjectMarker == null || currentPath == null || currentPath.length() < topProjectMarker.length()) {
-            assertEquals("bad", "getRepositoryRootDir >> Done1. currentPath=" + currentPath + "   topProjectMarker=" + topProjectMarker);
             return currentPath;
         }
         String marker = topProjectMarker;
@@ -61,11 +59,8 @@ public class DatabaseXmlTest {
         }
         int markerPos = currentPath.lastIndexOf(marker);
         if (markerPos >= 0) {
-            // assertEquals("bad", "getRepositoryRootDir >> Done2. currentPath=" + currentPath.substring(0, markerPos) + " topProjectMarker="
-            // + topProjectMarker);
             return currentPath.substring(0, markerPos);
         }
-        assertEquals("bad", "getRepositoryRootDir >> Done3. currentPath=" + currentPath + "   topProjectMarker=" + topProjectMarker);
         return currentPath;
     }
 
