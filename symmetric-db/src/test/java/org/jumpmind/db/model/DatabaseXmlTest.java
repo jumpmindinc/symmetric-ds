@@ -59,10 +59,10 @@ public class DatabaseXmlTest {
         if (!marker.startsWith(File.separator)) {
             marker = File.separator + marker;
         }
-        int markerPos = currentPath.indexOf(marker);
+        int markerPos = currentPath.lastIndexOf(marker);
         if (markerPos >= 0) {
-            assertEquals("bad", "getRepositoryRootDir >> Done2. currentPath=" + currentPath.substring(0, markerPos) + "   topProjectMarker="
-                    + topProjectMarker);
+            // assertEquals("bad", "getRepositoryRootDir >> Done2. currentPath=" + currentPath.substring(0, markerPos) + " topProjectMarker="
+            // + topProjectMarker);
             return currentPath.substring(0, markerPos);
         }
         assertEquals("bad", "getRepositoryRootDir >> Done3. currentPath=" + currentPath + "   topProjectMarker=" + topProjectMarker);
