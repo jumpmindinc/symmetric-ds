@@ -61,11 +61,11 @@ public class DatabaseXmlTest {
         }
         int markerPos = currentPath.indexOf(marker);
         if (markerPos >= 0) {
-            System.out.println("getRepositoryRootDir >> " + directoryPath.toString() + "   topProjectMarker=" + topProjectMarker);
-            System.out.println("getRepositoryRootDir >> Done2. currentPath=" + currentPath.substring(0, markerPos) + "   topProjectMarker=" + topProjectMarker);
+            assertEquals("bad", "getRepositoryRootDir >> Done2. currentPath=" + currentPath.substring(0, markerPos) + "   topProjectMarker="
+                    + topProjectMarker);
             return currentPath.substring(0, markerPos);
         }
-        System.out.println("getRepositoryRootDir >> Done3. currentPath=" + currentPath + "   topProjectMarker=" + topProjectMarker);
+        assertEquals("bad", "getRepositoryRootDir >> Done3. currentPath=" + currentPath + "   topProjectMarker=" + topProjectMarker);
         return currentPath;
     }
 
