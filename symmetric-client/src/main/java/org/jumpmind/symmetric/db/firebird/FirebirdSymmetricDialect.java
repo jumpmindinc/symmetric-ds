@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.db.firebird;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.mapper.StringMapper;
@@ -158,9 +159,9 @@ public class FirebirdSymmetricDialect extends AbstractSymmetricDialect implement
     public String massageDataExtractionSql(String sql, boolean isContainsBigLob) {
         if (!isContainsBigLob) {
             String[] sizes = parameterService.getString(ParameterConstants.FIREBIRD_EXTRACT_VARCHAR_ROW_OLD_PK_DATA, "20000,20000,1000").split(",");
-            sql = StringUtils.replace(sql, "d.row_data", "cast(d.row_data as varchar(" + sizes[0] + "))");
-            sql = StringUtils.replace(sql, "d.old_data", "cast(d.old_data as varchar(" + sizes[1] + "))");
-            sql = StringUtils.replace(sql, "d.pk_data", "cast(d.pk_data as varchar(" + sizes[2] + "))");
+            sql = Strings.CS.replace(sql, "d.row_data", "cast(d.row_data as varchar(" + sizes[0] + "))");
+            sql = Strings.CS.replace(sql, "d.old_data", "cast(d.old_data as varchar(" + sizes[1] + "))");
+            sql = Strings.CS.replace(sql, "d.pk_data", "cast(d.pk_data as varchar(" + sizes[2] + "))");
         }
         return sql;
     }

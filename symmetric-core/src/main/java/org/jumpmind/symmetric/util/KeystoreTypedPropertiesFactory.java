@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.security.ISecurityService;
@@ -132,7 +132,7 @@ public class KeystoreTypedPropertiesFactory extends TypedPropertiesFactory {
             if (isParameterSavedInKeystore(keyString)) {
                 Object value = typedProperties.get(key);
                 String valueString = value == null ? "" : value.toString();
-                if (StringUtils.startsWith(valueString, SecurityConstants.PREFIX_KEYSTORE_STORAGE)) {
+                if (Strings.CS.startsWith(valueString, SecurityConstants.PREFIX_KEYSTORE_STORAGE)) {
                     String keystoreKey = getKeystoreParameterKey(keyString);
                     try {
                         valueString = securityService.getKeystoreEntry(keystoreKey);

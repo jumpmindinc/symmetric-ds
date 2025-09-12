@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
@@ -167,7 +168,7 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
                 }
             }
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {}", Table.getFullyQualifiedTableName(catalog, schema, table));

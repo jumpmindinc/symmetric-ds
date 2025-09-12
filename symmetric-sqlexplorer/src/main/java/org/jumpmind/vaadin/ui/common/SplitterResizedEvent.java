@@ -20,7 +20,7 @@
  */
 package org.jumpmind.vaadin.ui.common;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 import com.vaadin.flow.component.ComponentEvent;
 import com.vaadin.flow.component.DomEvent;
@@ -47,8 +47,8 @@ public class SplitterResizedEvent extends ComponentEvent<SplitLayout> {
     public SplitterResizedEvent(SplitLayout source, boolean fromClient, @EventData("event.detail.leftWidth") String leftWidth,
             @EventData("event.detail.rightWidth") String rightWidth) {
         super(source, fromClient);
-        this.leftWidth = Double.parseDouble(StringUtils.remove(leftWidth, "px"));
-        this.rightWidth = Double.parseDouble(StringUtils.remove(rightWidth, "px"));
+        this.leftWidth = Double.parseDouble(Strings.CS.remove(leftWidth, "px"));
+        this.rightWidth = Double.parseDouble(Strings.CS.remove(rightWidth, "px"));
     }
 
     public double getLeftWidth() {

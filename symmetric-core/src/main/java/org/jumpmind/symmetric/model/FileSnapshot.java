@@ -28,6 +28,7 @@ import java.util.Date;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.exception.IoException;
 
 public class FileSnapshot implements Serializable {
@@ -262,7 +263,7 @@ public class FileSnapshot implements Serializable {
      * @return true, for identical file locations.
      */
     public boolean sameFile(FileSnapshot file) {
-        return StringUtils.equals(fileName, file.fileName) && StringUtils.equals(relativeDir, file.relativeDir);
+        return Strings.CS.equals(fileName, file.fileName) && Strings.CS.equals(relativeDir, file.relativeDir);
     }
 
     /***

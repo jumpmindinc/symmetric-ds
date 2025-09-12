@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.Row;
@@ -84,7 +85,7 @@ public class LookupTableDataRouter extends AbstractDataRouter implements IDataRo
                             nodeIds = addNodeId(node.getNodeId(), nodeIds, nodes);
                         }
                     }
-                } else if (StringUtils.equals(keyData, params.get(PARAM_ALL_NODES_VALUE))) {
+                } else if (Strings.CS.equals(keyData, params.get(PARAM_ALL_NODES_VALUE))) {
                     for (Node node : nodes) {
                         nodeIds = addNodeId(node.getNodeId(), nodeIds, nodes);
                     }

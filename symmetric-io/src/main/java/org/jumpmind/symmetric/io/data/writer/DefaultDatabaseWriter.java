@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
@@ -1089,7 +1090,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
         try {
             String sql = scriptReader.readSqlStatement();
             while (sql != null) {
-                if (StringUtils.startsWithIgnoreCase(sql, "delimiter")) {
+                if (Strings.CI.startsWith(sql, "delimiter")) {
                     if (log.isDebugEnabled()) {
                         log.debug("Found delimiter line: " + sql);
                     }
@@ -1171,7 +1172,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
              */
             boolean containsEmptyLobColumn = getPlatform().isLob(column)
                     && StringUtils.isBlank(oldData[targetColumnIndex]);
-            needsUpdated = !StringUtils.equals(rowData[targetColumnIndex], oldData[targetColumnIndex])
+            needsUpdated = !Strings.CS.equals(rowData[targetColumnIndex], oldData[targetColumnIndex])
                     || data.getParsedData(CsvData.OLD_DATA) == null
                     || containsEmptyLobColumn;
             if (containsEmptyLobColumn) {
@@ -1185,7 +1186,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
              * child table. Table lock is taken not in exclusive mode, but lock contentions is possible.
              */
             needsUpdated = !column.isPrimaryKey()
-                    || !StringUtils.equals(rowData[targetColumnIndex], getPkDataFor(data, column));
+                    || !Strings.CS.equals(rowData[targetColumnIndex], getPkDataFor(data, column));
             /*
              * A primary key change isn't indicated in the change data indicators when there is no old data. Need to update it manually in that case.
              */
@@ -1278,7 +1279,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                 }
             } catch (SqlException sqle) {
                 // TODO: is there really a "does not exist" exception or should this be removed? copied from AbstractJdbcDdlReader.readTable()
-                if (sqle.getMessage() == null || !StringUtils.containsIgnoreCase(sqle.getMessage(), "does not exist")) {
+                if (sqle.getMessage() == null || !Strings.CI.contains(sqle.getMessage(), "does not exist")) {
                     throw sqle;
                 }
             }

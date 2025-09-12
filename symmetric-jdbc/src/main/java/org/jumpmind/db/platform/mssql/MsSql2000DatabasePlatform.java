@@ -26,6 +26,7 @@ import java.sql.Types;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -206,7 +207,7 @@ public class MsSql2000DatabasePlatform extends AbstractJdbcDatabasePlatform {
         if (sql.toUpperCase().contains("CREATE TABLE")) {
             return sql;
         }
-        return StringUtils.replaceOnceIgnoreCase(sql, "create", "alter");
+        return Strings.CI.replaceOnce(sql, "create", "alter");
     }
 
     @Override
@@ -214,7 +215,7 @@ public class MsSql2000DatabasePlatform extends AbstractJdbcDatabasePlatform {
         if (sql.toUpperCase().contains("ALTER TABLE") || sql.toUpperCase().contains(" OR ALTER ")) {
             return sql;
         }
-        return StringUtils.replaceOnceIgnoreCase(sql, "alter", "create");
+        return Strings.CI.replaceOnce(sql, "alter", "create");
     }
 
     public int getEngineEdition() {
