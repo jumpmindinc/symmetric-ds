@@ -27,6 +27,7 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -149,8 +150,8 @@ public class InformixDatabasePlatform extends AbstractJdbcDatabasePlatform imple
 
     @Override
     public String massageForLimitOffset(String sql, int limit, int offset) {
-        if (StringUtils.containsIgnoreCase(sql, "select")) {
-            sql = StringUtils.replaceIgnoreCase(sql, "select", "select skip " + offset + " first " + limit);
+        if (Strings.CI.contains(sql, "select")) {
+            sql = Strings.CI.replace(sql, "select", "select skip " + offset + " first " + limit);
         }
         return sql;
     }

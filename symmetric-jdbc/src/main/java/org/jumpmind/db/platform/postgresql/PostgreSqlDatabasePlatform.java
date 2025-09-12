@@ -55,6 +55,7 @@ import javax.sql.DataSource;
 import javax.sql.rowset.serial.SerialBlob;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.model.Table;
@@ -438,7 +439,7 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
             }
             return sql;
         }
-        return StringUtils.replaceOnceIgnoreCase(sql, "create", "create or replace");
+        return Strings.CI.replaceOnce(sql, "create", "create or replace");
     }
 
     @Override

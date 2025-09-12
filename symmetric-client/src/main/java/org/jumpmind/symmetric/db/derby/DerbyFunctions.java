@@ -34,6 +34,7 @@ import java.util.Hashtable;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.derby.iapi.db.Factory;
 import org.apache.derby.iapi.db.TriggerExecutionContext;
 import org.apache.derby.iapi.sql.conn.LanguageConnectionContext;
@@ -208,8 +209,7 @@ public class DerbyFunctions {
 
     public static String escape(String str) {
         if (str != null) {
-            return "\"" + StringUtils.replace(StringUtils.replace(str, "\\", "\\\\"), "\"", "\\\"")
-                    + "\"";
+            return "\"" + Strings.CS.replace(Strings.CS.replace(str, "\\", "\\\\"), "\"", "\\\"") + "\"";
         }
         return "";
     }

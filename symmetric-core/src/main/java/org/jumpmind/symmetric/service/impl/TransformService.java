@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
@@ -194,7 +195,7 @@ public class TransformService extends AbstractService implements ITransformServi
         if (!CollectionUtils.isEmpty(transformsForNodeGroupLink)) {
             List<TransformTableNodeGroupLink> transforms = new ArrayList<TransformTableNodeGroupLink>();
             for (TransformTableNodeGroupLink transform : transformsForNodeGroupLink) {
-                if (StringUtils.equalsIgnoreCase(table, transform.getSourceTableName())) {
+                if (Strings.CI.equals(table, transform.getSourceTableName())) {
                     transforms.add(transform);
                 }
             }

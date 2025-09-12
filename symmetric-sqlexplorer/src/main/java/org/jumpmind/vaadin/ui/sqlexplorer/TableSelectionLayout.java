@@ -20,8 +20,6 @@
  */
 package org.jumpmind.vaadin.ui.sqlexplorer;
 
-import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -30,6 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.platform.IDatabasePlatform;
 
 import com.vaadin.flow.component.button.Button;
@@ -186,7 +185,7 @@ public class TableSelectionLayout extends VerticalLayout {
         for (String table : tables) {
             if ((excludedTables == null || !excludedTables.contains(table.toLowerCase())) && display(getSelectedCatalog(), getSelectedSchema(), table)) {
                 if (!filter.equals("")) {
-                    if (containsIgnoreCase(table, filter)) {
+                    if (Strings.CI.contains(table, filter)) {
                         filteredTables.add(table);
                     }
                 } else {

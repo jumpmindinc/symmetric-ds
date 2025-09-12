@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.ForeignKey;
@@ -441,7 +441,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                 boolean isPkChanged = false;
                 if (pkValues.size() > 0) {
                     for (String name : targetTable.getPrimaryKeyColumnNames()) {
-                        if (!StringUtils.equals(values.get(name), pkValues.get(name))) {
+                        if (!Strings.CS.equals(values.get(name), pkValues.get(name))) {
                             isPkChanged = true;
                             break;
                         }

@@ -26,6 +26,7 @@ import java.io.Reader;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.util.FormatUtils;
 
@@ -98,9 +99,9 @@ public class SqlScriptReader extends LineNumberReader implements ISqlStatementSo
                     sql.append(line);
                     if (triggersContainJava) {
                         String trimmedLine = line.trim();
-                        if (!creatingJavaTrigger && StringUtils.startsWithIgnoreCase(trimmedLine, "CREATE TRIGGER")) {
+                        if (!creatingJavaTrigger && Strings.CI.startsWith(trimmedLine, "CREATE TRIGGER")) {
                             creatingJavaTrigger = true;
-                        } else if (creatingJavaTrigger && StringUtils.startsWithIgnoreCase(trimmedLine, "END")) {
+                        } else if (creatingJavaTrigger && Strings.CI.startsWith(trimmedLine, "END")) {
                             creatingJavaTrigger = false;
                         }
                     }

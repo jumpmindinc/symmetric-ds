@@ -46,6 +46,7 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.Database;
@@ -143,7 +144,7 @@ public class MySqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
         if (!VersionUtil.isOlderThanVersion(versionString, "5.1.5")) {
             String defaultEngine = getSqlTemplate()
                     .queryForString("select engine from information_schema.engines where support='DEFAULT';");
-            if (!StringUtils.equalsIgnoreCase(defaultEngine, "innodb")) {
+            if (!Strings.CI.equals(defaultEngine, "innodb")) {
                 result.setStatus(Status.FAIL);
                 result.setSolution("Set the default storage engine to InnoDB.");
                 return result;
@@ -202,19 +203,19 @@ public class MySqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
         final PermissionResult result = new PermissionResult(PermissionType.LOG_MINE, "Use LogMiner");
         StringBuilder solution = new StringBuilder();
         Row row = getSqlTemplate().queryForRow("show variables like 'log_bin'");
-        if (row == null || !StringUtils.equalsIgnoreCase(row.getString("Value"), "ON")) {
+        if (row == null || !Strings.CI.equals(row.getString("Value"), "ON")) {
             solution.append("Use the --log-bin option at startup. ");
         }
         row = getSqlTemplate().queryForRow("show variables like 'binlog_format'");
-        if (row == null || !StringUtils.equalsIgnoreCase(row.getString("Value"), "ROW")) {
+        if (row == null || !Strings.CI.equals(row.getString("Value"), "ROW")) {
             solution.append("Set the binlog_format system variable to \"ROW\". ");
         }
         row = getSqlTemplate().queryForRow("show variables like 'enforce_gtid_consistency'");
-        if (row == null || !StringUtils.equalsIgnoreCase(row.getString("Value"), "ON")) {
+        if (row == null || !Strings.CI.equals(row.getString("Value"), "ON")) {
             solution.append("Set the enforce_gtid_consistency system variable to \"ON\". ");
         }
         row = getSqlTemplate().queryForRow("show variables like 'gtid_mode'");
-        if (row == null || !StringUtils.equalsIgnoreCase(row.getString("Value"), "ON")) {
+        if (row == null || !Strings.CI.equals(row.getString("Value"), "ON")) {
             solution.append("Set the gtid_mode system variable to \"ON\".");
         }
         if (solution.length() > 0) {

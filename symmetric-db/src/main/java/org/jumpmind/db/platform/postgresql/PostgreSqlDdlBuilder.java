@@ -47,6 +47,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.alter.AddColumnChange;
 import org.jumpmind.db.alter.AddTableLoggingChange;
 import org.jumpmind.db.alter.ColumnAutoIncrementChange;
@@ -167,7 +168,7 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
             } else if (uppercaseValue.startsWith("SYSTIMESTAMP") || uppercaseValue.startsWith("SYSDATETIME(")) {
                 newValue = "CURRENT_TIMESTAMP";
             } else if (column.anyPlatformColumnNameContains("mysql") && uppercaseValue.startsWith("SYSDATE(")) {
-                newValue = StringUtils.replaceOnceIgnoreCase(newValue, "sysdate", "CURRENT_TIMESTAMP");
+                newValue = Strings.CI.replaceOnce(newValue, "sysdate", "CURRENT_TIMESTAMP");
             } else if (uppercaseValue.startsWith("SYSDATETIMEOFFSET(")) {
                 newValue = "LOCALTIMESTAMP";
             } else if (uppercaseValue.startsWith("GETUTCDATE(")) {

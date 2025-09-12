@@ -48,6 +48,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
@@ -375,7 +376,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         synchronized (activeTriggerHistories) {
             for (TriggerHistory triggerHistory : activeTriggerHistories) {
                 if ((!triggerHistory.getTriggerId().equals(trigger.getTriggerId()) ||
-                        ((trigger.isSourceTableNameWildCarded() || trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded() || trigger.isSourceTableNameExpanded()) &&
+                        ((trigger.isSourceTableNameWildCarded() || trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded() || trigger
+                                .isSourceTableNameExpanded()) &&
                                 (oldhist == null || triggerHistory.getTriggerHistoryId() != oldhist.getTriggerHistoryId()))) &&
                         ((triggerHistory.getNameForDeleteTrigger() != null && triggerHistory.getNameForDeleteTrigger().equals(triggerName)) ||
                                 (triggerHistory.getNameForInsertTrigger() != null && triggerHistory.getNameForInsertTrigger().equals(triggerName)) ||
@@ -1677,9 +1679,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
 
     protected boolean isEqual(String one, String two, boolean ignoreCase) {
         if (ignoreCase) {
-            return StringUtils.equalsIgnoreCase(one, two);
+            return Strings.CI.equals(one, two);
         } else {
-            return StringUtils.equals(one, two);
+            return Strings.CS.equals(one, two);
         }
     }
 
@@ -2103,19 +2105,19 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 if (trigger.isSyncOnInsert()) {
                     insertTriggerName = getTriggerName(DataEventType.INSERT,
                             maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
-                                    .toUpperCase();
+                            .toUpperCase();
                     triggerNamesGeneratedThisSession.add(insertTriggerName);
                 }
                 if (trigger.isSyncOnUpdate()) {
                     updateTriggerName = getTriggerName(DataEventType.UPDATE,
                             maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
-                                    .toUpperCase();
+                            .toUpperCase();
                     triggerNamesGeneratedThisSession.add(updateTriggerName);
                 }
                 if (trigger.isSyncOnDelete()) {
                     deleteTriggerName = getTriggerName(DataEventType.DELETE,
                             maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
-                                    .toUpperCase();
+                            .toUpperCase();
                     triggerNamesGeneratedThisSession.add(deleteTriggerName);
                 }
                 TriggerTableSupportingInfo triggerTableSupportingInfo = new TriggerTableSupportingInfo(trigger.getTriggerId(), insertTriggerName,
@@ -2512,9 +2514,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 synchronized (activeTriggerHistories) {
                     for (Iterator<TriggerHistory> it = activeTriggerHistories.iterator(); it.hasNext();) {
                         TriggerHistory triggerHistory = it.next();
-                        if (StringUtils.equals(triggerHistory.getSourceCatalogName(), newTriggerHist.getSourceCatalogName())) {
-                            if (StringUtils.equals(triggerHistory.getSourceSchemaName(), newTriggerHist.getSourceSchemaName())) {
-                                if (StringUtils.equals(triggerHistory.getSourceTableName(), newTriggerHist.getSourceTableName())) {
+                        if (Strings.CS.equals(triggerHistory.getSourceCatalogName(), newTriggerHist.getSourceCatalogName())) {
+                            if (Strings.CS.equals(triggerHistory.getSourceSchemaName(), newTriggerHist.getSourceSchemaName())) {
+                                if (Strings.CS.equals(triggerHistory.getSourceTableName(), newTriggerHist.getSourceTableName())) {
                                     it.remove();
                                 }
                             }

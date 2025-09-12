@@ -40,6 +40,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
@@ -865,7 +866,7 @@ public class DbFill {
             objectValue = randomFloat();
         } else if (type == Types.DOUBLE) {
             objectValue = randomDouble();
-            if (StringUtils.containsIgnoreCase(column.getJdbcTypeName(), "money")) {
+            if (Strings.CI.contains(column.getJdbcTypeName(), "money")) {
                 BigDecimal bd = BigDecimal.valueOf((Double) objectValue);
                 bd = bd.setScale(2, RoundingMode.HALF_UP);
                 objectValue = bd.toString();

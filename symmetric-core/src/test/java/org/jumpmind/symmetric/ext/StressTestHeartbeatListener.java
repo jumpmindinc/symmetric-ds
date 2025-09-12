@@ -434,7 +434,7 @@ public class StressTestHeartbeatListener
         values[1] = nodeId;
         values[2] = runId;
         for (int c = 3; c < values.length; c++) {
-            values[c] = RandomStringUtils.randomAlphanumeric(100);
+            values[c] = RandomStringUtils.secure().nextAlphanumeric(100);
         }
         engine.getSqlTemplate().update(sql, values);
     }

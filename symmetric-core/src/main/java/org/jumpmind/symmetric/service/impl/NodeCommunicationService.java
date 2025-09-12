@@ -39,7 +39,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.Row;
@@ -250,7 +250,7 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
         for (String key : channels.keySet()) {
             Channel channel = channels.get(key);
             if (channel != null) {
-                if (StringUtils.equalsIgnoreCase(queue, channel.getQueue())) {
+                if (Strings.CI.equals(queue, channel.getQueue())) {
                     ret = true;
                     break;
                 }

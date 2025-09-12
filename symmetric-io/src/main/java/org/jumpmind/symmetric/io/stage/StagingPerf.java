@@ -118,7 +118,7 @@ public class StagingPerf {
             ts = System.currentTimeMillis();
             try (BufferedWriter writer = resource.getWriter(0l)) {
                 for (int i = 0; i < 100; i++) {
-                    writer.write(RandomStringUtils.random(1000));
+                    writer.write(RandomStringUtils.secure().next(1000));
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
