@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
@@ -357,7 +358,7 @@ public class ConfigurationChangedHelper {
         try {
             String sql = scriptReader.readSqlStatement();
             while (sql != null) {
-                if (StringUtils.startsWithIgnoreCase(sql, "delimiter")) {
+                if (Strings.CI.startsWith(sql, "delimiter")) {
                     String delimiter = StringUtils.trimToNull(sql.substring("delimiter".length()));
                     if (delimiter != null) {
                         scriptReader.setDelimiter(delimiter);

@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.FastDateFormat;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.util.FormatUtils;
@@ -487,6 +488,6 @@ public final class CommonUiUtils {
         if (StringUtils.isEmpty(filter)) {
             return false;
         }
-        return filter.length() > 2 ? !StringUtils.containsIgnoreCase(text, filter) : !StringUtils.startsWithIgnoreCase(text, filter);
+        return filter.length() > 2 ? !Strings.CI.contains(text, filter) : !Strings.CI.startsWith(text, filter);
     }
 }

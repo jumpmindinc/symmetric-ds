@@ -40,6 +40,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
@@ -921,7 +922,7 @@ public class DbFill {
     }
 
     private Object checkForMoney(Column column, Object objectValue) {
-        if (StringUtils.containsIgnoreCase(column.getJdbcTypeName(), "money")) {
+        if (Strings.CI.contains(column.getJdbcTypeName(), "money")) {
             BigDecimal bd;
             if (objectValue instanceof BigDecimal) {
                 bd = ((BigDecimal) objectValue).abs();
@@ -929,7 +930,7 @@ public class DbFill {
                 bd = BigDecimal.valueOf((Double) objectValue);
             }
             int wholeDigits = bd.precision() - bd.scale();
-            if ((StringUtils.containsIgnoreCase(column.getJdbcTypeName(), "smallmoney") && wholeDigits > 5) || wholeDigits > 14) {
+            if ((Strings.CI.contains(column.getJdbcTypeName(), "smallmoney") && wholeDigits > 5) || wholeDigits > 14) {
                 bd = bd.divide(BigDecimal.TEN);
             }
             bd = bd.setScale(2, RoundingMode.HALF_UP);

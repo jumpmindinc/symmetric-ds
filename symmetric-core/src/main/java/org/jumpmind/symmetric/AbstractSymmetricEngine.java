@@ -284,7 +284,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         TypedProperties properties = this.propertiesFactory.reload();
         registerSymDSDriver(properties);
         String engineName = properties.get(ParameterConstants.ENGINE_NAME);
-        if (!StringUtils.contains(engineName, '`') && !StringUtils.contains(engineName, '(')) {
+        if (!Strings.CS.contains(engineName, "`") && !Strings.CS.contains(engineName, "(")) {
             MDC.put("engineName", engineName);
         }
         this.platform = createDatabasePlatform(properties);

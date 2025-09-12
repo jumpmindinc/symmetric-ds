@@ -1672,7 +1672,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             });
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {}, because {} {}",
