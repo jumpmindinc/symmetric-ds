@@ -1,3 +1,4 @@
+TEST
 <a href="https://sourceforge.net/projects/symmetricds/files/latest/download" rel="nofollow"><img alt="Download SymmetricDS" src="https://img.shields.io/sourceforge/dt/symmetricds.svg"></a> [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 # SymmetricDS
