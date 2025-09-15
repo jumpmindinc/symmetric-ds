@@ -91,6 +91,10 @@ public interface IStatisticManager {
 
     public void incrementDataSentErrors(String channelId, long count);
 
+    public void updateDataMinCreateTime(String channelId, Date minCreateTime);
+
+    public void updateDataMaxCreateTime(String channelId, Date maxCreateTime);
+
     public void incrementRestart();
 
     public void incrementNodesPulled(long count);

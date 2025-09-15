@@ -39,6 +39,8 @@ public class ChannelStats extends AbstractNodeHostStats {
     private long dataLoadedOutgoing;
     private long dataBytesLoadedOutgoing;
     private long dataLoadedOutgoingErrors;
+    private Date dataMinCreateTime;
+    private Date dataMaxCreateTime;
 
     public ChannelStats() {
     }
@@ -65,6 +67,8 @@ public class ChannelStats extends AbstractNodeHostStats {
         dataLoadedOutgoing += stats.getDataLoadedOutgoing();
         dataBytesLoadedOutgoing += stats.getDataBytesLoadedOutgoing();
         dataLoadedOutgoingErrors += stats.getDataLoadedOutgoingErrors();
+        updateDataMinCreateTime(stats.getDataMinCreateTime());
+        updateDataMaxCreateTime(stats.getDataMaxCreateTime());
     }
 
     public boolean isNonZero() {
@@ -259,5 +263,33 @@ public class ChannelStats extends AbstractNodeHostStats {
 
     public void incrementDataLoadedOutgoingErrors(long dataLoadedOutgoingErrors) {
         this.dataLoadedOutgoingErrors += dataLoadedOutgoingErrors;
+    }
+
+    public Date getDataMinCreateTime() {
+        return dataMinCreateTime;
+    }
+
+    public void setDataMinCreateTime(Date dataMinCreateTime) {
+        this.dataMinCreateTime = dataMinCreateTime;
+    }
+
+    public void updateDataMinCreateTime(Date dataMinCreateTime) {
+        if (this.dataMinCreateTime == null || this.dataMinCreateTime.after(dataMinCreateTime)) {
+            this.dataMinCreateTime = dataMinCreateTime;
+        }
+    }
+
+    public Date getDataMaxCreateTime() {
+        return dataMaxCreateTime;
+    }
+
+    public void setDataMaxCreateTime(Date dataMaxCreateTime) {
+        this.dataMaxCreateTime = dataMaxCreateTime;
+    }
+
+    public void updateDataMaxCreateTime(Date dataMaxCreateTime) {
+        if (this.dataMaxCreateTime == null || this.dataMaxCreateTime.before(dataMaxCreateTime)) {
+            this.dataMaxCreateTime = dataMaxCreateTime;
+        }
     }
 }
