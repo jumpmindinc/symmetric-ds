@@ -1,0 +1,50 @@
+name: Build and Test
+on:
+  workflow_call:
+
+  workflow_dispatch:
+    inputs:
+      skip-tests:
+        description: 'Skip the test execution step?'
+        type: string
+        required: false
+        default: 'false'
+      skip-style-check:
+        description: 'Skip the style check step?'
+        type: string
+        required: false
+        default: 'false'
+
+jobs:
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build with Gradle
+        run: |
+          ./gradlew clean develop
+        working-directory: symmetric-assemble
+
+      - name: Test with Gradle
+        if: ${{ inputs.skip-tests != 'true' }}
+        run: |
+          ./gradlew test
+        working-directory: symmetric-assemble
+
+      - name: Style check with Gradle
+        if: ${{ inputs.skip-style-check != 'true' }}
+        run: |
+          ./gradlew spotlessJavaCheck
+        working-directory: symmetric-assemble  

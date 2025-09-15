@@ -20,6 +20,7 @@
  */
 package org.jumpmind.db.platform.mssql;
 
+import java.sql.Time;
 import java.sql.Types;
 
 import javax.sql.DataSource;
@@ -135,7 +136,24 @@ public class MsSql2000DatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     protected Object parseFloat(String value) {
-        return cleanNumber(value).replace(',', '.');
+        return super.parseFloat(cleanNumber(value).replace(',', '.'));
+    }
+
+    @Override
+    public java.util.Date parseDate(int type, String value, boolean useVariableDates) {
+        if (StringUtils.isNotBlank(value)) {
+            if (type == Types.TIME) {
+                return Time.valueOf(formatTimeValue(value));
+            } else {
+                return super.parseDate(type, value, useVariableDates);
+            }
+        } else {
+            return null;
+        }
+    }
+
+    private String formatTimeValue(String t) {
+        return t == null ? null : t.substring(0, t.indexOf(".") > 0 ? t.indexOf(".") : t.length());
     }
 
     @Override
