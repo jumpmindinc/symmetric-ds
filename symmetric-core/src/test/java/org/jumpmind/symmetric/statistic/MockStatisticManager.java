@@ -89,6 +89,9 @@ public class MockStatisticManager implements IStatisticManager {
     public synchronized void incrementDataBytesSent(String channelId, long count) {
     }
 
+    public synchronized void incrementDataBytesReceived(String channelId, long count) {
+    }
+
     public synchronized void incrementDataEventInserted(String channelId, long count) {
     }
 
@@ -115,6 +118,9 @@ public class MockStatisticManager implements IStatisticManager {
 
     public void incrementDataSent(String channelId, long count) {
     };
+
+    public void incrementDataReceived(String channelId, long count) {
+    }
 
     public Map<String, ChannelStats> getWorkingChannelStats() {
         return null;

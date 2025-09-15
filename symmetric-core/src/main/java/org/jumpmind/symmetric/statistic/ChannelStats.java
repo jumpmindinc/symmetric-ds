@@ -33,6 +33,8 @@ public class ChannelStats extends AbstractNodeHostStats {
     private long dataSent;
     private long dataBytesSent;
     private long dataSentErrors;
+    private long dataReceived;
+    private long dataBytesReceived;
     private long dataLoaded;
     private long dataBytesLoaded;
     private long dataLoadedErrors;
@@ -59,6 +61,8 @@ public class ChannelStats extends AbstractNodeHostStats {
         dataSent += stats.getDataSent();
         dataBytesSent += stats.getDataBytesSent();
         dataSentErrors += stats.getDataSentErrors();
+        dataReceived += stats.getDataReceived();
+        dataBytesReceived += stats.getDataBytesReceived();
         dataLoaded += stats.getDataLoaded();
         dataBytesLoaded += stats.getDataBytesLoaded();
         dataLoadedErrors += stats.getDataLoadedErrors();
@@ -69,8 +73,8 @@ public class ChannelStats extends AbstractNodeHostStats {
 
     public boolean isNonZero() {
         return dataRouted > 0 || dataUnRouted > 0 || dataExtracted > 0 || dataBytesExtracted > 0 || dataExtractedErrors > 0 || dataEventInserted > 0
-                || dataSent > 0 || dataBytesSent > 0 || dataSentErrors > 0 || dataLoaded > 0 || dataBytesLoaded > 0 || dataLoadedErrors > 0
-                || dataLoadedOutgoing > 0 || dataBytesLoadedOutgoing > 0 || dataLoadedOutgoingErrors > 0;
+                || dataSent > 0 || dataBytesSent > 0 || dataSentErrors > 0 || dataReceived > 0 || dataBytesReceived > 0 || dataLoaded > 0
+                || dataBytesLoaded > 0 || dataLoadedErrors > 0 || dataLoadedOutgoing > 0 || dataBytesLoadedOutgoing > 0 || dataLoadedOutgoingErrors > 0;
     }
 
     public String getChannelId() {
@@ -165,6 +169,18 @@ public class ChannelStats extends AbstractNodeHostStats {
         this.dataSentErrors += count;
     }
 
+    public long getDataBytesReceived() {
+        return dataBytesReceived;
+    }
+
+    public void setDataBytesReceived(long dataReceived) {
+        dataBytesReceived = dataReceived;
+    }
+
+    public void incrementDataBytesReceived(long count) {
+        dataBytesReceived += count;
+    }
+
     public long getDataBytesLoaded() {
         return dataBytesLoaded;
     }
@@ -223,6 +239,18 @@ public class ChannelStats extends AbstractNodeHostStats {
 
     public void incrementDataSent(long count) {
         this.dataSent += count;
+    }
+
+    public void setDataReceived(long dataReceived) {
+        this.dataReceived = dataReceived;
+    }
+
+    public long getDataReceived() {
+        return dataReceived;
+    }
+
+    public void incrementDataReceived(long count) {
+        dataReceived += count;
     }
 
     public long getDataLoadedOutgoing() {
