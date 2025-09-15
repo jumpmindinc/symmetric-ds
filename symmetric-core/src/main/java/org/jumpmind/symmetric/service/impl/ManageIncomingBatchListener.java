@@ -278,7 +278,8 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                         log.error("The incoming batch {} failed: {}", this.currentBatch.getNodeBatchId(), ex.getMessage());
                     } else if (isNewErrorForCurrentBatch && (this.currentBatch.getSqlCode() == ErrorConstants.FK_VIOLATION_CODE
                             || this.currentBatch.getSqlCode() == ErrorConstants.DEADLOCK_CODE
-                            || this.currentBatch.getSqlCode() == ErrorConstants.CONFLICT_CODE)) {
+                            || (Boolean.TRUE.equals(context.get(AbstractDatabaseWriter.TRANSACTION_ABORTED)) &&
+                                    this.currentBatch.getSqlCode() == ErrorConstants.CONFLICT_CODE))) {
                         suppressError();
                     } else {
                         log.error(String.format("Failed to load batch %s", this.currentBatch.getNodeBatchId()), ex);
