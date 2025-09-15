@@ -73,6 +73,10 @@ public interface IStatisticManager {
 
     public void incrementDataLoadedOutgoing(String channelId, long count);
 
+    public void incrementDataBytesReceived(String channelId, long count);
+
+    public void incrementDataReceived(String channelId, long count);
+
     public void incrementDataBytesSent(String channelId, long count);
 
     public void incrementDataSent(String channelId, long count);
@@ -90,6 +94,10 @@ public interface IStatisticManager {
     public void incrementDataRouted(String channelId, long count);
 
     public void incrementDataSentErrors(String channelId, long count);
+
+    public void updateDataMinCreateTime(String channelId, Date minCreateTime);
+
+    public void updateDataMaxCreateTime(String channelId, Date maxCreateTime);
 
     public void incrementRestart();
 

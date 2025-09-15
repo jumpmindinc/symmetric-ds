@@ -33,12 +33,16 @@ public class ChannelStats extends AbstractNodeHostStats {
     private long dataSent;
     private long dataBytesSent;
     private long dataSentErrors;
+    private long dataReceived;
+    private long dataBytesReceived;
     private long dataLoaded;
     private long dataBytesLoaded;
     private long dataLoadedErrors;
     private long dataLoadedOutgoing;
     private long dataBytesLoadedOutgoing;
     private long dataLoadedOutgoingErrors;
+    private Date dataMinCreateTime;
+    private Date dataMaxCreateTime;
 
     public ChannelStats() {
     }
@@ -59,18 +63,22 @@ public class ChannelStats extends AbstractNodeHostStats {
         dataSent += stats.getDataSent();
         dataBytesSent += stats.getDataBytesSent();
         dataSentErrors += stats.getDataSentErrors();
+        dataReceived += stats.getDataReceived();
+        dataBytesReceived += stats.getDataBytesReceived();
         dataLoaded += stats.getDataLoaded();
         dataBytesLoaded += stats.getDataBytesLoaded();
         dataLoadedErrors += stats.getDataLoadedErrors();
         dataLoadedOutgoing += stats.getDataLoadedOutgoing();
         dataBytesLoadedOutgoing += stats.getDataBytesLoadedOutgoing();
         dataLoadedOutgoingErrors += stats.getDataLoadedOutgoingErrors();
+        updateDataMinCreateTime(stats.getDataMinCreateTime());
+        updateDataMaxCreateTime(stats.getDataMaxCreateTime());
     }
 
     public boolean isNonZero() {
         return dataRouted > 0 || dataUnRouted > 0 || dataExtracted > 0 || dataBytesExtracted > 0 || dataExtractedErrors > 0 || dataEventInserted > 0
-                || dataSent > 0 || dataBytesSent > 0 || dataSentErrors > 0 || dataLoaded > 0 || dataBytesLoaded > 0 || dataLoadedErrors > 0
-                || dataLoadedOutgoing > 0 || dataBytesLoadedOutgoing > 0 || dataLoadedOutgoingErrors > 0;
+                || dataSent > 0 || dataBytesSent > 0 || dataSentErrors > 0 || dataReceived > 0 || dataBytesReceived > 0 || dataLoaded > 0
+                || dataBytesLoaded > 0 || dataLoadedErrors > 0 || dataLoadedOutgoing > 0 || dataBytesLoadedOutgoing > 0 || dataLoadedOutgoingErrors > 0;
     }
 
     public String getChannelId() {
@@ -165,6 +173,18 @@ public class ChannelStats extends AbstractNodeHostStats {
         this.dataSentErrors += count;
     }
 
+    public long getDataBytesReceived() {
+        return dataBytesReceived;
+    }
+
+    public void setDataBytesReceived(long dataReceived) {
+        dataBytesReceived = dataReceived;
+    }
+
+    public void incrementDataBytesReceived(long count) {
+        dataBytesReceived += count;
+    }
+
     public long getDataBytesLoaded() {
         return dataBytesLoaded;
     }
@@ -225,6 +245,18 @@ public class ChannelStats extends AbstractNodeHostStats {
         this.dataSent += count;
     }
 
+    public void setDataReceived(long dataReceived) {
+        this.dataReceived = dataReceived;
+    }
+
+    public long getDataReceived() {
+        return dataReceived;
+    }
+
+    public void incrementDataReceived(long count) {
+        dataReceived += count;
+    }
+
     public long getDataLoadedOutgoing() {
         return dataLoadedOutgoing;
     }
@@ -259,5 +291,33 @@ public class ChannelStats extends AbstractNodeHostStats {
 
     public void incrementDataLoadedOutgoingErrors(long dataLoadedOutgoingErrors) {
         this.dataLoadedOutgoingErrors += dataLoadedOutgoingErrors;
+    }
+
+    public Date getDataMinCreateTime() {
+        return dataMinCreateTime;
+    }
+
+    public void setDataMinCreateTime(Date dataMinCreateTime) {
+        this.dataMinCreateTime = dataMinCreateTime;
+    }
+
+    public void updateDataMinCreateTime(Date dataMinCreateTime) {
+        if (this.dataMinCreateTime == null || this.dataMinCreateTime.after(dataMinCreateTime)) {
+            this.dataMinCreateTime = dataMinCreateTime;
+        }
+    }
+
+    public Date getDataMaxCreateTime() {
+        return dataMaxCreateTime;
+    }
+
+    public void setDataMaxCreateTime(Date dataMaxCreateTime) {
+        this.dataMaxCreateTime = dataMaxCreateTime;
+    }
+
+    public void updateDataMaxCreateTime(Date dataMaxCreateTime) {
+        if (this.dataMaxCreateTime == null || this.dataMaxCreateTime.before(dataMaxCreateTime)) {
+            this.dataMaxCreateTime = dataMaxCreateTime;
+        }
     }
 }

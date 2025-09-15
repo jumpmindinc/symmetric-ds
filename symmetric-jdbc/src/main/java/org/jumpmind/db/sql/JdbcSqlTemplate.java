@@ -53,6 +53,7 @@ import java.util.regex.Pattern;
 import javax.sql.DataSource;
 
 import org.apache.commons.io.IOUtils;
+import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.postgresql.PostgresLobHandler;
@@ -135,11 +136,13 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return lobHandler;
     }
 
+    @Override
     public <T> ISqlReadCursor<T> queryForCursor(String sql, ISqlRowMapper<T> mapper, Object[] args,
             int[] types) {
         return queryForCursor(sql, mapper, null, args, types, false);
     }
 
+    @Override
     public <T> ISqlReadCursor<T> queryForCursor(String sql, ISqlRowMapper<T> mapper, IConnectionHandler connectionHandler, Object[] args,
             int[] types) {
         return queryForCursor(sql, mapper, connectionHandler, args, types, false);
@@ -168,8 +171,10 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         this.isolationLevel = isolationLevel;
     }
 
+    @Override
     public <T> T queryForObject(final String sql, final Class<T> clazz, final Object... args) {
         return execute(new IConnectionCallback<T>() {
+            @Override
             public T execute(Connection con) throws SQLException {
                 T result = null;
                 PreparedStatement ps = null;
@@ -202,9 +207,11 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return queryForBlob(sql, -1, null, args);
     }
 
+    @Override
     public byte[] queryForBlob(final String sql, final int jdbcTypeCode, final String jdbcTypeName,
             final Object... args) {
         return execute(new IConnectionCallback<byte[]>() {
+            @Override
             public byte[] execute(Connection con) throws SQLException {
                 if (lobHandler.needsAutoCommitFalseForBlob(jdbcTypeCode, jdbcTypeName)) {
                     con.setAutoCommit(false);
@@ -243,8 +250,10 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return queryForClob(sql, -1, null, args);
     }
 
+    @Override
     public String queryForClob(final String sql, final int jdbcTypeCode, final String jdbcTypeName, final Object... args) {
         return execute(new IConnectionCallback<String>() {
+            @Override
             public String execute(Connection con) throws SQLException {
                 String result = null;
                 PreparedStatement ps = null;
@@ -271,8 +280,10 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         });
     }
 
+    @Override
     public Map<String, Object> queryForMap(final String sql, final Object... args) {
         return execute(new IConnectionCallback<Map<String, Object>>() {
+            @Override
             public Map<String, Object> execute(Connection con) throws SQLException {
                 Map<String, Object> result = null;
                 PreparedStatement ps = null;
@@ -339,10 +350,12 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         });
     }
 
+    @Override
     public ISqlTransaction startSqlTransaction(boolean autoCommit) {
         return new JdbcSqlTransaction(this, autoCommit);
     }
 
+    @Override
     public ISqlTransaction startSqlTransaction() {
         return new JdbcSqlTransaction(this);
     }
@@ -355,8 +368,10 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return updateCount;
     }
 
+    @Override
     public int update(final String sql, final Object[] args, final int[] types) {
         return execute(new IConnectionCallback<Integer>() {
+            @Override
             public Integer execute(Connection con) throws SQLException {
                 if (args == null) {
                     Statement stmt = null;
@@ -399,19 +414,23 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         });
     }
 
+    @Override
     public int update(boolean autoCommit, boolean failOnError, int commitRate, String... sql) {
         return update(autoCommit, failOnError, commitRate, null, sql);
     }
 
+    @Override
     public int update(boolean autoCommit, boolean failOnError, int commitRate,
             ISqlResultsListener resultsListener, String... sql) {
         return this.update(autoCommit, failOnError, true, true,
                 commitRate, resultsListener, new ListSqlStatementSource(sql));
     }
 
+    @Override
     public int update(final boolean autoCommit, final boolean failOnError, final boolean failOnDrops,
             final boolean failOnSequenceCreate, final int commitRate, final ISqlResultsListener resultsListener, final ISqlStatementSource source) {
         return execute(new IConnectionCallback<Integer>() {
+            @Override
             @SuppressWarnings("resource")
             public Integer execute(Connection con) throws SQLException {
                 int totalUpdateCount = 0;
@@ -489,8 +508,10 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         });
     }
 
+    @Override
     public void testConnection() {
         execute(new IConnectionCallback<Boolean>() {
+            @Override
             public Boolean execute(Connection con) {
                 return true;
             }
@@ -689,80 +710,100 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         }
     }
 
+    @Override
     public int getDatabaseMajorVersion() {
         return execute(new IConnectionCallback<Integer>() {
+            @Override
             public Integer execute(Connection con) throws SQLException {
                 return con.getMetaData().getDatabaseMajorVersion();
             }
         });
     }
 
+    @Override
     public int getDatabaseMinorVersion() {
         return execute(new IConnectionCallback<Integer>() {
+            @Override
             public Integer execute(Connection con) throws SQLException {
                 return con.getMetaData().getDatabaseMinorVersion();
             }
         });
     }
 
+    @Override
     public String getDatabaseProductName() {
         return execute(new IConnectionCallback<String>() {
+            @Override
             public String execute(Connection con) throws SQLException {
                 return con.getMetaData().getDatabaseProductName();
             }
         });
     }
 
+    @Override
     public boolean isStoresMixedCaseQuotedIdentifiers() {
         return execute(new IConnectionCallback<Boolean>() {
+            @Override
             public Boolean execute(Connection con) throws SQLException {
                 return con.getMetaData().storesMixedCaseQuotedIdentifiers();
             }
         });
     }
 
+    @Override
     public boolean isStoresUpperCaseIdentifiers() {
         return execute(new IConnectionCallback<Boolean>() {
+            @Override
             public Boolean execute(Connection con) throws SQLException {
                 return con.getMetaData().storesUpperCaseIdentifiers();
             }
         });
     }
 
+    @Override
     public boolean isStoresLowerCaseIdentifiers() {
         return execute(new IConnectionCallback<Boolean>() {
+            @Override
             public Boolean execute(Connection con) throws SQLException {
                 return con.getMetaData().storesLowerCaseIdentifiers();
             }
         });
     }
 
+    @Override
     public String getDatabaseProductVersion() {
         return execute(new IConnectionCallback<String>() {
+            @Override
             public String execute(Connection con) throws SQLException {
                 return con.getMetaData().getDatabaseProductVersion();
             }
         });
     }
 
+    @Override
     public String getDriverName() {
         return execute(new IConnectionCallback<String>() {
+            @Override
             public String execute(Connection con) throws SQLException {
                 return con.getMetaData().getDriverName();
             }
         });
     }
 
+    @Override
     public String getDriverVersion() {
         return execute(new IConnectionCallback<String>() {
+            @Override
             public String execute(Connection con) throws SQLException {
                 return con.getMetaData().getDriverVersion();
             }
         });
     }
 
+    @Override
     public Set<String> getSqlKeywords() {
         return execute(new IConnectionCallback<Set<String>>() {
+            @Override
             public Set<String> execute(Connection con) throws SQLException {
                 DatabaseMetaData sqlTemplateData = con.getMetaData();
                 return new HashSet<String>(Arrays.asList(sqlTemplateData.getSQLKeywords()
@@ -771,9 +812,11 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         });
     }
 
+    @Override
     public boolean supportsGetGeneratedKeys() {
         if (supportsGetGeneratedKeys == null) {
             supportsGetGeneratedKeys = execute(new IConnectionCallback<Boolean>() {
+                @Override
                 public Boolean execute(Connection con) throws SQLException {
                     return con.getMetaData().supportsGetGeneratedKeys();
                 }
@@ -794,9 +837,11 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public long insertWithGeneratedKey(final String sql, final String column,
             final String sequenceName, final Object[] args, final int[] types) {
         return execute(new IConnectionCallback<Long>() {
+            @Override
             public Long execute(Connection conn) throws SQLException {
                 return insertWithGeneratedKey(conn, sql, column, sequenceName, args, types);
             }
@@ -869,6 +914,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return key;
     }
 
+    @Override
     public boolean isUniqueKeyViolation(Throwable ex) {
         boolean primaryKeyViolation = false;
         if (primaryKeyViolationCodes != null || primaryKeyViolationSqlStates != null) {
@@ -912,6 +958,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return primaryKeyViolation;
     }
 
+    @Override
     public boolean isForeignKeyViolation(Throwable ex) {
         boolean foreignKeyViolation = false;
         if (foreignKeyViolationCodes != null || foreignKeyViolationSqlStates != null) {
@@ -955,6 +1002,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return foreignKeyViolation;
     }
 
+    @Override
     public boolean isForeignKeyChildExistsViolation(Throwable ex) {
         boolean foreignKeyChildExistsViolation = false;
         if (foreignKeyChildExistsViolationCodes != null || foreignKeyChildExistsViolationSqlStates != null
@@ -1002,6 +1050,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return foreignKeyChildExistsViolation;
     }
 
+    @Override
     public boolean isDeadlock(Throwable ex) {
         boolean deadlock = false;
         if (deadlockCodes != null || deadlockSqlStates != null) {
@@ -1216,7 +1265,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
     }
 
     protected int verifyArgType(Object arg, int argType) {
-        if (argType == ORACLE_TIMESTAMPTZ || argType == ORACLE_TIMESTAMPLTZ || argType == Types.OTHER) {
+        if (argType == ORACLE_TIMESTAMPTZ || argType == ORACLE_TIMESTAMPLTZ || argType == Types.OTHER || argType == ColumnTypes.MSSQL_SQL_VARIANT) {
             return SqlTypeValue.TYPE_UNKNOWN;
         } else if ((argType == Types.INTEGER && arg instanceof BigInteger) ||
                 (argType == Types.BIGINT && arg instanceof BigDecimal)) {

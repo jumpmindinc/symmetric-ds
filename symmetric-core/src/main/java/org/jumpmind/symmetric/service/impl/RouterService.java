@@ -26,6 +26,7 @@ import static org.jumpmind.symmetric.common.Constants.LOG_PROCESS_SUMMARY_THRESH
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -108,6 +109,7 @@ import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.INodeCommunicationService.INodeCommunicationExecutor;
 import org.jumpmind.symmetric.service.IRouterService;
+import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.statistic.StatisticConstants;
 import org.jumpmind.symmetric.util.CounterStat;
 import org.jumpmind.util.FormatUtils;
@@ -790,6 +792,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
         long totalDataEventCount = 0;
         long statsDataCount = 0;
         long statsDataEventCount = 0;
+        Date minCreateTime = null;
+        Date maxCreateTime = null;
         final int maxNumberOfEventsBeforeFlush = parameterService.getInt(ParameterConstants.ROUTING_FLUSH_JDBC_BATCH_SIZE);
         try {
             long ts = System.currentTimeMillis();
@@ -821,6 +825,15 @@ public class RouterService extends AbstractService implements IRouterService, IN
                             statsDataEventCount += dataEventsInserted;
                             totalDataEventCount += dataEventsInserted;
                         }
+                        Date createTime = data.getCreateTime();
+                        if (createTime != null) {
+                            if (minCreateTime == null || minCreateTime.after(createTime)) {
+                                minCreateTime = createTime;
+                            }
+                            if (maxCreateTime == null || maxCreateTime.before(createTime)) {
+                                maxCreateTime = createTime;
+                            }
+                        }
                         long insertTs = System.currentTimeMillis();
                         try {
                             if (maxNumberOfEventsBeforeFlush <= context.getDataEventList().size()
@@ -835,12 +848,18 @@ public class RouterService extends AbstractService implements IRouterService, IN
                             }
                         } finally {
                             if (statsDataCount > StatisticConstants.FLUSH_SIZE_ROUTER_DATA) {
-                                engine.getStatisticManager().incrementDataRouted(
-                                        context.getChannel().getChannelId(), statsDataCount);
+                                IStatisticManager statisticManager = engine.getStatisticManager();
+                                String channelId = context.getChannel().getChannelId();
+                                statisticManager.incrementDataRouted(channelId, statsDataCount);
                                 statsDataCount = 0;
-                                engine.getStatisticManager().incrementDataEventInserted(
-                                        context.getChannel().getChannelId(), statsDataEventCount);
+                                statisticManager.incrementDataEventInserted(channelId, statsDataEventCount);
                                 statsDataEventCount = 0;
+                                if (minCreateTime != null) {
+                                    statisticManager.updateDataMinCreateTime(channelId, minCreateTime);
+                                }
+                                if (maxCreateTime != null) {
+                                    statisticManager.updateDataMaxCreateTime(channelId, maxCreateTime);
+                                }
                             }
                         }
                         long routeTs = System.currentTimeMillis() - ts;
@@ -881,13 +900,19 @@ public class RouterService extends AbstractService implements IRouterService, IN
             }
         } finally {
             reader.setReading(false);
+            IStatisticManager statisticManager = engine.getStatisticManager();
+            String channelId = context.getChannel().getChannelId();
             if (statsDataCount > 0) {
-                engine.getStatisticManager().incrementDataRouted(
-                        context.getChannel().getChannelId(), statsDataCount);
+                statisticManager.incrementDataRouted(channelId, statsDataCount);
             }
             if (statsDataEventCount > 0) {
-                engine.getStatisticManager().incrementDataEventInserted(
-                        context.getChannel().getChannelId(), statsDataEventCount);
+                statisticManager.incrementDataEventInserted(channelId, statsDataEventCount);
+            }
+            if (minCreateTime != null) {
+                statisticManager.updateDataMinCreateTime(channelId, minCreateTime);
+            }
+            if (maxCreateTime != null) {
+                statisticManager.updateDataMaxCreateTime(channelId, maxCreateTime);
             }
         }
         context.incrementStat(totalDataCount, ChannelRouterContext.STAT_DATA_ROUTED_COUNT);

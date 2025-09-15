@@ -522,12 +522,16 @@
         <column name="data_bytes_sent" type="BIGINT" default="0" description="The number of bytes that were sent during this time period." />
         <column name="data_sent" type="BIGINT" default="0" description="The number of rows that were sent during this time period." />
         <column name="data_sent_errors" type="BIGINT" default="0" description="The number of errors that occurred while sending during this time period." />
+        <column name="data_received" type="BIGINT" default="0" description="The number of rows that were received during this time period." />
+        <column name="data_bytes_received" type="BIGINT" default="0" description="The number of bytes that were received during this time period." />
         <column name="data_loaded" type="BIGINT" default="0" description="The number of rows that were loaded during this time period." />
         <column name="data_bytes_loaded" type="BIGINT" default="0" description="The number of bytes that were loaded during this time period." />
         <column name="data_loaded_errors" type="BIGINT" default="0" description="The number of errors that occurred while loading during this time period." />
         <column name="data_loaded_outgoing" type="BIGINT" default="0" description="The number of rows that were acknowledged as loaded by another node during this time period." />
         <column name="data_bytes_loaded_outgoing" type="BIGINT" default="0" description="The number of bytes that were acknowledged as loaded by another node during this time period." />
         <column name="data_loaded_outgoing_errors" type="BIGINT" default="0" description="The number of errors that occurred while loading to another node during this time period." />
+        <column name="data_min_create_time" type="TIMESTAMP" description="The minimum create time of a data row that was routed during this time period." />
+        <column name="data_max_create_time" type="TIMESTAMP" description="The maximum create time of a data row that was routed during this time period." />
         <index name="idx_nd_hst_chnl_sts">
             <index-column name="node_id"/>
             <index-column name="start_time"/>

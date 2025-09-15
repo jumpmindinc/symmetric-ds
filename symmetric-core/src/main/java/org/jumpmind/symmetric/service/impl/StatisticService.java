@@ -57,14 +57,17 @@ public class StatisticService extends AbstractService implements IStatisticServi
                         stats.getDataUnRouted(), stats.getDataEventInserted(),
                         stats.getDataExtracted(), stats.getDataBytesExtracted(),
                         stats.getDataExtractedErrors(), stats.getDataSent(),
-                        stats.getDataBytesSent(), stats.getDataSentErrors(), stats.getDataLoaded(),
+                        stats.getDataBytesSent(), stats.getDataSentErrors(), stats.getDataReceived(),
+                        stats.getDataBytesReceived(), stats.getDataLoaded(),
                         stats.getDataBytesLoaded(), stats.getDataLoadedErrors(),
                         stats.getDataLoadedOutgoing(), stats.getDataBytesLoadedOutgoing(),
-                        stats.getDataLoadedOutgoingErrors() }, new int[] {
+                        stats.getDataLoadedOutgoingErrors(), stats.getDataMinCreateTime(),
+                        stats.getDataMaxCreateTime() }, new int[] {
                                 Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP,
                                 Types.TIMESTAMP, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
-                                Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
-                                Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT });
+                                Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
+                                Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
+                                Types.BIGINT, Types.TIMESTAMP, Types.TIMESTAMP });
     }
 
     public void save(JobStats stats) {
@@ -182,12 +185,16 @@ public class StatisticService extends AbstractService implements IStatisticServi
             stats.setDataSent(rs.getLong("data_sent"));
             stats.setDataBytesSent(rs.getLong("data_bytes_sent"));
             stats.setDataSentErrors(rs.getLong("data_sent_errors"));
+            stats.setDataReceived(rs.getLong("data_received"));
+            stats.setDataBytesReceived(rs.getLong("data_bytes_received"));
             stats.setDataLoaded(rs.getLong("data_loaded"));
             stats.setDataBytesLoaded(rs.getLong("data_bytes_loaded"));
             stats.setDataLoadedErrors(rs.getLong("data_loaded_errors"));
             stats.setDataLoadedOutgoing(rs.getLong("data_loaded_outgoing"));
             stats.setDataLoadedOutgoingErrors(rs.getLong("data_loaded_outgoing_errors"));
             stats.setDataBytesLoadedOutgoing(rs.getLong("data_bytes_loaded_outgoing"));
+            stats.setDataMinCreateTime(rs.getDateTime("data_min_create_time"));
+            stats.setDataMaxCreateTime(rs.getDateTime("data_max_create_time"));
             return stats;
         }
     }

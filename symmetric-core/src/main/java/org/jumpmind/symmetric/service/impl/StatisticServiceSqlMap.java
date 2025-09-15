@@ -33,16 +33,20 @@ public class StatisticServiceSqlMap extends AbstractSqlMap {
                 "  data_routed, data_unrouted, data_event_inserted,               " +
                 "  data_extracted, data_bytes_extracted, data_extracted_errors,   " +
                 "  data_sent, data_bytes_sent, data_sent_errors,                  " +
+                "  data_received, data_bytes_received,                            " +
                 "  data_loaded, data_bytes_loaded, data_loaded_errors,            " +
-                "  data_loaded_outgoing, data_bytes_loaded_outgoing, data_loaded_outgoing_errors)            " +
-                "  values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)                      ");
+                "  data_loaded_outgoing, data_bytes_loaded_outgoing, data_loaded_outgoing_errors," +
+                "  data_min_create_time, data_max_create_time)                    " +
+                "  values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)              ");
         putSql("selectChannelStatsSql", "" +
                 "select node_id, host_name, channel_id, start_time, end_time,                       " +
                 "  data_routed, data_unrouted, data_event_inserted,                                 " +
                 "  data_extracted, data_bytes_extracted, data_extracted_errors,                     " +
                 "  data_sent, data_bytes_sent, data_sent_errors,                                    " +
+                "  data_received, data_bytes_received,                                              " +
                 "  data_loaded, data_bytes_loaded, data_loaded_errors,                               " +
-                "  data_loaded_outgoing, data_bytes_loaded_outgoing, data_loaded_outgoing_errors    " +
+                "  data_loaded_outgoing, data_bytes_loaded_outgoing, data_loaded_outgoing_errors,   " +
+                "  data_min_create_time, data_max_create_time                                       " +
                 "  from $(node_host_channel_stats)                                            " +
                 "  where  start_time >= ? and end_time <= ? and node_id=? order by start_time asc   ");
         putSql("deleteChannelStatsSql", "" +
@@ -56,11 +60,14 @@ public class StatisticServiceSqlMap extends AbstractSqlMap {
                 "  sum(data_bytes_extracted) as data_bytes_extracted,                                     " +
                 "  sum(data_extracted_errors) as data_extracted_errors, sum(data_sent) as data_sent,      " +
                 "  sum(data_bytes_sent) as data_bytes_sent, sum(data_sent_errors) as data_sent_errors,    " +
+                "  sum(data_received) as data_received, sum(data_bytes_received) as data_bytes_received,  " +
                 "  sum(data_loaded) as data_loaded, sum(data_bytes_loaded) as data_bytes_loaded,          " +
                 "  sum(data_loaded_errors) as data_loaded_errors,                                          " +
                 "  sum(data_loaded_outgoing) as data_loaded_outgoing,                                     " +
                 "  sum(data_bytes_loaded_outgoing) as data_bytes_loaded_outgoing,                         " +
-                "  sum(data_loaded_outgoing_errors) as data_loaded_outgoing_errors                        " +
+                "  sum(data_loaded_outgoing_errors) as data_loaded_outgoing_errors,                       " +
+                "  min(data_min_create_time) as data_min_create_time,                                     " +
+                "  max(data_max_create_time) as data_max_create_time                                      " +
                 "  from $(node_host_channel_stats)                                                       " +
                 "  where start_time >= ? and end_time <= ? and node_id=?                                  " +
                 "  and channel_id not in ('heartbeat', 'config')                                          " +
