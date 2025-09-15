@@ -1218,7 +1218,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
         return triggerRouters;
     }
 
-    public long getUnroutedDataCount() {
+    public long getMaxDataIdAlreadyRouted() {
         long maxDataIdAlreadyRouted = 0;
         if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
             maxDataIdAlreadyRouted = sqlTemplateDirty.queryForLong(getSql("selectLastDataIdRoutedUsingDataGapSql"));
@@ -1228,6 +1228,11 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 maxDataIdAlreadyRouted = lastGap.getStartId();
             }
         }
+        return maxDataIdAlreadyRouted;
+    }
+
+    public long getUnroutedDataCount() {
+        long maxDataIdAlreadyRouted = getMaxDataIdAlreadyRouted();
         if (maxDataIdAlreadyRouted == 0) {
             return 0;
         }
