@@ -65,9 +65,9 @@ public class StatisticService extends AbstractService implements IStatisticServi
                         stats.getDataMaxCreateTime() }, new int[] {
                                 Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP,
                                 Types.TIMESTAMP, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
-                                Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
                                 Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
-                                Types.TIMESTAMP, Types.TIMESTAMP });
+                                Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
+                                Types.BIGINT, Types.TIMESTAMP, Types.TIMESTAMP });
     }
 
     public void save(JobStats stats) {
