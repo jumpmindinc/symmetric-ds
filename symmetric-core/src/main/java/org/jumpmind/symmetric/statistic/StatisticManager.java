@@ -370,6 +370,24 @@ public class StatisticManager implements IStatisticManager {
         }
     }
 
+    public void updateDataMinCreateTime(String channelId, Date minCreateTime) {
+        channelStatsLock.acquireUninterruptibly();
+        try {
+            getChannelStats(channelId).updateDataMinCreateTime(minCreateTime);
+        } finally {
+            channelStatsLock.release();
+        }
+    }
+
+    public void updateDataMaxCreateTime(String channelId, Date maxCreateTime) {
+        channelStatsLock.acquireUninterruptibly();
+        try {
+            getChannelStats(channelId).updateDataMaxCreateTime(maxCreateTime);
+        } finally {
+            channelStatsLock.release();
+        }
+    }
+
     public void incrementRestart() {
         hostStatsLock.acquireUninterruptibly();
         try {
