@@ -298,6 +298,24 @@ public class StatisticManager implements IStatisticManager {
         }
     }
 
+    public void incrementDataReceived(String channelId, long count) {
+        channelStatsLock.acquireUninterruptibly();
+        try {
+            getChannelStats(channelId).incrementDataReceived(count);
+        } finally {
+            channelStatsLock.release();
+        }
+    }
+
+    public void incrementDataBytesReceived(String channelId, long count) {
+        channelStatsLock.acquireUninterruptibly();
+        try {
+            getChannelStats(channelId).incrementDataBytesReceived(count);
+        } finally {
+            channelStatsLock.release();
+        }
+    }
+
     public void incrementDataLoaded(String channelId, long count) {
         channelStatsLock.acquireUninterruptibly();
         try {

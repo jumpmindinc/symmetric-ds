@@ -73,6 +73,10 @@ public interface IStatisticManager {
 
     public void incrementDataLoadedOutgoing(String channelId, long count);
 
+    public void incrementDataBytesReceived(String channelId, long count);
+
+    public void incrementDataReceived(String channelId, long count);
+
     public void incrementDataBytesSent(String channelId, long count);
 
     public void incrementDataSent(String channelId, long count);
