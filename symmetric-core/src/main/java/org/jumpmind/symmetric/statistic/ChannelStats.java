@@ -302,7 +302,7 @@ public class ChannelStats extends AbstractNodeHostStats {
     }
 
     public void updateDataMinCreateTime(Date dataMinCreateTime) {
-        if (this.dataMinCreateTime == null || this.dataMinCreateTime.after(dataMinCreateTime)) {
+        if (dataMinCreateTime != null && (this.dataMinCreateTime == null || this.dataMinCreateTime.after(dataMinCreateTime))) {
             this.dataMinCreateTime = dataMinCreateTime;
         }
     }
@@ -316,7 +316,7 @@ public class ChannelStats extends AbstractNodeHostStats {
     }
 
     public void updateDataMaxCreateTime(Date dataMaxCreateTime) {
-        if (this.dataMaxCreateTime == null || this.dataMaxCreateTime.before(dataMaxCreateTime)) {
+        if (dataMaxCreateTime != null && (this.dataMaxCreateTime == null || this.dataMaxCreateTime.before(dataMaxCreateTime))) {
             this.dataMaxCreateTime = dataMaxCreateTime;
         }
     }
