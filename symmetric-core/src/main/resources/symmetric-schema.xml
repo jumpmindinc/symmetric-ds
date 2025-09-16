@@ -687,6 +687,8 @@
 		<column name="failed_line_number" type="BIGINT" required="true" default="0" description="The current line number in the CSV for this batch that failed." />
         <column name="create_by" type="VARCHAR" size="255" description="The user that created the batch.  A null value means that the system created the batch." />
         <column name="bulk_loader_flag"  type="BOOLEANINT" size="1" default="0" description="A flag that indicates that this batch did or did not use the bulk loader." />
+        <column name="data_min_create_time" type="TIMESTAMP" description="The minimum create time of a data row contained within this batch." />
+        <column name="data_max_create_time" type="TIMESTAMP" description="The maximum create time of a data row contained within this batch." />
         <index name="idx_ob_node_status">
             <index-column name="node_id" />
             <index-column name="status" />

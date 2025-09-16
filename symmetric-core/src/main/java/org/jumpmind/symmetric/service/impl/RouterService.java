@@ -1117,6 +1117,15 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 if (loadId != -1) {
                     batch.setLoadId(loadId);
                 }
+                Date createTime = dataMetaData.getData().getCreateTime();
+                if (createTime != null) {
+                    if (batch.getDataMinCreateTime() == null || batch.getDataMinCreateTime().after(createTime)) {
+                        batch.setDataMinCreateTime(createTime);
+                    }
+                    if (batch.getDataMaxCreateTime() == null || batch.getDataMaxCreateTime().before(createTime)) {
+                        batch.setDataMaxCreateTime(createTime);
+                    }
+                }
                 if (!useCommonMode || !dataEventAdded) {
                     batchesToRoute.add(batch);
                     numberOfDataEventsInserted++;
