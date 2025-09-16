@@ -36,6 +36,8 @@ public class OutgoingBatch extends AbstractBatch {
     private Date transferStartTime;
     private Date loadStartTime;
     private Integer threadId;
+    private Date dataMinCreateTime;
+    private Date dataMaxCreateTime;
 
     public OutgoingBatch() {
         setStatus(Status.RT);
@@ -106,5 +108,21 @@ public class OutgoingBatch extends AbstractBatch {
 
     public void setThreadId(Integer threadId) {
         this.threadId = threadId;
+    }
+
+    public Date getDataMinCreateTime() {
+        return dataMinCreateTime;
+    }
+
+    public void setDataMinCreateTime(Date dataMinCreateTime) {
+        this.dataMinCreateTime = dataMinCreateTime;
+    }
+
+    public Date getDataMaxCreateTime() {
+        return dataMaxCreateTime;
+    }
+
+    public void setDataMaxCreateTime(Date dataMaxCreateTime) {
+        this.dataMaxCreateTime = dataMaxCreateTime;
     }
 }

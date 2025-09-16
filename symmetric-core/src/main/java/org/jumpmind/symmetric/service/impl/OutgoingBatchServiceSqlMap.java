@@ -40,8 +40,9 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
         putSql("insertOutgoingBatchSql",
                 "insert into $(outgoing_batch)                                                                                                                "
                         + "  (batch_id, node_id, channel_id, status, load_id, extract_job_flag, load_flag, common_flag, reload_row_count, other_row_count, "
-                        + "  data_update_row_count, data_insert_row_count, data_delete_row_count, last_update_hostname, last_update_time, create_time, create_by, summary, data_row_count)   "
-                        + "  values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)                                                                         ");
+                        + "  data_update_row_count, data_insert_row_count, data_delete_row_count, last_update_hostname, last_update_time, create_time, create_by, summary, data_row_count, "
+                        + "  data_min_create_time, data_max_create_time)                                                                                      "
+                        + "  values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)                                                                   ");
         putSql("updateOutgoingBatchSql",
                 "update $(outgoing_batch) set status=?, load_id=?, extract_job_flag=?, load_flag=?, error_flag=?,                                          "
                         + "  byte_count=?, extract_count=?, sent_count=?, load_count=?, data_row_count=?,                                 "
@@ -53,7 +54,8 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
                         + "  load_row_count=?, load_insert_row_count=?, load_update_row_count=?, load_delete_row_count=?, "
                         + "  fallback_insert_count=?, fallback_update_count=?, conflict_win_count=?, conflict_lose_count=?, ignore_row_count=?, "
                         + "  missing_delete_count=?, skip_count=?, extract_row_count=?, extract_insert_row_count=?, extract_update_row_count=?, "
-                        + "  extract_delete_row_count=?, transform_extract_millis=?, transform_load_millis=?, bulk_loader_flag=? "
+                        + "  extract_delete_row_count=?, transform_extract_millis=?, transform_load_millis=?, bulk_loader_flag=?, "
+                        + "  data_min_create_time=?, data_max_create_time=? "
                         + "  where batch_id=? and node_id=?");
         putSql("statusNotOk", " and status not in ('OK', 'IG')");
         putSql("updateOutgoingBatchStatusSql",
@@ -101,7 +103,7 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
                         + "  b.conflict_win_count, b.conflict_lose_count, b.ignore_row_count, b.missing_delete_count, b.skip_count, "
                         + "  b.failed_data_id, b.failed_line_number, b.last_update_hostname, b.last_update_time, b.create_time, b.batch_id, "
                         + "  b.extract_job_flag, b.load_flag, b.error_flag, b.common_flag, b.load_id, b.create_by, b.summary, b.bulk_loader_flag, "
-                        + "  b.thread_id from $(outgoing_batch) b ");
+                        + "  b.thread_id, b.data_min_create_time, b.data_max_create_time from $(outgoing_batch) b ");
         putSql("selectOutgoingBatchErrorsSql", " where error_flag=1 order by batch_id   ");
         putSql("countOutgoingBatchesErrorsOnChannelSql",
                 "select count(*) from $(outgoing_batch) where error_flag=1 and channel_id=?");

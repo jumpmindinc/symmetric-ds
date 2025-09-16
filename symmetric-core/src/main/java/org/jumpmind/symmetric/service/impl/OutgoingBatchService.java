@@ -230,14 +230,14 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
                         outgoingBatch.getSkipCount(), outgoingBatch.getExtractRowCount(), outgoingBatch.getExtractInsertRowCount(),
                         outgoingBatch.getExtractUpdateRowCount(), outgoingBatch.getExtractDeleteRowCount(),
                         outgoingBatch.getTransformExtractMillis(), outgoingBatch.getTransformLoadMillis(), outgoingBatch.isBulkLoaderFlag() ? 1 : 0,
-                        outgoingBatch.getBatchId(), outgoingBatch.getNodeId() },
+                        outgoingBatch.getDataMinCreateTime(), outgoingBatch.getDataMaxCreateTime(), outgoingBatch.getBatchId(), outgoingBatch.getNodeId() },
                 new int[] { Types.CHAR, symmetricDialect.getSqlTypeForIds(), Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
                         Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
                         Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
                         Types.TIMESTAMP, Types.TIMESTAMP, Types.TIMESTAMP, Types.VARCHAR, Types.NUMERIC, Types.VARCHAR, symmetricDialect.getSqlTypeForIds(),
                         Types.NUMERIC, Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
                         Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
-                        Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
+                        Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.TIMESTAMP, Types.TIMESTAMP,
                         symmetricDialect.getSqlTypeForIds(), Types.VARCHAR });
     }
 
@@ -248,7 +248,7 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
                 Types.TIMESTAMP, Types.TIMESTAMP, Types.TIMESTAMP, Types.VARCHAR, Types.NUMERIC, Types.VARCHAR, symmetricDialect.getSqlTypeForIds(),
                 Types.NUMERIC, Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
                 Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
-                Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
+                Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.TIMESTAMP, Types.TIMESTAMP,
                 symmetricDialect.getSqlTypeForIds(), Types.VARCHAR };
         int count = 0;
         transaction.prepare(getSql("updateOutgoingBatchSql"));
@@ -273,6 +273,7 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
                             outgoingBatch.getSkipCount(), outgoingBatch.getExtractRowCount(), outgoingBatch.getExtractInsertRowCount(),
                             outgoingBatch.getExtractUpdateRowCount(), outgoingBatch.getExtractDeleteRowCount(),
                             outgoingBatch.getTransformExtractMillis(), outgoingBatch.getTransformLoadMillis(), outgoingBatch.isBulkLoaderFlag() ? 1 : 0,
+                            outgoingBatch.getDataMinCreateTime(), outgoingBatch.getDataMaxCreateTime(),
                             outgoingBatch.getBatchId(), outgoingBatch.getNodeId() }, types);
             if (++count >= flushSize) {
                 transaction.flush();
@@ -352,7 +353,8 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
                 outgoingBatch.isLoadFlag() ? 1 : 0, outgoingBatch.isCommonFlag() ? 1 : 0, outgoingBatch.getReloadRowCount(),
                 outgoingBatch.getOtherRowCount(), outgoingBatch.getDataUpdateRowCount(), outgoingBatch.getDataInsertRowCount(),
                 outgoingBatch.getDataDeleteRowCount(), outgoingBatch.getLastUpdatedHostName(), new Date(), new Date(),
-                outgoingBatch.getCreateBy(), outgoingBatch.getSummary(), outgoingBatch.getDataRowCount());
+                outgoingBatch.getCreateBy(), outgoingBatch.getSummary(), outgoingBatch.getDataRowCount(),
+                outgoingBatch.getDataMinCreateTime(), outgoingBatch.getDataMaxCreateTime());
         outgoingBatch.setBatchId(batchId);
     }
 
@@ -373,10 +375,11 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
                     batch.getLoadId(), batch.isExtractJobFlag() ? 1 : 0, batch.isLoadFlag() ? 1 : 0, batch.isCommonFlag() ? 1 : 0,
                     batch.getReloadRowCount(), batch.getOtherRowCount(), batch.getDataUpdateRowCount(), batch.getDataInsertRowCount(),
                     batch.getDataDeleteRowCount(), batch.getLastUpdatedHostName(), new Date(), new Date(), batch.getCreateBy(),
-                    batch.getSummary(), batch.getDataRowCount() },
+                    batch.getSummary(), batch.getDataRowCount(), batch.getDataMinCreateTime(), batch.getDataMaxCreateTime() },
                     new int[] { symmetricDialect.getSqlTypeForIds(), Types.VARCHAR, Types.VARCHAR, Types.CHAR, Types.NUMERIC,
                             Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
-                            Types.NUMERIC, Types.VARCHAR, Types.TIMESTAMP, Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.NUMERIC });
+                            Types.NUMERIC, Types.VARCHAR, Types.TIMESTAMP, Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.NUMERIC,
+                            Types.TIMESTAMP, Types.TIMESTAMP });
             if (!isCommon) {
                 batchId++;
             }
@@ -1033,6 +1036,8 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
                     batch.setSkipCount(rs.getLong("skip_count"));
                     batch.setBulkLoaderFlag(rs.getBoolean("bulk_loader_flag"));
                     batch.setThreadId(rs.getInteger("thread_id"));
+                    batch.setDataMinCreateTime(rs.getDateTime("data_min_create_time"));
+                    batch.setDataMaxCreateTime(rs.getDateTime("data_max_create_time"));
                 }
                 return batch;
             } else {
