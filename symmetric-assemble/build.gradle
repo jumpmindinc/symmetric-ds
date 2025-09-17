@@ -40,7 +40,7 @@ task develop {
 }
 
 github {
-    owner = 'JumpMind'
+    owner = 'jumpmindinc'
     repo = 'symmetric-ds'
     token = githubToken
     tagName = version
