@@ -48,6 +48,7 @@ public class ExtractRequest implements Serializable {
     private long extractedRows;
     private long transferredRows;
     private long loadedRows;
+    private long conflictedRows;
     private long lastTransferredBatchId;
     private long lastLoadedBatchId;
     private long extractedMillis;
@@ -205,6 +206,14 @@ public class ExtractRequest implements Serializable {
 
     public void setLoadedRows(long loadedRows) {
         this.loadedRows = loadedRows;
+    }
+
+    public long getConflictedRows() {
+        return conflictedRows;
+    }
+
+    public void setConflictedRows(long conflictedRows) {
+        this.conflictedRows = conflictedRows;
     }
 
     public long getLastTransferredBatchId() {

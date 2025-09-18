@@ -152,6 +152,7 @@
        	<column name="loaded_millis" type="BIGINT" required="true" default="0" description="The time spent loading this table" />
        	<column name="last_loaded_batch_id" type="BIGINT" required="false" description="The last batch id that was successfully loaded on the target" />
        	<column name="total_rows" type="BIGINT" required="false" description="The rows in this table to be extracted" />
+       	<column name="conflicted_rows" type="BIGINT" required="true" default="0" description="The rows in this table that went into conflict when loaded to the target" />
        	<column name="loaded_time" type="TIMESTAMP"  description="Timestamp when this table was loaded." />
         <column name="parent_request_id" type="BIGINT" required="true" default="0" description="Parent request_id that will actually handle the extract for this request." />
         <column name="extract_thread_id" type="INTEGER" required="false" description="Thread number within dynamic queue assigned for extraction" />
