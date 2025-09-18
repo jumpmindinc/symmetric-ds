@@ -76,10 +76,10 @@ public class DataExtractorServiceSqlMap extends AbstractSqlMap {
                 + " bulk_rows_loaded = bulk_rows_loaded + $(bulkRowsLoaded) "
                 + " where start_batch_id <= ? and end_batch_id >= ? and node_id=? and load_id=? and source_node_id = ? and loaded_time is null");
         
-        putSql("updateExtractRequestTransferred", "update $(extract_request) set last_transferred_batch_id=?, transferred_rows = transferred_rows + ?, transferred_millis = ?"
+        putSql("updateExtractRequestTransferred", "update $(extract_request) set byte_count = byte_count + ?, last_transferred_batch_id=?, transferred_rows = transferred_rows + ?, transferred_millis = ?"
                 + " where start_batch_id <= ? and end_batch_id >= ? and node_id=? and load_id=? and (last_transferred_batch_id is null or last_transferred_batch_id < ?) and source_node_id = ?");
 
-        putSql("updateExtractRequestTransferredNoParamsInSelect", "update $(extract_request) set last_transferred_batch_id=?, transferred_rows = transferred_rows + $(rowCount), transferred_millis = ?"
+        putSql("updateExtractRequestTransferredNoParamsInSelect", "update $(extract_request) set byte_count = byte_count + $(byteCount), last_transferred_batch_id=?, transferred_rows = transferred_rows + $(rowCount), transferred_millis = ?"
                 + " where start_batch_id <= ? and end_batch_id >= ? and node_id=? and load_id=? and (last_transferred_batch_id is null or last_transferred_batch_id < ?) and source_node_id = ?");
 
         putSql("updateExtractRequestsThreadsSql", "update $(extract_request) set extract_thread_id = ?, load_thread_id = ? where request_id = ?");

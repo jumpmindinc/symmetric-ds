@@ -1536,10 +1536,11 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         try {
             transaction = sqlTemplate.startSqlTransaction();
             if (platform.supportsParametersInSelect()) {
-                transaction.prepareAndExecute(getSql("updateExtractRequestTransferred"), batch.getBatchId(), batch.getDataRowCount(), transferMillis,
-                        batch.getBatchId(), batch.getBatchId(), batch.getNodeId(), batch.getLoadId(), batch.getBatchId(), engine.getNodeId());
+                transaction.prepareAndExecute(getSql("updateExtractRequestTransferred"), batch.getByteCount(), batch.getBatchId(), batch.getDataRowCount(),
+                        transferMillis, batch.getBatchId(), batch.getBatchId(), batch.getNodeId(), batch.getLoadId(), batch.getBatchId(), engine.getNodeId());
             } else {
                 String sql = getSql("updateExtractRequestTransferredNoParamsInSelect");
+                sql = FormatUtils.replace("byteCount", String.valueOf(batch.getByteCount()), sql);
                 sql = FormatUtils.replace("rowCount", String.valueOf(batch.getDataRowCount()), sql);
                 transaction.prepareAndExecute(sql, batch.getBatchId(), transferMillis, batch.getBatchId(),
                         batch.getBatchId(), batch.getNodeId(), batch.getLoadId(), batch.getBatchId(), engine.getNodeId());
@@ -2250,6 +2251,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             request.setQueue(row.getString("queue"));
             request.setLoadId(row.getLong("load_id"));
             request.setTableName(row.getString("table_name"));
+            request.setByteCount(row.getLong("byte_count"));
             request.setRows(row.getLong("total_rows"));
             request.setTransferredRows(row.getLong("transferred_rows"));
             request.setLastTransferredBatchId(row.getLong("last_transferred_batch_id"));
