@@ -487,7 +487,7 @@ final public class ParameterConstants {
     public final static String AWSSQS_MESSAGE_BY = "awssqs.message.by";
     public final static String AWSSQS_ACCESS_KEY_ID = "awssqs.access.key.id";
     public final static String AWSSQS_SECRET_ACCESS_KEY = "awssqs.secret.access.key";
-    public final static String AWSSQAS_FORMAT = "awssqs.format";
+    public final static String AWSSQS_FORMAT = "awssqs.format";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;
