@@ -45,6 +45,7 @@ import java.util.Map;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.PermissionResult;
@@ -140,6 +141,6 @@ public class SqlAnywhereDatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     public String massageForLimitOffset(String sql, int limit, int offset) {
-        return StringUtils.replaceIgnoreCase(sql, "select", "select top " + limit + " start at " + (offset + 1));
+        return Strings.CI.replace(sql, "select", "select top " + limit + " start at " + (offset + 1));
     }
 }

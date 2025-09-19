@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -112,7 +113,7 @@ public class ColumnsAccordingToTriggerHistory {
                 table.setCatalog(null);
                 table.setSchema(null);
             }
-            if (StringUtils.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
+            if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
                 table.setCatalog(null);
             } else if (StringUtils.isNotBlank(router.getTargetCatalogName())) {
                 table.setCatalog(SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetCatalogName()));
@@ -122,7 +123,7 @@ public class ColumnsAccordingToTriggerHistory {
                         symmetricDialect.getTargetPlatform().getDefaultSchema(),
                         router.getTargetCatalogName()));
             }
-            if (StringUtils.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
+            if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
                 table.setSchema(null);
             } else if (StringUtils.isNotBlank(router.getTargetSchemaName())) {
                 table.setSchema(SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetSchemaName()));
@@ -216,8 +217,8 @@ public class ColumnsAccordingToTriggerHistory {
                 targetNode.getNodeGroupId(), table.getName());
         if (transforms != null) {
             for (TransformTableNodeGroupLink transform : transforms) {
-                if (StringUtils.equals(transform.getSourceCatalogName(), table.getCatalog())
-                        && StringUtils.equals(transform.getSourceSchemaName(), table.getSchema())
+                if (Strings.CS.equals(transform.getSourceCatalogName(), table.getCatalog())
+                        && Strings.CS.equals(transform.getSourceSchemaName(), table.getSchema())
                         && transform.getTransformPoint().equals(transformPoint) && transform.getTransformOrder() >= order) {
                     return transform;
                 }

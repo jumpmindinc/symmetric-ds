@@ -39,7 +39,7 @@ package org.jumpmind.db.util;
  * under the License.
  */
 
-import org.apache.commons.collections4.Predicate;
+import java.util.function.Predicate;
 import org.jumpmind.db.alter.IModelChange;
 
 /**
@@ -64,7 +64,7 @@ public class MultiInstanceofPredicate implements Predicate<IModelChange> {
     /**
      * {@inheritDoc}
      */
-    public boolean evaluate(IModelChange obj) {
+    public boolean test(IModelChange obj) {
         if (_typesToCheck == null || _typesToCheck.length == 0) {
             return true;
         } else {

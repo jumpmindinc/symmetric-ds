@@ -52,6 +52,7 @@ import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.sql.SqlScriptReader;
@@ -349,11 +350,11 @@ final public class SymmetricUtils {
                 dataReader.nextBatch();
                 Table table = dataReader.nextTable();
                 tableLoop: while (table != null) {
-                    if (StringUtils.equalsIgnoreCase(table.getName(), groupTableName)) {
+                    if (Strings.CI.equals(table.getName(), groupTableName)) {
                         CsvData data = dataReader.nextData();
                         while (data != null) {
                             if (DataEventType.INSERT.equals(data.getDataEventType())) {
-                                if (StringUtils.equals(groupId, data.toKeyColumnValuePairs(table).get("node_group_id"))) {
+                                if (Strings.CS.equals(groupId, data.toKeyColumnValuePairs(table).get("node_group_id"))) {
                                     foundGroup = true;
                                     break tableLoop;
                                 }
@@ -379,26 +380,26 @@ final public class SymmetricUtils {
                 try {
                     Statement statement = CCJSqlParserUtil.parse(sql);
                     if (statement instanceof Insert insert
-                            && StringUtils.equalsAnyIgnoreCase(insert.getTable().getName(), groupTableName, "\"" + groupTableName + "\"")) {
+                            && Strings.CI.equalsAny(insert.getTable().getName(), groupTableName, "\"" + groupTableName + "\"")) {
                         ExpressionList<?> valueList = insert.getValues().getExpressions();
                         if (valueList != null && !valueList.isEmpty()) {
                             List<Column> columnList = insert.getColumns();
                             if (columnList != null && !columnList.isEmpty()) {
                                 for (int i = 0; i < columnList.size() && i < valueList.size(); i++) {
-                                    if (StringUtils.equalsAnyIgnoreCase(columnList.get(i).getColumnName(), "node_group_id", "\"node_group_id\"")
-                                            && StringUtils.equals(valueList.get(i).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
+                                    if (Strings.CI.equalsAny(columnList.get(i).getColumnName(), "node_group_id", "\"node_group_id\"")
+                                            && Strings.CS.equals(valueList.get(i).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
                                         foundGroup = true;
                                         break sqlLoop;
                                     }
                                 }
-                            } else if (StringUtils.equals(valueList.get(0).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
+                            } else if (Strings.CS.equals(valueList.get(0).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
                                 foundGroup = true;
                                 break;
                             }
                         }
                     }
                 } catch (JSQLParserException e) {
-                    if (StringUtils.containsIgnoreCase(sql, "insert") && StringUtils.containsIgnoreCase(sql, groupTableName) && sql.contains(groupId)) {
+                    if (Strings.CI.contains(sql, "insert") && Strings.CI.contains(sql, groupTableName) && sql.contains(groupId)) {
                         log.warn("Unable to parse the following imported SQL, so assuming it's an insert for the {} node group: {}", groupId, sql);
                         log.debug("Parse exception: ", e);
                         foundGroup = true;

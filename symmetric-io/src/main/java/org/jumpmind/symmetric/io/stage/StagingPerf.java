@@ -125,7 +125,7 @@ public class StagingPerf {
             try (BufferedWriter writer = resource.getWriter(0l)) {
                 writer.write(timestampedHeaderLine + "\n");
                 for (int i = 0; i < 100; i++) {
-                    writer.write(RandomStringUtils.random(1000));
+                    writer.write(RandomStringUtils.secure().next(1000));
                 }
             } catch (IOException e) {
                 String errorMsg = "Failed to write staging file " + resourceLocation + " " + e.getMessage();

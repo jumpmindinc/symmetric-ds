@@ -37,6 +37,7 @@ import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Column;
@@ -205,7 +206,7 @@ public class DbExport {
         List<Column> columnsToRemove = new ArrayList<Column>();
         Set<String> columnNamesFromRow = row.keySet();
         for (Column column : table.getColumns()) {
-            if (columnNamesFromRow.stream().noneMatch(columnName -> StringUtils.equalsIgnoreCase(columnName, column.getName()))) {
+            if (columnNamesFromRow.stream().noneMatch(columnName -> Strings.CI.equals(columnName, column.getName()))) {
                 columnsToRemove.add(column);
             }
         }

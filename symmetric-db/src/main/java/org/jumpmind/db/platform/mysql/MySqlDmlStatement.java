@@ -20,7 +20,7 @@
  */
 package org.jumpmind.db.platform.mysql;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.sql.DmlStatement;
@@ -33,8 +33,8 @@ public class MySqlDmlStatement extends DmlStatement {
 
     @Override
     protected void appendColumnParameter(StringBuilder sql, Column column) {
-        if (StringUtils.equalsIgnoreCase(column.getJdbcTypeName(), TypeMap.GEOMETRY) ||
-                StringUtils.equalsIgnoreCase(column.getJdbcTypeName(), TypeMap.GEOGRAPHY)) {
+        if (Strings.CI.equals(column.getJdbcTypeName(), TypeMap.GEOMETRY) ||
+                Strings.CI.equals(column.getJdbcTypeName(), TypeMap.GEOGRAPHY)) {
             sql.append("geomfromtext(?)").append(",");
         } else {
             super.appendColumnParameter(sql, column);
@@ -43,8 +43,8 @@ public class MySqlDmlStatement extends DmlStatement {
 
     @Override
     protected void appendColumnEquals(StringBuilder sql, Column column) {
-        if (StringUtils.equalsIgnoreCase(column.getJdbcTypeName(), TypeMap.GEOMETRY) ||
-                StringUtils.equalsIgnoreCase(column.getJdbcTypeName(), TypeMap.GEOGRAPHY)) {
+        if (Strings.CI.equals(column.getJdbcTypeName(), TypeMap.GEOMETRY) ||
+                Strings.CI.equals(column.getJdbcTypeName(), TypeMap.GEOGRAPHY)) {
             sql.append(quote).append(column.getName()).append(quote).append(" = ").append("geomfromtext(?)");
         } else {
             super.appendColumnEquals(sql, column);

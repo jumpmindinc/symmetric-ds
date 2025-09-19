@@ -27,7 +27,7 @@ import java.util.Map;
 
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor;
 import org.apache.commons.io.monitor.FileAlterationObserver;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.FileSnapshot;
 import org.jumpmind.symmetric.model.FileSnapshot.LastEventType;
@@ -145,7 +145,7 @@ public class FileTriggerFileModifiedListener extends FileAlterationListenerAdapt
             if (isDir) {
                 // This is a directory that had a file add/delete, so we'll need to look for deletes later
                 // Let's not save the beginning ./ in the front of the directory location, it doesn't match the value in the database.
-                String relativeDir = StringUtils.removeStart(fileSnapshot.getRelativeDir() + "/" + fileSnapshot.getFileName(), "./");
+                String relativeDir = Strings.CS.removeStart(fileSnapshot.getRelativeDir() + "/" + fileSnapshot.getFileName(), "./");
                 modifiedDirs.put(relativeDir,
                         new DirectorySnapshot(fileTriggerRouter));
             } else {

@@ -45,6 +45,7 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -123,7 +124,7 @@ public class FirebirdDatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     public String massageForLimitOffset(String sql, int limit, int offset) {
-        return StringUtils.replaceIgnoreCase(sql, "select", "select first " + limit + " skip " + offset);
+        return Strings.CI.replace(sql, "select", "select first " + limit + " skip " + offset);
     }
 
     @Override
