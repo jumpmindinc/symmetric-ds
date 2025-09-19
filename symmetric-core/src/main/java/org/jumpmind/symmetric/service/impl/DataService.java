@@ -3169,7 +3169,7 @@ public class DataService extends AbstractService implements IDataService {
                         .getDateTime("create_time"));
             }
         }, isExpired ? 1 : 0);
-        if (!isExpired) {
+        if (!isExpired && engine.getStatisticManager() != null) {
             engine.getStatisticManager().setDataGapCount(dataGapList.size());
         }
         return dataGapList;
