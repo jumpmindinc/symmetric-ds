@@ -157,6 +157,14 @@ public class MockStatisticManager implements IStatisticManager {
     public void incrementTriggersCreatedCount(long count) {
     }
 
+    @Override
+    public void setDataGapCount(long count) {
+    }
+
+    @Override
+    public void setDataUnroutedCount(long count) {
+    }
+
     public void addRouterStats(long startDataId, long endDataId, long dataReadCount,
             long peekAheadFillCount, List<DataGap> dataGaps, Set<String> transactions,
             Collection<OutgoingBatch> batches) {

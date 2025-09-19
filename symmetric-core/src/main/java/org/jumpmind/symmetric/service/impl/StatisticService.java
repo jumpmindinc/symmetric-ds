@@ -124,12 +124,14 @@ public class StatisticService extends AbstractService implements IStatisticServi
                         stats.getPurgedStrandedDataEventRows(), stats.getPurgedExpiredDataRows(),
                         stats.getTriggersCreatedCount(),
                         stats.getTriggersRebuiltCount(), stats.getTriggersRemovedCount(),
-                        stats.getTotalNodesPullTime(), stats.getTotalNodesPushTime() },
+                        stats.getTotalNodesPullTime(), stats.getTotalNodesPushTime(),
+                        stats.getDataGapCount(), stats.getDataUnroutedCount() },
                 new int[] { Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP, Types.TIMESTAMP,
                         Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
                         Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
                         Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
-                        Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT });
+                        Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
+                        Types.BIGINT });
     }
 
     public List<HostStats> getHostStatsForPeriod(Date start, Date end, String nodeId) {
@@ -225,6 +227,8 @@ public class StatisticService extends AbstractService implements IStatisticServi
             stats.setTriggersRemovedCount(rs.getLong("triggers_removed_count"));
             stats.setTotalNodesPullTime(rs.getLong("total_nodes_pull_time"));
             stats.setTotalNodesPushTime(rs.getLong("total_nodes_push_time"));
+            stats.setDataGapCount(rs.getLong("data_gap_count"));
+            stats.setDataUnroutedCount(rs.getLong("data_unrouted_count"));
             return stats;
         }
     }

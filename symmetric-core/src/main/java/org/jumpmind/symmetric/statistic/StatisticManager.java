@@ -35,6 +35,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 
+import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.DataGap;
@@ -46,6 +47,7 @@ import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
+import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IStatisticService;
@@ -63,11 +65,13 @@ public class StatisticManager implements IStatisticManager {
     private List<JobStats> jobStats = new ArrayList<JobStats>();
     private HostStats hostStats;
     private ConcurrentHashMap<Long, RouterStats> routerStatsByBatch = new ConcurrentHashMap<Long, RouterStats>();
+    protected ISymmetricEngine engine;
     protected INodeService nodeService;
     protected IStatisticService statisticService;
     protected IParameterService parameterService;
     protected IConfigurationService configurationService;
     protected IClusterService clusterService;
+    protected IDataService dataService;
     protected Semaphore channelStatsLock = new Semaphore(NUMBER_OF_PERMITS, true);
     protected Semaphore hostStatsLock = new Semaphore(NUMBER_OF_PERMITS, true);
     protected Semaphore jobStatsLock = new Semaphore(NUMBER_OF_PERMITS, true);
@@ -76,14 +80,14 @@ public class StatisticManager implements IStatisticManager {
     protected Map<ProcessInfoKey, ProcessInfo> processInfosThatHaveDoneWork = new ConcurrentHashMap<ProcessInfoKey, ProcessInfo>();
     private Map<Date, Map<String, ChannelStats>> baseChannelStatsInMemory = new LinkedHashMap<Date, Map<String, ChannelStats>>();
 
-    public StatisticManager(IParameterService parameterService, INodeService nodeService,
-            IConfigurationService configurationService, IStatisticService statisticsService,
-            IClusterService clusterService) {
-        this.parameterService = parameterService;
-        this.nodeService = nodeService;
-        this.configurationService = configurationService;
-        this.statisticService = statisticsService;
-        this.clusterService = clusterService;
+    public StatisticManager(ISymmetricEngine engine) {
+        this.engine = engine;
+        parameterService = engine.getParameterService();
+        nodeService = engine.getNodeService();
+        configurationService = engine.getConfigurationService();
+        statisticService = engine.getStatisticService();
+        clusterService = engine.getClusterService();
+        dataService = engine.getDataService();
         init();
     }
 
@@ -559,6 +563,28 @@ public class StatisticManager implements IStatisticManager {
         }
     }
 
+    @Override
+    public void setDataGapCount(long count) {
+        if (hostStatsLock.tryAcquire()) {
+            try {
+                getHostStats().setDataGapCount(count);
+            } finally {
+                hostStatsLock.release();
+            }
+        }
+    }
+
+    @Override
+    public void setDataUnroutedCount(long count) {
+        if (hostStatsLock.tryAcquire()) {
+            try {
+                getHostStats().setDataUnroutedCount(count);
+            } finally {
+                hostStatsLock.release();
+            }
+        }
+    }
+
     protected void saveAdditionalStats(Date endTime, ChannelStats stats) {
         if (baseChannelStatsInMemory.get(endTime) == null) {
             baseChannelStatsInMemory.put(endTime, new HashMap<String, ChannelStats>());
@@ -614,12 +640,18 @@ public class StatisticManager implements IStatisticManager {
         if (hostStats != null) {
             hostStatsLock.acquireUninterruptibly(NUMBER_OF_PERMITS);
             try {
-                if (recordStatistics && hostStats.isNonZero()) {
+                if (recordStatistics) {
                     if (hostStats.getNodeId().equals(UNKNOWN)) {
                         Node node = nodeService.getCachedIdentity();
                         if (node != null) {
                             hostStats.setNodeId(node.getNodeId());
                         }
+                    }
+                    if (hostStats.getDataGapCount() == null) {
+                        hostStats.setDataGapCount(dataService.countDataGaps());
+                    }
+                    if (hostStats.getDataUnroutedCount() == null && engine.getRouterService() != null) {
+                        hostStats.setDataUnroutedCount(engine.getRouterService().getUnroutedDataCount());
                     }
                     hostStats.setEndTime(new Date());
                     statisticService.save(hostStats);

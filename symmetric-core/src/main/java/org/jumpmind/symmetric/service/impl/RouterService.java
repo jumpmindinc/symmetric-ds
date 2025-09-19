@@ -1245,12 +1245,9 @@ public class RouterService extends AbstractService implements IRouterService, IN
         if (maxDataIdAlreadyRouted == 0) {
             return 0;
         }
-        long leftToRoute = (engine.getDataService().findMaxDataId() - maxDataIdAlreadyRouted) + 1;
-        if (leftToRoute > 0) {
-            return leftToRoute;
-        } else {
-            return 0;
-        }
+        long leftToRoute = Math.max((engine.getDataService().findMaxDataId() - maxDataIdAlreadyRouted) + 1, 0);
+        engine.getStatisticManager().setDataUnroutedCount(leftToRoute);
+        return leftToRoute;
     }
 
     public List<String> getAvailableBatchAlgorithms() {
