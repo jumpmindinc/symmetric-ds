@@ -133,10 +133,14 @@ public class ExtractDataReader implements IDataReader {
     protected String substituteVariables(String sourceString) {
         if (sourceString != null && sourceString.indexOf("$(") != -1) {
             sourceString = FormatUtils.replace("sourceNodeId", (String) dataContext.get("sourceNodeId"), sourceString);
-            sourceString = FormatUtils.replace("sourceNodeExternalId", (String) dataContext.get("sourceNodeExternalId"), sourceString);
+            String sourceNodeExternalId = (String) dataContext.get("sourceNodeExternalId");
+            sourceString = FormatUtils.replace("sourceNodeExternalId", sourceNodeExternalId, sourceString);
+            sourceString = FormatUtils.replace("sourceExternalId", sourceNodeExternalId, sourceString);
             sourceString = FormatUtils.replace("sourceNodeGroupId", (String) dataContext.get("sourceNodeGroupId"), sourceString);
             sourceString = FormatUtils.replace("targetNodeId", (String) dataContext.get("targetNodeId"), sourceString);
-            sourceString = FormatUtils.replace("targetNodeExternalId", (String) dataContext.get("targetNodeExternalId"), sourceString);
+            String targetNodeExternalId = (String) dataContext.get("targetNodeExternalId");
+            sourceString = FormatUtils.replace("targetNodeExternalId", targetNodeExternalId, sourceString);
+            sourceString = FormatUtils.replace("targetExternalId", targetNodeExternalId, sourceString);
             sourceString = FormatUtils.replace("targetNodeGroupId", (String) dataContext.get("targetNodeGroupId"), sourceString);
         }
         return sourceString;

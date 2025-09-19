@@ -80,7 +80,6 @@ import org.slf4j.LoggerFactory;
 import bsh.EvalError;
 import bsh.Interpreter;
 import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
@@ -382,7 +381,7 @@ final public class SymmetricUtils {
                     Statement statement = CCJSqlParserUtil.parse(sql);
                     if (statement instanceof Insert insert
                             && Strings.CI.equalsAny(insert.getTable().getName(), groupTableName, "\"" + groupTableName + "\"")) {
-                        List<Expression> valueList = insert.getItemsList(ExpressionList.class).getExpressions();
+                        ExpressionList<?> valueList = insert.getValues().getExpressions();
                         if (valueList != null && !valueList.isEmpty()) {
                             List<Column> columnList = insert.getColumns();
                             if (columnList != null && !columnList.isEmpty()) {

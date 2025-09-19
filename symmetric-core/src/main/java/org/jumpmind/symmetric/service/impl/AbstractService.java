@@ -267,6 +267,9 @@ abstract public class AbstractService implements IService {
                     break;
                 case "lastUpdatedTime":
                     prefix = "last_update_time " + optionSql;
+                    break;
+                case "ignored":
+                    where.append("(status = 'IG' or (status = 'OK' and ignore_count > 0))");
             }
             if (prefix != null) {
                 if (option == FilterOption.IN_LIST || option == FilterOption.NOT_IN_LIST) {
@@ -312,6 +315,8 @@ abstract public class AbstractService implements IService {
                             params.put(String.valueOf(id++), new Timestamp(((Date) values.get(1)).getTime()));
                         }
                     }
+                    break;
+                case "ignored":
                     break;
                 default:
                     if (option == FilterOption.IN_LIST || option == FilterOption.NOT_IN_LIST) {
