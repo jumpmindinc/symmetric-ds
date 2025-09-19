@@ -20,15 +20,14 @@
  */
 package org.jumpmind.vaadin.ui.common;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.ByteArrayInputStream;
 import java.util.Iterator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.vaadin.flow.server.streams.DownloadHandler;
+import com.vaadin.flow.server.streams.DownloadResponse;
 
 public class CsvExport<T> {
     protected IDataProvider<T> gridData = null;
@@ -75,25 +74,10 @@ public class CsvExport<T> {
 
     public DownloadHandler getDownloadHandler() {
         convertToCsv();
-        FileOutputStream outStream = null;
-        File file = null;
-        try {
-            String prefix = fileName.substring(0, fileName.length() - 4);
-            file = File.createTempFile(prefix, ".csv");
-            outStream = new FileOutputStream(file);
-            outStream.write(cellData.toString().getBytes());
-            return DownloadHandler.forFile(file, fileName);
-        } catch (Exception e) {
-            log.error("", e);
-            return null;
-        } finally {
-            try {
-                file.deleteOnExit();
-                outStream.close();
-            } catch (IOException e) {
-                log.error("Problem closing File Stream", e);
-            }
-        }
+        return DownloadHandler.fromInputStream(event -> {
+            byte[] data = cellData.toString().getBytes();
+            return new DownloadResponse(new ByteArrayInputStream(data), fileName, null, data.length);
+        });
     }
 
     public void convertToCsv() {
