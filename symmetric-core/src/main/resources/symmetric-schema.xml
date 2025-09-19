@@ -143,6 +143,7 @@
         <column name="router_id" type="VARCHAR" size="50" required="true" description="Unique description of the router associated with the extract request." />
         <column name="load_id" type="BIGINT" required="false" description="The load id associated with the extract request." />
         <column name="table_name" type="VARCHAR" size="255" required="false" description="The table name for this extract request" />
+        <column name="byte_count" type="BIGINT" required="true" default="0" description="The number of bytes that were transferred to the target for this table" />
         <column name="extracted_rows" type="BIGINT" required="true" default="0" description="The rows in this table that have been extracted to target" />
         <column name="extracted_millis" type="BIGINT" required="true" default="0" description="The time spent extracting this table" />
         <column name="transferred_rows" type="BIGINT" required="true" default="0" description="The rows in this table that have been transferred to target" />

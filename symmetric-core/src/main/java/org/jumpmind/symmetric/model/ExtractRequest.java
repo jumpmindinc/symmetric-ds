@@ -44,6 +44,7 @@ public class ExtractRequest implements Serializable {
     private String queue;
     private long loadId;
     private String tableName;
+    private long byteCount;
     private long rows;
     private long extractedRows;
     private long transferredRows;
@@ -182,6 +183,14 @@ public class ExtractRequest implements Serializable {
 
     public void setTableName(String tableName) {
         this.tableName = tableName;
+    }
+
+    public long getByteCount() {
+        return byteCount;
+    }
+
+    public void setByteCount(long byteCount) {
+        this.byteCount = byteCount;
     }
 
     public long getRows() {
