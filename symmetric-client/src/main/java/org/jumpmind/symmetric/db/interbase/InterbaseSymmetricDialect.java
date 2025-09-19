@@ -24,6 +24,7 @@ import java.sql.Types;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.TypeMap;
@@ -215,9 +216,9 @@ public class InterbaseSymmetricDialect extends AbstractSymmetricDialect implemen
     @Override
     public String massageDataExtractionSql(String sql, boolean isContainsBigLob) {
         if (!isContainsBigLob) {
-            sql = StringUtils.replace(sql, "d.row_data", "cast(d.row_data as varchar(10000))");
-            sql = StringUtils.replace(sql, "d.old_data", "cast(d.old_data as varchar(10000))");
-            sql = StringUtils.replace(sql, "d.pk_data", "cast(d.pk_data as varchar(500))");
+            sql = Strings.CS.replace(sql, "d.row_data", "cast(d.row_data as varchar(10000))");
+            sql = Strings.CS.replace(sql, "d.old_data", "cast(d.old_data as varchar(10000))");
+            sql = Strings.CS.replace(sql, "d.pk_data", "cast(d.pk_data as varchar(500))");
         }
         return sql;
     }

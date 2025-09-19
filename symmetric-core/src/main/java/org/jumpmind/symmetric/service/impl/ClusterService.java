@@ -63,6 +63,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -202,8 +203,7 @@ public class ClusterService extends AbstractService implements IClusterService {
     protected void checkSymDbOwnership() {
         List<NodeHost> nodeHosts = nodeService.findNodeHosts(nodeService.findIdentityNodeId());
         for (NodeHost nodeHost : nodeHosts) {
-            if (nodeHost.getInstanceId() != null
-                    && !StringUtils.equals(instanceId, nodeHost.getInstanceId())) {
+            if (nodeHost.getInstanceId() != null && !Strings.CS.equals(instanceId, nodeHost.getInstanceId())) {
                 String msg = String.format("*** Node '%s' failed to claim exclusive ownership of the SymmetricDS database. *** "
                         + "This is instance id '%s' but instance id '%s' is already present in sym_node_host.  This is caused when 2 copies of SymmetricDS "
                         + "are pointed at the same database, but not clustered.  If you are configuring a cluster, set cluster.lock.enabled=true and restart.  "

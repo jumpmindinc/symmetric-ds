@@ -42,6 +42,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -242,9 +243,9 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
             kafkaText.append("\n\"TABLE\"").append(",\"").append(table.getName()).append("\",\"").append("EVENT").append("\",\"")
                     .append(data.getDataEventType()).append("\",");
             for (int i = 0; i < table.getColumnNames().length; i++) {
-                kafkaText.append("\"").append(StringUtils.replace(table.getColumnNames()[i], "\"", "\"\"")).append("\",");
+                kafkaText.append("\"").append(Strings.CS.replace(table.getColumnNames()[i], "\"", "\"\"")).append("\",");
                 if (rowData[i] != null) {
-                    kafkaText.append("\"").append(StringUtils.replace(rowData[i], "\"", "\"\"")).append("\"");
+                    kafkaText.append("\"").append(Strings.CS.replace(rowData[i], "\"", "\"\"")).append("\"");
                 }
                 if (i + 1 < table.getColumnNames().length) {
                     kafkaText.append(",");
@@ -680,9 +681,9 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                     .append(data.getDataEventType()).append("\",");
             if (oldData != null) {
                 for (int i = 0; i < table.getColumnNames().length; i++) {
-                    kafkaText.append("\"").append(StringUtils.replace(table.getColumnNames()[i], "\"", "\"\"")).append("\",");
+                    kafkaText.append("\"").append(Strings.CS.replace(table.getColumnNames()[i], "\"", "\"\"")).append("\",");
                     if (rowData[i] != null) {
-                        kafkaText.append("\"").append(StringUtils.replace(rowData[i], "\"", "\"\"")).append("\"");
+                        kafkaText.append("\"").append(Strings.CS.replace(rowData[i], "\"", "\"\"")).append("\"");
                     }
                     if (i + 1 < table.getColumnNames().length) {
                         kafkaText.append(",");
@@ -690,9 +691,9 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                 }
             } else {
                 for (int i = 0; i < table.getPrimaryKeyColumnCount(); i++) {
-                    kafkaText.append("\"").append(StringUtils.replace(table.getPrimaryKeyColumnNames()[i], "\"", "\"\"")).append("\",");
+                    kafkaText.append("\"").append(Strings.CS.replace(table.getPrimaryKeyColumnNames()[i], "\"", "\"\"")).append("\",");
                     if (rowData[i] != null) {
-                        kafkaText.append("\"").append(StringUtils.replace(rowData[i], "\"", "\"\"")).append("\"");
+                        kafkaText.append("\"").append(Strings.CS.replace(rowData[i], "\"", "\"\"")).append("\"");
                     }
                     if (i + 1 < table.getColumnNames().length) {
                         kafkaText.append(",");
