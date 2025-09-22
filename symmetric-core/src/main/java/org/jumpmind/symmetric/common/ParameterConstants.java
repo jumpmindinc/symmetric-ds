@@ -481,12 +481,13 @@ final public class ParameterConstants {
     public final static String SYNC_USE_READY_QUEUES = "sync.use.ready.queues";
     public final static String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
     public final static String MSSQL_BULK_LOAD_BCP_CODE_PAGE = "mssql.bulk.load.bcp.code.page";
-    // AWS SQS
     public final static String AWSSQS_QUEUE_URL = "awssqs.url.queue";
     public final static String AWSSQS_QUEUE_BY = "awssqs.queue.by";
     public final static String AWSSQS_MESSAGE_BY = "awssqs.message.by";
     public final static String AWSSQS_ACCESS_KEY_ID = "awssqs.access.key.id";
     public final static String AWSSQS_SECRET_ACCESS_KEY = "awssqs.secret.access.key";
+    public final static String AWSSQS_SESSION_TOKEN = "awssqs.session.token";
+    public final static String AWSSQS_REGION = "awssqs.region";
     public final static String AWSSQS_FORMAT = "awssqs.format";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
