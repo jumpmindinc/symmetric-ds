@@ -41,6 +41,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
@@ -486,7 +487,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected boolean hasSoftwareVersionChanged() {
         Node identity = nodeService.findIdentity();
         if (identity != null) {
-            return !Version.version().equals(identity.getSymmetricVersion()) || !StringUtils.equals(identity.getDeploymentType(), getDeploymentType()) ||
+            return !Version.version().equals(identity.getSymmetricVersion()) || !Strings.CS.equals(identity.getDeploymentType(), getDeploymentType()) ||
                     Version.isDevelopment(identity.getSymmetricVersion());
         }
         return true;
@@ -636,7 +637,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                         if (parameterService
                                 .is(ParameterConstants.HEARTBEAT_SYNC_ON_STARTUP, false)
                                 || isBlank(node.getDatabaseType())
-                                || !StringUtils.equals(node.getSyncUrl(),
+                                || !Strings.CS.equals(node.getSyncUrl(),
                                         parameterService.getSyncUrl())) {
                             heartbeat(false);
                         }

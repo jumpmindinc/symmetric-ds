@@ -47,7 +47,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 import org.apache.commons.collections4.set.ListOrderedSet;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
@@ -562,7 +562,7 @@ public class ForeignKey implements Cloneable, Serializable {
 
     public static ForeignKeyAction getForeignKeyActionByForeignKeyActionName(String foreignKeyActionName) throws IllegalArgumentException {
         for (ForeignKeyAction action : ForeignKeyAction.values()) {
-            if (StringUtils.equals(foreignKeyActionName, action.getForeignKeyActionName())) {
+            if (Strings.CS.equals(foreignKeyActionName, action.getForeignKeyActionName())) {
                 return action;
             }
         }

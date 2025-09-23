@@ -26,7 +26,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import java.sql.Types;
 import java.util.HashMap;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -506,9 +506,7 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
     
     protected boolean isNotComparable(Column column) {
         String columnType = column.getJdbcTypeName();
-        return StringUtils.equalsIgnoreCase(columnType, "IMAGE")
-                || StringUtils.equalsIgnoreCase(columnType, "TEXT")
-                || StringUtils.equalsIgnoreCase(columnType, "NTEXT");
+        return Strings.CI.equals(columnType, "IMAGE") || Strings.CI.equals(columnType, "TEXT") || Strings.CI.equals(columnType, "NTEXT");
     }    
     
     private String buildNonLobColumnsAreNotEqualString(Table table, String table1Name, String table2Name){

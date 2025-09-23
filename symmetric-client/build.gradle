@@ -18,17 +18,19 @@ apply from: symAssembleDir + '/common.gradle'
             exclude group: "com.google.protobuf"
         }
         provided "org.postgresql:postgresql:$postgresqlVersion"
-        provided 'com.oracle.database.jdbc:ojdbc11:23.2.0.0'
+        provided 'com.oracle.database.jdbc:ojdbc11:23.4.0.24.05'
         provided "net.sourceforge.jtds:jtds:$jtdsVersion"
         provided "com.microsoft.sqlserver:mssql-jdbc:$mssqlVersion"
 
         compileOnly "org.apache.derby:derby:$derbyVersion"
+        compileOnly "org.apache.derby:derbytools:$derbyVersion"
         compileOnly "org.hsqldb:hsqldb:$hsqldbVersion"
         compileOnly "org.xerial:sqlite-jdbc:$sqliteVersion"
 
-    compileOnly ("org.apache.hbase:hbase-client:2.4.11") {
+        compileOnly ("org.apache.hbase:hbase-client:2.4.17") {
             exclude group: 'log4j'
             exclude group: 'org.slf4j'
+            exclude group: 'ch.qos.logback'
             exclude group: 'io.netty'
             exclude group: 'asm'
         }

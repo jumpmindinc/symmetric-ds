@@ -65,6 +65,7 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
@@ -562,7 +563,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             }));
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedTableName(catalog, schema, table), e.getClass().getName(), e
@@ -586,7 +587,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 return readTable(catalog, schema, table);
             }
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedTableName(catalog, schema, table), e.getClass().getName(), e
@@ -1444,13 +1445,13 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             if (escaped.equals("''")) {
                 if ((text.length() > 2) && text.startsWith("'") && text.endsWith("'")) {
                     text = "'"
-                            + StringUtils.replace(text.substring(1, text.length() - 1),
+                            + Strings.CS.replace(text.substring(1, text.length() - 1),
                                     escaped, unescaped) + "'";
                 } else {
-                    text = StringUtils.replace(text, escaped, unescaped);
+                    text = Strings.CS.replace(text, escaped, unescaped);
                 }
             } else {
-                text = StringUtils.replace(text, escaped, unescaped);
+                text = Strings.CS.replace(text, escaped, unescaped);
             }
         }
         return text;
@@ -1634,7 +1635,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             });
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {}, because {} {}", table.getFullyQualifiedTableName(), e.getClass().getName(), e.getMessage());

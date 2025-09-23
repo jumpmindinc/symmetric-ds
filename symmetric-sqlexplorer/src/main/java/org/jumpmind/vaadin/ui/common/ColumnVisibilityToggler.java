@@ -54,7 +54,7 @@ public class ColumnVisibilityToggler extends Button {
         checkboxLayout.setPadding(false);
         checkboxLayout.setSpacing(false);
         checkboxLayout.getStyle().set("margin", "0").set("padding-bottom", "2px");
-        menu.add(checkboxLayout);
+        menu.addComponent(checkboxLayout);
         setIcon(new Icon(VaadinIcon.COG));
         getElement().setAttribute("title", "Hide/show columns");
     }

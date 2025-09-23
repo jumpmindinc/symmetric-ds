@@ -4,17 +4,17 @@ buildscript {
     }
 
     dependencies {
-        //classpath 'org.asciidoctor:asciidoctorj-pdf:1.6.2'
+        // classpath 'org.asciidoctor:asciidoctorj-pdf:4.0.4'
         classpath 'org.asciidoctor:asciidoctor-gradle-jvm:4.0.4'
-        classpath 'com.diffplug.spotless:spotless-plugin-gradle:7.0.3'
-		classpath 'com.bmuschko:gradle-docker-plugin:9.3.4'
+		classpath 'com.diffplug.spotless:spotless-plugin-gradle:7.0.3'
+		classpath 'com.bmuschko:gradle-docker-plugin:9.4.0'
         classpath 'io.github.humblerookie:gradle-github-plugin:0.5.0'
-        classpath 'org.jacoco:org.jacoco.ant:0.8.5'
+        classpath 'org.jacoco:org.jacoco.ant:0.8.12'
     }
 }
 
 plugins {
-    id "org.sonarqube" version "6.1.0.5360"
+    id "org.sonarqube" version "6.2.0.5505"
 	id 'com.vaadin' version "$vaadinPluginVersion" apply false
 	id 'org.asciidoctor.jvm.convert' version '4.0.4' apply false
 }
@@ -105,13 +105,59 @@ if (project.properties.containsKey('pro')) {
 
 //used to specify the jacoco version
 jacoco {
-	toolVersion = "0.8.10"
+	toolVersion = "0.8.12"
 }
 
 task codeCoverageReport(type: JacocoReport) {
-
+	dependsOn ':symmetric-client:compileTestJava'
+	dependsOn ':symmetric-client:integrationTest'
+	dependsOn ':symmetric-client:test'
+	dependsOn ':symmetric-client:jacocoTestReport'
+	dependsOn ':symmetric-client:processTestResources'
+	dependsOn ':symmetric-core:compileTestJava'
+	dependsOn ':symmetric-core:integrationTest'
+	dependsOn ':symmetric-core:test'
+	dependsOn ':symmetric-core:jacocoTestReport'
+	dependsOn ':symmetric-core:processTestResources'
+	dependsOn ':symmetric-csv:integrationTest'
+	dependsOn ':symmetric-csv:test'
+	dependsOn ':symmetric-db:compileTestJava'
+	dependsOn ':symmetric-db:integrationTest'
+	dependsOn ':symmetric-db:test'
+	dependsOn ':symmetric-db:jacocoTestReport'
+	dependsOn ':symmetric-db:processTestResources'
+	dependsOn ':symmetric-io:compileTestJava'
+	dependsOn ':symmetric-io:integrationTest'
+	dependsOn ':symmetric-io:test'
+	dependsOn ':symmetric-io:jacocoTestReport'
+	dependsOn ':symmetric-io:processTestResources'
+	dependsOn ':symmetric-jdbc:compileTestJava'
+	dependsOn ':symmetric-jdbc:integrationTest'
+	dependsOn ':symmetric-jdbc:test'
+	dependsOn ':symmetric-jdbc:jacocoTestReport'
+	dependsOn ':symmetric-jdbc:processTestResources'
+	dependsOn ':symmetric-server:compileTestJava'
+	dependsOn ':symmetric-server:integrationTest'
+	dependsOn ':symmetric-server:test'
+	dependsOn ':symmetric-server:jacocoTestReport'
+	dependsOn ':symmetric-server:processTestResources'
+	dependsOn ':symmetric-sqlexplorer:integrationTest'
+	dependsOn ':symmetric-sqlexplorer:test'
+	dependsOn ':symmetric-util:compileTestJava'
+	dependsOn ':symmetric-util:integrationTest'
+	dependsOn ':symmetric-util:test'
+	dependsOn ':symmetric-util:jacocoTestReport'
+	dependsOn ':symmetric-util:processTestResources'
+	dependsOn ':symmetric-wrapper:integrationTest'
+	dependsOn ':symmetric-wrapper:test'
+	dependsOn ':test'
     // Gather execution data from all subprojects
-    executionData fileTree(project.rootDir.parentFile.parentFile.path).include("**/jacoco/*.exec")
+    executionData = files(
+    subprojects.collect { subproject ->
+        file("${subproject.buildDir}/jacoco/test.exec")
+    }.findAll { it.exists() }
+	)
+	
     allprojects.each {
         sourceSets it.sourceSets.main
     }

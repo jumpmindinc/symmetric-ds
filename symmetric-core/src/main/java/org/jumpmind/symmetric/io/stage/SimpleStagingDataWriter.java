@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.csv.CsvReader;
@@ -363,8 +364,8 @@ public class SimpleStagingDataWriter {
                 return false;
             }
             TableLine t = (TableLine) o;
-            return StringUtils.equals(catalogLine, t.catalogLine) && StringUtils.equals(schemaLine, t.schemaLine)
-                    && StringUtils.equals(tableLine, t.tableLine);
+            return Strings.CS.equals(catalogLine, t.catalogLine) && Strings.CS.equals(schemaLine, t.schemaLine)
+                    && Strings.CS.equals(tableLine, t.tableLine);
         }
 
         @Override

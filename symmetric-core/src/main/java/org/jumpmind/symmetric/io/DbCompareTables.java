@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.SymmetricException;
@@ -93,7 +93,7 @@ public class DbCompareTables {
 
     protected void mapColumnDefault(Column sourceColumn) {
         for (Column targetColumn : targetTable.getColumns()) {
-            if (StringUtils.equalsIgnoreCase(sourceColumn.getName(), targetColumn.getName())) {
+            if (Strings.CI.equals(sourceColumn.getName(), targetColumn.getName())) {
                 columnMapping.put(sourceColumn, targetColumn);
             }
         }

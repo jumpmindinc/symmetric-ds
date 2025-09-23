@@ -64,6 +64,7 @@ import javax.crypto.IllegalBlockSizeException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
@@ -1206,7 +1207,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     protected boolean isRetry(OutgoingBatch currentBatch, Node remoteNode) {
         if (currentBatch.getSentCount() > 0 && currentBatch.getStatus() != OutgoingBatch.Status.RS) {
             boolean offline = parameterService.is(ParameterConstants.NODE_OFFLINE, false);
-            boolean cclient = StringUtils.equals(remoteNode.getDeploymentType(), Constants.DEPLOYMENT_TYPE_CCLIENT);
+            boolean cclient = Strings.CS.equals(remoteNode.getDeploymentType(), Constants.DEPLOYMENT_TYPE_CCLIENT);
             if (remoteNode.isVersionGreaterThanOrEqualTo(3, 8, 0) && !offline && !cclient) {
                 IStagedResource previouslyExtracted = getStagedResource(currentBatch);
                 return previouslyExtracted != null && previouslyExtracted.getState() == State.DONE;

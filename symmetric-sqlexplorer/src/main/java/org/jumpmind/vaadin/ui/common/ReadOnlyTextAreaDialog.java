@@ -24,9 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -39,7 +37,6 @@ import javax.sql.DataSource;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -49,7 +46,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Span;
@@ -58,10 +54,10 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.textfield.TextArea;
-import com.vaadin.flow.component.upload.Receiver;
-import com.vaadin.flow.component.upload.SucceededEvent;
 import com.vaadin.flow.component.upload.Upload;
-import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.server.streams.DownloadHandler;
+import com.vaadin.flow.server.streams.DownloadResponse;
+import com.vaadin.flow.server.streams.UploadHandler;
 
 public class ReadOnlyTextAreaDialog extends ResizableDialog {
     private static final long serialVersionUID = 1L;
@@ -141,11 +137,51 @@ public class ReadOnlyTextAreaDialog extends ResizableDialog {
     private void buildUploadButton(String title, final String value) {
         final Button uploadButton = new Button("Upload");
         final Button viewTextButton = new Button("View Text");
-        LobUploader lobUploader = new LobUploader();
-        final Upload upload = new Upload(lobUploader);
+        final Upload upload = new Upload(UploadHandler.toFile((metadata, file) -> {
+            log.info("File received successfully. Updating database");
+            String sql = buildLobUpdate(table.getPrimaryKeyColumns());
+            Connection con = null;
+            PreparedStatement ps = null;
+            try {
+                long startTime = System.nanoTime();
+                con = ((DataSource) platform.getDataSource()).getConnection();
+                con.setAutoCommit(false);
+                ps = con.prepareStatement(sql);
+                InputStream stream = new FileInputStream(file);
+                ps.setBinaryStream(1, stream, (int) file.length());
+                for (int i = 0; i < primaryKeys.length; i++) {
+                    ps.setObject(i + 2, primaryKeys[i], table.getPrimaryKeyColumns()[i].getMappedTypeCode());
+                }
+                ps.executeUpdate();
+                con.commit();
+                long executionTime = System.nanoTime() - startTime;
+                log.info("Upload succeeded in " + executionTime + " ms");
+                ReadOnlyTextAreaDialog.this.close();
+            } catch (SQLException e1) {
+                NotifyDialog.show("Upload Error", "<b>The file could not be uploaded.</b><br>" +
+                        "Cause: the sql update statement failed.<br><br>" +
+                        "To view the <b>Stack Trace</b>, click <b>\"Details\"</b>.", e1, NotificationVariant.LUMO_ERROR);
+            } catch (FileNotFoundException e2) {
+                // do nothing -- already notified
+            } finally {
+                if (ps != null) {
+                    try {
+                        ps.close();
+                    } catch (SQLException e) {
+                    }
+                }
+                if (con != null) {
+                    try {
+                        con.close();
+                    } catch (SQLException e) {
+                    }
+                }
+                FileUtils.deleteQuietly(file);
+                log.info("Deleted uploaded file");
+            }
+        }, metadata -> new File(System.getProperty("java.io.tmpdir"), metadata.fileName())));
         upload.setMaxFiles(100);
         upload.setDropLabel(new Span("Upload new " + table.getColumnWithName(title).getMappedType()));
-        upload.addSucceededListener(lobUploader);
         uploadButton.addClickListener(event -> {
             wrapper.replace(textField, upload);
             wrapper.setHorizontalComponentAlignment(Alignment.CENTER, upload);
@@ -183,8 +219,9 @@ public class ReadOnlyTextAreaDialog extends ResizableDialog {
         downloadButton = new Button("Download");
         final byte[] lobData = getLobData(title);
         if (lobData != null) {
-            StreamResource resource = new StreamResource(title, () -> new ByteArrayInputStream(lobData));
-            Anchor fileDownloader = new Anchor(resource, null);
+            DownloadHandler downloadHandler = DownloadHandler.fromInputStream(
+                    event -> new DownloadResponse(new ByteArrayInputStream(lobData), title, null, lobData.length));
+            Anchor fileDownloader = new Anchor(downloadHandler, null);
             fileDownloader.add(downloadButton);
             long fileSize = lobData.length;
             String sizeText = fileSize + " Bytes";
@@ -297,71 +334,6 @@ public class ReadOnlyTextAreaDialog extends ResizableDialog {
                 textField.setValue(newValue);
             } catch (Exception e) {
                 log.warn("Failed to decode hex string for display", e);
-            }
-        }
-    }
-
-    private class LobUploader implements Receiver, ComponentEventListener<SucceededEvent> {
-        private static final long serialVersionUID = 1L;
-        File file;
-
-        @Override
-        public OutputStream receiveUpload(String filename, String mimeType) {
-            FileOutputStream out = null;
-            try {
-                file = new File(System.getProperty("java.io.tmpdir"), filename);
-                out = new FileOutputStream(file);
-            } catch (FileNotFoundException e) {
-                NotifyDialog.show("Upload Error", "<b>The file could not be uploaded.</b><br>" +
-                        "Cause: the file could not be found.<br><br>" +
-                        "To view the <b>Stack Trace</b>, click <b>\"Details\"</b>.", e, NotificationVariant.LUMO_ERROR);
-                return new ByteArrayOutputStream();
-            }
-            return out;
-        }
-
-        @Override
-        public void onComponentEvent(SucceededEvent event) {
-            log.info("File received successfully. Updating database");
-            String sql = buildLobUpdate(table.getPrimaryKeyColumns());
-            Connection con = null;
-            PreparedStatement ps = null;
-            try {
-                long startTime = System.nanoTime();
-                con = ((DataSource) platform.getDataSource()).getConnection();
-                con.setAutoCommit(false);
-                ps = con.prepareStatement(sql);
-                InputStream stream = new FileInputStream(file);
-                ps.setBinaryStream(1, stream, (int) file.length());
-                for (int i = 0; i < primaryKeys.length; i++) {
-                    ps.setObject(i + 2, primaryKeys[i], table.getPrimaryKeyColumns()[i].getMappedTypeCode());
-                }
-                ps.executeUpdate();
-                con.commit();
-                long executionTime = System.nanoTime() - startTime;
-                log.info("Upload succeeded in " + executionTime + " ms");
-                ReadOnlyTextAreaDialog.this.close();
-            } catch (SQLException e1) {
-                NotifyDialog.show("Upload Error", "<b>The file could not be uploaded.</b><br>" +
-                        "Cause: the sql update statement failed.<br><br>" +
-                        "To view the <b>Stack Trace</b>, click <b>\"Details\"</b>.", e1, NotificationVariant.LUMO_ERROR);
-            } catch (FileNotFoundException e2) {
-                // do nothing -- already notified
-            } finally {
-                if (ps != null) {
-                    try {
-                        ps.close();
-                    } catch (SQLException e) {
-                    }
-                }
-                if (con != null) {
-                    try {
-                        con.close();
-                    } catch (SQLException e) {
-                    }
-                }
-                FileUtils.deleteQuietly(file);
-                log.info("Deleted uploaded file");
             }
         }
     }

@@ -24,6 +24,7 @@ import java.util.*;
 
 import bsh.Interpreter;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.io.data.*;
 import org.jumpmind.symmetric.io.data.transform.TransformColumn.IncludeOnType;
@@ -174,7 +175,7 @@ public class TransformTable implements Cloneable {
         List<TransformColumn> columns = new ArrayList<TransformColumn>(2);
         if (transformColumns != null) {
             for (TransformColumn column : transformColumns) {
-                if (StringUtils.equalsIgnoreCase(column.getSourceColumnName(), columnName)) {
+                if (Strings.CI.equals(column.getSourceColumnName(), columnName)) {
                     columns.add(column);
                 }
             }
@@ -186,7 +187,7 @@ public class TransformTable implements Cloneable {
         List<TransformColumn> columns = new ArrayList<TransformColumn>(2);
         if (transformColumns != null) {
             for (TransformColumn column : transformColumns) {
-                if (StringUtils.equalsIgnoreCase(column.getTargetColumnName(), targetColumn)) {
+                if (Strings.CI.equals(column.getTargetColumnName(), targetColumn)) {
                     columns.add(column);
                 }
             }
@@ -197,8 +198,7 @@ public class TransformTable implements Cloneable {
     public TransformColumn getTransformColumn(String targetColumn, IncludeOnType includeOn) {
         if (transformColumns != null) {
             for (TransformColumn column : transformColumns) {
-                if (StringUtils.equalsIgnoreCase(targetColumn, column.getTargetColumnName()) &&
-                        includeOn == column.getIncludeOn()) {
+                if (Strings.CI.equals(targetColumn, column.getTargetColumnName()) && includeOn == column.getIncludeOn()) {
                     return column;
                 }
             }

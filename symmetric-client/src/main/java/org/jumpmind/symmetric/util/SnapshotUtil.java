@@ -60,6 +60,7 @@ import javax.sql.DataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement;
 import org.jumpmind.db.model.CatalogSchema;
@@ -170,8 +171,8 @@ public class SnapshotUtil {
             checkpoint(engine, listener, stepNumber++, totalSteps);
             for (CatalogSchema catalogSchema : catalogSchemas.keySet()) {
                 DbExport export = new DbExport(targetPlatform);
-                boolean isDefaultCatalog = StringUtils.equalsIgnoreCase(catalogSchema.getCatalog(), targetPlatform.getDefaultCatalog());
-                boolean isDefaultSchema = StringUtils.equalsIgnoreCase(catalogSchema.getSchema(), targetPlatform.getDefaultSchema());
+                boolean isDefaultCatalog = Strings.CI.equals(catalogSchema.getCatalog(), targetPlatform.getDefaultCatalog());
+                boolean isDefaultSchema = Strings.CI.equals(catalogSchema.getSchema(), targetPlatform.getDefaultSchema());
                 String filename = null;
                 if (isDefaultCatalog && isDefaultSchema) {
                     filename = "table-definitions.xml";
@@ -1024,12 +1025,12 @@ public class SnapshotUtil {
                     catalog = trigger.getSourceCatalogName();
                     schema = trigger.getSourceSchemaName();
                 }
-                if (StringUtils.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
+                if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
                     catalog = null;
                 } else if (StringUtils.isNotBlank(router.getTargetCatalogName())) {
                     catalog = SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetCatalogName());
                 }
-                if (StringUtils.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
+                if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
                     schema = null;
                 } else if (StringUtils.isNotBlank(router.getTargetSchemaName())) {
                     schema = SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetSchemaName());

@@ -36,6 +36,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.exception.IoException;
@@ -341,7 +342,7 @@ public class FileSyncZipDataWriter implements IDataWriter {
         boolean cclient = false;
         Node node = nodeService.findNode(nodeId, true);
         if (node != null) {
-            cclient = StringUtils.equals(node.getDeploymentType(), Constants.DEPLOYMENT_TYPE_CCLIENT);
+            cclient = Strings.CS.equals(node.getDeploymentType(), Constants.DEPLOYMENT_TYPE_CCLIENT);
         }
         return cclient;
     }

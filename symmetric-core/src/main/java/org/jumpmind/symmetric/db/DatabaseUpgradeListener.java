@@ -26,8 +26,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jumpmind.db.alter.AddColumnChange;
 import org.jumpmind.db.alter.AddPrimaryKeyChange;
@@ -283,7 +283,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         MultiInstanceofPredicate predicate = new MultiInstanceofPredicate(
                 new Class<?>[] { RemovePrimaryKeyChange.class, AddPrimaryKeyChange.class, PrimaryKeyChange.class, RemoveColumnChange.class,
                         AddColumnChange.class, ColumnDataTypeChange.class, ColumnSizeChange.class, CopyColumnValueChange.class });
-        Collection<IModelChange> modelChangesAffectingTriggers = CollectionUtils.select(modelChanges, predicate);
+        Collection<IModelChange> modelChangesAffectingTriggers = modelChanges.stream().filter(c -> predicate.test(c)).collect(Collectors.toList());
         Set<String> setOfTableNamesToDropTriggersFor = new HashSet<String>();
         for (IModelChange change : modelChangesAffectingTriggers) {
             if (change instanceof TableChange) {

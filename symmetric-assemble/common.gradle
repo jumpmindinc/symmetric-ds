@@ -14,13 +14,13 @@ configurations.all {
             details.useVersion '9.5'
         }
         if (details.requested.group == 'io.swagger.core.v3') {
-            details.useVersion '2.2.15'
+            details.useVersion '2.2.30'
         }
     }
 }
 
 dependencies {
-    sshAntTask 'org.apache.ant:ant-jsch:1.10.12', 'com.jcraft:jsch:0.1.55'
+    sshAntTask 'org.apache.ant:ant-jsch:1.10.15'
 }
 
 allprojects {
@@ -95,17 +95,24 @@ subprojects { subproject ->
     apply plugin: 'signing'    
 
     jacoco {
-		toolVersion = "0.8.10"
+		toolVersion = "0.8.12"
 	}
     
-    jacocoTestReport {
-		executionData(file("${project.buildDir}/jacoco/*.exec"))
+	jacocoTestReport {
+    	def execFiles = fileTree("${project.buildDir}/jacoco").matching {
+        	include("*.exec")
+    	}.files.findAll { it.exists() }
+
+    	if (!execFiles.isEmpty()) {
+        	executionData files(execFiles)
+    	}
+
     	reports {
-    		xml.required = true
-	        html.required = true
-	        xml.outputLocation = file("${buildDir}/reports/jacoco.xml")
-	        html.outputLocation = file("${buildDir}/reports/jacoco.html")
-    	}    	
+        	xml.required = true
+        	html.required = true
+        	xml.outputLocation = file("${buildDir}/reports/jacoco.xml")
+        	html.outputLocation = file("${buildDir}/reports/jacoco.html")
+    	}
 	}
 
     configurations { deployerJars }
@@ -132,13 +139,13 @@ subprojects { subproject ->
 		}
     }
 
-    java {
-        sourceCompatibility=JavaVersion.VERSION_17
-        targetCompatibility=JavaVersion.VERSION_17
+	java {
+    	sourceCompatibility=JavaVersion.VERSION_17
+    	targetCompatibility=JavaVersion.VERSION_17
     }
     
     compileJava {
-    	options.compilerArgs += '-Xlint:deprecation'
+    	options.compilerArgs << '-Xlint:deprecation' << '-parameters'
     }
     
     compileTestJava {
@@ -174,7 +181,9 @@ subprojects { subproject ->
 
     idea {
         module {
+            // testResources = []
             testResources.from()
+            // testSources = [ file('src/test/java'), file('src/test/groovy')]
             testSources.from(file('src/test/java'))
             testSources.from(file('src/test/groovy'))
             resourceDirs += file('src/test/resources')
@@ -244,7 +253,6 @@ subprojects { subproject ->
     }
     
     test {
-        ignoreFailures = true
         minHeapSize = "128m"
         maxHeapSize = "512m"
         useJUnitPlatform {
@@ -254,7 +262,6 @@ subprojects { subproject ->
     }
 
     def integrationTest = tasks.register("integrationTest", Test) {
-        ignoreFailures true
         minHeapSize = "128m"
         maxHeapSize = "512m"
         forkEvery=1
@@ -286,44 +293,44 @@ subprojects { subproject ->
     ext {
         bshVersion = '2.0b6'
         commonsBeanUtilsVersion = '1.11.0'
-        commonsCliVersion = '1.5.0'
+        commonsCliVersion = '1.6.0'
         commonsDbcpVersion = '2.12.0'
         commonsFileuploadVersion = '2.0.0-M4'
         commonsIoVersion = '2.19.0'
-        commonsLangVersion = '3.17.0'
+        commonsLangVersion = '3.18.0'
         commonsTextVersion = '1.12.0'
         commonsCodecVersion = '1.16.1'
         commonsCollectionVersion = '4.5.0-M3'
         commonsVfs = '2.10.0'
         hamcrestVersion = '1.3'
         h2Version = '2.1.214'
-        derbyVersion = '10.14.2.0'
+        derbyVersion = '10.16.1.1'
         postgresqlVersion =  '42.7.3'
-        hsqldbVersion = '2.5.1'
-        sqliteVersion = '3.34.0'
+        hsqldbVersion = '2.7.0'
+        sqliteVersion = '3.45.3.0'
         // Also update mssql-jdbc_auth*.dll (in symmetric-pro:/src/izpack/x64 and x86) and install.xml
         mssqlVersion = '12.8.1.jre8'
-        jakartaMailVersion = '2.0.3'
+        jakartaMailVersion = '2.0.4'
         jdomVersion = '2.0.6.1'
         jaxbVersion = '4.0.5'
-        gsonVersion = '2.10.1'
-        jacksonVersion = '2.17.1'
+        gsonVersion = '2.13.1'
+        jacksonVersion = '2.19.2'
         guavaVersion = '33.2.0-android'
-        junitVersion = '5.10.2'
+        junitVersion = '5.13.3'
         spotBugsVersion = '4.8.5'
         log4jVersion = '2.23.1'
         slf4jVersion = '2.0.13'
         mockitoVersion = '5.11.0'
         powerMockVersion = '2.0.9'
-        mysqlVersion = '8.3.0'
+        mysqlVersion = '8.4.0'
         servletVersion = '4.0.1'
-        springVersion = '6.2.6'
-        springBootVersion = '3.4.5'
+        springVersion = '6.2.10'
+        springBootVersion = '3.5.5'
         jtdsVersion = '1.3.1'
-        bouncyCastleVersion = '1.78.1'
+        bouncyCastleVersion = '1.81'
         animalSnifferVersion = '1.23'
         jnaVersion = '5.14.0'
-        jettyVersion = '12.0.19'
+        jettyVersion = '12.0.25'
         websocketVersion = '2.2.0'
         env = System.getenv()
     }
@@ -341,13 +348,15 @@ subprojects { subproject ->
 
         testImplementation fileTree(dir: System.getProperty("user.home") + '/.symmetricds/lib', include: '*.jar')
         testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.12.2'
+    	testRuntimeOnly 'org.junit.platform:junit-platform-engine:1.12.2'
         
         testImplementation "org.hamcrest:hamcrest-all:$hamcrestVersion"
         testImplementation "org.mockito:mockito-core:$mockitoVersion"
         testImplementation "org.powermock:powermock-api-mockito2:$powerMockVersion"
         testImplementation "org.powermock:powermock-module-junit4:$powerMockVersion"
         
-        deployerJars "org.apache.maven.wagon:wagon-ssh:3.5.1"
+        deployerJars "org.apache.maven.wagon:wagon-ssh:3.5.3"
     }    
 
     task develop {

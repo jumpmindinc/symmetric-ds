@@ -10,6 +10,7 @@ apply from: symAssembleDir + '/common.gradle'
         api "com.google.guava:guava:$guavaVersion"
         api "org.springframework:spring-core:$springVersion"
         api "org.springframework:spring-beans:$springVersion"
+        implementation "com.github.jsqlparser:jsqlparser:4.6"
         
         compileOnly ("nl.cad:tps-parse:1.0.15-SNAPSHOT") {
             exclude group: 'commons-lang', module: 'commons-lang'

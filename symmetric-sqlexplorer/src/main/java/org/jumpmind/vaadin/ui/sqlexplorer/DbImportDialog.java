@@ -21,13 +21,9 @@
 package org.jumpmind.vaadin.ui.sqlexplorer;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -52,9 +48,9 @@ import com.vaadin.flow.component.html.NativeLabel;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.component.upload.Receiver;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.server.streams.UploadHandler;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.orderedlayout.Scroller.ScrollDirection;
@@ -87,8 +83,6 @@ public class DbImportDialog extends ResizableDialog {
     private Upload upload;
     private Format format;
     private IDatabasePlatform databasePlatform;
-    private File file;
-    private FileOutputStream out;
 
     public DbImportDialog(IDatabasePlatform databasePlatform) {
         this(databasePlatform, new HashSet<Table>(0));
@@ -197,26 +191,10 @@ public class DbImportDialog extends ResizableDialog {
         alterCase.setEnabled(false);
         alterCase.setValue(true);
         formLayout.add(alterCase);
-        upload = new Upload(new Receiver() {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public OutputStream receiveUpload(String filename, String mimeType) {
-                try {
-                    file = File.createTempFile("dbimport", formatSelect.getValue().toString());
-                    out = new FileOutputStream(file);
-                    return new BufferedOutputStream(new FileOutputStream(file));
-                } catch (Exception e) {
-                    log.warn(e.getMessage(), e);
-                    CommonUiUtils.notifyError("Failed to import " + filename, opened -> enableEscapeShortcut(!opened));
-                }
-                return null;
-            }
-        });
-        upload.addSucceededListener(event -> {
+        upload = new Upload(UploadHandler.toFile((metadata, file) -> {
             createDbImport();
             try {
-                doDbImport();
+                doDbImport(file);
                 close();
                 Notification successNotification = new Notification("Successful Import", 10000);
                 successNotification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
@@ -227,9 +205,9 @@ public class DbImportDialog extends ResizableDialog {
                 errorNotification.addThemeVariants(NotificationVariant.LUMO_ERROR);
                 errorNotification.open();
             } finally {
-                deleteFileAndResource();
+                file.delete();
             }
-        });
+        }, metadata -> File.createTempFile("dbimport", formatSelect.getValue().toString())));
         upload.setMaxFiles(100);
         upload.setDropAllowed(false);
         Button uploadButton = new Button("Import");
@@ -244,17 +222,7 @@ public class DbImportDialog extends ResizableDialog {
         buildButtonFooter(cancelButton, upload);
     }
 
-    protected void deleteFileAndResource() {
-        try {
-            out.close();
-            file.delete();
-        } catch (IOException e) {
-            log.warn(e.getMessage(), e);
-            Notification.show(e.getMessage());
-        }
-    }
-
-    protected void doDbImport() throws FileNotFoundException {
+    protected void doDbImport(File file) throws FileNotFoundException {
         if (format.toString().equals("CSV") || format.toString().equals("CSV_DQUOTE")) {
             dbImport.importTables(new BufferedInputStream(new FileInputStream(file)),
                     listOfTablesSelect.getValue().toString());
