@@ -50,7 +50,7 @@ jobs:
             
             - name: Publish
               run: |
-                ./gradlew clean jar releaseSymmetric deploy githubRelease publishDocker publishDockerLatest  \
+                ./gradlew clean jar releaseSymmetric deploy publishDocker publishDockerLatest  \
                     -Pversion=${{ github.event.inputs.version }} \
                     -PdeployPassword=${{ secrets.MAVEN_REPO_PASSWORD }} \
                     -PdeployUploadUrl=${{ secrets.MAVEN_REPO_URL }} \
