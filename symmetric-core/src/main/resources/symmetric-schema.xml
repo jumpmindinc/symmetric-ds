@@ -588,6 +588,8 @@
         <column name="triggers_created_count" type="BIGINT" description="" />
         <column name="triggers_rebuilt_count" type="BIGINT" description="" />
         <column name="triggers_removed_count" type="BIGINT" description="" />
+        <column name="data_gap_count" type="BIGINT" description="Number of non-expired data gaps during this period." />
+        <column name="data_unrouted_count" type="BIGINT" description="Estimated number of unrouted data rows during this period." />
         <index name="idx_nd_hst_sts">
             <index-column name="node_id"/>
             <index-column name="start_time"/>

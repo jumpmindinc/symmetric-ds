@@ -137,6 +137,10 @@ public interface IStatisticManager {
 
     public void incrementTriggersCreatedCount(long count);
 
+    public void setDataGapCount(long count);
+
+    public void setDataUnroutedCount(long count);
+
     public void incrementTableRows(Map<String, Map<String, Long>> tableCounts, boolean loaded);
 
     public Map<String, ChannelStats> getWorkingChannelStats();

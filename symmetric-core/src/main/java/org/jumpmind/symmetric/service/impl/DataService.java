@@ -3147,7 +3147,9 @@ public class DataService extends AbstractService implements IDataService {
 
     @Override
     public long countDataGaps() {
-        return sqlTemplate.queryForLong(getSql("countDataGapsSql"));
+        long dataGapCount = sqlTemplate.queryForLong(getSql("countDataGapsSql"));
+        engine.getStatisticManager().setDataGapCount(dataGapCount);
+        return dataGapCount;
     }
 
     @Override
@@ -3161,13 +3163,17 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     protected List<DataGap> findDataGaps(boolean isExpired) {
-        return sqlTemplate.query(getSql("findDataGapsSql"), new ISqlRowMapper<DataGap>() {
+        List<DataGap> dataGapList = sqlTemplate.query(getSql("findDataGapsSql"), new ISqlRowMapper<DataGap>() {
             @Override
             public DataGap mapRow(Row rs) {
                 return new DataGap(rs.getLong("start_id"), rs.getLong("end_id"), rs
                         .getDateTime("create_time"));
             }
         }, isExpired ? 1 : 0);
+        if (!isExpired && engine.getStatisticManager() != null) {
+            engine.getStatisticManager().setDataGapCount(dataGapList.size());
+        }
+        return dataGapList;
     }
 
     @Override

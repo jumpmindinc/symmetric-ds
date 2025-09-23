@@ -435,8 +435,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
                 throw new RuntimeException(e);
             }
         }
-        return new StatisticManager(parameterService, nodeService,
-                configurationService, statisticService, clusterService);
+        return new StatisticManager(this);
     }
 
     protected static void waitForAvailableDatabase(DataSource dataSource) {

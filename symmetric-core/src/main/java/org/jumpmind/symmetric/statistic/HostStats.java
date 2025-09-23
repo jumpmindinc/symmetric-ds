@@ -42,6 +42,8 @@ public class HostStats extends AbstractNodeHostStats {
     private long triggersCreatedCount;
     private long triggersRebuiltCount;
     private long triggersRemovedCount;
+    private Long dataGapCount;
+    private Long dataUnroutedCount;
 
     public HostStats() {
     }
@@ -75,13 +77,6 @@ public class HostStats extends AbstractNodeHostStats {
         triggersCreatedCount += stats.getTriggersCreatedCount();
         triggersRebuiltCount += stats.getTriggersRebuiltCount();
         triggersRemovedCount += stats.getTriggersRemovedCount();
-    }
-
-    public boolean isNonZero() {
-        return restarted > 0 || nodesPulled > 0 || totalNodesPullTime > 0 || nodesPushed > 0 || totalNodesPushTime > 0 || nodesRejected > 0
-                || nodesRegistered > 0 || nodesLoaded > 0 || nodesDisabled > 0 || purgedDataRows > 0 || purgedDataEventRows > 0 || purgedBatchOutgoingRows > 0
-                || purgedBatchIncomingRows > 0 || purgedStrandedDataRows > 0 || purgedStrandedDataEventRows > 0 || purgedExpiredDataRows > 0
-                || triggersCreatedCount > 0 || triggersRebuiltCount > 0 || triggersRemovedCount > 0;
     }
 
     public long getRestarted() {
@@ -310,5 +305,21 @@ public class HostStats extends AbstractNodeHostStats {
 
     public void incrementPurgedExpiredDataRows(long value) {
         this.purgedExpiredDataRows += value;
+    }
+
+    public Long getDataGapCount() {
+        return dataGapCount;
+    }
+
+    public void setDataGapCount(long dataGapCount) {
+        this.dataGapCount = dataGapCount;
+    }
+
+    public Long getDataUnroutedCount() {
+        return dataUnroutedCount;
+    }
+
+    public void setDataUnroutedCount(long dataUnroutedCount) {
+        this.dataUnroutedCount = dataUnroutedCount;
     }
 }
