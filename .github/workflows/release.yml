@@ -1,0 +1,92 @@
+name: Release
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                type: string
+                description: Full version (major.minor.patch) number to release, e.g. 1.2.3.
+                required: true
+                
+run-name: "Release: ${{ inputs.version }}"
+
+jobs:
+    create-release:        
+        runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64
+        permissions:
+            contents: write
+
+        steps:
+            - uses: runs-on/action@v2
+            
+            - name: Validate release version input
+              shell: bash
+              run: |
+                echo "Validating release version: ${{ github.event.inputs.version }}"
+                if [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                    echo "ERROR: Invalid version input. Must be of the format major.minor.patch, e.g. 3.16.6."
+                    exit 1
+                fi
+                
+            - name: Checkout Source
+              uses: actions/checkout@v4
+              with:
+                  clean: true
+            
+            - name: Set up Java
+              uses: actions/setup-java@v4
+              with:
+                  java-version: 17
+                  distribution: 'temurin'
+                  cache: gradle
+
+            - name: Setup Gradle
+              uses: gradle/actions/setup-gradle@v4
+
+            - name: Build with Gradle
+              run: |
+                ./gradlew clean build
+              working-directory: symmetric-assemble
+            
+            - name: Publish
+              run: |
+                ./gradlew clean jar releaseSymmetric deploy githubRelease publishDocker publishDockerLatest  \
+                    -Pversion=${{ github.event.inputs.version }} \
+                    -PdeployUploadUrl=${{ secrets.MAVEN_REPO_URL }} \
+                    -PdeployUser=${{ secrets.MAVEN_REPO_USER }} \
+                    -PdeployPassword=${{ secrets.MAVEN_REPO_PASSWORD }}
+              working-directory: symmetric-assemble
+              env:
+                  ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PGP_KEY }}
+                  ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.PGP_KEY_PASSWORD }}
+
+            - name: Does Tag Exist?
+              id: check_tag_exists
+              run: |
+                TAG="${{ github.event.inputs.version }}"
+                if git ls-remote --tags origin | grep "refs/tags/$TAG$" >/dev/null; then
+                    echo "Tag $TAG already exists. Skipping tagging."
+                else
+                    echo "should_tag=true" >> $GITHUB_OUTPUT
+                fi
+
+            - name: Create Tag
+              if: steps.check_tag_exists.outputs.should_tag
+              id: create_tag
+              run: |
+                TAG="${{ github.event.inputs.version }}"
+                git tag $TAG
+                git push origin $TAG
+          
+                echo "TAG=$TAG" >> $GITHUB_OUTPUT
+                
+            - name: Create Release in GitHub
+              if: steps.check_tag_exists.outputs.should_tag
+              uses: softprops/action-gh-release@v2
+              with:
+                tag_name: ${{ steps.create_tag.outputs.TAG }}
+                name: "Release ${{ steps.create_tag.outputs.TAG }}"
+                body: |
+                    ## Release ${{ steps.create_tag.outputs.TAG }}
+                draft: false
+                prerelease: false
