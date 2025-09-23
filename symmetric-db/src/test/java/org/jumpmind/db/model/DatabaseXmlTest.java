@@ -40,7 +40,6 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 public class DatabaseXmlTest {
-    
     /**
      * Helper finds root directory for this code on file system starting from either the current directory or specified path.
      */
@@ -63,7 +62,7 @@ public class DatabaseXmlTest {
         }
         return currentPath;
     }
-    
+
     @Test
     public void testSymmetricSchemaIsValidAgainstDtd() throws ParserConfigurationException, SAXException, IOException {
         String symmetricSchemaXmlLocation = "/symmetric-ds/symmetric-core/src/main/resources/symmetric-schema.xml";
@@ -78,7 +77,6 @@ public class DatabaseXmlTest {
             symmetricDtdPath = repoRootDir + symmetricDtdLocation;
             File symmetricSchemaXmlFile = new File(symmetricSchemaXmlPath);
             assertTrue(symmetricSchemaXmlFile.exists());
-            
             File symmetricDtdFile = new File(symmetricDtdPath);
             assertTrue(symmetricDtdFile.exists());
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
