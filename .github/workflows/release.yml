@@ -52,14 +52,14 @@ jobs:
               run: |
                 ./gradlew clean jar releaseSymmetric deploy githubRelease publishDocker publishDockerLatest  \
                     -Pversion=${{ github.event.inputs.version }} \
+                    -PdeployPassword=${{ secrets.MAVEN_REPO_PASSWORD }} \
                     -PdeployUploadUrl=${{ secrets.MAVEN_REPO_URL }} \
                     -PdeployUser=${{ secrets.MAVEN_REPO_USER }} \
                     -PdockerPassword=${{ secrets.DOCKERHUB_PASSWORD }} \
                     -PdockerUser=${{ secrets.DOCKERHUB_USER }} \
                     -PsourceforgeApiKey=${{ secrets.SOURCEFORGE_API_KEY }} \
                     -PsourceforgePassword=${{ secrets.SOURCEFORGE_PASSWORD }} \
-                    -PsourceforgeUser=${{ secrets.SOURCEFORGE_USER }} \
-                    -PdeployPassword=${{ secrets.MAVEN_REPO_PASSWORD }}
+                    -PsourceforgeUser=${{ secrets.SOURCEFORGE_USER }}
               working-directory: symmetric-assemble
               env:
                   ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PGP_KEY }}
