@@ -54,7 +54,9 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.ext.IDatabaseUpgradeListener;
 import org.jumpmind.symmetric.ext.ISymmetricEngineAware;
+import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.TriggerHistory;
+import org.jumpmind.symmetric.service.IConfigurationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -280,6 +282,14 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                         log.info("Unable to drop table {} because: {}", tableName, e.getMessage());
                     }
                 }
+            }
+        }
+        if (isUpgradeFromPre317(tablePrefix, currentModel)) {
+            IConfigurationService configService = engine.getConfigurationService();
+            Channel reloadChannel = configService.getChannel(Constants.CHANNEL_RELOAD);
+            if (reloadChannel != null && !"bulk".equals(reloadChannel.getDataLoaderType())) {
+                reloadChannel.setDataLoaderType("bulk");
+                configService.saveChannel(reloadChannel, false);
             }
         }
         // Leave this last in the sequence of steps to make sure to capture any DML changes done before this
@@ -530,6 +540,11 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     protected boolean isUpgradeFromPre316(String tablePrefix, Database currentModel) {
         Table table = currentModel.findTable(tablePrefix + "_" + TableConstants.SYM_EXTRACT_REQUEST);
         return table != null && table.findColumn("extract_thread_id") == null;
+    }
+
+    protected boolean isUpgradeFromPre317(String tablePrefix, Database currentModel) {
+        Table nodeHostChannelStatsTable = currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_CHANNEL_STATS));
+        return nodeHostChannelStatsTable != null && nodeHostChannelStatsTable.findColumn("data_received") == null;
     }
 
     @Override
