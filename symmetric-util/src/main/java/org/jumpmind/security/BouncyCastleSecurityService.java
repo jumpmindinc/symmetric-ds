@@ -180,10 +180,21 @@ public class BouncyCastleSecurityService extends SecurityService {
     @Override
     public synchronized void installSslCert(PrivateKeyEntry entry) {
         try {
+            String alias = System.getProperty(SecurityConstants.SYSPROP_KEYSTORE_CERT_ALIAS, SecurityConstants.ALIAS_SYM_PRIVATE_KEY);
+            installSslCert(entry, alias);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void installSslCert(KeyStore.PrivateKeyEntry entry, String alias) {
+        try {
             new BouncyCastleHelper().checkProviderInstalled();
             KeyStore keyStore = getKeyStore();
             KeyStore.ProtectionParameter param = new KeyStore.PasswordProtection(getKeyStorePassword().toCharArray());
-            String alias = System.getProperty(SecurityConstants.SYSPROP_KEYSTORE_CERT_ALIAS, SecurityConstants.ALIAS_SYM_PRIVATE_KEY);
             keyStore.setEntry(alias, entry, param);
             log.info("Installing SSL certificate: {}", ((X509Certificate) entry.getCertificate()).getSubjectX500Principal().getName());
             saveKeyStore(keyStore, getKeyStorePassword());
@@ -244,7 +255,7 @@ public class BouncyCastleSecurityService extends SecurityService {
                         PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(readPemBytes(reader));
                         key = KeyFactory.getInstance("RSA").generatePrivate(spec);
                     } else if (line.contains("BEGIN RSA PRIVATE KEY")) {
-                        RSAPrivateKey rsaPrivKey = RSAPrivateKey.getInstance((ASN1Sequence) ASN1Sequence.fromByteArray(readPemBytes(reader)));
+                        RSAPrivateKey rsaPrivKey = RSAPrivateKey.getInstance(ASN1Sequence.fromByteArray(readPemBytes(reader)));
                         RSAPrivateKeySpec rsaPrivKeySpec = new RSAPrivateKeySpec(rsaPrivKey.getModulus(), rsaPrivKey.getPrivateExponent());
                         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
                         key = keyFactory.generatePrivate(rsaPrivKeySpec);

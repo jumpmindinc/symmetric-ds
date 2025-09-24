@@ -42,6 +42,8 @@ public interface ISecurityService {
 
     public void installSslCert(KeyStore.PrivateKeyEntry entry);
 
+    public void installSslCert(KeyStore.PrivateKeyEntry entry, String alias);
+
     public TrustedCertificateEntry createTrustedCert(byte[] content, String fileType, String alias, String password);
 
     public PrivateKeyEntry createDefaultSslCert(String host);
