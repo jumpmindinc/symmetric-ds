@@ -8,7 +8,6 @@ buildscript {
         classpath 'org.asciidoctor:asciidoctor-gradle-jvm:4.0.4'
 		classpath 'com.diffplug.spotless:spotless-plugin-gradle:7.0.3'
 		classpath 'com.bmuschko:gradle-docker-plugin:9.4.0'
-        classpath 'io.github.humblerookie:gradle-github-plugin:0.5.0'
         classpath 'org.jacoco:org.jacoco.ant:0.8.12'
     }
 }
@@ -23,7 +22,6 @@ apply plugin: 'java-library'
 apply plugin: 'idea'
 apply plugin: 'eclipse'
 apply plugin: 'com.bmuschko.docker-remote-api'
-apply plugin: 'io.github.humblerookie.gradle'
 apply plugin: 'jacoco'
 
 allprojects {
@@ -37,16 +35,6 @@ allprojects {
 
 task develop {
     dependsOn tasks.cleanEclipse, tasks.eclipse, tasks.cleanIdea, tasks.idea, tasks.compileTestJava
-}
-
-github {
-    owner = 'jumpmindinc'
-    repo = 'symmetric-ds'
-    token = githubToken
-    tagName = version
-    targetCommitish = scmBranch.substring(scmBranch.lastIndexOf('/')+1)
-    name = version
-    prerelease = false
 }
 
 idea {
