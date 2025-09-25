@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,14 +34,20 @@ import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.io.DatabaseXmlUtil;
+import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.platform.DatabaseInfo;
+import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.file.IFileSourceTracker;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.CsvUtils;
 import org.jumpmind.symmetric.io.data.DataEventType;
-import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.FileSnapshot;
@@ -52,6 +59,7 @@ import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.model.TriggerReBuildReason;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.service.IContextService;
+import org.jumpmind.symmetric.service.IDataService;
 
 public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
     public abstract List<String> parse(InputStream in, String fileName, int lineNumber, int tableId);
@@ -64,104 +72,67 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
     public final static String EXTERNAL_DATA_ROUTER_KEY = "R";
     public final static String EXTERNAL_DATA_TRIGGER_KEY = "T";
     public final static String EXTERNAL_DATA_FILE_DATA_ID = "D";
-    public final static String ROUTER_EXPRESSION_CHANNEL_KEY = "CHANNEL";
-    public final static String ROUTER_EXPRESSION_INCLUDE_TRANSACTION_ID = "INCLUDE_TRANSACTION_ID";
-    public final static String ROUTER_EXPRESSION_TAIL_FILE = "TAIL_FILE";
-    public final static String ROUTER_EXPRESSION_STANDARDIZE_NAMES = "STANDARDIZE_NAMES";
     public final static String CONTEXT_FILE_SOURCE_TRACKERS = "trackers";
 
     @Override
     public Set<String> routeToNodes(SimpleRouterContext context, DataMetaData dataMetaData, Set<Node> nodes,
             boolean initialLoad, boolean initialLoadSelectUsed, TriggerRouter triggerRouter) {
-        Map<String, String> newData = getNewDataAsString(null, dataMetaData,
-                getEngine().getSymmetricDialect());
+        Map<String, String> newData = getNewDataAsString(null, dataMetaData, getEngine().getSymmetricDialect());
         String targetTableName = dataMetaData.getRouter().getTargetTableName();
         String fileName = newData.get("FILE_NAME");
         String relativeDir = newData.get("RELATIVE_DIR");
         String triggerId = newData.get("TRIGGER_ID");
         String lastEventType = newData.get("LAST_EVENT_TYPE");
         String routerExpression = dataMetaData.getRouter().getRouterExpression();
-        String channelId = "default";
-        boolean includeTransactionId = false;
-        boolean tailFile = true;
-        boolean standardizeNames = true;
+        String channelId = Constants.CHANNEL_DEFAULT;
+        FileParsingOptions options = new FileParsingOptions();
         String filePath = relativeDir + "/" + fileName;
         IContextService contextService = getEngine().getContextService();
         if (lastEventType.equals(DataEventType.DELETE.toString())) {
             log.debug("File deleted (" + filePath + "), cleaning up context value.");
             contextService.delete(filePath);
         } else {
-            if (routerExpression != null) {
-                String[] keyValues = routerExpression.split(",");
-                for (int i = 0; i < keyValues.length; i++) {
-                    String[] keyValue = keyValues[i].split("=");
-                    if (keyValue.length > 1) {
-                        if (ROUTER_EXPRESSION_CHANNEL_KEY.equals(keyValue[0])) {
-                            channelId = keyValue[1];
-                        } else if (ROUTER_EXPRESSION_INCLUDE_TRANSACTION_ID.equalsIgnoreCase(keyValue[0])) {
-                            includeTransactionId = Boolean.valueOf(keyValue[1]);
-                        } else if (ROUTER_EXPRESSION_TAIL_FILE.equalsIgnoreCase(keyValue[0])) {
-                            tailFile = Boolean.valueOf(keyValue[1]);
-                        } else if (ROUTER_EXPRESSION_STANDARDIZE_NAMES.equalsIgnoreCase(keyValue[0])) {
-                            standardizeNames = Boolean.valueOf(keyValue[1]);
-                        }
-                    }
-                }
-            }
+            options = FileParsingOptions.parse(routerExpression);
             if (triggerId != null) {
                 String baseDir = getEngine().getFileSyncService().getFileTrigger(triggerId).getBaseDir();
                 IFileSourceTracker tracker = getFileSourceTracker(context, baseDir);
                 File file = createSourceFile(baseDir, relativeDir, fileName, triggerId, dataMetaData.getRouter().getRouterId(), tracker);
                 String nodeList = buildNodeList(nodes);
-                String externalData = new StringBuilder(EXTERNAL_DATA_TRIGGER_KEY)
-                        .append("=")
-                        .append(triggerId)
-                        .append(",")
-                        .append(EXTERNAL_DATA_ROUTER_KEY)
-                        .append("=")
-                        .append(dataMetaData.getRouter().getRouterId())
-                        .append(",")
-                        .append(EXTERNAL_DATA_FILE_DATA_ID)
-                        .append("=")
-                        .append(dataMetaData.getData().getDataId()).toString();
+                String externalData = new StringBuilder(EXTERNAL_DATA_TRIGGER_KEY).append("=").append(triggerId).append(",")
+                        .append(EXTERNAL_DATA_ROUTER_KEY).append("=").append(dataMetaData.getRouter().getRouterId()).append(",")
+                        .append(EXTERNAL_DATA_FILE_DATA_ID).append("=").append(dataMetaData.getData().getDataId()).toString();
                 try (InputStream in = getInputStream(tracker, file)) {
                     Map<Integer, String> tableNames = getTableNames(getTargetTableName(targetTableName, fileName), in);
-                    if (standardizeNames) {
+                    if (options.isStandardizeNames()) {
                         standardizeTableNames(tableNames);
                     }
                     int tableIndex = 0;
                     String transactionId = null;
-                    if (includeTransactionId) {
+                    if (options.isIncludeTransactionId()) {
                         transactionId = String.valueOf(System.currentTimeMillis());
                     }
                     for (Map.Entry<Integer, String> tableEntry : tableNames.entrySet()) {
                         String contextId = filePath + "[" + tableEntry.getValue() + "]";
                         Integer lineNumber = 0;
-                        if (tailFile) {
+                        if (options.isTailFile()) {
                             lineNumber = contextService.getString(contextId) == null ? 0 : Integer.valueOf(contextService.getString(contextId));
                         }
                         List<String> dataRows = parse(in, fileName, lineNumber, tableEntry.getKey());
                         String columnNames = getColumnNames();
-                        if (standardizeNames) {
+                        if (options.isStandardizeNames()) {
                             columnNames = standardizeColumnNames(columnNames);
                         }
-                        for (String row : dataRows) {
-                            Data data = new Data();
-                            data.setChannelId(channelId);
-                            data.setDataEventType(DataEventType.INSERT);
-                            data.setRowData(row);
-                            data.setTableName(tableEntry.getValue());
-                            data.setNodeList(nodeList);
-                            data.setTriggerHistory(getTriggerHistory(tableEntry.getValue(), columnNames));
-                            data.setExternalData(externalData);
-                            data.setDataId(getEngine().getDataService().insertData(data));
-                            if (includeTransactionId) {
-                                data.setTransactionId(transactionId);
-                            }
-                            lineNumber++;
+                        TriggerHistory hist = getTriggerHistory(tableEntry.getValue(), columnNames);
+                        if (options.isSendDdl()) {
+                            sendTableDefinition(dataRows, channelId, hist, nodes, externalData);
                         }
+                        if (options.isOverwrite()) {
+                            clearTable(channelId, hist, triggerRouter, nodes, externalData);
+                        }
+                        insertIntoData(dataRows, channelId, hist, nodeList, externalData, transactionId);
                         if (!dataRows.isEmpty()) {
-                            if (tailFile) {
+                            lineNumber += dataRows.size();
+                            if (options.isTailFile()) {
                                 contextService.save(contextId, lineNumber.toString());
                             }
                             if ((tableNames.size() - 1) == tableIndex) {
@@ -236,24 +207,6 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
         return sb.toString();
     }
 
-    public Map<String, Integer> readStagingFile(IStagedResource resource) {
-        Map<String, Integer> bookmarkMap = new HashMap<String, Integer>();
-        try {
-            String thisLine = null;
-            if (resource.exists()) {
-                while ((thisLine = resource.getReader().readLine()) != null) {
-                    String[] split = thisLine.split("=");
-                    if (split.length == 2) {
-                        bookmarkMap.put(split[0].trim(), Integer.valueOf(split[1].trim()));
-                    }
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return bookmarkMap;
-    }
-
     public File createSourceFile(String baseDir, String relativeDir, String fileName, String triggerId, String routerId, IFileSourceTracker tracker) {
         File sourceFile = null;
         if (tracker != null) {
@@ -272,6 +225,86 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
             sourceFile = new File(sourceBaseDir, fileName);
         }
         return sourceFile;
+    }
+
+    protected void sendTableDefinition(List<String> dataRows, String channelId, TriggerHistory hist, Set<Node> nodes, String externalData) {
+        Database db = new Database();
+        Table table = new Table(hist.getSourceTableName());
+        db.addTable(table);
+        for (String name : hist.getParsedColumnNames()) {
+            Column column = new Column(name);
+            column.setTypeCode(Types.VARCHAR);
+            table.addColumn(column);
+        }
+        IDataService dataService = getEngine().getDataService();
+        ISqlTransaction transaction = null;
+        try {
+            transaction = getEngine().getSqlTemplate().startSqlTransaction();
+            String xml = CsvUtils.escapeCsvData(DatabaseXmlUtil.toXml(db));
+            for (Node node : nodes) {
+                dataService.insertCreateEvent(transaction, node, hist, channelId, false, 0,
+                        getClass().getSimpleName(), false, false, false, xml, externalData);
+            }
+            transaction.commit();
+        } catch (RuntimeException ex) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw ex;
+        } finally {
+            if (transaction != null) {
+                transaction.close();
+            }
+        }
+    }
+
+    protected void clearTable(String channelId, TriggerHistory hist, TriggerRouter triggerRouter, Set<Node> nodes, String externalData) {
+        IDataService dataService = getEngine().getDataService();
+        String sql = getEngine().getParameterService().getString(ParameterConstants.INITIAL_LOAD_DELETE_FIRST_SQL);
+        if (StringUtils.isBlank(sql)) {
+            sql = "delete from %s";
+        }
+        IDatabasePlatform platform = getEngine().getDatabasePlatform();
+        DatabaseInfo dbInfo = platform.getDatabaseInfo();
+        String tableName = Table.getFullyQualifiedTableName(triggerRouter.getTargetCatalog(null, hist),
+                triggerRouter.getTargetSchema(null, hist),
+                hist.getSourceTableName(), null, dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator());
+        sql = String.format(sql, tableName);
+        ISqlTransaction transaction = null;
+        try {
+            transaction = getEngine().getSqlTemplate().startSqlTransaction();
+            for (Node node : nodes) {
+                dataService.insertSqlEvent(transaction, hist, channelId, node, sql, false, 0, externalData, getClass().getSimpleName());
+            }
+            transaction.commit();
+        } catch (RuntimeException ex) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw ex;
+        } finally {
+            if (transaction != null) {
+                transaction.close();
+            }
+        }
+    }
+
+    protected void insertIntoData(List<String> dataRows, String channelId, TriggerHistory hist, String nodeList, String externalData,
+            String transactionId) {
+        for (String row : dataRows) {
+            Data data = new Data();
+            data.setChannelId(channelId);
+            data.setDataEventType(DataEventType.INSERT);
+            data.setRowData(row);
+            data.setTableName(hist.getSourceTableName());
+            data.setNodeList(nodeList);
+            data.setTriggerHistory(hist);
+            data.setExternalData(externalData);
+            data.setDataId(getEngine().getDataService().insertData(data));
+            if (transactionId != null) {
+                data.setTransactionId(transactionId);
+            }
+        }
     }
 
     protected TriggerHistory getTriggerHistory(String tableName, String columnNames) {
