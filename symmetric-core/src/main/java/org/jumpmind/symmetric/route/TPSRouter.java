@@ -142,21 +142,6 @@ public class TPSRouter extends AbstractFileParsingRouter implements IDataRouter,
         return buff.toString();
     }
 
-    protected String encode(byte[] byteData) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : byteData) {
-            int i = b & 0xff;
-            if (i >= 0 && i <= 15) {
-                sb.append("\\X0").append(Integer.toString(i, 16));
-            } else if ((i >= 16 && i <= 31) || i == 127) {
-                sb.append("\\X").append(Integer.toString(i, 16));
-            } else {
-                sb.append(Character.toChars(i));
-            }
-        }
-        return sb.toString();
-    }
-
     @Override
     public String getColumnNames() {
         StringBuilder columns = new StringBuilder();
