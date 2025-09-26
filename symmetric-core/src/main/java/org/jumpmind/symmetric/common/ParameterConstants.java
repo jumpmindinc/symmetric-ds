@@ -489,6 +489,7 @@ final public class ParameterConstants {
     public final static String AWSSQS_SESSION_TOKEN = "awssqs.session.token";
     public final static String AWSSQS_REGION = "awssqs.region";
     public final static String AWSSQS_FORMAT = "awssqs.format";
+    public final static String AWSSQS_QUEUE_NAME = "awssqs.queue.name";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;
