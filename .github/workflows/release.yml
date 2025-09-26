@@ -50,7 +50,7 @@ jobs:
             
             - name: Publish
               run: |
-                ./gradlew clean jar releaseSymmetric deploy publishDocker publishDockerLatest  \
+                ./gradlew clean jar releaseSymmetric deploy publishDocker \
                     -Pversion=${{ github.event.inputs.version }} \
                     -PscmVersion=${{ github.sha }} \
                     -PscmBranch=${{ github.base_ref }} \
