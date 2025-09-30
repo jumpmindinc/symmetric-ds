@@ -27,6 +27,16 @@ jobs:
                     echo "ERROR: Invalid version input. Must be of the format major.minor.patch, e.g. 3.16.6."
                     exit 1
                 fi
+
+            - name: Validate branch
+              shell: bash
+              run: |
+                BRANCH_NAME="${GITHUB_REF##refs/heads/}"
+                echo "Validating branch $BRANCH_NAME"
+                if [[ "$BRANCH_NAME" != release/* ]]; then
+                    echo "ERROR: This workflow only supports a release/* branch."
+                    exit 1
+                fi
                 
             - name: Checkout Source
               uses: actions/checkout@v4
@@ -91,7 +101,5 @@ jobs:
               with:
                 tag_name: ${{ steps.create_tag.outputs.TAG }}
                 name: "Release ${{ steps.create_tag.outputs.TAG }}"
-                body: |
-                    ## Release ${{ steps.create_tag.outputs.TAG }}
                 draft: false
                 prerelease: false
