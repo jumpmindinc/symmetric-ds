@@ -7,6 +7,10 @@ on:
                 type: string
                 description: Full version (major.minor.patch) number to release, e.g. 1.2.3.
                 required: true
+            latest:
+                type: boolean
+                description: Whether this release is going to be the latest (major.minor.patch) version.
+                required: true
                 
 run-name: "Release: ${{ inputs.version }}"
 
@@ -60,7 +64,8 @@ jobs:
             
             - name: Publish
               run: |
-                ./gradlew clean jar releaseSymmetric deploy publishDocker publishDockerLatest  \
+                ./gradlew clean jar releaseSymmetric deploy publishDocker \
+                    -Platest="$LATEST" \
                     -Pversion=${{ github.event.inputs.version }} \
                     -PdeployPassword=${{ secrets.MAVEN_REPO_PASSWORD }} \
                     -PdeployUploadUrl=${{ secrets.MAVEN_REPO_URL }} \
@@ -72,6 +77,7 @@ jobs:
                     -PsourceforgeUser=${{ secrets.SOURCEFORGE_USER }}
               working-directory: symmetric-assemble
               env:
+                  LATEST: ${{ github.event.inputs.latest }}
                   ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PGP_KEY }}
                   ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.PGP_KEY_PASSWORD }}
 
