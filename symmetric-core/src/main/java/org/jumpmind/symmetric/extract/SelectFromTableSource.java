@@ -182,7 +182,10 @@ public class SelectFromTableSource extends SelectFromSource {
                     if (fk != null) {
                         Reference[] refs = fk.getReferences();
                         if (refs.length == 1) {
-                            TableReloadRequest loadRequest = dataService.getTableReloadRequest(outgoingBatch.getLoadId());
+                            TableReloadRequest loadRequest = null;
+                            if (outgoingBatch != null) {
+                                loadRequest = dataService.getTableReloadRequest(outgoingBatch.getLoadId());
+                            }
                             if (loadRequest == null || !loadRequest.isCreateTable() ||
                                     !parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS)) {
                                 isSelfReferencingFk = true;
