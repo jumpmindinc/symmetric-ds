@@ -275,20 +275,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 TriggerHistory triggerHistory = triggerHistories.get(i);
                 String tableName = triggerRouter.getTrigger().getSourceTableName();
                 if (!tableName.endsWith(TableConstants.SYM_NODE_IDENTITY)) {
-                    String initialLoadSql = Constants.ALWAYS_TRUE_CONDITION;
-                    if (!tableName.endsWith(TableConstants.SYM_CONSOLE_ROLE)) {
-                        initialLoadSql += " order by ";
-                        String quote = platform.getDdlBuilder().getDatabaseInfo().getDelimiterToken();
-                        Table table = symmetricDialect.getPlatform().getTableFromCache(triggerHistory.getSourceCatalogName(),
-                                triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(), false);
-                        Column[] pkColumns = table.getPrimaryKeyColumns();
-                        for (int j = 0; j < pkColumns.length; j++) {
-                            if (j > 0) {
-                                initialLoadSql += ", ";
-                            }
-                            initialLoadSql += quote + pkColumns[j].getName() + quote;
-                        }
-                    }
+                    String initialLoadSql = buildInitialLoadSqlForConfigurationTable(triggerHistory, tableName);
                     initialLoadEvents.add(new SelectFromTableEvent(targetNode, triggerRouter, triggerHistory, initialLoadSql));
                 } else {
                     Data data = new Data(1, null, targetNode.getNodeId(), DataEventType.INSERT, triggerHistory.getSourceTableName(), null, triggerHistory,
@@ -324,6 +311,24 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         TableConstants.SYM_NODE_SECURITY).equalsIgnoreCase(sourceTableName)) {
             sql.append(String.format(" where created_at_node_id != '%s' or created_at_node_id is null", targetNode.getNodeId()));
         }
+    }
+
+    private String buildInitialLoadSqlForConfigurationTable(TriggerHistory triggerHistory, String tableName) {
+        String initialLoadSql = Constants.ALWAYS_TRUE_CONDITION;
+        if (!tableName.endsWith(TableConstants.SYM_CONSOLE_ROLE)) {
+            initialLoadSql += " order by ";
+            String quote = platform.getDdlBuilder().getDatabaseInfo().getDelimiterToken();
+            Table table = symmetricDialect.getPlatform().getTableFromCache(triggerHistory.getSourceCatalogName(),
+                    triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(), false);
+            Column[] pkColumns = table.getPrimaryKeyColumns();
+            for (int j = 0; j < pkColumns.length; j++) {
+                if (j > 0) {
+                    initialLoadSql += ", ";
+                }
+                initialLoadSql += quote + pkColumns[j].getName() + quote;
+            }
+        }
+        return initialLoadSql;
     }
 
     private List<OutgoingBatch> filterBatchesForExtraction(OutgoingBatches batches,
