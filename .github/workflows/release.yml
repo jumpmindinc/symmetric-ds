@@ -7,6 +7,10 @@ on:
                 type: string
                 description: Full version (major.minor.patch) number to release, e.g. 1.2.3.
                 required: true
+            latest:
+                type: boolean
+                description: Whether this release is going to be the latest (major.minor.patch) version.
+                required: true
                 
 run-name: "Release: ${{ inputs.version }}"
 
@@ -75,6 +79,7 @@ jobs:
                     -PrestAPISecret=${{ secrets.MANTIS_API_KEY }}
               working-directory: symmetric-assemble
               env:
+                  LATEST: ${{ github.event.inputs.latest }}
                   ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PGP_KEY }}
                   ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.PGP_KEY_PASSWORD }}
 
