@@ -181,6 +181,8 @@ task generateJavadoc(type: Javadoc) {
 	}
 }
 
+def isLatest = project.hasProperty("latest") && project.property("latest") == "true"
+
 task publishJavadoc {
     dependsOn generateJavadoc
 	group = 'SymmetricDS'
@@ -222,14 +224,16 @@ task publishSymmetric {
                 include(name: 'symmetric-server-' + version + '.zip')
             }
         }
-        println "Setting latest file on SourceForge to symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
-        exec {
-            commandLine "curl"
-            args "-s", "-S", "-H", "Accept: application/json", "-X", "PUT",
-                "-d", "default=windows&default=mac&default=linux&default=bsd&default=solaris&default=others",
-                "-d", "api_key=$sourceforgeApiKey",
-                "https://sourceforge.net/projects/symmetricds/files/symmetricds/symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
-        }
+        if (isLatest) {
+			println "Setting latest file on SourceForge to symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
+        	exec {
+            	commandLine "curl"
+            	args "-s", "-S", "-H", "Accept: application/json", "-X", "PUT",
+                	"-d", "default=windows&default=mac&default=linux&default=bsd&default=solaris&default=others",
+                	"-d", "api_key=$sourceforgeApiKey",
+                	"https://sourceforge.net/projects/symmetricds/files/symmetricds/symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
+        	}
+		}
     }
 }
 
@@ -267,18 +271,17 @@ task buildImage(type: com.bmuschko.gradle.docker.tasks.image.DockerBuildImage) {
     buildArgs = ["SERVER_ZIP":"symmetric-server-${version}.zip"]
 }
 
-task publishDockerLatest(type: com.bmuschko.gradle.docker.tasks.image.DockerPushImage) {
-    dependsOn buildImage
-    images.empty()
-    images.add("jumpmind/symmetricds:latest")
-}
-
 task publishDocker(type: com.bmuschko.gradle.docker.tasks.image.DockerPushImage) {
     dependsOn buildImage
     images.empty()
     images.add("jumpmind/symmetricds:${version}".toString())
     images.add("jumpmind/symmetricds:${majorMinorVersion}".toString())
-    doLast {
+    
+	if (isLatest) {
+    	images.add("jumpmind/symmetricds:latest")
+    }
+	
+	doLast {
         println "Pushing Docker Image to the jumpmind/symmetricds Repository"
     }
 }
