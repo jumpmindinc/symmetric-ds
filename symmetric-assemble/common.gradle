@@ -53,13 +53,13 @@ allprojects {
     
     sonar {
 		properties {
-			property "sonar.organization", "jumpmind"
+			property "sonar.organization", "jumpmindinc"
 		    property "sonar.host.url", "https://sonarcloud.io"
-		    property "sonar.projectKey", "JumpMind_SymmetricDS_Pro"
+		    property "sonar.projectKey", "jumpmindinc_symmetric-ds"
 	        property 'sonar.coverage.jacoco.xmlReportPaths', "${rootDir}/build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml"
 	     	property "sonar.coverage.exclusions", "**/*.ad, **/*.js, **/*.c"
 	     	property "sonar.exclusions","**/ui/**"
-	    	property "sonar.scm.disabled", "true"    
+	    	property "sonar.scm.disabled", "false"    
 		}
 	}
     
@@ -238,6 +238,7 @@ subprojects { subproject ->
 		}
 		
 		signing {
+			useInMemoryPgpKeys(findProperty("signingKey"), findProperty("signingPassword"))
 			sign publishing.publications.symmetricLibrary
 		}
     }
@@ -297,7 +298,7 @@ subprojects { subproject ->
         commonsDbcpVersion = '2.12.0'
         commonsFileuploadVersion = '2.0.0-M4'
         commonsIoVersion = '2.19.0'
-        commonsLangVersion = '3.17.0'
+        commonsLangVersion = '3.18.0'
         commonsTextVersion = '1.12.0'
         commonsCodecVersion = '1.16.1'
         commonsCollectionVersion = '4.5.0-M3'
@@ -310,11 +311,11 @@ subprojects { subproject ->
         sqliteVersion = '3.45.3.0'
         // Also update mssql-jdbc_auth*.dll (in symmetric-pro:/src/izpack/x64 and x86) and install.xml
         mssqlVersion = '12.8.1.jre8'
-        jakartaMailVersion = '2.0.3'
+        jakartaMailVersion = '2.0.4'
         jdomVersion = '2.0.6.1'
         jaxbVersion = '4.0.5'
-        gsonVersion = '2.10.1'
-        jacksonVersion = '2.19.1'
+        gsonVersion = '2.13.1'
+        jacksonVersion = '2.19.2'
         guavaVersion = '33.2.0-android'
         junitVersion = '5.13.3'
         spotBugsVersion = '4.8.5'
@@ -324,13 +325,13 @@ subprojects { subproject ->
         powerMockVersion = '2.0.9'
         mysqlVersion = '8.4.0'
         servletVersion = '4.0.1'
-        springVersion = '6.2.8'
-        springBootVersion = '3.5.3'
+        springVersion = '6.2.11'
+        springBootVersion = '3.5.6'
         jtdsVersion = '1.3.1'
-        bouncyCastleVersion = '1.78.1'
+        bouncyCastleVersion = '1.81'
         animalSnifferVersion = '1.23'
         jnaVersion = '5.14.0'
-        jettyVersion = '12.0.22'
+        jettyVersion = '12.0.25'
         websocketVersion = '2.2.0'
         env = System.getenv()
     }

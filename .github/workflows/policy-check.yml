@@ -1,0 +1,79 @@
+name: Policy Check
+
+on:
+  workflow_call:
+
+jobs:
+
+  pr-title-check:
+    name: PR Title Check
+    if: ${{ vars.PR_POLICY_TITLE_PATTERN && vars.PR_POLICY_TITLE_PATTERN != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Match Title
+        uses: actions-ecosystem/action-regex-match@v2
+        id: title-pattern
+        with:
+          text: ${{ github.event.pull_request.title }}
+          regex: '${{ vars.PR_POLICY_TITLE_PATTERN }}'
+
+      - name: Validate Title
+        id: title-pattern-check
+        shell: bash
+        run: |
+          if [[ "${{ steps.title-pattern.outputs.match }}" == "" ]]; then
+            exit 1
+          fi
+
+      - name: Report Invalid Title
+        if: failure() && steps.title-pattern-check.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prComments = await github.rest.issues.listComments({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo
+            });
+            
+            let existingCommentId = null;
+            
+            for (const comment of prComments.data) {
+              if ((comment.user.type == "Bot") && (comment.body.indexOf("ref: policy-pr-title") >= 0)) {
+                existingCommentId = comment.id;
+                break;
+              }
+            }
+            
+            let commentBody = `Please update your pull request title to the required format:
+            
+            **RegEx Format**
+            \`\`\`
+            ${{ vars.PR_POLICY_TITLE_PATTERN }}
+            \`\`\`
+            
+            **Simplified explanation**
+            \`\`\`
+            {the 7 digit issue number}: {a short one line summary of the PR}
+            \`\`\`
+            ---
+            `;
+            
+            if (existingCommentId) {
+              github.rest.issues.updateComment({
+                comment_id: existingCommentId,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: commentBody
+              });
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: commentBody
+              });
+            }

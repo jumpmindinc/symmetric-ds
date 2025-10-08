@@ -42,6 +42,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
 import org.jumpmind.exception.ParseException;
@@ -320,7 +321,7 @@ public final class FormatUtils {
                 for (String line : lines) {
                     // Trim whitespace from end since a space on the end can
                     // push line wrap and cause an unintentional blank line.
-                    line = StringUtils.removeEnd(line, " ");
+                    line = Strings.CS.removeEnd(line, " ");
                     list.add(line);
                 }
             }

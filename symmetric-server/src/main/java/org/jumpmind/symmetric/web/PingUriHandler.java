@@ -49,7 +49,7 @@ public class PingUriHandler extends AbstractUriHandler {
         Long start = System.currentTimeMillis();
         long end = start + 5000;
         while (System.currentTimeMillis() < end) {
-            res.getWriter().write(StringEscapeUtils.escapeHtml4(RandomStringUtils.randomAlphabetic(600)));
+            res.getWriter().write(StringEscapeUtils.escapeHtml4(RandomStringUtils.secure().nextAlphabetic(600)));
         }
     }
 }

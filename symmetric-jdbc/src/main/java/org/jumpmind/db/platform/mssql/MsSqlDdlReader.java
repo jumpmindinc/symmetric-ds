@@ -59,7 +59,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.CompressionTypes;
@@ -129,7 +129,7 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
         }
         Table table = super.readTable(connection, metaData, values);
         if (table != null) {
-            if (StringUtils.equalsIgnoreCase(table.getSchema(), "sys")) {
+            if (Strings.CI.equals(table.getSchema(), "sys")) {
                 return null;
             }
             // Sql Server does not return the auto-increment status via the
@@ -271,7 +271,7 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
             } else if (typeName.toUpperCase().contains("NVARCHAR") && size > 4000) {
                 return Types.LONGNVARCHAR;
             } else if (typeName.toUpperCase().equals("SQL_VARIANT")) {
-                return Types.BINARY;
+                return ColumnTypes.MSSQL_SQL_VARIANT;
             } else if (typeName.equalsIgnoreCase("DATETIMEOFFSET")) {
                 return ColumnTypes.TIMESTAMPTZ;
             } else if (typeName.equalsIgnoreCase("datetime2")) {
@@ -605,7 +605,7 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
 
     private IIndex findIndex(String indexName, Collection<IIndex> indices) {
         for (IIndex index : indices) {
-            if (StringUtils.equals(index.getName(), indexName)) {
+            if (Strings.CS.equals(index.getName(), indexName)) {
                 return index;
             }
         }

@@ -33,6 +33,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.slf4j.Logger;
@@ -192,7 +193,7 @@ public class SymmetricServlet extends HttpServlet {
         Throwable root = ExceptionUtils.getRootCause(ex);
         int errorCount = engine.getErrorCountFor(nodeId);
         String msg = String.format("Error while processing %s request for node: %s", method, nodeId);
-        if (!StringUtils.isEmpty(externalId) && !StringUtils.equals(nodeId, externalId)) {
+        if (!StringUtils.isEmpty(externalId) && !Strings.CS.equals(nodeId, externalId)) {
             msg += String.format(" externalId: %s", externalId);
         }
         msg += " at " + getHost(req);
@@ -213,7 +214,7 @@ public class SymmetricServlet extends HttpServlet {
         String address = req.getRemoteAddr();
         String hostName = req.getRemoteHost();
         if (!StringUtils.isEmpty(hostName) && !StringUtils.isEmpty(address)) {
-            if (StringUtils.equals(hostName, address)) {
+            if (Strings.CS.equals(hostName, address)) {
                 return hostName;
             } else {
                 return hostName + " (" + address + ")";

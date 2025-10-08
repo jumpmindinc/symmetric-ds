@@ -27,7 +27,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
@@ -411,9 +411,9 @@ public class OracleSymmetricDialect extends AbstractSymmetricDialect implements 
     @Override
     public String massageDataExtractionSql(String sql, boolean isContainsBigLob) {
         if (!isContainsBigLob) {
-            sql = StringUtils.replace(sql, "d.row_data", "dbms_lob.substr(d.row_data, 4000, 1 )");
-            sql = StringUtils.replace(sql, "d.old_data", "dbms_lob.substr(d.old_data, 4000, 1 )");
-            sql = StringUtils.replace(sql, "d.pk_data", "dbms_lob.substr(d.pk_data, 4000, 1 )");
+            sql = Strings.CS.replace(sql, "d.row_data", "dbms_lob.substr(d.row_data, 4000, 1 )");
+            sql = Strings.CS.replace(sql, "d.old_data", "dbms_lob.substr(d.old_data, 4000, 1 )");
+            sql = Strings.CS.replace(sql, "d.pk_data", "dbms_lob.substr(d.pk_data, 4000, 1 )");
         }
         sql = super.massageDataExtractionSql(sql, isContainsBigLob);
         return sql;

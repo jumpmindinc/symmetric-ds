@@ -26,7 +26,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import java.sql.Types;
 import java.util.HashMap;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -65,6 +65,13 @@ public class MsSqlTriggerTemplate extends AbstractTriggerTemplate {
         binaryColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else '\"' + replace(replace(" + defaultCatalog + "dbo.$(prefixName)_base64_encode(CONVERT(VARBINARY(max), $(tableAlias).\"$(columnName)\")),'\\','\\\\'),'\"','\\\"') + '\"' end" ;
         booleanColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' when $(tableAlias).\"$(columnName)\" = 1 then '\"1\"' else '\"0\"' end" ;
         dateTimeWithTimeZoneColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else ('\"' + convert(varchar,cast($(tableAlias).\"$(columnName)\" as datetime2), 121) + ' ' + case when datepart(tz, $(tableAlias).\"$(columnName)\") > 0 then '+' else '-' end + RIGHT('0' + cast(abs(datepart(tz, $(tableAlias).\"$(columnName)\") / 60) as varchar), 2) + ':' +  RIGHT('0' + cast(datepart(tz, $(tableAlias).\"$(columnName)\") % 60 as varchar), 2) + '\"') end";
+        sqlVariantColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else '\"' + replace(replace(replace(CONVERT(VARCHAR(MAX), $(tableAlias).\"$(columnName)\","
+                + "case when SQL_VARIANT_PROPERTY($(tableAlias).\"$(columnName)\",'BaseType') in ('datetime2','datetime','smalldatetime','datetimeoffset') then 121 "
+                + " when SQL_VARIANT_PROPERTY($(tableAlias).\"$(columnName)\",'BaseType') = 'date' then 23 "
+                + " when SQL_VARIANT_PROPERTY($(tableAlias).\"$(columnName)\",'BaseType') = 'time' then 108 "
+                + " when SQL_VARIANT_PROPERTY($(tableAlias).\"$(columnName)\",'BaseType') in ('money','smallmoney') then 2 "
+                + " when SQL_VARIANT_PROPERTY($(tableAlias).\"$(columnName)\",'BaseType') = 'xml' then 1 "
+                + " else 0 end),'\\','\\\\'),'\"','\\\"'),'|','\\|') + '|' + CONVERT(VARCHAR(MAX), SQL_VARIANT_PROPERTY($(tableAlias).\"$(columnName)\",'BaseType')) + '|' + CONVERT(VARCHAR(MAX), SQL_VARIANT_PROPERTY($(tableAlias).\"$(columnName)\",'Precision')) + '|' + CONVERT(VARCHAR(MAX), SQL_VARIANT_PROPERTY($(tableAlias).\"$(columnName)\",'Scale')) + '\"' end";
         triggerConcatCharacter = "+" ;
         newTriggerValue = "inserted" ;
         oldTriggerValue = "deleted" ;
@@ -506,9 +513,7 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
     
     protected boolean isNotComparable(Column column) {
         String columnType = column.getJdbcTypeName();
-        return StringUtils.equalsIgnoreCase(columnType, "IMAGE")
-                || StringUtils.equalsIgnoreCase(columnType, "TEXT")
-                || StringUtils.equalsIgnoreCase(columnType, "NTEXT");
+        return Strings.CI.equals(columnType, "IMAGE") || Strings.CI.equals(columnType, "TEXT") || Strings.CI.equals(columnType, "NTEXT");
     }    
     
     private String buildNonLobColumnsAreNotEqualString(Table table, String table1Name, String table2Name){
@@ -550,6 +555,7 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
         return builder.toString();
     }
     
+    @Override
     protected String getSourceTablePrefix(TriggerHistory triggerHistory) {
         String prefix = (isNotBlank(triggerHistory.getSourceSchemaName()) ? SymmetricUtils.quote(
                 symmetricDialect, triggerHistory.getSourceSchemaName()) + symmetricDialect.getPlatform().getDatabaseInfo().getSchemaSeparator() : "");

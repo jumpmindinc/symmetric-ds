@@ -48,6 +48,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
@@ -2776,9 +2777,9 @@ public class DataService extends AbstractService implements IDataService {
                     Table foreignTable = foreignTableRow.getTable();
                     String catalog = foreignTable.getCatalog();
                     String schema = foreignTable.getSchema();
-                    if (StringUtils.equals(platform.getDefaultCatalog(), catalog)) {
+                    if (Strings.CS.equals(platform.getDefaultCatalog(), catalog)) {
                         catalog = null;
-                        if (StringUtils.equals(platform.getDefaultSchema(), schema)) {
+                        if (Strings.CS.equals(platform.getDefaultSchema(), schema)) {
                             schema = null;
                         }
                     }
@@ -2908,9 +2909,9 @@ public class DataService extends AbstractService implements IDataService {
                     Table foreignTable = foreignTableRow.getTable();
                     String catalog = foreignTable.getCatalog();
                     String schema = foreignTable.getSchema();
-                    if (StringUtils.equals(targetPlatform.getDefaultCatalog(), catalog)) {
+                    if (Strings.CS.equals(targetPlatform.getDefaultCatalog(), catalog)) {
                         catalog = null;
-                        if (StringUtils.equals(targetPlatform.getDefaultSchema(), schema)) {
+                        if (Strings.CS.equals(targetPlatform.getDefaultSchema(), schema)) {
                             schema = null;
                         }
                     }

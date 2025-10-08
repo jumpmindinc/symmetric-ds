@@ -28,6 +28,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IParameterService;
@@ -63,7 +64,7 @@ public class RegistrationUriHandler extends AbstractUriHandler {
                     ServletUtils.sendError(res, WebConstants.REGISTRATION_NOT_OPEN, "Registration not open");
                     return;
                 }
-                if (!StringUtils.equals(node.getSyncUrl(), parameterService.getRegistrationUrl())) {
+                if (!Strings.CS.equals(node.getSyncUrl(), parameterService.getRegistrationUrl())) {
                     ServletUtils.sendError(res, WebConstants.REGISTRATION_NOT_OPEN, String.format("Not allowed to register with %s", node.getSyncUrl()));
                     return;
                 }

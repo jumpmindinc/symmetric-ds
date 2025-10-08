@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.StringTokenizer;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.common.Constants;
@@ -750,15 +751,15 @@ public class Trigger implements IModelObject, Cloneable {
         if (isSourceCatalogWildCarded) {
             catalogMatch = matches(sourceCatalogName, table.getCatalog(), ignoreCase);
         } else {
-            catalogMatch = (StringUtils.equals(sourceCatalogNameUnescaped, table.getCatalog()) ||
-                    (StringUtils.isBlank(sourceCatalogName) && StringUtils.equals(defaultCatalog, table.getCatalog())));
+            catalogMatch = (Strings.CS.equals(sourceCatalogNameUnescaped, table.getCatalog()) ||
+                    (StringUtils.isBlank(sourceCatalogName) && Strings.CS.equals(defaultCatalog, table.getCatalog())));
         }
         boolean schemaMatch = false;
         if (isSourceSchemaWildCarded) {
             schemaMatch = matches(sourceSchemaName, table.getSchema(), ignoreCase);
         } else {
-            schemaMatch = (StringUtils.equals(sourceSchemaNameUnescaped, table.getSchema()) ||
-                    (StringUtils.isBlank(sourceSchemaName) && StringUtils.equals(defaultSchema, table.getSchema())));
+            schemaMatch = (Strings.CS.equals(sourceSchemaNameUnescaped, table.getSchema()) ||
+                    (StringUtils.isBlank(sourceSchemaName) && Strings.CS.equals(defaultSchema, table.getSchema())));
         }
         boolean tableMatch = false;
         if (isSourceTableNameWildCarded) {
@@ -773,8 +774,8 @@ public class Trigger implements IModelObject, Cloneable {
     }
 
     public boolean matches(Trigger trigger) {
-        return StringUtils.equals(sourceCatalogName, trigger.sourceCatalogName)
-                && StringUtils.equals(sourceSchemaName, trigger.sourceSchemaName)
+        return Strings.CS.equals(sourceCatalogName, trigger.sourceCatalogName)
+                && Strings.CS.equals(sourceSchemaName, trigger.sourceSchemaName)
                 && trigger.sourceTableName.equalsIgnoreCase(sourceTableName);
     }
 

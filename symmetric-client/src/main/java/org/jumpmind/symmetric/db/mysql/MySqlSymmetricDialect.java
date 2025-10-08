@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
@@ -70,7 +71,7 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
         String version = getProductVersion();
         if (!Version.isOlderThanVersion(version, "5.1.5") && !platform.getName().equals(DatabaseNamesConstants.SINGLE_STORE)) {
             String defaultEngine = platform.getSqlTemplate().queryForString("select engine from information_schema.engines where support='DEFAULT';");
-            if (!StringUtils.equalsIgnoreCase(defaultEngine, "innodb")) {
+            if (!Strings.CI.equals(defaultEngine, "innodb")) {
                 String message = "Please ensure that the default storage engine is set to InnoDB";
                 throw new SymmetricException(message);
             }
@@ -173,7 +174,7 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
 
     private String replaceTokens(String sql, String objectName, String functionBody) {
         String ddl = super.replaceTokens(sql, objectName);
-        ddl = FormatUtils.replace("functionBody", StringUtils.replace(functionBody, "'", "''"), ddl);
+        ddl = FormatUtils.replace("functionBody", Strings.CS.replace(functionBody, "'", "''"), ddl);
         return ddl;
     }
 

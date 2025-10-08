@@ -42,6 +42,7 @@ package org.jumpmind.db.platform.db2;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
@@ -152,10 +153,10 @@ public class Db2DatabasePlatform extends AbstractJdbcDatabasePlatform {
         if (majorVersion >= 12 || (majorVersion == 11 && minorVersion >= 1)) {
             return sql + " limit " + limit + " offset " + offset;
         }
-        int orderIndex = StringUtils.lastIndexOfIgnoreCase(sql, "order by");
+        int orderIndex = Strings.CI.lastIndexOf(sql, "order by");
         String order = sql.substring(orderIndex);
         String innerSql = sql.substring(0, orderIndex - 1);
-        innerSql = StringUtils.replaceIgnoreCase(innerSql, " from", ", ROW_NUMBER() over (" + order + ") as RowNum from");
+        innerSql = Strings.CI.replace(innerSql, " from", ", ROW_NUMBER() over (" + order + ") as RowNum from");
         return "select * from (" + innerSql + ") " + "where RowNum between " + (offset + 1) + " and " + (offset + limit);
     }
 }

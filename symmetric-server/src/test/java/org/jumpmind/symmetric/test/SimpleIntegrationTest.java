@@ -1470,7 +1470,7 @@ public class SimpleIntegrationTest extends AbstractIntegrationTest {
     //
     // private String replace(String prop, String replaceWith, String
     // sourceString) {
-    // return StringUtils.replace(sourceString, "$(" + prop + ")", replaceWith);
+    // return Strings.CS.replace(sourceString, "$(" + prop + ")", replaceWith);
     // }
     //
     // private Date getDate(String dateString) throws Exception {

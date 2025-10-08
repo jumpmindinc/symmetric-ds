@@ -2,7 +2,7 @@ package org.jumpmind.db.model;
 
 import java.util.ArrayList;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 /***
  * Holds array of column references (from source to target) based on matching names. Target table columns are a priority. Unreferenced source columns are
@@ -24,7 +24,7 @@ public class TableColumnSourceReferences extends ArrayList<TableColumnSourceRefe
             Column targetColumn = targetColumns[targetColumnNo];
             for (int sourceColumnNo = 0; sourceColumnNo < sourceColumns.length; sourceColumnNo++) {
                 Column sourceColumn = sourceColumns[sourceColumnNo];
-                if (StringUtils.equalsIgnoreCase(sourceColumn.getName(), targetColumn.getName())) {
+                if (Strings.CI.equals(sourceColumn.getName(), targetColumn.getName())) {
                     this.add(new ColumnSourceReferenceEntry(sourceColumnNo, targetColumnNo, sourceColumn, targetColumn));
                     break;
                 }

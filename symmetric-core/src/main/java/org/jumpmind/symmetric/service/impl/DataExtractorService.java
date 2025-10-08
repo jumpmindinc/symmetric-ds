@@ -65,6 +65,7 @@ import javax.crypto.IllegalBlockSizeException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
@@ -272,18 +273,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             for (int i = 0; i < triggerRouters.size(); i++) {
                 TriggerRouter triggerRouter = triggerRouters.get(i);
                 TriggerHistory triggerHistory = triggerHistories.get(i);
-                Table table = symmetricDialect.getPlatform().getTableFromCache(triggerHistory.getSourceCatalogName(), triggerHistory.getSourceSchemaName(),
-                        triggerHistory.getSourceTableName(), false);
-                String initialLoadSql = "1=1 order by ";
-                String quote = platform.getDdlBuilder().getDatabaseInfo().getDelimiterToken();
-                Column[] pkColumns = table.getPrimaryKeyColumns();
-                for (int j = 0; j < pkColumns.length; j++) {
-                    if (j > 0) {
-                        initialLoadSql += ", ";
-                    }
-                    initialLoadSql += quote + pkColumns[j].getName() + quote;
-                }
-                if (!triggerRouter.getTrigger().getSourceTableName().endsWith(TableConstants.SYM_NODE_IDENTITY)) {
+                String tableName = triggerRouter.getTrigger().getSourceTableName();
+                if (!tableName.endsWith(TableConstants.SYM_NODE_IDENTITY)) {
+                    String initialLoadSql = buildInitialLoadSqlForConfigurationTable(triggerHistory, tableName);
                     initialLoadEvents.add(new SelectFromTableEvent(targetNode, triggerRouter, triggerHistory, initialLoadSql));
                 } else {
                     Data data = new Data(1, null, targetNode.getNodeId(), DataEventType.INSERT, triggerHistory.getSourceTableName(), null, triggerHistory,
@@ -319,6 +311,24 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         TableConstants.SYM_NODE_SECURITY).equalsIgnoreCase(sourceTableName)) {
             sql.append(String.format(" where created_at_node_id != '%s' or created_at_node_id is null", targetNode.getNodeId()));
         }
+    }
+
+    private String buildInitialLoadSqlForConfigurationTable(TriggerHistory triggerHistory, String tableName) {
+        String initialLoadSql = Constants.ALWAYS_TRUE_CONDITION;
+        if (!tableName.endsWith(TableConstants.SYM_CONSOLE_ROLE)) {
+            initialLoadSql += " order by ";
+            String quote = platform.getDdlBuilder().getDatabaseInfo().getDelimiterToken();
+            Table table = symmetricDialect.getPlatform().getTableFromCache(triggerHistory.getSourceCatalogName(),
+                    triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(), false);
+            Column[] pkColumns = table.getPrimaryKeyColumns();
+            for (int j = 0; j < pkColumns.length; j++) {
+                if (j > 0) {
+                    initialLoadSql += ", ";
+                }
+                initialLoadSql += quote + pkColumns[j].getName() + quote;
+            }
+        }
+        return initialLoadSql;
     }
 
     private List<OutgoingBatch> filterBatchesForExtraction(OutgoingBatches batches,
@@ -1253,7 +1263,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     protected boolean isRetry(OutgoingBatch currentBatch, Node remoteNode) {
         if (currentBatch.getSentCount() > 0 && currentBatch.getStatus() != OutgoingBatch.Status.RS && currentBatch.getStatus() != OutgoingBatch.Status.IG) {
             boolean offline = parameterService.is(ParameterConstants.NODE_OFFLINE, false);
-            boolean cclient = StringUtils.equals(remoteNode.getDeploymentType(), Constants.DEPLOYMENT_TYPE_CCLIENT);
+            boolean cclient = Strings.CS.equals(remoteNode.getDeploymentType(), Constants.DEPLOYMENT_TYPE_CCLIENT);
             if (remoteNode.isVersionGreaterThanOrEqualTo(3, 8, 0) && !offline && !cclient) {
                 IStagedResource previouslyExtracted = getStagedResource(currentBatch);
                 return previouslyExtracted != null && previouslyExtracted.getState() == State.DONE;

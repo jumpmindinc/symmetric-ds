@@ -24,7 +24,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.model.Node;
 
@@ -89,6 +89,6 @@ public class ConfigurationVersionHelper {
 
     public void setTargetNode(Node targetNode) {
         targetNodeVersion = targetNode.getSymmetricVersion();
-        isTargetNodePro = StringUtils.equals(targetNode.getDeploymentType(), Constants.DEPLOYMENT_TYPE_PROFESSIONAL);
+        isTargetNodePro = Strings.CS.equals(targetNode.getDeploymentType(), Constants.DEPLOYMENT_TYPE_PROFESSIONAL);
     }
 }
