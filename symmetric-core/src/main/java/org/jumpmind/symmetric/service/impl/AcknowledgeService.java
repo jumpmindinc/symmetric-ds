@@ -219,8 +219,10 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
                     transaction.commit();
                     if (status == Status.OK) {
                         if (isFirstTimeAsOkStatus) {
-                            engine.getStatisticManager().incrementDataLoadedOutgoing(outgoingBatch.getChannelId(), outgoingBatch.getLoadRowCount());
-                            engine.getStatisticManager().incrementDataBytesLoadedOutgoing(outgoingBatch.getChannelId(), outgoingBatch.getByteCount());
+                            engine.getStatisticManager().incrementDataLoadedOutgoing(outgoingBatch.getChannelId(), outgoingBatch.getLoadRowCount(),
+                                    outgoingBatch.getNodeId());
+                            engine.getStatisticManager().incrementDataBytesLoadedOutgoing(outgoingBatch.getChannelId(), outgoingBatch.getByteCount(),
+                                    outgoingBatch.getNodeId());
                         }
                         if (parameterService.is(ParameterConstants.STREAM_TO_FILE_ENABLED)) {
                             purgeBatchesFromStaging(outgoingBatch);

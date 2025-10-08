@@ -458,6 +458,11 @@ public class RegistrationService extends AbstractService implements IRegistratio
         }
     }
 
+    @Override
+    public void deleteRegistrationRedirectsByNodeId(String nodeId) {
+        sqlTemplate.update(getSql("deleteRegistrationRedirectByNodeIdSql"), nodeId);
+    }
+
     /**
      * @see IRegistrationService#markNodeAsRegistered(Node)
      */

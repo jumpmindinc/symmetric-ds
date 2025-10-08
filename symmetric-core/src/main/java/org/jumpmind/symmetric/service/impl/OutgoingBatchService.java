@@ -45,6 +45,7 @@ import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.ext.IOutgoingBatchFilter;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
+import org.jumpmind.symmetric.model.BacklogSummary;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.NodeGroupChannelWindow;
@@ -919,6 +920,16 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         return readyChannelMap;
     }
 
+    @Override
+    public BacklogSummary getBacklogSummaryByTargetNode(String nodeId) {
+        return sqlTemplateDirty.queryForObject(getSql("selectBacklogByTargetNodeSql"), new BacklogSummaryMapper(), new Object[] { nodeId });
+    }
+
+    @Override
+    public int countOutgoingBatchesInErrorByNode(String nodeId) {
+        return sqlTemplateDirty.queryForInt(getSql("selectDataErrorCountByTargetNodeSql"), nodeId);
+    }
+
     static class OutgoingBatchSummaryMapper implements ISqlRowMapper<OutgoingBatchSummary> {
         boolean withNode = false;
         boolean withChannel = false;
@@ -1043,6 +1054,16 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
             } else {
                 return null;
             }
+        }
+    }
+
+    class BacklogSummaryMapper implements ISqlRowMapper<BacklogSummary> {
+        @Override
+        public BacklogSummary mapRow(Row row) {
+            BacklogSummary summary = new BacklogSummary();
+            summary.setByteCount(row.getLong("byte_count"));
+            summary.setRowCount(row.getLong("rows_count"));
+            return summary;
         }
     }
 }

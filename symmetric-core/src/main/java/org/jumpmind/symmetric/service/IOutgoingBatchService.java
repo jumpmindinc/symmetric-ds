@@ -27,6 +27,7 @@ import java.util.Map;
 
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
+import org.jumpmind.symmetric.model.BacklogSummary;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.OutgoingBatchSummary;
@@ -158,4 +159,8 @@ public interface IOutgoingBatchService {
     public Map<String, Collection<String>> getReadyQueues(boolean refreshCache);
 
     public Map<String, ReadyChannels> getReadyChannelsFromDb();
+
+    public int countOutgoingBatchesInErrorByNode(String nodeId);
+
+    public BacklogSummary getBacklogSummaryByTargetNode(String nodeId);
 }
