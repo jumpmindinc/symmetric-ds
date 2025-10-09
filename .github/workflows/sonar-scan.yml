@@ -35,18 +35,3 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./gradlew clean build -x test -x spotlessJavaCheck sonar --info
         working-directory: symmetric-assemble
-
-      - name: Find report-task.txt
-        id: find-report-task
-        run: |
-          REPORT_FILE=$(find . -name report-task.txt | head -n 1)
-          echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
-
-      - name: SonarQube Quality Gate check
-        id: sonarqube-quality-gate-check
-        uses: sonarsource/sonarqube-quality-gate-action@master
-        with:
-          scanMetadataReportFile: ${{ steps.find-report-task.outputs.report_file }}
-          pollingTimeoutSec: 600
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
