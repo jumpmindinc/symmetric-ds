@@ -116,10 +116,10 @@ public interface IConfigurationService {
     public void initDefaultChannels();
 
     /**
-     * Returns two sets of channel names, one for suspended channels and one for ignored.
+     * Returns four sets of channel names for suspended, unsuspended, ignored, and unignored channels
      * 
      * @param nodeId
-     * @return A Map with two entries, the sets of which will always be defined but may be empty.
+     * @return A Map with four entries, the sets of which will always be defined but may be empty.
      */
     public ChannelMap getSuspendIgnoreChannelLists(String nodeId);
 

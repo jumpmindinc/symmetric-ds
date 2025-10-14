@@ -36,11 +36,11 @@ public class NodeServiceSqlMap extends AbstractSqlMap {
         putSql("insertNodeGroupSql", ""
                 + "insert into $(node_group) (description, node_group_id) values(?, ?)   ");
         putSql("nodeChannelControlIgnoreSql", ""
-                + "update $(node_channel_ctl) set ignore_enabled=? where node_id=? and   "
+                + "update $(node_channel_ctl) set ignore_enabled=? where node_id=? and target_node_id='ALL' and   "
                 + "  channel_id=?                                                              ");
         putSql("insertNodeChannelControlSql", ""
                 + "insert into $(node_channel_ctl)                                   "
-                + "  (node_id,channel_id,ignore_enabled,suspend_enabled) values(?,?,?,?)   ");
+                + "  (node_id,target_node_id,channel_id,ignore_enabled,suspend_enabled) values(?,'ALL',?,?,?)   ");
         putSql("insertNodeSql",
                 "insert into $(node) (node_group_id, external_id, database_type, database_version, database_name, " +
                         "schema_version, symmetric_version, sync_url," +

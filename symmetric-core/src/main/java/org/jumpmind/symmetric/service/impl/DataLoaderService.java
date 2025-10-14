@@ -265,11 +265,15 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
             if (remote != null && localSecurity != null) {
                 Map<String, String> requestProperties = new HashMap<String, String>();
                 ChannelMap suspendIgnoreChannels = configurationService
-                        .getSuspendIgnoreChannelLists();
+                        .getSuspendIgnoreChannelLists(remote.getNodeId());
                 requestProperties.put(WebConstants.SUSPENDED_CHANNELS,
                         suspendIgnoreChannels.getSuspendChannelsAsString());
+                requestProperties.put(WebConstants.UNSUSPENDED_CHANNELS,
+                        suspendIgnoreChannels.getUnsuspendChannelsAsString());
                 requestProperties.put(WebConstants.IGNORED_CHANNELS,
                         suspendIgnoreChannels.getIgnoreChannelsAsString());
+                requestProperties.put(WebConstants.UNIGNORED_CHANNELS,
+                        suspendIgnoreChannels.getUnignoreChannelsAsString());
                 requestProperties.put(WebConstants.CHANNEL_QUEUE, status.getQueue());
                 transport = transportManager.getPullTransport(remote, local,
                         localSecurity.getNodePassword(), requestProperties,

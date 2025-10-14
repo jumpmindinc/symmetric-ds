@@ -307,12 +307,18 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
             // Connection contains remote suspend/ignore channels list if
             // reservation was successful.
             String suspends = connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS);
+            String unsuspends = connection.getHeaderField(WebConstants.UNSUSPENDED_CHANNELS);
             String ignores = connection.getHeaderField(WebConstants.IGNORED_CHANNELS);
+            String unignores = connection.getHeaderField(WebConstants.UNIGNORED_CHANNELS);
             suspendIgnoreChannelsList.addSuspendChannels(suspends);
+            suspendIgnoreChannelsList.addUnsuspendChannels(unsuspends);
             suspendIgnoreChannelsList.addIgnoreChannels(ignores);
-            ChannelMap localSuspendIgnoreChannelsList = configurationService.getSuspendIgnoreChannelLists(targetNode.getNodeId());
+            suspendIgnoreChannelsList.addUnignoreChannels(unignores);
+            ChannelMap localSuspendIgnoreChannelsList = configurationService.getSuspendIgnoreChannelLists();
             suspendIgnoreChannelsList.addSuspendChannels(localSuspendIgnoreChannelsList.getSuspendChannels());
+            suspendIgnoreChannelsList.addUnsuspendChannels(localSuspendIgnoreChannelsList.getUnsuspendChannels());
             suspendIgnoreChannelsList.addIgnoreChannels(localSuspendIgnoreChannelsList.getIgnoreChannels());
+            suspendIgnoreChannelsList.addUnignoreChannels(localSuspendIgnoreChannelsList.getUnignoreChannels());
         }
         return suspendIgnoreChannelsList;
     }

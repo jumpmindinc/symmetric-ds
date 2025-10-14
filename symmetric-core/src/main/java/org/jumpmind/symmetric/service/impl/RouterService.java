@@ -62,6 +62,7 @@ import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
+import org.jumpmind.symmetric.model.NodeChannelControl;
 import org.jumpmind.symmetric.model.NodeCommunication;
 import org.jumpmind.symmetric.model.NodeCommunication.CommunicationType;
 import org.jumpmind.symmetric.model.NodeGroupLink;
@@ -734,8 +735,12 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     router.getNodeGroupLink().getSourceNodeGroupId(),
                     router.getNodeGroupLink().getTargetNodeGroupId(), false);
             if (link != null) {
-                nodes.addAll(engine.getNodeService().findEnabledNodesFromNodeGroup(
-                        router.getNodeGroupLink().getTargetNodeGroupId()));
+                NodeChannel channel = context.getChannel();
+                for (Node node : engine.getNodeService().findEnabledNodesFromNodeGroup(router.getNodeGroupLink().getTargetNodeGroupId())) {
+                    if (!channel.isIgnoreEnabled(node.getNodeId())) {
+                        nodes.add(node);
+                    }
+                }
             } else if (!router.getRouterId().startsWith(parameterService.getTablePrefix().toLowerCase())) {
                 log.error("The router {} has no node group link configured from {} to {}", new Object[] { router.getRouterId(),
                         router.getNodeGroupLink().getSourceNodeGroupId(), router.getNodeGroupLink().getTargetNodeGroupId() });
@@ -935,7 +940,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 DataMetaData dataMetaData = new DataMetaData(data, table, triggerRouter.getRouter(),
                         context.getChannel());
                 Collection<String> nodeIds = null;
-                if (!context.getChannel().isIgnoreEnabled()
+                if (!(context.getChannel().isIgnoreEnabled(NodeChannelControl.ALL) && !context.getChannel().isIgnoreDisabledForAnyTargetNode())
                         && triggerRouter.isRouted(data.getDataEventType())) {
                     String targetNodeIds = data.getNodeList();
                     if (StringUtils.isNotBlank(targetNodeIds)) {

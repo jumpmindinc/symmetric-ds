@@ -87,7 +87,9 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
         }
         ChannelMap map = new ChannelMap();
         map.addSuspendChannels(req.getHeader(WebConstants.SUSPENDED_CHANNELS));
+        map.addUnsuspendChannels(req.getHeader(WebConstants.UNSUSPENDED_CHANNELS));
         map.addIgnoreChannels(req.getHeader(WebConstants.IGNORED_CHANNELS));
+        map.addUnignoreChannels(req.getHeader(WebConstants.UNIGNORED_CHANNELS));
         map.setChannelQueue(req.getHeader(WebConstants.CHANNEL_QUEUE));
         // pull out headers and pass to pull() method
         handlePull(nodeId, req.getRemoteHost(), req.getRemoteAddr(), res.getOutputStream(), req.getHeader(WebConstants.HEADER_ACCEPT_CHARSET), res, map);
@@ -99,10 +101,11 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
         NodeSecurity nodeSecurity = nodeService.findNodeSecurity(nodeId, true);
         long ts = System.currentTimeMillis();
         try {
-            ChannelMap remoteSuspendIgnoreChannelsList = configurationService
-                    .getSuspendIgnoreChannelLists(nodeId);
+            ChannelMap remoteSuspendIgnoreChannelsList = configurationService.getSuspendIgnoreChannelLists();
             map.addSuspendChannels(remoteSuspendIgnoreChannelsList.getSuspendChannels());
+            map.addUnsuspendChannels(remoteSuspendIgnoreChannelsList.getUnsuspendChannels());
             map.addIgnoreChannels(remoteSuspendIgnoreChannelsList.getIgnoreChannels());
+            map.addUnignoreChannels(remoteSuspendIgnoreChannelsList.getUnignoreChannels());
             if (nodeSecurity != null) {
                 String createdAtNodeId = nodeSecurity.getCreatedAtNodeId();
                 if (nodeSecurity.isRegistrationEnabled() &&

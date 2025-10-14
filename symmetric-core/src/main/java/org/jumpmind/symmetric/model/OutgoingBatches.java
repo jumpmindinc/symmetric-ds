@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jumpmind.symmetric.common.Constants;
@@ -115,6 +116,27 @@ public class OutgoingBatches implements Serializable {
 
     public List<OutgoingBatch> filterBatchesForChannels(Set<String> channels) {
         List<OutgoingBatch> filtered = getBatchesForChannels(channels);
+        batches.removeAll(filtered);
+        return filtered;
+    }
+
+    public List<OutgoingBatch> filterBatchesByChannelAndNode(Map<String, Set<String>> includedMap, Map<String, Set<String>> excludedMap) {
+        List<OutgoingBatch> filtered = new ArrayList<OutgoingBatch>();
+        for (OutgoingBatch batch : batches) {
+            String channelId = batch.getChannelId();
+            Set<String> excludedNodeIdSet = excludedMap.get(channelId);
+            if (excludedNodeIdSet != null) {
+                String nodeId = batch.getNodeId();
+                if (excludedNodeIdSet.contains(nodeId)) {
+                    filtered.add(batch);
+                } else if (excludedNodeIdSet.contains(NodeChannelControl.ALL)) {
+                    Set<String> includedNodeIdSet = includedMap.get(channelId);
+                    if (includedNodeIdSet == null || !includedNodeIdSet.contains(nodeId)) {
+                        filtered.add(batch);
+                    }
+                }
+            }
+        }
         batches.removeAll(filtered);
         return filtered;
     }
@@ -241,7 +263,7 @@ public class OutgoingBatches implements Serializable {
         });
         for (NodeChannel nodeChannel : channels) {
             long extractPeriodMillis = nodeChannel.getExtractPeriodMillis();
-            Date lastExtractedTime = nodeChannel.getLastExtractTime();
+            Date lastExtractedTime = nodeChannel.getLastExtractTime(NodeChannelControl.ALL);
             if ((extractPeriodMillis < 1)
                     || (lastExtractedTime == null)
                     || (Calendar.getInstance().getTimeInMillis() - lastExtractedTime.getTime() >= extractPeriodMillis)) {

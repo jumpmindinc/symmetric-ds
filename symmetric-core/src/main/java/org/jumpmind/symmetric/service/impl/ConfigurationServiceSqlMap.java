@@ -30,7 +30,7 @@ public class ConfigurationServiceSqlMap extends AbstractSqlMap {
         super(platform, replacementTokens);
         // @formatter:off
         
-        putSql("updateNodeChannelLastExtractTime", "update $(node_channel_ctl) set last_extract_time=? where channel_id=? and node_id=?");
+        putSql("updateNodeChannelLastExtractTime", "update $(node_channel_ctl) set last_extract_time=? where channel_id=? and node_id=? and target_node_id='ALL'");
 
         putSql("selectDataEventActionsByIdSql",
                 " select data_event_action from $(node_group_link) where         "
@@ -90,7 +90,7 @@ public class ConfigurationServiceSqlMap extends AbstractSqlMap {
           + "  order by c.processing_order asc, c.channel_id                                                   ");
     
         putSql("selectNodeChannelControlSql", 
-                  " select channel_id, last_extract_time, suspend_enabled, ignore_enabled   "
+                  " select target_node_id, channel_id, last_extract_time, suspend_enabled, ignore_enabled   "
                   + "  from $(node_channel_ctl) where node_id = ?   "
                   + "  order by channel_id                                ");
 
@@ -130,12 +130,12 @@ public class ConfigurationServiceSqlMap extends AbstractSqlMap {
               + "  from $(node_group_channel_wnd) where node_group_id=? and channel_id=?   ");
 
         putSql("insertNodeChannelControlSql", ""
-                + "insert into $(node_channel_ctl) (node_id, channel_id,                         "
-                + "  suspend_enabled, ignore_enabled,last_extract_time) values (?, ?, ?, ?, ?)   ");
+                + "insert into $(node_channel_ctl) (node_id, target_node_id, channel_id,         "
+                + "  suspend_enabled, ignore_enabled,last_extract_time) values (?, ?, ?, ?, ?, ?)");
 
         putSql("updateNodeChannelControlSql",
-               "update $(node_channel_ctl) set                                                              "
-             + "  suspend_enabled=?, ignore_enabled=?, last_extract_time=? where node_id=? and channel_id=? ");
+               "update $(node_channel_ctl) set                                                                                   "
+             + "  suspend_enabled=?, ignore_enabled=?, last_extract_time=? where node_id=? and target_node_id=? and channel_id=? ");
 
         putSql("getRegistrationRedirectSql",
             "select registrant_external_id, registration_node_id from $(registration_redirect)");

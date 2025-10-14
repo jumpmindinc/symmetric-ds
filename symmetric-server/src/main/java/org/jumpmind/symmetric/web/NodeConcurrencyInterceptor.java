@@ -163,6 +163,8 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
         HttpServletResponse httpResponse = (HttpServletResponse) resp;
         ChannelMap suspendIgnoreChannels = configurationService.getSuspendIgnoreChannelLists(nodeId);
         httpResponse.setHeader(WebConstants.SUSPENDED_CHANNELS, suspendIgnoreChannels.getSuspendChannelsAsString());
+        httpResponse.setHeader(WebConstants.UNSUSPENDED_CHANNELS, suspendIgnoreChannels.getUnsuspendChannelsAsString());
         httpResponse.setHeader(WebConstants.IGNORED_CHANNELS, suspendIgnoreChannels.getIgnoreChannelsAsString());
+        httpResponse.setHeader(WebConstants.UNIGNORED_CHANNELS, suspendIgnoreChannels.getUnignoreChannelsAsString());
     }
 }
