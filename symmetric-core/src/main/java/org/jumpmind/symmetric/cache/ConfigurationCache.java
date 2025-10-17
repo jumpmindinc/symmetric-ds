@@ -60,6 +60,16 @@ public class ConfigurationCache {
         this.configurationService = engine.getConfigurationService();
     }
 
+    public List<NodeChannel> getNodeChannels() {
+        List<NodeChannel> nodeChannelList = new ArrayList<NodeChannel>();
+        if (nodeChannelCache != null) {
+            for (List<NodeChannel> cachedNodeChannelList : nodeChannelCache.values()) {
+                nodeChannelList.addAll(cachedNodeChannelList);
+            }
+        }
+        return nodeChannelList;
+    }
+
     public List<NodeChannel> getNodeChannels(String nodeId) {
         if (nodeId == null) {
             return new ArrayList<NodeChannel>(0);

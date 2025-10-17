@@ -41,6 +41,7 @@ import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.NetworkedNode;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.model.NodeChannelControl;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.model.TriggerRouter;
@@ -98,6 +99,17 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
                  */
                 routeNodeTables(nodeIds, columnValues, rootNetworkedNode, me, routingContext,
                         dataMetaData, possibleTargetNodes, initialLoad);
+            } else if (tableMatches(dataMetaData, TableConstants.SYM_NODE_CHANNEL_CTL)) {
+                String sourceNodeId = columnValues.get("NODE_ID");
+                String targetNodeId = columnValues.get("TARGET_NODE_ID");
+                boolean targetingAll = targetNodeId.equals(NodeChannelControl.ALL);
+                for (Node nodeThatMayBeRoutedTo : possibleTargetNodes) {
+                    if (notRestClient(nodeThatMayBeRoutedTo)
+                            && (targetingAll || nodeThatMayBeRoutedTo.getNodeId().equals(sourceNodeId))
+                            || nodeThatMayBeRoutedTo.getNodeId().equals(targetNodeId)) {
+                        nodeIds.add(nodeThatMayBeRoutedTo.getNodeId());
+                    }
+                }
             } else if (tableMatches(dataMetaData, TableConstants.SYM_TABLE_RELOAD_REQUEST)
                     || tableMatches(dataMetaData, TableConstants.SYM_TABLE_RELOAD_STATUS)
                     || tableMatches(dataMetaData, TableConstants.SYM_COMPARE_REQUEST)

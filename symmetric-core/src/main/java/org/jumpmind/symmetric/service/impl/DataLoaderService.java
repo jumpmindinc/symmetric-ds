@@ -267,13 +267,9 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                 ChannelMap suspendIgnoreChannels = configurationService
                         .getSuspendIgnoreChannelLists(remote.getNodeId());
                 requestProperties.put(WebConstants.SUSPENDED_CHANNELS,
-                        suspendIgnoreChannels.getSuspendChannelsAsString());
-                requestProperties.put(WebConstants.UNSUSPENDED_CHANNELS,
-                        suspendIgnoreChannels.getUnsuspendChannelsAsString());
+                        suspendIgnoreChannels.getSuspendChannelsAsString(local.getNodeId()));
                 requestProperties.put(WebConstants.IGNORED_CHANNELS,
-                        suspendIgnoreChannels.getIgnoreChannelsAsString());
-                requestProperties.put(WebConstants.UNIGNORED_CHANNELS,
-                        suspendIgnoreChannels.getUnignoreChannelsAsString());
+                        suspendIgnoreChannels.getIgnoreChannelsAsString(local.getNodeId()));
                 requestProperties.put(WebConstants.CHANNEL_QUEUE, status.getQueue());
                 transport = transportManager.getPullTransport(remote, local,
                         localSecurity.getNodePassword(), requestProperties,

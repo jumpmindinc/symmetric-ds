@@ -27,6 +27,7 @@ import java.util.Map;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.ChannelMap;
 import org.jumpmind.symmetric.model.NodeChannel;
+import org.jumpmind.symmetric.model.NodeChannelControl;
 import org.jumpmind.symmetric.model.NodeGroup;
 import org.jumpmind.symmetric.model.NodeGroupChannelWindow;
 import org.jumpmind.symmetric.model.NodeGroupLink;
@@ -77,13 +78,15 @@ public interface IConfigurationService {
 
     public void saveNodeChannelControl(NodeChannel channel, boolean reloadChannels);
 
+    public void saveNodeChannelControl(NodeChannelControl nodeChannelControl);
+
     public void updateLastExtractTime(NodeChannel channel);
 
     public void deleteChannel(Channel channel);
 
     public void deleteAllChannels();
 
-    public void deleteNodeChannelControl(String nodeId, String channelId);
+    public void deleteNodeChannelControl(String nodeId, String targetNodeId, String channelId);
 
     public List<NodeGroupChannelWindow> getNodeGroupChannelWindows(String nodeGroupId, String channelId);
 
@@ -96,6 +99,8 @@ public interface IConfigurationService {
     public List<NodeChannel> getNodeChannels(String nodeId, boolean refreshExtractMillis);
 
     public List<NodeChannel> getNodeChannelsFromDb(String nodeId);
+
+    public List<NodeChannel> getAllNodeChannelsFromCache(boolean suspendedOnly);
 
     public NodeChannel getNodeChannel(String channelId, boolean refreshExtractMillis);
 

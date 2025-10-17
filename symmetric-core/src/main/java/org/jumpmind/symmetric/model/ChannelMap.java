@@ -20,17 +20,15 @@
  */
 package org.jumpmind.symmetric.model;
 
-import java.lang.reflect.Type;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
-import com.google.gson.reflect.TypeToken;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * 
@@ -42,8 +40,6 @@ public class ChannelMap {
     public static final String CHANNELS_UNIGNORE = "Unignored-Channels";
     private String channelQueue;
     private final Map<String, Map<String, Set<String>>> map = new HashMap<String, Map<String, Set<String>>>();
-    private final Type mapType = new TypeToken<Map<String, Set<String>>>() {
-    }.getType();
 
     public ChannelMap() {
         map.put(CHANNELS_SUSPEND, new TreeMap<String, Set<String>>());
@@ -74,52 +70,48 @@ public class ChannelMap {
         }
     }
 
-    public void addSuspendChannels(String suspends) {
-        addChannels(CHANNELS_SUSPEND, suspends);
+    public void addSuspendChannels(String targetNodeId, String suspends) {
+        addChannels(CHANNELS_SUSPEND, targetNodeId, suspends);
     }
 
-    public void addUnsuspendChannels(String unsuspends) {
-        addChannels(CHANNELS_UNSUSPEND, unsuspends);
+    public void addIgnoreChannels(String targetNodeId, String ignores) {
+        addChannels(CHANNELS_IGNORE, targetNodeId, ignores);
     }
 
-    public void addIgnoreChannels(String ignores) {
-        addChannels(CHANNELS_IGNORE, ignores);
-    }
-
-    public void addUnignoreChannels(String unignores) {
-        addChannels(CHANNELS_UNIGNORE, unignores);
-    }
-
-    private void addChannels(String key, String channels) {
+    private void addChannels(String key, String targetNodeId, String channels) {
         if (channels != null) {
-            try {
-                map.get(key).putAll(new Gson().fromJson(channels, mapType));
-            } catch (JsonSyntaxException e) {
-                for (String channel : Arrays.asList(channels.split(","))) {
-                    map.get(key).put(channel, Collections.singleton(NodeChannelControl.ALL));
-                }
+            Map<String, Set<String>> channelMap = map.get(key);
+            for (String channel : channels.split(",")) {
+                channelMap.put(channel, Collections.singleton(targetNodeId));
             }
         }
     }
 
-    public String getSuspendChannelsAsString() {
-        return getChannelsAsString(CHANNELS_SUSPEND);
+    public String getSuspendChannelsAsString(String targetNodeId) {
+        return getChannelsAsString(CHANNELS_SUSPEND, targetNodeId);
     }
 
-    public String getUnsuspendChannelsAsString() {
-        return getChannelsAsString(CHANNELS_UNSUSPEND);
+    public String getIgnoreChannelsAsString(String targetNodeId) {
+        return getChannelsAsString(CHANNELS_IGNORE, targetNodeId);
     }
 
-    public String getIgnoreChannelsAsString() {
-        return getChannelsAsString(CHANNELS_IGNORE);
-    }
-
-    public String getUnignoreChannelsAsString() {
-        return getChannelsAsString(CHANNELS_UNIGNORE);
-    }
-
-    private String getChannelsAsString(String key) {
-        return new Gson().toJson(map.get(key), mapType);
+    private String getChannelsAsString(String key, String targetNodeId) {
+        Set<String> channelIdSet = new HashSet<String>();
+        Map<String, Set<String>> includedChannelMap = map.get(key);
+        Map<String, Set<String>> excludedChannelMap = map.get(key.equals(CHANNELS_SUSPEND) ? CHANNELS_UNSUSPEND : CHANNELS_UNIGNORE);
+        for (Entry<String, Set<String>> channelEntry : includedChannelMap.entrySet()) {
+            String channelId = channelEntry.getKey();
+            Set<String> includedTargetNodeIdSet = channelEntry.getValue();
+            if (includedTargetNodeIdSet.contains(targetNodeId)) {
+                channelIdSet.add(channelId);
+            } else if (includedTargetNodeIdSet.contains(NodeChannelControl.ALL)) {
+                Set<String> excludedTargetNodeIdSet = excludedChannelMap.get(channelId);
+                if (excludedTargetNodeIdSet == null || !excludedTargetNodeIdSet.contains(targetNodeId)) {
+                    channelIdSet.add(channelId);
+                }
+            }
+        }
+        return StringUtils.join(channelIdSet, ",");
     }
 
     public Map<String, Set<String>> getSuspendChannels() {

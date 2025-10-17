@@ -84,6 +84,8 @@ public interface ICacheManager {
 
     public void flushTargetNodesCache();
 
+    public List<NodeChannel> getAllNodeChannels();
+
     public List<NodeChannel> getNodeChannels(String nodeId);
 
     public long getNodeChannelCacheTime();

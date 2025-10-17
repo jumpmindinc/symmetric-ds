@@ -96,9 +96,7 @@ public class WebConstants {
     public static final String DEPLOYMENT_TYPE = "deploymentType";
     public static final String SECURITY_TOKEN = "securityToken";
     public static final String SUSPENDED_CHANNELS = "Suspended-Channels";
-    public static final String UNSUSPENDED_CHANNELS = "Unsuspended-Channels";
     public static final String IGNORED_CHANNELS = "Ignored-Channels";
-    public static final String UNIGNORED_CHANNELS = "Unignored-Channels";
     public static final String BATCH_TO_SEND_COUNT = "Batch-To-Send-Count";
     public static final String CHANNEL_QUEUE = "threadChannel";
     public static final String CONFIG_VERSION = "configVersion";

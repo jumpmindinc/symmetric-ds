@@ -86,10 +86,8 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
             return;
         }
         ChannelMap map = new ChannelMap();
-        map.addSuspendChannels(req.getHeader(WebConstants.SUSPENDED_CHANNELS));
-        map.addUnsuspendChannels(req.getHeader(WebConstants.UNSUSPENDED_CHANNELS));
-        map.addIgnoreChannels(req.getHeader(WebConstants.IGNORED_CHANNELS));
-        map.addUnignoreChannels(req.getHeader(WebConstants.UNIGNORED_CHANNELS));
+        map.addSuspendChannels(nodeId, req.getHeader(WebConstants.SUSPENDED_CHANNELS));
+        map.addIgnoreChannels(nodeId, req.getHeader(WebConstants.IGNORED_CHANNELS));
         map.setChannelQueue(req.getHeader(WebConstants.CHANNEL_QUEUE));
         // pull out headers and pass to pull() method
         handlePull(nodeId, req.getRemoteHost(), req.getRemoteAddr(), res.getOutputStream(), req.getHeader(WebConstants.HEADER_ACCEPT_CHARSET), res, map);
