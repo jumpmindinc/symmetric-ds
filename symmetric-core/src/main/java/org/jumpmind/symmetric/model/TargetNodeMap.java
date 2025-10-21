@@ -27,6 +27,9 @@ import java.util.Set;
 import java.util.TreeMap;
 
 public class TargetNodeMap {
+    /**
+     * Each entry maps a channel ID to a set of target node IDs for which the channel is (un)suspended or (un)ignored
+     */
     private Map<String, Set<String>> map = new TreeMap<String, Set<String>>();
 
     public int size() {
