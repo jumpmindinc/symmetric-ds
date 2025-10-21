@@ -435,7 +435,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     @Override
     public void saveNodeChannelControl(NodeChannel nodeChannel, boolean reloadChannels) {
         for (NodeChannelControl nodeChannelControl : nodeChannel.getNodeChannelControlMap().values()) {
-            saveNodeChannelControl(nodeChannelControl);
+            saveNodeChannelControl(nodeChannelControl, false);
         }
         if (reloadChannels) {
             clearCache();
@@ -443,7 +443,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public void saveNodeChannelControl(NodeChannelControl nodeChannelControl) {
+    public void saveNodeChannelControl(NodeChannelControl nodeChannelControl, boolean reloadChannels) {
         if (0 >= sqlTemplate.update(getSql("updateNodeChannelControlSql"),
                 new Object[] { nodeChannelControl.isSuspendEnabled() ? 1 : 0,
                         nodeChannelControl.isIgnoreEnabled() ? 1 : 0, nodeChannelControl.getLastExtractTime(),
@@ -453,6 +453,9 @@ public class ConfigurationService extends AbstractService implements IConfigurat
                     new Object[] { nodeChannelControl.getNodeId(), nodeChannelControl.getTargetNodeId(),
                             nodeChannelControl.getChannelId(), nodeChannelControl.isSuspendEnabled() ? 1 : 0,
                             nodeChannelControl.isIgnoreEnabled() ? 1 : 0, nodeChannelControl.getLastExtractTime() });
+        }
+        if (reloadChannels) {
+            clearCache();
         }
     }
 

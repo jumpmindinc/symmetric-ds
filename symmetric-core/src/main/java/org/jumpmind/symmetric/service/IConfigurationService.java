@@ -78,7 +78,7 @@ public interface IConfigurationService {
 
     public void saveNodeChannelControl(NodeChannel channel, boolean reloadChannels);
 
-    public void saveNodeChannelControl(NodeChannelControl nodeChannelControl);
+    public void saveNodeChannelControl(NodeChannelControl nodeChannelControl, boolean reloadChannels);
 
     public void updateLastExtractTime(NodeChannel channel);
 
