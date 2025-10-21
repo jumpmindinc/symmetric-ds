@@ -121,7 +121,7 @@ import org.jumpmind.symmetric.io.stage.StagingFileLock;
 import org.jumpmind.symmetric.io.stage.StagingLowFreeSpace;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.ChannelMapWrapper;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.ExtractRequest;
 import org.jumpmind.symmetric.model.ExtractRequest.ExtractStatus;
@@ -333,7 +333,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     private List<OutgoingBatch> filterBatchesForExtraction(OutgoingBatches batches,
-            ChannelMap suspendIgnoreChannelsList, String queue, Node targetNode) {
+            ChannelMapWrapper suspendIgnoreChannelsList, String queue, Node targetNode) {
         if (parameterService.is(ParameterConstants.FILE_SYNC_ENABLE)) {
             List<Channel> fileSyncChannels = configurationService.getFileSyncChannels();
             for (Channel channel : fileSyncChannels) {
@@ -397,9 +397,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         OutgoingBatches batches = outgoingBatchService.getOutgoingBatches(targetNode.getNodeId(),
                 false);
         if (batches.containsBatches()) {
-            ChannelMap channelMap = configurationService.getSuspendIgnoreChannelLists(targetNode
-                    .getNodeId());
-            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, channelMap, null, targetNode);
+            ChannelMapWrapper channelMapWrapper = configurationService
+                    .getSuspendIgnoreChannelLists(targetNode.getNodeId());
+            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, channelMapWrapper, null, targetNode);
             if (activeBatches.size() > 0) {
                 IDdlBuilder builder = DdlBuilderFactory.getInstance().create(targetNode.getDatabaseType());
                 if (builder == null) {
@@ -454,9 +454,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         }
         OutgoingBatches batches = loadPendingBatches(extractInfo, targetNode, queue, transport);
         if (batches != null && batches.containsBatches()) {
-            ChannelMap channelMap = transport.getSuspendIgnoreChannelLists(configurationService, queue,
+            ChannelMapWrapper channelMapWrapper = transport.getSuspendIgnoreChannelLists(configurationService, queue,
                     targetNode);
-            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, channelMap, queue, targetNode);
+            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, channelMapWrapper, queue, targetNode);
             if (activeBatches.size() > 0) {
                 BufferedWriter writer = transport.openWriter();
                 IDataWriter dataWriter = new ProtocolDataWriter(nodeService.findIdentityNodeId(),

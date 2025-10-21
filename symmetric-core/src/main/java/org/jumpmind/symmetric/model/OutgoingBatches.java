@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.jumpmind.symmetric.common.Constants;
@@ -120,7 +119,13 @@ public class OutgoingBatches implements Serializable {
         return filtered;
     }
 
-    public List<OutgoingBatch> filterBatchesByChannelAndNode(Map<String, Set<String>> includedMap, Map<String, Set<String>> excludedMap) {
+    public List<OutgoingBatch> filterBatchesByChannelAndNode(TargetNodeMap includedMap, TargetNodeMap excludedMap) {
+        List<OutgoingBatch> filtered = getBatchesFilteredByChannelAndNode(includedMap, excludedMap);
+        batches.removeAll(filtered);
+        return filtered;
+    }
+
+    private List<OutgoingBatch> getBatchesFilteredByChannelAndNode(TargetNodeMap includedMap, TargetNodeMap excludedMap) {
         List<OutgoingBatch> filtered = new ArrayList<OutgoingBatch>();
         for (OutgoingBatch batch : batches) {
             String channelId = batch.getChannelId();
@@ -137,7 +142,6 @@ public class OutgoingBatches implements Serializable {
                 }
             }
         }
-        batches.removeAll(filtered);
         return filtered;
     }
 

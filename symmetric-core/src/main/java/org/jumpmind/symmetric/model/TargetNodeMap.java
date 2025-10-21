@@ -21,13 +21,13 @@
 package org.jumpmind.symmetric.model;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeMap;
 
-public class ChannelMap {
-    private Map<String, TargetNodeMap> map = new HashMap<String, TargetNodeMap>();
+public class TargetNodeMap {
+    private Map<String, Set<String>> map = new TreeMap<String, Set<String>>();
 
     public int size() {
         return map.size();
@@ -37,28 +37,28 @@ public class ChannelMap {
         return map.isEmpty();
     }
 
-    public boolean containsKey(Object channelCategory) {
-        return map.containsKey(channelCategory);
+    public boolean containsKey(Object channelId) {
+        return map.containsKey(channelId);
     }
 
-    public boolean containsValue(Object targetNodeMap) {
-        return map.containsValue(targetNodeMap);
+    public boolean containsValue(Object targetNodeIdSet) {
+        return map.containsValue(targetNodeIdSet);
     }
 
-    public TargetNodeMap get(Object channelCategory) {
-        return map.get(channelCategory);
+    public Set<String> get(Object channelId) {
+        return map.get(channelId);
     }
 
-    public TargetNodeMap put(String channelCategory, TargetNodeMap targetNodeMap) {
-        return map.put(channelCategory, targetNodeMap);
+    public Set<String> put(String channelId, Set<String> targetNodeIdSet) {
+        return map.put(channelId, targetNodeIdSet);
     }
 
-    public TargetNodeMap remove(Object channelCategory) {
-        return map.remove(channelCategory);
+    public Set<String> remove(Object channelId) {
+        return map.remove(channelId);
     }
 
-    public void putAll(ChannelMap channelMap) {
-        map.putAll(channelMap.map);
+    public void putAll(TargetNodeMap targetNodeMap) {
+        map.putAll(targetNodeMap.map);
     }
 
     public void clear() {
@@ -69,11 +69,11 @@ public class ChannelMap {
         return map.keySet();
     }
 
-    public Collection<TargetNodeMap> values() {
+    public Collection<Set<String>> values() {
         return map.values();
     }
 
-    public Set<Entry<String, TargetNodeMap>> entrySet() {
+    public Set<Entry<String, Set<String>>> entrySet() {
         return map.entrySet();
     }
 }

@@ -44,7 +44,7 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Channel;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.ChannelMapWrapper;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.NodeChannelControl;
@@ -52,6 +52,7 @@ import org.jumpmind.symmetric.model.NodeGroup;
 import org.jumpmind.symmetric.model.NodeGroupChannelWindow;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
+import org.jumpmind.symmetric.model.TargetNodeMap;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
@@ -653,28 +654,29 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public ChannelMap getSuspendIgnoreChannelLists(final String nodeId) {
-        ChannelMap map = new ChannelMap();
+    public ChannelMapWrapper getSuspendIgnoreChannelLists(final String nodeId) {
+        ChannelMapWrapper mapWrapper = new ChannelMapWrapper();
         List<NodeChannel> ncs = getNodeChannels(nodeId, true);
         if (ncs != null) {
             for (NodeChannel nc : ncs) {
                 String channelId = nc.getChannelId();
                 for (NodeChannelControl ncc : nc.getNodeChannelControlMap().values()) {
-                    Map<String, Set<String>> nccMap = Collections.singletonMap(channelId, Collections.singleton(ncc.getTargetNodeId()));
+                    TargetNodeMap targetNodeMap = new TargetNodeMap();
+                    targetNodeMap.put(channelId, Collections.singleton(ncc.getTargetNodeId()));
                     if (ncc.isSuspendEnabled()) {
-                        map.addSuspendChannels(nccMap);
+                        mapWrapper.addSuspendChannels(targetNodeMap);
                     } else {
-                        map.addUnsuspendChannels(nccMap);
+                        mapWrapper.addUnsuspendChannels(targetNodeMap);
                     }
                     if (ncc.isIgnoreEnabled()) {
-                        map.addIgnoreChannels(nccMap);
+                        mapWrapper.addIgnoreChannels(targetNodeMap);
                     } else {
-                        map.addUnignoreChannels(nccMap);
+                        mapWrapper.addUnignoreChannels(targetNodeMap);
                     }
                 }
             }
         }
-        return map;
+        return mapWrapper;
     }
 
     @Override
@@ -721,7 +723,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public ChannelMap getSuspendIgnoreChannelLists() {
+    public ChannelMapWrapper getSuspendIgnoreChannelLists() {
         return getSuspendIgnoreChannelLists(nodeService.findIdentityNodeId());
     }
 

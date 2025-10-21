@@ -100,16 +100,7 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
                 routeNodeTables(nodeIds, columnValues, rootNetworkedNode, me, routingContext,
                         dataMetaData, possibleTargetNodes, initialLoad);
             } else if (tableMatches(dataMetaData, TableConstants.SYM_NODE_CHANNEL_CTL)) {
-                String sourceNodeId = columnValues.get("NODE_ID");
-                String targetNodeId = columnValues.get("TARGET_NODE_ID");
-                boolean targetingAll = targetNodeId.equals(NodeChannelControl.ALL);
-                for (Node nodeThatMayBeRoutedTo : possibleTargetNodes) {
-                    if (notRestClient(nodeThatMayBeRoutedTo)
-                            && (targetingAll || nodeThatMayBeRoutedTo.getNodeId().equals(sourceNodeId))
-                            || nodeThatMayBeRoutedTo.getNodeId().equals(targetNodeId)) {
-                        nodeIds.add(nodeThatMayBeRoutedTo.getNodeId());
-                    }
-                }
+                routeNodeChannelControlTable(nodeIds, columnValues, possibleTargetNodes);
             } else if (tableMatches(dataMetaData, TableConstants.SYM_TABLE_RELOAD_REQUEST)
                     || tableMatches(dataMetaData, TableConstants.SYM_TABLE_RELOAD_STATUS)
                     || tableMatches(dataMetaData, TableConstants.SYM_COMPARE_REQUEST)
@@ -302,6 +293,19 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
                 if (dataMetaData.getData().getDataEventType() == DataEventType.INSERT) {
                     nodeIds.remove(nodeIdForRecordBeingRouted);
                 }
+            }
+        }
+    }
+
+    protected void routeNodeChannelControlTable(Set<String> nodeIds, Map<String, String> columnValues, Set<Node> possibleTargetNodes) {
+        String sourceNodeId = columnValues.get("NODE_ID");
+        String targetNodeId = columnValues.get("TARGET_NODE_ID");
+        boolean targetingAll = targetNodeId.equals(NodeChannelControl.ALL);
+        for (Node nodeThatMayBeRoutedTo : possibleTargetNodes) {
+            if (notRestClient(nodeThatMayBeRoutedTo)
+                    && (targetingAll || nodeThatMayBeRoutedTo.getNodeId().equals(sourceNodeId))
+                    || nodeThatMayBeRoutedTo.getNodeId().equals(targetNodeId)) {
+                nodeIds.add(nodeThatMayBeRoutedTo.getNodeId());
             }
         }
     }

@@ -23,7 +23,7 @@ package org.jumpmind.symmetric.transport;
 import java.io.BufferedWriter;
 import java.io.OutputStream;
 
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.ChannelMapWrapper;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IConfigurationService;
 
@@ -43,5 +43,5 @@ public interface IOutgoingTransport {
      * 
      * @param targetNode
      */
-    public ChannelMap getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode);
+    public ChannelMapWrapper getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode);
 }

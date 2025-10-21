@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -119,6 +120,20 @@ public class OutgoingBatchesTest {
             assertTrue(b.getChannelId().equals("testChannel2") || b.getChannelId().equals("testChannel3")
                     || b.getChannelId().equals("testChannel4"));
         }
+        batches = buildSampleBatches("testChannel", 5);
+        TargetNodeMap includedMap = new TargetNodeMap();
+        TargetNodeMap excludedMap = new TargetNodeMap();
+        excludedMap.put("testChannel1", Collections.singleton(nodeIds[0]));
+        batches.filterBatchesByChannelAndNode(includedMap, excludedMap);
+        assertEquals(24, batches.getBatches().size());
+        batches = buildSampleBatches("testChannel", 5);
+        excludedMap.put("testChannel2", Collections.singleton(NodeChannelControl.ALL));
+        batches.filterBatchesByChannelAndNode(includedMap, excludedMap);
+        assertEquals(19, batches.getBatches().size());
+        batches = buildSampleBatches("testChannel", 5);
+        includedMap.put("testChannel2", Set.of(nodeIds[0], nodeIds[1]));
+        batches.filterBatchesByChannelAndNode(includedMap, excludedMap);
+        assertEquals(21, batches.getBatches().size());
     }
 
     @Test

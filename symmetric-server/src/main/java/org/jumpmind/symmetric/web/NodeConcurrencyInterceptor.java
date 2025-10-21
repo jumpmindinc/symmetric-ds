@@ -28,7 +28,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.ChannelMapWrapper;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.INodeService;
@@ -162,7 +162,7 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
 
     protected void buildSuspendIgnoreResponseHeaders(final String sourceNodeId, final String targetNodeId, final ServletResponse resp) {
         HttpServletResponse httpResponse = (HttpServletResponse) resp;
-        ChannelMap suspendIgnoreChannels = configurationService.getSuspendIgnoreChannelLists(sourceNodeId);
+        ChannelMapWrapper suspendIgnoreChannels = configurationService.getSuspendIgnoreChannelLists(sourceNodeId);
         httpResponse.setHeader(WebConstants.SUSPENDED_CHANNELS, suspendIgnoreChannels.getSuspendChannelsAsString(targetNodeId));
         httpResponse.setHeader(WebConstants.IGNORED_CHANNELS, suspendIgnoreChannels.getIgnoreChannelsAsString(targetNodeId));
     }
