@@ -432,14 +432,17 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
 "declare @data xml\n" +
 "declare @eventType nvarchar(128)\n" +
 "declare @tableName nvarchar(255)\n" +
+"declare @externalData nvarchar(255)\n" +
 "declare @histId int\n" +
 "declare @channelId nvarchar(128)\n" +
 "set @data = eventdata()\n" +
 "if (@data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)') not like '$(prefixName)%') begin\n" +
+"  set @externalData = @data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)')\n" +
 "  set @eventType = @data.value('(/EVENT_INSTANCE/EventType)[1]', 'nvarchar(128)')\n" +
 "  set @tableName = '$(prefixName)_node'\n" +
 "  if (@eventType like '%_TABLE')\n" +
-"    set @tableName = @data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)')\n" +
+"    if (@eventType not like '%_DROP_TABLE')\n" +
+"      set @tableName = @data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)')\n" +
 "  if (@eventType like '%_TRIGGER' or @eventType like '%_INDEX')\n" +
 "    set @tableName = @data.value('(/EVENT_INSTANCE/TargetObjectName)[1]', 'nvarchar(128)')\n" +
 "  select @histId = max(trigger_hist_id) from " + defaultCatalog + "$(defaultSchema)$(prefixName)_trigger_hist where source_table_name = @tableName and inactive_time is null\n" +
@@ -448,10 +451,10 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
 "    if (@channelId is null)\n" +
 "      set @channelId = 'config'\n" +
 "    insert into " + defaultCatalog + "$(defaultSchema)$(prefixName)_data\n" +
-"    (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
+"    (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time, external_data)\n" +
 "    values (@tableName, '" + DataEventType.SQL.getCode() + "', @histId,\n" +
 "    '\"delimiter " + delimiter + ";' + CHAR(13) + char(10) + replace(replace(@data.value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'nvarchar(max)'),'\\','\\\\'),'\"','\\\"') + '\",ddl',\n" +
-"    @channelId, " + defaultCatalog + "$(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression() + ")\n" +
+"    @channelId, " + defaultCatalog + "$(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression() + ", @externalData)\n" +
 "  end\n" +
 "end\n" + "---- go");
         
@@ -468,13 +471,17 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
 "declare @data xml\n" +
 "declare @eventType nvarchar(128)\n" +
 "declare @tableName nvarchar(255)\n" +
+"declare @externalData nvarchar(255)\n" +
 "declare @histId int\n" +
 "declare @channelId nvarchar(128)\n" +
 "set @data = eventdata()\n" +
 "if (@data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)') not like '$(prefixName)%') begin\n" +
+"  set @externalData = @data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)')\n" +
 "  set @eventType = @data.value('(/EVENT_INSTANCE/EventType)[1]', 'nvarchar(128)')\n" +
+"  set @tableName = '$(prefixName)_node'\n" +
 "  if (@eventType like '%_TABLE')\n" +
-"    set @tableName = @data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)')\n" +
+"    if (@eventType not like '%_DROP_TABLE')\n" +
+"      set @tableName = @data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)')\n" +
 "  if (@eventType like '%_TRIGGER' or @eventType like '%_INDEX')\n" +
 "    set @tableName = @data.value('(/EVENT_INSTANCE/TargetObjectName)[1]', 'nvarchar(128)')\n" +
 "  if (@tableName is not null)\n" +
@@ -486,10 +493,10 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
 "  if (@channelId is null)\n" +
 "    set @channelId = 'config'\n" +
 "  insert into " + defaultCatalog + "$(defaultSchema)$(prefixName)_data\n" +
-"  (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
+"  (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time, external_data)\n" +
 "  values (@tableName, '" + DataEventType.SQL.getCode() + "', @histId,\n" +
 "  '\"delimiter " + delimiter + ";' + CHAR(13) + char(10) + replace(replace(@data.value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'nvarchar(max)'),'\\','\\\\'),'\"','\\\"') + '\",ddl',\n" +
-"  @channelId, " + defaultCatalog + "$(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression() + ")\n" +
+"  @channelId, " + defaultCatalog + "$(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression() + ", @externalData)\n" +
 "end\n" + "---- go");
         
         sqlTemplates.put("initialLoadSqlTemplate" ,
