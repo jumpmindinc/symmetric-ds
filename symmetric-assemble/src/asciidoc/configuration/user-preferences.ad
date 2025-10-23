@@ -1,0 +1,6 @@
+
+=== User Preferences
+
+User preferences determine how the SymmetricDS Pro web console behaves across all nodes. They can be set for an individual user or for all users (using a user ID of "ALL"). Filters are available to hide user preferences that haven't been set and to narrow them down by user ID, category, and key. By default, only users with the admin role can see the User Preferences screen.
+
+image::images/user-preferences.png[]
