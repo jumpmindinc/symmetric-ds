@@ -171,7 +171,7 @@ public class NodeChannel implements IModelObject {
     }
 
     public void setLastExtractTime(String targetNodeId, Date lastExtractedTime) {
-        getNodeChannelControl(targetNodeId, true).setLastExtractTime(lastExtractedTime);
+        getNodeChannelControl(targetNodeId).setLastExtractTime(lastExtractedTime);
     }
 
     public Date getLastExtractTime(String targetNodeId) {
@@ -182,7 +182,7 @@ public class NodeChannel implements IModelObject {
     }
 
     public void setIgnoreEnabled(String targetNodeId, boolean ignored) {
-        getNodeChannelControl(targetNodeId, true).setIgnoreEnabled(ignored);
+        getNodeChannelControl(targetNodeId).setIgnoreEnabled(ignored);
     }
 
     public void setProcessingOrder(int priority) {
@@ -209,14 +209,14 @@ public class NodeChannel implements IModelObject {
     }
 
     public void setSuspendEnabled(String targetNodeId, boolean suspended) {
-        getNodeChannelControl(targetNodeId, true).setSuspendEnabled(suspended);
+        getNodeChannelControl(targetNodeId).setSuspendEnabled(suspended);
     }
 
     public Channel getChannel() {
         return channel;
     }
 
-    public NodeChannelControl getNodeChannelControl(String targetNodeId, boolean createIfAbsent) {
+    public NodeChannelControl getNodeChannelControl(String targetNodeId) {
         if (nodeChannelControlMap.containsKey(targetNodeId)) {
             return nodeChannelControlMap.get(targetNodeId);
         }
