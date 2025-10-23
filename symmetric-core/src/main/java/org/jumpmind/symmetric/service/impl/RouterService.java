@@ -920,6 +920,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                             // Missing some nodes from the cache
                             // Clear cache and try again
                             engine.getNodeService().flushNodeGroupCache();
+                            context.getAvailableNodes().put(triggerRouter, null);
                             nodeIds = CollectionUtils.intersection(targetNodeIdsList, toNodeIds(findAvailableNodes(triggerRouter, context)));
                         }
                         if (nodeIds.size() == 0 && log.isDebugEnabled()) {
