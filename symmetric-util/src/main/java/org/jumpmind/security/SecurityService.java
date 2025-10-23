@@ -83,6 +83,7 @@ public class SecurityService implements ISecurityService {
     protected SecurityService() {
     }
 
+    @Override
     public synchronized void init() {
     }
 
@@ -218,6 +219,11 @@ public class SecurityService implements ISecurityService {
     }
 
     @Override
+    public void installSslCert(KeyStore.PrivateKeyEntry entry, String alias) {
+        throw new NotImplementedException();
+    }
+
+    @Override
     public KeyStore.PrivateKeyEntry createDefaultSslCert(String host) {
         throw new NotImplementedException();
     }
@@ -283,6 +289,7 @@ public class SecurityService implements ISecurityService {
         }
     }
 
+    @Override
     public String encrypt(String plainText) {
         try {
             checkThatKeystoreFileExists();
@@ -296,6 +303,7 @@ public class SecurityService implements ISecurityService {
         }
     }
 
+    @Override
     public String decrypt(String encText) {
         try {
             checkThatKeystoreFileExists();
@@ -309,14 +317,17 @@ public class SecurityService implements ISecurityService {
         }
     }
 
+    @Override
     public String obfuscate(String plainText) {
         return new String(Base64.encodeBase64(rot13(plainText).getBytes(Charset.defaultCharset())), Charset.defaultCharset());
     }
 
+    @Override
     public String unobfuscate(String obfText) {
         return new String(rot13(new String(Base64.decodeBase64(obfText.getBytes(Charset.defaultCharset())), Charset.defaultCharset())));
     }
 
+    @Override
     public String unobfuscateIfNeeded(String systemPropertyName) {
         String value = System.getProperty(systemPropertyName);
         if (value != null && value.startsWith(SecurityConstants.PREFIX_OBF)) {
@@ -340,6 +351,7 @@ public class SecurityService implements ISecurityService {
         return sb.toString();
     }
 
+    @Override
     public Cipher getCipher(int mode) throws Exception {
         initializeSecretKey();
         Cipher cipher = Cipher.getInstance(secretKey.getAlgorithm());
@@ -435,6 +447,7 @@ public class SecurityService implements ISecurityService {
         saveKeyStore(ks, password);
     }
 
+    @Override
     public String nextSecureHexString(int len) {
         if (len <= 0) {
             throw new IllegalArgumentException("length must be positive");
