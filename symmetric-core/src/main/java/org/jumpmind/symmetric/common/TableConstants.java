@@ -82,6 +82,8 @@ public class TableConstants {
     public static final String SYM_CONSOLE_USER_HIST = "console_user_hist";
     public static final String SYM_CONSOLE_EVENT = "console_event";
     public static final String SYM_CONSOLE_TABLE_STATS = "console_table_stats";
+    public static final String SYM_DESIGN_DIAGRAM = "design_diagram";
+    public static final String SYM_DIAGRAM_GROUP = "diagram_group";
     public static final String SYM_EXTENSION = "extension";
     public static final String SYM_MONITOR = "monitor";
     public static final String SYM_MONITOR_EVENT = "monitor_event";
@@ -203,6 +205,15 @@ public class TableConstants {
         for (String table : getConfigTablesExcludedFromExport()) {
             tables.remove(getTableName(tablePrefix, table));
         }
+        return tables;
+    }
+
+    /**
+     * Set of configuration tables that have been removed.
+     */
+    public static final Set<String> getRemovedConfigTables(String tablePrefix) {
+        Set<String> tables = new HashSet<String>();
+        addPrefixToTableNames(tables, tablePrefix, SYM_DESIGN_DIAGRAM, SYM_DIAGRAM_GROUP);
         return tables;
     }
 

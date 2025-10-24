@@ -417,6 +417,26 @@ final public class SymmetricUtils {
         return foundGroup;
     }
 
+    public static String removeInvalidTablesFromImportedSql(String tablePrefix, String sql) throws IOException {
+        return removeInvalidTablesFromImportedSql(tablePrefix, new SqlScriptReader(new StringReader(sql)));
+    }
+
+    public static String removeInvalidTablesFromImportedSql(String tablePrefix, SqlScriptReader sqlReader) throws IOException {
+        try {
+            StringBuilder sqlBuilder = new StringBuilder();
+            String[] invalidTableNames = TableConstants.getRemovedConfigTables(tablePrefix).toArray(String[]::new);
+            String sqlStatement;
+            while ((sqlStatement = sqlReader.readSqlStatement()) != null) {
+                if (!Strings.CI.containsAny(sqlStatement, invalidTableNames)) {
+                    sqlBuilder.append(sqlStatement).append(";").append(System.lineSeparator());
+                }
+            }
+            return sqlBuilder.toString();
+        } finally {
+            sqlReader.close();
+        }
+    }
+
     public static Certificate[] getCertificates(String urlString)
             throws MalformedURLException, IOException, NoSuchAlgorithmException, KeyManagementException {
         URL url = new URL(urlString);
