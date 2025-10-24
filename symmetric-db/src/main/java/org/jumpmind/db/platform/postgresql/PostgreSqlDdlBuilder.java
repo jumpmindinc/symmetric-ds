@@ -605,21 +605,22 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
     @Override
     protected void printDefaultValue(String defaultValue, Column column, StringBuilder ddl) {
         int typeCode = column.getMappedTypeCode();
-        if (defaultValue != null &&
-                ((defaultValue.endsWith("::uuid") && Types.OTHER == typeCode) ||
-                        (defaultValue.contains("::") && Types.ARRAY == typeCode))) {
-            ddl.append(defaultValue);
+        String mappedDefaultValue = mapDefaultValue(defaultValue, column);
+        if (mappedDefaultValue != null &&
+                ((mappedDefaultValue.endsWith("::uuid") && Types.OTHER == typeCode) ||
+                        (mappedDefaultValue.contains("::") && Types.ARRAY == typeCode))) {
+            ddl.append(mappedDefaultValue);
         } else if (Types.BOOLEAN == typeCode || Types.BIT == typeCode) {
             boolean isNull = false;
-            if (defaultValue == null || defaultValue.equalsIgnoreCase("null")) {
+            if (mappedDefaultValue == null || mappedDefaultValue.equalsIgnoreCase("null")) {
                 isNull = true;
             }
             if (!isNull) {
                 ddl.append(databaseInfo.getValueQuoteToken());
-                ddl.append(escapeStringValue(defaultValue));
+                ddl.append(escapeStringValue(mappedDefaultValue));
                 ddl.append(databaseInfo.getValueQuoteToken());
             } else {
-                ddl.append(defaultValue);
+                ddl.append(mappedDefaultValue);
             }
         } else {
             super.printDefaultValue(defaultValue, column, ddl);
