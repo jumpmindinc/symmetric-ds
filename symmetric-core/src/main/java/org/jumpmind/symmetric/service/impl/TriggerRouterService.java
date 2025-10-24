@@ -607,6 +607,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_OUTGOING_ERROR).equals(tableName) ||
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_USER).equals(tableName) ||
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_USER_HIST).equals(tableName) ||
+                TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_USER_PREFERENCE).equals(tableName) ||
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE).equals(tableName) ||
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE_PRIVILEGE).equals(tableName)) {
             trigger.setChannelId(Constants.CHANNEL_SYSTEM);
