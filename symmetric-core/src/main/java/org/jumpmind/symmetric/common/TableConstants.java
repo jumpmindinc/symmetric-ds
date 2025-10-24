@@ -96,6 +96,11 @@ public class TableConstants {
     public static final String SYM_COMPARE_STATUS = "compare_status";
     public static final String SYM_COMPARE_TABLE_STATUS = "compare_table_status";
     protected static boolean hasConsoleSchema = TableConstants.class.getResourceAsStream("/console-schema.xml") != null;
+    /**
+     * Historical list of decommissioned SymmetricDS tables. Used to filter configuration files produced by older versions. See getRemovedConfigTables:
+     */
+    public static final String SYM_DESIGN_DIAGRAM = "design_diagram";
+    public static final String SYM_DIAGRAM_GROUP = "diagram_group";
 
     /**
      * Set of all SymmetricDS configuration and runtime tables.
@@ -206,6 +211,15 @@ public class TableConstants {
         for (String table : getConfigTablesExcludedFromExport()) {
             tables.remove(getTableName(tablePrefix, table));
         }
+        return tables;
+    }
+
+    /**
+     * Set of configuration tables that have been decommissioned and should be removed when importing configuration from older versions.
+     */
+    public static final Set<String> getRemovedConfigTables(String tablePrefix) {
+        Set<String> tables = new HashSet<String>();
+        addPrefixToTableNames(tables, tablePrefix, SYM_DESIGN_DIAGRAM, SYM_DIAGRAM_GROUP);
         return tables;
     }
 
