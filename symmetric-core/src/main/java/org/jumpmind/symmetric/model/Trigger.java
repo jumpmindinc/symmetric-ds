@@ -66,6 +66,7 @@ public class Trigger implements IModelObject, Cloneable {
     private boolean useCaptureOldData = true;
     private boolean useHandleKeyUpdates = true;
     private boolean streamRow = false;
+    private boolean captureChangesOnly = false;
     private String nameForInsertTrigger;
     private String nameForUpdateTrigger;
     private String nameForDeleteTrigger;
@@ -614,6 +615,14 @@ public class Trigger implements IModelObject, Cloneable {
 
     public void setStreamRow(boolean streamRow) {
         this.streamRow = streamRow;
+    }
+
+    public boolean isCaptureChangesOnly() {
+        return captureChangesOnly;
+    }
+
+    public void setCaptureChangesOnly(boolean captureChangesOnly) {
+        this.captureChangesOnly = captureChangesOnly;
     }
 
     public String getTimeBasedCaptureColumn() {
