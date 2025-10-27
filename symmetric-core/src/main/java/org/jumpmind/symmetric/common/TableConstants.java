@@ -80,6 +80,7 @@ public class TableConstants {
     public static final String SYM_CONSOLE_ROLE = "console_role";
     public static final String SYM_CONSOLE_ROLE_PRIVILEGE = "console_role_privilege";
     public static final String SYM_CONSOLE_USER_HIST = "console_user_hist";
+    public static final String SYM_CONSOLE_USER_PREFERENCE = "console_user_preference";
     public static final String SYM_CONSOLE_EVENT = "console_event";
     public static final String SYM_CONSOLE_TABLE_STATS = "console_table_stats";
     public static final String SYM_EXTENSION = "extension";
@@ -95,6 +96,11 @@ public class TableConstants {
     public static final String SYM_COMPARE_STATUS = "compare_status";
     public static final String SYM_COMPARE_TABLE_STATUS = "compare_table_status";
     protected static boolean hasConsoleSchema = TableConstants.class.getResourceAsStream("/console-schema.xml") != null;
+    /**
+     * Historical list of decommissioned SymmetricDS tables. Used to filter configuration files produced by older versions. See getRemovedConfigTables:
+     */
+    public static final String SYM_DESIGN_DIAGRAM = "design_diagram";
+    public static final String SYM_DIAGRAM_GROUP = "diagram_group";
 
     /**
      * Set of all SymmetricDS configuration and runtime tables.
@@ -119,8 +125,8 @@ public class TableConstants {
      */
     public static final Set<String> getTablesForConsole(String tablePrefix) {
         Set<String> tables = new HashSet<String>();
-        addPrefixToTableNames(tables, tablePrefix, SYM_CONSOLE_EVENT, SYM_CONSOLE_USER, SYM_CONSOLE_USER_HIST, SYM_CONSOLE_ROLE,
-                SYM_CONSOLE_ROLE_PRIVILEGE, SYM_CONSOLE_TABLE_STATS, SYM_TABLE_GROUP, SYM_TABLE_GROUP_HIER,
+        addPrefixToTableNames(tables, tablePrefix, SYM_CONSOLE_EVENT, SYM_CONSOLE_USER, SYM_CONSOLE_USER_HIST, SYM_CONSOLE_USER_PREFERENCE,
+                SYM_CONSOLE_ROLE, SYM_CONSOLE_ROLE_PRIVILEGE, SYM_CONSOLE_TABLE_STATS, SYM_TABLE_GROUP, SYM_TABLE_GROUP_HIER,
                 SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS, SYM_COMPARE_TABLE_STATUS, SYM_MONITOR, SYM_MONITOR_EVENT, SYM_NOTIFICATION);
         return tables;
     }
@@ -143,7 +149,7 @@ public class TableConstants {
                 SYM_EXTRACT_REQUEST, SYM_INCOMING_ERROR, SYM_OUTGOING_ERROR);
         if (hasConsoleSchema) {
             addPrefixToTableNames(tables, tablePrefix, SYM_CONSOLE_ROLE, SYM_CONSOLE_USER, SYM_CONSOLE_ROLE_PRIVILEGE, SYM_CONSOLE_USER_HIST,
-                    SYM_TABLE_GROUP, SYM_TABLE_GROUP_HIER, SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS, SYM_COMPARE_TABLE_STATUS,
+                    SYM_CONSOLE_USER_PREFERENCE, SYM_TABLE_GROUP, SYM_TABLE_GROUP_HIER, SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS, SYM_COMPARE_TABLE_STATUS,
                     SYM_MONITOR, SYM_MONITOR_EVENT, SYM_NOTIFICATION);
         }
         return tables;
@@ -164,7 +170,7 @@ public class TableConstants {
         addPrefixToTableNames(map, tablePrefix, "3.14.0", SYM_TABLE_RELOAD_STATUS, SYM_EXTRACT_REQUEST, SYM_TABLE_GROUP, SYM_TABLE_GROUP_HIER);
         addPrefixToTableNames(map, tablePrefix, "3.15.0", SYM_OUTGOING_ERROR, SYM_INCOMING_ERROR, SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS,
                 SYM_COMPARE_TABLE_STATUS);
-        addPrefixToTableNames(map, tablePrefix, "3.17.0", SYM_NODE_CHANNEL_CTL);
+        addPrefixToTableNames(map, tablePrefix, "3.17.0", SYM_NODE_CHANNEL_CTL, SYM_CONSOLE_USER_PREFERENCE);
         return map;
     }
 
@@ -192,8 +198,9 @@ public class TableConstants {
      */
     public static final String[] getConfigTablesExcludedFromExport() {
         return new String[] { SYM_NODE, SYM_NODE_SECURITY, SYM_NODE_IDENTITY, SYM_NODE_HOST, SYM_FILE_SNAPSHOT, SYM_CONSOLE_USER, SYM_CONSOLE_ROLE,
-                SYM_CONSOLE_ROLE_PRIVILEGE, SYM_CONSOLE_USER_HIST, SYM_MONITOR_EVENT, SYM_TABLE_RELOAD_REQUEST, SYM_TABLE_RELOAD_STATUS, SYM_EXTRACT_REQUEST,
-                SYM_OUTGOING_ERROR, SYM_INCOMING_ERROR, SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS, SYM_COMPARE_TABLE_STATUS };
+                SYM_CONSOLE_ROLE_PRIVILEGE, SYM_CONSOLE_USER_HIST, SYM_CONSOLE_USER_PREFERENCE, SYM_MONITOR_EVENT, SYM_TABLE_RELOAD_REQUEST,
+                SYM_TABLE_RELOAD_STATUS,
+                SYM_EXTRACT_REQUEST, SYM_OUTGOING_ERROR, SYM_INCOMING_ERROR, SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS, SYM_COMPARE_TABLE_STATUS };
     }
 
     /**
@@ -204,6 +211,15 @@ public class TableConstants {
         for (String table : getConfigTablesExcludedFromExport()) {
             tables.remove(getTableName(tablePrefix, table));
         }
+        return tables;
+    }
+
+    /**
+     * Set of configuration tables that have been decommissioned and should be removed when importing configuration from older versions.
+     */
+    public static final Set<String> getRemovedConfigTables(String tablePrefix) {
+        Set<String> tables = new HashSet<String>();
+        addPrefixToTableNames(tables, tablePrefix, SYM_DESIGN_DIAGRAM, SYM_DIAGRAM_GROUP);
         return tables;
     }
 

@@ -70,6 +70,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.sql.SqlScript;
+import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
@@ -504,7 +505,9 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                             engine.getParameterService().getNodeGroupId()));
                     System.exit(1);
                 }
-                SqlScript script = new SqlScript(url, getSymmetricEngine().getDatabasePlatform().getSqlTemplate());
+                String sql = SymmetricUtils.removeInvalidTablesFromImportedSql(getSymmetricEngine().getTablePrefix(),
+                        new SqlScriptReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8.name())));
+                SqlScript script = new SqlScript(sql, getSymmetricEngine().getDatabasePlatform().getSqlTemplate(), true, null);
                 script.execute();
             }
         } catch (Exception e) {
