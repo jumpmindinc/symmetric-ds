@@ -1103,8 +1103,7 @@ public class DataService extends AbstractService implements IDataService {
                                         .getActiveTriggerHistories(new Trigger(reloadRequest.getTriggerId(), null)));
                             }
                         }
-                        boolean sortByFk = !(isFullLoad && parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false) &&
-                                reloadRequests != null && reloadRequests.size() > 0 && reloadRequests.get(0).isCreateTable());
+                        boolean sortByFk = true;
                         Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId = triggerRouterService
                                 .fillTriggerRoutersByHistIdAndSortHist(sourceNode.getNodeGroupId(),
                                         targetNode.getNodeGroupId(), targetNode.getExternalId(), triggerHistories, triggerRouters, sortByFk);

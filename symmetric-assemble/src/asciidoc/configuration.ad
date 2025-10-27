@@ -40,6 +40,7 @@ include::configuration/parameters.ad[]
 
 ifdef::pro[]
 include::configuration/users.ad[]
+include::configuration/user-preferences.ad[]
 include::configuration/roles.ad[]
 include::configuration/sso.ad[]
 include::configuration/license-key.ad[]

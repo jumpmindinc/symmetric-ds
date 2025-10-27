@@ -148,12 +148,20 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
             String maxLength = (String) values.get("COLUMN_SIZE");
             if (isNotBlank(maxLength)) {
                 Integer size = Integer.valueOf(maxLength);
-                if (isVersion2 && size.intValue() == 1000000000 && column.getMappedTypeCode() == Types.VARCHAR) {
-                    column.setMappedTypeCode(Types.LONGVARCHAR);
-                    column.setMappedType("LONGVARCHAR");
-                    column.findPlatformColumn(platform.getName()).setType("LONGVARCHAR");
-                    column.setSize(size.toString());
-                    column.findPlatformColumn(platform.getName()).setSize(size);
+                if (isVersion2 && size.intValue() == 1000000000) {
+                    if (column.getMappedTypeCode() == Types.VARCHAR || column.getMappedTypeCode() == Types.VARBINARY) {
+                        if (column.getMappedTypeCode() == Types.VARCHAR) {
+                            column.setMappedTypeCode(Types.LONGVARCHAR);
+                            column.setMappedType("LONGVARCHAR");
+                            column.findPlatformColumn(platform.getName()).setType("LONGVARCHAR");
+                        } else {
+                            column.setMappedTypeCode(Types.LONGVARBINARY);
+                            column.setMappedType("LONGVARBINARY");
+                            column.findPlatformColumn(platform.getName()).setType("LONGVARBINARY");
+                        }
+                        column.setSize(size.toString());
+                        column.findPlatformColumn(platform.getName()).setSize(size);
+                    }
                 }
             }
         }

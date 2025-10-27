@@ -273,18 +273,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             for (int i = 0; i < triggerRouters.size(); i++) {
                 TriggerRouter triggerRouter = triggerRouters.get(i);
                 TriggerHistory triggerHistory = triggerHistories.get(i);
-                Table table = symmetricDialect.getPlatform().getTableFromCache(triggerHistory.getSourceCatalogName(), triggerHistory.getSourceSchemaName(),
-                        triggerHistory.getSourceTableName(), false);
-                String initialLoadSql = "1=1 order by ";
-                String quote = platform.getDdlBuilder().getDatabaseInfo().getDelimiterToken();
-                Column[] pkColumns = table.getPrimaryKeyColumns();
-                for (int j = 0; j < pkColumns.length; j++) {
-                    if (j > 0) {
-                        initialLoadSql += ", ";
-                    }
-                    initialLoadSql += quote + pkColumns[j].getName() + quote;
-                }
-                if (!triggerRouter.getTrigger().getSourceTableName().endsWith(TableConstants.SYM_NODE_IDENTITY)) {
+                String tableName = triggerRouter.getTrigger().getSourceTableName();
+                if (!tableName.endsWith(TableConstants.SYM_NODE_IDENTITY)) {
+                    String initialLoadSql = buildInitialLoadSqlForConfigurationTable(triggerHistory, tableName);
                     initialLoadEvents.add(new SelectFromTableEvent(targetNode, triggerRouter, triggerHistory, initialLoadSql));
                 } else {
                     Data data = new Data(1, null, targetNode.getNodeId(), DataEventType.INSERT, triggerHistory.getSourceTableName(), null, triggerHistory,
@@ -320,6 +311,24 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         TableConstants.SYM_NODE_SECURITY).equalsIgnoreCase(sourceTableName)) {
             sql.append(String.format(" where created_at_node_id != '%s' or created_at_node_id is null", targetNode.getNodeId()));
         }
+    }
+
+    private String buildInitialLoadSqlForConfigurationTable(TriggerHistory triggerHistory, String tableName) {
+        String initialLoadSql = Constants.ALWAYS_TRUE_CONDITION;
+        if (!tableName.endsWith(TableConstants.SYM_CONSOLE_ROLE)) {
+            initialLoadSql += " order by ";
+            String quote = platform.getDdlBuilder().getDatabaseInfo().getDelimiterToken();
+            Table table = symmetricDialect.getPlatform().getTableFromCache(triggerHistory.getSourceCatalogName(),
+                    triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(), false);
+            Column[] pkColumns = table.getPrimaryKeyColumns();
+            for (int j = 0; j < pkColumns.length; j++) {
+                if (j > 0) {
+                    initialLoadSql += ", ";
+                }
+                initialLoadSql += quote + pkColumns[j].getName() + quote;
+            }
+        }
+        return initialLoadSql;
     }
 
     private List<OutgoingBatch> filterBatchesForExtraction(OutgoingBatches batches,
@@ -2160,12 +2169,14 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 boolean success = false;
                 Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
                 if (trigger != null) {
-                    List<TriggerHistory> histories = triggerRouterService.getActiveTriggerHistories(triggerRouterService.getTriggerById(request
-                            .getTriggerId()));
+                    Channel channel = configurationService.getChannel(trigger.getReloadChannelId());
+                    if (channel.isFileSyncFlag()) {
+                        return;
+                    }
+                    List<TriggerHistory> histories = triggerRouterService.getActiveTriggerHistories(trigger);
                     if (histories != null && histories.size() > 0) {
                         for (TriggerHistory history : histories) {
-                            Channel channel = configurationService.getChannel(trigger.getReloadChannelId());
-                            if (!channel.isFileSyncFlag() && history.getSourceTableName().equalsIgnoreCase(request.getTableName())) {
+                            if (history.getSourceTableName().equalsIgnoreCase(request.getTableName())) {
                                 Data data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
                                         history, trigger.getChannelId(), String.valueOf(request.getLoadId()), null);
                                 data.setNodeList(targetNode.getNodeId());
@@ -2180,9 +2191,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                         dataService.insertData(data);
                                     }
                                 }
+                                success = true;
+                                break;
                             }
                         }
-                        success = true;
                     }
                 }
                 if (!success) {
