@@ -43,14 +43,11 @@ import java.math.BigDecimal;
 
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.Strings;
-import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.Database;
@@ -251,12 +248,6 @@ public class ModelComparator {
                 // we have to use the target table here because the index might
                 // reference a new column
                 changes.add(new AddIndexChange(targetTable, targetIndex));
-            } else {
-                if (!new EqualsBuilder().append(new HashSet<IIndex>(Arrays.asList(targetIndex)), new HashSet<IIndex>(Arrays.asList(sourceIndex))).isEquals()) {
-                    log.info("Index {} needs to be modified (removed/created) for table {}", targetIndex.getName(), sourceTable.getName());
-                    changes.add(new RemoveIndexChange(sourceTable, sourceIndex));
-                    changes.add(new AddIndexChange(targetTable, targetIndex));
-                }
             }
         }
     }
