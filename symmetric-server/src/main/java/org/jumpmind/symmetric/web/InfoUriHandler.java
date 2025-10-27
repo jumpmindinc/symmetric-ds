@@ -59,7 +59,7 @@ public class InfoUriHandler extends AbstractUriHandler {
     public void handle(HttpServletRequest req, HttpServletResponse res) throws IOException,
             ServletException {
         res.setContentType("text/plain");
-        Node node = nodeService.findIdentity();
+        Node identity = nodeService.findIdentity();
         List<NodeGroupLink> nodeGroupLinks = configurationService.getNodeGroupLinks(true);
         Properties properties = new Properties();
         properties.setProperty(ParameterConstants.EXTERNAL_ID, parameterService.getExternalId());
@@ -69,30 +69,43 @@ public class InfoUriHandler extends AbstractUriHandler {
             Set<String> groups = new HashSet<String>();
             StringBuilder b = new StringBuilder();
             for (NodeGroupLink nodeGroupLink : nodeGroupLinks) {
-                if (nodeGroupLink.getSourceNodeGroupId().equals(node.getNodeGroupId())) {
+                if (nodeGroupLink.getSourceNodeGroupId().equals(identity.getNodeGroupId())) {
                     groups.add(nodeGroupLink.getTargetNodeGroupId());
-                } else if (nodeGroupLink.getTargetNodeGroupId().equals(node.getNodeGroupId())) {
+                } else if (nodeGroupLink.getTargetNodeGroupId().equals(identity.getNodeGroupId())) {
                     groups.add(nodeGroupLink.getSourceNodeGroupId());
                 }
+            }
+            if (parameterService.is(ParameterConstants.SHOW_PIPELINES_VIEW)) {
+                Set<String> occupiedGroupSet = new HashSet<String>();
+                List<Node> nodeList = nodeService.findAllNodes(true);
+                for (String group : groups) {
+                    for (Node node : nodeList) {
+                        if (node.getNodeGroupId().equals(group)) {
+                            occupiedGroupSet.add(group);
+                            break;
+                        }
+                    }
+                }
+                groups.removeAll(occupiedGroupSet);
             }
             for (String group : groups) {
                 b.append(group).append(",");
             }
             properties.setProperty(InfoConstants.NODE_GROUP_IDS, b.substring(0, b.length() > 0 ? b.length() - 1 : 0));
         }
-        if (node != null) {
-            properties.setProperty(InfoConstants.NODE_ID, node.getNodeId());
-            if (node.getDatabaseType() != null) {
-                properties.setProperty(InfoConstants.DATABASE_TYPE, node.getDatabaseType());
+        if (identity != null) {
+            properties.setProperty(InfoConstants.NODE_ID, identity.getNodeId());
+            if (identity.getDatabaseType() != null) {
+                properties.setProperty(InfoConstants.DATABASE_TYPE, identity.getDatabaseType());
             }
-            if (node.getDatabaseVersion() != null) {
-                properties.setProperty(InfoConstants.DATABASE_VERSION, node.getDatabaseVersion());
+            if (identity.getDatabaseVersion() != null) {
+                properties.setProperty(InfoConstants.DATABASE_VERSION, identity.getDatabaseVersion());
             }
-            if (node.getDeploymentType() != null) {
-                properties.setProperty(InfoConstants.DEPLOYMENT_TYPE, node.getDeploymentType());
+            if (identity.getDeploymentType() != null) {
+                properties.setProperty(InfoConstants.DEPLOYMENT_TYPE, identity.getDeploymentType());
             }
-            if (node.getSymmetricVersion() != null) {
-                properties.setProperty(InfoConstants.SYMMETRIC_VERSION, node.getSymmetricVersion());
+            if (identity.getSymmetricVersion() != null) {
+                properties.setProperty(InfoConstants.SYMMETRIC_VERSION, identity.getSymmetricVersion());
             }
         }
         properties.setProperty(InfoConstants.BULK_LOADER_ENABLED, String.valueOf(configurationService.isBulkLoaderEnabled()));

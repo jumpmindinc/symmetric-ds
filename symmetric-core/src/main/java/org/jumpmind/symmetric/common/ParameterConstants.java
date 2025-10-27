@@ -482,6 +482,7 @@ final public class ParameterConstants {
     public final static String SYNC_USE_READY_QUEUES = "sync.use.ready.queues";
     public final static String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
     public final static String MSSQL_BULK_LOAD_BCP_CODE_PAGE = "mssql.bulk.load.bcp.code.page";
+    public final static String SHOW_PIPELINES_VIEW = "console.show.pipelines.view";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;
