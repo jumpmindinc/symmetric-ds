@@ -2169,12 +2169,14 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 boolean success = false;
                 Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
                 if (trigger != null) {
-                    List<TriggerHistory> histories = triggerRouterService.getActiveTriggerHistories(triggerRouterService.getTriggerById(request
-                            .getTriggerId()));
+                    Channel channel = configurationService.getChannel(trigger.getReloadChannelId());
+                    if (channel.isFileSyncFlag()) {
+                        return;
+                    }
+                    List<TriggerHistory> histories = triggerRouterService.getActiveTriggerHistories(trigger);
                     if (histories != null && histories.size() > 0) {
                         for (TriggerHistory history : histories) {
-                            Channel channel = configurationService.getChannel(trigger.getReloadChannelId());
-                            if (!channel.isFileSyncFlag() && history.getSourceTableName().equalsIgnoreCase(request.getTableName())) {
+                            if (history.getSourceTableName().equalsIgnoreCase(request.getTableName())) {
                                 Data data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
                                         history, trigger.getChannelId(), String.valueOf(request.getLoadId()), null);
                                 data.setNodeList(targetNode.getNodeId());
@@ -2189,9 +2191,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                         dataService.insertData(data);
                                     }
                                 }
+                                success = true;
+                                break;
                             }
                         }
-                        success = true;
                     }
                 }
                 if (!success) {
