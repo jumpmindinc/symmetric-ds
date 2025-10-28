@@ -82,6 +82,7 @@ Stream LOBs:: Captures an empty placeholder for large object (LOB) data types wh
 Stream Row:: Captures only the primary key values when the trigger fires, which can reduce overhead for tables with wide data or many columns.  The data will be queried using the PK values when the batch is extracted.  This results in worse performance of synchronization, but it can be used when triggers for all columns won't install or when contention from triggers is too high.
 Capture Old Data:: Indicates whether this trigger should capture and send the old data, which is the previous state of the row before the change.  Enable this option if you need to access old data in custom trigger text, routing expression, or transform expression.  Otherwise, disable this option for better performance. 
 Handle Key Updates:: For SQL-Server and Sybase, enable this setting to capture changes to the primary key.  The trigger needs to do some additional work to handle changes to the primary key, so this setting is normally disabled. 
+Capture Changes Only:: When determining whether a data change has occurred or not, by default the triggers will record a change even if the data was updated to the same value(s) they were originally. For example, a data change will be captured if an update of one column in a row updated the value to the same value it already was. Enabling this setting forces a compare of old and new data. If old=new, then the change won't be recorded in the data capture table. This is currently supported by the following dialects: MySQL, Oracle, DB2, PostgreSQL, SQL Server. 
 External Select:: Specify a SQL select statement that returns a single row, single column result.  It will be used in the generated database trigger to populate the EXTERNAL_DATA field on the data table.
 Excluded Column Names:: Specify a comma-delimited list of columns that should not be synchronized from this table.  
 Included Column Names:: Specify a comma-delimited list of columns only should be synchronized from this table.  
@@ -121,9 +122,7 @@ endif::pro[]
 [TIP]
 .Capture Changed Data
 ====
-When determining whether a data change has occurred or not, by default the triggers will record a change even if the data was 
-updated to the same value(s) they were originally. For example, a data change will be captured if an update of one column 
-in a row updated the value to the same value it already was. There is a global property that allows you to override this behavior (defaults to false).
+There is a global property that when enabled, overrides the "Capture Changes Only" setting for all triggers. This property defaults to false.
 ----
 trigger.update.capture.changed.data.only.enabled=false
 ----
