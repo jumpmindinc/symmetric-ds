@@ -924,7 +924,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
 
     @Override
     final public String getDataHasChangedCondition(Trigger trigger) {
-        if (parameterService.is(ParameterConstants.TRIGGER_UPDATE_CAPTURE_CHANGED_DATA_ONLY)) {
+        if (trigger.isCaptureChangesOnly() || parameterService.is(ParameterConstants.TRIGGER_UPDATE_CAPTURE_CHANGED_DATA_ONLY)) {
             return getDbSpecificDataHasChangedCondition(trigger);
         } else {
             return Constants.ALWAYS_TRUE_CONDITION;

@@ -929,6 +929,7 @@
         <column name="use_capture_old_data" type="BOOLEANINT" size="1" required="true" default="1" description="Set this to 1 to capture old data.  Old data is used for conflict resolution and it also is used to calculate which columns have changed.  The software will only update changed columns when old data is captured."/>
         <column name="use_handle_key_updates" type="BOOLEANINT" size="1" required="true" default="1" description="Deprecated.  Allows handling of primary key updates (SQLServer dialect only)"/>
         <column name="stream_row" type="BOOLEANINT" size="1" required="true" default="0" description="Captures only the primary key when the trigger fires and creates a reload event to pull the full row during extraction."/>
+        <column name="capture_changes_only" type="BOOLEANINT" size="1" required="true" default="0" description="Set this to 1 to force a compare of old and new data. If old=new, then don’t record the change in the data capture table. This is currently supported by the following dialects: MySQL, Oracle, DB2, PostgreSQL, SQL Server." />
         <column name="time_based_column_name" type="VARCHAR" size="255" description="Only used for time-based capture nodes.  This will be the column to use as part of the time-based capture mining." />
         <column name="create_time" type="TIMESTAMP" required="true"  description="Timestamp when this entry was created." />
         <column name="last_update_by" type="VARCHAR" size="50"  description="The user who last updated this entry." />
