@@ -44,7 +44,7 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Channel;
-import org.jumpmind.symmetric.model.ChannelMapWrapper;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.NodeChannelControl;
@@ -52,7 +52,7 @@ import org.jumpmind.symmetric.model.NodeGroup;
 import org.jumpmind.symmetric.model.NodeGroupChannelWindow;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
-import org.jumpmind.symmetric.model.TargetNodeMap;
+import org.jumpmind.symmetric.model.ChannelNodesMap;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
@@ -537,7 +537,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
                                 Date extractTime = row.getDateTime("last_extract_time");
                                 NodeChannel nodeChannel = nodeChannelsMap.get(channelId);
                                 if (nodeChannel != null) {
-                                    nodeChannel.setLastExtractTime(NodeChannelControl.ALL, extractTime);
+                                    nodeChannel.setLastExtractTime(nodeId, extractTime);
                                 }
                                 return nodeChannelsMap;
                             };
@@ -654,29 +654,25 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public ChannelMapWrapper getSuspendIgnoreChannelLists(final String nodeId) {
-        ChannelMapWrapper mapWrapper = new ChannelMapWrapper();
-        List<NodeChannel> ncs = getNodeChannels(nodeId, true);
-        if (ncs != null) {
-            for (NodeChannel nc : ncs) {
+    public NodeChannels getSuspendIgnoreChannelLists(final String nodeId) {
+        NodeChannels nodeChannels = new NodeChannels();
+        List<NodeChannel> nodeChannelList = getNodeChannels(nodeId, true);
+        if (nodeChannelList != null) {
+            for (NodeChannel nc : nodeChannelList) {
                 String channelId = nc.getChannelId();
                 for (NodeChannelControl ncc : nc.getNodeChannelControlMap().values()) {
-                    TargetNodeMap targetNodeMap = new TargetNodeMap();
-                    targetNodeMap.put(channelId, Collections.singleton(ncc.getTargetNodeId()));
+                    ChannelNodesMap channelNodesMap = new ChannelNodesMap();
+                    channelNodesMap.put(channelId, Collections.singleton(ncc.getTargetNodeId()));
                     if (ncc.isSuspendEnabled()) {
-                        mapWrapper.addSuspendChannels(targetNodeMap);
-                    } else {
-                        mapWrapper.addUnsuspendChannels(targetNodeMap);
+                        nodeChannels.addSuspendChannels(channelNodesMap);
                     }
                     if (ncc.isIgnoreEnabled()) {
-                        mapWrapper.addIgnoreChannels(targetNodeMap);
-                    } else {
-                        mapWrapper.addUnignoreChannels(targetNodeMap);
+                        nodeChannels.addIgnoreChannels(channelNodesMap);
                     }
                 }
             }
         }
-        return mapWrapper;
+        return nodeChannels;
     }
 
     @Override
@@ -723,7 +719,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public ChannelMapWrapper getSuspendIgnoreChannelLists() {
+    public NodeChannels getSuspendIgnoreChannelLists() {
         return getSuspendIgnoreChannelLists(nodeService.findIdentityNodeId());
     }
 
@@ -736,9 +732,9 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     @Override
     public void updateLastExtractTime(NodeChannel channel) {
         if (sqlTemplate.update(getSql("updateNodeChannelLastExtractTime"),
-                channel.getLastExtractTime(NodeChannelControl.ALL), channel.getChannelId(), channel.getNodeId()) == 0) {
-            sqlTemplate.update(getSql("insertNodeChannelControlSql"), channel.getNodeId(), NodeChannelControl.ALL,
-                    channel.getChannelId(), 0, 0, channel.getLastExtractTime(NodeChannelControl.ALL));
+                channel.getLastExtractTime(channel.getNodeId()), channel.getChannelId(), channel.getNodeId(), channel.getNodeId()) == 0) {
+            sqlTemplate.update(getSql("insertNodeChannelControlSql"), channel.getNodeId(), channel.getNodeId(),
+                    channel.getChannelId(), 0, 0, channel.getLastExtractTime(channel.getNodeId()));
         }
     }
 

@@ -23,7 +23,7 @@ package org.jumpmind.symmetric.transport;
 import java.io.BufferedWriter;
 import java.io.OutputStream;
 
-import org.jumpmind.symmetric.model.ChannelMapWrapper;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IConfigurationService;
 
@@ -39,9 +39,10 @@ public interface IOutgoingTransport {
     public boolean isOpen();
 
     /**
-     * This returns a (combined) list of suspended or ignored channels. In addition, it will optionally do a reservation in the case of a Push request
+     * This returns a NodeChannels object containing two ChannelNodesMaps for suspended and ignored channels. In addition, it will optionally do a reservation
+     * in the case of a Push request.
      * 
      * @param targetNode
      */
-    public ChannelMapWrapper getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode);
+    public NodeChannels getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode);
 }

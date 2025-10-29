@@ -34,7 +34,7 @@ import java.util.Map;
 import org.jumpmind.symmetric.AbstractSymmetricEngine;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.BatchAck;
-import org.jumpmind.symmetric.model.ChannelMapWrapper;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.ProcessInfo;
@@ -91,7 +91,7 @@ public class InternalTransportManager extends AbstractTransportManager implement
             Map<String, String> requestProperties, String registrationUrl) throws IOException {
         final PipedOutputStream respOs = new PipedOutputStream();
         final PipedInputStream respIs = new PipedInputStream(respOs);
-        final ChannelMapWrapper suspendIgnoreChannels = symmetricEngine.getConfigurationService()
+        final NodeChannels suspendIgnoreChannels = symmetricEngine.getConfigurationService()
                 .getSuspendIgnoreChannelLists(remote.getNodeId());
         runAtClient(remote.getSyncUrl(), null, respOs, new IClientRunnable() {
             public void run(ISymmetricEngine engine, InputStream is, OutputStream os)

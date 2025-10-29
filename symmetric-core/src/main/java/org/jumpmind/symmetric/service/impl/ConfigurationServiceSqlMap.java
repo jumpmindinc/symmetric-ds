@@ -30,7 +30,7 @@ public class ConfigurationServiceSqlMap extends AbstractSqlMap {
         super(platform, replacementTokens);
         // @formatter:off
         
-        putSql("updateNodeChannelLastExtractTime", "update $(node_channel_ctl) set last_extract_time=? where channel_id=? and node_id=? and target_node_id='ALL'");
+        putSql("updateNodeChannelLastExtractTime", "update $(node_channel_ctl) set last_extract_time=? where channel_id=? and node_id=? and target_node_id=?");
 
         putSql("selectDataEventActionsByIdSql",
                 " select data_event_action from $(node_group_link) where         "

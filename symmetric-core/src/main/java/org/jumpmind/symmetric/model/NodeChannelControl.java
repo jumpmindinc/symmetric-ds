@@ -28,7 +28,6 @@ import java.util.Date;
  */
 public class NodeChannelControl implements Serializable {
     private static final long serialVersionUID = 1L;
-    public static final String ALL = "ALL";
     private String nodeId = null;
     private String targetNodeId = null;
     private String channelId = null;

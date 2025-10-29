@@ -26,9 +26,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
-public class TargetNodeMap {
+public class ChannelNodesMap {
     /**
-     * Each entry maps a channel ID to a set of target node IDs for which the channel is (un)suspended or (un)ignored
+     * Each entry maps a channel ID to a set of target node IDs for which the channel is suspended or ignored
      */
     private Map<String, Set<String>> map = new TreeMap<String, Set<String>>();
 
@@ -40,7 +40,7 @@ public class TargetNodeMap {
         return map.isEmpty();
     }
 
-    public boolean containsKey(Object channelId) {
+    public boolean containsChannelId(Object channelId) {
         return map.containsKey(channelId);
     }
 
@@ -48,7 +48,7 @@ public class TargetNodeMap {
         return map.containsValue(targetNodeIdSet);
     }
 
-    public Set<String> get(Object channelId) {
+    public Set<String> getByChannelId(Object channelId) {
         return map.get(channelId);
     }
 
@@ -56,19 +56,19 @@ public class TargetNodeMap {
         return map.put(channelId, targetNodeIdSet);
     }
 
-    public Set<String> remove(Object channelId) {
+    public Set<String> removeByChannelId(Object channelId) {
         return map.remove(channelId);
     }
 
-    public void putAll(TargetNodeMap targetNodeMap) {
-        map.putAll(targetNodeMap.map);
+    public void putAll(ChannelNodesMap channelNodesMap) {
+        map.putAll(channelNodesMap.map);
     }
 
     public void clear() {
         map.clear();
     }
 
-    public Set<String> keySet() {
+    public Set<String> channelIdSet() {
         return map.keySet();
     }
 

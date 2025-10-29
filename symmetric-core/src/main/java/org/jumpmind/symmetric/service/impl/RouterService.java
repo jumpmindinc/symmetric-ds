@@ -62,7 +62,6 @@ import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
-import org.jumpmind.symmetric.model.NodeChannelControl;
 import org.jumpmind.symmetric.model.NodeCommunication;
 import org.jumpmind.symmetric.model.NodeCommunication.CommunicationType;
 import org.jumpmind.symmetric.model.NodeGroupLink;
@@ -940,8 +939,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 DataMetaData dataMetaData = new DataMetaData(data, table, triggerRouter.getRouter(),
                         context.getChannel());
                 Collection<String> nodeIds = null;
-                if (!(context.getChannel().isIgnoreEnabled(NodeChannelControl.ALL) && !context.getChannel().isIgnoreDisabledForAnyTargetNode())
-                        && triggerRouter.isRouted(data.getDataEventType())) {
+                if (triggerRouter.isRouted(data.getDataEventType())) {
                     String targetNodeIds = data.getNodeList();
                     if (StringUtils.isNotBlank(targetNodeIds)) {
                         List<String> targetNodeIdsList = Arrays.asList(targetNodeIds.split(","));

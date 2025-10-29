@@ -345,17 +345,21 @@ public class NodeManagementService implements IBuiltInExtensionPoint, ISymmetric
     @ManagedOperationParameters({
             @ManagedOperationParameter(name = "ignore", description = "Set to true to enable and false to disable"),
             @ManagedOperationParameter(name = "channelId", description = "The channel id to enable or disable"),
-            @ManagedOperationParameter(name = "nodeGroupId", description = "The node group id for a node"),
-            @ManagedOperationParameter(name = "externalId", description = "The external id for a node") })
+            @ManagedOperationParameter(name = "nodeGroupId", description = "The node group id for the source node"),
+            @ManagedOperationParameter(name = "externalId", description = "The external id for the source node"),
+            @ManagedOperationParameter(name = "nodeGroupId", description = "The node group id for the target node"),
+            @ManagedOperationParameter(name = "externalId", description = "The external id for the target node") })
     public void ignoreNodeChannelForExternalId(boolean ignore, String channelId,
-            String nodeGroupId, String externalId) {
+            String nodeGroupId, String externalId, String targetNodeGroupId, String targetExternalId) {
         if (ignore) {
-            log.info("JMX is disabling the {} channel for the externalId of {} from the following engine: {} ", channelId, externalId, engine.getEngineName());
+            log.info("JMX is disabling the {} channel for the source externalId of {} and target externalId of {} from the following engine: {} ",
+                    channelId, externalId, targetExternalId, engine.getEngineName());
         } else {
-            log.info("JMX is enabling the {} channel for the externalId of {} from the following engine: {} ", channelId, externalId, engine.getEngineName());
+            log.info("JMX is enabling the {} channel for the source externalId of {} and target externalId of {} from the following engine: {} ",
+                    channelId, externalId, targetExternalId, engine.getEngineName());
         }
         engine.getNodeService().ignoreNodeChannelForExternalId(ignore, channelId, nodeGroupId,
-                externalId);
+                externalId, targetNodeGroupId, targetExternalId);
     }
 
     @ManagedOperation(description = "Open the registration for a node with the specified external id")

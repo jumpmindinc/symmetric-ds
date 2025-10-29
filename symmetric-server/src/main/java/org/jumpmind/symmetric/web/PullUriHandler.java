@@ -29,7 +29,7 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
-import org.jumpmind.symmetric.model.ChannelMapWrapper;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.model.OutgoingBatch;
@@ -85,26 +85,24 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
             ServletUtils.sendError(res, WebConstants.SC_BAD_REQUEST, "Node must be specified");
             return;
         }
-        ChannelMapWrapper mapWrapper = new ChannelMapWrapper();
-        mapWrapper.addSuspendChannels(nodeId, req.getHeader(WebConstants.SUSPENDED_CHANNELS));
-        mapWrapper.addIgnoreChannels(nodeId, req.getHeader(WebConstants.IGNORED_CHANNELS));
-        mapWrapper.setChannelQueue(req.getHeader(WebConstants.CHANNEL_QUEUE));
+        NodeChannels nodeChannels = new NodeChannels();
+        nodeChannels.addSuspendChannels(nodeId, req.getHeader(WebConstants.SUSPENDED_CHANNELS));
+        nodeChannels.addIgnoreChannels(nodeId, req.getHeader(WebConstants.IGNORED_CHANNELS));
+        nodeChannels.setChannelQueue(req.getHeader(WebConstants.CHANNEL_QUEUE));
         // pull out headers and pass to pull() method
         handlePull(nodeId, req.getRemoteHost(), req.getRemoteAddr(), res.getOutputStream(),
-                req.getHeader(WebConstants.HEADER_ACCEPT_CHARSET), res, mapWrapper);
+                req.getHeader(WebConstants.HEADER_ACCEPT_CHARSET), res, nodeChannels);
         log.debug("Pull completed for {} at remote address {}", nodeId, req.getRemoteAddr());
     }
 
     protected void handlePull(String nodeId, String remoteHost, String remoteAddress,
-            OutputStream outputStream, String encoding, HttpServletResponse res, ChannelMapWrapper mapWrapper) throws IOException {
+            OutputStream outputStream, String encoding, HttpServletResponse res, NodeChannels nodeChannels) throws IOException {
         NodeSecurity nodeSecurity = nodeService.findNodeSecurity(nodeId, true);
         long ts = System.currentTimeMillis();
         try {
-            ChannelMapWrapper remoteSuspendIgnoreChannelsList = configurationService.getSuspendIgnoreChannelLists();
-            mapWrapper.addSuspendChannels(remoteSuspendIgnoreChannelsList.getSuspendChannels());
-            mapWrapper.addUnsuspendChannels(remoteSuspendIgnoreChannelsList.getUnsuspendChannels());
-            mapWrapper.addIgnoreChannels(remoteSuspendIgnoreChannelsList.getIgnoreChannels());
-            mapWrapper.addUnignoreChannels(remoteSuspendIgnoreChannelsList.getUnignoreChannels());
+            NodeChannels remoteSuspendIgnoreChannelsList = configurationService.getSuspendIgnoreChannelLists();
+            nodeChannels.addSuspendChannels(remoteSuspendIgnoreChannelsList.getSuspendChannels());
+            nodeChannels.addIgnoreChannels(remoteSuspendIgnoreChannelsList.getIgnoreChannels());
             if (nodeSecurity != null) {
                 String createdAtNodeId = nodeSecurity.getCreatedAtNodeId();
                 if (nodeSecurity.isRegistrationEnabled() &&
@@ -113,16 +111,16 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
                             remoteAddress, outputStream, null, null, false);
                 } else {
                     IOutgoingTransport outgoingTransport = createOutgoingTransport(outputStream, encoding,
-                            mapWrapper);
+                            nodeChannels);
                     ProcessInfo processInfo = statisticManager.newProcessInfo(new ProcessInfoKey(
-                            nodeService.findIdentityNodeId(), mapWrapper.getChannelQueue(), nodeId, ProcessType.PULL_HANDLER_EXTRACT));
+                            nodeService.findIdentityNodeId(), nodeChannels.getChannelQueue(), nodeId, ProcessType.PULL_HANDLER_EXTRACT));
                     try {
                         Node targetNode = nodeService.findNode(nodeId, true);
-                        if (Constants.QUEUE_DEFAULT.equals(mapWrapper.getChannelQueue())) {
+                        if (Constants.QUEUE_DEFAULT.equals(nodeChannels.getChannelQueue())) {
                             addReadyQueuesHeader(nodeId, res);
                         }
                         List<OutgoingBatch> batchList = dataExtractorService.extract(processInfo, targetNode,
-                                mapWrapper.getChannelQueue(), outgoingTransport);
+                                nodeChannels.getChannelQueue(), outgoingTransport);
                         logDataReceivedFromPull(targetNode, batchList, processInfo, remoteHost);
                         if (processInfo.getStatus() != ProcessStatus.ERROR) {
                             addPendingBatchCounts(targetNode.getNodeId(), res);
@@ -142,7 +140,7 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
             statisticManager.incrementNodesPulled(1);
             statisticManager.incrementTotalNodesPulledTime(System.currentTimeMillis() - ts);
         }
-        log.debug("Pull completed for {} at remote address {} for queue {}", nodeId, remoteAddress, mapWrapper.getChannelQueue());
+        log.debug("Pull completed for {} at remote address {} for queue {}", nodeId, remoteAddress, nodeChannels.getChannelQueue());
     }
 
     private void addReadyQueuesHeader(String nodeId, HttpServletResponse res) {

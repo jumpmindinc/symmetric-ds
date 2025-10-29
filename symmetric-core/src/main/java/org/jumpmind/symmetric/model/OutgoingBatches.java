@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
@@ -119,27 +120,23 @@ public class OutgoingBatches implements Serializable {
         return filtered;
     }
 
-    public List<OutgoingBatch> filterBatchesByChannelAndNode(TargetNodeMap includedMap, TargetNodeMap excludedMap) {
-        List<OutgoingBatch> filtered = getBatchesFilteredByChannelAndNode(includedMap, excludedMap);
+    public List<OutgoingBatch> filterSuspendedBatches(NodeChannels nodeChannels) {
+        List<OutgoingBatch> filtered = getFilteredBatches(nodeChannels::isBatchSuspended);
         batches.removeAll(filtered);
         return filtered;
     }
 
-    private List<OutgoingBatch> getBatchesFilteredByChannelAndNode(TargetNodeMap includedMap, TargetNodeMap excludedMap) {
+    public List<OutgoingBatch> filterIgnoredBatches(NodeChannels nodeChannels) {
+        List<OutgoingBatch> filtered = getFilteredBatches(nodeChannels::isBatchIgnored);
+        batches.removeAll(filtered);
+        return filtered;
+    }
+
+    private List<OutgoingBatch> getFilteredBatches(Function<OutgoingBatch, Boolean> filterFunction) {
         List<OutgoingBatch> filtered = new ArrayList<OutgoingBatch>();
         for (OutgoingBatch batch : batches) {
-            String channelId = batch.getChannelId();
-            Set<String> excludedNodeIdSet = excludedMap.get(channelId);
-            if (excludedNodeIdSet != null) {
-                String nodeId = batch.getNodeId();
-                if (excludedNodeIdSet.contains(nodeId)) {
-                    filtered.add(batch);
-                } else if (excludedNodeIdSet.contains(NodeChannelControl.ALL)) {
-                    Set<String> includedNodeIdSet = includedMap.get(channelId);
-                    if (includedNodeIdSet == null || !includedNodeIdSet.contains(nodeId)) {
-                        filtered.add(batch);
-                    }
-                }
+            if (filterFunction.apply(batch)) {
+                filtered.add(batch);
             }
         }
         return filtered;
@@ -267,7 +264,7 @@ public class OutgoingBatches implements Serializable {
         });
         for (NodeChannel nodeChannel : channels) {
             long extractPeriodMillis = nodeChannel.getExtractPeriodMillis();
-            Date lastExtractedTime = nodeChannel.getLastExtractTime(NodeChannelControl.ALL);
+            Date lastExtractedTime = nodeChannel.getLastExtractTime(nodeChannel.getNodeId());
             if ((extractPeriodMillis < 1)
                     || (lastExtractedTime == null)
                     || (Calendar.getInstance().getTimeInMillis() - lastExtractedTime.getTime() >= extractPeriodMillis)) {

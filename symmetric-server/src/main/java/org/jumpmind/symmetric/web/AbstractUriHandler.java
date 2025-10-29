@@ -29,7 +29,7 @@ import java.util.zip.GZIPInputStream;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.jumpmind.symmetric.model.ChannelMapWrapper;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.jumpmind.symmetric.transport.internal.InternalOutgoingTransport;
@@ -82,12 +82,12 @@ abstract public class AbstractUriHandler implements IUriHandler {
     }
 
     protected IOutgoingTransport createOutgoingTransport(OutputStream outputStream, String encoding,
-            ChannelMapWrapper mapWrapper) throws IOException {
-        return new InternalOutgoingTransport(outputStream, mapWrapper, encoding);
+            NodeChannels nodeChannels) throws IOException {
+        return new InternalOutgoingTransport(outputStream, nodeChannels, encoding);
     }
 
     protected IOutgoingTransport createOutgoingTransport(OutputStream outputStream, String encoding) throws IOException {
-        return new InternalOutgoingTransport(outputStream, new ChannelMapWrapper(), encoding);
+        return new InternalOutgoingTransport(outputStream, new NodeChannels(), encoding);
     }
 
     public void setEnabled(boolean enabled) {

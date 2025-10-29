@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -41,7 +42,6 @@ import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.NetworkedNode;
 import org.jumpmind.symmetric.model.Node;
-import org.jumpmind.symmetric.model.NodeChannelControl;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.model.TriggerRouter;
@@ -300,12 +300,12 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
     protected void routeNodeChannelControlTable(Set<String> nodeIds, Map<String, String> columnValues, Set<Node> possibleTargetNodes) {
         String sourceNodeId = columnValues.get("NODE_ID");
         String targetNodeId = columnValues.get("TARGET_NODE_ID");
-        boolean targetingAll = targetNodeId.equals(NodeChannelControl.ALL);
-        for (Node nodeThatMayBeRoutedTo : possibleTargetNodes) {
-            if (notRestClient(nodeThatMayBeRoutedTo)
-                    && (targetingAll || nodeThatMayBeRoutedTo.getNodeId().equals(sourceNodeId))
-                    || nodeThatMayBeRoutedTo.getNodeId().equals(targetNodeId)) {
-                nodeIds.add(nodeThatMayBeRoutedTo.getNodeId());
+        if (!Strings.CS.equals(sourceNodeId, targetNodeId)) {
+            for (Node nodeThatMayBeRoutedTo : possibleTargetNodes) {
+                if (notRestClient(nodeThatMayBeRoutedTo) && (nodeThatMayBeRoutedTo.getNodeId().equals(sourceNodeId))
+                        || nodeThatMayBeRoutedTo.getNodeId().equals(targetNodeId)) {
+                    nodeIds.add(nodeThatMayBeRoutedTo.getNodeId());
+                }
             }
         }
     }

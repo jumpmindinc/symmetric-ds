@@ -31,6 +31,7 @@ import java.util.Map;
 public class NodeChannel implements IModelObject {
     private static final long serialVersionUID = 1L;
     private Channel channel;
+    private String nodeId;
     private Map<String, NodeChannelControl> nodeChannelControlMap = new HashMap<String, NodeChannelControl>();
 
     public NodeChannel() {
@@ -43,10 +44,6 @@ public class NodeChannel implements IModelObject {
 
     public NodeChannel(Channel channel) {
         this.channel = channel;
-        NodeChannelControl nodeChannelControl = new NodeChannelControl();
-        nodeChannelControl.setTargetNodeId(NodeChannelControl.ALL);
-        nodeChannelControl.setChannelId(channel.getChannelId());
-        nodeChannelControlMap.put(NodeChannelControl.ALL, nodeChannelControl);
     }
 
     public String getChannelId() {
@@ -141,30 +138,22 @@ public class NodeChannel implements IModelObject {
         if (nodeChannelControlMap.containsKey(targetNodeId)) {
             return nodeChannelControlMap.get(targetNodeId).isSuspendEnabled();
         }
-        return nodeChannelControlMap.get(NodeChannelControl.ALL).isSuspendEnabled();
+        return false;
     }
 
     public boolean isIgnoreEnabled(String targetNodeId) {
         if (nodeChannelControlMap.containsKey(targetNodeId)) {
             return nodeChannelControlMap.get(targetNodeId).isIgnoreEnabled();
         }
-        return nodeChannelControlMap.get(NodeChannelControl.ALL).isIgnoreEnabled();
-    }
-
-    public boolean isIgnoreDisabledForAnyTargetNode() {
-        for (NodeChannelControl nodeChannelControl : nodeChannelControlMap.values()) {
-            if (!nodeChannelControl.isIgnoreEnabled()) {
-                return true;
-            }
-        }
         return false;
     }
 
     public String getNodeId() {
-        return nodeChannelControlMap.get(NodeChannelControl.ALL).getNodeId();
+        return nodeId;
     }
 
     public void setNodeId(String nodeId) {
+        this.nodeId = nodeId;
         for (NodeChannelControl nodeChannelControl : nodeChannelControlMap.values()) {
             nodeChannelControl.setNodeId(nodeId);
         }

@@ -98,7 +98,7 @@ public interface INodeService {
     public String findIdentityNodeId();
 
     public void ignoreNodeChannelForExternalId(boolean ignore, String channelId,
-            String nodeGroupId, String externalId);
+            String nodeGroupId, String externalId, String targetNodeGroupId, String targetExternalId);
 
     public boolean isNodeAuthorized(String nodeId, String password);
 

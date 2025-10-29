@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.jumpmind.symmetric.model.Channel;
-import org.jumpmind.symmetric.model.ChannelMapWrapper;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.NodeChannelControl;
 import org.jumpmind.symmetric.model.NodeGroup;
@@ -121,14 +121,14 @@ public interface IConfigurationService {
     public void initDefaultChannels();
 
     /**
-     * Returns four sets of channel names for suspended, unsuspended, ignored, and unignored channels
+     * Returns a NodeChannels object containing two ChannelNodesMaps for suspended and ignored channels
      * 
      * @param nodeId
-     * @return A wrapper for a ChannelMap with four entries, the sets of which will always be defined but may be empty.
+     * @return A NodeChannels object containing two ChannelNodesMaps which will always be defined but may be empty.
      */
-    public ChannelMapWrapper getSuspendIgnoreChannelLists(String nodeId);
+    public NodeChannels getSuspendIgnoreChannelLists(String nodeId);
 
-    public ChannelMapWrapper getSuspendIgnoreChannelLists();
+    public NodeChannels getSuspendIgnoreChannelLists();
 
     /**
      * @return a map of nodes to redirect to that is keyed by a list of external_ids that should be redirected.

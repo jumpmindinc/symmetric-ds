@@ -121,18 +121,17 @@ public class OutgoingBatchesTest {
                     || b.getChannelId().equals("testChannel4"));
         }
         batches = buildSampleBatches("testChannel", 5);
-        TargetNodeMap includedMap = new TargetNodeMap();
-        TargetNodeMap excludedMap = new TargetNodeMap();
-        excludedMap.put("testChannel1", Collections.singleton(nodeIds[0]));
-        batches.filterBatchesByChannelAndNode(includedMap, excludedMap);
+        NodeChannels nodeChannels = new NodeChannels();
+        ChannelNodesMap channelNodesMap = new ChannelNodesMap();
+        channelNodesMap.put("testChannel1", Collections.singleton(nodeIds[0]));
+        nodeChannels.addSuspendChannels(channelNodesMap);
+        batches.filterSuspendedBatches(nodeChannels);
         assertEquals(24, batches.getBatches().size());
         batches = buildSampleBatches("testChannel", 5);
-        excludedMap.put("testChannel2", Collections.singleton(NodeChannelControl.ALL));
-        batches.filterBatchesByChannelAndNode(includedMap, excludedMap);
-        assertEquals(19, batches.getBatches().size());
-        batches = buildSampleBatches("testChannel", 5);
-        includedMap.put("testChannel2", Set.of(nodeIds[0], nodeIds[1]));
-        batches.filterBatchesByChannelAndNode(includedMap, excludedMap);
+        nodeChannels = new NodeChannels();
+        channelNodesMap.put("testChannel2", Set.of(nodeIds[0], nodeIds[1], nodeIds[2]));
+        nodeChannels.addIgnoreChannels(channelNodesMap);
+        batches.filterIgnoredBatches(nodeChannels);
         assertEquals(21, batches.getBatches().size());
     }
 
