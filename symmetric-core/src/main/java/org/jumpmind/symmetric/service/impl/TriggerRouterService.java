@@ -1462,7 +1462,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 Types.SMALLINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                 Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                 Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR,
-                Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT, Types.VARCHAR, Types.VARCHAR };
+                Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT, Types.SMALLINT, Types.VARCHAR, Types.VARCHAR };
     }
 
     protected Object[] getTriggerSqlValues(Trigger trigger) {
@@ -1479,8 +1479,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 trigger.getCustomOnUpdateText(), trigger.getCustomOnInsertText(), trigger.getCustomOnDeleteText(),
                 trigger.getTxIdExpression(), trigger.getExcludedColumnNames(), trigger.getIncludedColumnNames(),
                 trigger.getSyncKeyNames(), trigger.getCreateTime(), trigger.getLastUpdateBy(), trigger.getLastUpdateTime(),
-                trigger.getExternalSelect(), trigger.getChannelExpression(), trigger.isStreamRow(), trigger.getTimeBasedCaptureColumn(),
-                trigger.getTriggerId() };
+                trigger.getExternalSelect(), trigger.getChannelExpression(), trigger.isStreamRow(), trigger.isCaptureChangesOnly(),
+                trigger.getTimeBasedCaptureColumn(), trigger.getTriggerId() };
     }
 
     public boolean syncTriggers() {
@@ -2799,6 +2799,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             trigger.setNameForInsertTrigger(rs.getString("name_for_insert_trigger"));
             trigger.setNameForUpdateTrigger(rs.getString("name_for_update_trigger"));
             trigger.setStreamRow(rs.getBoolean("stream_row"));
+            trigger.setCaptureChangesOnly(rs.getBoolean("capture_changes_only"));
             String schema = rs.getString("source_schema_name");
             trigger.setSourceSchemaName(schema);
             String catalog = rs.getString("source_catalog_name");
