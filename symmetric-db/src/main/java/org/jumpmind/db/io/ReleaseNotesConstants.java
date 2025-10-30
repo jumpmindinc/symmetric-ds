@@ -30,7 +30,7 @@ public class ReleaseNotesConstants {
     public static final String PRO_PROPERTIES_DIR = "../../symmetric-pro/symmetric-pro/src/main/resources/symmetric-console-default.properties";
     public static final String SCHEMA_DIR = "../symmetric-core/src/main/resources/symmetric-schema.xml";
     public static final String PRO_SCHEMA_DIR = "../../symmetric-pro/symmetric-pro/src/main/resources/console-schema.xml";
-    public static final String ISSUE_URL = "https://www.symmetricds.org/issues/view.php?id=%s[%s]";
+    public static final String ISSUE_URL = "https://jumpmind.atlassian.net/browse/%s[%s]";
     public static final String PROPERTIES_OLD_LOCATION = "build/";
     public static final String NOTES_HEADER = "= Release Notes";
     public static final String OVERVIEW_HEADER = "== Overview";
@@ -103,4 +103,6 @@ public class ReleaseNotesConstants {
     public static final String ISSUES_VERSION_HEADER_PRO = "*%s (Pro)*";
     public static final String ISSUES_VERSION_HEADER = "*%s*";
     public static final String ISSUES_FORMAT = "%s - %s";
+    public static final String SYMMETRIC_DS_PROJECT = "symmetric-ds";
+    public static final String SYMMETRIC_PRO_PROJECT = "symmetric-pro";
 }

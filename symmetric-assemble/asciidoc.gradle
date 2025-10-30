@@ -63,7 +63,10 @@ task generateReleaseNotes {
 				symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/symmetric-console-default.properties",
 				symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/console-schema.xml",
 				symAssembleDir + '/src/asciidoc/generated/release-notes.ad',
-				'https://status.symmetricds.org/api/get-issues.php?version=' + version.substring(0, version.lastIndexOf(".")) + '&secret=' + restAPISecret
+				version.substring(0, version.lastIndexOf(".")),
+				jiraUrl,
+				jiraUser,
+				jiraAPISecret
 			]
 		}
 	}
