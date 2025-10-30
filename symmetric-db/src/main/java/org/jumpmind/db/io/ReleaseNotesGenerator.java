@@ -112,7 +112,7 @@ public class ReleaseNotesGenerator {
     }
 
     /**
-     * Builds all issues from an API.
+     * Builds a complete list of issues from a JIRA API that returns paginated results.
      */
     private static List<Issue> buildIssuesFromJira(String url, String apiUser, String apiSecret, String majorMinorVersion) throws Exception {
         List<Issue> issues = new ArrayList<>();
