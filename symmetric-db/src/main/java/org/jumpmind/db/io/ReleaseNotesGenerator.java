@@ -124,7 +124,6 @@ public class ReleaseNotesGenerator {
             if (nextPageToken != null) {
                 System.out.println("INFO: There are more issues to fetch. Calling the API again for the next page of results.");
             }
-
         } while (nextPageToken != null);
         return issues;
     }
@@ -157,7 +156,7 @@ public class ReleaseNotesGenerator {
         if (nextPageToken != null) {
             uriBuilder.queryParam("nextPageToken", nextPageToken);
         }
-        URL jiraApi = uriBuilder.build().toUri().toURL();
+        URL jiraApi = new URL(uriBuilder.build().toUriString());
         HttpURLConnection connection = (HttpURLConnection) jiraApi.openConnection();
         String auth = apiUser + ":" + apiSecret;
         String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
@@ -188,7 +187,6 @@ public class ReleaseNotesGenerator {
     private static PageResult parsePageResult(String json) {
         JsonObject rootObject = new Gson().fromJson(json, JsonObject.class);
         List<Issue> issues = parseIssues(rootObject);
-
         String nextPageToken = null;
         JsonElement nextPageTokenElement = rootObject.get("nextPageToken");
         if (nextPageTokenElement != null && !nextPageTokenElement.isJsonNull()) {
