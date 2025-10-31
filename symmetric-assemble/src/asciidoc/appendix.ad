@@ -292,8 +292,11 @@ include::appendix/dbfill.ad[]
 [appendix]
 == Replication Modes
 include::appendix/mode-trigger-based.ad[]
+
 ifdef::pro[]
 include::appendix/mode-log-based.ad[]
+
 include::appendix/mode-time-based.ad[]
+
 include::appendix/mode-write-only.ad[]
 endif::pro[]
