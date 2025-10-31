@@ -80,7 +80,7 @@ public interface IConfigurationService {
 
     public void saveNodeChannelControl(NodeChannelControl nodeChannelControl, boolean reloadChannels);
 
-    public void updateLastExtractTime(NodeChannel channel);
+    public void updateLastExtractTime(NodeChannel channel, String targetNodeId);
 
     public void deleteChannel(Channel channel);
 

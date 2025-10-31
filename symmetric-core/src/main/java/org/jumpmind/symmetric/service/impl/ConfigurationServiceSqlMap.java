@@ -89,11 +89,16 @@ public class ConfigurationServiceSqlMap extends AbstractSqlMap {
           + "  from $(channel) c                                                               "
           + "  order by c.processing_order asc, c.channel_id                                                   ");
     
-        putSql("selectNodeChannelControlSql", 
+        putSql("selectNodeChannelControlByNodeIdSql", 
                   " select target_node_id, channel_id, last_extract_time, suspend_enabled, ignore_enabled   "
                   + "  from $(node_channel_ctl) where node_id = ?   "
                   + "  order by channel_id                                ");
 
+        putSql("selectNodeChannelControlByNodeIdAndTargetNodeIdSql", 
+                " select target_node_id, channel_id, last_extract_time, suspend_enabled, ignore_enabled   "
+                + "  from $(node_channel_ctl) where node_id = ? and target_node_id = ?  "
+                + "  order by channel_id                                ");
+        
         putSql("insertChannelSql",
            "insert into $(channel) (channel_id, processing_order, max_batch_size,                 "
          + "  max_batch_to_send, max_data_to_route, use_old_data_to_route, use_row_data_to_route, "

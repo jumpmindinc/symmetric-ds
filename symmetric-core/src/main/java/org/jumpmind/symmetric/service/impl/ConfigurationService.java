@@ -529,7 +529,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
                 usingExtractPeriod |= nc.getExtractPeriodMillis() > 0;
             }
             if (usingExtractPeriod) {
-                sqlTemplate.query(getSql("selectNodeChannelControlSql"),
+                sqlTemplate.query(getSql("selectNodeChannelControlByNodeIdAndTargetNodeIdSql"),
                         new ISqlRowMapper<Object>() {
                             @Override
                             public Object mapRow(Row row) {
@@ -541,7 +541,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
                                 }
                                 return nodeChannelsMap;
                             };
-                        }, nodeId);
+                        }, nodeService.findIdentityNodeId(), nodeId);
             }
         }
         return nodeChannels;
@@ -550,7 +550,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     @Override
     public List<NodeChannel> getNodeChannelsFromDb(String nodeId) {
         List<NodeChannel> nodeChannels = sqlTemplate.query(getSql("selectNodeChannelsSql"), new NodeChannelMapper(nodeId));
-        List<NodeChannelControl> nodeChannelControls = sqlTemplate.query(getSql("selectNodeChannelControlSql"),
+        List<NodeChannelControl> nodeChannelControls = sqlTemplate.query(getSql("selectNodeChannelControlByNodeIdSql"),
                 new ISqlRowMapper<NodeChannelControl>() {
                     @Override
                     public NodeChannelControl mapRow(Row row) {
@@ -656,7 +656,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     @Override
     public NodeChannels getSuspendIgnoreChannelLists(final String nodeId) {
         NodeChannels nodeChannels = new NodeChannels();
-        List<NodeChannel> nodeChannelList = getNodeChannels(nodeId, true);
+        List<NodeChannel> nodeChannelList = getNodeChannels(nodeId, false);
         if (nodeChannelList != null) {
             for (NodeChannel nc : nodeChannelList) {
                 String channelId = nc.getChannelId();
@@ -730,11 +730,11 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public void updateLastExtractTime(NodeChannel channel) {
-        if (sqlTemplate.update(getSql("updateNodeChannelLastExtractTime"),
-                channel.getLastExtractTime(channel.getNodeId()), channel.getChannelId(), channel.getNodeId(), channel.getNodeId()) == 0) {
-            sqlTemplate.update(getSql("insertNodeChannelControlSql"), channel.getNodeId(), channel.getNodeId(),
-                    channel.getChannelId(), 0, 0, channel.getLastExtractTime(channel.getNodeId()));
+    public void updateLastExtractTime(NodeChannel channel, String targetNodeId) {
+        if (sqlTemplate.update(getSql("updateNodeChannelLastExtractTime"), channel.getLastExtractTime(targetNodeId),
+                channel.getChannelId(), channel.getNodeId(), targetNodeId) == 0) {
+            sqlTemplate.update(getSql("insertNodeChannelControlSql"), channel.getNodeId(), targetNodeId,
+                    channel.getChannelId(), 0, 0, channel.getLastExtractTime(targetNodeId));
         }
     }
 

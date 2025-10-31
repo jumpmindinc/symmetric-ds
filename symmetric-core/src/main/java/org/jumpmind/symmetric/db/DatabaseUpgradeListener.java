@@ -69,6 +69,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     protected boolean isUpgradeFromPre314;
     protected boolean isUpgradeFromPre315;
     protected boolean isUpgradeFromPre316;
+    protected boolean isUpgradeFromPre317;
 
     @Override
     public String beforeUpgrade(ISymmetricDialect symmetricDialect, String tablePrefix, Database currentModel, Database desiredModel)
@@ -284,12 +285,14 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 }
             }
         }
-        if (isUpgradeFromPre317(tablePrefix, currentModel)) {
-            IConfigurationService configService = engine.getConfigurationService();
-            Channel reloadChannel = configService.getChannel(Constants.CHANNEL_RELOAD);
-            if (reloadChannel != null && !"bulk".equals(reloadChannel.getDataLoaderType())) {
-                reloadChannel.setDataLoaderType("bulk");
-                configService.saveChannel(reloadChannel, false);
+        isUpgradeFromPre317 = isUpgradeFromPre317(tablePrefix, currentModel);
+        if (isUpgradeFromPre317) {
+            String nodeChannelControlTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_CHANNEL_CTL);
+            log.info("Before upgrade, deleting from {}", nodeChannelControlTableName);
+            try {
+                engine.getSqlTemplate().update("delete from " + nodeChannelControlTableName);
+            } catch (Exception e) {
+                log.info("Unable to delete from {}: {}", nodeChannelControlTableName, e.getMessage());
             }
         }
         // Leave this last in the sequence of steps to make sure to capture any DML changes done before this
@@ -349,6 +352,14 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                     + " and load_id in (select load_id from " + tablePrefix + "_" + TableConstants.SYM_TABLE_RELOAD_STATUS
                     + " where source_node_id = ? and completed = 1)",
                     engine.getNodeId(), engine.getNodeId());
+        }
+        if (isUpgradeFromPre317) {
+            IConfigurationService configService = engine.getConfigurationService();
+            Channel reloadChannel = configService.getChannel(Constants.CHANNEL_RELOAD);
+            if (reloadChannel != null && !"bulk".equals(reloadChannel.getDataLoaderType())) {
+                reloadChannel.setDataLoaderType("bulk");
+                configService.saveChannel(reloadChannel, false);
+            }
         }
         engine.getPullService().pullConfigData(false);
         return sb.toString();

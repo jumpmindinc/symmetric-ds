@@ -558,10 +558,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             long batchesSelectedAtMs = System.currentTimeMillis();
             OutgoingBatch currentBatch = null;
             ExecutorService executor = null;
+            Node sourceNode = nodeService.findIdentity();
             try {
                 final boolean streamToFileEnabled = parameterService.is(ParameterConstants.STREAM_TO_FILE_ENABLED);
                 long keepAliveMillis = parameterService.getLong(ParameterConstants.DATA_LOADER_SEND_ACK_KEEPALIVE);
-                Node sourceNode = nodeService.findIdentity();
                 final FutureExtractStatus status = new FutureExtractStatus();
                 if (this.threadPoolFactory == null) {
                     this.threadPoolFactory = new CustomizableThreadFactory(String.format("%s-dataextractor", parameterService.getEngineName().toLowerCase()));
@@ -760,10 +760,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             Calendar now = Calendar.getInstance();
             for (String channelProcessed : channelsProcessed) {
                 NodeChannel nodeChannel = configurationService.getNodeChannel(channelProcessed,
-                        targetNode.getNodeId(), false);
+                        sourceNode.getNodeId(), false);
                 if (nodeChannel != null && nodeChannel.getExtractPeriodMillis() > 0) {
                     nodeChannel.setLastExtractTime(targetNode.getNodeId(), now.getTime());
-                    configurationService.updateLastExtractTime(nodeChannel);
+                    configurationService.updateLastExtractTime(nodeChannel, targetNode.getNodeId());
                 }
             }
             return processedBatches;
