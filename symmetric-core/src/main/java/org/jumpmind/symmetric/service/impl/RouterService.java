@@ -916,6 +916,13 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     if (StringUtils.isNotBlank(targetNodeIds)) {
                         List<String> targetNodeIdsList = Arrays.asList(targetNodeIds.split(","));
                         nodeIds = CollectionUtils.intersection(targetNodeIdsList, toNodeIds(findAvailableNodes(triggerRouter, context)));
+                        if (targetNodeIdsList.size() > nodeIds.size()) {
+                            // Missing some nodes from the cache
+                            // Clear cache and try again
+                            engine.getNodeService().flushNodeGroupCache();
+                            context.getAvailableNodes().remove(triggerRouter);
+                            nodeIds = CollectionUtils.intersection(targetNodeIdsList, toNodeIds(findAvailableNodes(triggerRouter, context)));
+                        }
                         if (nodeIds.size() == 0 && log.isDebugEnabled()) {
                             log.debug(
                                     "None of the target nodes specified in the data.node_list field ({}) were qualified nodes. Data id {} for table '{}' will not be routed using the {} router",
