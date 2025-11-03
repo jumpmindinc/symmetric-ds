@@ -2225,9 +2225,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public boolean syncTriggers(List<Trigger> triggers, ITriggerCreationListener listener, boolean force, boolean verifyInDatabase) {
-    	return syncTriggers(triggers, listener, force, verifyInDatabase, true);
+        return syncTriggers(triggers, listener, force, verifyInDatabase, true);
     }
-    
+
     public boolean syncTriggers(List<Trigger> triggers, ITriggerCreationListener listener, boolean force, boolean verifyInDatabase, boolean useTableCache) {
         if (clusterService.lock(ClusterConstants.SYNC_TRIGGERS)) {
             TriggerRouterContext context = new TriggerRouterContext();

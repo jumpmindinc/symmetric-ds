@@ -86,6 +86,6 @@ public interface IDdlBuilder {
     public void setTriggerDelimiterReplacementCharacters(String triggerDelimiterReplacementCharacters);
 
     public String getTriggerDelimiterReplacementCharacters();
-    
+
     public boolean supportDefaultValues();
 }

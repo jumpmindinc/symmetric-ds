@@ -92,7 +92,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
     protected List<Column> lookupKeys = null;
     protected ArrayList<Column> changedColumnsList = new ArrayList<>();
     boolean[] nullKeyValues = null;
-    
+
     public DefaultDatabaseWriter(IDatabasePlatform platform) {
         this(platform, null, null);
     }

@@ -284,16 +284,15 @@ public class SelectFromSymDataSource extends SelectFromSource {
     }
 
     protected boolean processCreateEvent(TriggerHistory triggerHistory, String routerId, Data data) {
-    	if (data.getRowData() != null && data.getRowData().contains(AbstractTriggerTemplate.CREATE_EVENT_DDL_GENERATED)) {
-    		data.putCsvData(CsvData.ROW_DATA, "");
-	    	Trigger trigger = engine.getTriggerRouterService().getTriggerById(triggerHistory.getTriggerId());
-	    	engine.getTriggerRouterService().syncTriggers(Collections.singletonList(trigger), null, true, false, false);
-	    	List<TriggerHistory> latestTriggerHistory = engine.getTriggerRouterService().getActiveTriggerHistories(trigger);
-	    	for (TriggerHistory th : latestTriggerHistory) {
-	    		triggerHistory = th;
-	    	}
-    	}
-    	
+        if (data.getRowData() != null && data.getRowData().contains(AbstractTriggerTemplate.CREATE_EVENT_DDL_GENERATED)) {
+            data.putCsvData(CsvData.ROW_DATA, "");
+            Trigger trigger = engine.getTriggerRouterService().getTriggerById(triggerHistory.getTriggerId());
+            engine.getTriggerRouterService().syncTriggers(Collections.singletonList(trigger), null, true, false, false);
+            List<TriggerHistory> latestTriggerHistory = engine.getTriggerRouterService().getActiveTriggerHistories(trigger);
+            for (TriggerHistory th : latestTriggerHistory) {
+                triggerHistory = th;
+            }
+        }
         String oldData = data.getCsvData(CsvData.OLD_DATA);
         boolean sendSchemaExcludeIndices = false;
         boolean sendSchemaExcludeForeignKeys = false;
