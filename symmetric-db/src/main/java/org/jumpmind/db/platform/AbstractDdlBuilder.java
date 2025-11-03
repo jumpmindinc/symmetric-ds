@@ -50,10 +50,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.Predicate;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.alter.AddColumnChange;
 import org.jumpmind.db.alter.AddForeignKeyChange;
 import org.jumpmind.db.alter.AddFunctionChange;
@@ -409,7 +411,7 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
                 ColumnAutoIncrementChange.class, ColumnDefaultValueChange.class, ColumnRequiredChange.class,
                 ColumnDataTypeChange.class, ColumnSizeChange.class, ColumnGeneratedChange.class, CopyColumnValueChange.class,
                 GeneratedColumnDefinitionChange.class, ColumnAutoUpdateChange.class });
-        processTableStructureChanges(currentModel, desiredModel, CollectionUtils.select(changes, predicate), ddl);
+        processTableStructureChanges(currentModel, desiredModel, changes.stream().filter(c -> predicate.test(c)).collect(Collectors.toList()), ddl);
         // 4th pass: adding tables
         processChanges(currentModel, desiredModel, changes, ddl, new Class<?>[] { AddTableChange.class });
         // 5th pass: adding external constraints and indices
@@ -1748,11 +1750,11 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
             for (PlatformColumn platformColumn : column.getPlatformColumns().values()) {
                 if ("mysql".equals(platformColumn.getName())) {
                     for (Column col : table.getColumns()) {
-                        definition = StringUtils.replaceIgnoreCase(definition, "`" + col.getName() + "`", col.getName());
+                        definition = Strings.CI.replace(definition, "`" + col.getName() + "`", col.getName());
                     }
                 } else if (platformColumn.getName() != null && platformColumn.getName().contains("mssql")) {
                     for (Column col : table.getColumns()) {
-                        definition = StringUtils.replaceIgnoreCase(definition, "[" + col.getName() + "]", col.getName());
+                        definition = Strings.CI.replace(definition, "[" + col.getName() + "]", col.getName());
                     }
                 }
             }
@@ -1943,7 +1945,7 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
         String result = value;
         for (Iterator<Map.Entry<String, String>> it = charSequencesToEscape.entrySet().iterator(); it.hasNext();) {
             Map.Entry<String, String> entry = it.next();
-            result = StringUtils.replace(result, entry.getKey(), entry.getValue());
+            result = Strings.CS.replace(result, entry.getKey(), entry.getValue());
         }
         return result;
     }
@@ -2122,9 +2124,9 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
                 sourceSize += "," + sourceScale;
             }
         }
-        if (sizeMatters && !StringUtils.equals(sourceSize, targetSize)) {
+        if (sizeMatters && !Strings.CS.equals(sourceSize, targetSize)) {
             return false;
-        } else if (scaleMatters && (!StringUtils.equals(sourceSize, targetSize) ||
+        } else if (scaleMatters && (!Strings.CS.equals(sourceSize, targetSize) ||
         // ojdbc6.jar returns -127 for the scale of NUMBER that was not given a
         // size or precision
                 (!(sourceScale < 0 && targetScale == 0) && sourceScale != targetScale))) {

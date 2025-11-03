@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.Constants;
@@ -200,7 +201,7 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
                         boolean registered = security.hasRegistered();
                         if (!thisMySecurityRecord && registered && reverseLoadEnabled && (reverseLoadFirst || !initialLoadEnabled)) {
                             // If node is created by me then set up reverse initial load
-                            if (StringUtils.equals(security.getCreatedAtNodeId(), identity.getNodeId())) {
+                            if (Strings.CS.equals(security.getCreatedAtNodeId(), identity.getNodeId())) {
                                 if (parameterService.is(ParameterConstants.AUTO_RELOAD_USE_CONFIG, false)) {
                                     sendLoadBasedOnConfig(security, true, processInfo);
                                 } else {
@@ -222,7 +223,7 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
                             }
                         } else if (!thisMySecurityRecord && registered && initialLoadEnabled && (!reverseLoadFirst || !reverseLoadEnabled)) {
                             // If node is created by me then set up initial load
-                            if (StringUtils.equals(security.getCreatedAtNodeId(), identity.getNodeId())) {
+                            if (Strings.CS.equals(security.getCreatedAtNodeId(), identity.getNodeId())) {
                                 if (parameterService.is(ParameterConstants.AUTO_RELOAD_USE_CONFIG, false)) {
                                     sendLoadBasedOnConfig(security, false, processInfo);
                                 } else {
@@ -435,7 +436,7 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
         List<NodeSecurity> toReturn = new ArrayList<NodeSecurity>();
         List<NodeSecurity> securities = nodeService.findNodeSecurityWithLoadEnabled();
         for (NodeSecurity nodeSecurity : securities) {
-            if (StringUtils.equals(nodeSecurity.getCreatedAtNodeId(), me) && nodeSecurity.hasRegistered() &&
+            if (Strings.CS.equals(nodeSecurity.getCreatedAtNodeId(), me) && nodeSecurity.hasRegistered() &&
                     (nodeSecurity.isInitialLoadEnabled() || nodeSecurity.isRevInitialLoadEnabled()) && isOkayToQueueLoad(nodeSecurity)) {
                 toReturn.add(nodeSecurity);
             }

@@ -8,7 +8,6 @@ buildscript {
         classpath 'org.asciidoctor:asciidoctor-gradle-jvm:4.0.4'
 		classpath 'com.diffplug.spotless:spotless-plugin-gradle:7.0.3'
 		classpath 'com.bmuschko:gradle-docker-plugin:9.4.0'
-        classpath 'io.github.humblerookie:gradle-github-plugin:0.5.0'
         classpath 'org.jacoco:org.jacoco.ant:0.8.12'
     }
 }
@@ -23,7 +22,6 @@ apply plugin: 'java-library'
 apply plugin: 'idea'
 apply plugin: 'eclipse'
 apply plugin: 'com.bmuschko.docker-remote-api'
-apply plugin: 'io.github.humblerookie.gradle'
 apply plugin: 'jacoco'
 
 allprojects {
@@ -37,16 +35,6 @@ allprojects {
 
 task develop {
     dependsOn tasks.cleanEclipse, tasks.eclipse, tasks.cleanIdea, tasks.idea, tasks.compileTestJava
-}
-
-github {
-    owner = 'JumpMind'
-    repo = 'symmetric-ds'
-    token = githubToken
-    tagName = version
-    targetCommitish = scmBranch.substring(scmBranch.lastIndexOf('/')+1)
-    name = version
-    prerelease = false
 }
 
 idea {
@@ -193,6 +181,8 @@ task generateJavadoc(type: Javadoc) {
 	}
 }
 
+def isLatest = project.hasProperty("latest") && project.property("latest") == "true"
+
 task publishJavadoc {
     dependsOn generateJavadoc
 	group = 'SymmetricDS'
@@ -234,13 +224,16 @@ task publishSymmetric {
                 include(name: 'symmetric-server-' + version + '.zip')
             }
         }
-        println "Setting latest file on SourceForge to symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
-        exec {
-            commandLine "curl"
-            args "-s", "-S", "-H", "Accept: application/json", "-X", "PUT",
-                "-d", "default=windows&default=mac&default=linux&default=bsd&default=solaris&default=others",
-                "-d", "api_key=$sourceforgeApiKey",
-                "https://sourceforge.net/projects/symmetricds/files/symmetricds/symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
+        
+        if (isLatest) {
+        	println "Setting latest file on SourceForge to symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
+        	exec {
+            	commandLine "curl"
+            	args "-s", "-S", "-H", "Accept: application/json", "-X", "PUT",
+                	"-d", "default=windows&default=mac&default=linux&default=bsd&default=solaris&default=others",
+                	"-d", "api_key=$sourceforgeApiKey",
+                	"https://sourceforge.net/projects/symmetricds/files/symmetricds/symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
+        	}
         }
     }
 }
@@ -279,17 +272,16 @@ task buildImage(type: com.bmuschko.gradle.docker.tasks.image.DockerBuildImage) {
     buildArgs = ["SERVER_ZIP":"symmetric-server-${version}.zip"]
 }
 
-task publishDockerLatest(type: com.bmuschko.gradle.docker.tasks.image.DockerPushImage) {
-    dependsOn buildImage
-    images.empty()
-    images.add("jumpmind/symmetricds:latest")
-}
-
 task publishDocker(type: com.bmuschko.gradle.docker.tasks.image.DockerPushImage) {
     dependsOn buildImage
     images.empty()
     images.add("jumpmind/symmetricds:${version}".toString())
     images.add("jumpmind/symmetricds:${majorMinorVersion}".toString())
+    
+    if (isLatest) {
+    	images.add("jumpmind/symmetricds:latest")
+    }
+    
     doLast {
         println "Pushing Docker Image to the jumpmind/symmetricds Repository"
     }

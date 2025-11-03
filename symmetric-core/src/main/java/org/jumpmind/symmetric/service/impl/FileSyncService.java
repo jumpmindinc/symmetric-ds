@@ -252,8 +252,9 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                         continue;
                     }
                     boolean ignoreFiles = shouldIgnoreInitialFiles(fileTriggerRouter, fileTrigger, ctxDate);
-                    FileAlterationObserver observer = new FileAlterationObserver(fileTriggerRouter.getFileTrigger().getBaseDir(),
-                            fileTriggerRouter.getFileTrigger().createIOFileFilter());
+                    FileAlterationObserver observer = FileAlterationObserver.builder()
+                            .setFile(fileTriggerRouter.getFileTrigger().getBaseDir())
+                            .setFileFilter(fileTriggerRouter.getFileTrigger().createIOFileFilter()).get();
                     FileTriggerFileModifiedListener listener = new FileTriggerFileModifiedListener(fileTriggerRouter, ctxDate,
                             currentDate, processInfo, useCrc, new FileModifiedCallback(maxRowsBeforeCommit) {
                                 @Override

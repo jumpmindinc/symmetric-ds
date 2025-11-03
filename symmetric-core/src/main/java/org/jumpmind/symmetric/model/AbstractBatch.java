@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.DataEventType;
 
@@ -728,7 +729,7 @@ public class AbstractBatch implements Serializable {
             return false;
         }
         AbstractBatch b = (AbstractBatch) o;
-        return getBatchId() == b.getBatchId() && StringUtils.equals(getNodeId(), b.getNodeId());
+        return getBatchId() == b.getBatchId() && Strings.CS.equals(getNodeId(), b.getNodeId());
     }
 
     @Override

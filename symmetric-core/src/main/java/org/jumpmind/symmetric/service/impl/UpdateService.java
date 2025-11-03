@@ -116,7 +116,7 @@ public class UpdateService extends AbstractService implements IUpdateService {
             }
         } catch (MalformedURLException e) {
             log.debug("Failed to obtain URL for checking updates", e);
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.debug("Failed to communicate for checking updates", e);
         } finally {
             log.debug("Ending check for updates");
@@ -126,8 +126,9 @@ public class UpdateService extends AbstractService implements IUpdateService {
     protected byte[] getPostData(Map<String, Object> prop) throws UnsupportedEncodingException {
         StringBuilder sb = new StringBuilder();
         for (Object key : prop.keySet()) {
+            Object value = prop.get(key);
             sb.append(URLEncoder.encode(key.toString(), StandardCharsets.UTF_8.name())).append("=");
-            sb.append(URLEncoder.encode(prop.get(key).toString(), StandardCharsets.UTF_8.name())).append("&");
+            sb.append(URLEncoder.encode(value == null ? "" : value.toString(), StandardCharsets.UTF_8.name())).append("&");
         }
         return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
@@ -294,7 +295,7 @@ public class UpdateService extends AbstractService implements IUpdateService {
     }
 
     protected URL getUpdateUrl() throws MalformedURLException {
-        return new URL("http://status.symmetricds.org/api/getlatest.php");
+        return new URL("https://status.symmetricds.org/api/getlatest.php");
     }
 
     public boolean isNewVersionAvailable() {

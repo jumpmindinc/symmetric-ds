@@ -65,6 +65,9 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.cache.ObjectDefinitionCache;
+import org.jumpmind.db.model.CatalogSchema;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
@@ -112,6 +115,8 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     private final List<MetaDataColumnDescriptor> _columnsForIndex;
     /* The platform that this model reader belongs to. */
     protected IDatabasePlatform platform;
+    /* The cache containing definitions of database objects. */
+    protected ObjectDefinitionCache objectDefinitionCache = new ObjectDefinitionCache(this);
     /*
      * Contains default column sizes (minimum sizes that a JDBC-compliant db must support).
      */
@@ -562,7 +567,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             }));
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedTableName(catalog, schema, table), e.getClass().getName(), e
@@ -586,7 +591,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 return readTable(catalog, schema, table);
             }
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedTableName(catalog, schema, table), e.getClass().getName(), e
@@ -1444,13 +1449,13 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             if (escaped.equals("''")) {
                 if ((text.length() > 2) && text.startsWith("'") && text.endsWith("'")) {
                     text = "'"
-                            + StringUtils.replace(text.substring(1, text.length() - 1),
+                            + Strings.CS.replace(text.substring(1, text.length() - 1),
                                     escaped, unescaped) + "'";
                 } else {
-                    text = StringUtils.replace(text, escaped, unescaped);
+                    text = Strings.CS.replace(text, escaped, unescaped);
                 }
             } else {
-                text = StringUtils.replace(text, escaped, unescaped);
+                text = Strings.CS.replace(text, escaped, unescaped);
             }
         }
         return text;
@@ -1558,6 +1563,11 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
 
     public List<String> getTableNames(final String catalog, final String schema,
             final String[] tableTypes) {
+        return objectDefinitionCache.getTableNames(new CatalogSchema(catalog, schema), tableTypes);
+    }
+
+    public List<String> getTableNamesFromDatabase(final String catalog, final String schema,
+            final String[] tableTypes) {
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
         List<String> list = sqlTemplate.execute(new IConnectionCallback<List<String>>() {
             public List<String> execute(Connection connection) throws SQLException {
@@ -1580,6 +1590,10 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             }
         });
         return list;
+    }
+
+    public void clearTableNameCache() {
+        objectDefinitionCache.clearTableNameCache();
     }
 
     public List<String> getColumnNames(final String catalog, final String schema, final String tableName) {
@@ -1634,7 +1648,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             });
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {}, because {} {}", table.getFullyQualifiedTableName(), e.getClass().getName(), e.getMessage());
@@ -1658,7 +1672,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             });
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {}, because {} {}",
