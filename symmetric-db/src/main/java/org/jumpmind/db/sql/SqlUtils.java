@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory;
 
 abstract public class SqlUtils {
     private static Logger log = LoggerFactory.getLogger(SqlUtils.class);
+    private static final int MAX_IDENTIFIER_LENGTH = 255;
+    private static final int MAX_TABLE_PREFIX_LENGTH = 32;
     private static boolean captureOwner = false;
     private static List<ISqlTransaction> sqlTransactions = Collections.synchronizedList(new ArrayList<ISqlTransaction>());
     private static List<ISqlReadCursor<?>> sqlReadCursors = Collections.synchronizedList(new ArrayList<ISqlReadCursor<?>>());
@@ -92,5 +94,42 @@ abstract public class SqlUtils {
 
     public static void setCaptureOwner(boolean captureOwner) {
         SqlUtils.captureOwner = captureOwner;
+    }
+
+    public static String sanitizeIdentifier(String name) {
+        if (name != null) {
+            if (name.length() > MAX_IDENTIFIER_LENGTH) {
+                name = name.substring(0, MAX_IDENTIFIER_LENGTH);
+            }
+            name = name.replaceAll("[\\.\\\"'/;]", "");
+        }
+        return name;
+    }
+
+    public static String sanitizeFunction(String name) {
+        if (name != null) {
+            if (name.length() > MAX_IDENTIFIER_LENGTH) {
+                name = name.substring(0, MAX_IDENTIFIER_LENGTH);
+            }
+            name = name.replaceAll("[\\.\\\"'/; ]", "");
+        }
+        return name;
+    }
+
+    public static String sanitizeTablePrefix(String name) {
+        if (name != null) {
+            if (name.length() > MAX_TABLE_PREFIX_LENGTH) {
+                name = name.substring(0, MAX_TABLE_PREFIX_LENGTH);
+            }
+            name = name.replaceAll("[^\\w_]", "_").replaceAll("_+", "_");
+        }
+        return name;
+    }
+
+    public static String escapeString(String s) {
+        if (s != null) {
+            s = s.replaceAll("'", "''");
+        }
+        return s;
     }
 }
