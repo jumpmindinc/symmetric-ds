@@ -65,9 +65,9 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.cache.ObjectDefinitionCache;
 import org.jumpmind.db.model.CatalogSchema;
-import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
@@ -91,6 +91,7 @@ import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.mapper.RowMapper;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.db.util.TableRow;
@@ -1417,7 +1418,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         if (getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn()) {
             query.append(getPlatformInfo().getDelimiterToken());
         }
-        query.append(identifier);
+        query.append(SqlUtils.sanitizeIdentifier(identifier));
         if (getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn()) {
             query.append(getPlatformInfo().getDelimiterToken());
         }
