@@ -25,8 +25,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.jumpmind.symmetric.model.Channel;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.NodeChannel;
+import org.jumpmind.symmetric.model.NodeChannelControl;
 import org.jumpmind.symmetric.model.NodeGroup;
 import org.jumpmind.symmetric.model.NodeGroupChannelWindow;
 import org.jumpmind.symmetric.model.NodeGroupLink;
@@ -77,13 +78,15 @@ public interface IConfigurationService {
 
     public void saveNodeChannelControl(NodeChannel channel, boolean reloadChannels);
 
-    public void updateLastExtractTime(NodeChannel channel);
+    public void saveNodeChannelControl(NodeChannelControl nodeChannelControl, boolean reloadChannels);
+
+    public void updateLastExtractTime(NodeChannel channel, String targetNodeId);
 
     public void deleteChannel(Channel channel);
 
     public void deleteAllChannels();
 
-    public void deleteNodeChannelControl(String nodeId, String channelId);
+    public void deleteNodeChannelControl(String nodeId, String targetNodeId, String channelId);
 
     public List<NodeGroupChannelWindow> getNodeGroupChannelWindows(String nodeGroupId, String channelId);
 
@@ -98,6 +101,8 @@ public interface IConfigurationService {
     public List<NodeChannel> getNodeChannels(String nodeId, boolean refreshExtractMillis);
 
     public List<NodeChannel> getNodeChannelsFromDb(String nodeId);
+
+    public List<NodeChannel> getAllNodeChannelsFromCache(boolean suspendedOnly);
 
     public NodeChannel getNodeChannel(String channelId, boolean refreshExtractMillis);
 
@@ -118,14 +123,14 @@ public interface IConfigurationService {
     public void initDefaultChannels();
 
     /**
-     * Returns two sets of channel names, one for suspended channels and one for ignored.
+     * Returns a NodeChannels object containing two ChannelNodesMaps for suspended and ignored channels
      * 
      * @param nodeId
-     * @return A Map with two entries, the sets of which will always be defined but may be empty.
+     * @return A NodeChannels object containing two ChannelNodesMaps which will always be defined but may be empty.
      */
-    public ChannelMap getSuspendIgnoreChannelLists(String nodeId);
+    public NodeChannels getSuspendIgnoreChannelLists(String nodeId);
 
-    public ChannelMap getSuspendIgnoreChannelLists();
+    public NodeChannels getSuspendIgnoreChannelLists();
 
     /**
      * @return a map of nodes to redirect to that is keyed by a list of external_ids that should be redirected.

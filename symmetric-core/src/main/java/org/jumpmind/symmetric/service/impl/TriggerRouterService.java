@@ -627,6 +627,10 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 !TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_SNAPSHOT).equals(tableName)) {
             trigger.setUseCaptureLobs(true);
         }
+        if (TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_CHANNEL_CTL).equals(tableName)) {
+            trigger.setExcludedColumnNames("last_extract_time");
+            trigger.setCaptureChangesOnly(true);
+        }
         // little trick to force the rebuild of SymmetricDS triggers every time
         // there is a new version of SymmetricDS
         trigger.setLastUpdateTime(new Date(Version.version().hashCode()));

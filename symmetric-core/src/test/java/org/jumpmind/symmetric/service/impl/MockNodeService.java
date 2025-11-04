@@ -209,7 +209,8 @@ public class MockNodeService implements INodeService {
         return null;
     }
 
-    public void ignoreNodeChannelForExternalId(boolean ignore, String channelId, String nodeGroupId, String externalId) {
+    public void ignoreNodeChannelForExternalId(boolean ignore, String channelId, String nodeGroupId, String externalId,
+            String targetNodeGroupId, String targetExternalId) {
     }
 
     public boolean isExternalIdRegistered(String nodeGroupId, String externalId) {

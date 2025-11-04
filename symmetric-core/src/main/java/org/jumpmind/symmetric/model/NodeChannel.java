@@ -22,6 +22,8 @@ package org.jumpmind.symmetric.model;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A composite parent for {@link Channel} and {@link NodeChannelControl}
@@ -29,23 +31,19 @@ import java.util.Date;
 public class NodeChannel implements IModelObject {
     private static final long serialVersionUID = 1L;
     private Channel channel;
-    private NodeChannelControl nodeChannelControl;
+    private String nodeId;
+    private Map<String, NodeChannelControl> nodeChannelControlMap = new HashMap<String, NodeChannelControl>();
 
     public NodeChannel() {
         this(new Channel());
     }
 
-    public NodeChannel(Channel channel) {
-        this.channel = channel;
-        nodeChannelControl = new NodeChannelControl();
-        nodeChannelControl.setChannelId(channel.getChannelId());
+    public NodeChannel(String channelId) {
+        this(new Channel(channelId, 0));
     }
 
-    public NodeChannel(String channelId) {
-        channel = new Channel();
-        nodeChannelControl = new NodeChannelControl();
-        nodeChannelControl.setChannelId(channelId);
-        channel.setChannelId(channelId);
+    public NodeChannel(Channel channel) {
+        this.channel = channel;
     }
 
     public String getChannelId() {
@@ -136,32 +134,44 @@ public class NodeChannel implements IModelObject {
         return channel.isEnabled();
     }
 
-    public boolean isSuspendEnabled() {
-        return nodeChannelControl.isSuspendEnabled();
+    public boolean isSuspendEnabled(String targetNodeId) {
+        if (nodeChannelControlMap.containsKey(targetNodeId)) {
+            return nodeChannelControlMap.get(targetNodeId).isSuspendEnabled();
+        }
+        return false;
     }
 
-    public boolean isIgnoreEnabled() {
-        return nodeChannelControl.isIgnoreEnabled();
+    public boolean isIgnoreEnabled(String targetNodeId) {
+        if (nodeChannelControlMap.containsKey(targetNodeId)) {
+            return nodeChannelControlMap.get(targetNodeId).isIgnoreEnabled();
+        }
+        return false;
     }
 
     public String getNodeId() {
-        return nodeChannelControl.getNodeId();
+        return nodeId;
     }
 
     public void setNodeId(String nodeId) {
-        nodeChannelControl.setNodeId(nodeId);
+        this.nodeId = nodeId;
+        for (NodeChannelControl nodeChannelControl : nodeChannelControlMap.values()) {
+            nodeChannelControl.setNodeId(nodeId);
+        }
     }
 
-    public void setLastExtractTime(Date lastExtractedTime) {
-        nodeChannelControl.setLastExtractTime(lastExtractedTime);
+    public void setLastExtractTime(String targetNodeId, Date lastExtractedTime) {
+        getNodeChannelControl(targetNodeId).setLastExtractTime(lastExtractedTime);
     }
 
-    public Date getLastExtractTime() {
-        return nodeChannelControl.getLastExtractTime();
+    public Date getLastExtractTime(String targetNodeId) {
+        if (nodeChannelControlMap.containsKey(targetNodeId)) {
+            return nodeChannelControlMap.get(targetNodeId).getLastExtractTime();
+        }
+        return null;
     }
 
-    public void setIgnoreEnabled(boolean ignored) {
-        nodeChannelControl.setIgnoreEnabled(ignored);
+    public void setIgnoreEnabled(String targetNodeId, boolean ignored) {
+        getNodeChannelControl(targetNodeId).setIgnoreEnabled(ignored);
     }
 
     public void setProcessingOrder(int priority) {
@@ -170,7 +180,9 @@ public class NodeChannel implements IModelObject {
 
     public void setChannelId(String id) {
         channel.setChannelId(id);
-        nodeChannelControl.setChannelId(id);
+        for (NodeChannelControl nodeChannelControl : nodeChannelControlMap.values()) {
+            nodeChannelControl.setChannelId(id);
+        }
     }
 
     public void setLastUpdateTime(Date date) {
@@ -185,16 +197,28 @@ public class NodeChannel implements IModelObject {
         channel.setLastUpdateBy(lastUpdateBy);
     }
 
-    public void setSuspendEnabled(boolean suspended) {
-        nodeChannelControl.setSuspendEnabled(suspended);
+    public void setSuspendEnabled(String targetNodeId, boolean suspended) {
+        getNodeChannelControl(targetNodeId).setSuspendEnabled(suspended);
     }
 
     public Channel getChannel() {
         return channel;
     }
 
-    public NodeChannelControl getNodeChannelControl() {
+    public NodeChannelControl getNodeChannelControl(String targetNodeId) {
+        if (nodeChannelControlMap.containsKey(targetNodeId)) {
+            return nodeChannelControlMap.get(targetNodeId);
+        }
+        NodeChannelControl nodeChannelControl = new NodeChannelControl();
+        nodeChannelControl.setNodeId(getNodeId());
+        nodeChannelControl.setTargetNodeId(targetNodeId);
+        nodeChannelControl.setChannelId(getChannelId());
+        nodeChannelControlMap.put(targetNodeId, nodeChannelControl);
         return nodeChannelControl;
+    }
+
+    public Map<String, NodeChannelControl> getNodeChannelControlMap() {
+        return nodeChannelControlMap;
     }
 
     public long getExtractPeriodMillis() {

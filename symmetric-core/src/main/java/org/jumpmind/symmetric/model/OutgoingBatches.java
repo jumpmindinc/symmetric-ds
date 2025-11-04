@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
@@ -116,6 +117,28 @@ public class OutgoingBatches implements Serializable {
     public List<OutgoingBatch> filterBatchesForChannels(Set<String> channels) {
         List<OutgoingBatch> filtered = getBatchesForChannels(channels);
         batches.removeAll(filtered);
+        return filtered;
+    }
+
+    public List<OutgoingBatch> filterSuspendedBatches(NodeChannels nodeChannels) {
+        List<OutgoingBatch> filtered = getFilteredBatches(nodeChannels::isBatchSuspended);
+        batches.removeAll(filtered);
+        return filtered;
+    }
+
+    public List<OutgoingBatch> filterIgnoredBatches(NodeChannels nodeChannels) {
+        List<OutgoingBatch> filtered = getFilteredBatches(nodeChannels::isBatchIgnored);
+        batches.removeAll(filtered);
+        return filtered;
+    }
+
+    private List<OutgoingBatch> getFilteredBatches(Function<OutgoingBatch, Boolean> filterFunction) {
+        List<OutgoingBatch> filtered = new ArrayList<OutgoingBatch>();
+        for (OutgoingBatch batch : batches) {
+            if (filterFunction.apply(batch)) {
+                filtered.add(batch);
+            }
+        }
         return filtered;
     }
 
@@ -241,7 +264,7 @@ public class OutgoingBatches implements Serializable {
         });
         for (NodeChannel nodeChannel : channels) {
             long extractPeriodMillis = nodeChannel.getExtractPeriodMillis();
-            Date lastExtractedTime = nodeChannel.getLastExtractTime();
+            Date lastExtractedTime = nodeChannel.getLastExtractTime(nodeChannel.getNodeId());
             if ((extractPeriodMillis < 1)
                     || (lastExtractedTime == null)
                     || (Calendar.getInstance().getTimeInMillis() - lastExtractedTime.getTime() >= extractPeriodMillis)) {

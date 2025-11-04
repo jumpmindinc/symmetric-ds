@@ -734,8 +734,12 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     router.getNodeGroupLink().getSourceNodeGroupId(),
                     router.getNodeGroupLink().getTargetNodeGroupId(), false);
             if (link != null) {
-                nodes.addAll(engine.getNodeService().findEnabledNodesFromNodeGroup(
-                        router.getNodeGroupLink().getTargetNodeGroupId()));
+                NodeChannel channel = context.getChannel();
+                for (Node node : engine.getNodeService().findEnabledNodesFromNodeGroup(router.getNodeGroupLink().getTargetNodeGroupId())) {
+                    if (!channel.isIgnoreEnabled(node.getNodeId())) {
+                        nodes.add(node);
+                    }
+                }
             } else if (!router.getRouterId().startsWith(parameterService.getTablePrefix().toLowerCase())) {
                 log.error("The router {} has no node group link configured from {} to {}", new Object[] { router.getRouterId(),
                         router.getNodeGroupLink().getSourceNodeGroupId(), router.getNodeGroupLink().getTargetNodeGroupId() });
@@ -935,8 +939,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 DataMetaData dataMetaData = new DataMetaData(data, table, triggerRouter.getRouter(),
                         context.getChannel());
                 Collection<String> nodeIds = null;
-                if (!context.getChannel().isIgnoreEnabled()
-                        && triggerRouter.isRouted(data.getDataEventType())) {
+                if (triggerRouter.isRouted(data.getDataEventType())) {
                     String targetNodeIds = data.getNodeList();
                     if (StringUtils.isNotBlank(targetNodeIds)) {
                         List<String> targetNodeIdsList = Arrays.asList(targetNodeIds.split(","));

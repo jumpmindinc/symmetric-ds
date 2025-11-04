@@ -2,79 +2,14 @@
 
 ifdef::pro[]
 
-=== UI Improvements
---
-The Configure tab now features a Canvas, replacing the Design tab with a new approach to configuring replication.
-Common replication scenarios are now simplified to setup using a visual canvas of connected nodes and the tables being replicated.
-Transforms are now created by drawing lines between tables and columns, even showing implied mappings as dashed lines.
-Changes are applied with a deployment wizard that collects final settings, creates engines, and prepares replication.
-The familiar original screens are still available with advanced settings.
---
 
-=== Scaling Initial Load
---
-Scaling the number of threads used for an initial load is now as easy as changing a parameter setting, one for extract threads
-(initial.load.extract.thread.per.server.count) and another for push/pull threads (initial.load.queue.sync.thread.count).
-The "reload" channel now defaults to a "reload" queue, which tells the system to use the parameter settings for the number of threads.
-All batches for a table are assigned to the same thread so there is no contention for the table.
-Users should request loads that either create tables or clear tables and defer constraints, so the system knows that foreign keys
-will not be present and it can use multiple threads.
---
-
-=== Bulk Extract and Load Improvements
---
-Bulk extract using native tools is now supported for SQL-Server and SAP (Sybase) ASE using the bcp bulk copy utility.
-Bulk loading using the bcp bulk copy utility is now supported on SAP ASE in addition to SQL-Server.
-The setup program and node wizard now perform automatic installation and configuration of native bulk loaders for SQL-Server and Oracle.
-The PostgreSQL bulk loader was improved to create unlogged tables and use binary mode copy, resulting in a 30% performance improvement.
---
-
-=== File Sync with Azure Blob and S3
---
-File sync now supports Azure Blob Storage and S3 buckets as either source or target of files.
-Paths to files that start with "azure://" or "s3://" will prompt the user for connection information to the cloud provider.
---
-
-=== OAuth2 and OpenID Connect 
---
-Web console users can now authenticate with single sign-on (SSO) using the OAuth2 and OpenID Connect (OIDC) security standards with a third party
-identity provider.  A role mapping feature allows the user's role from OIDC to be mapped into a web console role.
---
-
-=== Exasol Database Support
-Migrate data and replicate changes to Exasol database. Exasol is an in-memory relational database built for high performance analytics. Even though it was designed to run in memory, it persists data to disk following ACID rules and follows SQL query standards. Support for Exasol makes it a compelling data migration target for building a data warehouse.
 
 endif::pro[]
 
-=== Channel Improvements
+=== Node Channel Control Improvements
 --
-Internal operational SYM tables, such as node, node_security, and incoming/outgoing_error, now use a "system" channel
-so they act independently and are easier to see as batches for operations versus configuration changes (on the "config" channel).
-All SYM tables are using channels with a "system" queue so they sync on their own thread even when other channels have a backlog.
-The "reload" channel for initial and partial loads now defaults to the "bulk" data loader with an increased max batch size of 100,000.
---
-
-=== Ready Queues
---
-Ready queues is a feature to make efficient use of multiple queues and their associated threads.
-Instead of each node communication thread querying for ready data, the cache manager now keeps a list of queues by node
-that are ready with changes to send, reducing the number of queries needed.
-Push and pull service use the ready queues to efficiently allocate only the threads needed to send or receive data.
-Since pull service runs on the target, it still contacts each node on the default queue to get a list of ready queues.
---
-
-=== Faster Local Data Transfer
---
-When engines are hosted together (by placing the engine files in the same "engines" directory), a batch for a target engine
-will be accessed from the source engine's staging area directly instead of copying it, saving the I/O cost of copying the data again.
-Remote nodes are unaffected and still receive batches over the network as usual.
---
-
-=== Technology Upgrades
---
-H2 database version 2.2 is now included.  Users with existing H2 1.x databases may need to add ";MODE=LEGACY" to the end of db.url
-or "set MODE LEGACY" to db.init.sql (the Pro installer will do this automatically).
-Users with existing H2 2.0 or 2.1 databases need to export their database from the old version and import into the new one
-(the Pro installer will do this automatically).
-The server property of server.http.cookies.enabled is now true by default to accept cookies used by load balancers.
+The node_channel_control table now includes a target_node_id column. This makes it possible to suspend or ignore synchronization
+between two specific nodes in an individual direction. For ease of use and increased visibility, SymmetricDS now synchronizes this
+table between nodes via the config channel. In addition, the behavior of this table is more consistent and no longer affected by
+the group link's data event action. When upgrading to 3.17, all rows will be deleted from the node_channel_control table. 
 --

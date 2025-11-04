@@ -279,6 +279,12 @@ public class CacheManager implements ICacheManager {
     }
 
     @Override
+    public List<NodeChannel> getAllNodeChannels() {
+        initializeConfigurationCache();
+        return configurationCache.getNodeChannels();
+    }
+
+    @Override
     public List<NodeChannel> getNodeChannels(String nodeId) {
         initializeConfigurationCache();
         return configurationCache.getNodeChannels(nodeId);

@@ -108,7 +108,7 @@ import org.jumpmind.symmetric.load.IDataLoaderFactory;
 import org.jumpmind.symmetric.load.ILoadSyncLifecycleListener;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.IModelObject;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.IncomingError;
@@ -264,12 +264,12 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
             boolean isRegisterTransport = false;
             if (remote != null && localSecurity != null) {
                 Map<String, String> requestProperties = new HashMap<String, String>();
-                ChannelMap suspendIgnoreChannels = configurationService
-                        .getSuspendIgnoreChannelLists();
+                NodeChannels suspendIgnoreChannels = configurationService
+                        .getSuspendIgnoreChannelLists(remote.getNodeId());
                 requestProperties.put(WebConstants.SUSPENDED_CHANNELS,
-                        suspendIgnoreChannels.getSuspendChannelsAsString());
+                        suspendIgnoreChannels.getSuspendChannelsAsString(local.getNodeId()));
                 requestProperties.put(WebConstants.IGNORED_CHANNELS,
-                        suspendIgnoreChannels.getIgnoreChannelsAsString());
+                        suspendIgnoreChannels.getIgnoreChannelsAsString(local.getNodeId()));
                 requestProperties.put(WebConstants.CHANNEL_QUEUE, status.getQueue());
                 transport = transportManager.getPullTransport(remote, local,
                         localSecurity.getNodePassword(), requestProperties,

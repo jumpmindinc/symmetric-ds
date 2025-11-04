@@ -28,7 +28,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.INodeService;
@@ -60,6 +60,7 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
     public boolean before(HttpServletRequest req, HttpServletResponse resp) throws IOException,
             ServletException {
         String poolId = req.getRequestURI();
+        String identityNodeId = nodeService.findIdentityNodeId();
         String nodeId = getNodeId(req);
         String method = req.getMethod();
         String threadChannel = req.getHeader(WebConstants.CHANNEL_QUEUE);
@@ -71,7 +72,7 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
             ReservationStatus status = concurrentConnectionManager.reserveConnection(nodeId, threadChannel, poolId, ReservationType.SOFT, false);
             if (status == ReservationStatus.ACCEPTED) {
                 try {
-                    buildSuspendIgnoreResponseHeaders(nodeId, resp);
+                    buildSuspendIgnoreResponseHeaders(nodeId, identityNodeId, resp);
                 } catch (Exception ex) {
                     concurrentConnectionManager.releaseConnection(nodeId, threadChannel, poolId);
                     log.error("Error building response headers", ex);
@@ -83,7 +84,7 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
                 return false;
             }
             if (configurationService.isMasterToMaster() && nodeService.isDataLoadStarted()) {
-                NodeSecurity identity = nodeService.findNodeSecurity(nodeService.findIdentityNodeId(), true);
+                NodeSecurity identity = nodeService.findNodeSecurity(identityNodeId, true);
                 if (identity != null && nodeId != null && "registration".equals(identity.getInitialLoadCreateBy()) &&
                         !nodeId.equals(identity.getCreatedAtNodeId())) {
                     log.debug("Not allowing push from node {} until initial load from {} is complete", nodeId, identity.getCreatedAtNodeId());
@@ -94,7 +95,7 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
             NodeSecurity nodeSecurity = nodeService.findNodeSecurity(nodeId, true);
             if (nodeSecurity != null) {
                 String createdAtNodeId = nodeSecurity.getCreatedAtNodeId();
-                if (nodeSecurity.isRegistrationEnabled() && (createdAtNodeId == null || createdAtNodeId.equals(nodeService.findIdentityNodeId()))) {
+                if (nodeSecurity.isRegistrationEnabled() && (createdAtNodeId == null || createdAtNodeId.equals(identityNodeId))) {
                     if (nodeSecurity.getRegistrationTime() != null) {
                         log.debug("Not allowing push from node {} because registration is pending", nodeId);
                         ServletUtils.sendError(resp, WebConstants.REGISTRATION_PENDING);
@@ -110,7 +111,7 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
                     && (!isFileSync));
             if (status == ReservationStatus.ACCEPTED) {
                 try {
-                    buildSuspendIgnoreResponseHeaders(nodeId, resp);
+                    buildSuspendIgnoreResponseHeaders(isPush ? nodeId : identityNodeId, isPush ? identityNodeId : nodeId, resp);
                     return true;
                 } catch (Exception ex) {
                     concurrentConnectionManager.releaseConnection(nodeId, threadChannel, poolId);
@@ -159,10 +160,10 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
         concurrentConnectionManager.releaseConnection(nodeId, threadChannel, poolId);
     }
 
-    protected void buildSuspendIgnoreResponseHeaders(final String nodeId, final ServletResponse resp) {
+    protected void buildSuspendIgnoreResponseHeaders(final String sourceNodeId, final String targetNodeId, final ServletResponse resp) {
         HttpServletResponse httpResponse = (HttpServletResponse) resp;
-        ChannelMap suspendIgnoreChannels = configurationService.getSuspendIgnoreChannelLists(nodeId);
-        httpResponse.setHeader(WebConstants.SUSPENDED_CHANNELS, suspendIgnoreChannels.getSuspendChannelsAsString());
-        httpResponse.setHeader(WebConstants.IGNORED_CHANNELS, suspendIgnoreChannels.getIgnoreChannelsAsString());
+        NodeChannels suspendIgnoreChannels = configurationService.getSuspendIgnoreChannelLists(sourceNodeId);
+        httpResponse.setHeader(WebConstants.SUSPENDED_CHANNELS, suspendIgnoreChannels.getSuspendChannelsAsString(targetNodeId));
+        httpResponse.setHeader(WebConstants.IGNORED_CHANNELS, suspendIgnoreChannels.getIgnoreChannelsAsString(targetNodeId));
     }
 }

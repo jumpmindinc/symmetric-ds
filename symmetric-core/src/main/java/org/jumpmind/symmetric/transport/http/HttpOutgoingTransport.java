@@ -35,7 +35,7 @@ import java.util.zip.GZIPOutputStream;
 import org.apache.commons.io.IOUtils;
 import org.jumpmind.exception.HttpException;
 import org.jumpmind.exception.IoException;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.InitialLoadPendingException;
@@ -301,16 +301,17 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
         return connection != null;
     }
 
-    public ChannelMap getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode) {
-        ChannelMap suspendIgnoreChannelsList = new ChannelMap();
+    public NodeChannels getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode) {
+        NodeChannels suspendIgnoreChannelsList = new NodeChannels();
+        String targetNodeId = targetNode.getNodeId();
         try (HttpConnection connection = requestReservation(queue)) {
             // Connection contains remote suspend/ignore channels list if
             // reservation was successful.
             String suspends = connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS);
             String ignores = connection.getHeaderField(WebConstants.IGNORED_CHANNELS);
-            suspendIgnoreChannelsList.addSuspendChannels(suspends);
-            suspendIgnoreChannelsList.addIgnoreChannels(ignores);
-            ChannelMap localSuspendIgnoreChannelsList = configurationService.getSuspendIgnoreChannelLists(targetNode.getNodeId());
+            suspendIgnoreChannelsList.addSuspendChannels(targetNodeId, suspends);
+            suspendIgnoreChannelsList.addIgnoreChannels(targetNodeId, ignores);
+            NodeChannels localSuspendIgnoreChannelsList = configurationService.getSuspendIgnoreChannelLists();
             suspendIgnoreChannelsList.addSuspendChannels(localSuspendIgnoreChannelsList.getSuspendChannels());
             suspendIgnoreChannelsList.addIgnoreChannels(localSuspendIgnoreChannelsList.getIgnoreChannels());
         }
