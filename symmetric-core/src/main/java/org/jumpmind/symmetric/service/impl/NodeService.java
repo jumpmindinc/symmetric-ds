@@ -169,10 +169,14 @@ public class NodeService extends AbstractService implements INodeService {
         return (Node) getFirstEntry(list);
     }
 
-    public void ignoreNodeChannelForExternalId(boolean enabled, String channelId, String nodeGroupId, String externalId) {
+    public void ignoreNodeChannelForExternalId(boolean enabled, String channelId, String nodeGroupId, String externalId,
+            String targetNodeGroupId, String targetExternalId) {
         Node node = findNodeByExternalId(nodeGroupId, externalId);
-        if (sqlTemplate.update(getSql("nodeChannelControlIgnoreSql"), new Object[] { enabled ? 1 : 0, node.getNodeId(), channelId }) <= 0) {
-            sqlTemplate.update(getSql("insertNodeChannelControlSql"), new Object[] { node.getNodeId(), channelId, enabled ? 1 : 0, 0 });
+        Node targetNode = findNodeByExternalId(targetNodeGroupId, targetExternalId);
+        if (sqlTemplate.update(getSql("nodeChannelControlIgnoreSql"),
+                new Object[] { enabled ? 1 : 0, node.getNodeId(), targetNode.getNodeId(), channelId }) <= 0) {
+            sqlTemplate.update(getSql("insertNodeChannelControlSql"),
+                    new Object[] { node.getNodeId(), targetNode.getNodeId(), channelId, enabled ? 1 : 0, 0 });
         }
     }
 
@@ -246,7 +250,7 @@ public class NodeService extends AbstractService implements INodeService {
                 transaction.prepareAndExecute(getSql("deleteNodeSecuritySql"), new Object[] { nodeId });
                 transaction.prepareAndExecute(getSql("deleteNodeHostSql"), new Object[] { nodeId });
                 transaction.prepareAndExecute(getSql("deleteNodeSql"), new Object[] { nodeId });
-                transaction.prepareAndExecute(getSql("deleteNodeChannelCtlSql"), new Object[] { nodeId });
+                transaction.prepareAndExecute(getSql("deleteNodeChannelCtlSql"), new Object[] { nodeId, nodeId });
                 transaction.prepareAndExecute(getSql("deleteIncomingErrorSql"), new Object[] { StringUtils.isNotBlank(targetNodeId) ? targetNodeId : nodeId });
                 transaction.prepareAndExecute(getSql("deleteExtractRequestSql"), new Object[] { nodeId, nodeId });
                 transaction.prepareAndExecute(getSql("deleteNodeCommunicationSql"), new Object[] { StringUtils.isNotBlank(targetNodeId) ? targetNodeId

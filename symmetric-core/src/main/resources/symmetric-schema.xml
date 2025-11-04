@@ -427,10 +427,11 @@
 
     <table name="node_channel_ctl" description="Used to ignore or suspend a channel. A channel that is ignored will have its data_events batched and they will immediately be marked as 'OK' without sending them. A channel that is suspended is skipped when batching data_events.">
         <column name="node_id" type="VARCHAR" size="50" required="true" primaryKey="true"  description="Unique identifier for a node." />
+        <column name="target_node_id" type="VARCHAR" size="50" required="true" primaryKey="true"  description="Unique identifier for a target node for which this channel will be suspended and/or ignored." />
         <column name="channel_id" type="VARCHAR" size="128" required="true" primaryKey="true"  description="The name of the channel_id that is being controlled." />
         <column name="suspend_enabled" type="BOOLEANINT" size="1" default="0"  description="Indicates if this channel is suspended, which prevents batches from being sent, although new batches can still be created." />
         <column name="ignore_enabled" type="BOOLEANINT" size="1" default="0"  description="Indicates if this channel is ignored, which marks batches with a status of OK like they were actually processed." />
-        <column name="last_extract_time" type="TIMESTAMP"  description="Record the last time data was extract for a node and a channel." />
+        <column name="last_extract_time" type="TIMESTAMP"  description="Records the last time data was extracted for a node and a channel. This column is excluded from replication and only used if the extract_period_millis is set for the channel." />
     </table>
 
     <table name="node_communication" description="This table is used to coordinate communication with other nodes.">

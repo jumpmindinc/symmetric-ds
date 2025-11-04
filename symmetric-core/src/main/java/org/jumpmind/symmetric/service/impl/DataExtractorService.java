@@ -121,7 +121,7 @@ import org.jumpmind.symmetric.io.stage.StagingFileLock;
 import org.jumpmind.symmetric.io.stage.StagingLowFreeSpace;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.ExtractRequest;
 import org.jumpmind.symmetric.model.ExtractRequest.ExtractStatus;
@@ -332,7 +332,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     private List<OutgoingBatch> filterBatchesForExtraction(OutgoingBatches batches,
-            ChannelMap suspendIgnoreChannelsList, String queue, Node targetNode) {
+            NodeChannels suspendIgnoreChannelsList, String queue, Node targetNode) {
         if (parameterService.is(ParameterConstants.FILE_SYNC_ENABLE)) {
             List<Channel> fileSyncChannels = configurationService.getFileSyncChannels();
             for (Channel channel : fileSyncChannels) {
@@ -345,8 +345,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         // Now, we need to skip the suspended channels and ignore the
         // ignored ones by ultimately setting the status to ignored and
         // updating them.
-        List<OutgoingBatch> ignoredBatches = batches
-                .filterBatchesForChannels(suspendIgnoreChannelsList.getIgnoreChannels());
+        List<OutgoingBatch> ignoredBatches = batches.filterIgnoredBatches(suspendIgnoreChannelsList);
         // Finally, update the ignored outgoing batches such that they
         // will be skipped in the future.
         for (OutgoingBatch batch : ignoredBatches) {
@@ -357,7 +356,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             }
         }
         outgoingBatchService.updateOutgoingBatches(ignoredBatches);
-        batches.filterBatchesForChannels(suspendIgnoreChannelsList.getSuspendChannels());
+        batches.filterSuspendedBatches(suspendIgnoreChannelsList);
         // Remove non-load batches so that an initial load finishes before
         // any other batches are loaded.
         if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true) && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
@@ -396,9 +395,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         OutgoingBatches batches = outgoingBatchService.getOutgoingBatches(targetNode.getNodeId(),
                 false);
         if (batches.containsBatches()) {
-            ChannelMap channelMap = configurationService.getSuspendIgnoreChannelLists(targetNode
-                    .getNodeId());
-            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, channelMap, null, targetNode);
+            NodeChannels nodeChannels = configurationService.getSuspendIgnoreChannelLists(targetNode.getNodeId());
+            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, nodeChannels, null, targetNode);
             if (activeBatches.size() > 0) {
                 IDdlBuilder builder = DdlBuilderFactory.getInstance().create(targetNode.getDatabaseType());
                 if (builder == null) {
@@ -453,9 +451,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         }
         OutgoingBatches batches = loadPendingBatches(extractInfo, targetNode, queue, transport);
         if (batches != null && batches.containsBatches()) {
-            ChannelMap channelMap = transport.getSuspendIgnoreChannelLists(configurationService, queue,
-                    targetNode);
-            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, channelMap, queue, targetNode);
+            NodeChannels nodeChannels = transport.getSuspendIgnoreChannelLists(configurationService, queue, targetNode);
+            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, nodeChannels, queue, targetNode);
             if (activeBatches.size() > 0) {
                 BufferedWriter writer = transport.openWriter();
                 IDataWriter dataWriter = new ProtocolDataWriter(nodeService.findIdentityNodeId(),
@@ -561,10 +558,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             long batchesSelectedAtMs = System.currentTimeMillis();
             OutgoingBatch currentBatch = null;
             ExecutorService executor = null;
+            Node sourceNode = nodeService.findIdentity();
             try {
                 final boolean streamToFileEnabled = parameterService.is(ParameterConstants.STREAM_TO_FILE_ENABLED);
                 long keepAliveMillis = parameterService.getLong(ParameterConstants.DATA_LOADER_SEND_ACK_KEEPALIVE);
-                Node sourceNode = nodeService.findIdentity();
                 final FutureExtractStatus status = new FutureExtractStatus();
                 if (this.threadPoolFactory == null) {
                     this.threadPoolFactory = new CustomizableThreadFactory(String.format("%s-dataextractor", parameterService.getEngineName().toLowerCase()));
@@ -763,10 +760,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             Calendar now = Calendar.getInstance();
             for (String channelProcessed : channelsProcessed) {
                 NodeChannel nodeChannel = configurationService.getNodeChannel(channelProcessed,
-                        targetNode.getNodeId(), false);
+                        sourceNode.getNodeId(), false);
                 if (nodeChannel != null && nodeChannel.getExtractPeriodMillis() > 0) {
-                    nodeChannel.setLastExtractTime(now.getTime());
-                    configurationService.updateLastExtractTime(nodeChannel);
+                    nodeChannel.setLastExtractTime(targetNode.getNodeId(), now.getTime());
+                    configurationService.updateLastExtractTime(nodeChannel, targetNode.getNodeId());
                 }
             }
             return processedBatches;

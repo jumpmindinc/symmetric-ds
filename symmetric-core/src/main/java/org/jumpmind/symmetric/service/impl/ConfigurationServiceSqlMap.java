@@ -30,7 +30,7 @@ public class ConfigurationServiceSqlMap extends AbstractSqlMap {
         super(platform, replacementTokens);
         // @formatter:off
         
-        putSql("updateNodeChannelLastExtractTime", "update $(node_channel_ctl) set last_extract_time=? where channel_id=? and node_id=?");
+        putSql("updateNodeChannelLastExtractTime", "update $(node_channel_ctl) set last_extract_time=? where channel_id=? and node_id=? and target_node_id=?");
 
         putSql("selectDataEventActionsByIdSql",
                 " select data_event_action from $(node_group_link) where         "
@@ -89,11 +89,16 @@ public class ConfigurationServiceSqlMap extends AbstractSqlMap {
           + "  from $(channel) c                                                               "
           + "  order by c.processing_order asc, c.channel_id                                                   ");
     
-        putSql("selectNodeChannelControlSql", 
-                  " select channel_id, last_extract_time, suspend_enabled, ignore_enabled   "
+        putSql("selectNodeChannelControlByNodeIdSql", 
+                  " select target_node_id, channel_id, last_extract_time, suspend_enabled, ignore_enabled   "
                   + "  from $(node_channel_ctl) where node_id = ?   "
                   + "  order by channel_id                                ");
 
+        putSql("selectNodeChannelControlByNodeIdAndTargetNodeIdSql", 
+                " select target_node_id, channel_id, last_extract_time, suspend_enabled, ignore_enabled   "
+                + "  from $(node_channel_ctl) where node_id = ? and target_node_id = ?  "
+                + "  order by channel_id                                ");
+        
         putSql("insertChannelSql",
            "insert into $(channel) (channel_id, processing_order, max_batch_size,                 "
          + "  max_batch_to_send, max_data_to_route, use_old_data_to_route, use_row_data_to_route, "
@@ -123,19 +128,19 @@ public class ConfigurationServiceSqlMap extends AbstractSqlMap {
 
         putSql("deleteNodeChannelSql", "delete from $(node_channel_ctl) where channel_id=?   ");
 
-        putSql("deleteNodeChannelControlSql", "delete from $(node_channel_ctl) where node_id=? and channel_id=?");
+        putSql("deleteNodeChannelControlSql", "delete from $(node_channel_ctl) where node_id=? and target_node_id=? and channel_id=?");
 
         putSql("selectNodeGroupChannelWindowSql",
                 "select node_group_id, channel_id, start_time, end_time, enabled                    "
               + "  from $(node_group_channel_wnd) where node_group_id=? and channel_id=?   ");
 
         putSql("insertNodeChannelControlSql", ""
-                + "insert into $(node_channel_ctl) (node_id, channel_id,                         "
-                + "  suspend_enabled, ignore_enabled,last_extract_time) values (?, ?, ?, ?, ?)   ");
+                + "insert into $(node_channel_ctl) (node_id, target_node_id, channel_id,         "
+                + "  suspend_enabled, ignore_enabled,last_extract_time) values (?, ?, ?, ?, ?, ?)");
 
         putSql("updateNodeChannelControlSql",
-               "update $(node_channel_ctl) set                                                              "
-             + "  suspend_enabled=?, ignore_enabled=?, last_extract_time=? where node_id=? and channel_id=? ");
+               "update $(node_channel_ctl) set                                                                                   "
+             + "  suspend_enabled=?, ignore_enabled=?, last_extract_time=? where node_id=? and target_node_id=? and channel_id=? ");
 
         putSql("getRegistrationRedirectSql",
             "select registrant_external_id, registration_node_id from $(registration_redirect)");

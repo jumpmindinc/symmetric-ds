@@ -29,6 +29,7 @@ import java.util.Date;
 public class NodeChannelControl implements Serializable {
     private static final long serialVersionUID = 1L;
     private String nodeId = null;
+    private String targetNodeId = null;
     private String channelId = null;
     private boolean ignoreEnabled = false;
     private boolean suspendEnabled = false;
@@ -40,6 +41,14 @@ public class NodeChannelControl implements Serializable {
 
     public void setNodeId(String nodeId) {
         this.nodeId = nodeId;
+    }
+
+    public String getTargetNodeId() {
+        return targetNodeId;
+    }
+
+    public void setTargetNodeId(String targetNodeId) {
+        this.targetNodeId = targetNodeId;
     }
 
     public String getChannelId() {

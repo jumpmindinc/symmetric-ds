@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.service.impl;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -43,13 +44,15 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Channel;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
+import org.jumpmind.symmetric.model.NodeChannelControl;
 import org.jumpmind.symmetric.model.NodeGroup;
 import org.jumpmind.symmetric.model.NodeGroupChannelWindow;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
+import org.jumpmind.symmetric.model.ChannelNodesMap;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
@@ -432,17 +435,25 @@ public class ConfigurationService extends AbstractService implements IConfigurat
 
     @Override
     public void saveNodeChannelControl(NodeChannel nodeChannel, boolean reloadChannels) {
-        if (0 >= sqlTemplate.update(
-                getSql("updateNodeChannelControlSql"),
-                new Object[] { nodeChannel.isSuspendEnabled() ? 1 : 0,
-                        nodeChannel.isIgnoreEnabled() ? 1 : 0, nodeChannel.getLastExtractTime(),
-                        nodeChannel.getNodeId(), nodeChannel.getChannelId() })) {
-            sqlTemplate
-                    .update(getSql("insertNodeChannelControlSql"),
-                            new Object[] { nodeChannel.getNodeId(), nodeChannel.getChannelId(),
-                                    nodeChannel.isSuspendEnabled() ? 1 : 0,
-                                    nodeChannel.isIgnoreEnabled() ? 1 : 0,
-                                    nodeChannel.getLastExtractTime() });
+        for (NodeChannelControl nodeChannelControl : nodeChannel.getNodeChannelControlMap().values()) {
+            saveNodeChannelControl(nodeChannelControl, false);
+        }
+        if (reloadChannels) {
+            clearCache();
+        }
+    }
+
+    @Override
+    public void saveNodeChannelControl(NodeChannelControl nodeChannelControl, boolean reloadChannels) {
+        if (0 >= sqlTemplate.update(getSql("updateNodeChannelControlSql"),
+                new Object[] { nodeChannelControl.isSuspendEnabled() ? 1 : 0,
+                        nodeChannelControl.isIgnoreEnabled() ? 1 : 0, nodeChannelControl.getLastExtractTime(),
+                        nodeChannelControl.getNodeId(), nodeChannelControl.getTargetNodeId(),
+                        nodeChannelControl.getChannelId() })) {
+            sqlTemplate.update(getSql("insertNodeChannelControlSql"),
+                    new Object[] { nodeChannelControl.getNodeId(), nodeChannelControl.getTargetNodeId(),
+                            nodeChannelControl.getChannelId(), nodeChannelControl.isSuspendEnabled() ? 1 : 0,
+                            nodeChannelControl.isIgnoreEnabled() ? 1 : 0, nodeChannelControl.getLastExtractTime() });
         }
         if (reloadChannels) {
             clearCache();
@@ -461,8 +472,8 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public void deleteNodeChannelControl(String nodeId, String channelId) {
-        sqlTemplate.update(getSql("deleteNodeChannelControlSql"), new Object[] { nodeId, channelId });
+    public void deleteNodeChannelControl(String nodeId, String targetNodeId, String channelId) {
+        sqlTemplate.update(getSql("deleteNodeChannelControlSql"), new Object[] { nodeId, targetNodeId, channelId });
         clearCache();
     }
 
@@ -518,7 +529,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
                 usingExtractPeriod |= nc.getExtractPeriodMillis() > 0;
             }
             if (usingExtractPeriod) {
-                sqlTemplate.query(getSql("selectNodeChannelControlSql"),
+                sqlTemplate.query(getSql("selectNodeChannelControlByNodeIdAndTargetNodeIdSql"),
                         new ISqlRowMapper<Object>() {
                             @Override
                             public Object mapRow(Row row) {
@@ -526,11 +537,11 @@ public class ConfigurationService extends AbstractService implements IConfigurat
                                 Date extractTime = row.getDateTime("last_extract_time");
                                 NodeChannel nodeChannel = nodeChannelsMap.get(channelId);
                                 if (nodeChannel != null) {
-                                    nodeChannel.setLastExtractTime(extractTime);
+                                    nodeChannel.setLastExtractTime(nodeId, extractTime);
                                 }
                                 return nodeChannelsMap;
                             };
-                        }, nodeId);
+                        }, nodeService.findIdentityNodeId(), nodeId);
             }
         }
         return nodeChannels;
@@ -539,28 +550,39 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     @Override
     public List<NodeChannel> getNodeChannelsFromDb(String nodeId) {
         List<NodeChannel> nodeChannels = sqlTemplate.query(getSql("selectNodeChannelsSql"), new NodeChannelMapper(nodeId));
-        List<NodeChannel> nodeChannelControls = sqlTemplate.query(getSql("selectNodeChannelControlSql"),
-                new ISqlRowMapper<NodeChannel>() {
+        List<NodeChannelControl> nodeChannelControls = sqlTemplate.query(getSql("selectNodeChannelControlByNodeIdSql"),
+                new ISqlRowMapper<NodeChannelControl>() {
                     @Override
-                    public NodeChannel mapRow(Row row) {
-                        NodeChannel nodeChannel = new NodeChannel();
-                        nodeChannel.setChannelId(row.getString("channel_id"));
-                        nodeChannel.setLastExtractTime(row.getDateTime("last_extract_time"));
-                        nodeChannel.setIgnoreEnabled(row.getBoolean("ignore_enabled"));
-                        nodeChannel.setSuspendEnabled(row.getBoolean("suspend_enabled"));
-                        return nodeChannel;
+                    public NodeChannelControl mapRow(Row row) {
+                        NodeChannelControl nodeChannelControl = new NodeChannelControl();
+                        nodeChannelControl.setNodeId(nodeId);
+                        nodeChannelControl.setTargetNodeId(row.getString("target_node_id"));
+                        nodeChannelControl.setChannelId(row.getString("channel_id"));
+                        nodeChannelControl.setLastExtractTime(row.getDateTime("last_extract_time"));
+                        nodeChannelControl.setIgnoreEnabled(row.getBoolean("ignore_enabled"));
+                        nodeChannelControl.setSuspendEnabled(row.getBoolean("suspend_enabled"));
+                        return nodeChannelControl;
                     };
                 }, nodeId);
-        for (NodeChannel nodeChannelControl : nodeChannelControls) {
+        for (NodeChannelControl nodeChannelControl : nodeChannelControls) {
             for (NodeChannel nodeChannel : nodeChannels) {
                 if (nodeChannel.getChannelId().equals(nodeChannelControl.getChannelId())) {
-                    nodeChannel.setIgnoreEnabled(nodeChannelControl.isIgnoreEnabled());
-                    nodeChannel.setSuspendEnabled(nodeChannelControl.isSuspendEnabled());
-                    nodeChannel.setLastExtractTime(nodeChannelControl.getLastExtractTime());
+                    nodeChannel.getNodeChannelControlMap().put(nodeChannelControl.getTargetNodeId(), nodeChannelControl);
                 }
             }
         }
         return nodeChannels;
+    }
+
+    @Override
+    public List<NodeChannel> getAllNodeChannelsFromCache(boolean suspendedOnly) {
+        List<NodeChannel> nodeChannelList = cacheManager.getAllNodeChannels();
+        if (suspendedOnly) {
+            nodeChannelList = nodeChannelList.stream().filter(
+                    nc -> nc.getNodeChannelControlMap().values().stream().anyMatch(ncc -> ncc.isSuspendEnabled()))
+                    .collect(Collectors.toList());
+        }
+        return nodeChannelList;
     }
 
     @Override
@@ -632,20 +654,25 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public ChannelMap getSuspendIgnoreChannelLists(final String nodeId) {
-        ChannelMap map = new ChannelMap();
-        List<NodeChannel> ncs = getNodeChannels(nodeId, true);
-        if (ncs != null) {
-            for (NodeChannel nc : ncs) {
-                if (nc.isSuspendEnabled()) {
-                    map.addSuspendChannels(nc.getChannelId());
-                }
-                if (nc.isIgnoreEnabled()) {
-                    map.addIgnoreChannels(nc.getChannelId());
+    public NodeChannels getSuspendIgnoreChannelLists(final String nodeId) {
+        NodeChannels nodeChannels = new NodeChannels();
+        List<NodeChannel> nodeChannelList = getNodeChannels(nodeId, false);
+        if (nodeChannelList != null) {
+            for (NodeChannel nc : nodeChannelList) {
+                String channelId = nc.getChannelId();
+                for (NodeChannelControl ncc : nc.getNodeChannelControlMap().values()) {
+                    ChannelNodesMap channelNodesMap = new ChannelNodesMap();
+                    channelNodesMap.put(channelId, Collections.singleton(ncc.getTargetNodeId()));
+                    if (ncc.isSuspendEnabled()) {
+                        nodeChannels.addSuspendChannels(channelNodesMap);
+                    }
+                    if (ncc.isIgnoreEnabled()) {
+                        nodeChannels.addIgnoreChannels(channelNodesMap);
+                    }
                 }
             }
         }
-        return map;
+        return nodeChannels;
     }
 
     @Override
@@ -692,7 +719,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public ChannelMap getSuspendIgnoreChannelLists() {
+    public NodeChannels getSuspendIgnoreChannelLists() {
         return getSuspendIgnoreChannelLists(nodeService.findIdentityNodeId());
     }
 
@@ -703,8 +730,12 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
-    public void updateLastExtractTime(NodeChannel channel) {
-        sqlTemplate.update(getSql("updateNodeChannelLastExtractTime"), channel.getLastExtractTime(), channel.getChannelId(), channel.getNodeId());
+    public void updateLastExtractTime(NodeChannel channel, String targetNodeId) {
+        if (sqlTemplate.update(getSql("updateNodeChannelLastExtractTime"), channel.getLastExtractTime(targetNodeId),
+                channel.getChannelId(), channel.getNodeId(), targetNodeId) == 0) {
+            sqlTemplate.update(getSql("insertNodeChannelControlSql"), channel.getNodeId(), targetNodeId,
+                    channel.getChannelId(), 0, 0, channel.getLastExtractTime(targetNodeId));
+        }
     }
 
     static class NodeGroupChannelWindowMapper implements ISqlRowMapper<NodeGroupChannelWindow> {

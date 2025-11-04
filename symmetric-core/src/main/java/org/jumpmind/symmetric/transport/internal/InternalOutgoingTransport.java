@@ -27,7 +27,7 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.transport.IOutgoingTransport;
@@ -35,22 +35,23 @@ import org.jumpmind.symmetric.transport.IOutgoingTransport;
 public class InternalOutgoingTransport implements IOutgoingTransport {
     BufferedWriter writer = null;
     OutputStream os = null;
-    ChannelMap map = null;
+    NodeChannels nodeChannels = null;
     boolean open = true;
 
     public InternalOutgoingTransport(OutputStream os, String encoding) throws UnsupportedEncodingException {
-        this(os, new ChannelMap(), encoding);
+        this(os, new NodeChannels(), encoding);
     }
 
-    public InternalOutgoingTransport(OutputStream os, ChannelMap map, String encoding) throws UnsupportedEncodingException {
+    public InternalOutgoingTransport(OutputStream os, NodeChannels nodeChannels, String encoding)
+            throws UnsupportedEncodingException {
         this.os = os;
         this.writer = new BufferedWriter(new OutputStreamWriter(os, encoding == null ? Charset.defaultCharset().name() : encoding));
-        this.map = map;
+        this.nodeChannels = nodeChannels;
     }
 
     public InternalOutgoingTransport(BufferedWriter writer) {
         this.writer = writer;
-        this.map = new ChannelMap();
+        this.nodeChannels = new NodeChannels();
     }
 
     public void close() {
@@ -80,7 +81,7 @@ public class InternalOutgoingTransport implements IOutgoingTransport {
         return writer;
     }
 
-    public ChannelMap getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode) {
-        return map;
+    public NodeChannels getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode) {
+        return nodeChannels;
     }
 }

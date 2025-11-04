@@ -27,7 +27,7 @@ import java.io.StringWriter;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.jumpmind.exception.IoException;
-import org.jumpmind.symmetric.model.ChannelMap;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.transport.IOutgoingTransport;
@@ -75,7 +75,7 @@ public class MockOutgoingTransport implements IOutgoingTransport {
         return writer.getBuffer().toString();
     }
 
-    public ChannelMap getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode) {
-        return new ChannelMap();
+    public NodeChannels getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode) {
+        return new NodeChannels();
     }
 }

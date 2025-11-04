@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -98,6 +99,8 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
                  */
                 routeNodeTables(nodeIds, columnValues, rootNetworkedNode, me, routingContext,
                         dataMetaData, possibleTargetNodes, initialLoad);
+            } else if (tableMatches(dataMetaData, TableConstants.SYM_NODE_CHANNEL_CTL)) {
+                routeNodeChannelControlTable(nodeIds, columnValues, possibleTargetNodes);
             } else if (tableMatches(dataMetaData, TableConstants.SYM_TABLE_RELOAD_REQUEST)
                     || tableMatches(dataMetaData, TableConstants.SYM_TABLE_RELOAD_STATUS)
                     || tableMatches(dataMetaData, TableConstants.SYM_COMPARE_REQUEST)
@@ -289,6 +292,19 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
                  */
                 if (dataMetaData.getData().getDataEventType() == DataEventType.INSERT) {
                     nodeIds.remove(nodeIdForRecordBeingRouted);
+                }
+            }
+        }
+    }
+
+    protected void routeNodeChannelControlTable(Set<String> nodeIds, Map<String, String> columnValues, Set<Node> possibleTargetNodes) {
+        String sourceNodeId = columnValues.get("NODE_ID");
+        String targetNodeId = columnValues.get("TARGET_NODE_ID");
+        if (!Strings.CS.equals(sourceNodeId, targetNodeId)) {
+            for (Node nodeThatMayBeRoutedTo : possibleTargetNodes) {
+                if (notRestClient(nodeThatMayBeRoutedTo) && (nodeThatMayBeRoutedTo.getNodeId().equals(sourceNodeId))
+                        || nodeThatMayBeRoutedTo.getNodeId().equals(targetNodeId)) {
+                    nodeIds.add(nodeThatMayBeRoutedTo.getNodeId());
                 }
             }
         }
