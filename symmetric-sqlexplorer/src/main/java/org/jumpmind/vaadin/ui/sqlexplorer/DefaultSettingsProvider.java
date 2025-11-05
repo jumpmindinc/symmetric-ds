@@ -22,16 +22,16 @@ package org.jumpmind.vaadin.ui.sqlexplorer;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
-import java.beans.XMLDecoder;
-import java.beans.XMLEncoder;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.Serializable;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.gson.Gson;
 
 public class DefaultSettingsProvider implements ISettingsProvider, Serializable {
     private static final long serialVersionUID = 1L;
@@ -54,18 +54,17 @@ public class DefaultSettingsProvider implements ISettingsProvider, Serializable 
     }
 
     protected File getSettingsFile() {
-        return new File(dir, "sqlexplorer-settings.xml");
+        return new File(dir, "sqlexplorer-settings.json");
     }
 
     @Override
     public void save(Settings settings) {
         synchronized (getClass()) {
+            Gson gson = new Gson();
             File file = getSettingsFile();
             ClassLoader classloader = setContextClassloader();
-            try (FileOutputStream os = new FileOutputStream(file, false)) {
-                XMLEncoder encoder = new XMLEncoder(os);
-                encoder.writeObject(settings);
-                encoder.close();
+            try (FileWriter writer = new FileWriter(file, false)) {
+                gson.toJson(settings, writer);
                 this.settings = settings;
             } catch (Exception ex) {
                 log.error(ex.getMessage(), ex);
@@ -77,13 +76,12 @@ public class DefaultSettingsProvider implements ISettingsProvider, Serializable 
 
     public Settings load() {
         synchronized (getClass()) {
+            Gson gson = new Gson();
             File file = getSettingsFile();
             if (file.exists() && file.length() > 0) {
                 ClassLoader classloader = setContextClassloader();
-                try (FileInputStream is = new FileInputStream(file)) {
-                    XMLDecoder decoder = new XMLDecoder(is);
-                    Settings settings = (Settings) decoder.readObject();
-                    decoder.close();
+                try (FileReader reader = new FileReader(file)) {
+                    Settings settings = gson.fromJson(reader, Settings.class);
                     return settings;
                 } catch (Exception ex) {
                     log.error("Failed to load settings", ex);
