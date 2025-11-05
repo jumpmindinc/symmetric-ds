@@ -19,7 +19,7 @@ jobs:
         env:
           JIRA_URL: ${{ secrets.JIRA_URL }}
           JIRA_USER: ${{ secrets.JIRA_USER }}
-          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
           VERSION: ${{ github.event.inputs.version }}
         run: |
           JQL="project=SYM AND status=Closed AND fixVersion='$VERSION' AND level=Private AND component NOT IN (pro)" 
@@ -60,7 +60,7 @@ jobs:
         env:
           JIRA_URL: ${{ secrets.JIRA_URL }}
           JIRA_USER: ${{ secrets.JIRA_USER }}
-          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
           PRIVATE_TICKETS: ${{ steps.get-tickets.outputs.private_tickets }}
           VERSION: ${{ github.event.inputs.version }}
         run: |
