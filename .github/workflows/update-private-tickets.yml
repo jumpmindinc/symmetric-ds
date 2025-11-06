@@ -1,0 +1,123 @@
+name: Update Private Tickets to Public
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The release version.'
+        required: true
+        type: string
+jobs:
+  update-private-tickets-to-public:
+    runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64
+    
+    steps:
+      - uses: runs-on/action@v2
+      
+      - name: GET private tickets
+        id: get-tickets
+        env:
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_USER: ${{ secrets.JIRA_USER }}
+          JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          JQL="project=SYM AND status=Closed AND fixVersion='$VERSION' AND level=Private AND component NOT IN (pro)" 
+          ENCODED_JQL=$(echo "$JQL" | jq -sRr @uri)
+          echo "Calling JIRA GET API with JQL: $JQL"
+
+          RESPONSE_STATUS=$(curl -s -w "%{response_code}" -o /tmp/jira_response.json -X GET \
+            --user '${{ secrets.JIRA_USER }}:${{ secrets.JIRA_API_KEY }}' \
+            --header 'Content-Type: application/json' \
+            --header 'Accept: application/json' \
+            "$JIRA_URL/rest/api/3/search/jql?jql=$ENCODED_JQL&fields=key&maxResults=500")
+          
+          RESPONSE_BODY=$(cat /tmp/jira_response.json)
+
+          if [ "$RESPONSE_STATUS" -ge 200 ] && [ "$RESPONSE_STATUS" -lt 300 ]; then
+            echo "Successfully retrieved private tickets from JIRA"
+          else
+            echo "HTTP ${RESPONSE_STATUS}: Failed to GET private issues from JIRA"
+            echo "$RESPONSE_BODY"
+            exit 1
+          fi
+          
+          PRIVATE_TICKETS=$(echo "$RESPONSE_BODY" | jq -r '.issues[].key' | tr '\n' ' ')
+          
+          if [ -z "$PRIVATE_TICKETS" ]; then
+            echo "No private tickets found for version '$VERSION'"
+            echo "private_tickets=" >> $GITHUB_OUTPUT
+          else
+            echo "Private tickets to update for version '$VERSION': $PRIVATE_TICKETS"
+            echo "private_tickets=$PRIVATE_TICKETS" >> $GITHUB_OUTPUT
+          fi
+          
+          # Save full response for summary
+          echo "$RESPONSE_BODY" > jira_response.json
+      
+      - name: Update private tickets to public
+        if: steps.get-tickets.outputs.private_tickets != null && steps.get-tickets.outputs.private_tickets != ''
+        env:
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_USER: ${{ secrets.JIRA_USER }}
+          JIRA_API_KEY: ${{ secrets.JIRA_API_KEY }}
+          PRIVATE_TICKETS: ${{ steps.get-tickets.outputs.private_tickets }}
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          SUCCESS_COUNT=0
+          FAILURE_COUNT=0
+          FAILED_TICKETS=""
+          
+          for TICKET in $PRIVATE_TICKETS; do
+            echo "Updating $TICKET to public..."
+            
+            RESPONSE_STATUS=$(curl -s -w "%{response_code}\n" -X PUT \
+              --header 'Content-Type: application/json' \
+              --header 'Accept: application/json' \
+              --user '${{ secrets.JIRA_USER }}:${{ secrets.JIRA_API_KEY }}' \
+              --data '{"fields":{"security":null}}' \
+              "$JIRA_URL/rest/api/3/issue/$TICKET")
+            
+            if [ "$RESPONSE_STATUS" -eq 204 ] || [ "$RESPONSE_STATUS" -eq 200 ]; then
+              echo "Successfully updated $TICKET"
+              SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+            else
+              echo "HTTP $RESPONSE_STATUS: Failed to update $TICKET"
+              FAILURE_COUNT=$((FAILURE_COUNT + 1))
+              FAILED_TICKETS="$FAILED_TICKETS $TICKET"
+            fi
+          done
+          
+          echo "SUCCESS_COUNT=$SUCCESS_COUNT" >> $GITHUB_ENV
+          echo "FAILURE_COUNT=$FAILURE_COUNT" >> $GITHUB_ENV
+          echo "FAILED_TICKETS=$FAILED_TICKETS" >> $GITHUB_ENV
+      
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## JIRA Ticket Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+
+          PRIVATE_TICKETS="${{ steps.get-tickets.outputs.private_tickets }}"
+          PRIVATE_TICKET_COUNT=$(echo "$PRIVATE_TICKETS" | wc -w)
+
+          if [ "$PRIVATE_TICKET_COUNT" -eq 0 ]; then
+            echo "No private tickets found for version '${{ github.event.inputs.version }}'" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Total private tickets found:** $PRIVATE_TICKET_COUNT" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Successfully updated:** ${SUCCESS_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
+            
+            if [ "${FAILURE_COUNT:-0}" -gt 0 ]; then
+              echo "**Failed to update:** $FAILURE_COUNT" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Failed tickets:**$FAILED_TICKETS" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+      
+      - name: Fail when updates failed
+        if: env.FAILURE_COUNT != '' && env.FAILURE_COUNT != '0'
+        run: |
+          echo "Some tickets failed to update. Please check the tickets manually and update accordingly."
+          exit 1
