@@ -114,11 +114,11 @@ public class ReleaseNotesGenerator {
     /**
      * Builds a complete list of issues from a JIRA API that returns paginated results.
      */
-    private static List<Issue> buildIssuesFromJira(String url, String apiUser, String apiSecret, String majorMinorVersion) throws Exception {
+    private static List<Issue> buildIssuesFromJira(String url, String apiUser, String apiKey, String majorMinorVersion) throws Exception {
         List<Issue> issues = new ArrayList<>();
         String nextPageToken = null;
         do {
-            PageResult issuesPage = fetchIssuesPage(url, apiUser, apiSecret, majorMinorVersion, nextPageToken);
+            PageResult issuesPage = fetchIssuesPage(url, apiUser, apiKey, majorMinorVersion, nextPageToken);
             issues.addAll(issuesPage.getIssues());
             nextPageToken = issuesPage.getNextPageToken();
             if (nextPageToken != null) {
@@ -131,10 +131,10 @@ public class ReleaseNotesGenerator {
     /**
      * Fetches a single page of issues.
      */
-    private static PageResult fetchIssuesPage(String url, String apiUser, String apiSecret, String majorMinorVersion, String pageToken) throws Exception {
+    private static PageResult fetchIssuesPage(String url, String apiUser, String apiKey, String majorMinorVersion, String pageToken) throws Exception {
         HttpURLConnection conn = null;
         try {
-            conn = buildJiraConnection(url, apiUser, apiSecret, majorMinorVersion, pageToken);
+            conn = buildJiraConnection(url, apiUser, apiKey, majorMinorVersion, pageToken);
             if (conn.getResponseCode() != 200) {
                 throw new RuntimeException("Failed : HTTP Error code : " + conn.getResponseCode());
             }
@@ -146,7 +146,7 @@ public class ReleaseNotesGenerator {
         }
     }
 
-    private static HttpURLConnection buildJiraConnection(String url, String apiUser, String apiSecret, String majorMinorVersion, String nextPageToken)
+    private static HttpURLConnection buildJiraConnection(String url, String apiUser, String apiKey, String majorMinorVersion, String nextPageToken)
             throws IOException {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(url)
                 .path("/rest/api/3/search/jql")
@@ -158,7 +158,7 @@ public class ReleaseNotesGenerator {
         }
         URL jiraApi = new URL(uriBuilder.build().toUriString());
         HttpURLConnection connection = (HttpURLConnection) jiraApi.openConnection();
-        String auth = apiUser + ":" + apiSecret;
+        String auth = apiUser + ":" + apiKey;
         String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
         connection.setRequestProperty("Authorization", "Basic " + encodedAuth);
         connection.setRequestProperty("Accept", "application/json");
