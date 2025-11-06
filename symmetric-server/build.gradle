@@ -3,6 +3,8 @@ apply from: symAssembleDir + '/asciidoc.gradle'
 
     description = 'SymmetricDS Server library for JDBC client'
 
+	def shouldGenerateReleaseDocs = project.hasProperty('generateReleaseDocs') 
+
     apply plugin: 'distribution'
 
     dependencies {
@@ -163,9 +165,12 @@ apply from: symAssembleDir + '/asciidoc.gradle'
         }
     }
     
-    
-    serverDistZip.dependsOn { ':symmetric-server:jar' }
-    serverDistZip.dependsOn { ':symmetric-server:generateDocs' }
-    generateAppendixes.dependsOn(project(':symmetric-server').jar)
-    generateAppendixes.dependsOn(project(':symmetric-util').jar)
-    serverDistTar.dependsOn { ':symmetric-server:generateDocs' }
+	serverDistZip.dependsOn { ':symmetric-server:jar' }
+	serverDistTar.dependsOn { ':symmetric-server:jar' }
+
+	if (shouldGenerateReleaseDocs) {
+	    serverDistZip.dependsOn { ':symmetric-server:generateDocs' }
+	    serverDistTar.dependsOn { ':symmetric-server:generateDocs' }
+	    generateAppendixes.dependsOn(project(':symmetric-server').jar)
+	    generateAppendixes.dependsOn(project(':symmetric-util').jar)
+	}
