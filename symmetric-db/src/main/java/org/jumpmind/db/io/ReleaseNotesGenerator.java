@@ -226,7 +226,6 @@ public class ReleaseNotesGenerator {
             issue.setVersion(getStringValue(firstVersion, "name"));
         }
         parseComponents(fields, issue);
-        System.out.println("Issue: " + issue);
         return issue;
     }
 
