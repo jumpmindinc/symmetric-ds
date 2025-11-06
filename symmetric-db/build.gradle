@@ -9,6 +9,7 @@ apply from: symAssembleDir + '/common.gradle'
             exclude group: "commons-collections"
             exclude group: 'commons-logging'
         }
+        implementation("org.springframework:spring-web:$springVersion")
         
         compileOnly ("com.datastax.cassandra:cassandra-driver-core:3.11.1") {
             exclude group: 'org.slf4j'
