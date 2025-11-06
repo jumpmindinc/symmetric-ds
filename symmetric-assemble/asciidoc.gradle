@@ -64,9 +64,7 @@ task generateReleaseNotes {
 				symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/console-schema.xml",
 				symAssembleDir + '/src/asciidoc/generated/release-notes.ad',
 				version.substring(0, version.lastIndexOf(".")),
-				jiraUrl,
-				jiraUser,
-				jiraAPIKey
+				"https://jumpmind.atlassian.net"
 			]
 		}
 	}

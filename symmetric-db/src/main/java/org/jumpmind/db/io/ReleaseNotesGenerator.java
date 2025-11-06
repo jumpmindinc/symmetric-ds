@@ -37,7 +37,6 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -85,11 +84,11 @@ public class ReleaseNotesGenerator {
         String issuesFile = directory + "issues.ad";
         String tablesFile = directory + "tables.ad";
         String parametersFile = directory + "parameters.ad";
-        if (args.length < 9) {
+        if (args.length < 7) {
             System.err.println("wrong usage");
             System.exit(-1);
         }
-        List<Issue> issues = buildIssuesFromJira(args[6], args[7], args[8], args[5]);
+        List<Issue> issues = buildIssuesFromJira(args[6], args[5]);
         String properties = args[0];
         String schema = args[1];
         String proProperties = args[2];
@@ -114,11 +113,11 @@ public class ReleaseNotesGenerator {
     /**
      * Builds a complete list of issues from a JIRA API that returns paginated results.
      */
-    private static List<Issue> buildIssuesFromJira(String url, String apiUser, String apiKey, String majorMinorVersion) throws Exception {
+    private static List<Issue> buildIssuesFromJira(String url, String majorMinorVersion) throws Exception {
         List<Issue> issues = new ArrayList<>();
         String nextPageToken = null;
         do {
-            PageResult issuesPage = fetchIssuesPage(url, apiUser, apiKey, majorMinorVersion, nextPageToken);
+            PageResult issuesPage = fetchIssuesPage(url, majorMinorVersion, nextPageToken);
             issues.addAll(issuesPage.getIssues());
             nextPageToken = issuesPage.getNextPageToken();
             if (nextPageToken != null) {
@@ -131,10 +130,10 @@ public class ReleaseNotesGenerator {
     /**
      * Fetches a single page of issues.
      */
-    private static PageResult fetchIssuesPage(String url, String apiUser, String apiKey, String majorMinorVersion, String pageToken) throws Exception {
+    private static PageResult fetchIssuesPage(String url, String majorMinorVersion, String pageToken) throws Exception {
         HttpURLConnection conn = null;
         try {
-            conn = buildJiraConnection(url, apiUser, apiKey, majorMinorVersion, pageToken);
+            conn = buildJiraConnection(url, majorMinorVersion, pageToken);
             if (conn.getResponseCode() != 200) {
                 throw new RuntimeException("Failed : HTTP Error code : " + conn.getResponseCode());
             }
@@ -146,7 +145,7 @@ public class ReleaseNotesGenerator {
         }
     }
 
-    private static HttpURLConnection buildJiraConnection(String url, String apiUser, String apiKey, String majorMinorVersion, String nextPageToken)
+    private static HttpURLConnection buildJiraConnection(String url, String majorMinorVersion, String nextPageToken)
             throws IOException {
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(url)
                 .path("/rest/api/3/search/jql")
@@ -158,9 +157,6 @@ public class ReleaseNotesGenerator {
         }
         URL jiraApi = new URL(uriBuilder.build().toUriString());
         HttpURLConnection connection = (HttpURLConnection) jiraApi.openConnection();
-        String auth = apiUser + ":" + apiKey;
-        String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
-        connection.setRequestProperty("Authorization", "Basic " + encodedAuth);
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("Content-Type", "application/json");
         return connection;
@@ -230,6 +226,7 @@ public class ReleaseNotesGenerator {
             issue.setVersion(getStringValue(firstVersion, "name"));
         }
         parseComponents(fields, issue);
+        System.out.println("Issue: " + issue);
         return issue;
     }
 
