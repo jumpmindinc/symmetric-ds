@@ -60,9 +60,6 @@ public class FilterCriterion {
     private List<Object> values;
     private FilterOption option;
 
-    public FilterCriterion() {
-    }
-
     public FilterCriterion(String propertyId, List<Object> values, FilterOption option) {
         this.propertyId = propertyId;
         this.values = values;
