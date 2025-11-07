@@ -92,17 +92,17 @@ public enum ProcessType {
             case PUSH_JOB_EXTRACT:
                 return "Extracting";
             case PUSH_JOB_TRANSFER:
-                return "Transfering";
+                return "Transferring";
             case PULL_JOB_TRANSFER:
-                return "Transfering";
+                return "Transferring";
             case PULL_JOB_LOAD:
                 return "Loading";
             case PULL_CONFIG_JOB:
                 return "Config Pull";
             case PUSH_HANDLER_TRANSFER:
-                return "Transfering";
+                return "Transferring";
             case PULL_HANDLER_TRANSFER:
-                return "Transfering";
+                return "Transferring";
             case PUSH_HANDLER_LOAD:
                 return "Loading";
             case PULL_HANDLER_EXTRACT:
