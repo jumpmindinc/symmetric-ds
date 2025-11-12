@@ -57,7 +57,7 @@ jobs:
             
             **Simplified explanation**
             \`\`\`
-            {the 7 digit issue number}: {a short one line summary of the PR}
+            {SYM-[ticket number]}: {a short one line summary of the PR}
             \`\`\`
             ---
             `;
