@@ -947,7 +947,11 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         Column column = new Column();
         PlatformColumn platformColumn = new PlatformColumn();
         platformColumn.setName(platform.getName());
-        column.setName((String) values.get(getName("COLUMN_NAME")));
+        String columnName = (String) values.get(getName("COLUMN_NAME"));
+        column.setName(columnName);
+        if (columnName == null) {
+            log.warn("Encountered null column name when reading column metadata: {}", values);
+        }
         String defaultValue = (String) values.get(getName("COLUMN_DEF"));
         if (defaultValue == null) {
             defaultValue = (String) values.get(getName("COLUMN_DEFAULT"));
