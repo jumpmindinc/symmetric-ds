@@ -25,8 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.jumpmind.exception.HttpException;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -169,7 +169,7 @@ public class HttpIncomingTransport implements IIncomingTransport {
 
     @Override
     public Map<String, String> getHeaders() {
-        Map<String, String> headers = new LinkedHashMap<String, String>();
+        Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         for (String name : connection.getHeaderFields().keySet()) {
             if (name != null) {
                 headers.put(name, connection.getHeaderField(name));
