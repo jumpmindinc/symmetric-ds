@@ -82,6 +82,7 @@ public class InfoUriHandler extends AbstractUriHandler {
                     for (Node node : nodeList) {
                         if (node.getNodeGroupId().equals(group)) {
                             occupiedGroupSet.add(group);
+                            log.debug("Group {} is occupied, so it will be excluded from the {}", group, InfoConstants.NODE_GROUP_IDS);
                             break;
                         }
                     }
