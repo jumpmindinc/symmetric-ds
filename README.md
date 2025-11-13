@@ -7,7 +7,7 @@ SymmetricDS is database replication and file synchronization software that is pl
 
 ---
 
-[Website](https://www.symmetricds.org) | [Documentation](https://www.symmetricds.org/docs/overview) | [Forum](https://sourceforge.net/p/symmetricds/discussion) | [Chat Room](https://gitter.im/symmetricds/Lobby) | [Issue Tracker](https://www.symmetricds.org/issues) | [Docker Hub](https://hub.docker.com/r/jumpmind/symmetricds)
+[Website](https://www.symmetricds.org) | [Documentation](https://www.symmetricds.org/docs/overview) | [Forum](https://sourceforge.net/p/symmetricds/discussion) | [Chat Room](https://gitter.im/symmetricds/Lobby) | [Issue Tracker](https://jumpmind.atlassian.net/browse/SYM) | [Docker Hub](https://hub.docker.com/r/jumpmind/symmetricds)
 
 ---
 
