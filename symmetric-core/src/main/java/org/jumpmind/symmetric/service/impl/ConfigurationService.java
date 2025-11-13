@@ -654,6 +654,12 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
+    public void deleteNodeGroupChannelWindowsByNodeGroup(String nodeGroupId) {
+        sqlTemplate.update(getSql("deleteNodeGroupChannelWindowByNodeGroupSql"), nodeGroupId);
+        cacheManager.flushNodeGroupChannelWindows();
+    }
+
+    @Override
     public NodeChannels getSuspendIgnoreChannelLists(final String nodeId) {
         NodeChannels nodeChannels = new NodeChannels();
         List<NodeChannel> nodeChannelList = getNodeChannels(nodeId, false);

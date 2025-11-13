@@ -133,7 +133,9 @@ public class ConfigurationServiceSqlMap extends AbstractSqlMap {
         putSql("selectNodeGroupChannelWindowSql",
                 "select node_group_id, channel_id, start_time, end_time, enabled                    "
               + "  from $(node_group_channel_wnd) where node_group_id=? and channel_id=?   ");
-
+        
+        putSql("deleteNodeGroupChannelWindowByNodeGroupSql", "delete from $(node_group_channel_wnd) where node_group_id=?");
+        
         putSql("insertNodeChannelControlSql", ""
                 + "insert into $(node_channel_ctl) (node_id, target_node_id, channel_id,         "
                 + "  suspend_enabled, ignore_enabled,last_extract_time) values (?, ?, ?, ?, ?, ?)");

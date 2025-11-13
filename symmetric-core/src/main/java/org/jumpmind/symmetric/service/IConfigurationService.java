@@ -92,6 +92,8 @@ public interface IConfigurationService {
 
     public Map<String, List<NodeGroupChannelWindow>> getNodeGroupChannelWindowsFromDb();
 
+    public void deleteNodeGroupChannelWindowsByNodeGroup(String nodeGroupId);
+
     public NodeGroupLinkAction getDataEventActionByGroupLinkId(String sourceGroupId, String targetGroupId);
 
     public List<NodeChannel> getNodeChannels(boolean refreshExtractMillis);
