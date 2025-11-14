@@ -657,13 +657,16 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
     }
 
     private void notifyQueuesReady(RemoteNodeStatus status, IIncomingTransport transport) {
-        if (status != null && Constants.QUEUE_DEFAULT.equals(status.getQueue())) {
+        if (parameterService.is(ParameterConstants.SYNC_USE_READY_QUEUES) && configurationService.getQueues(false).size() > 1 &&
+                !parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT) && status != null && Constants.QUEUE_DEFAULT.equals(status.getQueue())) {
             Map<String, String> headers = transport.getHeaders();
             if (headers != null) {
                 String queues = headers.get(WebConstants.HEADER_READY_QUEUES);
                 if (queues != null) {
                     log.debug("Received ready queues from node {}: {}", status.getNodeId(), queues);
                     incomingBatchService.setReadyQueues(status.getNodeId(), Arrays.asList(queues.split("\\s*,\\s*")));
+                } else {
+                    log.error("Missing ready queues header from node {} may prevent batches from syncing", status.getNodeId());
                 }
             }
         }
