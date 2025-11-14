@@ -1,0 +1,236 @@
+name: Cherry-pick merged PR
+on:
+  push:
+    branches:
+      - 'release/3.16'
+  workflow_dispatch:
+    inputs:
+      commit_hash:
+        type: string
+        description: Commit hash of the squashed commit to be cherry-picked
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  GITHUB_BOT_EMAIL: 'jm-commerce-bot[bot]@users.noreply.github.com'
+  GITHUB_BOT_NAME: 'jm-commerce-bot[bot]'
+  GITHUB_BOT_KEY: ${{ secrets.JM_GITHUB_APP_COMMERCE_PK }}
+  GITHUB_BOT_APP_ID: ${{ vars.JM_GITHUB_APP_COMMERCE_BOT_ID }}
+
+jobs:
+  compute-destination-branches:
+    runs-on: ubuntu-latest
+    
+    outputs:
+      destination_branches: ${{ steps.destination-branches.outputs.destination_branches }}
+      pr_number: ${{ steps.pr-number.outputs.group1 }}
+      commit_hash: ${{ steps.commit-info.outputs.commit_hash }}
+    
+    steps:
+      - name: Checkout for commit lookup
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract commit information
+        id: commit-info
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "commit_hash=${{ github.sha }}" >> $GITHUB_OUTPUT
+            cat << 'EOF' >> $GITHUB_OUTPUT
+          commit_message<<COMMIT_EOF
+          ${{ github.event.head_commit.message }}
+          COMMIT_EOF
+          EOF
+          else
+            echo "commit_hash=${{ inputs.commit_hash }}" >> $GITHUB_OUTPUT
+            git_message=$(git log -1 --pretty=format:"%s" ${{ inputs.commit_hash }})
+            echo "commit_message=${git_message}" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Match PR number from commit message
+        uses: actions-ecosystem/action-regex-match@v2
+        id: pr-number
+        with:
+          text: ${{ steps.commit-info.outputs.commit_message }}
+          regex: \(#(\d+)\)
+
+      - name: Title regex match
+        uses: actions-ecosystem/action-regex-match@v2
+        id: title-pattern
+        with:
+          text: ${{ steps.commit-info.outputs.commit_message }}
+          regex: '${{ vars.PR_POLICY_TITLE_PATTERN }}'
+          flags: 'm'
+
+      - name: Extract JIRA ticket
+        id: extract-jira-ticket
+        run: |
+          MATCHED="${{ steps.title-pattern.outputs.match }}"
+    
+          if [ -n "$MATCHED" ]; then
+            JIRA_KEY=$(echo "$MATCHED" | grep -oE '^SYM-[0-9]+')
+            echo "jira_ticket=${JIRA_KEY}" >> $GITHUB_OUTPUT
+            echo "Extracted JIRA ticket: ${JIRA_KEY}"
+          else
+            echo "jira_ticket=" >> $GITHUB_OUTPUT
+            echo "No JIRA ticket found in commit message"
+          fi
+          
+      - name: Get fix versions
+        id: fix-versions
+        if: steps.pr-number.outputs.match != '' && steps.extract-jira-ticket.outputs.jira_ticket != ''
+        env:
+          JIRA_KEY: ${{ steps.extract-jira-ticket.outputs.jira_ticket }}
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_USER: ${{ secrets.JIRA_USER }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          RESPONSE_STATUS=$(curl -s -w "%{response_code}" -o /tmp/jira_response.json -X GET \
+            --user '${{ secrets.JIRA_USER }}:${{ secrets.JIRA_API_KEY }}' \
+            --header 'Content-Type: application/json' \
+            --header 'Accept: application/json' \
+            "$JIRA_URL/rest/api/3/issue/$JIRA_KEY?fields=fixVersions")
+          
+          RESPONSE_BODY=$(cat /tmp/jira_response.json)
+
+          if [ "$RESPONSE_STATUS" -ge 200 ] && [ "$RESPONSE_STATUS" -lt 300 ]; then
+            echo "Successfully retrieved ${JIRA_KEY} ticket from JIRA"
+          else
+            echo "HTTP ${RESPONSE_STATUS}: Failed to GET ${JIRA_KEY} ticket from JIRA"
+            echo "$RESPONSE_BODY"
+            exit 1
+          fi
+          
+          FIX_VERSIONS=$(echo "$RESPONSE_BODY" | jq -r '.fields.fixVersions[].name' | tr '\n' ' ')
+          
+          if [ -z "$FIX_VERSIONS" ]; then
+            echo "No fix versions found for ticket '$JIRA_KEY'"
+            echo "fix_versions=" >> $GITHUB_OUTPUT
+          else
+            echo "Found fix versions: '$FIX_VERSIONS', for '$JIRA_KEY'"
+            echo "fix_versions=$FIX_VERSIONS" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Map fix versions to branches
+        id: destination-branches
+        if: steps.pr-number.outputs.match != '' && steps.extract-jira-ticket.outputs.jira_ticket != ''
+        run: |
+          FIX_VERSIONS="${{ steps.fix-versions.outputs.fix_versions }}"
+  
+          if [ -n "$FIX_VERSIONS" ]; then
+            RELEASE_BRANCHES=""
+            for VERSION in $FIX_VERSIONS; do
+              # Extract major.minor (strip patch version)
+              BRANCH_VERSION=$(echo "$VERSION" | cut -d'.' -f1,2)
+              RELEASE_BRANCHES="${RELEASE_BRANCHES}release/${BRANCH_VERSION} "
+            done
+  
+            # Remove duplicates and trim trailing space
+            RELEASE_BRANCHES=$(echo "$RELEASE_BRANCHES" | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
+  
+            # Convert to JSON array
+            JSON_ARRAY=$(printf '%s\n' $RELEASE_BRANCHES | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            
+            echo "Destination branches: ${RELEASE_BRANCHES}"
+            echo "Destination branches JSON: ${JSON_ARRAY}"
+            echo "destination_branches=${JSON_ARRAY}" >> $GITHUB_OUTPUT
+          else
+            echo "No fix versions found"
+            echo "destination_branches=[]" >> $GITHUB_OUTPUT
+          fi
+            
+  cherry-pick-to-branches:
+    runs-on: ubuntu-latest
+    needs: compute-destination-branches
+    continue-on-error: true
+    if: needs.compute-destination-branches.outputs.destination_branches != '[]'
+    strategy:
+      matrix:
+        branch: ${{ fromJson(needs.compute-destination-branches.outputs.destination_branches) }}
+    
+    steps:
+      - name: Create App Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          owner: jumpmindinc
+          app-id: ${{ env.GITHUB_BOT_APP_ID }}
+          private-key: ${{ env.GITHUB_BOT_KEY }}
+
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: '0'
+          ref: '${{ matrix.branch }}'
+
+      - name: Set git user config
+        id: git-setup
+        run: |
+          git config --global user.email "${{ env.GITHUB_BOT_EMAIL }}"
+          git config --global user.name "${{ env.GITHUB_BOT_NAME }}"
+          echo "unique_branch=cherry-pick-${{ needs.compute-destination-branches.outputs.commit_hash }}-${{ matrix.branch }}" >> $GITHUB_OUTPUT
+
+      - name: Cherry pick commit
+        id: cherry-pick
+        shell: bash
+        run: |
+          git status
+          git checkout -b ${{ steps.git-setup.outputs.unique_branch }}
+          if ! git cherry-pick ${{ needs.compute-destination-branches.outputs.commit_hash }}; then
+            echo "has_conflict=true" >> $GITHUB_OUTPUT
+            git status
+            git add -u
+            git cherry-pick --continue --no-edit
+          fi
+          git push --set-upstream origin ${{ steps.git-setup.outputs.unique_branch }}
+
+      - name: Open PR
+        id: open-pr
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const mainPR = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: ${{ needs.compute-destination-branches.outputs.pr_number }}
+            });
+            const body = `Original commit hash: ${{ needs.compute-destination-branches.outputs.commit_hash }}
+            
+            This was created by a bot`;
+            const cherryPickPR = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: '${{ steps.git-setup.outputs.unique_branch }}',
+              base: '${{ matrix.branch }}',
+              title: `${mainPR.data.title} #${{ needs.compute-destination-branches.outputs.pr_number }}`,
+              body: body
+            });
+
+            console.log('New Pr Number: ', cherryPickPR.data.number);
+            console.log('Original Pr Author: ', mainPR.data.user);
+            
+            github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: cherryPickPR.data.number,
+              assignees: [mainPR.data.user.login]
+            });
+            
+            if ('true' == '${{ steps.cherry-pick.outputs.has_conflict}}') {
+              const comment = `There is a conflict in this PR that will most likely fail the build.
+              It must be resolved manually in order to successfully merge.`
+
+              github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: cherryPickPR.data.number,
+                body: comment
+              });
+            }
