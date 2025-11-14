@@ -130,14 +130,10 @@ jobs:
               RELEASE_BRANCHES="${RELEASE_BRANCHES}release/${BRANCH_VERSION} "
             done
   
-            # Remove duplicates and trim trailing space
             RELEASE_BRANCHES=$(echo "$RELEASE_BRANCHES" | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
-  
-            # Convert to JSON array
             JSON_ARRAY=$(printf '%s\n' $RELEASE_BRANCHES | jq -R -s -c 'split("\n") | map(select(length > 0))')
             
-            echo "Destination branches: ${RELEASE_BRANCHES}"
-            echo "Destination branches JSON: ${JSON_ARRAY}"
+            echo "Destination branches: ${JSON_ARRAY}"
             echo "destination_branches=${JSON_ARRAY}" >> $GITHUB_OUTPUT
           else
             echo "No fix versions found"
