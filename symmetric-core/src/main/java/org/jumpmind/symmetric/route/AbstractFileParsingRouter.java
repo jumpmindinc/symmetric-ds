@@ -115,7 +115,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
                         String contextId = filePath + "[" + tableEntry.getValue() + "]";
                         Integer lineNumber = 0;
                         if (options.isTailFile()) {
-                            lineNumber = contextService.getString(contextId) == null ? 0 : Integer.valueOf(contextService.getString(contextId));
+                            lineNumber = contextService.getInt(contextId, 0);
                         }
                         List<String> dataRows = parse(in, fileName, lineNumber, tableEntry.getKey());
                         String columnNames = getColumnNames();
