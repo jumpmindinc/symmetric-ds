@@ -15,6 +15,9 @@ RUN mkdir -p /opt/
 RUN mv symmetric-server* /opt/symmetric-ds
 RUN chmod -R u=rwX,g=,o= /opt/symmetric-ds/security
 
+# Install tini
+RUN apk add --no-cache tini
+
 ENV SYM_HOME /opt/symmetric-ds
 
 # Create a volume containing the engines, tmp, conf, and security directories
@@ -26,4 +29,5 @@ VOLUME /opt/symmetric-ds/security
 EXPOSE 31415
 EXPOSE 31417
 
-CMD /opt/symmetric-ds/bin/sym_service start && tail -F /opt/symmetric-ds/logs/symmetric.log
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["/bin/sh", "-c", "/opt/symmetric-ds/bin/sym_service start & tail -F /opt/symmetric-ds/logs/symmetric.log"]
