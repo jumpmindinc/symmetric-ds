@@ -79,8 +79,8 @@ public class RaimaSymmetricDialect extends AbstractSymmetricDialect implements I
         schema = schema == null ? (platform.getDefaultSchema() == null ? null : platform.getDefaultSchema()) : schema;
         String checkSchemaSql = (schema != null && schema.length() > 0) ? " and schemaname='" + SqlUtils.sanitizeIdentifier(schema) + "'" : "";
         return platform.getSqlTemplate().queryForInt(
-                        "select count(*) from sys_trigger where name = ? and tabname = ?"
-                                + checkSchemaSql, new Object[] { triggerName, tableName.toUpperCase() }) > 0;
+                "select count(*) from sys_trigger where name = ? and tabname = ?"
+                        + checkSchemaSql, new Object[] { triggerName, tableName.toUpperCase() }) > 0;
     }
 
     @Override

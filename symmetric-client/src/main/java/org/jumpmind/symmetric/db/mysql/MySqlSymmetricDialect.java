@@ -193,8 +193,8 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
         catalog = catalog == null ? (platform.getDefaultCatalog() == null ? null : platform.getDefaultCatalog()) : catalog;
         String checkCatalogSql = (catalog != null && catalog.length() > 0) ? " and trigger_schema='" + SqlUtils.sanitizeIdentifier(catalog) + "'" : "";
         return platform.getSqlTemplate().queryForInt(
-                        "select count(*) from information_schema.triggers where trigger_name like ? and event_object_table like ?"
-                                + checkCatalogSql, new Object[] { triggerName, tableName }) > 0;
+                "select count(*) from information_schema.triggers where trigger_name like ? and event_object_table like ?"
+                        + checkCatalogSql, new Object[] { triggerName, tableName }) > 0;
     }
 
     @Override
