@@ -30,6 +30,7 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.DataEventType;
@@ -102,9 +103,10 @@ public class AdditiveColumnTransform implements ISingleValueColumnTransform, IBu
             String quote = platform.getDdlBuilder().isDelimitedIdentifierModeOn() ? platform
                     .getDatabaseInfo().getDelimiterToken() : "";
             StringBuilder sql = new StringBuilder(String.format("update %s set %s=%s+(%s) where ",
-                    getFullyQualifiedTableName(platform, data.getSchemaName(), data.getCatalogName(), data.getTableName()),
-                    quote + column.getTargetColumnName() + quote,
-                    quote + column.getTargetColumnName() + quote,
+                    getFullyQualifiedTableName(platform, SqlUtils.sanitizeIdentifier(data.getSchemaName()),
+                            SqlUtils.sanitizeIdentifier(data.getCatalogName()), SqlUtils.sanitizeIdentifier(data.getTableName())),
+                    quote + SqlUtils.sanitizeIdentifier(column.getTargetColumnName()) + quote,
+                    quote + SqlUtils.sanitizeIdentifier(column.getTargetColumnName()) + quote,
                     newValue));
             String[] keyNames = data.getKeyNames();
             List<Column> columns = new ArrayList<Column>();
@@ -124,7 +126,7 @@ public class AdditiveColumnTransform implements ISingleValueColumnTransform, IBu
                         addedFirstKey = true;
                     }
                     sql.append(quote);
-                    sql.append(keyNames[i]);
+                    sql.append(SqlUtils.sanitizeIdentifier(keyNames[i]));
                     sql.append(quote);
                     if (value == null) {
                         sql.append("is null ");
