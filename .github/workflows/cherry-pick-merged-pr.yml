@@ -121,20 +121,34 @@ jobs:
         if: steps.pr-number.outputs.match != '' && steps.extract-jira-ticket.outputs.jira_ticket != ''
         run: |
           FIX_VERSIONS="${{ steps.fix-versions.outputs.fix_versions }}"
-  
+          CURRENT_BRANCH="${{ github.ref_name }}"
+
           if [ -n "$FIX_VERSIONS" ]; then
             RELEASE_BRANCHES=""
             for VERSION in $FIX_VERSIONS; do
               # Extract major.minor (strip patch version)
               BRANCH_VERSION=$(echo "$VERSION" | cut -d'.' -f1,2)
-              RELEASE_BRANCHES="${RELEASE_BRANCHES}release/${BRANCH_VERSION} "
+              TARGET_BRANCH="release/${BRANCH_VERSION}"
+              
+              # Skip if this is the current branch
+              if [ "$TARGET_BRANCH" != "$CURRENT_BRANCH" ]; then
+                RELEASE_BRANCHES="${RELEASE_BRANCHES}${TARGET_BRANCH} "
+              else
+                echo "Skipping current branch: ${TARGET_BRANCH}"
+              fi
             done
-  
+      
             RELEASE_BRANCHES=$(echo "$RELEASE_BRANCHES" | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
-            JSON_ARRAY=$(printf '%s\n' $RELEASE_BRANCHES | jq -R -s -c 'split("\n") | map(select(length > 0))')
             
-            echo "Destination branches: ${JSON_ARRAY}"
-            echo "destination_branches=${JSON_ARRAY}" >> $GITHUB_OUTPUT
+            if [ -n "$RELEASE_BRANCHES" ]; then
+              JSON_ARRAY=$(printf '%s\n' $RELEASE_BRANCHES | jq -R -s -c 'split("\n") | map(select(length > 0))')
+              
+              echo "Destination branches: ${JSON_ARRAY}"
+              echo "destination_branches=${JSON_ARRAY}" >> $GITHUB_OUTPUT
+            else
+              echo "No other branches to cherry-pick to (only current branch in fix versions)"
+              echo "destination_branches=[]" >> $GITHUB_OUTPUT
+            fi
           else
             echo "No fix versions found"
             echo "destination_branches=[]" >> $GITHUB_OUTPUT
