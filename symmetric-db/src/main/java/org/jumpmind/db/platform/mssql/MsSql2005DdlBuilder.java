@@ -30,6 +30,7 @@ import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
+import org.jumpmind.db.sql.SqlUtils;
 
 public class MsSql2005DdlBuilder extends MsSql2000DdlBuilder {
     public static final int NVARCHARMAX_LIMIT = 4000;
@@ -52,8 +53,9 @@ public class MsSql2005DdlBuilder extends MsSql2000DdlBuilder {
 
     @Override
     protected void dropDefaultConstraint(Table table, String columnName, StringBuilder ddl) {
-        String catalog = table.getCatalog();
-        String schema = table.getSchema();
+        String catalog = SqlUtils.sanitizeIdentifier(table.getCatalog());
+        String schema = SqlUtils.sanitizeIdentifier(table.getSchema());
+        String tableName = SqlUtils.sanitizeIdentifier(table.getName());
         println("BEGIN", ddl);
         println("DECLARE @sql NVARCHAR(2000)", ddl);
         ddl.append("SELECT @sql = N'alter table ");
@@ -65,7 +67,7 @@ public class MsSql2005DdlBuilder extends MsSql2000DdlBuilder {
             printIdentifier(schema, ddl);
             ddl.append(".");
         }
-        printIdentifier(table.getName(), ddl);
+        printIdentifier(tableName, ddl);
         println(" drop constraint ['+cons.NAME+N']'", ddl);
         ddl.append("from ");
         if (StringUtils.isNotBlank(catalog)) {
@@ -91,7 +93,7 @@ public class MsSql2005DdlBuilder extends MsSql2000DdlBuilder {
             ddl.append(".");
         }
         println("sys.schemas sch on sch.schema_id = objs.uid", ddl);
-        println("WHERE cols.name='" + columnName + "' and objs.name='" + table.getName() + "' and sch.name='" + schema + "'", ddl);
+        println("WHERE cols.name='" + columnName + "' and objs.name='" + tableName + "' and sch.name='" + schema + "'", ddl);
         println("IF @@ROWCOUNT > 0", ddl);
         println("  EXEC (@sql)", ddl);
         println("END", ddl);

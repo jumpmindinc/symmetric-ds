@@ -35,6 +35,7 @@ import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.io.data.DbImport;
 import org.jumpmind.symmetric.io.data.DbImport.Format;
+import org.jumpmind.util.AppUtils;
 import org.jumpmind.vaadin.ui.common.CommonUiUtils;
 import org.jumpmind.vaadin.ui.common.ResizableDialog;
 import org.slf4j.Logger;
@@ -48,13 +49,13 @@ import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.NativeLabel;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.Scroller;
+import com.vaadin.flow.component.orderedlayout.Scroller.ScrollDirection;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.server.streams.UploadHandler;
-import com.vaadin.flow.component.orderedlayout.Scroller;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.orderedlayout.Scroller.ScrollDirection;
 
 public class DbImportDialog extends ResizableDialog {
     private static final long serialVersionUID = 1L;
@@ -209,7 +210,7 @@ public class DbImportDialog extends ResizableDialog {
             } finally {
                 file.delete();
             }
-        }, metadata -> File.createTempFile("dbimport", formatSelect.getValue().toString())));
+        }, metadata -> AppUtils.createTempFile("dbimport", formatSelect.getValue().toString())));
         upload.setMaxFiles(100);
         upload.setDropAllowed(false);
         Button uploadButton = new Button("Import");

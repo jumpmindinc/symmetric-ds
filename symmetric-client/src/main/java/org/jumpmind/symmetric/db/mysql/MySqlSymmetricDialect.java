@@ -35,6 +35,7 @@ import org.jumpmind.db.platform.PermissionType;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.mapper.StringMapper;
 import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
 import org.jumpmind.db.util.BinaryEncoding;
@@ -189,27 +190,21 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
     @Override
     protected boolean doesTriggerExistOnPlatform(StringBuilder sqlBuffer, String catalog, String schema, String tableName,
             String triggerName) {
-        catalog = catalog == null ? (platform.getDefaultCatalog() == null ? null
-                : platform
-                        .getDefaultCatalog()) : catalog;
-        String checkCatalogSql = (catalog != null && catalog.length() > 0) ? " and trigger_schema='"
-                + catalog + "'"
-                : "";
-        return platform
-                .getSqlTemplate()
-                .queryForInt(
-                        "select count(*) from information_schema.triggers where trigger_name like ? and event_object_table like ?"
-                                + checkCatalogSql, new Object[] { triggerName, tableName }) > 0;
+        catalog = catalog == null ? (platform.getDefaultCatalog() == null ? null : platform.getDefaultCatalog()) : catalog;
+        String checkCatalogSql = (catalog != null && catalog.length() > 0) ? " and trigger_schema='" + SqlUtils.sanitizeIdentifier(catalog) + "'" : "";
+        return platform.getSqlTemplate().queryForInt(
+                "select count(*) from information_schema.triggers where trigger_name like ? and event_object_table like ?"
+                        + checkCatalogSql, new Object[] { triggerName, tableName }) > 0;
     }
 
     @Override
     public void removeTrigger(StringBuilder sqlBuffer, String catalogName, String schemaName,
             String triggerName, String tableName, ISqlTransaction transaction) {
         String quote = platform.getDatabaseInfo().getDelimiterToken();
-        String catalogPrefix = StringUtils.isBlank(catalogName) ? "" : (quote + catalogName + quote + ".");
-        String sql = "drop trigger if exists " + catalogPrefix + triggerName;
+        String catalogPrefix = StringUtils.isBlank(catalogName) ? "" : (quote + SqlUtils.sanitizeIdentifier(catalogName) + quote + ".");
+        String sql = "drop trigger if exists " + catalogPrefix + SqlUtils.sanitizeIdentifier(triggerName);
         if (Version.isOlderThanVersion(getProductVersion(), "5.0.32")) {
-            sql = "drop trigger " + catalogPrefix + triggerName;
+            sql = "drop trigger " + catalogPrefix + SqlUtils.sanitizeIdentifier(triggerName);
         }
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {

@@ -24,8 +24,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
@@ -168,24 +166,6 @@ public class TypedProperties extends Properties {
             retValue = value.split(",");
         }
         return retValue;
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> List<T> instantiate(String key) {
-        String[] clazzes = getArray(key, new String[0]);
-        List<T> objects = new ArrayList<T>(clazzes.length);
-        try {
-            for (String clazz : clazzes) {
-                Class<?> c = Class.forName(clazz);
-                if (c != null) {
-                    objects.add((T) c.getDeclaredConstructor().newInstance());
-                }
-            }
-            return objects;
-        } catch (Exception ex) {
-            log.warn("", ex);
-            return objects;
-        }
     }
 
     public void merge(Properties properties) {
