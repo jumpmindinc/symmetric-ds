@@ -114,6 +114,7 @@ public class SnapshotUtil {
     private static final Logger log = LoggerFactory.getLogger(SnapshotUtil.class);
     protected static final int THREAD_INDENT_SPACE = 50;
     public static final String SNAPSHOT_DIR = "snapshots";
+    public static final String ERROR_BATCHES_SUBDIR = "batches";
 
     public static File getSnapshotDirectory(ISymmetricEngine engine) {
         File snapshotsDir = new File(engine.getParameterService().getTempDirectory(), SNAPSHOT_DIR);
@@ -1002,6 +1003,7 @@ public class SnapshotUtil {
         export.setFormat(Format.CSV_DQUOTE);
         export.setNoCreateInfo(true);
         // Create files for each batch in error
+        File errorDir = null;
         for (OutgoingBatch batch : engine.getOutgoingBatchService().getOutgoingBatchErrors(10000).getBatches()) {
             if (batch.getFailedDataId() > 0) {
                 Data data = engine.getDataService().findData(batch.getFailedDataId());
@@ -1009,10 +1011,14 @@ public class SnapshotUtil {
                     // Write sym_data to file
                     String filenameCaptured = batch.getBatchId() + "_captured.csv";
                     String whereClause = "where data_id = " + data.getDataId();
-                    extract(export, 10000, whereClause, new File(tmpDir, filenameCaptured),
+                    if (errorDir == null) {
+                        errorDir = new File(tmpDir, ERROR_BATCHES_SUBDIR);
+                        errorDir.mkdirs();
+                    }
+                    extract(export, 10000, whereClause, new File(errorDir, filenameCaptured),
                             TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA));
                     // Write parsed row data to file
-                    String filenameParsed = tmpDir + File.separator + batch.getBatchId() + "_parsed.csv";
+                    String filenameParsed = errorDir + File.separator + batch.getBatchId() + "_parsed.csv";
                     try (CsvWriter writer = new CsvWriter(filenameParsed)) {
                         writer.setEscapeMode(CsvWriter.ESCAPE_MODE_DOUBLED);
                         writer.writeRecord(data.getTriggerHistory().getParsedColumnNames());
