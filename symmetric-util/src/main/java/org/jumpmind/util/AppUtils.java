@@ -252,6 +252,15 @@ public class AppUtils {
         }
     }
 
+    public static File createTempFile(String prefix, String suffix) throws IOException {
+        File file = File.createTempFile(prefix, suffix);
+        file.setReadable(false, false);
+        file.setReadable(true, true);
+        file.setWritable(false, false);
+        file.setWritable(true, true);
+        return file;
+    }
+
     public static String formatStackTrace(StackTraceElement[] stackTrace) {
         return formatStackTrace(stackTrace, 0, true);
     }

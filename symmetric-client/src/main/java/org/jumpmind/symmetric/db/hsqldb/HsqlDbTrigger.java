@@ -31,6 +31,7 @@ import java.util.Vector;
 
 import org.hsqldb.DatabaseManager;
 import org.hsqldb.Trigger;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.symmetric.db.AbstractEmbeddedTrigger;
 
 public class HsqlDbTrigger extends AbstractEmbeddedTrigger implements Trigger {
@@ -66,7 +67,7 @@ public class HsqlDbTrigger extends AbstractEmbeddedTrigger implements Trigger {
                 if (uris.size() > 1) {
                     Statement stmt = testCon.createStatement();
                     ResultSet rs = stmt.executeQuery(String.format("select count(*) from %s%s",
-                            triggerName, TEMPLATE_TABLE_SUFFIX));
+                            SqlUtils.sanitizeIdentifier(triggerName), TEMPLATE_TABLE_SUFFIX));
                     rs.close();
                     stmt.close();
                 }

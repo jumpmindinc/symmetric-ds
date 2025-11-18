@@ -27,6 +27,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.PermissionType;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.AbstractSymmetricDialect;
@@ -75,17 +76,11 @@ public class RaimaSymmetricDialect extends AbstractSymmetricDialect implements I
     @Override
     protected boolean doesTriggerExistOnPlatform(StringBuilder sqlBuffer, String catalog, String schema, String tableName,
             String triggerName) {
-        schema = schema == null ? (platform.getDefaultSchema() == null ? null
-                : platform
-                        .getDefaultSchema()) : schema;
-        String checkSchemaSql = (schema != null && schema.length() > 0) ? " and schemaname='"
-                + schema + "'"
-                : "";
-        return platform
-                .getSqlTemplate()
-                .queryForInt(
-                        "select count(*) from sys_trigger where name = ? and tabname = ?"
-                                + checkSchemaSql, new Object[] { triggerName, tableName.toUpperCase() }) > 0;
+        schema = schema == null ? (platform.getDefaultSchema() == null ? null : platform.getDefaultSchema()) : schema;
+        String checkSchemaSql = (schema != null && schema.length() > 0) ? " and schemaname='" + SqlUtils.sanitizeIdentifier(schema) + "'" : "";
+        return platform.getSqlTemplate().queryForInt(
+                "select count(*) from sys_trigger where name = ? and tabname = ?"
+                        + checkSchemaSql, new Object[] { triggerName, tableName.toUpperCase() }) > 0;
     }
 
     @Override
