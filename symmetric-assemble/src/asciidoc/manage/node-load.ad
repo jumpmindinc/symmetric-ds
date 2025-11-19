@@ -92,21 +92,19 @@ The second option on this screen is to determine what "before action" should occ
 .Before Load Options
 |===
 
-|Nothing just send the data|This assumes the tables are present and not need cleared out before the load can be run.  If data already exists it will fall back to an update if the insert fails.  This allows the load to be run repeatedly as needed.
+|Clear tables or create existing|This will send create table statements to the target to match the source before loading any data.  It will also clear all existing target tables prior to loading.
 
-|Create tables|This will send create table statements to the target to match the source before loading any data.  Use this option when the target database does not already contain the tables used on the source.
+|Nothing (append data)|This assumes the tables are present and do not need cleared out before the load can be run.  If data already exists it will fall back to an update if the insert fails.  This allows the load to be run repeatedly as needed.
 
-|Delete all data|This will delete all data from the target table prior to loading data.  This can be useful to accommodate data that is in the target but no longer in the source.  By default just sending the data will only insert/update with the rows from the source so any old data will remain in place on the target unless this delete action is taken prior to loading.
+|Create tables only|This advanced option will send create table statements to the target to match the source before loading any data, without clearing existing tables.  
 
-|Truncate tables|This will perform a truncate on all target tables prior to loading.
-
-|Run custom SQL|Allows a custom SQL statement to be executed on each table prior to loading.  The use of %s will server as a variable to be replaced at runtime with the table name.  Example: truncate table %s
+|Clear tables only|This advanced option assumes the tables are present and clears all target tables prior to loading.
 
 |===
 
 image::images/manage/manage-load-data-full-partial-before.png[]
 
-Partial loads will then see a table selection screen.  Full loads will immediately be taken to the summary screen.  The table selection screen allows individual tables to be selected as part of the load.
+Partial loads will then see a table selection screen.  Full loads will immediately be sent.  The table selection screen allows individual tables to be selected as part of the load.
 
 image::images/manage/manage-load-data-tables.png[]
 
@@ -121,11 +119,7 @@ See <<Variables>>.
 
 image::images/manage/manage-load-data-where-clauses.png[]
 
-Finally a summary screen is presented to review all the settings for the load prior to adding it to the request queue.  Loads are checked by the routing process so once the load has been saved it will be picked up and begin processing on the next run of the routing job.
-
-image::images/manage/manage-load-data-summary.png[]
-
-A load's progress can be monitored on the <<Outgoing Loads>> screen or the <<Outgoing Batches>> screen. 
+Loads are checked by the routing process so once the load has been saved it will be picked up and begin processing on the next run of the routing job. A load's progress can be monitored on the <<Outgoing Loads>> screen or the <<Outgoing Batches>> screen. 
 
 endif::pro[]
 

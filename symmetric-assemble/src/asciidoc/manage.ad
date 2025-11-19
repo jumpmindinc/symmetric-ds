@@ -186,7 +186,7 @@ ifdef::pro[]
 The Outgoing Loads screen shows the number of outgoing loads that have been queued.  It also lists loads that have had <<Outgoing Batches>> created.  The screen shows 
 loads that are sourced from the current node.
 
-You can cancel a load that is in progress by selecting the load and pressing the _Cancel_ button.  
+You can cancel a load that is in progress by selecting the load and pressing the _Cancel_ button. You can send a load again by selecting the completed load and pressing the _Resubmit_ button.  
 
 image::images/manage/manage-outgoing-loads.png[]
 
@@ -195,7 +195,7 @@ image::images/manage/manage-outgoing-loads.png[]
 The Incoming Loads screen shows the number of incoming loads that have been queued.  It also lists loads that have had <<Incoming Batches>> created.  The screen shows 
 loads that are targeted at the current node.
 
-You can cancel a load that is in progress by selecting the load and pressing the _Cancel_ button.  
+You can cancel a load that is in progress by selecting the load and pressing the _Cancel_ button. You can send a load again by selecting the completed load and pressing the _Resubmit_ button.  
 
 image::images/manage/manage-incoming-loads.png[]
 
