@@ -340,6 +340,33 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                     + " where source_node_id = ? and completed = 1)",
                     engine.getNodeId(), engine.getNodeId());
         }
+        if (engine.getDatabasePlatform().getName().equals(DatabaseNamesConstants.H2)) {
+            String dataIdSequenceName = symmetricDialect.getSequenceName(SequenceIdentifier.DATA).toUpperCase() + "_SEQ";
+            if (engine.getSqlTemplate().queryForInt("select count(*) from information_schema.sequences where sequence_name = ?", dataIdSequenceName) == 0) {
+                String dataTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA);
+                ISqlTransaction transaction = null;
+                try {
+                    transaction = engine.getSqlTemplate().startSqlTransaction();
+                    transaction.prepareAndExecute("set exclusive 1");
+                    long maxDataId = Math.max(transaction.queryForInt("select max(data_id) from " + dataTableName), 1);
+                    log.info("After upgrade, creating {} sequence with a value of {} because it doesn't exist", dataIdSequenceName, maxDataId + 1);
+                    transaction.prepareAndExecute("create sequence \"" + dataIdSequenceName + "\" start with " + (maxDataId + 1));
+                    log.info("After upgrade, altering {}.data_id to use the new sequence instead of auto_increment", dataTableName);
+                    transaction.prepareAndExecute("alter table " + dataTableName
+                            + " alter column data_id bigint not null default nextval('" + dataIdSequenceName + "')");
+                    transaction.prepareAndExecute("set exclusive 0");
+                } catch (Exception e) {
+                    log.info("Unable to create sequence: {}", e.getMessage());
+                    if (transaction != null) {
+                        transaction.rollback();
+                    }
+                } finally {
+                    if (transaction != null) {
+                        transaction.close();
+                    }
+                }
+            }
+        }
         engine.getPullService().pullConfigData(false);
         return sb.toString();
     }
