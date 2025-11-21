@@ -31,6 +31,7 @@ import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
+import org.jumpmind.symmetric.model.ProcessType;
 
 public class MockStatisticManager implements IStatisticManager {
     public List<ProcessInfo> getProcessInfos() {
@@ -39,6 +40,11 @@ public class MockStatisticManager implements IStatisticManager {
 
     @Override
     public List<ProcessInfo> getProcessInfosThatHaveDoneWork() {
+        return null;
+    }
+
+    @Override
+    public List<ProcessInfo> getMostRecentUserProcessInfos(ProcessType... processTypes) {
         return null;
     }
 

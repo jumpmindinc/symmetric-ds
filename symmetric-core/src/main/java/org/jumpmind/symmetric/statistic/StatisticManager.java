@@ -35,7 +35,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -46,6 +48,7 @@ import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
+import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataService;
@@ -79,6 +82,7 @@ public class StatisticManager implements IStatisticManager {
     protected Semaphore tableStatsLock = new Semaphore(NUMBER_OF_PERMITS, true);
     protected Map<ProcessInfoKey, ProcessInfo> processInfos = new ConcurrentHashMap<ProcessInfoKey, ProcessInfo>();
     protected Map<ProcessInfoKey, ProcessInfo> processInfosThatHaveDoneWork = new ConcurrentHashMap<ProcessInfoKey, ProcessInfo>();
+    protected Map<ProcessType, ProcessInfo> userLastWorkDoneMap = new ConcurrentHashMap<ProcessType, ProcessInfo>();
     private Map<Date, Map<String, ChannelStats>> baseChannelStatsInMemory = new LinkedHashMap<Date, Map<String, ChannelStats>>();
     private Set<String> systemChannelIds = new HashSet<String>(Arrays.asList(new String[] { Constants.CHANNEL_CONFIG, Constants.CHANNEL_SYSTEM,
             Constants.CHANNEL_MONITOR, Constants.CHANNEL_HEARTBEAT, Constants.CHANNEL_DYNAMIC }));
@@ -112,6 +116,9 @@ public class StatisticManager implements IStatisticManager {
             }
             if (old.getCurrentDataCount() > 0 || old.getTotalDataCount() > 0) {
                 processInfosThatHaveDoneWork.put(key, old);
+                if (isUserProcessInfo(old)) {
+                    userLastWorkDoneMap.put(old.getProcessType(), old);
+                }
             }
         }
         processInfos.put(key, process);
@@ -165,6 +172,37 @@ public class StatisticManager implements IStatisticManager {
             }
         }
         return toReturn;
+    }
+
+    public List<ProcessInfo> getMostRecentUserProcessInfos(ProcessType... processTypes) {
+        List<ProcessInfo> userProcessInfoList = getProcessInfos().stream().filter(i -> isUserProcessInfo(i)).collect(Collectors.toList());
+        List<ProcessInfo> mostRecentUserProcessInfoList = new ArrayList<ProcessInfo>();
+        for (ProcessType processType : processTypes) {
+            List<ProcessInfo> filteredUserProcessInfoList = userProcessInfoList.stream()
+                    .filter(i -> processType.equals(i.getProcessType())).collect(Collectors.toList());
+            boolean foundActiveProcessInfo = false;
+            for (ProcessInfo processInfo : filteredUserProcessInfoList) {
+                if (processInfo.getStatus() != ProcessStatus.OK && processInfo.getStatus() != ProcessStatus.ERROR) {
+                    mostRecentUserProcessInfoList.add(processInfo);
+                    foundActiveProcessInfo = true;
+                }
+            }
+            if (!foundActiveProcessInfo) {
+                if (userLastWorkDoneMap.containsKey(processType)) {
+                    mostRecentUserProcessInfoList.add(userLastWorkDoneMap.get(processType));
+                } else {
+                    mostRecentUserProcessInfoList.addAll(filteredUserProcessInfoList);
+                }
+            }
+        }
+        return mostRecentUserProcessInfoList;
+    }
+
+    protected boolean isUserProcessInfo(ProcessInfo processInfo) {
+        String tableName = processInfo.getCurrentTableName();
+        String tablePrefix = engine.getTablePrefix();
+        return !Strings.CI.startsWith(tableName, tablePrefix) && !Strings.CI.contains(tableName, "." + tablePrefix)
+                && !systemChannelIds.contains(processInfo.getCurrentChannelId()) && !Constants.QUEUE_SYSTEM.equals(processInfo.getQueue());
     }
 
     public void addJobStats(String jobName, long startTime, long endTime, long processedCount) {
