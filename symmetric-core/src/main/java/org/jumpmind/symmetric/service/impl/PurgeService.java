@@ -89,6 +89,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
         setSqlMap(new PurgeServiceSqlMap(symmetricDialect.getPlatform(), createSqlReplacementTokens()));
     }
 
+    @Override
     public long purgeOutgoing(boolean force) {
         long rowsPurged = 0;
         long startTime = System.currentTimeMillis();
@@ -117,6 +118,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
         return rowsPurged;
     }
 
+    @Override
     public long purgeIncoming(boolean force) {
         long rowsPurged = 0;
         Calendar retentionCutoff = Calendar.getInstance();
@@ -125,6 +127,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
         return rowsPurged;
     }
 
+    @Override
     public long purgeOutgoing(Calendar retentionCutoff, boolean force) {
         long rowsPurged = 0;
         if (force || clusterService.lock(ClusterConstants.PURGE_OUTGOING)) {
@@ -457,7 +460,12 @@ public class PurgeService extends AbstractService implements IPurgeService {
             long ts = System.currentTimeMillis();
             int[] argTypes = new int[] { symmetricDialect.getSqlTypeForIds(), symmetricDialect.getSqlTypeForIds() };
             for (DataGap gap : dataGapsExpiredToCheck) {
-                int count = dataService.reCaptureData(gap.getStartId(), gap.getEndId());
+                int count = 0;
+                if (parameterService.is(ParameterConstants.PURGE_STRANDED_DATA_RECAPTURE_ENABLED)) {
+                    count = dataService.reCaptureData(gap.getStartId(), gap.getEndId());
+                } else if (log.isDebugEnabled()) {
+                    log.debug("Skipped recapture of stranded data for gap {} - {}", gap.getStartId(), gap.getEndId());
+                }
                 purgedDataRowCount += count;
                 statisticManager.incrementPurgedExpiredDataRows(count);
                 Object[] args = new Object[] { gap.getStartId(), gap.getEndId() };
@@ -655,7 +663,12 @@ public class PurgeService extends AbstractService implements IPurgeService {
                     }
                     args = new Object[] { minId = minMaxAvoidGaps[0], maxId = minMaxAvoidGaps[1], cutoffTime };
                     argTypes = new int[] { idSqlType, idSqlType, Types.TIMESTAMP };
-                    dataService.reCaptureData(minId, maxId);
+                    if (parameterService.is(ParameterConstants.PURGE_STRANDED_DATA_RECAPTURE_ENABLED)) {
+                        int recapturedRowCount = dataService.reCaptureData(minId, maxId);
+                        log.debug("Recaptured {} stranded data rows for range {} - {}", recapturedRowCount, minId, maxId);
+                    } else if (log.isDebugEnabled()) {
+                        log.debug("Skipped recapture of stranded data for range {} - {}", minId, maxId);
+                    }
                     break;
                 case STRANDED_DATA_EVENT:
                     deleteSql = getSql("deleteStrandedDataEvent");
@@ -668,11 +681,21 @@ public class PurgeService extends AbstractService implements IPurgeService {
             log.debug("Deleted {} rows", count);
             statConsumer.accept(count);
             totalCount += count;
+            long currentRunTimeMs = System.currentTimeMillis() - ts;
             if (count == 0 && (identifier == MinMaxDeleteSql.STRANDED_DATA || identifier == MinMaxDeleteSql.STRANDED_DATA_EVENT)) {
-                log.info("Ending purge of {} early at {} after finding empty space", name, maxId);
-                break;
+                long runtimeLimit = parameterService.getLong(ParameterConstants.PURGE_STRANDED_DATA_TIME_LIMIT_MS);
+                if (runtimeLimit > 0 && currentRunTimeMs >= runtimeLimit) {
+                    log.info("Ending purge of {} early at {} after finding empty space. Total rows purged={}", name, maxId, totalCount);
+                    break;
+                } else {
+                    if (currentRunTimeMs > DateUtils.MILLIS_PER_MINUTE * 5) {
+                        log.info("Skipping empty space in {} for range {} - {}", name, minId, maxId);
+                    } else {
+                        log.debug("Skipping empty space in {} for range {} - {}. Total rows purged={}", name, minId, maxId, totalCount);
+                    }
+                }
             }
-            if (System.currentTimeMillis() - ts > DateUtils.MILLIS_PER_MINUTE * 5) {
+            if (currentRunTimeMs > DateUtils.MILLIS_PER_MINUTE * 5) {
                 log.info("Purged {} of {} rows so far using {} statements", new Object[] { totalCount, name, totalDeleteStmts });
                 ts = System.currentTimeMillis();
                 clusterService.refreshLock(ClusterConstants.PURGE_OUTGOING);
@@ -756,6 +779,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
         return new long[] { minId, maxId };
     }
 
+    @Override
     public long purgeIncoming(Calendar retentionCutoff, boolean force) {
         long purgedRowCount = 0;
         long startTime = System.currentTimeMillis();
@@ -816,6 +840,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
         log.info("Getting range for incoming batch");
         List<NodeBatchRange> nodeBatchRangeList = sqlTemplateDirty.query(
                 getSql("selectIncomingBatchRangeSql"), new ISqlRowMapper<NodeBatchRange>() {
+                    @Override
                     public NodeBatchRange mapRow(Row rs) {
                         return new NodeBatchRange(rs.getString("node_id"), rs.getLong("min_id"), rs
                                 .getLong("max_id"));
@@ -858,6 +883,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
         return totalCount;
     }
 
+    @Override
     public void purgeStats(boolean force) {
         Calendar retentionCutoff = Calendar.getInstance();
         retentionCutoff.add(Calendar.MINUTE, -Integer.max(parameterService.getInt(ParameterConstants.PURGE_STATS_RETENTION_MINUTES), MINS_IN_ONE_WEEK));
@@ -880,6 +906,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
         }
     }
 
+    @Override
     public void purgeAllIncomingEventsForNode(String nodeId) {
         int count = sqlTemplate.update(getSql("deleteIncomingBatchByNodeSql"),
                 new Object[] { nodeId });
