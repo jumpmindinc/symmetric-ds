@@ -461,13 +461,15 @@ public class PurgeService extends AbstractService implements IPurgeService {
             int[] argTypes = new int[] { symmetricDialect.getSqlTypeForIds(), symmetricDialect.getSqlTypeForIds() };
             for (DataGap gap : dataGapsExpiredToCheck) {
                 Object[] args = new Object[] { gap.getStartId(), gap.getEndId() };
-                int count = 0;
                 if (parameterService.is(ParameterConstants.PURGE_STRANDED_DATA_RECAPTURE_ENABLED)) {
-                    count = dataService.reCaptureData(gap.getStartId(), gap.getEndId());
+                    int recapturedRowCount = dataService.reCaptureData(gap.getStartId(), gap.getEndId());
+                    if (log.isDebugEnabled()) {
+                        log.debug("Recaptured {} rows of stranded data for gap {} - {}", recapturedRowCount, gap.getStartId(), gap.getEndId());
+                    }
                 } else if (log.isDebugEnabled()) {
                     log.debug("Skipped recapture of stranded data for gap {} - {}", gap.getStartId(), gap.getEndId());
                 }
-                count += sqlTemplate.update(getSql("deleteDataByRangeSql"), args, argTypes);
+                int count = sqlTemplate.update(getSql("deleteDataByRangeSql"), args, argTypes);
                 purgedDataRowCount += count;
                 statisticManager.incrementPurgedExpiredDataRows(count);
                 purgedDataGapCount++;
