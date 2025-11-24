@@ -376,6 +376,7 @@ final public class ParameterConstants {
     public final static String MSSQL_TRIGGER_ORDER_FIRST = "mssql.trigger.order.first";
     public final static String MSSQL_USE_SNAPSHOT_ISOLATION = "mssql.use.snapshot.isolation";
     public final static String MSSQL_BULK_EXTRACT_USE_BCP = "mssql.bulk.extract.use.bcp";
+    public final static String MSSQL_METADATA_QUERY_FOR_COMPRESSION_FILTERS_INCLUDECOLUMNS = "mssql.metadata.query.for.compression.filters.includecolumns";
     public final static String DBDIALECT_SYBASE_ASE_CONVERT_UNITYPES_FOR_SYNC = "sybase.ase.convert.unitypes.for.sync";
     public final static String SYBASE_ROW_LEVEL_LOCKS_ONLY = "sybase.allow.only.row.level.locks.on.runtime.tables";
     public final static String SYBASE_CHANGE_IDENTITY_GAP = "sybase.change.identity.gap.on.runtime.tables";
