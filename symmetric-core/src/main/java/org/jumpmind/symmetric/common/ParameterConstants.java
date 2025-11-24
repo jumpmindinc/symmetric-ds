@@ -316,6 +316,8 @@ final public class ParameterConstants {
     public final static String PURGE_STATS_RETENTION_MINUTES = "purge.stats.retention.minutes";
     public final static String PURGE_TRIGGER_HIST_RETENTION_MINUTES = "purge.trigger.hist.retention.minutes";
     public final static String PURGE_EXPIRED_DATA_GAP_RETENTION_MINUTES = "purge.expired.data.gap.retention.minutes";
+    public final static String PURGE_STRANDED_DATA_RECAPTURE_ENABLED = "job.purge.recapture.stranded.data";
+    public final static String PURGE_STRANDED_DATA_TIME_LIMIT_MS = "job.purge.stranded.max.time.ms";
     public final static String PURGE_MONITOR_EVENT_RETENTION_MINUTES = "purge.monitor.event.retention.minutes";
     public final static String PURGE_MAX_NUMBER_OF_DATA_IDS = "job.purge.max.num.data.to.delete.in.tx";
     public final static String PURGE_MAX_NUMBER_OF_BATCH_IDS = "job.purge.max.num.batches.to.delete.in.tx";
