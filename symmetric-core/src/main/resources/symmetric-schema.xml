@@ -705,6 +705,9 @@
         <index name="idx_ob_in_error">
             <index-column name="error_flag" />
         </index>
+        <index name="idx_ob_load_id">
+            <index-column name="load_id" />
+        </index>
     </table>
     
     <table name="outgoing_error" description="The captured data change that is in error for a batch.  The user can tell the system what to do by updating the resolve columns.  Entries in data_error are created when an outgoing batch encounters an error.">
