@@ -41,6 +41,7 @@ dependencies {
     testImplementation "org.eclipse.jetty.ee10.websocket:jetty-ee10-websocket-jakarta-server:$jettyVersion"    
 	
 	implementation "com.vaadin:vaadin-core:$vaadinVersion"
+	implementation "org.glassfish.jaxb:jaxb-runtime:$jaxbVersion"
 }
 
 assemble.dependsOn jar

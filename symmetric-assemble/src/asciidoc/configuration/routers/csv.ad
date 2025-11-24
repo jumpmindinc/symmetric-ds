@@ -1,7 +1,7 @@
 ===== CSV Router
 
 This router is used to route CSV (comma separated values) files to a specified target database table.
-The base name of the file is used as the table name, which can changed using <<Transforms>>.
+The base name of the file is used as the table name, which can be changed using <<Transforms>>.
 
 ifdef::pro[]
 
@@ -9,7 +9,25 @@ image::images/csv-router.png[]
 
 endif::pro[]
 
-In your router expression you can tell the router to include a transaction ID for the routed data with INCLUDE_TRANSACTION_ID=true|false. Default is false.
+ifdef::pro[]
+.Required Fields
+endif::pro[]
+
+Sync Mode:: Specify whether data is overwritten or appended.
+.Sync Mode
+[cols="1,3"]
+|===
+
+|Full Refresh Overwrite|Send the entire file as relational data and overwrite the target table by clearing it first.  The SQL command to clear the table can overridden with the initial.load.delete.first.sql parameter.
+
+|Full Refresh Append|Send the entire file as relational data and append the target table.
+
+|Incremental Refresh Append|Send lines from the file that are new as relational data and append the target table.
+
+|===
+Standardize Names:: Convert the file name and column names to standard SQL names, using lower case and underscores instead of spaces.
+Send Table Definition:: Send the table definition (DDL) to create the table if it's missing or alter an existing table to match.
+Record Transaction ID:: Record a transaction ID when the file is converted to relational data, so the data will be routed into the same batch.
 
 ifndef::pro[]
 
@@ -20,14 +38,14 @@ insert into SYM_ROUTER (router_id, target_table_name,
 	source_node_group_id, target_node_group_id, router_type,
 	router_expression, create_time, last_update_time) values
 	('store-2-corp-csv','table1','store', 'corp', 'csv', 
-	'INCLUDE_TRANSACTION_ID=true', current_timestamp, current_timestamp); 
+	'OVERWRITE=true,SEND_DDL=true,STANDARDIZE_NAMES=true,INCLUDE_TRANSACTION_ID=true', current_timestamp, current_timestamp); 
 ----
 
 endif::pro[]
 
 The first line of the file should list the column names for the table.
-For a new file, all lines after the first one are routed as inserts into the table.
-For a modified file, all lines after the last line read are routed as inserts into the table.
+For incremental refresh with a new file, all lines after the first one are routed as inserts into the table.
+For incremental refresh with a modified file, all lines after the last line read are routed as inserts into the table.
 The last line read is recorded to the <<CONTEXT>> table.
 
 IMPORTANT: The CSV Router routes from file to database so a file trigger must be created to specify the directory or path that the file trigger should watch. (see <<File Triggers>>)

@@ -33,7 +33,6 @@ import org.jumpmind.symmetric.model.Data;
 
 public class VariableColumnTransform extends AbstractColumnTransform implements ISingleNewAndOldValueColumnTransform {
     public static final String NAME = "variable";
-    final String SOURCE_NODE_KEY = String.format("%d.SourceNode", hashCode());
     protected static final String TS_PATTERN = "yyyy-MM-dd HH:mm:ss.SSS";
     protected static final String DATE_PATTERN = "yyyy-MM-dd";
     protected static final String OPTION_TIMESTAMP = "system_timestamp";
