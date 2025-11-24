@@ -75,7 +75,7 @@ ifdef::pro[]
 endif::pro[]
 File Capture:: The file trigger to link.
 Routers:: The router to link.
-Target Base Directory:: The base directory on the target node that files will be synchronized to.  To access Azure blob storage, use azure://container/optional-path.  For Amazon S3, use s3://bucket/path.
+Target Base Directory:: The base directory on the target node that files will be synchronized to.  To access Azure blob storage, use azure://container/optional-path.  For Amazon S3, use s3://bucket/path.  For Google Drive, use drive://path.
 Conflict Strategy:: The strategy to employ when a file has been modified at both the client and the server. 
 .Conflict Strategy Options
 |===
