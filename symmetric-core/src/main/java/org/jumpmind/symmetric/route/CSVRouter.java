@@ -21,9 +21,9 @@
 package org.jumpmind.symmetric.route;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,11 +44,11 @@ public class CSVRouter extends AbstractFileParsingRouter implements IDataRouter,
     }
 
     @Override
-    public List<String> parse(File file, int lineNumber, int tableIndex) {
+    public List<String> parse(InputStream in, String fileName, int lineNumber, int tableIndex) {
         List<String> rows = new ArrayList<String>();
         int currentLine = 1;
         try {
-            BufferedReader reader = new BufferedReader(new FileReader(file));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
             String line;
             while ((line = reader.readLine()) != null) {
                 if (currentLine == 1) {
@@ -62,7 +62,7 @@ public class CSVRouter extends AbstractFileParsingRouter implements IDataRouter,
             }
             reader.close();
         } catch (IOException e) {
-            log.error("Unable to parse CSV file " + file.getName() + " line number " + currentLine, e);
+            log.error("Unable to parse CSV file " + fileName + " line number " + currentLine, e);
         }
         return rows;
     }
