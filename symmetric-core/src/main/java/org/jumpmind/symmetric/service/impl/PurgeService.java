@@ -460,20 +460,20 @@ public class PurgeService extends AbstractService implements IPurgeService {
             long ts = System.currentTimeMillis();
             int[] argTypes = new int[] { symmetricDialect.getSqlTypeForIds(), symmetricDialect.getSqlTypeForIds() };
             for (DataGap gap : dataGapsExpiredToCheck) {
+                Object[] args = new Object[] { gap.getStartId(), gap.getEndId() };
                 int count = 0;
                 if (parameterService.is(ParameterConstants.PURGE_STRANDED_DATA_RECAPTURE_ENABLED)) {
                     count = dataService.reCaptureData(gap.getStartId(), gap.getEndId());
                 } else if (log.isDebugEnabled()) {
                     log.debug("Skipped recapture of stranded data for gap {} - {}", gap.getStartId(), gap.getEndId());
                 }
+                count += sqlTemplate.update(getSql("deleteDataByRangeSql"), args, argTypes);
                 purgedDataRowCount += count;
                 statisticManager.incrementPurgedExpiredDataRows(count);
-                Object[] args = new Object[] { gap.getStartId(), gap.getEndId() };
-                sqlTemplate.update(getSql("deleteDataByRangeSql"), args, argTypes);
                 purgedDataGapCount++;
                 checkedDataGapCount++;
-                if (System.currentTimeMillis() - ts > 60000) {
-                    log.info("Checked {} expired data gaps", checkedDataGapCount);
+                if (System.currentTimeMillis() - ts > DateUtils.MILLIS_PER_MINUTE) {
+                    log.info("Checked {} expired data gaps. Deleted {} data rows.", checkedDataGapCount, count);
                     ts = System.currentTimeMillis();
                 }
             }
