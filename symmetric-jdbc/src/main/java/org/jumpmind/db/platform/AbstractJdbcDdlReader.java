@@ -65,6 +65,7 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.cache.ObjectDefinitionCache;
 import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.model.Column;
@@ -90,6 +91,7 @@ import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.mapper.RowMapper;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.db.util.TableRow;
@@ -566,7 +568,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             }));
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedTableName(catalog, schema, table), e.getClass().getName(), e
@@ -590,7 +592,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 return readTable(catalog, schema, table);
             }
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedTableName(catalog, schema, table), e.getClass().getName(), e
@@ -946,7 +948,11 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         Column column = new Column();
         PlatformColumn platformColumn = new PlatformColumn();
         platformColumn.setName(platform.getName());
-        column.setName((String) values.get(getName("COLUMN_NAME")));
+        String columnName = (String) values.get(getName("COLUMN_NAME"));
+        column.setName(columnName);
+        if (columnName == null) {
+            log.warn("Encountered null column name when reading column metadata: {}", values);
+        }
         String defaultValue = (String) values.get(getName("COLUMN_DEF"));
         if (defaultValue == null) {
             defaultValue = (String) values.get(getName("COLUMN_DEFAULT"));
@@ -1416,7 +1422,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         if (getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn()) {
             query.append(getPlatformInfo().getDelimiterToken());
         }
-        query.append(identifier);
+        query.append(SqlUtils.sanitizeIdentifier(identifier));
         if (getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn()) {
             query.append(getPlatformInfo().getDelimiterToken());
         }
@@ -1448,13 +1454,13 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             if (escaped.equals("''")) {
                 if ((text.length() > 2) && text.startsWith("'") && text.endsWith("'")) {
                     text = "'"
-                            + StringUtils.replace(text.substring(1, text.length() - 1),
+                            + Strings.CS.replace(text.substring(1, text.length() - 1),
                                     escaped, unescaped) + "'";
                 } else {
-                    text = StringUtils.replace(text, escaped, unescaped);
+                    text = Strings.CS.replace(text, escaped, unescaped);
                 }
             } else {
-                text = StringUtils.replace(text, escaped, unescaped);
+                text = Strings.CS.replace(text, escaped, unescaped);
             }
         }
         return text;
@@ -1647,7 +1653,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             });
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {}, because {} {}", table.getFullyQualifiedTableName(), e.getClass().getName(), e.getMessage());
@@ -1671,7 +1677,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             });
         } catch (SqlException e) {
-            if (e.getMessage() != null && StringUtils.containsIgnoreCase(e.getMessage(), "does not exist")) {
+            if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
                 log.error("Failed to get metadata for {}, because {} {}",

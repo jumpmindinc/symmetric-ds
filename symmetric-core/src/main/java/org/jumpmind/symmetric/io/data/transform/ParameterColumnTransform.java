@@ -23,33 +23,35 @@ package org.jumpmind.symmetric.io.data.transform;
 import java.util.Map;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.io.data.DataContext;
-import org.jumpmind.symmetric.service.IParameterService;
 
-public class ParameterColumnTransform implements ISingleNewAndOldValueColumnTransform, IBuiltInExtensionPoint {
+public class ParameterColumnTransform extends AbstractColumnTransform implements ISingleNewAndOldValueColumnTransform {
     public static final String NAME = "parameter";
-    IParameterService parameterService;
 
     public ParameterColumnTransform() {
     }
 
-    public void setParameterService(IParameterService parameterService) {
-        this.parameterService = parameterService;
-    }
-
+    @Override
     public String getName() {
         return NAME;
     }
 
+    @Override
+    public boolean isParameterServiceRequired() {
+        return true;
+    }
+
+    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }
 
+    @Override
     public boolean isLoadColumnTransform() {
         return true;
     }
 
+    @Override
     public NewAndOldValue transform(IDatabasePlatform platform,
             DataContext context,
             TransformColumn column, TransformedData data, Map<String, String> sourceValues,

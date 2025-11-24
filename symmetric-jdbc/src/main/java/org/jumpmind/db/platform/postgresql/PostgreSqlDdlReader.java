@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.ForeignKey;
@@ -550,14 +551,14 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
 
     protected IndexColumn findIndexColumn(String columnName, IndexColumn[] indexColumns) {
         return Arrays.stream(indexColumns)
-                .filter(indexColumn -> StringUtils.equals(indexColumn.getName(), columnName))
+                .filter(indexColumn -> Strings.CS.equals(indexColumn.getName(), columnName))
                 .findFirst()
                 .orElse(null);
     }
 
     protected IIndex findIndex(String indexName, Collection<IIndex> indices) {
         return indices.stream()
-                .filter(index -> StringUtils.equals(index.getName(), indexName))
+                .filter(index -> Strings.CS.equals(index.getName(), indexName))
                 .findFirst()
                 .orElse(null);
     }

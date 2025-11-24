@@ -1,0 +1,56 @@
+name: Resolve JIRA ticket on PR merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - 'release/*'
+      
+jobs:
+  resolve-jira-ticket:
+    if: github.event.pull_request.merged == true
+    runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64   
+    steps:
+      - uses: runs-on/action@v2
+      
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 2
+      
+      - name: Extract JIRA ticket from commit
+        id: extract
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          
+          JIRA_KEY=$(echo "$COMMIT_MSG" | grep -oE '^SYM-[0-9]+')
+          
+          echo "Commit message: $COMMIT_MSG"
+          echo "jira_key=${JIRA_KEY}" >> $GITHUB_OUTPUT
+
+          if [ -n "$JIRA_KEY" ]; then
+            echo "Found JIRA ticket: ${JIRA_KEY}"
+          else
+            echo "Warning: No JIRA ticket found in commit message"
+          fi
+      
+      - name: Update JIRA ticket to resolved status
+        if: steps.extract.outputs.jira_key != ''
+        run: |
+          JIRA_KEY="${{ steps.extract.outputs.jira_key }}"
+          
+          echo "Updating ${JIRA_KEY} to Resolved status..."
+          
+          RESPONSE_STATUS=$(curl -s -w "%{response_code}\n" -X POST \
+            --user '${{ secrets.JIRA_USER }}:${{ secrets.JIRA_API_KEY }}' \
+            --header 'Content-Type: application/json' \
+            --header 'Accept: application/json' \
+            --data '{"transition":{"id":"7"}}' \
+            "${{ secrets.JIRA_URL }}/rest/api/2/issue/${JIRA_KEY}/transitions")
+          
+          if [ "$RESPONSE_STATUS" -ge 200 ] && [ "$RESPONSE_STATUS" -lt 300 ]; then
+            echo "Successfully updated ${JIRA_KEY} to Resolved"
+          else
+            echo "Failed to update ${JIRA_KEY}. HTTP ${RESPONSE_STATUS}"
+          fi

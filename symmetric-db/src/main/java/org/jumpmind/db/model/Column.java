@@ -53,7 +53,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -744,7 +744,7 @@ public class Column implements Cloneable, Serializable {
     }
 
     public boolean equalsByName(Column other) {
-        return StringUtils.equalsIgnoreCase(name, other.name) && primaryKey == other.primaryKey;
+        return Strings.CI.equals(name, other.name) && primaryKey == other.primaryKey;
     }
 
     /**

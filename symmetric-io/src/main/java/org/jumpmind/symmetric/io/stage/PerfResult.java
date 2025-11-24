@@ -20,45 +20,56 @@
  */
 package org.jumpmind.symmetric.io.stage;
 
+import java.util.Objects;
+
 public class PerfResult {
     private String name;
     private long count;
     private long millis;
     private float rating;
+    private String outcome;
+    public static final String OUTCOME_SUCCESS = "Success";
+    public static final String OUTCOME_FAILED = "Failed";
+    public static final String OUTCOME_SKIPPED = "Skipped";
 
     public PerfResult(String name, long count, long millis, float rating) {
         this.name = name;
         this.count = count;
         this.millis = millis;
-        this.rating = rating;
+        this.outcome = "";
     }
 
     public PerfResult(String name) {
         this.name = name;
+        this.count = 0;
+        this.millis = 0;
+        this.outcome = "";
     }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((name == null) ? 0 : name.hashCode());
-        return result;
+        return Objects.hash(this.count, this.millis, this.name, this.outcome);
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         PerfResult other = (PerfResult) obj;
         if (name == null) {
-            if (other.name != null)
+            if (other.name != null) {
                 return false;
-        } else if (!name.equals(other.name))
+            }
+        } else if (!name.equals(other.name)) {
             return false;
+        }
         return true;
     }
 
@@ -112,5 +123,13 @@ public class PerfResult {
 
     public void setRating(float rating) {
         this.rating = rating;
+    }
+
+    public String getOutcome() {
+        return outcome;
+    }
+
+    public void setOutcome(String outcome) {
+        this.outcome = outcome;
     }
 }

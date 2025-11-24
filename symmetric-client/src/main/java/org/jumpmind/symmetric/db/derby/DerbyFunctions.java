@@ -34,10 +34,12 @@ import java.util.Hashtable;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.derby.iapi.db.Factory;
 import org.apache.derby.iapi.db.TriggerExecutionContext;
 import org.apache.derby.iapi.sql.conn.LanguageConnectionContext;
 import org.apache.derby.impl.jdbc.EmbedConnection;
+import org.jumpmind.db.sql.SqlUtils;
 
 public class DerbyFunctions {
     private static final String CURRENT_CONNECTION_URL = "jdbc:default:connection";
@@ -208,8 +210,7 @@ public class DerbyFunctions {
 
     public static String escape(String str) {
         if (str != null) {
-            return "\"" + StringUtils.replace(StringUtils.replace(str, "\\", "\\\\"), "\"", "\\\"")
-                    + "\"";
+            return "\"" + Strings.CS.replace(Strings.CS.replace(str, "\\", "\\\\"), "\"", "\\\"") + "\"";
         }
         return "";
     }
@@ -219,7 +220,8 @@ public class DerbyFunctions {
         String str = null;
         if (StringUtils.isNotBlank(whereClause)) {
             Connection conn = DriverManager.getConnection(CURRENT_CONNECTION_URL);
-            String sql = "select " + columnName + " from " + tableName + " where " + whereClause;
+            String sql = "select " + SqlUtils.sanitizeIdentifier(columnName) + " from " + SqlUtils.sanitizeIdentifier(tableName)
+                    + " where " + whereClause;
             PreparedStatement ps = conn.prepareStatement(sql);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
@@ -248,7 +250,8 @@ public class DerbyFunctions {
         String str = null;
         if (StringUtils.isNotBlank(whereClause)) {
             Connection conn = DriverManager.getConnection(CURRENT_CONNECTION_URL);
-            String sql = "select " + columnName + " from " + tableName + " where " + whereClause;
+            String sql = "select " + SqlUtils.sanitizeIdentifier(columnName) + " from " + SqlUtils.sanitizeIdentifier(tableName)
+                    + " where " + whereClause;
             PreparedStatement ps = conn.prepareStatement(sql);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
@@ -269,7 +272,7 @@ public class DerbyFunctions {
         ResultSetMetaData metaData = rs.getMetaData();
         StringBuilder b = new StringBuilder();
         for (int i = 0; i < pkColumnNames.length; i++) {
-            String columnName = pkColumnNames[i];
+            String columnName = SqlUtils.sanitizeIdentifier(pkColumnNames[i]);
             int index = findColumnIndex(metaData, columnName);
             int type = metaData.getColumnType(index);
             if (type != Types.BINARY && type != Types.BLOB && type != Types.LONGVARBINARY
@@ -292,16 +295,16 @@ public class DerbyFunctions {
                     case Types.CHAR:
                     case Types.VARCHAR:
                     case Types.LONGVARCHAR:
-                        b.append("'").append(rs.getString(index)).append("'");
+                        b.append("'").append(SqlUtils.escapeString(rs.getString(index))).append("'");
                         break;
                     case Types.DATE:
                         b.append("{d '");
-                        b.append(rs.getString(index));
+                        b.append(SqlUtils.escapeString(rs.getString(index)));
                         b.append("'}");
                         break;
                     case Types.TIMESTAMP:
                         b.append("{ts '");
-                        b.append(rs.getString(index));
+                        b.append(SqlUtils.escapeString(rs.getString(index)));
                         b.append("'}");
                         break;
                 }

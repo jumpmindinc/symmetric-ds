@@ -448,7 +448,8 @@ final public class ParameterConstants {
     public final static String POSTGRES_SECURITY_DEFINER = "postgres.security.definer";
     public final static String POSTGRES_CONVERT_INFINITY_DATE_TO_NULL = "postgres.convert.infinity.date.to.null";
     public final static String[] STARTUP_DB_OBJECTS_SETUP_PARAMS = new String[] { TRIGGER_CAPTURE_DDL_CHANGES,
-            POSTGRES_TRIGGER_CAPTURE_TRUNCATE, DB_USER, "db.url", "target.db.url" };
+            POSTGRES_TRIGGER_CAPTURE_TRUNCATE, TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST, TRIGGER_CAPTURE_DDL_DELIMITER,
+            DB_USER, "db.url", "target.db.url" };
     public final static String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
             JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE };
     public final static String GOOGLE_BIG_QUERY_MAX_ROWS_PER_RPC = "google.bigquery.max.rows.per.rpc";
@@ -494,5 +495,4 @@ final public class ParameterConstants {
         }
         return tags;
     }
-
 }

@@ -35,14 +35,12 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Data;
-import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.util.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,11 +48,10 @@ import org.slf4j.LoggerFactory;
 import bsh.Interpreter;
 import bsh.TargetError;
 
-public class BshColumnTransform implements ISingleNewAndOldValueColumnTransform, IBuiltInExtensionPoint {
+public class BshColumnTransform extends AbstractColumnTransform implements ISingleNewAndOldValueColumnTransform {
     protected final Logger log = LoggerFactory.getLogger(getClass());
     final String INTERPRETER_KEY = String.format("%d.BshInterpreter", hashCode());
     public static final String NAME = "bsh";
-    IParameterService parameterService;
     /*
      * Static context object used to maintain objects in memory for reference between BSH transforms.
      */
@@ -63,27 +60,35 @@ public class BshColumnTransform implements ISingleNewAndOldValueColumnTransform,
     public BshColumnTransform() {
     }
 
-    public void setParameterService(IParameterService parameterService) {
-        this.parameterService = parameterService;
-    }
-
+    @Override
     public String getName() {
         return NAME;
     }
 
+    @Override
+    public boolean isParameterServiceRequired() {
+        return true;
+    }
+
+    @Override
     public boolean isExtractColumnTransform() {
         return true;
     }
 
+    @Override
     public boolean isLoadColumnTransform() {
         return true;
     }
 
+    @Override
     public NewAndOldValue transform(IDatabasePlatform platform,
             DataContext context,
             TransformColumn column, TransformedData data, Map<String, String> sourceValues,
             String newValue, String oldValue) throws IgnoreColumnException, IgnoreRowException {
+        String transformBeanshellInfo = "";
         try {
+            transformBeanshellInfo = String.format("transform script for column %s, transform_id=%s, BSH=", column.getTargetColumnName(), column
+                    .getTransformId());
             Interpreter interpreter = getInterpreter(context);
             interpreter.set("currentValue", newValue);
             interpreter.set("oldValue", oldValue);
@@ -125,9 +130,13 @@ public class BshColumnTransform implements ISingleNewAndOldValueColumnTransform,
                 interpreter.set(DATA_CONTEXT_SOURCE_NODE_GROUP_ID, context.get(DATA_CONTEXT_SOURCE_NODE_GROUP_ID));
                 interpreter.set(DATA_CONTEXT_SOURCE_NODE_EXTERNAL_ID, context.get(DATA_CONTEXT_SOURCE_NODE_EXTERNAL_ID));
                 if (StringUtils.isNotBlank(globalScript)) {
+                    transformBeanshellInfo += globalScript;
                     interpreter.eval(globalScript);
                 }
-                interpreter.eval(String.format("%s {\n%s\n}", methodName, transformExpression));
+                String transformBeanshellBody = String.format("%s {\n%s\n}", methodName, transformExpression);
+                interpreter.eval(transformBeanshellBody);
+                transformBeanshellInfo += "\n" + transformBeanshellBody;
+                log.debug("Combined {}", transformBeanshellInfo);
                 context.put(methodName, Boolean.TRUE);
             }
             Object result = interpreter.eval(methodName);
@@ -154,6 +163,7 @@ public class BshColumnTransform implements ISingleNewAndOldValueColumnTransform,
             }
         } catch (TargetError evalEx) {
             Throwable ex = evalEx.getTarget();
+            log.error("TargetError detected for " + transformBeanshellInfo, ex);
             if (ex instanceof IgnoreColumnException) {
                 throw (IgnoreColumnException) ex;
             } else if (ex instanceof IgnoreRowException) {
@@ -164,6 +174,7 @@ public class BshColumnTransform implements ISingleNewAndOldValueColumnTransform,
                         column.getTransformId()), ex);
             }
         } catch (Exception ex) {
+            log.error("Exception detected for " + transformBeanshellInfo, ex);
             if (ex instanceof IgnoreColumnException) {
                 throw (IgnoreColumnException) ex;
             } else if (ex instanceof IgnoreRowException) {
@@ -171,6 +182,7 @@ public class BshColumnTransform implements ISingleNewAndOldValueColumnTransform,
             } else {
                 log.error(String.format("Beanshell script error for target column %s on transform %s", column.getTargetColumnName(),
                         column.getTransformId()), ex);
+                log.error("Beanshell script failed.\n%s", transformBeanshellInfo);
                 throw new TransformColumnException(ex);
             }
         }

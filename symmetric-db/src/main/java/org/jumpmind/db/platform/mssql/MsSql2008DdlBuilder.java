@@ -23,7 +23,7 @@ package org.jumpmind.db.platform.mssql;
 import java.sql.Types;
 import java.util.Map;
 
-import org.apache.commons.codec.binary.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.CompressionTypes;
@@ -41,7 +41,7 @@ public class MsSql2008DdlBuilder extends MsSql2005DdlBuilder {
         this.databaseName = DatabaseNamesConstants.MSSQL2008;
         databaseInfo.addNativeTypeMapping(Types.DATE, "DATE", Types.DATE);
         databaseInfo.addNativeTypeMapping(Types.TIME, "TIME", Types.TIME);
-        databaseInfo.addNativeTypeMapping(ColumnTypes.MSSQL_SQL_VARIANT, "SQL_VARIANT", Types.BLOB);
+        databaseInfo.addNativeTypeMapping(ColumnTypes.MSSQL_SQL_VARIANT, "SQL_VARIANT", ColumnTypes.MSSQL_SQL_VARIANT);
         databaseInfo.addNativeTypeMapping(Types.TIMESTAMP, "DATETIME2");
         databaseInfo.addNativeTypeMapping(ColumnTypes.TIMESTAMPTZ, "DATETIMEOFFSET");
         databaseInfo.addNativeTypeMapping(ColumnTypes.TIMESTAMPLTZ, "DATETIMEOFFSET", ColumnTypes.TIMESTAMPTZ);
@@ -126,7 +126,7 @@ public class MsSql2008DdlBuilder extends MsSql2005DdlBuilder {
         if (index.getPlatformIndexes() != null && index.getPlatformIndexes().size() > 0) {
             Map<String, PlatformIndex> platformIndices = index.getPlatformIndexes();
             for (PlatformIndex platformIndex : platformIndices.values()) {
-                if (StringUtils.equals(platformIndex.getName(), index.getName())) {
+                if (Strings.CS.equals(platformIndex.getName(), index.getName())) {
                     if (platformIndex.getFilterCondition() != null) {
                         println(ddl);
                         ddl.append(platformIndex.getFilterCondition());

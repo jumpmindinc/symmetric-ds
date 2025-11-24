@@ -47,6 +47,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.alter.AddColumnChange;
 import org.jumpmind.db.alter.AddTableLoggingChange;
 import org.jumpmind.db.alter.ColumnAutoIncrementChange;
@@ -167,7 +168,7 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
             } else if (uppercaseValue.startsWith("SYSTIMESTAMP") || uppercaseValue.startsWith("SYSDATETIME(")) {
                 newValue = "CURRENT_TIMESTAMP";
             } else if (column.anyPlatformColumnNameContains("mysql") && uppercaseValue.startsWith("SYSDATE(")) {
-                newValue = StringUtils.replaceOnceIgnoreCase(newValue, "sysdate", "CURRENT_TIMESTAMP");
+                newValue = Strings.CI.replaceOnce(newValue, "sysdate", "CURRENT_TIMESTAMP");
             } else if (uppercaseValue.startsWith("SYSDATETIMEOFFSET(")) {
                 newValue = "LOCALTIMESTAMP";
             } else if (uppercaseValue.startsWith("GETUTCDATE(")) {
@@ -604,21 +605,22 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
     @Override
     protected void printDefaultValue(String defaultValue, Column column, StringBuilder ddl) {
         int typeCode = column.getMappedTypeCode();
-        if (defaultValue != null &&
-                ((defaultValue.endsWith("::uuid") && Types.OTHER == typeCode) ||
-                        (defaultValue.contains("::") && Types.ARRAY == typeCode))) {
-            ddl.append(defaultValue);
+        String mappedDefaultValue = mapDefaultValue(defaultValue, column);
+        if (mappedDefaultValue != null &&
+                ((mappedDefaultValue.endsWith("::uuid") && Types.OTHER == typeCode) ||
+                        (mappedDefaultValue.contains("::") && Types.ARRAY == typeCode))) {
+            ddl.append(mappedDefaultValue);
         } else if (Types.BOOLEAN == typeCode || Types.BIT == typeCode) {
             boolean isNull = false;
-            if (defaultValue == null || defaultValue.equalsIgnoreCase("null")) {
+            if (mappedDefaultValue == null || mappedDefaultValue.equalsIgnoreCase("null")) {
                 isNull = true;
             }
             if (!isNull) {
                 ddl.append(databaseInfo.getValueQuoteToken());
-                ddl.append(escapeStringValue(defaultValue));
+                ddl.append(escapeStringValue(mappedDefaultValue));
                 ddl.append(databaseInfo.getValueQuoteToken());
             } else {
-                ddl.append(defaultValue);
+                ddl.append(mappedDefaultValue);
             }
         } else {
             super.printDefaultValue(defaultValue, column, ddl);

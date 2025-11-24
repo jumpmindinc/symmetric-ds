@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -992,8 +993,8 @@ public class Table implements Serializable, Cloneable, Comparable<Table> {
         if (this == other) {
             return true;
         }
-        if (other != null && StringUtils.equalsIgnoreCase(catalog, other.catalog) && StringUtils.equalsIgnoreCase(schema, other.schema) &&
-                StringUtils.equalsIgnoreCase(name, other.name)) {
+        if (other != null && Strings.CI.equals(catalog, other.catalog) && Strings.CI.equals(schema, other.schema) &&
+                Strings.CI.equals(name, other.name)) {
             if (columns == other.columns) {
                 return true;
             }

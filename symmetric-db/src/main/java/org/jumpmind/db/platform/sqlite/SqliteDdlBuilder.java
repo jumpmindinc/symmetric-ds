@@ -24,7 +24,7 @@ import java.sql.Connection;
 import java.sql.Types;
 import java.util.Map;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
@@ -176,7 +176,7 @@ public class SqliteDdlBuilder extends AbstractDdlBuilder {
 
     @Override
     protected void writeColumnDefaultValueStmt(Table table, Column column, StringBuilder ddl) {
-        if (!StringUtils.containsIgnoreCase(getNativeDefaultValue(column), "NEXT VALUE FOR")) {
+        if (!Strings.CI.contains(getNativeDefaultValue(column), "NEXT VALUE FOR")) {
             super.writeColumnDefaultValueStmt(table, column, ddl);
         }
     }

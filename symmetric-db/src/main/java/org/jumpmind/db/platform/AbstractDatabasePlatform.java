@@ -535,6 +535,8 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
                 }
             } else if (type == Types.ARRAY) {
                 objectValue = createArray(column, value);
+            } else if (type == ColumnTypes.MSSQL_SQL_VARIANT) {
+                objectValue = parseSqlVariant(value);
             }
         }
         if (objectValue instanceof String) {
@@ -590,6 +592,65 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     protected Object parseBoolean(String value) {
         value = cleanNumber(value);
         return value.equals("1") ? Boolean.TRUE : Boolean.FALSE;
+    }
+
+    protected Object parseSqlVariant(String value) throws DecoderException {
+        Object ret = value;
+        String[] fields = value.split("\\|");
+        if (fields.length == 4) {
+            String type = fields[1];
+            // String precision = fields[2];
+            // String scale = fields[3];
+            String localValue = fields[0];
+            if ("int".equalsIgnoreCase(type)) {
+                ret = parseInteger(localValue);
+            } else if ("real".equalsIgnoreCase(type)) {
+                ret = parseFloat(localValue);
+            } else if ("decimal".equalsIgnoreCase(type)) {
+                ret = parseBigDecimal(localValue);
+            } else if ("money".equalsIgnoreCase(type)) {
+                ret = parseBigDecimal(localValue);
+            } else if ("smallmoney".equalsIgnoreCase(type)) {
+                ret = parseBigDecimal(localValue);
+            } else if ("bigint".equalsIgnoreCase(type)) {
+                ret = parseBigInteger(localValue);
+            } else if ("smallint".equalsIgnoreCase(type)) {
+                ret = parseInteger(localValue);
+            } else if ("tinyint".equalsIgnoreCase(type)) {
+                ret = parseInteger(localValue);
+            } else if ("bit".equalsIgnoreCase(type)) {
+                ret = parseInteger(localValue);
+            } else if ("nvarchar".equalsIgnoreCase(type)) {
+                ret = localValue;
+            } else if ("varchar".equalsIgnoreCase(type)) {
+                ret = localValue;
+            } else if ("nchar".equalsIgnoreCase(type)) {
+                ret = localValue;
+            } else if ("char".equalsIgnoreCase(type)) {
+                ret = localValue;
+            } else if ("varbinary".equalsIgnoreCase(type)) {
+                ret = localValue.getBytes(Charset.defaultCharset());
+            } else if ("binary".equalsIgnoreCase(type)) {
+                ret = localValue.getBytes(Charset.defaultCharset());
+            } else if ("uniqueidentifier".equalsIgnoreCase(type)) {
+                ret = localValue;
+            } else if ("datetime2".equalsIgnoreCase(type)) {
+                ret = parseDate(Types.TIMESTAMP, localValue, false);
+            } else if ("datetimeoffset".equalsIgnoreCase(type)) {
+                ret = parseDate(Types.TIMESTAMP, localValue, false);
+            } else if ("datetime".equalsIgnoreCase(type)) {
+                ret = parseDate(Types.TIMESTAMP, localValue, false);
+            } else if ("smalldatetime".equalsIgnoreCase(type)) {
+                ret = parseDate(Types.TIMESTAMP, localValue, false);
+            } else if ("date".equalsIgnoreCase(type)) {
+                ret = parseDate(Types.DATE, localValue, false);
+            } else if ("time".equalsIgnoreCase(type)) {
+                ret = parseDate(Types.TIME, localValue, false);
+            } else if ("float".equalsIgnoreCase(type)) {
+                ret = parseFloat(localValue);
+            }
+        }
+        return ret;
     }
 
     protected String cleanNumber(String value) {

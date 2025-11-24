@@ -28,9 +28,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -40,8 +46,13 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.sql.SqlScriptReader;
@@ -58,6 +69,7 @@ import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.IDataReader;
 import org.jumpmind.symmetric.io.data.reader.ProtocolDataReader;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.transport.http.HttpConnection;
 import org.jumpmind.symmetric.transport.internal.InternalIncomingTransport;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.CollectionUtils;
@@ -68,7 +80,6 @@ import org.slf4j.LoggerFactory;
 import bsh.EvalError;
 import bsh.Interpreter;
 import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
@@ -339,11 +350,11 @@ final public class SymmetricUtils {
                 dataReader.nextBatch();
                 Table table = dataReader.nextTable();
                 tableLoop: while (table != null) {
-                    if (StringUtils.equalsIgnoreCase(table.getName(), groupTableName)) {
+                    if (Strings.CI.equals(table.getName(), groupTableName)) {
                         CsvData data = dataReader.nextData();
                         while (data != null) {
                             if (DataEventType.INSERT.equals(data.getDataEventType())) {
-                                if (StringUtils.equals(groupId, data.toKeyColumnValuePairs(table).get("node_group_id"))) {
+                                if (Strings.CS.equals(groupId, data.toKeyColumnValuePairs(table).get("node_group_id"))) {
                                     foundGroup = true;
                                     break tableLoop;
                                 }
@@ -369,26 +380,26 @@ final public class SymmetricUtils {
                 try {
                     Statement statement = CCJSqlParserUtil.parse(sql);
                     if (statement instanceof Insert insert
-                            && StringUtils.equalsAnyIgnoreCase(insert.getTable().getName(), groupTableName, "\"" + groupTableName + "\"")) {
-                        List<Expression> valueList = insert.getItemsList(ExpressionList.class).getExpressions();
+                            && Strings.CI.equalsAny(insert.getTable().getName(), groupTableName, "\"" + groupTableName + "\"")) {
+                        ExpressionList<?> valueList = insert.getValues().getExpressions();
                         if (valueList != null && !valueList.isEmpty()) {
                             List<Column> columnList = insert.getColumns();
                             if (columnList != null && !columnList.isEmpty()) {
                                 for (int i = 0; i < columnList.size() && i < valueList.size(); i++) {
-                                    if (StringUtils.equalsAnyIgnoreCase(columnList.get(i).getColumnName(), "node_group_id", "\"node_group_id\"")
-                                            && StringUtils.equals(valueList.get(i).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
+                                    if (Strings.CI.equalsAny(columnList.get(i).getColumnName(), "node_group_id", "\"node_group_id\"")
+                                            && Strings.CS.equals(valueList.get(i).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
                                         foundGroup = true;
                                         break sqlLoop;
                                     }
                                 }
-                            } else if (StringUtils.equals(valueList.get(0).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
+                            } else if (Strings.CS.equals(valueList.get(0).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
                                 foundGroup = true;
                                 break;
                             }
                         }
                     }
                 } catch (JSQLParserException e) {
-                    if (StringUtils.containsIgnoreCase(sql, "insert") && StringUtils.containsIgnoreCase(sql, groupTableName) && sql.contains(groupId)) {
+                    if (Strings.CI.contains(sql, "insert") && Strings.CI.contains(sql, groupTableName) && sql.contains(groupId)) {
                         log.warn("Unable to parse the following imported SQL, so assuming it's an insert for the {} node group: {}", groupId, sql);
                         log.debug("Parse exception: ", e);
                         foundGroup = true;
@@ -404,5 +415,64 @@ final public class SymmetricUtils {
             }
         }
         return foundGroup;
+    }
+
+    public static String removeInvalidTablesFromImportedSql(String tablePrefix, String sql) throws IOException {
+        return removeInvalidTablesFromImportedSql(tablePrefix, new SqlScriptReader(new StringReader(sql)));
+    }
+
+    public static String removeInvalidTablesFromImportedSql(String tablePrefix, SqlScriptReader sqlReader) throws IOException {
+        try {
+            StringBuilder sqlBuilder = new StringBuilder();
+            String[] invalidTableNames = TableConstants.getRemovedConfigTables(tablePrefix).toArray(String[]::new);
+            String sqlStatement;
+            while ((sqlStatement = sqlReader.readSqlStatement()) != null) {
+                if (!Strings.CI.containsAny(sqlStatement, invalidTableNames)) {
+                    sqlBuilder.append(sqlStatement).append(";").append(System.lineSeparator());
+                }
+            }
+            return sqlBuilder.toString();
+        } finally {
+            sqlReader.close();
+        }
+    }
+
+    public static Certificate[] getCertificates(String urlString)
+            throws MalformedURLException, IOException, NoSuchAlgorithmException, KeyManagementException {
+        URL url = new URL(urlString);
+        if (!"https".equals(url.getProtocol())) {
+            return null;
+        }
+        HttpConnection connection = null;
+        try {
+            connection = new HttpConnection(url);
+            connection.setHostnameVerifier((string, session) -> true);
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            X509TrustManager trustManager = new X509TrustManager() {
+                private X509Certificate[] accepted = {};
+
+                @Override
+                public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {
+                }
+
+                @Override
+                public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {
+                    accepted = xcs;
+                }
+
+                @Override
+                public X509Certificate[] getAcceptedIssuers() {
+                    return accepted;
+                }
+            };
+            sslContext.init(null, new TrustManager[] { trustManager }, null);
+            connection.setSslSocketFactory(sslContext.getSocketFactory());
+            return connection.getServerCertificates();
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+                connection.close();
+            }
+        }
     }
 }

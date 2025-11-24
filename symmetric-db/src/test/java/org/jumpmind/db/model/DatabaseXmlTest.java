@@ -58,7 +58,7 @@ public class DatabaseXmlTest {
         if (!marker.startsWith(File.separator)) {
             marker = File.separator + marker;
         }
-        int markerPos = currentPath.indexOf(marker);
+        int markerPos = currentPath.lastIndexOf(marker);
         if (markerPos >= 0) {
             return currentPath.substring(0, markerPos);
         }

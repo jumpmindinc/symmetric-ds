@@ -22,7 +22,7 @@ package org.jumpmind.db.platform.mariadb;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.platform.PermissionResult;
 import org.jumpmind.db.platform.PermissionType;
 import org.jumpmind.db.platform.PermissionResult.Status;
@@ -52,11 +52,11 @@ public class MariaDBDatabasePlatform extends MySqlDatabasePlatform {
         final PermissionResult result = new PermissionResult(PermissionType.LOG_MINE, "Use LogMiner");
         StringBuilder solution = new StringBuilder();
         Row row = getSqlTemplate().queryForRow("show variables like 'log_bin'");
-        if (row == null || !StringUtils.equalsIgnoreCase(row.getString("Value"), "ON")) {
+        if (row == null || !Strings.CI.equals(row.getString("Value"), "ON")) {
             solution.append("Use the --log-bin option at startup. ");
         }
         row = getSqlTemplate().queryForRow("show variables like 'binlog_format'");
-        if (row == null || !StringUtils.equalsIgnoreCase(row.getString("Value"), "ROW")) {
+        if (row == null || !Strings.CI.equals(row.getString("Value"), "ROW")) {
             solution.append("Set the binlog_format system variable to \"ROW\". ");
         }
         if (solution.length() > 0) {

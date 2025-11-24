@@ -33,6 +33,7 @@ import java.util.Set;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
@@ -561,10 +562,10 @@ public class DbCompare {
             if (config.isUseSymmetricConfig()) {
                 String catalog = null;
                 String schema = null;
-                if (!StringUtils.equals(sourceEngine.getTargetDialect().getTargetPlatform().getDefaultCatalog(), sourceTable.getCatalog())) {
+                if (!Strings.CS.equals(sourceEngine.getTargetDialect().getTargetPlatform().getDefaultCatalog(), sourceTable.getCatalog())) {
                     catalog = sourceTable.getCatalog();
                 }
-                if (!StringUtils.equals(sourceEngine.getTargetDialect().getTargetPlatform().getDefaultSchema(), sourceTable.getSchema())) {
+                if (!Strings.CS.equals(sourceEngine.getTargetDialect().getTargetPlatform().getDefaultSchema(), sourceTable.getSchema())) {
                     schema = sourceTable.getSchema();
                 }
                 TriggerHistory hist = sourceEngine.getTriggerRouterService().findTriggerHistory(catalog, schema,
@@ -684,7 +685,7 @@ public class DbCompare {
         for (TriggerRouter triggerRouter : triggerRouters) {
             String routerTargetNodeGroupId = triggerRouter.getRouter().getNodeGroupLink().getTargetNodeGroupId();
             String compareTargetNodeGroupId = targetEngine.getNodeService().getCachedIdentity().getNodeGroupId();
-            if (StringUtils.equals(compareTargetNodeGroupId, routerTargetNodeGroupId)) {
+            if (Strings.CS.equals(compareTargetNodeGroupId, routerTargetNodeGroupId)) {
                 return triggerRouter;
             }
         }
@@ -754,12 +755,12 @@ public class DbCompare {
     protected boolean compareTableNames(String sourceTableName, String targetTableName) {
         sourceTableName = sourceTableName.trim();
         targetTableName = targetTableName.trim();
-        if (StringUtils.equalsIgnoreCase(sourceTableName, targetTableName)) {
+        if (Strings.CI.equals(sourceTableName, targetTableName)) {
             return true;
         } else {
             Map<String, String> sourceTableNameParts = sourceEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(sourceTableName);
             Map<String, String> targetTableNameParts = targetEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(targetTableName);
-            return StringUtils.equalsIgnoreCase(sourceTableNameParts.get("table"), targetTableNameParts.get("table"));
+            return Strings.CI.equals(sourceTableNameParts.get("table"), targetTableNameParts.get("table"));
         }
     }
 

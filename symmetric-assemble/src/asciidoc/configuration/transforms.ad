@@ -47,7 +47,7 @@ Column Policy:: Indicates whether unspecified columns are passed thru or if all 
 |SPECIFIED|Indicates that only the transform columns that are defined will be the ones that end up as part of the transformation.
 
 |IMPLIED|Indicates that if not specified, then columns from the source are passed through to the target. This is useful if you just 
-want to map a table from one name to anther or from one schema to another. It is also useful if you want to transform a table, but 
+want to map a table from one name to another or from one schema to another. It is also useful if you want to transform a table, but 
 also want to pass it through. You would define an implied transform from the source to the target and would not have to configure each column.
 |===
 

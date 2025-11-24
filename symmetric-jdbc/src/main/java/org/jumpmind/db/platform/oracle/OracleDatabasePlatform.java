@@ -46,6 +46,7 @@ import javax.sql.DataSource;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
@@ -276,10 +277,10 @@ public class OracleDatabasePlatform extends AbstractJdbcDatabasePlatform {
         if (sql.endsWith(";")) {
             sql = sql.substring(0, sql.length() - 1);
         }
-        int orderIndex = StringUtils.lastIndexOfIgnoreCase(sql, "order by");
+        int orderIndex = Strings.CI.lastIndexOf(sql, "order by");
         String order = sql.substring(orderIndex);
         String innerSql = sql.substring(0, orderIndex - 1);
-        innerSql = StringUtils.replaceIgnoreCase(innerSql, " from", ", ROW_NUMBER() over (" + order + ") as row_num from");
+        innerSql = Strings.CI.replace(innerSql, " from", ", ROW_NUMBER() over (" + order + ") as row_num from");
         return "select * from (" + innerSql + ") " +
                 "where row_num between " + (offset + 1) + " and " + (offset + limit);
     }
@@ -289,7 +290,7 @@ public class OracleDatabasePlatform extends AbstractJdbcDatabasePlatform {
         if (sql.toUpperCase().contains("CREATE TABLE")) {
             return sql;
         }
-        return StringUtils.replaceOnceIgnoreCase(sql, "create", "create or replace");
+        return Strings.CI.replaceOnce(sql, "create", "create or replace");
     }
 
     @Override

@@ -44,6 +44,7 @@ import java.sql.Types;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -159,10 +160,10 @@ public class DerbyDatabasePlatform extends AbstractJdbcDatabasePlatform {
                 }
                 return sql + " offset " + offset + " rows fetch next " + limit + " rows only;";
             }
-            int orderIndex = StringUtils.lastIndexOfIgnoreCase(sql, "order by");
+            int orderIndex = Strings.CI.lastIndexOf(sql, "order by");
             String order = sql.substring(orderIndex);
             String innerSql = sql.substring(0, orderIndex - 1);
-            innerSql = StringUtils.replaceIgnoreCase(innerSql, " from", ", ROW_NUMBER() over (" + order + ") as RowNum from");
+            innerSql = Strings.CI.replace(innerSql, " from", ", ROW_NUMBER() over (" + order + ") as RowNum from");
             return "select * from (" + innerSql + ") " +
                     "where RowNum between " + (offset + 1) + " and " + (offset + limit);
         }

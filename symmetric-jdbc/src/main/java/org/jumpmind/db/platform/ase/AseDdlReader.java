@@ -72,6 +72,7 @@ import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.SqlUtils;
 
 /*
  * Reads a database model from a Sybase database.
@@ -245,7 +246,7 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
         query.append(" FROM dbo.sysreferences refs, dbo.sysobjects refobjs, dbo.sysobjects localtables, dbo.sysobjects remotetables");
         query.append(" WHERE refobjs.type = 'RI' AND refs.constrid = refobjs.id AND");
         query.append(" localtables.type = 'U' AND refs.tableid = localtables.id AND localtables.name = '");
-        query.append(tableName);
+        query.append(SqlUtils.sanitizeIdentifier(tableName));
         query.append("' AND remotetables.type = 'U' AND refs.reftabid = remotetables.id");
         Statement stmt = connection.createStatement();
         PreparedStatement prepStmt = connection

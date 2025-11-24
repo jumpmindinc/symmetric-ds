@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
@@ -34,6 +35,7 @@ import org.jumpmind.db.platform.PermissionType;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.mapper.StringMapper;
 import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
 import org.jumpmind.db.util.BinaryEncoding;
@@ -70,7 +72,7 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
         String version = getProductVersion();
         if (!Version.isOlderThanVersion(version, "5.1.5") && !platform.getName().equals(DatabaseNamesConstants.SINGLE_STORE)) {
             String defaultEngine = platform.getSqlTemplate().queryForString("select engine from information_schema.engines where support='DEFAULT';");
-            if (!StringUtils.equalsIgnoreCase(defaultEngine, "innodb")) {
+            if (!Strings.CI.equals(defaultEngine, "innodb")) {
                 String message = "Please ensure that the default storage engine is set to InnoDB";
                 throw new SymmetricException(message);
             }
@@ -173,7 +175,7 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
 
     private String replaceTokens(String sql, String objectName, String functionBody) {
         String ddl = super.replaceTokens(sql, objectName);
-        ddl = FormatUtils.replace("functionBody", StringUtils.replace(functionBody, "'", "''"), ddl);
+        ddl = FormatUtils.replace("functionBody", Strings.CS.replace(functionBody, "'", "''"), ddl);
         return ddl;
     }
 
@@ -188,27 +190,21 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
     @Override
     protected boolean doesTriggerExistOnPlatform(StringBuilder sqlBuffer, String catalog, String schema, String tableName,
             String triggerName) {
-        catalog = catalog == null ? (platform.getDefaultCatalog() == null ? null
-                : platform
-                        .getDefaultCatalog()) : catalog;
-        String checkCatalogSql = (catalog != null && catalog.length() > 0) ? " and trigger_schema='"
-                + catalog + "'"
-                : "";
-        return platform
-                .getSqlTemplate()
-                .queryForInt(
-                        "select count(*) from information_schema.triggers where trigger_name like ? and event_object_table like ?"
-                                + checkCatalogSql, new Object[] { triggerName, tableName }) > 0;
+        catalog = catalog == null ? (platform.getDefaultCatalog() == null ? null : platform.getDefaultCatalog()) : catalog;
+        String checkCatalogSql = (catalog != null && catalog.length() > 0) ? " and trigger_schema='" + SqlUtils.sanitizeIdentifier(catalog) + "'" : "";
+        return platform.getSqlTemplate().queryForInt(
+                "select count(*) from information_schema.triggers where trigger_name like ? and event_object_table like ?"
+                        + checkCatalogSql, new Object[] { triggerName, tableName }) > 0;
     }
 
     @Override
     public void removeTrigger(StringBuilder sqlBuffer, String catalogName, String schemaName,
             String triggerName, String tableName, ISqlTransaction transaction) {
         String quote = platform.getDatabaseInfo().getDelimiterToken();
-        String catalogPrefix = StringUtils.isBlank(catalogName) ? "" : (quote + catalogName + quote + ".");
-        String sql = "drop trigger if exists " + catalogPrefix + triggerName;
+        String catalogPrefix = StringUtils.isBlank(catalogName) ? "" : (quote + SqlUtils.sanitizeIdentifier(catalogName) + quote + ".");
+        String sql = "drop trigger if exists " + catalogPrefix + SqlUtils.sanitizeIdentifier(triggerName);
         if (Version.isOlderThanVersion(getProductVersion(), "5.0.32")) {
-            sql = "drop trigger " + catalogPrefix + triggerName;
+            sql = "drop trigger " + catalogPrefix + SqlUtils.sanitizeIdentifier(triggerName);
         }
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {

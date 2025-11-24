@@ -48,14 +48,14 @@ public class FileTriggerTracker {
     long ts = startTime;
 
     public FileTriggerTracker(FileTriggerRouter fileTriggerRouter, DirectorySnapshot lastSnapshot, ProcessInfo processInfo,
-            boolean useCrc, ISymmetricEngine engine) {
+            boolean useCrc, ISymmetricEngine engine) throws IOException {
         this.fileTriggerRouter = fileTriggerRouter;
         this.processInfo = processInfo;
         this.useCrc = useCrc;
         this.engine = engine;
         changesSinceLastSnapshot = new DirectorySnapshot(fileTriggerRouter);
-        fileObserver = new FileAlterationObserver(fileTriggerRouter.getFileTrigger().getBaseDir(), fileTriggerRouter.getFileTrigger()
-                .createIOFileFilter());
+        fileObserver = FileAlterationObserver.builder().setFile(fileTriggerRouter.getFileTrigger().getBaseDir())
+                .setFileFilter(fileTriggerRouter.getFileTrigger().createIOFileFilter()).get();
         currentListener = new SnapshotUpdater(changesSinceLastSnapshot);
         fileObserver.addListener(currentListener);
         try {
@@ -103,10 +103,11 @@ public class FileTriggerTracker {
         return changes;
     }
 
-    synchronized protected void takeFullSnapshot(DirectorySnapshot snapshot) {
+    synchronized protected void takeFullSnapshot(DirectorySnapshot snapshot) throws IOException {
         // update the snapshot with every file in the directory spec
-        FileAlterationObserver observer = new FileAlterationObserver(fileTriggerRouter.getFileTrigger().getBaseDir(), fileTriggerRouter
-                .getFileTrigger().createIOFileFilter());
+        FileAlterationObserver observer = FileAlterationObserver.builder()
+                .setFile(fileTriggerRouter.getFileTrigger().getBaseDir())
+                .setFileFilter(fileTriggerRouter.getFileTrigger().createIOFileFilter()).get();
         observer.addListener(new SnapshotUpdater(snapshot));
         observer.checkAndNotify();
     }
