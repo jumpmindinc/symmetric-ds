@@ -21,6 +21,7 @@ Reload Channel Id:: The channel_id of the channel that will be used for reloads.
 Base Directory:: The base directory on the source node that files will be synchronized from.
 ifdef::pro[]
 To access Azure blob storage, use azure://container/optional-path.  For Amazon S3, use s3://bucket/path.
+For Google Drive, use drive://path.  For SFTP (VFS), use sftp://host/path.
 endif::pro[]
 
 ifdef::pro[]

@@ -251,7 +251,7 @@ public class DbCompareDiffWriter {
             stream.write(line.getBytes());
             stream.write("\r\n".getBytes());
         } catch (Exception ex) {
-            throw new RuntimeException("failed to write to stream '" + line + "'", ex);
+            throw new RuntimeException("failed to write to stream", ex);
         }
     }
 
