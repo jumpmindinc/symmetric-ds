@@ -494,7 +494,7 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
         return new ChangeCatalogConnectionHandler(catalog == null ? platform.getDefaultCatalog() : catalog);
     }
 
-    private String getIndicesQuery() {
+    private String getIndicesQuery(Collection<IIndex> indices) {
         String sql = null;
         if (platform instanceof MsSql2008DatabasePlatform) {
             sql = """
@@ -533,6 +533,16 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
                         and i.name in (%s)
                     """;
         }
+        if (sql != null) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < indices.size(); i++) {
+                if (sb.length() > 0) {
+                    sb.append(",");
+                }
+                sb.append("?");
+            }
+            sql = String.format(sql, sb.toString());
+        }
         return sql;
     }
 
@@ -540,34 +550,24 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
     protected Collection<IIndex> readIndices(Connection connection,
             DatabaseMetaDataWrapper metaData, String tableName) throws SQLException {
         Collection<IIndex> indices = super.readIndices(connection, metaData, tableName);
-        if (compressAndFilterAndIncludecolumns) {
-            String sql = null;
-            if (indices != null && indices.size() > 0) {
-                sql = getIndicesQuery();
-            }
-            if (sql != null) {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < indices.size(); i++) {
-                    if (sb.length() > 0) {
-                        sb.append(",");
-                    }
-                    sb.append("?");
+        String sql = null;
+        if (compressAndFilterAndIncludecolumns && indices != null && indices.size() > 0) {
+            sql = getIndicesQuery(indices);
+        }
+        if (sql != null) {
+            log.debug(
+                    "Running the following query to get metadata about whether an index has compression or filters\n {}",
+                    sql);
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                int i = 1;
+                ps.setString(i++, tableName);
+                for (IIndex index : indices) {
+                    ps.setString(i++, index.getName());
                 }
-                sql = String.format(sql, sb.toString());
-                log.debug(
-                        "Running the following query to get metadata about whether an index has compression or filters\n {}",
-                        sql);
-                try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                    int i = 1;
-                    ps.setString(i++, tableName);
-                    for (IIndex index : indices) {
-                        ps.setString(i++, index.getName());
-                    }
-                    try (ResultSet rs = ps.executeQuery()) {
-                        Set<String> columnLabels = getColumnLabels(rs);
-                        while (rs.next()) {
-                            readIndex(indices, tableName, rs, columnLabels);
-                        }
+                try (ResultSet rs = ps.executeQuery()) {
+                    Set<String> columnLabels = getColumnLabels(rs);
+                    while (rs.next()) {
+                        readIndex(indices, tableName, rs, columnLabels);
                     }
                 }
             }
@@ -590,25 +590,28 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
                         platformIndex.setName(indexName);
                     }
                     if (hasFilter) {
-                        log.debug("table: " + tableName + " index: " + indexName + " has filter: " + rs.getString("FILTER"));
+                        log.debug("table: {} index: {} has filter: {}", tableName, indexName, rs.getString("FILTER"));
                         platformIndex.setFilterCondition("WHERE " + rs.getString("FILTER"));
                     }
                     if (hasCompression) {
+                        String compressionTypeLabel = null;
                         if (compressionType == 1) {
-                            log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.ROW.name());
+                            compressionTypeLabel = CompressionTypes.ROW.name();
                             platformIndex.setCompressionType(CompressionTypes.ROW);
                         } else if (compressionType == 2) {
-                            log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.PAGE.name());
+                            compressionTypeLabel = CompressionTypes.PAGE.name();
                             platformIndex.setCompressionType(CompressionTypes.PAGE);
                         } else if (compressionType == 3) {
-                            log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.COLUMNSTORE.name());
+                            compressionTypeLabel = CompressionTypes.COLUMNSTORE.name();
                             platformIndex.setCompressionType(CompressionTypes.COLUMNSTORE);
                         } else if (compressionType == 4) {
-                            log.debug("table: " + tableName + " index: " + indexName + " has compression: " + CompressionTypes.COLUMNSTORE_ARCHIVE
-                                    .name());
+                            compressionTypeLabel = CompressionTypes.COLUMNSTORE_ARCHIVE.name();
                             platformIndex.setCompressionType(CompressionTypes.COLUMNSTORE_ARCHIVE);
                         } else {
                             platformIndex.setCompressionType(CompressionTypes.NONE);
+                        }
+                        if (compressionTypeLabel != null) {
+                            log.debug("table: {} index: {} has compression: {}", tableName, indexName, compressionTypeLabel);
                         }
                     }
                     iIndex.addPlatformIndex(platformIndex);
