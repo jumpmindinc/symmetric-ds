@@ -1,6 +1,8 @@
 name: Sonar Scan
 on:
-  workflow_call:
+  push:
+    branches:
+      - 'release/**'
   workflow_dispatch:
 
 jobs:
