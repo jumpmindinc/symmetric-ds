@@ -99,6 +99,7 @@ import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.exception.IoException;
+import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -135,9 +136,11 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     protected boolean supportsTruncate = true;
     protected String sourceNodeId;
     protected DatabaseVersion databaseVersion;
+    protected TypedProperties properties;
 
     public AbstractDatabasePlatform(SqlTemplateSettings settings) {
         this.settings = settings;
+        properties = settings.getProperties();
     }
 
     @Override
@@ -1536,5 +1539,10 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     @Override
     public void setDatabaseVersion(DatabaseVersion databaseVersion) {
         this.databaseVersion = databaseVersion;
+    }
+
+    @Override
+    public TypedProperties getProperties() {
+        return properties;
     }
 }

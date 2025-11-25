@@ -54,6 +54,7 @@ import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.util.BinaryEncoding;
+import org.jumpmind.properties.TypedProperties;
 
 /*
  * A platform encapsulates the database-related functionality such as performing queries
@@ -263,4 +264,6 @@ public interface IDatabasePlatform {
     public void setDatabaseVersion(DatabaseVersion databaseVersion);
 
     public DatabaseVersion getDatabaseVersion();
+
+    public TypedProperties getProperties();
 }
