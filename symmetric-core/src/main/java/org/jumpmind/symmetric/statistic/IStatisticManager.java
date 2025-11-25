@@ -31,6 +31,7 @@ import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
+import org.jumpmind.symmetric.model.ProcessType;
 
 /**
  * This manager provides an API record statistics
@@ -41,6 +42,8 @@ public interface IStatisticManager {
     public List<ProcessInfo> getProcessInfos();
 
     public List<ProcessInfo> getProcessInfosThatHaveDoneWork();
+
+    public List<ProcessInfo> getMostRecentUserProcessInfos(ProcessType... processTypes);
 
     public Set<String> getNodesWithProcessesInError();
 
