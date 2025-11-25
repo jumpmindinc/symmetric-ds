@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - 'release/**'
-  workflow_dispatch:
+  workflow_call:
 
 jobs:
   sonar-scan:
