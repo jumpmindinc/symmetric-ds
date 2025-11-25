@@ -663,6 +663,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         IStagedResource stagedResource = null;
         IStagedResource previouslyStagedResource = null;
         FileSyncZipDataWriter dataWriter = null;
+        boolean isWaiting = false;
         try {
             long syncedBytes = 0;
             try {
@@ -673,6 +674,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                             || isFlushBatchesRequired(currentBatch, processedBatches, previouslyStagedResource)) {
                         // if we've already processed and staged some batches, send them now. The
                         // previously staged batch will have to wait for the next push/pull.
+                        isWaiting = true;
                         break;
                     }
                     if (previouslyStagedResource != null) {
@@ -721,7 +723,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                     } catch (IOException e) {
                         throw new IoException(e);
                     }
-                } else {
+                } else if (!isWaiting) {
                     log.error("Missing staged ZIP file for target node {}: {}", targetNode,
                             stagedResource == null ? "<null>" : stagedResource);
                 }

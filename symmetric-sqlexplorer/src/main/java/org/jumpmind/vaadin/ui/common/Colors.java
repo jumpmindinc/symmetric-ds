@@ -21,9 +21,7 @@
 package org.jumpmind.vaadin.ui.common;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 public class Colors {
     final static String[] COLORS = { "#000000", "#0C090A", "#2C3539", "#2B1B17", "#34282C",
@@ -87,17 +85,6 @@ public class Colors {
             }
             startIndex = 0;
         }
-        return colors.toArray(new String[colors.size()]);
-    }
-
-    public static String[] randomize() {
-        List<String> colors = new ArrayList<String>();
-        for (String color : COLORS) {
-            colors.add(color);
-        }
-        long seed = System.nanoTime();
-        Collections.shuffle(colors, new Random(seed));
-        Collections.shuffle(colors, new Random(seed));
         return colors.toArray(new String[colors.size()]);
     }
 }
