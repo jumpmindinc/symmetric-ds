@@ -164,49 +164,51 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
                     }
                 }
             }
-            if (compressAndFilterAndIncludecolumns) {
-                if (platform instanceof MsSql2008DatabasePlatform) {
-                    String sql = "SELECT [TABLENAME] = t.[Name]\n"
-                            + "        ,[INDEXNAME] = i.[Name]\n"
-                            + "        ,[IndexType] = i.[type_desc]\n"
-                            + "        ,[FILTER] = i.filter_definition\n"
-                            + "        ,[HASFILTER] = i.has_filter\n"
-                            + "        ,[COMPRESSIONTYPE] = p.data_compression\n"
-                            + "        ,[COMPRESSIONDESCRIPTION] = p.data_compression_desc\n"
-                            + "FROM sys.indexes i WITH (NOLOCK)\n"
-                            + "INNER JOIN sys.tables t WITH (NOLOCK) ON t.object_id = i.object_id\n"
-                            + "INNER JOIN sys.partitions p WITH (NOLOCK) ON p.object_id=t.object_id AND p.index_id=i.index_id\n"
-                            + "WHERE t.type_desc = N'USER_TABLE'\n" + "and t.name=?\n" + "and p.index_id in (0,1)";
-                    List<String> l = new ArrayList<String>();
-                    l.add(tableName);
-                    log.debug("Running the following query to get metadata about whether a table has compression\n {}",
-                            sql);
-                    try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                        ps.setString(1, tableName);
-                        try (ResultSet rs = ps.executeQuery()) {
-                            while (rs.next()) {
-                                int compressionType = rs.getInt("COMPRESSIONTYPE");
-                                boolean hasCompression = (compressionType > 0);
-                                if (hasCompression) {
-                                    if (compressionType == 1) {
-                                        log.debug("table: " + tableName + " has compression: "
-                                                + CompressionTypes.ROW.name());
-                                        table.setCompressionType(CompressionTypes.ROW);
-                                    } else if (compressionType == 2) {
-                                        log.debug("table: " + tableName + " has compression: "
-                                                + CompressionTypes.PAGE.name());
-                                        table.setCompressionType(CompressionTypes.PAGE);
-                                    } else if (compressionType == 3) {
-                                        log.debug("table: " + tableName + " has compression: "
-                                                + CompressionTypes.COLUMNSTORE.name());
-                                        table.setCompressionType(CompressionTypes.COLUMNSTORE);
-                                    } else if (compressionType == 4) {
-                                        log.debug("table: " + tableName + " has compression: "
-                                                + CompressionTypes.COLUMNSTORE_ARCHIVE.name());
-                                        table.setCompressionType(CompressionTypes.COLUMNSTORE_ARCHIVE);
-                                    } else {
-                                        table.setCompressionType(CompressionTypes.NONE);
-                                    }
+            if (compressAndFilterAndIncludecolumns && platform instanceof MsSql2008DatabasePlatform) {
+                String sql = """
+                        SELECT [TABLENAME] = t.[Name]
+                                ,[INDEXNAME] = i.[Name]
+                                ,[IndexType] = i.[type_desc]
+                                ,[FILTER] = i.filter_definition
+                                ,[HASFILTER] = i.has_filter
+                                ,[COMPRESSIONTYPE] = p.data_compression
+                                ,[COMPRESSIONDESCRIPTION] = p.data_compression_desc
+                        FROM sys.indexes i WITH (NOLOCK)
+                        INNER JOIN sys.tables t WITH (NOLOCK) ON t.object_id = i.object_id
+                        INNER JOIN sys.partitions p WITH (NOLOCK) ON p.object_id=t.object_id AND p.index_id=i.index_id
+                        WHERE t.type_desc = N'USER_TABLE'
+                            and t.name=?
+                            and p.index_id in (0,1)
+                        """;
+                List<String> l = new ArrayList<String>();
+                l.add(tableName);
+                log.debug("Running the following query to get metadata about whether a table has compression\n {}",
+                        sql);
+                try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                    ps.setString(1, tableName);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            int compressionType = rs.getInt("COMPRESSIONTYPE");
+                            boolean hasCompression = (compressionType > 0);
+                            if (hasCompression) {
+                                String compressionTypeLabel = null;
+                                if (compressionType == 1) {
+                                    compressionTypeLabel = CompressionTypes.ROW.name();
+                                    table.setCompressionType(CompressionTypes.ROW);
+                                } else if (compressionType == 2) {
+                                    compressionTypeLabel = CompressionTypes.PAGE.name();
+                                    table.setCompressionType(CompressionTypes.PAGE);
+                                } else if (compressionType == 3) {
+                                    compressionTypeLabel = CompressionTypes.COLUMNSTORE.name();
+                                    table.setCompressionType(CompressionTypes.COLUMNSTORE);
+                                } else if (compressionType == 4) {
+                                    compressionTypeLabel = CompressionTypes.COLUMNSTORE_ARCHIVE.name();
+                                    table.setCompressionType(CompressionTypes.COLUMNSTORE_ARCHIVE);
+                                } else {
+                                    table.setCompressionType(CompressionTypes.NONE);
+                                }
+                                if (compressionTypeLabel != null) {
+                                    log.debug("table: {} has compression: {}", tableName, compressionTypeLabel);
                                 }
                             }
                         }
@@ -492,6 +494,48 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
         return new ChangeCatalogConnectionHandler(catalog == null ? platform.getDefaultCatalog() : catalog);
     }
 
+    private String getIndicesQuery() {
+        String sql = null;
+        if (platform instanceof MsSql2008DatabasePlatform) {
+            sql = """
+                    SELECT [TABLENAME] = t.[Name]
+                            ,[INDEXNAME] = i.[Name]
+                            ,[IndexType] = i.[type_desc]
+                            ,[FILTER] = i.filter_definition
+                            ,[HASFILTER] = i.has_filter
+                            ,[COMPRESSIONTYPE] = p.data_compression
+                            ,[COMPRESSIONDESCRIPTION] = p.data_compression_desc
+                            ,[COLUMN_NAME] = c.name
+                            ,[IS_INCLUDED_COLUMN] = ixc.is_included_column
+                    FROM sys.indexes i WITH (NOLOCK)
+                    INNER JOIN sys.tables t WITH (NOLOCK) ON t.object_id = i.object_id
+                    INNER JOIN sys.partitions p WITH (NOLOCK) ON p.object_id=t.object_id AND p.index_id=i.index_id
+                    INNER JOIN sys.index_columns ixc WITH (NOLOCK) ON t.object_id=ixc.object_id and i.index_id=ixc.index_id
+                    INNER JOIN sys.columns c WITH (NOLOCK) ON c.object_id=t.object_id and ixc.column_id=c.column_id
+                    WHERE t.type_desc = N'USER_TABLE'
+                            and t.name=?
+                            and i.name in (%s)
+                            and p.index_id > 1
+                    """;
+        } else if (platform instanceof MsSql2005DatabasePlatform) {
+            sql = """
+                    select [TABLENAME] = t.[Name]
+                        ,[INDEXNAME] = i.[Name]
+                        ,[COLUMN_NAME] = c.name
+                        ,[IS_INCLUDED_COLUMN] = ixc.is_included_column
+                    from sys.tables t WITH (NOLOCK)
+                    INNER JOIN sys.indexes i WITH (NOLOCK) ON t.object_id=i.object_id
+                    INNER JOIN sys.index_columns ixc WITH (NOLOCK) ON t.object_id=ixc.object_id and i.index_id=ixc.index_id
+                    INNER JOIN sys.columns c WITH (NOLOCK) ON c.object_id=t.object_id and ixc.column_id=c.column_id
+                    WHERE t.type_desc = N'USER_TABLE'
+                        and i.type > 1
+                        and t.name=?
+                        and i.name in (%s)
+                    """;
+        }
+        return sql;
+    }
+
     @Override
     protected Collection<IIndex> readIndices(Connection connection,
             DatabaseMetaDataWrapper metaData, String tableName) throws SQLException {
@@ -499,33 +543,7 @@ public class MsSqlDdlReader extends AbstractJdbcDdlReader {
         if (compressAndFilterAndIncludecolumns) {
             String sql = null;
             if (indices != null && indices.size() > 0) {
-                if (platform instanceof MsSql2008DatabasePlatform) {
-                    sql = "SELECT [TABLENAME] = t.[Name]\n"
-                            + "        ,[INDEXNAME] = i.[Name]\n"
-                            + "        ,[IndexType] = i.[type_desc]\n"
-                            + "        ,[FILTER] = i.filter_definition\n"
-                            + "        ,[HASFILTER] = i.has_filter\n"
-                            + "        ,[COMPRESSIONTYPE] = p.data_compression\n"
-                            + "        ,[COMPRESSIONDESCRIPTION] = p.data_compression_desc\n"
-                            + "        ,[COLUMN_NAME] = c.name\n"
-                            + "        ,[IS_INCLUDED_COLUMN] = ixc.is_included_column\n"
-                            + "FROM sys.indexes i WITH (NOLOCK)\n"
-                            + "INNER JOIN sys.tables t WITH (NOLOCK) ON t.object_id = i.object_id\n"
-                            + "INNER JOIN sys.partitions p WITH (NOLOCK) ON p.object_id=t.object_id AND p.index_id=i.index_id\n"
-                            + "INNER JOIN sys.index_columns ixc WITH (NOLOCK) ON t.object_id=ixc.object_id and i.index_id=ixc.index_id\n"
-                            + "INNER JOIN sys.columns c WITH (NOLOCK) ON c.object_id=t.object_id and ixc.column_id=c.column_id\n"
-                            + "WHERE t.type_desc = N'USER_TABLE'\n" + "and t.name=?\n" + "and i.name in (%s)\n"
-                            + "and p.index_id > 1";
-                } else if (platform instanceof MsSql2005DatabasePlatform) {
-                    sql = "select [TABLENAME] = t.[Name]\n" + "    ,[INDEXNAME] = i.[Name]\n"
-                            + "    ,[COLUMN_NAME] = c.name\n" + "    ,[IS_INCLUDED_COLUMN] = ixc.is_included_column\n"
-                            + "from sys.tables t WITH (NOLOCK)\n"
-                            + "INNER JOIN sys.indexes i WITH (NOLOCK) ON t.object_id=i.object_id\n"
-                            + "INNER JOIN sys.index_columns ixc WITH (NOLOCK) ON t.object_id=ixc.object_id and i.index_id=ixc.index_id\n"
-                            + "INNER JOIN sys.columns c WITH (NOLOCK) ON c.object_id=t.object_id and ixc.column_id=c.column_id\n"
-                            + "WHERE t.type_desc = N'USER_TABLE'\n" + "and i.type > 1\n" + "and t.name=?\n"
-                            + "and i.name in (%s)";
-                }
+                sql = getIndicesQuery();
             }
             if (sql != null) {
                 StringBuilder sb = new StringBuilder();
