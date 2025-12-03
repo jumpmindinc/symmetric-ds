@@ -137,7 +137,7 @@ public class ReleaseNotesGenerator {
             if (conn.getResponseCode() != 200) {
                 throw new RuntimeException("Failed : HTTP Error code : " + conn.getResponseCode());
             }
-            return parsePageResult(readResponse(conn));
+            return parsePageResult(majorMinorVersion, readResponse(conn));
         } finally {
             if (conn != null) {
                 conn.disconnect();
@@ -180,9 +180,9 @@ public class ReleaseNotesGenerator {
     /**
      * Parses a page result containing issues and pagination info.
      */
-    private static PageResult parsePageResult(String json) {
+    private static PageResult parsePageResult(String majorMinorVersion, String json) {
         JsonObject rootObject = new Gson().fromJson(json, JsonObject.class);
-        List<Issue> issues = parseIssues(rootObject);
+        List<Issue> issues = parseIssues(majorMinorVersion, rootObject);
         String nextPageToken = null;
         JsonElement nextPageTokenElement = rootObject.get("nextPageToken");
         if (nextPageTokenElement != null && !nextPageTokenElement.isJsonNull()) {
@@ -194,7 +194,7 @@ public class ReleaseNotesGenerator {
     /**
      * Parses and extracts issues from the root JSON object.
      */
-    private static List<Issue> parseIssues(JsonObject root) {
+    private static List<Issue> parseIssues(String majorMinorVersion, JsonObject root) {
         List<Issue> issues = new ArrayList<>();
         JsonArray issuesArray = root.getAsJsonArray("issues");
         if (issuesArray == null || issuesArray.size() == 0) {
@@ -202,7 +202,7 @@ public class ReleaseNotesGenerator {
             return issues;
         }
         for (JsonElement issueElement : issuesArray) {
-            issues.add(parseIssue(issueElement.getAsJsonObject()));
+            issues.add(parseIssue(majorMinorVersion, issueElement.getAsJsonObject()));
         }
         return issues;
     }
@@ -210,7 +210,7 @@ public class ReleaseNotesGenerator {
     /**
      * Parses a single issue from JSON.
      */
-    private static Issue parseIssue(JsonObject issueObj) {
+    private static Issue parseIssue(String majorMinorVersion, JsonObject issueObj) {
         Issue issue = new Issue();
         issue.setId(getStringValue(issueObj, "key"));
         JsonObject fields = issueObj.getAsJsonObject("fields");
@@ -222,8 +222,21 @@ public class ReleaseNotesGenerator {
         issue.setPriority(getNestedStringValue(fields, "priority", "name"));
         JsonArray fixVersions = fields.getAsJsonArray("fixVersions");
         if (fixVersions != null && fixVersions.size() > 0) {
-            JsonObject firstVersion = fixVersions.get(0).getAsJsonObject();
-            issue.setVersion(getStringValue(firstVersion, "name"));
+            for (JsonElement issueFixVersionEle : fixVersions) {
+                JsonObject issueFixVersionObj = issueFixVersionEle.getAsJsonObject();
+                String issueFixVersion = getStringValue(issueFixVersionObj, "name");
+                if (issueFixVersion == null) {
+                    continue;
+                }
+                String[] versionParts = issueFixVersion.split("\\.");
+                String fixVersionMajorMinor = versionParts.length >= 2
+                        ? versionParts[0] + "." + versionParts[1]
+                        : issueFixVersion;
+                if (majorMinorVersion.equals(fixVersionMajorMinor)) {
+                    issue.setVersion(issueFixVersion);
+                    break;
+                }
+            }
         }
         parseComponents(fields, issue);
         return issue;
