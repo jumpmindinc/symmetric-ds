@@ -225,9 +225,6 @@ public class ReleaseNotesGenerator {
             for (JsonElement issueFixVersionEle : fixVersions) {
                 JsonObject issueFixVersionObj = issueFixVersionEle.getAsJsonObject();
                 String issueFixVersion = getStringValue(issueFixVersionObj, "name");
-                if (issueFixVersion == null) {
-                    continue;
-                }
                 String[] versionParts = issueFixVersion.split("\\.");
                 String fixVersionMajorMinor = versionParts.length >= 2
                         ? versionParts[0] + "." + versionParts[1]
