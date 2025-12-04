@@ -361,6 +361,9 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 configService.saveChannel(reloadChannel, false);
             }
         }
+        if (engine.getDatabasePlatform().getName().equals(DatabaseNamesConstants.H2)) {
+            createH2SequenceIfMissing(symmetricDialect, tablePrefix);
+        }
         engine.getPullService().pullConfigData(false);
         return sb.toString();
     }
@@ -556,6 +559,34 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     protected boolean isUpgradeFromPre317(String tablePrefix, Database currentModel) {
         Table nodeHostChannelStatsTable = currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_CHANNEL_STATS));
         return nodeHostChannelStatsTable != null && nodeHostChannelStatsTable.findColumn("data_received") == null;
+    }
+
+    protected void createH2SequenceIfMissing(ISymmetricDialect symmetricDialect, String tablePrefix) {
+        String dataIdSequenceName = symmetricDialect.getSequenceName(SequenceIdentifier.DATA).toUpperCase() + "_SEQ";
+        if (engine.getSqlTemplate().queryForInt("select count(*) from information_schema.sequences where sequence_name = ?", dataIdSequenceName) == 0) {
+            String dataTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA);
+            ISqlTransaction transaction = null;
+            try {
+                transaction = engine.getSqlTemplate().startSqlTransaction();
+                transaction.prepareAndExecute("set exclusive 1");
+                long maxDataId = Math.max(transaction.queryForInt("select max(data_id) from " + dataTableName), 1);
+                log.info("After upgrade, creating {} sequence with a value of {} because it doesn't exist", dataIdSequenceName, maxDataId + 1);
+                transaction.prepareAndExecute("create sequence \"" + dataIdSequenceName + "\" start with " + (maxDataId + 1));
+                log.info("After upgrade, altering {}.data_id to use the new sequence instead of auto_increment", dataTableName);
+                transaction.prepareAndExecute("alter table " + dataTableName
+                        + " alter column data_id bigint not null default nextval('" + dataIdSequenceName + "')");
+                transaction.prepareAndExecute("set exclusive 0");
+            } catch (Exception e) {
+                log.info("Unable to create sequence: {}", e.getMessage());
+                if (transaction != null) {
+                    transaction.rollback();
+                }
+            } finally {
+                if (transaction != null) {
+                    transaction.close();
+                }
+            }
+        }
     }
 
     @Override
