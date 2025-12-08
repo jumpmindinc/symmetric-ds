@@ -72,7 +72,7 @@ public class AppUtils {
             try (InputStream fis = url.openStream()) {
                 prop.load(fis);
             } catch (IOException ex) {
-                log.debug("Failed to load properties from url (" + resourceName + "): " + ex.getMessage());
+                log.debug("Failed to load properties from url ({}): {}", resourceName, ex.getMessage());
             }
         } else {
             url = AppUtils.class.getResource(resourceName);
@@ -80,7 +80,7 @@ public class AppUtils {
                 try (InputStream fis = url.openStream()) {
                     prop.load(fis);
                 } catch (IOException ex) {
-                    log.debug("Failed to load properties from resource (" + resourceName + "): " + ex.getMessage());
+                    log.debug("Failed to load properties from resource ({}): {}", resourceName, ex.getMessage());
                 }
             }
         }
