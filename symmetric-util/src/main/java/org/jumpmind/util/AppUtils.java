@@ -50,12 +50,12 @@ import org.slf4j.LoggerFactory;
  * General application utility methods
  */
 public class AppUtils {
-    public final static String SYSPROP_HOST_NAME = "host.name";
-    public final static String SYSPROP_PORT_NUMBER = "port.number";
-    public final static String SYSPROP_IP_ADDRESS = "ip.address";
-    public final static String ENV_VAR_HOSTNAME = "HOSTNAME";
-    public final static String ENV_VAR_COMPUTERNAME = "COMPUTERNAME";
-    public final static String OS_COMMAND_HOSTNAME = "hostname";
+    public static final String SYSPROP_HOST_NAME = "host.name";
+    public static final String SYSPROP_PORT_NUMBER = "port.number";
+    public static final String SYSPROP_IP_ADDRESS = "ip.address";
+    public static final String ENV_VAR_HOSTNAME = "HOSTNAME";
+    public static final String ENV_VAR_COMPUTERNAME = "COMPUTERNAME";
+    public static final String OS_COMMAND_HOSTNAME = "hostname";
     private static String UNKNOWN = "unknown";
     private static String DEFAULT_LOCALHOST = "localhost";
     static String hostName = DEFAULT_LOCALHOST;
