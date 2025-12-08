@@ -21,7 +21,6 @@
 package org.jumpmind.util;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -51,10 +50,15 @@ import org.slf4j.LoggerFactory;
  * General application utility methods
  */
 public class AppUtils {
-    public final static String SYSPROP_HOST_NAME = "host.name";
-    public final static String SYSPROP_PORT_NUMBER = "port.number";
-    public final static String SYSPROP_IP_ADDRESS = "ip.address";
+    public static final String SYSPROP_HOST_NAME = "host.name";
+    public static final String SYSPROP_PORT_NUMBER = "port.number";
+    public static final String SYSPROP_IP_ADDRESS = "ip.address";
+    public static final String ENV_VAR_HOSTNAME = "HOSTNAME";
+    public static final String ENV_VAR_COMPUTERNAME = "COMPUTERNAME";
+    public static final String OS_COMMAND_HOSTNAME = "hostname";
     private static String UNKNOWN = "unknown";
+    private static String DEFAULT_LOCALHOST = "localhost";
+    static String hostName = DEFAULT_LOCALHOST;
     private static Logger log = LoggerFactory.getLogger(AppUtils.class);
     private static FastDateFormat timezoneFormatter = FastDateFormat.getInstance("Z");
     private static Properties implProp = new Properties();
@@ -68,6 +72,7 @@ public class AppUtils {
             try (InputStream fis = url.openStream()) {
                 prop.load(fis);
             } catch (IOException ex) {
+                log.debug("Failed to load properties from url ({}): {}", resourceName, ex.getMessage());
             }
         } else {
             url = AppUtils.class.getResource(resourceName);
@@ -75,6 +80,7 @@ public class AppUtils {
                 try (InputStream fis = url.openStream()) {
                     prop.load(fis);
                 } catch (IOException ex) {
+                    log.debug("Failed to load properties from resource ({}): {}", resourceName, ex.getMessage());
                 }
             }
         }
@@ -96,31 +102,96 @@ public class AppUtils {
     }
 
     public static String getHostName() {
-        String hostName = System.getProperty(SYSPROP_HOST_NAME, UNKNOWN);
-        if (UNKNOWN.equals(hostName)) {
-            try {
-                hostName = System.getenv("HOSTNAME");
-                if (isBlank(hostName)) {
-                    hostName = System.getenv("COMPUTERNAME");
-                }
-                if (isBlank(hostName)) {
-                    try {
-                        hostName = IOUtils.toString(Runtime.getRuntime().exec("hostname").getInputStream(), Charset.defaultCharset());
-                    } catch (Exception ex) {
-                    }
-                }
-                if (isBlank(hostName)) {
-                    hostName = InetAddress.getByName(
-                            InetAddress.getLocalHost().getHostAddress()).getHostName();
-                }
-                if (isNotBlank(hostName)) {
-                    hostName = hostName.trim();
-                }
-            } catch (Exception ex) {
-                log.info("Unable to lookup hostname: " + ex.getMessage());
+        if (!isBlank(hostName) && !DEFAULT_LOCALHOST.equals(hostName)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Hostname is already set to {}", hostName);
             }
+            return hostName;
+        }
+        try {
+            String osHostName = fetchHostNameFromJvm();
+            osHostName = isBlank(osHostName) ? fetchHostNameFromEnvironmentVariable(ENV_VAR_HOSTNAME) : osHostName;
+            osHostName = isBlank(osHostName) ? fetchHostNameFromEnvironmentVariable(ENV_VAR_COMPUTERNAME) : osHostName;
+            osHostName = isBlank(osHostName) ? fetchHostNameFromOsCommand() : osHostName;
+            osHostName = isBlank(osHostName) ? fetchHostNameFromInetAddress() : osHostName;
+            if (isBlank(osHostName)) {
+                log.error("Unable to identify hostname! Using " + DEFAULT_LOCALHOST
+                        + " instead. Report this incident to server/system administrator as it can break network communication!");
+            } else {
+                hostName = osHostName;
+            }
+        } catch (Exception ex) {
+            log.error("Failed to identify hostname (using " + DEFAULT_LOCALHOST + " instead): " + ex.getMessage());
         }
         return hostName;
+    }
+
+    public static String fetchHostNameFromJvm() {
+        try {
+            // Note: Embedded deployments or unit tests might not define this JVM property.
+            String jvmHostName = System.getProperty(SYSPROP_HOST_NAME, UNKNOWN);
+            if (isBlank(jvmHostName) || UNKNOWN.equals(jvmHostName)) {
+                log.info("Skipping undefined JVM system property: {}", SYSPROP_HOST_NAME);
+                jvmHostName = "";
+            } else {
+                jvmHostName = jvmHostName.trim();
+                log.info("Hostname from JVM system property {}={}", SYSPROP_HOST_NAME, jvmHostName);
+            }
+            return jvmHostName;
+        } catch (Exception ex) {
+            log.warn("Failed to get hostname from JVM system property " + SYSPROP_HOST_NAME, ex);
+            return "";
+        }
+    }
+
+    public static String fetchHostNameFromEnvironmentVariable(String environmentVariableName) {
+        try {
+            // Note: In many Linux shells, HOSTNAME is a variable set by the shell itself (e.g., Bash) but is not automatically available in child processes.
+            String osHostName = System.getenv(environmentVariableName);
+            if (isBlank(osHostName)) {
+                log.info("Skipping undefined environment variable: {}", environmentVariableName);
+            } else {
+                osHostName = osHostName.trim();
+                log.info("Hostname from environment variable {}={}", environmentVariableName, osHostName);
+            }
+            return osHostName;
+        } catch (Exception ex) {
+            log.warn("Failed to get hostname from the " + environmentVariableName + " environment variable", ex);
+            return "";
+        }
+    }
+
+    public static String fetchHostNameFromOsCommand() {
+        try {
+            // Note: This requires permissions to run an external process and capture it's output.
+            String osHostName = IOUtils.toString(Runtime.getRuntime().exec(OS_COMMAND_HOSTNAME).getInputStream(), Charset.defaultCharset());
+            if (isBlank(osHostName)) {
+                log.warn("Got blank hostname value from the {} OS command!", OS_COMMAND_HOSTNAME);
+            } else {
+                osHostName = osHostName.trim();
+                log.info("Hostname from the {} OS command={}", OS_COMMAND_HOSTNAME, osHostName);
+            }
+            return osHostName;
+        } catch (Exception ex) {
+            log.error("Failed to execute the " + OS_COMMAND_HOSTNAME + " OS command: " + ex.getMessage());
+            return "";
+        }
+    }
+
+    public static String fetchHostNameFromInetAddress() {
+        try {
+            // Note: This fails if hostname isn't resolvable through DNS due to broken network configuration.
+            String osHostName = InetAddress.getByName(InetAddress.getLocalHost().getHostAddress()).getHostName();
+            if (isBlank(osHostName)) {
+                log.warn("Got blank hostname value from InetAddress");
+            } else {
+                log.info("Hostname from InetAddress={}", osHostName);
+            }
+            return osHostName;
+        } catch (Exception ex) {
+            log.error("Failed to get hostname from InetAddress: " + ex.getMessage());
+            return "";
+        }
     }
 
     public static String getPortNumber() {
@@ -159,7 +230,7 @@ public class AppUtils {
                     }
                 }
             } catch (Exception ex) {
-                log.warn("", ex);
+                log.warn("Failed to get IP from NetworkInterfaces: ", ex);
             } finally {
             }
         }
@@ -167,7 +238,7 @@ public class AppUtils {
             try {
                 ipAddress = InetAddress.getLocalHost().getHostAddress();
             } catch (UnknownHostException ex) {
-                log.warn("", ex);
+                log.warn("Failed to get IP from InetAddress: ", ex);
                 ipAddress = "127.0.0.1";
             }
         }
@@ -301,7 +372,7 @@ public class AppUtils {
             try {
                 Constructor<T> cons = (Constructor<T>) Class.forName(className).getDeclaredConstructor(argTypes);
                 cons.setAccessible(true);
-                instance = (T) cons.newInstance(args);
+                instance = cons.newInstance(args);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
