@@ -1200,11 +1200,11 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             fk = new ForeignKey(fkName);
             fk.setForeignTableName((String) values.get(getName("FKTABLE_NAME")));
             try {
-                fk.setForeignTableCatalog((String) values.get(getName("FKTABLE_CAT")));
+                fk.setForeignTableCatalog((String) values.getOrDefault(getName("FKTABLE_CAT"), values.get(getName("fktable_cat"))));
             } catch (Exception e) {
             }
             try {
-                fk.setForeignTableSchema((String) values.get(getName("FKTABLE_SCHEM")));
+                fk.setForeignTableSchema((String) values.getOrDefault(getName("FKTABLE_SCHEM"), values.get(getName("fktable_schem"))));
             } catch (Exception e) {
             }
             knownFks.put(fkName, fk);
@@ -1832,7 +1832,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
 
     private Table lookupForeignTable(IDatabasePlatform platform, ForeignKey fk, TableRow tableRow, boolean clearPrimaryKeys) {
         Table foreignTable = null;
-        Table table = platform.getTableFromCache(tableRow.getTable().getCatalog(), tableRow.getTable().getSchema(), fk.getForeignTableName(), false);
+        Table table = platform.getTableFromCache(fk.getForeignTableCatalog(), fk.getForeignTableSchema(), fk.getForeignTableName(), false);
         if (table == null) {
             table = fk.getForeignTable();
             if (table == null) {
