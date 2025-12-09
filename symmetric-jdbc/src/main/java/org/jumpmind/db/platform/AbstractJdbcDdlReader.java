@@ -1695,7 +1695,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 Collection<ForeignKey> exportedKeys = getExportedKeys(tableRow.getTable());
                 if (exportedKeys != null) {
                     for (ForeignKey fk : exportedKeys) {
-                        Table foreignTable = lookupForeignTable(platform, fk, tableRow, false);
+                        Table foreignTable = lookupForeignTable(platform, fk, false);
                         if (foreignTable != null) {
                             // Get the column names used by the foreign table and the values to bind to them from the primary table
                             Row selectRow = new Row(fk.getReferenceCount());
@@ -1772,7 +1772,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         for (TableRow tableRow : tableRows) {
             if (visited.add(tableRow)) {
                 for (ForeignKey fk : tableRow.getTable().getForeignKeys()) {
-                    Table foreignTable = lookupForeignTable(platform, fk, tableRow, true);
+                    Table foreignTable = lookupForeignTable(platform, fk, true);
                     if (foreignTable != null) {
                         Row whereRow = new Row(fk.getReferenceCount());
                         String referenceColumnName = null;
@@ -1830,7 +1830,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         return fkDepList;
     }
 
-    private Table lookupForeignTable(IDatabasePlatform platform, ForeignKey fk, TableRow tableRow, boolean clearPrimaryKeys) {
+    private Table lookupForeignTable(IDatabasePlatform platform, ForeignKey fk, boolean clearPrimaryKeys) {
         Table foreignTable = null;
         Table table = platform.getTableFromCache(fk.getForeignTableCatalog(), fk.getForeignTableSchema(), fk.getForeignTableName(), false);
         if (table == null) {
