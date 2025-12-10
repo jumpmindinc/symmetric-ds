@@ -32,9 +32,9 @@ import org.jumpmind.db.model.Reference;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 
-public class AbstractJdbcDdlReaderTest {
+class AbstractJdbcDdlReaderTest {
     @Test
-    public void testReadExportedKey() throws SQLException {
+    void testReadExportedKey() throws SQLException {
         AbstractJdbcDdlReader ddlReader = mock(AbstractJdbcDdlReader.class, Answers.CALLS_REAL_METHODS);
         Map<String, Object> metadataMap = new HashMap<String, Object>();
         metadataMap.put("FK_NAME", "test_fk");
