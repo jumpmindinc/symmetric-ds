@@ -298,6 +298,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
                 targetPlatform.getDatabaseInfo().setNotNullColumnsSupported(parameterService.is(prefix +
                         ParameterConstants.CREATE_TABLE_NOT_NULL_COLUMNS, true));
             }
+            targetPlatform.setClearCacheModelTimeoutInMs(parameterService.getLong(ParameterConstants.CACHE_TIMEOUT_TABLES_IN_MS));
             return JdbcSymmetricDialectFactory.getInstance().create(parameterService, targetPlatform);
         } else {
             return getSymmetricDialect();
