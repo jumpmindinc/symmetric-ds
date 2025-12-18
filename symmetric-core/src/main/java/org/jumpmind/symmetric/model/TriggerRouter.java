@@ -43,6 +43,7 @@ public class TriggerRouter implements IModelObject, Cloneable {
     private Date lastUpdateTime;
     private String lastUpdateBy;
     private boolean pingBackEnabled = false;
+    private String description;
     private String dataRefreshType;
 
     public TriggerRouter() {
@@ -126,6 +127,14 @@ public class TriggerRouter implements IModelObject, Cloneable {
 
     public void setInitialLoadDeleteStmt(String initialLoadDeleteStmt) {
         this.initialLoadDeleteStmt = initialLoadDeleteStmt;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getDataRefreshType() {

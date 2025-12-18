@@ -1284,15 +1284,15 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
 
     protected int[] getTriggerRouterSqlTypes() {
         return new int[] { Types.NUMERIC, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT, Types.TIMESTAMP, Types.VARCHAR,
-                Types.TIMESTAMP, Types.SMALLINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+                Types.TIMESTAMP, Types.SMALLINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
     }
 
     protected Object[] getTriggerRouterSqlValues(TriggerRouter triggerRouter) {
         return new Object[] { triggerRouter.getInitialLoadOrder(), triggerRouter.getInitialLoadSelect(),
                 triggerRouter.getInitialLoadDeleteStmt(), triggerRouter.isPingBackEnabled() ? 1 : 0,
                 triggerRouter.getCreateTime(), triggerRouter.getLastUpdateBy(), triggerRouter.getLastUpdateTime(),
-                triggerRouter.isEnabled() ? 1 : 0, triggerRouter.getDataRefreshType(), triggerRouter.getTrigger().getTriggerId(),
-                triggerRouter.getRouter().getRouterId() };
+                triggerRouter.isEnabled() ? 1 : 0, triggerRouter.getDescription(), triggerRouter.getDataRefreshType(),
+                triggerRouter.getTrigger().getTriggerId(), triggerRouter.getRouter().getRouterId() };
     }
 
     protected void resetTriggerRouterCacheByNodeGroupId() {
@@ -2883,6 +2883,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             triggerRouter.setEnabled(rs.getBoolean("enabled"));
             triggerRouter.setInitialLoadDeleteStmt(StringUtils.trimToNull(rs.getString("initial_load_delete_stmt")));
             triggerRouter.setPingBackEnabled(rs.getBoolean("ping_back_enabled"));
+            triggerRouter.setDescription(rs.getString("description"));
             if (rs.containsKey("data_refresh_type")) {
                 triggerRouter.setDataRefreshType(rs.getString("data_refresh_type"));
             }
