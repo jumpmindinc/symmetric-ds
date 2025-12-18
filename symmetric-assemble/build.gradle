@@ -17,6 +17,7 @@ plugins {
     id "org.sonarqube" version "6.2.0.5505"
 	id 'com.vaadin' version "$vaadinPluginVersion" apply false
 	id 'org.asciidoctor.jvm.convert' version '4.0.4' apply false
+    id 'eu.kakde.gradle.sonatype-maven-central-publisher' version '1.0.6' apply false
 }
 
 apply plugin: 'java-library'
