@@ -18,7 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.jumpmind.symmetric.job;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -92,7 +91,7 @@ class AbstractJobTest {
         jobDef.setNodeGroupId(null);
         return jobDef;
     }
-    
+
     @Test
     void testStart_withPeriodicSchedule_schedulesJob() {
         when(parameterService.getString(anyString())).thenReturn(null);
@@ -148,7 +147,7 @@ class AbstractJobTest {
         // Verify scheduler was only called once
         verify(taskScheduler).scheduleWithFixedDelay(eq(testJob), any(), any());
     }
-    
+
     @Test
     void testGetTimeBetweenRunsInMs_validPeriod_returnsValue() {
         when(parameterService.getString(anyString())).thenReturn(null);
@@ -190,7 +189,7 @@ class AbstractJobTest {
         jobDefinition.setDefaultSchedule(null);
         assertEquals(-1L, testJob.getTimeBetweenRunsInMsPublic());
     }
-    
+
     @Test
     void testStop_cancelsScheduledJob() {
         when(parameterService.getString(anyString())).thenReturn(null);
@@ -211,7 +210,7 @@ class AbstractJobTest {
     void testStop_whenNotStarted_returnsFalse() {
         assertFalse(testJob.stop());
     }
-    
+
     @Test
     void testGetName_returnsJobName() {
         assertEquals(TEST_JOB_NAME, testJob.getName());
@@ -501,6 +500,7 @@ class AbstractJobTest {
     private static class TestableJob extends AbstractJob {
         private boolean throwException = false;
         private long doJobSleepMs = 0;
+
         public TestableJob(String jobName, ISymmetricEngine engine, ThreadPoolTaskScheduler taskScheduler) {
             super(jobName, engine, taskScheduler);
         }
