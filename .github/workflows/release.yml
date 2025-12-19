@@ -64,7 +64,7 @@ jobs:
             
             - name: Publish
               run: |
-                ./gradlew clean jar releaseSymmetric deploy publishDocker \
+                ./gradlew clean jar releaseSymmetric publishToSonatype publishDocker \
                     -Platest="$LATEST" \
                     -Pversion=${{ github.event.inputs.version }} \
                     -PscmVersion=${{ github.sha }} \
@@ -77,7 +77,13 @@ jobs:
                     -PsourceforgeApiKey=${{ secrets.SOURCEFORGE_API_KEY }} \
                     -PsourceforgePassword=${{ secrets.SOURCEFORGE_PASSWORD }} \
                     -PsourceforgeUser=${{ secrets.SOURCEFORGE_USER }} \
+<<<<<<< HEAD
                     -PrestAPISecret=${{ secrets.MANTIS_API_KEY }}
+=======
+                    -PsonatypeUser=${{ secrets.SONATYPE_USER }} \
+                    -PsonatypePassword=${{ secrets.SONATYPE_PASSWORD }}
+
+>>>>>>> 3d38aeded (SYM-7177: switch to maven central (#490))
               working-directory: symmetric-assemble
               env:
                   LATEST: ${{ github.event.inputs.latest }}
