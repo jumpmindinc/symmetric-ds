@@ -64,7 +64,7 @@ jobs:
             
             - name: Publish
               run: |
-                ./gradlew clean jar releaseSymmetric deploy publishDocker \
+                ./gradlew clean jar releaseSymmetric publishToSonatype publishDocker \
                     -Platest="$LATEST" \
                     -Pversion=${{ github.event.inputs.version }} \
                     -PdeployPassword=${{ secrets.MAVEN_REPO_PASSWORD }} \
@@ -74,7 +74,10 @@ jobs:
                     -PdockerUser=${{ secrets.DOCKERHUB_USER }} \
                     -PsourceforgeApiKey=${{ secrets.SOURCEFORGE_API_KEY }} \
                     -PsourceforgePassword=${{ secrets.SOURCEFORGE_PASSWORD }} \
-                    -PsourceforgeUser=${{ secrets.SOURCEFORGE_USER }}
+                    -PsourceforgeUser=${{ secrets.SOURCEFORGE_USER }} \
+                    -PsonatypeUser=${{ secrets.SONATYPE_USER }} \
+                    -PsonatypePassword=${{ secrets.SONATYPE_PASSWORD }}
+
               working-directory: symmetric-assemble
               env:
                   LATEST: ${{ github.event.inputs.latest }}
