@@ -61,7 +61,7 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
         if (!getTransaction().isInBatchMode()) {
             return loadStatus;
         }
-        checkForConflict(true);
+        checkForConflict();
         return LoadStatus.SUCCESS;
     }
 
@@ -71,7 +71,7 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
         if (!getTransaction().isInBatchMode()) {
             return loadStatus;
         }
-        checkForConflict(true);
+        checkForConflict();
         return LoadStatus.SUCCESS;
     }
 
@@ -81,14 +81,11 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
         if (!getTransaction().isInBatchMode()) {
             return loadStatus;
         }
-        checkForConflict(true);
+        checkForConflict();
         return LoadStatus.SUCCESS;
     }
 
-    protected void checkForConflict(boolean isDml) {
-        if (isDml) {
-            expectedRowCount++;
-        }
+    protected void checkForConflict() {
         if (getTransaction().getUnflushedMarkers(false).size() == 0) {
             if (expectedRowCount != lastRowCount) {
                 throw new SymmetricException("JdbcBatchBulkDataWriter was in conflict, will attempt to fallback using default writer.");
@@ -102,13 +99,15 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
     protected void prepare() {
         if (getTransaction().isInBatchMode()) {
             lastRowCount = getTransaction().flush();
-            checkForConflict(false);
+            checkForConflict();
         }
         super.prepare();
     }
 
+    @Override
     protected int execute(CsvData data, String[] values) {
         lastRowCount = super.execute(data, values);
+        expectedRowCount++;
         return lastRowCount;
     }
 
@@ -116,7 +115,7 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
     public void end(Batch batch, boolean inError) {
         if (getTransaction().isInBatchMode()) {
             lastRowCount = getTransaction().flush();
-            checkForConflict(false);
+            checkForConflict();
         }
         super.end(batch, inError);
     }
