@@ -336,7 +336,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
         Table table = this.sourceTable;
         int successValue = 0;
         if (isSymmetricTable(table)) {
-            return super.update(data, false, useConflictDetection);
+            return super.delete(data, useConflictDetection);
         } else {
             successValue = writeKafka(data, table);
         }
