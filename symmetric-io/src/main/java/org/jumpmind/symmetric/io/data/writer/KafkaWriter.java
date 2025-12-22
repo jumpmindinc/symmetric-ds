@@ -91,7 +91,6 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
     private String confluentUrl;
     private String schemaPackage;
     private TypedProperties props;
-    private String runtimeConfigTablePrefix;
     private String channelReload;
     private String[] parseDatePatterns = new String[] { "yyyy/MM/dd HH:mm:ss.SSSSSS", "yyyy-MM-dd HH:mm:ss", "ddMMMyyyy:HH:mm:ss.SSS Z",
             "ddMMMyyyy:HH:mm:ss.SSS", "yyyy-MM-dd HH:mm:ss.SSS", "ddMMMyyyy:HH:mm:ss.SSSSSS", "yyyy-MM-dd", "yyyy-MM-dd'T'HH:mmZZZZ",
@@ -123,14 +122,14 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
     public KafkaProducer<String, Object> kafkaProducer;
     protected static Map<String, KafkaProducer<String, Object>> producerMap = new HashMap<String, KafkaProducer<String, Object>>();
 
-    public KafkaWriter(IDatabasePlatform symmetricPlatform, IDatabasePlatform targetPlatform, String prefix,
-            IDatabaseWriterConflictResolver conflictResolver, DatabaseWriterSettings settings, String producer, String outputFormat,
-            String topicBy, String messageBy, String confluentUrl, String schemaPackage, String externalNodeID, String url,
-            String loadOnlyPrefix, TypedProperties props, String runtimeConfigTablePrefix, String channelReload) {
-        super(symmetricPlatform, targetPlatform, prefix, conflictResolver, settings);
+    public KafkaWriter(IDatabasePlatform symmetricPlatform, IDatabasePlatform targetPlatform, String runtimeConfigTablePrefix,
+            IDatabaseWriterConflictResolver conflictResolver, DatabaseWriterSettings writerSettings, String kafkaProducerId, String outputFormat,
+            String topicBy, String messageBy, String confluentUrl, String schemaPackage, String externalNodeID, String kakfaUrl,
+            String loadOnlyPrefix, TypedProperties props, String channelReload) {
+        super(symmetricPlatform, targetPlatform, runtimeConfigTablePrefix, conflictResolver, writerSettings);
         schema = parser.parse(AVRO_CDC_SCHEMA);
-        this.url = url;
-        this.producer = producer;
+        this.url = kakfaUrl;
+        this.producer = kafkaProducerId;
         this.outputFormat = outputFormat;
         this.topicBy = topicBy;
         this.messageBy = messageBy;
@@ -138,11 +137,10 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
         this.schemaPackage = schemaPackage;
         this.externalNodeID = externalNodeID;
         this.props = props;
-        this.runtimeConfigTablePrefix = runtimeConfigTablePrefix;
         this.channelReload = channelReload;
         if (this.url == null) {
             throw new RuntimeException(
-                    "Kakfa not configured properly, verify you have set the endpoint to kafka with the following property : " + loadOnlyPrefix
+                    "Kakfa not configured properly! Ensure the following startup parameter points to Kafka server (and restart): " + loadOnlyPrefix
                             + "db.url");
         }
         String clientID = this.producer + "-" + this.externalNodeID;
@@ -166,7 +164,11 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
             }
             kafkaProducer = new KafkaProducer<String, Object>(configs);
             producerMap.put(clientID, kafkaProducer);
-            log.debug("Kafka client config: {}", configs);
+            if(log.isDebugEnabled()) {
+                log.debug("Kafka client config: {}", configs);
+            } else {
+                log.info("Initialized Kafka producer. Format={}, topicBy={}, messageBy={}, URL={}", outputFormat, topicBy, messageBy, kakfaUrl);
+            }
         }
     }
 
@@ -333,7 +335,11 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
         statistics.get(batch).startTimer(DataWriterStatisticConstants.LOADMILLIS);
         Table table = this.sourceTable;
         int successValue = 0;
-        successValue = writeKafka(data, table);
+        if (isSymmetricTable(table)) {
+            return super.update(data, false, useConflictDetection);
+        } else {
+            successValue = writeKafka(data, table);
+        }
         statistics.get(batch).stopTimer(DataWriterStatisticConstants.LOADMILLIS);
         if (successValue == 1) {
             return LoadStatus.SUCCESS;
@@ -344,10 +350,10 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
 
     @Override
     protected LoadStatus update(CsvData data, boolean applyChangesOnly, boolean useConflictDetection) {
+        statistics.get(batch).startTimer(DataWriterStatisticConstants.LOADMILLIS);
         Table table = this.sourceTable;
         int successValue = 0;
-        statistics.get(batch).startTimer(DataWriterStatisticConstants.LOADMILLIS);
-        if (table.getName().contains(runtimeConfigTablePrefix) || table.getName().contains("sym")) {
+        if (isSymmetricTable(table)) {
             return super.update(data, applyChangesOnly, useConflictDetection);
         } else {
             successValue = writeKafka(data, table);
@@ -716,8 +722,8 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
             }
             kafkaText.append("</row>");
         } else if (outputFormat.equals(KAFKA_FORMAT_AVRO)) {
+            String tableName = getTableName(table.getName());
             if (confluentUrl != null) {
-                String tableName = getTableName(table.getName());
                 try {
                     Class<?> curClass = getClassByTableName(tableName);
                     if (curClass != null) {
@@ -787,9 +793,10 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                 avroRecord.put("table", table.getName());
                 avroRecord.put("eventType", data.getDataEventType().toString());
                 Collection<GenericRecord> dataCollection = new ArrayList<GenericRecord>();
-                for (int i = 0; i < table.getColumnNames().length; i++) {
+                String[] columnNames = (data.getDataEventType() == DataEventType.DELETE) ? table.getPrimaryKeyColumnNames() : table.getColumnNames();
+                for (int i = 0; i < columnNames.length; i++) {
                     GenericRecord columnRecord = new GenericData.Record(schema.getField("data").schema().getElementType());
-                    columnRecord.put("name", table.getColumnNames()[i]);
+                    columnRecord.put("name", columnNames[i]);
                     columnRecord.put("value", rowData[i]);
                     dataCollection.add(columnRecord);
                 }
@@ -798,7 +805,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                     kafkaDataList.add(new ProducerRecord<String, Object>(kafkaDataKey, kafkaKey, datumToByteArray(schema, avroRecord)));
                     return 1;
                 } catch (IOException ioe) {
-                    throw new RuntimeException("Unable to convert row data to an Avro record", ioe);
+                    throw new RuntimeException("Unable to convert row data to an Avro record for table=" + tableName, ioe);
                 }
             }
         }
