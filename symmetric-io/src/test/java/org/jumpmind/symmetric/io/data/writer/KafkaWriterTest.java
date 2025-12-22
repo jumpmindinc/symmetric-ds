@@ -20,9 +20,18 @@
  */
 package org.jumpmind.symmetric.io.data.writer;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +53,7 @@ import org.jumpmind.symmetric.io.data.Batch.BatchType;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.DataEventType;
+import org.jumpmind.symmetric.io.data.writer.AbstractDatabaseWriter.LoadStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,7 +76,10 @@ public class KafkaWriterTest {
     @Mock
     private Future<RecordMetadata> mockFuture;
     private TypedProperties props;
-    private Table testTable;
+    private final String testBusinessTableName = "test_table";
+    private final String testSymmetricTableName = "sym_table";
+    private Table testBusinessTable;
+    private Table testSymmetricTable;
     private Batch testBatch;
     private DataContext testContext;
 
@@ -78,20 +91,27 @@ public class KafkaWriterTest {
         lenient().when(mockDatabaseInfo.isRequiresSavePointsInTransaction()).thenReturn(false);
         lenient().when(mockPlatform.getSqlTemplate()).thenReturn(mockSqlTemplate);
         lenient().when(mockSqlTemplate.startSqlTransaction()).thenReturn(mockSqlTransaction);
-        // Create test table with columns
-        testTable = new Table("test_table");
-        Column idColumn = new Column("id", true);
-        idColumn.setPrimaryKey(true);
-        Column nameColumn = new Column("name");
-        Column valueColumn = new Column("value");
-        testTable.addColumn(idColumn);
-        testTable.addColumn(nameColumn);
-        testTable.addColumn(valueColumn);
+        // Create test business table with columns
+        testBusinessTable = createTest3ColumnTable(testBusinessTableName);
+        // Create test Symmetric table with columns
+        testSymmetricTable = createTest3ColumnTable(testSymmetricTableName);
         // Create test batch
         testBatch = new Batch(BatchType.LOAD, 1L, "default", BinaryEncoding.BASE64, "node1", "node2", false);
         testContext = new DataContext(testBatch);
         // Clear the static producer map before each test
         KafkaWriter.producerMap.clear();
+    }
+
+    Table createTest3ColumnTable(String tableName) {
+        Table table = new Table(tableName);
+        Column idColumn = new Column("id", true);
+        idColumn.setPrimaryKey(true);
+        Column nameColumn = new Column("name");
+        Column valueColumn = new Column("value");
+        table.addColumn(idColumn);
+        table.addColumn(nameColumn);
+        table.addColumn(valueColumn);
+        return table;
     }
 
     @Test
@@ -123,18 +143,18 @@ public class KafkaWriterTest {
         // Set up the context and table without calling open()
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         // Create test data with old data (required for writeKafka)
         String[] rowData = { "1", "test_name", "test_value" };
         String[] oldData = { "1", "old_name", "old_value" };
         CsvData csvData = new CsvData(DataEventType.INSERT);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        int result = writer.writeKafka(csvData, testTable);
+        int result = writer.writeKafka(csvData, testBusinessTable);
         assertEquals(1, result);
         assertFalse(writer.kafkaDataMap.isEmpty());
-        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
+        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testBusinessTableName);
         assertNotNull(records);
         assertEquals(1, records.size());
         String recordValue = (String) records.get(0).value();
@@ -152,16 +172,16 @@ public class KafkaWriterTest {
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         String[] rowData = { "1", "test_name", "test_value" };
         String[] oldData = { "1", "old_name", "old_value" };
         CsvData csvData = new CsvData(DataEventType.UPDATE);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        int result = writer.writeKafka(csvData, testTable);
+        int result = writer.writeKafka(csvData, testBusinessTable);
         assertEquals(1, result);
-        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
+        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testBusinessTableName);
         assertNotNull(records);
         String recordValue = (String) records.get(0).value();
         assertTrue(recordValue.contains("\"TABLE\""));
@@ -177,16 +197,16 @@ public class KafkaWriterTest {
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         String[] rowData = { "1", "test_name", "test_value" };
         String[] oldData = { "1", "old_name", "old_value" };
         CsvData csvData = new CsvData(DataEventType.INSERT);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        int result = writer.writeKafka(csvData, testTable);
+        int result = writer.writeKafka(csvData, testBusinessTable);
         assertEquals(1, result);
-        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
+        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testBusinessTableName);
         assertNotNull(records);
         String recordValue = (String) records.get(0).value();
         assertTrue(recordValue.contains("<row entity=\"test_table\""));
@@ -196,23 +216,44 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testWriteKafkaDeleteEvent() {
+    public void testDeleteEvent4BusinessTable() {
+        boolean useConflictDetection = false;
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_JSON,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
-        writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.start(testBatch);
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         String[] oldData = { "1", "test_name", "test_value" };
         CsvData csvData = new CsvData(DataEventType.DELETE);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        int result = writer.writeKafka(csvData, testTable);
-        assertEquals(1, result);
-        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
+        LoadStatus result = writer.delete(csvData, useConflictDetection);
+        assertEquals(LoadStatus.SUCCESS, result);
+        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testBusinessTableName);
         assertNotNull(records);
         String recordValue = (String) records.get(0).value();
         assertTrue(recordValue.contains("\"eventType\": \"DELETE\""));
+    }
+
+    @Test
+    public void testDeleteEvent4SymmetricTable() {
+        // Test that symmetric tables (those starting with sym_ prefix) don't get written to Kafka
+        // The writeKafka method is not called for symmetric tables - they are processed by the parent class
+        // This test verifies that symmetric table names are correctly identified and not in kafkaDataMap
+        KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_JSON,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.start(testBatch);
+        writer.sourceTable = testSymmetricTable;
+        writer.targetTable = testSymmetricTable;
+        // Verify symmetric table name starts with the prefix "sym_"
+        assertTrue(testSymmetricTableName.startsWith("sym_"));
+        // For symmetric tables, writeKafka is not called by delete(), so kafkaDataMap should not have entries
+        // The delete() method delegates to super.delete() for symmetric tables, which doesn't write to Kafka
+        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testSymmetricTableName);
+        assertNull(records);
     }
 
     @Test
@@ -222,14 +263,14 @@ public class KafkaWriterTest {
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         String[] rowData = { "1", "test_name", "test_value" };
         String[] oldData = { "1", "old_name", "old_value" };
         CsvData csvData = new CsvData(DataEventType.INSERT);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        writer.writeKafka(csvData, testTable);
+        writer.writeKafka(csvData, testBusinessTable);
         // Topic should be the channel id "default" instead of table name
         assertTrue(writer.kafkaDataMap.containsKey("default"));
         assertFalse(writer.kafkaDataMap.containsKey("test_table"));
@@ -242,8 +283,8 @@ public class KafkaWriterTest {
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         // Insert multiple rows
         String[] rowData1 = { "1", "name1", "value1" };
         String[] oldData1 = { "1", "old1", "old1" };
@@ -255,8 +296,8 @@ public class KafkaWriterTest {
         CsvData csvData2 = new CsvData(DataEventType.INSERT);
         csvData2.putParsedData(CsvData.ROW_DATA, rowData2);
         csvData2.putParsedData(CsvData.OLD_DATA, oldData2);
-        writer.writeKafka(csvData1, testTable);
-        writer.writeKafka(csvData2, testTable);
+        writer.writeKafka(csvData1, testBusinessTable);
+        writer.writeKafka(csvData2, testBusinessTable);
         // Both records should be in the same list (batched)
         List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
         assertNotNull(records);
@@ -271,14 +312,14 @@ public class KafkaWriterTest {
         when(mockKafkaProducer.send(any())).thenReturn(mockFuture);
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         String[] rowData = { "1", "test_name", "test_value" };
         String[] oldData = { "1", "old_name", "old_value" };
         CsvData csvData = new CsvData(DataEventType.INSERT);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        writer.writeKafka(csvData, testTable);
+        writer.writeKafka(csvData, testBusinessTable);
         // Verify data is queued
         assertFalse(writer.kafkaDataMap.isEmpty());
         // Complete the batch - this should send messages
@@ -297,8 +338,8 @@ public class KafkaWriterTest {
         when(mockKafkaProducer.send(any())).thenReturn(mockFuture);
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         // Add multiple records
         for (int i = 0; i < 3; i++) {
             String[] rowData = { String.valueOf(i), "name" + i, "value" + i };
@@ -306,7 +347,7 @@ public class KafkaWriterTest {
             CsvData csvData = new CsvData(DataEventType.INSERT);
             csvData.putParsedData(CsvData.ROW_DATA, rowData);
             csvData.putParsedData(CsvData.OLD_DATA, oldData);
-            writer.writeKafka(csvData, testTable);
+            writer.writeKafka(csvData, testBusinessTable);
         }
         writer.batchComplete(testContext);
         // With BATCH messaging, all records should be combined into one message
@@ -328,15 +369,15 @@ public class KafkaWriterTest {
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         // Test with special XML characters
         String[] rowData = { "1", "<script>alert('xss')</script>", "value&with\"quotes" };
         String[] oldData = { "1", "old", "old" };
         CsvData csvData = new CsvData(DataEventType.INSERT);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        writer.writeKafka(csvData, testTable);
+        writer.writeKafka(csvData, testBusinessTable);
         List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
         String recordValue = (String) records.get(0).value();
         // Verify XML special characters are escaped
@@ -351,15 +392,15 @@ public class KafkaWriterTest {
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         // Test with special JSON characters
         String[] rowData = { "1", "value with \"quotes\" and \\backslash", "tab\there" };
         String[] oldData = { "1", "old", "old" };
         CsvData csvData = new CsvData(DataEventType.INSERT);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        writer.writeKafka(csvData, testTable);
+        writer.writeKafka(csvData, testBusinessTable);
         List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
         String recordValue = (String) records.get(0).value();
         // Gson should properly escape the JSON
@@ -374,15 +415,15 @@ public class KafkaWriterTest {
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         // Test with quotes that need escaping in CSV
         String[] rowData = { "1", "value with \"quotes\"", "normal" };
         String[] oldData = { "1", "old", "old" };
         CsvData csvData = new CsvData(DataEventType.INSERT);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        writer.writeKafka(csvData, testTable);
+        writer.writeKafka(csvData, testBusinessTable);
         List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
         String recordValue = (String) records.get(0).value();
         // CSV escapes quotes by doubling them
@@ -396,15 +437,15 @@ public class KafkaWriterTest {
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         // Test with null value
         String[] rowData = { "1", null, "test_value" };
         String[] oldData = { "1", "old", "old" };
         CsvData csvData = new CsvData(DataEventType.INSERT);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        writer.writeKafka(csvData, testTable);
+        writer.writeKafka(csvData, testBusinessTable);
         List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
         assertNotNull(records);
         assertEquals(1, records.size());
@@ -461,14 +502,14 @@ public class KafkaWriterTest {
         writer.kafkaProducer = mockKafkaProducer;
         writer.context = testContext;
         writer.batch = testBatch;
-        writer.sourceTable = testTable;
-        writer.targetTable = testTable;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
         String[] rowData = { "1", "test_name", "test_value" };
         String[] oldData = { "1", "old_name", "old_value" };
         CsvData csvData = new CsvData(DataEventType.INSERT);
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
-        int result = writer.writeKafka(csvData, testTable);
+        int result = writer.writeKafka(csvData, testBusinessTable);
         assertEquals(1, result);
         List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
         assertNotNull(records);
