@@ -48,12 +48,14 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.properties.TypedProperties;
+import org.jumpmind.symmetric.io.ChannelConstants;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataContext;
@@ -117,7 +119,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
     Schema schema = null;
     Map<String, Object> configs = new HashMap<String, Object>();
     Map<String, Class<?>> tableClassCache = new HashMap<String, Class<?>>();
-    Map<String, String> tableNameCache = new HashMap<String, String>();
+    Map<String, String> kafkaTableNamesInBatchMap = new HashMap<String, String>();
     Map<String, Map<String, String>> tableColumnCache = new HashMap<String, Map<String, String>>();
     public KafkaProducer<String, Object> kafkaProducer;
     protected static Map<String, KafkaProducer<String, Object>> producerMap = new HashMap<String, KafkaProducer<String, Object>>();
@@ -148,14 +150,18 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
             kafkaProducer = producerMap.get(clientID);
         } else {
             configs.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, this.url);
-            configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            configs.put(ProducerConfig.CLIENT_ID_CONFIG, this.producer);
             if (confluentUrl != null) {
                 configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
-                configs.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
                 configs.put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, confluentUrl);
                 configs.put(ProducerConfig.CLIENT_ID_CONFIG, clientID);
+            } else {
+                if (outputFormat.equals(KAFKA_FORMAT_AVRO)) {
+                    configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+                } else {
+                    configs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                }
+                configs.put(ProducerConfig.CLIENT_ID_CONFIG, this.producer);
             }
             for (Object key : this.props.keySet()) {
                 if (key.toString().startsWith("kafkaclient.")) {
@@ -164,7 +170,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
             }
             kafkaProducer = new KafkaProducer<String, Object>(configs);
             producerMap.put(clientID, kafkaProducer);
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Kafka client config: {}", configs);
             } else {
                 log.info("Initialized Kafka producer. Format={}, topicBy={}, messageBy={}, URL={}", outputFormat, topicBy, messageBy, kakfaUrl);
@@ -262,8 +268,8 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
             }
             kafkaText.append("</row>");
         } else if (outputFormat.equals(KAFKA_FORMAT_AVRO)) {
+            String tableName = getTableName(table.getName());
             if (confluentUrl != null) {
-                String tableName = getTableName(table.getName());
                 try {
                     Class<?> curClass = getClassByTableName(tableName);
                     if (curClass != null) {
@@ -294,7 +300,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                                 "Unable to find a POJO to load for AVRO based message onto Kafka for table : " + tableName);
                     }
                 } catch (NoSuchMethodException e) {
-                    log.info("Unable to find setter on POJO based on table " + table.getName(), e);
+                    log.info("Unable to find setter on POJO based on table " + tableName, e);
                     throw new RuntimeException(e);
                 } catch (InvocationTargetException e) {
                     log.info("Unable to invoke a default constructor on POJO based on table " + tableName, e);
@@ -308,6 +314,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                 }
             } else {
                 GenericData.Record avroRecord = new GenericData.Record(schema);
+                log.debug("Preparing Avro record for table {} eventType {}", tableName, data.getDataEventType().toString());
                 avroRecord.put("table", table.getName());
                 avroRecord.put("eventType", data.getDataEventType().toString());
                 Collection<GenericRecord> dataCollection = new ArrayList<GenericRecord>();
@@ -316,13 +323,17 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                     columnRecord.put("name", table.getColumnNames()[i]);
                     columnRecord.put("value", rowData[i]);
                     dataCollection.add(columnRecord);
+                    if (log.isDebugEnabled()) {
+                        log.debug("Appending to Avro record for table {} column {}={} eventType {}",
+                                tableName, table.getColumnNames()[i], rowData[i], data.getDataEventType().toString());
+                    }
                 }
                 avroRecord.put("data", dataCollection);
                 try {
                     kafkaDataList.add(new ProducerRecord<String, Object>(kafkaDataKey, kafkaKey, datumToByteArray(schema, avroRecord)));
                     return 1;
                 } catch (IOException ioe) {
-                    throw new RuntimeException("Unable to convert row data to an Avro record", ioe);
+                    throw new RuntimeException("Unable to convert row data to an Avro record for table " + tableName, ioe);
                 }
             }
         }
@@ -333,7 +344,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
     @Override
     protected LoadStatus delete(CsvData data, boolean useConflictDetection) {
         statistics.get(batch).startTimer(DataWriterStatisticConstants.LOADMILLIS);
-        Table table = this.sourceTable;
+        Table table = this.targetTable;
         int successValue = 0;
         if (isSymmetricTable(table)) {
             return super.delete(data, useConflictDetection);
@@ -351,7 +362,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
     @Override
     protected LoadStatus update(CsvData data, boolean applyChangesOnly, boolean useConflictDetection) {
         statistics.get(batch).startTimer(DataWriterStatisticConstants.LOADMILLIS);
-        Table table = this.sourceTable;
+        Table table = this.targetTable;
         int successValue = 0;
         if (isSymmetricTable(table)) {
             return super.update(data, applyChangesOnly, useConflictDetection);
@@ -378,7 +389,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
             statistics.get(batch).startTimer(DataWriterStatisticConstants.LOADMILLIS);
             xml = data.getParsedData(CsvData.ROW_DATA)[0];
             log.info("Creating Kafka Topic for the following xml:", xml);
-            writeKafka(data, this.sourceTable);
+            writeKafka(data, this.targetTable);
             statistics.get(batch).increment(DataWriterStatisticConstants.CREATECOUNT);
             return true;
         } catch (RuntimeException ex) {
@@ -447,7 +458,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
 
     @Override
     protected Table lookupTableAtTarget(Table sourceTable) {
-        if (sourceTable != null && isSymmetricTable(sourceTable.getName())) {
+        if (isSymmetricTable(sourceTable)) {
             return super.lookupTableAtTarget(sourceTable);
         }
         return sourceTable;
@@ -469,15 +480,15 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
     }
 
     public String getTableName(String dbTableName) {
-        String name = tableNameCache.get(dbTableName);
+        String name = kafkaTableNamesInBatchMap.get(dbTableName);
         if (name == null) {
             String[] split = dbTableName.split("_");
-            StringBuilder tableName = new StringBuilder();
+            StringBuilder kafkaTableName = new StringBuilder();
             for (String part : split) {
-                tableName.append(StringUtils.capitalize(part.toLowerCase()));
+                kafkaTableName.append(StringUtils.capitalize(part.toLowerCase()));
             }
-            tableNameCache.put(dbTableName, tableName.toString());
-            name = tableName.toString();
+            kafkaTableNamesInBatchMap.put(dbTableName, kafkaTableName.toString());
+            name = kafkaTableName.toString();
         }
         return name;
     }
@@ -588,37 +599,42 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
     }
 
     public void batchComplete(DataContext context) {
-        if (!context.getBatch().getChannelId().equals("heartbeat") && !context.getBatch().getChannelId().equals("config")) {
-            String batchFileName = "batch-" + context.getBatch().getSourceNodeId() + "-" + context.getBatch().getBatchId();
-            log.debug("Kafka client config: {}", configs);
-            try {
-                if (confluentUrl == null && kafkaDataMap.size() > 0) {
-                    StringBuffer kafkaText = new StringBuffer();
-                    String kafkaKey = null;
-                    for (Map.Entry<String, List<ProducerRecord<String, Object>>> entry : kafkaDataMap.entrySet()) {
-                        for (ProducerRecord<String, Object> record : entry.getValue()) {
-                            if (messageBy.equals(KAFKA_MESSAGE_BY_ROW)) {
-                                sendKafkaMessage(record);
-                            } else {
-                                kafkaKey = record.key();
-                                kafkaText.append(record.value());
-                            }
-                        }
-                        if (messageBy.equals(KAFKA_MESSAGE_BY_BATCH)) {
-                            sendKafkaMessage(new ProducerRecord<String, Object>(entry.getKey(), kafkaKey, kafkaText.toString()));
+        String batchFileName = "batch-" + context.getBatch().getSourceNodeId() + "-" + context.getBatch().getBatchId();
+        String channelId = context.getBatch().getChannelId();
+        if (ChannelConstants.isInternalSymmetricChannel(channelId)) {
+            log.debug("Detected batch {} on the {} channel. Not publishing to Kafka", batchFileName, channelId);
+            return;
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Completing batch {} on the {} channel. Kafka client config: {}", batchFileName, channelId, configs);
+        }
+        try {
+            if (confluentUrl == null && kafkaDataMap.size() > 0) {
+                StringBuffer kafkaText = new StringBuffer();
+                String kafkaKey = null;
+                for (Map.Entry<String, List<ProducerRecord<String, Object>>> entry : kafkaDataMap.entrySet()) {
+                    for (ProducerRecord<String, Object> record : entry.getValue()) {
+                        if (messageBy.equals(KAFKA_MESSAGE_BY_ROW)) {
+                            sendKafkaMessage(record);
+                        } else {
+                            kafkaKey = record.key();
+                            kafkaText.append(record.value());
                         }
                     }
-                    kafkaDataMap = new HashMap<String, List<ProducerRecord<String, Object>>>();
+                    if (messageBy.equals(KAFKA_MESSAGE_BY_BATCH)) {
+                        sendKafkaMessage(new ProducerRecord<String, Object>(entry.getKey(), kafkaKey, kafkaText.toString()));
+                    }
                 }
-            } catch (Exception e) {
-                log.warn("Unable to write batch to Kafka " + batchFileName, e);
-                throw new RuntimeException(e);
-                // e.printStackTrace();
-            } finally {
-                context.put(KAFKA_TEXT_CACHE, new HashMap<String, List<String>>());
-                tableNameCache.clear();
-                tableColumnCache = new HashMap<String, Map<String, String>>();
+                kafkaDataMap = new HashMap<String, List<ProducerRecord<String, Object>>>();
             }
+        } catch (Exception e) {
+            log.warn("Unable to write batch to Kafka " + batchFileName, e);
+            throw new RuntimeException(e);
+            // e.printStackTrace();
+        } finally {
+            context.put(KAFKA_TEXT_CACHE, new HashMap<String, List<String>>());
+            kafkaTableNamesInBatchMap.clear();
+            tableColumnCache = new HashMap<String, Map<String, String>>();
         }
     }
 

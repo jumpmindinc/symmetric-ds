@@ -58,6 +58,8 @@ public class DynamicDefaultDatabaseWriter extends DefaultDatabaseWriter {
         return tableName.toLowerCase().startsWith(tablePrefix);
     }
 
+
+
     public boolean isLoadOnly() {
         return !platform.equals(targetPlatform);
     }
