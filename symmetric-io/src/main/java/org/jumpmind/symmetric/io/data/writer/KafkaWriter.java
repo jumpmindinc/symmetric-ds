@@ -126,11 +126,11 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
 
     public KafkaWriter(IDatabasePlatform symmetricPlatform, IDatabasePlatform targetPlatform, String runtimeConfigTablePrefix,
             IDatabaseWriterConflictResolver conflictResolver, DatabaseWriterSettings writerSettings, String kafkaProducerId, String outputFormat,
-            String topicBy, String messageBy, String confluentUrl, String schemaPackage, String externalNodeID, String kakfaUrl,
+            String topicBy, String messageBy, String confluentUrl, String schemaPackage, String externalNodeID, String kafkaUrl,
             String loadOnlyPrefix, TypedProperties props, String channelReload) {
         super(symmetricPlatform, targetPlatform, runtimeConfigTablePrefix, conflictResolver, writerSettings);
         schema = parser.parse(AVRO_CDC_SCHEMA);
-        this.url = kakfaUrl;
+        this.url = kafkaUrl;
         this.producer = kafkaProducerId;
         this.outputFormat = outputFormat;
         this.topicBy = topicBy;
@@ -171,9 +171,9 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
             kafkaProducer = new KafkaProducer<String, Object>(configs);
             producerMap.put(clientID, kafkaProducer);
             if (log.isDebugEnabled()) {
-                log.debug("Kafka client config: {}", configs);
+                log.debug("Initialized Kafka producer. Config: {}", configs);
             } else {
-                log.info("Initialized Kafka producer. Format={}, topicBy={}, messageBy={}, URL={}", outputFormat, topicBy, messageBy, kakfaUrl);
+                log.info("Initialized Kafka producer. Format={}, topicBy={}, messageBy={}, URL={}", outputFormat, topicBy, messageBy, kafkaUrl);
             }
         }
     }
