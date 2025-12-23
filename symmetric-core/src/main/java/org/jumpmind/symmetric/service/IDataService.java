@@ -78,6 +78,8 @@ public interface IDataService {
 
     public List<TableReloadStatus> getActiveTableReloadStatus();
 
+    public List<TableReloadStatus> getActiveOutgoingTableReloadStatusByTargetNodeId(String targetNodeId);
+
     public List<TableReloadStatus> getActiveOutgoingTableReloadStatus();
 
     public List<TableReloadStatus> getActiveIncomingTableReloadStatus();
