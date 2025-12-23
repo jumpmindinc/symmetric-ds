@@ -432,7 +432,7 @@ public class DataService extends AbstractService implements IDataService {
 
     @Override
     public List<TableReloadStatus> getActiveOutgoingTableReloadStatusByTargetNodeId(String targetNodeId) {
-        return sqlTemplateDirty.query(getSql("selectActiveTableReloadStatus", "andSourceNodeId", "andTargetNodeId", "orderTableReloadStatus"),
+        return sqlTemplateDirty.query(getSql("selectActiveTableReloadStatus", "andSourceNodeId", "andTargetNodeId", "andLoadIdIsNotNull", "orderTableReloadStatus"),
                 new TableReloadStatusMapper(), engine.getNodeId(), targetNodeId);
     }
 

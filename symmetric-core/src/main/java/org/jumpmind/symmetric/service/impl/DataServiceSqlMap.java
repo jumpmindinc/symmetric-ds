@@ -93,6 +93,7 @@ public class DataServiceSqlMap extends AbstractSqlMap {
         putSql("whereTargetNodeId", " where target_node_id = ?");
         putSql("andSourceNodeId", " and source_node_id = ?");
         putSql("andTargetNodeId", " and target_node_id = ?");
+        putSql("andLoadIdIsNotNull", " and load_id is not null ");
         putSql("selectTableReloadStatusByLoadIdSourceNodeId", "select source_node_id, target_node_id, load_id, "
                 + " end_data_batch_id, start_data_batch_id, "
                 + " setup_batch_count, data_batch_count, finalize_batch_count, "
