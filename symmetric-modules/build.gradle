@@ -1,0 +1,143 @@
+plugins {
+    id 'java'
+    id 'eclipse'
+    id 'signing'
+    id 'maven-publish'
+    id 'org.danilopianini.publish-on-central' version '9.1.8'
+}
+
+group = "org.jumpmind.symmetric.module"
+version = "1.0.0"
+
+publishing {
+    publications {
+        sybase(MavenPublication) {
+            artifact "build/assemble/jconn4-16.0.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "jconn4"; version "16.0"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        db2(MavenPublication) {
+            artifact "build/assemble/db2jcc-9.7.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "db2jcc"; version "9.7"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        informix(MavenPublication) {
+            artifact "build/assemble/ifxjdbc-1.0.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "ifxjdbc"; version "1.0"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        informix2(MavenPublication) {
+            artifact "build/assemble/ifxlang-1.0.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "ifxlang"; version "1.0"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        interbase(MavenPublication) {
+            artifact "build/assemble/interclient-13.2.0.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "interclient"; version "13.2.0"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        nuodb(MavenPublication) {
+            artifact "build/assemble/nuodb-jdbc-3.3.1.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "nuodb-jdbc"; version "3.3.1"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        teradata(MavenPublication) {
+            artifact "build/assemble/terajdbc4-16.20.00.10.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "terajdbc4"; version "16.20.00.10"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        tibero(MavenPublication) {
+            artifact "build/assemble/tibero-6.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "tibero"; version "6"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        topspeed(MavenPublication) {
+            artifact "build/assemble/tps-parse-1.0.15.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "tps-parse"; version "1.0.15"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        saml(MavenPublication) {
+            artifact "build/assemble/java-saml-3.0.0.231010.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "java-saml"; version "3.0.0.231010"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        saml2(MavenPublication) {
+            artifact "build/assemble/java-saml-core-3.0.0.231010.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "java-saml-core"; version "3.0.0.231010"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        saml3(MavenPublication) {
+            artifact "build/assemble/java-saml-servlet-jakarta-3.0.0.231010.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "java-saml-servlet-jakarta"; version "3.0.0.231010"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        saml4(MavenPublication) {
+            artifact "build/assemble/java-saml-servlet-javax-3.0.0.231010.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "java-saml-servlet-javax"; version "3.0.0.231010"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        saml5(MavenPublication) {
+            artifact "build/assemble/java-saml-toolkit-3.0.0.231010.jar"
+            groupId "org.jumpmind.symmetric.module"; artifactId "java-saml-toolkit"; version "3.0.0.231010"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        mssqlToolsLinux(MavenPublication) {
+            artifact "build/assemble/mssql-tools-linux-x64-18.zip"
+            groupId "org.jumpmind.symmetric.module"; artifactId "mssql-tools-linux-x64"; version "18"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        mssqlToolsWindows(MavenPublication) {
+            artifact "build/assemble/mssql-tools-windows-x64-18.zip"
+            groupId "org.jumpmind.symmetric.module"; artifactId "mssql-tools-windows-x64"; version "18"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        oracleToolsLinux(MavenPublication) {
+            artifact "build/assemble/oracle-tools-linux-x64-23.7.zip"
+            groupId "org.jumpmind.symmetric.module"; artifactId "oracle-tools-linux-x64"; version "23.7"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+        oracleToolsWindows(MavenPublication) {
+            artifact "build/assemble/oracle-tools-windows-x64-23.7.zip"
+            groupId "org.jumpmind.symmetric.module"; artifactId "oracle-tools-windows-x64"; version "23.7"
+            artifact tasks.named('sourcesJar'); artifact tasks.named('javadocJar')
+        }
+    }
+    publications.withType(MavenPublication).configureEach {
+        pom {
+            developers {
+                developer {
+                    name.set("Jumpmind")
+                    url.set("https://symmetricds.org/")
+                }
+            }
+        }
+    }    
+}
+
+signing {
+	useInMemoryPgpKeys(findProperty("signingKey"), findProperty("signingPassword"))
+	sign publishing.publications
+}
+
+task copyIntoAssemble(type: Copy) {
+    dependsOn 'jar'
+    println "Copying artifacts"
+    from("jdbc")
+    from("tools")
+    from("lib")
+    into('build/assemble')
+}
+
+tasks.matching { it.name.startsWith("sign") }.all {
+    dependsOn copyIntoAssemble
+}
+
+publishOnCentral {
+    repoOwner.set("jumpmindinc")
+    projectDescription.set("Data replication")
+    projectLongName.set(project.name)
+    licenseName.set("Commercial")
+    licenseUrl.set("")
+    projectUrl.set("https://github.com/${repoOwner.get()}/${project.name}")
+    scmConnection.set("scm:git:https://github.com/${repoOwner.get()}/${project.name}")
+}

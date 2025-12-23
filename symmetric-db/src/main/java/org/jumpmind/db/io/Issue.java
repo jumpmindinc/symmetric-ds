@@ -55,12 +55,13 @@ public class Issue {
 
     public int getPriorityAsInt() {
         if (priority != null) {
-            if (priority.equalsIgnoreCase("low"))
+            if (priority.equalsIgnoreCase("low")) {
                 return 1;
-            else if (priority.equalsIgnoreCase("medium"))
+            } else if (priority.equalsIgnoreCase("medium")) {
                 return 2;
-            else if (priority.equalsIgnoreCase("high"))
+            } else if (priority.equalsIgnoreCase("high")) {
                 return 3;
+            }
         }
         return -1;
     }
@@ -95,5 +96,18 @@ public class Issue {
 
     public void setTag(String tag) {
         this.tag = tag;
+    }
+
+    @Override
+    public String toString() {
+        return "Issue{" +
+                "id='" + id + '\'' +
+                ", version='" + version + '\'' +
+                ", project='" + project + '\'' +
+                ", priority='" + priority + '\'' +
+                ", summary='" + summary + '\'' +
+                ", category='" + category + '\'' +
+                ", tag='" + tag + '\'' +
+                '}';
     }
 }

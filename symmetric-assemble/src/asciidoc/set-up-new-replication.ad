@@ -31,7 +31,7 @@ The second step in setting up new replication is to connect to a second endpoint
 
 image::images/canvas/SelectTablesScreen.png[]
 
-Specify which tables to synchronize using the Select Tables screen. If both endpoint types can be used as a source, then there will be two links to configure: one from the first endpoint to the second endpoint and another from the second endpoint to the first endpoint. Start adding tables by clicking one of the Add buttons.
+Specify which tables to synchronize using the Select Tables screen. If both endpoint types can be used as a source, then there will be two links to configure: one from the first endpoint to the second endpoint and another from the second endpoint to the first endpoint. To add individual tables, click one of the Add buttons.
 
 image::images/canvas/AddTablesDialog.png[]
 
@@ -46,6 +46,14 @@ image::images/canvas/ViewTablesDialog.png[]
 image::images/canvas/RemoveTablesDialog.png[]
 
 Once a group of tables has been configured for synchronization, the Diagram will update and display how many tables are configured to synchronize in each direction. Clicking the X icon to the left of the group of tables will remove these tables from synchronization. Also, there are options to view all selected tables or remove individual tables from being synchronized across a link.
+
+image::images/canvas/MirrorTablesDialog.png[]
+
+When using the pipelines view, another way to configure synchronization is to enable mirroring. The Mirror button is available for trigger-based capture on SQL Server, Oracle, or PostgreSQL when both endpoints are of the same type and the source endpoint is local. A pipeline cannot include both mirroring and individually configured tables.
+
+When mirroring is configured, DML changes made to any table within the selected catalogs and/or schemas will be replicated across the pipeline. In addition, all DDL changes will be replicated across the pipeline.
+
+Subset rules and transforms cannot be configured via the Configure Diagram for mirrored tables. Advanced configuration such as this can be set up via the Configure Details screens.
 
 === Subset Rule Configuration
 
@@ -155,9 +163,11 @@ At any time, it is possible to reset the Configure Diagram to its original state
 
 Once the configuration is complete, it must be deployed to take effect. Click the Deploy button to open the Deploy Wizard.
 
-==== Missing Table Check
+==== Validation
 
-When the Deploy Wizard opens, SymmetricDS will validate the configuration and check whether the configured tables exist in each source database. When importing configuration from a different environment, the missing table check will verify that these same tables exist in the current environment. If any tables are missing, then the first screen of the Deploy Wizard will list the missing tables and provide options to either keep or remove their configuration.
+When the Deploy Wizard opens, SymmetricDS will validate the configuration. For mirror configuration, it will verify that the endpoint types support mirroring and check whether the configured catalogs and/or schemas exist in each source database. For table configuration, it will check whether the configured tables exist in each source database. When importing configuration from a different environment, this check will verify that the same catalogs, schemas, and tables exist in the current environment.
+
+If any mirror configuration is invalid, then the Deploy Wizard will list the invalid configuration and prevent deployment. Otherwise, if any tables are missing, then the first screen of the Deploy Wizard will list the missing tables and provide options to either keep or remove their configuration.
 
 ==== Endpoint Overview
 
