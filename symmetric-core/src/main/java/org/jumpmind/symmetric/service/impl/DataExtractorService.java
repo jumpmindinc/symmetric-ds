@@ -369,10 +369,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 NodeSecurity nodeSecurity = nodeService.findNodeSecurity(targetNode.getNodeId(), true);
                 if (nodeSecurity != null) {
                     long loadId = 0;
-                    if (nodeSecurity.getInitialLoadTime() != null && nodeSecurity.getInitialLoadEndTime() == null) {
-                        loadId = nodeSecurity.getInitialLoadId();
-                    } else if (nodeSecurity.getPartialLoadTime() != null && nodeSecurity.getPartialLoadEndTime() == null) {
-                        loadId = nodeSecurity.getPartialLoadId();
+                    List<TableReloadStatus> l = dataService.getActiveOutgoingTableReloadStatusByTargetNodeId(targetNode.getNodeId());
+                    for (TableReloadStatus status : l) {
+                        loadId = status.getLoadId();
                     }
                     if (loadId != 0) {
                         TableReloadStatus status = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(loadId, engine.getNodeId());
