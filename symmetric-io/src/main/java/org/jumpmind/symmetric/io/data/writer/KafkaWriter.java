@@ -602,7 +602,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
         String batchFileName = "batch-" + context.getBatch().getSourceNodeId() + "-" + context.getBatch().getBatchId();
         String channelId = context.getBatch().getChannelId();
         if (ChannelConstants.isInternalSymmetricChannel(channelId)) {
-            log.debug("Detected batch {} on the {} channel. Not publishing to Kafka", batchFileName, channelId);
+            log.debug("Detected batch {} on the internal channel {}. Not publishing to Kafka", batchFileName, channelId);
             return;
         }
         if (log.isDebugEnabled()) {
