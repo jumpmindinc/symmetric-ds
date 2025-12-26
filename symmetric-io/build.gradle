@@ -22,11 +22,11 @@ apply from: symAssembleDir + '/common.gradle'
             exclude group: 'com.fasterxml.jackson.databind'
         }
         
-         compileOnly ("org.apache.kafka:kafka-clients:3.1.2") {
+         compileOnly ("org.apache.kafka:kafka-clients:4.1.1") {
             exclude group: 'log4j'
             exclude group: 'org.slf4j'
         }
-        compileOnly ("io.confluent:kafka-avro-serializer:7.1.11") {
+        compileOnly ("io.confluent:kafka-avro-serializer:8.1.1") {
             exclude group: 'com.fasterxml.jackson.core'
             exclude group: 'com.fasterxml.jackson.dataformat'
             exclude group: 'com.fasterxml.jackson.databind'
@@ -34,7 +34,7 @@ apply from: symAssembleDir + '/common.gradle'
             exclude group: 'org.slf4j'
             exclude group: 'io.netty'
         }
-        compileOnly ("org.apache.avro:avro:1.11.3") {
+        compileOnly ("org.apache.avro:avro:1.12.1") {
             exclude group: 'log4j'
             exclude group: 'org.slf4j'
         }
@@ -43,4 +43,23 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation project(path: ':symmetric-jdbc', configuration: 'testArtifacts')
         testImplementation project(':symmetric-jdbc').sourceSets.test.output
         testImplementation project(':symmetric-jdbc').sourceSets.main.output
+
+        testImplementation ("org.apache.kafka:kafka-clients:4.1.1") {
+            exclude group: 'log4j'
+            exclude group: 'org.slf4j'
+        }
+        testImplementation ("io.confluent:kafka-avro-serializer:8.1.1") {
+            exclude group: 'com.fasterxml.jackson.core'
+            exclude group: 'com.fasterxml.jackson.dataformat'
+            exclude group: 'com.fasterxml.jackson.databind'
+            exclude group: 'log4j'
+            exclude group: 'org.slf4j'
+            exclude group: 'io.netty'
+        }
+        testImplementation ("org.apache.avro:avro:1.12.1") {
+            exclude group: 'log4j'
+            exclude group: 'org.slf4j'
+        }
+
+        testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
     }

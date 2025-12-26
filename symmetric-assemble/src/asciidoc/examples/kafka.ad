@@ -5,7 +5,7 @@ Use SymmetricDS to capture changes in your database and publish the changes to a
 
 ==== Kafka Setup
 
-If you already have a Kafka server running proceed to step 2.  Otherwise download and follow the quick start quide provided by Kafka.  
+If you already have a Kafka server running proceed to step 2.  Otherwise download and follow the quick start guide provided by Kafka.  
 
 ----
 https://kafka.apache.org/quickstart
@@ -14,6 +14,13 @@ https://kafka.apache.org/quickstart
 If your using the quick start you can run through steps 1-5 and finish with setting up a consumer.  This will allow you to see the messages that arrive on your Kafka queue from SymmetricDS.
 
 ==== SymmetricDS Setup
+
+To install Kafka client module automatically execute the following SYMADMIN command from the bin subdirectory:
+
+----
+./symadmin module install kafka
+----
+
 
 NOTE: The Java SDK is required to compile and run the kafka extension in this example.  The Java JRE will not be sufficient.
 
