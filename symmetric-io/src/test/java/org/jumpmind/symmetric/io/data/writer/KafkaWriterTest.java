@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,6 +49,7 @@ import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.properties.TypedProperties;
+import org.jumpmind.symmetric.io.ChannelUtils;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.Batch.BatchType;
 import org.jumpmind.symmetric.io.data.CsvData;
@@ -448,6 +450,39 @@ public class KafkaWriterTest {
         assertEquals(1, records.size());
         String recordValue = (String) records.get(0).value();
         assertTrue(recordValue.contains("\"name\": null"));
+    }
+
+    @Test
+    public void testRuntimeChannels() {
+        String[] runtimeChannels = { ChannelUtils.HEARTBEAT, ChannelUtils.MONITOR, ChannelUtils.CONFIG, ChannelUtils.SYSTEM, ChannelUtils.FILESYNC,
+                ChannelUtils.FILESYNC_RELOAD
+        };
+        for (String channelId : runtimeChannels) {
+            // Reset mock and clear producer map for each iteration
+            reset(mockKafkaProducer);
+            KafkaWriter.producerMap.clear();
+            KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_JSON,
+                    KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+            writer.kafkaProducer = mockKafkaProducer;
+            // Create a batch with a Symmetric runtime table on an internal channel
+            Batch runtimeBatch = new Batch(BatchType.LOAD, 1L, channelId, BinaryEncoding.BASE64, "node1", "node2", false);
+            DataContext runtimeContext = new DataContext(runtimeBatch);
+            writer.context = runtimeContext;
+            writer.batch = runtimeBatch;
+            writer.sourceTable = testSymmetricTable;
+            writer.targetTable = testSymmetricTable;
+            // Add data to the writer
+            String[] rowData = { "1", "test_name", "test_value" };
+            String[] oldData = { "1", "old_name", "old_value" };
+            CsvData csvData = new CsvData(DataEventType.INSERT);
+            csvData.putParsedData(CsvData.ROW_DATA, rowData);
+            csvData.putParsedData(CsvData.OLD_DATA, oldData);
+            writer.writeKafka(csvData, testSymmetricTable);
+            // Complete the batch - this should NOT send messages for runtime channels
+            writer.batchComplete(runtimeContext);
+            // Verify send was never called for runtime channel
+            verify(mockKafkaProducer, never()).send(any());
+        }
     }
 
     @Test
