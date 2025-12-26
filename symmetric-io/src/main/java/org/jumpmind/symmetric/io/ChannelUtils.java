@@ -22,7 +22,7 @@ package org.jumpmind.symmetric.io;
 
 import org.apache.commons.lang3.ArrayUtils;
 
-public class ChannelConstants {
+public class ChannelUtils {
     public static final String HEARTBEAT = "heartbeat";
     public static final String MONITOR = "monitor";
     public static final String CONFIG = "config";

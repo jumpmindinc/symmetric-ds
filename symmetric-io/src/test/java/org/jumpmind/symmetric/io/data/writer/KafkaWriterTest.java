@@ -239,8 +239,6 @@ public class KafkaWriterTest {
     @Test
     public void testDeleteEvent4SymmetricTable() {
         // Test that symmetric tables (those starting with sym_ prefix) don't get written to Kafka
-        // The writeKafka method is not called for symmetric tables - they are processed by the parent class
-        // This test verifies that symmetric table names are correctly identified and not in kafkaDataMap
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_JSON,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -250,8 +248,7 @@ public class KafkaWriterTest {
         writer.targetTable = testSymmetricTable;
         // Verify symmetric table name starts with the prefix "sym_"
         assertTrue(testSymmetricTableName.startsWith("sym_"));
-        // For symmetric tables, writeKafka is not called by delete(), so kafkaDataMap should not have entries
-        // The delete() method delegates to super.delete() for symmetric tables, which doesn't write to Kafka
+        // For symmetric tables, writeKafka is not called by delete(), so kafkaDataMap should not have entries:
         List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testSymmetricTableName);
         assertNull(records);
     }

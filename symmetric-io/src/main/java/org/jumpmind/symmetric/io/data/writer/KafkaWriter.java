@@ -55,7 +55,6 @@ import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.properties.TypedProperties;
-import org.jumpmind.symmetric.io.ChannelConstants;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataContext;
