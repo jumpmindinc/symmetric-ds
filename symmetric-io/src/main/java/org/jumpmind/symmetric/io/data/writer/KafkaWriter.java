@@ -198,10 +198,10 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
 
     @Override
     protected int execute(CsvData data, String[] values) {
-        if (isSymmetricTable(this.targetTable != null ? this.targetTable.getName() : "")) {
+        if (isSymmetricTable(targetTable)) {
             return super.execute(data, values);
         }
-        Table table = this.sourceTable;
+        Table table = this.targetTable;
         String[] rowData = data.getParsedData(CsvData.ROW_DATA);
         if (data.getDataEventType() == DataEventType.DELETE) {
             rowData = data.getParsedData(CsvData.OLD_DATA);
@@ -224,7 +224,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
         } else {
             kafkaDataKey = table.getNameLowerCase();
         }
-        log.debug("Processing table {} for Kafka on topic {}", table, kafkaDataKey);
+        log.debug("Processing table {} for Kafka on topic {}", table.getName(), kafkaDataKey);
         if (kafkaDataMap.get(kafkaDataKey) == null) {
             kafkaDataMap.put(kafkaDataKey, new ArrayList<ProducerRecord<String, Object>>());
         }
