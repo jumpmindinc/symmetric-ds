@@ -55,6 +55,7 @@ import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.properties.TypedProperties;
+import org.jumpmind.symmetric.io.ChannelUtils;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataContext;
@@ -600,7 +601,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
     public void batchComplete(DataContext context) {
         String batchFileName = "batch-" + context.getBatch().getSourceNodeId() + "-" + context.getBatch().getBatchId();
         String channelId = context.getBatch().getChannelId();
-        if (ChannelConstants.isInternalSymmetricChannel(channelId)) {
+        if (ChannelUtils.isInternalSymmetricChannel(channelId)) {
             log.debug("Detected batch {} on the internal channel {}. Not publishing to Kafka", batchFileName, channelId);
             return;
         }
