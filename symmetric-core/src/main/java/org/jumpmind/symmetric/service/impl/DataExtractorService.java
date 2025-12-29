@@ -121,12 +121,12 @@ import org.jumpmind.symmetric.io.stage.StagingFileLock;
 import org.jumpmind.symmetric.io.stage.StagingLowFreeSpace;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
-import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.ExtractRequest;
 import org.jumpmind.symmetric.model.ExtractRequest.ExtractStatus;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.NodeCommunication;
 import org.jumpmind.symmetric.model.NodeCommunication.CommunicationType;
 import org.jumpmind.symmetric.model.NodeGroupLink;
@@ -182,6 +182,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         INodeCommunicationExecutor {
     final static long MS_PASSED_BEFORE_BATCH_REQUERIED = 5000;
     final static long BACKOFF_BYTE_THRESHOLD = 2048;
+    public final static long MAX_DURATION_FOR_QUERY = 5000;
 
     protected enum ExtractMode {
         FOR_SYM_CLIENT, FOR_PAYLOAD_CLIENT, EXTRACT_ONLY
@@ -333,16 +334,16 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
 
     private List<OutgoingBatch> filterBatchesForExtraction(OutgoingBatches batches,
             NodeChannels suspendIgnoreChannelsList, String queue, Node targetNode) {
-    	long ts = 0l;
-    	long duration = 0l;
+        long ts = 0l;
+        long duration = 0l;
         if (parameterService.is(ParameterConstants.FILE_SYNC_ENABLE)) {
-        	ts = System.currentTimeMillis();
+            ts = System.currentTimeMillis();
             List<Channel> fileSyncChannels = configurationService.getFileSyncChannels();
             for (Channel channel : fileSyncChannels) {
                 batches.filterBatchesForChannel(channel);
             }
             duration = System.currentTimeMillis() - ts;
-            logQueryDuration("Filter for channel took {} ms", duration, 5000l);
+            logQueryDuration("Filter for channel took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
         }
         // We now have either our local suspend/ignore list, or the combined
         // remote send/ignore list and our local list (along with a
@@ -353,7 +354,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         ts = System.currentTimeMillis();
         List<OutgoingBatch> ignoredBatches = batches.filterIgnoredBatches(suspendIgnoreChannelsList);
         duration = System.currentTimeMillis() - ts;
-        logQueryDuration("Filter ignored batches took {} ms", duration, 5000l);
+        logQueryDuration("Filter ignored batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
         // Finally, update the ignored outgoing batches such that they
         // will be skipped in the future.
         ts = System.currentTimeMillis();
@@ -366,11 +367,11 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         }
         outgoingBatchService.updateOutgoingBatches(ignoredBatches);
         duration = System.currentTimeMillis() - ts;
-        logQueryDuration("Update ignored outgoing batches took {} ms", duration, 5000l);
+        logQueryDuration("Update ignored outgoing batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
         ts = System.currentTimeMillis();
         batches.filterSuspendedBatches(suspendIgnoreChannelsList);
         duration = System.currentTimeMillis() - ts;
-        logQueryDuration("Filter suspended batches took {} ms", duration, 5000l);
+        logQueryDuration("Filter suspended batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
         // Remove non-load batches so that an initial load finishes before
         // any other batches are loaded.
         if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true) && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
@@ -382,7 +383,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             } else {
                 NodeSecurity nodeSecurity = nodeService.findNodeSecurity(targetNode.getNodeId(), true);
                 if (nodeSecurity != null) {
-                	ts = System.currentTimeMillis();
+                    ts = System.currentTimeMillis();
                     long loadId = 0;
                     List<TableReloadStatus> l = dataService.getActiveOutgoingTableReloadStatusByTargetNodeId(targetNode.getNodeId());
                     for (TableReloadStatus status : l) {
@@ -390,12 +391,12 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         break;
                     }
                     duration = System.currentTimeMillis() - ts;
-                    logQueryDuration("Get active reload status took {} ms", duration, 5000l);
+                    logQueryDuration("Get active reload status took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
                     if (loadId != 0) {
-                    	ts = System.currentTimeMillis();
+                        ts = System.currentTimeMillis();
                         TableReloadStatus status = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(loadId, engine.getNodeId());
                         duration = System.currentTimeMillis() - ts;
-                        logQueryDuration("Get table reload status by load and source node took {} ms", duration, 5000l);
+                        logQueryDuration("Get table reload status by load and source node took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
                         if (status != null && status.getDataBatchLoaded() < status.getDataBatchCount()) {
                             batches.removeNonLoadBatches();
                             log.info("Pausing non-load batches from queue {} for target node {} because load ID {} is active", queue, targetNode,
@@ -409,10 +410,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     private void logQueryDuration(String message, long duration, long maxDuration) {
-    	if (duration > 5000l) {
-        	log.info(message, duration);
+        if (duration > maxDuration) {
+            log.info(message, duration);
         } else {
-        	log.debug(message, duration);
+            log.debug(message, duration);
         }
     }
 
