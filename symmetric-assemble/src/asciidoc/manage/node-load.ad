@@ -96,9 +96,9 @@ The second option on this screen is to determine what "before action" should occ
 
 |Nothing (append data)|This assumes the tables are present and do not need cleared out before the load can be run.  If data already exists it will fall back to an update if the insert fails.  This allows the load to be run repeatedly as needed.
 
-|Create tables only|This advanced option will send create table statements to the target to match the source before loading any data, without clearing existing tables.  
+|Create tables|This advanced option will send create table statements to the target to match the source before loading any data, without clearing existing tables.  
 
-|Clear tables only|This advanced option assumes the tables are present and clears all target tables prior to loading.
+|Clear tables|This advanced option assumes the tables are present and clears all target tables prior to loading.
 
 |===
 
