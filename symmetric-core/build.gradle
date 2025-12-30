@@ -12,7 +12,7 @@ apply from: symAssembleDir + '/common.gradle'
         api "org.springframework:spring-beans:$springVersion"
         implementation "com.github.jsqlparser:jsqlparser:4.9"
         
-        compileOnly ("nl.cad:tps-parse:1.0.15-SNAPSHOT") {
+        compileOnly ("org.jumpmind.symmetric.module:tps-parse:1.0.15") {
             exclude group: 'commons-lang', module: 'commons-lang'
             exclude group: 'joda-time', module: 'joda-time'
         }
