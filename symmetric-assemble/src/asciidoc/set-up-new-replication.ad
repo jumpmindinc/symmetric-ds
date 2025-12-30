@@ -25,7 +25,7 @@ As the endpoint type and display name change, the changes will be reflected in t
 
 image::images/canvas/DefineEndpointScreen_second.png[]
 
-The second step in setting up new replication is to connect to a second endpoint that the first endpoint will synchronize with. Use the Endpoint field to choose between existing endpoints or a new endpoint. The initial setup process starts off with just two endpoints, but the Diagram can be used to configure any number of endpoints for synchronization.
+The second step in setting up new replication is to connect to a second endpoint that the first endpoint will synchronize with. Use the radio buttons to choose between an existing endpoint or a new endpoint. The initial setup process starts off with just two endpoints, but the Diagram can be used to configure any number of endpoints for synchronization.
 
 === Table Configuration
 
