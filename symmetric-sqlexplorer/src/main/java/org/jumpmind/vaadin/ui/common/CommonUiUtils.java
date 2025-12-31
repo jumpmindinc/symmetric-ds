@@ -194,7 +194,7 @@ public final class CommonUiUtils {
                 notification.addOpenedChangeListener(event -> shortcutToggler.accept(event.isOpened()));
             }
             notification.setPosition(Position.MIDDLE);
-            notification.setDuration(-1);
+            notification.setDuration(30000);
             Shortcuts.addShortcutListener(notification, () -> notification.close(), Key.ESCAPE);
             notification.open();
             return notification;
