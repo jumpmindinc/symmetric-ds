@@ -45,6 +45,8 @@ public interface IStatisticManager {
 
     public List<ProcessInfo> getMostRecentUserProcessInfos(ProcessType... processTypes);
 
+    public ProcessInfo getMostRecentUserDataSyncProcessInfo(String sourceNodeId, String targetNodeId);
+
     public Set<String> getNodesWithProcessesInError();
 
     public void flush();

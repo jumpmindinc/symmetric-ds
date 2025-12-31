@@ -48,6 +48,11 @@ public class MockStatisticManager implements IStatisticManager {
         return null;
     }
 
+    @Override
+    public ProcessInfo getMostRecentUserDataSyncProcessInfo(String sourceNodeId, String targetNodeId) {
+        return null;
+    }
+
     public void removeProcessInfo(ProcessInfoKey key) {
     }
 
