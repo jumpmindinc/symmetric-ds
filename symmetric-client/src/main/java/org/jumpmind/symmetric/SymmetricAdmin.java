@@ -649,7 +649,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
     }
 
     private void removeNode(CommandLine line, List<String> args) {
-        String node = line.getOptionValue(OPTION_NODE);
+        String node = popArg(args, "Node ID");
         getSymmetricEngine().removeAndCleanupNode(node);
         System.out.println(String.format("Removed node '%s' from engine '%s'", node, getSymmetricEngine().getEngineName()));
     }
