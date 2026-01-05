@@ -31,12 +31,14 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
@@ -83,6 +85,7 @@ public class StatisticManager implements IStatisticManager {
     protected Map<ProcessInfoKey, ProcessInfo> processInfos = new ConcurrentHashMap<ProcessInfoKey, ProcessInfo>();
     protected Map<ProcessInfoKey, ProcessInfo> processInfosThatHaveDoneWork = new ConcurrentHashMap<ProcessInfoKey, ProcessInfo>();
     protected Map<ProcessType, ProcessInfo> userLastWorkDoneMap = new ConcurrentHashMap<ProcessType, ProcessInfo>();
+    protected Map<SourceTargetNodeId, ProcessInfo> userLastDataSyncWorkDoneMap = new ConcurrentHashMap<SourceTargetNodeId, ProcessInfo>();
     private Map<Date, Map<String, ChannelStats>> baseChannelStatsInMemory = new LinkedHashMap<Date, Map<String, ChannelStats>>();
     private Set<String> systemChannelIds = new HashSet<String>(Arrays.asList(new String[] { Constants.CHANNEL_CONFIG, Constants.CHANNEL_SYSTEM,
             Constants.CHANNEL_MONITOR, Constants.CHANNEL_HEARTBEAT, Constants.CHANNEL_DYNAMIC }));
@@ -117,7 +120,16 @@ public class StatisticManager implements IStatisticManager {
             if (old.getCurrentDataCount() > 0 || old.getTotalDataCount() > 0) {
                 processInfosThatHaveDoneWork.put(key, old);
                 if (isUserProcessInfo(old)) {
-                    userLastWorkDoneMap.put(old.getProcessType(), old);
+                    ProcessType oldType = old.getProcessType();
+                    userLastWorkDoneMap.put(oldType, old);
+                    String oldSourceNodeId = old.getSourceNodeId(), oldTargetNodeId = old.getTargetNodeId();
+                    if (oldSourceNodeId != null && oldTargetNodeId != null && ArrayUtils.contains(ProcessType.dataSyncProcessTypes, oldType)) {
+                        SourceTargetNodeId nodeIdKey = new SourceTargetNodeId(oldSourceNodeId, oldTargetNodeId);
+                        ProcessInfo lastWorkDone = userLastDataSyncWorkDoneMap.get(nodeIdKey);
+                        if (lastWorkDone == null || old.getLastStatusChangeTime().after(lastWorkDone.getLastStatusChangeTime())) {
+                            userLastDataSyncWorkDoneMap.put(nodeIdKey, old);
+                        }
+                    }
                 }
             }
         }
@@ -203,6 +215,10 @@ public class StatisticManager implements IStatisticManager {
         String tablePrefix = engine.getTablePrefix();
         return !Strings.CI.startsWith(tableName, tablePrefix) && !Strings.CI.contains(tableName, "." + tablePrefix)
                 && !systemChannelIds.contains(processInfo.getCurrentChannelId()) && !Constants.QUEUE_SYSTEM.equals(processInfo.getQueue());
+    }
+
+    public ProcessInfo getMostRecentUserDataSyncProcessInfo(String sourceNodeId, String targetNodeId) {
+        return userLastDataSyncWorkDoneMap.get(new SourceTargetNodeId(sourceNodeId, targetNodeId));
     }
 
     public void addJobStats(String jobName, long startTime, long endTime, long processedCount) {
@@ -855,5 +871,35 @@ public class StatisticManager implements IStatisticManager {
     @Override
     public Map<String, Long> getLastDataLoadedBytesMap() {
         return this.lastDataSyncBytesMap;
+    }
+
+    private class SourceTargetNodeId {
+        public String sourceNodeId;
+        public String targetNodeId;
+
+        public SourceTargetNodeId(String sourceNodeId, String targetNodeId) {
+            this.sourceNodeId = sourceNodeId;
+            this.targetNodeId = targetNodeId;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + Objects.hash(sourceNodeId, targetNodeId);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof SourceTargetNodeId)) {
+                return false;
+            }
+            SourceTargetNodeId other = (SourceTargetNodeId) obj;
+            return Objects.equals(sourceNodeId, other.sourceNodeId) && Objects.equals(targetNodeId, other.targetNodeId);
+        }
     }
 }

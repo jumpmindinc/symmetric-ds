@@ -20,125 +20,63 @@
  */
 package org.jumpmind.symmetric.model;
 
+import org.jumpmind.symmetric.common.ProcessTypeMessages;
+
 public enum ProcessType {
-    ANY, PUSH_JOB_EXTRACT, PUSH_JOB_TRANSFER, PULL_JOB_TRANSFER, PULL_JOB_LOAD, PUSH_HANDLER_TRANSFER, PUSH_HANDLER_LOAD, PULL_HANDLER_TRANSFER, PULL_HANDLER_EXTRACT, REST_PULL_HANLDER, OFFLINE_PUSH, OFFLINE_PULL, ROUTER_JOB, INSERT_LOAD_EVENTS, GAP_DETECT, ROUTER_READER, MANUAL_LOAD, FILE_SYNC_PULL_JOB, FILE_SYNC_PUSH_JOB, FILE_SYNC_PULL_HANDLER, FILE_SYNC_PUSH_HANDLER, FILE_SYNC_TRACKER, INITIAL_LOAD_EXTRACT_JOB, FILE_SYNC_INITIAL_LOAD_EXTRACT_JOB, PULL_CONFIG_JOB, LOG_MINER_JOB, COMPARE_PUT_HANDLE, COMPARE_GET_HANDLE, COMPARE_START_HANDLE, COMPARE_EXECUTE, UNINSTALL;
+    //@formatter:off
+    ANY(ProcessTypeMessages.ANY, ProcessTypeMessages.ANY, ProcessTypeMessages.ANY),
+    PUSH_JOB_EXTRACT(ProcessTypeMessages.DATABASE_PUSH_EXTRACT, ProcessTypeMessages.EXTRACTING, ProcessTypeMessages.EXTRACTED),
+    PUSH_JOB_TRANSFER(ProcessTypeMessages.DATABASE_PUSH_TRANSFER, ProcessTypeMessages.TRANSFERRING, ProcessTypeMessages.TRANSFERRED),
+    PULL_JOB_TRANSFER(ProcessTypeMessages.DATABASE_PULL_TRANSFER, ProcessTypeMessages.TRANSFERRING, ProcessTypeMessages.TRANSFERRED),
+    PULL_JOB_LOAD(ProcessTypeMessages.DATABASE_PULL_LOAD, ProcessTypeMessages.LOADING, ProcessTypeMessages.LOADED),
+    PUSH_HANDLER_TRANSFER(ProcessTypeMessages.SERVICE_DATABASE_PUSH_TRANSFER, ProcessTypeMessages.TRANSFERRING, ProcessTypeMessages.TRANSFERRED),
+    PUSH_HANDLER_LOAD(ProcessTypeMessages.SERVICE_DATABASE_PUSH_LOAD, ProcessTypeMessages.LOADING, ProcessTypeMessages.LOADED),
+    PULL_HANDLER_TRANSFER(ProcessTypeMessages.SERVICE_DATABASE_PULL_TRANSFER, ProcessTypeMessages.TRANSFERRING, ProcessTypeMessages.TRANSFERRED),
+    PULL_HANDLER_EXTRACT(ProcessTypeMessages.SERVICE_DATABASE_PULL_EXTRACT, ProcessTypeMessages.EXTRACTING, ProcessTypeMessages.EXTRACTED),
+    REST_PULL_HANLDER(ProcessTypeMessages.REST_PULL, ProcessTypeMessages.REST_PULL, ProcessTypeMessages.REST_PULL),
+    OFFLINE_PUSH(ProcessTypeMessages.OFFLINE_PUSH, ProcessTypeMessages.OFFLINE_PUSH, ProcessTypeMessages.OFFLINE_PUSH),
+    OFFLINE_PULL(ProcessTypeMessages.OFFLINE_PULL, ProcessTypeMessages.OFFLINE_PULL, ProcessTypeMessages.OFFLINE_PULL),
+    ROUTER_JOB(ProcessTypeMessages.ROUTING, ProcessTypeMessages.ROUTING, ProcessTypeMessages.ROUTED),
+    INSERT_LOAD_EVENTS(ProcessTypeMessages.INSERTING_LOAD_EVENTS, ProcessTypeMessages.LOAD_SETUP, ProcessTypeMessages.LOAD_SETUP),
+    GAP_DETECT(ProcessTypeMessages.GAP_DETECTION, ProcessTypeMessages.ROUTING, ProcessTypeMessages.ROUTED),
+    ROUTER_READER(ProcessTypeMessages.ROUTING_READER, ProcessTypeMessages.ROUTING, ProcessTypeMessages.ROUTED),
+    MANUAL_LOAD(ProcessTypeMessages.MANUAL_LOAD, ProcessTypeMessages.MANUAL_LOAD, ProcessTypeMessages.MANUAL_LOAD),
+    FILE_SYNC_PULL_JOB(ProcessTypeMessages.FILE_SYNC_PULL, ProcessTypeMessages.FILE_TRANSFER, ProcessTypeMessages.FILE_TRANSFER),
+    FILE_SYNC_PUSH_JOB(ProcessTypeMessages.FILE_SYNC_PUSH, ProcessTypeMessages.FILE_TRANSFER, ProcessTypeMessages.FILE_TRANSFER),
+    FILE_SYNC_PULL_HANDLER(ProcessTypeMessages.SERVICE_FILE_SYNC_PULL, ProcessTypeMessages.FILE_WRITE, ProcessTypeMessages.FILE_WRITE),
+    FILE_SYNC_PUSH_HANDLER(ProcessTypeMessages.SERVICE_FILE_SYNC_PUSH, ProcessTypeMessages.FILE_WRITE, ProcessTypeMessages.FILE_WRITE),
+    FILE_SYNC_TRACKER(ProcessTypeMessages.FILE_SYNC_TRACKER, ProcessTypeMessages.FILE_TRACKER, ProcessTypeMessages.FILE_TRACKER),
+    INITIAL_LOAD_EXTRACT_JOB(ProcessTypeMessages.INITIAL_LOAD_EXTRACTOR, ProcessTypeMessages.LOAD_EXTRACTING, ProcessTypeMessages.LOAD_EXTRACTED),
+    FILE_SYNC_INITIAL_LOAD_EXTRACT_JOB(ProcessTypeMessages.FILE_SYNC_INITIAL_LOAD_EXTRACTOR,
+            ProcessTypeMessages.FILE_LOAD_EXTRACTING, ProcessTypeMessages.FILE_LOAD_EXTRACTED),
+    PULL_CONFIG_JOB(ProcessTypeMessages.CONFIG_PULL, ProcessTypeMessages.CONFIG_PULL, ProcessTypeMessages.CONFIG_PULL),
+    LOG_MINER_JOB(ProcessTypeMessages.LOG_MINER, ProcessTypeMessages.LOG_MINER, ProcessTypeMessages.LOG_MINER),
+    COMPARE_PUT_HANDLE(null, null, null), COMPARE_GET_HANDLE(null, null, null), COMPARE_START_HANDLE(null, null, null),
+    COMPARE_EXECUTE(null, null, null), UNINSTALL(null, null, null);
+    //@formatter:on
+
+    public static final ProcessType[] dataSyncProcessTypes = new ProcessType[] { PUSH_JOB_EXTRACT, PUSH_JOB_TRANSFER, PULL_JOB_TRANSFER, PULL_JOB_LOAD,
+            PUSH_HANDLER_TRANSFER, PUSH_HANDLER_LOAD, PULL_HANDLER_TRANSFER, PULL_HANDLER_EXTRACT, INSERT_LOAD_EVENTS, INITIAL_LOAD_EXTRACT_JOB };
+    private final String displayName;
+    private final String shortName;
+    private final String shortPastTense;
+
+    ProcessType(String displayName, String shortName, String shortPastTense) {
+        this.displayName = displayName;
+        this.shortName = shortName;
+        this.shortPastTense = shortPastTense;
+    }
 
     @Override
     public String toString() {
-        switch (this) {
-            case ANY:
-                return "<Any>";
-            case MANUAL_LOAD:
-                return "Manual Load";
-            case PUSH_JOB_EXTRACT:
-                return "Database Push Extract";
-            case PUSH_JOB_TRANSFER:
-                return "Database Push Transfer";
-            case PULL_JOB_TRANSFER:
-                return "Database Pull Transfer";
-            case PULL_JOB_LOAD:
-                return "Database Pull Load";
-            case PULL_CONFIG_JOB:
-                return "Config Pull";
-            case PUSH_HANDLER_TRANSFER:
-                return "Service Database Push Transfer";
-            case PULL_HANDLER_TRANSFER:
-                return "Service Database Pull Transfer";
-            case PUSH_HANDLER_LOAD:
-                return "Service Database Push Load";
-            case PULL_HANDLER_EXTRACT:
-                return "Service Database Pull Extract";
-            case OFFLINE_PUSH:
-                return "Offline Push";
-            case OFFLINE_PULL:
-                return "Offline Pull";
-            case ROUTER_JOB:
-                return "Routing";
-            case ROUTER_READER:
-                return "Routing Reader";
-            case GAP_DETECT:
-                return "Gap Detection";
-            case FILE_SYNC_PULL_JOB:
-                return "File Sync Pull";
-            case FILE_SYNC_PUSH_JOB:
-                return "File Sync Push";
-            case FILE_SYNC_PULL_HANDLER:
-                return "Service File Sync Pull";
-            case FILE_SYNC_PUSH_HANDLER:
-                return "Service File Sync Push";
-            case FILE_SYNC_TRACKER:
-                return "File Sync Tracker";
-            case REST_PULL_HANLDER:
-                return "REST Pull";
-            case INSERT_LOAD_EVENTS:
-                return "Inserting Load Events";
-            case INITIAL_LOAD_EXTRACT_JOB:
-                return "Initial Load Extractor";
-            case FILE_SYNC_INITIAL_LOAD_EXTRACT_JOB:
-                return "File Sync Initial Load Extractor";
-            case LOG_MINER_JOB:
-                return "Log Miner";
-            default:
-                return name();
-        }
+        return displayName != null ? displayName : name();
     }
 
     public String toStringShort() {
-        switch (this) {
-            case ANY:
-                return "<Any>";
-            case MANUAL_LOAD:
-                return "Manual Load";
-            case PUSH_JOB_EXTRACT:
-                return "Extracting";
-            case PUSH_JOB_TRANSFER:
-                return "Transferring";
-            case PULL_JOB_TRANSFER:
-                return "Transferring";
-            case PULL_JOB_LOAD:
-                return "Loading";
-            case PULL_CONFIG_JOB:
-                return "Config Pull";
-            case PUSH_HANDLER_TRANSFER:
-                return "Transferring";
-            case PULL_HANDLER_TRANSFER:
-                return "Transferring";
-            case PUSH_HANDLER_LOAD:
-                return "Loading";
-            case PULL_HANDLER_EXTRACT:
-                return "Extracting";
-            case OFFLINE_PUSH:
-                return "Offline Push";
-            case OFFLINE_PULL:
-                return "Offline Pull";
-            case ROUTER_JOB:
-                return "Routing";
-            case ROUTER_READER:
-                return "Routing";
-            case GAP_DETECT:
-                return "Routing";
-            case FILE_SYNC_PULL_JOB:
-                return "File Transfer";
-            case FILE_SYNC_PUSH_JOB:
-                return "File Transfer";
-            case FILE_SYNC_PULL_HANDLER:
-                return "File Write";
-            case FILE_SYNC_PUSH_HANDLER:
-                return "File Write";
-            case FILE_SYNC_TRACKER:
-                return "File Tracker";
-            case REST_PULL_HANLDER:
-                return "REST Pull";
-            case INSERT_LOAD_EVENTS:
-                return "Load Setup";
-            case INITIAL_LOAD_EXTRACT_JOB:
-                return "Load Extracting";
-            case FILE_SYNC_INITIAL_LOAD_EXTRACT_JOB:
-                return "File Load Extracting";
-            case LOG_MINER_JOB:
-                return "Log Miner";
-            default:
-                return name();
-        }
+        return shortName != null ? shortName : name();
+    }
+
+    public String toStringShortPastTense() {
+        return shortPastTense != null ? shortPastTense : name();
     }
 };
