@@ -65,7 +65,6 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.Notification.Position;
 import com.vaadin.flow.component.orderedlayout.FlexComponent.Alignment;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -148,7 +147,7 @@ public final class CommonUiUtils {
         Page page = UI.getCurrent().getPage();
         if (page != null) {
             HorizontalLayout layout = new HorizontalLayout();
-            Notification notification = new Notification(layout);
+            Notification notification = new CenteredNotification(layout);
             if (message != null && message.length() <= 250) {
                 layout.getStyle().set("max-width", "400px");
                 Label label;
@@ -193,7 +192,6 @@ public final class CommonUiUtils {
             if (shortcutToggler != null) {
                 notification.addOpenedChangeListener(event -> shortcutToggler.accept(event.isOpened()));
             }
-            notification.setPosition(Position.MIDDLE);
             notification.setDuration(30000);
             Shortcuts.addShortcutListener(notification, () -> notification.close(), Key.ESCAPE);
             notification.open();
