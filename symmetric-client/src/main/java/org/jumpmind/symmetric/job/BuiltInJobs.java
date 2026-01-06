@@ -26,6 +26,7 @@ import java.util.List;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.JobDefinition;
 import org.jumpmind.symmetric.model.JobDefinition.JobType;
+import org.jumpmind.util.AppUtils;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 public class BuiltInJobs {
@@ -40,8 +41,8 @@ public class BuiltInJobs {
     public List<IJob> getBuiltInJobs(ISymmetricEngine engine, ThreadPoolTaskScheduler taskScheduler) {
         List<IJob> builtInJobs = new ArrayList<IJob>(20);
         builtInJobs.add(new RouterJob(engine, taskScheduler));
-        builtInJobs.add(new PushJob(engine, taskScheduler));
-        builtInJobs.add(new PullJob(engine, taskScheduler));
+        builtInJobs.add(createJob(PushJob.class, engine, taskScheduler));
+        builtInJobs.add(createJob(PullJob.class, engine, taskScheduler));
         builtInJobs.add(new OfflinePushJob(engine, taskScheduler));
         builtInJobs.add(new OfflinePullJob(engine, taskScheduler));
         builtInJobs.add(new OutgoingPurgeJob(engine, taskScheduler));
@@ -70,6 +71,12 @@ public class BuiltInJobs {
             setBuiltInDefaults(builtInJob);
         }
         return builtInJobs;
+    }
+
+    protected <T extends IJob> T createJob(Class<T> jobClass, ISymmetricEngine engine, ThreadPoolTaskScheduler taskScheduler) {
+        return AppUtils.newInstance(jobClass, jobClass,
+                new Object[] { engine, taskScheduler },
+                new Class<?>[] { ISymmetricEngine.class, ThreadPoolTaskScheduler.class });
     }
 
     protected void setBuiltInDefaults(IJob argBuiltInJob) {

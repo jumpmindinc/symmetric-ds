@@ -45,6 +45,7 @@ import org.jumpmind.symmetric.model.JobDefinition;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IClusterService;
+import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRegistrationService;
@@ -62,6 +63,7 @@ class AbstractJobTest {
     private IClusterService clusterService;
     private IRegistrationService registrationService;
     private INodeService nodeService;
+    private IExtensionService extensionService;
     private ThreadPoolTaskScheduler taskScheduler;
     private TestableJob testJob;
     private JobDefinition jobDefinition;
@@ -73,10 +75,12 @@ class AbstractJobTest {
         clusterService = mock(IClusterService.class);
         registrationService = mock(IRegistrationService.class);
         nodeService = mock(INodeService.class);
+        extensionService = mock(IExtensionService.class);
         taskScheduler = mock(ThreadPoolTaskScheduler.class);
         jobDefinition = createJobDefinition();
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getClusterService()).thenReturn(clusterService);
+        when(engine.getExtensionService()).thenReturn(extensionService);
         when(parameterService.getExternalId()).thenReturn(TEST_NODE_ID);
         when(parameterService.getInt(anyString())).thenReturn(10000);
         testJob = new TestableJob(TEST_JOB_NAME, engine, taskScheduler);
