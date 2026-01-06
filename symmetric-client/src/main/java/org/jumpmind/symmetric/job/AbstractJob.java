@@ -27,7 +27,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -70,6 +69,7 @@ abstract public class AbstractJob implements Runnable, IJob {
     private long processedCount;
     private String targetNodeId;
     private int targetNodeCount;
+    protected ScheduleEnforcer scheduleEnforcer = new ScheduleEnforcer();
 
     public AbstractJob() {
     }
@@ -103,6 +103,22 @@ abstract public class AbstractJob implements Runnable, IJob {
                 if (timeBetweenRunsInMs <= 0) {
                     return;
                 }
+                // Log warning if minimum period enforcement was applied
+                String configuredSchedule = getConfiguredSchedule();
+                long minPeriod = getMinSchedulePeriodMs();
+                if (scheduleEnforcer.wasEnforced(configuredSchedule, minPeriod)) {
+                    if (scheduleEnforcer.isPeriodicSchedule(configuredSchedule)) {
+                        log.warn("The configured schedule of {}ms for job '{}' is below the minimum allowed period of {}ms. " +
+                                "The minimum period of {}ms will be used instead. " +
+                                "To increase the frequency, a SymmetricDS Pro license is required.",
+                                configuredSchedule, jobName, minPeriod, minPeriod);
+                    } else {
+                        log.warn("The configured cron schedule '{}' for job '{}' runs more frequently than the minimum allowed period of {}ms. " +
+                                "The minimum period of {}ms will be used instead. " +
+                                "To increase the frequency, a SymmetricDS Pro license is required.",
+                                configuredSchedule, jobName, minPeriod, minPeriod);
+                    }
+                }
                 if (randomTimeSlot == null) {
                     this.randomTimeSlot = new RandomTimeSlot(parameterService.getExternalId(),
                             parameterService.getInt(ParameterConstants.JOB_RANDOM_MAX_START_TIME_MS));
@@ -128,22 +144,40 @@ abstract public class AbstractJob implements Runnable, IJob {
     }
 
     protected long getTimeBetweenRunsInMs() {
-        long timeBetweenRunsInMs = -1;
         String schedule = getSchedule();
         try {
             if (StringUtils.isEmpty(schedule)) {
                 throw new SymmetricException("Schedule value is not defined for " + jobDefinition.getPeriodicParameter());
             }
-            timeBetweenRunsInMs = Long.parseLong(getSchedule());
+            long timeBetweenRunsInMs = Long.parseLong(schedule);
             if (timeBetweenRunsInMs <= 0) {
                 throw new SymmetricException("Schedule value must be positive, but was '" + schedule + "'");
             }
+            return timeBetweenRunsInMs;
         } catch (Exception ex) {
             log.error("Failed to schedule job '" + jobName + "' because of an invalid schedule: '" +
-                    getSchedule() + "' Check the " + jobDefinition.getPeriodicParameter() + " parameter.", ex);
+                    schedule + "' Check the " + jobDefinition.getPeriodicParameter() + " parameter.", ex);
             return -1;
         }
-        return timeBetweenRunsInMs;
+    }
+
+    /**
+     * Returns the minimum allowed schedule period in milliseconds for this job. Subclasses can override this method to enforce a minimum period.
+     *
+     * @return the minimum period in milliseconds, or 0 if no minimum is enforced
+     */
+    protected long getMinSchedulePeriodMs() {
+        return 0;
+    }
+
+    /**
+     * Checks if this job has a minimum schedule period enforcement. Rate-limited jobs need lock tracking even when not clustered to persist last run time
+     * across restarts.
+     *
+     * @return true if the job is rate-limited, false otherwise
+     */
+    protected boolean isRateLimited() {
+        return getMinSchedulePeriodMs() > 0;
     }
 
     public boolean stop() {
@@ -188,7 +222,9 @@ abstract public class AbstractJob implements Runnable, IJob {
                 return false;
             }
             long startTime = System.currentTimeMillis();
-            if (!jobDefinition.isClustered() || engine.getClusterService().lock(jobName)) {
+            // Need lock tracking for clustered jobs OR rate-limited jobs (to persist last run time across restarts)
+            boolean needsLockTracking = jobDefinition.isClustered() || isRateLimited();
+            if (!needsLockTracking || engine.getClusterService().lock(jobName)) {
                 try {
                     if (!running.compareAndSet(false, true)) { // This ensures this job only runs once on this instance.
                         log.info("Job '{}' is already running on another thread and will not run at this time.", getName());
@@ -202,7 +238,7 @@ abstract public class AbstractJob implements Runnable, IJob {
                         doJob(force);
                     }
                 } finally {
-                    if (jobDefinition.isClustered()) {
+                    if (needsLockTracking) {
                         engine.getClusterService().unlock(jobName);
                     }
                     lastFinishTime = new Date();
@@ -310,6 +346,28 @@ abstract public class AbstractJob implements Runnable, IJob {
         return lastFinishTime;
     }
 
+    /**
+     * Returns the effective last finish time, considering both the in-memory lastFinishTime and the persisted lock.lastLockTime. For clustered or rate-limited
+     * jobs, falls back to lock.lastLockTime when lastFinishTime is null (e.g., after restart).
+     *
+     * @return the effective last finish time, or null if neither is available
+     */
+    protected Date getEffectiveLastFinishTime() {
+        if (lastFinishTime != null) {
+            return lastFinishTime;
+        }
+        // For clustered or rate-limited jobs, fall back to lock's lastLockTime
+        if ((jobDefinition != null && jobDefinition.isClustered()) || isRateLimited()) {
+            if (engine != null) {
+                Lock lock = engine.getClusterService().findLocks().get(getName());
+                if (lock != null && lock.getLastLockTime() != null) {
+                    return lock.getLastLockTime();
+                }
+            }
+        }
+        return null;
+    }
+
     @Override
     @ManagedAttribute(description = "If true, the job is already running")
     public boolean isRunning() {
@@ -339,8 +397,8 @@ abstract public class AbstractJob implements Runnable, IJob {
 
                 @Override
                 public Instant lastCompletion() {
-                    Date lastFinishTime = getLastFinishTime();
-                    return lastFinishTime != null ? lastFinishTime.toInstant() : null;
+                    Date effectiveLastFinishTime = getEffectiveLastFinishTime();
+                    return effectiveLastFinishTime != null ? effectiveLastFinishTime.toInstant() : null;
                 }
 
                 @Override
@@ -349,10 +407,11 @@ abstract public class AbstractJob implements Runnable, IJob {
                 }
             }));
         } else if (isPeriodicSchedule()) {
-            if (getLastFinishTime() != null) {
-                return new Date(getLastFinishTime().getTime() + getTimeBetweenRunsInMs());
+            Date effectiveLastFinishTime = getEffectiveLastFinishTime();
+            if (effectiveLastFinishTime != null) {
+                return new Date(effectiveLastFinishTime.getTime() + getTimeBetweenRunsInMs());
             } else if (periodicFirstRunTime != null) {
-                return new Date(periodicFirstRunTime.getTime() + getTimeBetweenRunsInMs());
+                return periodicFirstRunTime;
             }
         }
         return null;
@@ -369,24 +428,31 @@ abstract public class AbstractJob implements Runnable, IJob {
     }
 
     public boolean isCronSchedule() {
-        return !isPeriodicSchedule();
+        return scheduleEnforcer.isCronSchedule(getSchedule());
     }
 
     public boolean isPeriodicSchedule() {
-        String schedule = getSchedule();
-        return NumberUtils.isDigits(schedule);
+        return scheduleEnforcer.isPeriodicSchedule(getSchedule());
     }
 
-    public String getSchedule() {
+    /**
+     * Returns the raw configured schedule before any minimum enforcement period.
+     */
+    protected String getConfiguredSchedule() {
         String cronSchedule = parameterService.getString(jobDefinition.getCronParameter());
         if (!StringUtils.isEmpty(cronSchedule)) {
             return cronSchedule;
         }
         String periodicSchedule = parameterService.getString(jobDefinition.getPeriodicParameter());
-        if (!StringUtils.isEmpty(periodicSchedule)) {
-            return periodicSchedule;
+        if (StringUtils.isEmpty(periodicSchedule)) {
+            periodicSchedule = jobDefinition.getDefaultSchedule();
         }
-        return jobDefinition.getDefaultSchedule();
+        return periodicSchedule;
+    }
+
+    public String getSchedule() {
+        String schedule = getConfiguredSchedule();
+        return scheduleEnforcer.enforceMinimum(schedule, getMinSchedulePeriodMs());
     }
 
     public abstract JobDefaults getDefaults();

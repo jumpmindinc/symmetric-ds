@@ -20,7 +20,7 @@
  */
 package org.jumpmind.symmetric.job;
 
-import static org.jumpmind.symmetric.job.JobDefaults.EVERY_30_SECONDS;
+import static org.jumpmind.symmetric.job.JobDefaults.EVERY_HOUR;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.service.ClusterConstants;
@@ -38,8 +38,13 @@ public class PullJob extends AbstractJob {
     public JobDefaults getDefaults() {
         return new JobDefaults()
                 .requiresRegisteration(false)
-                .schedule(EVERY_30_SECONDS)
+                .schedule(EVERY_HOUR)
                 .description("Pull data from other nodes");
+    }
+
+    @Override
+    protected long getMinSchedulePeriodMs() {
+        return Long.parseLong(EVERY_HOUR);
     }
 
     @Override
