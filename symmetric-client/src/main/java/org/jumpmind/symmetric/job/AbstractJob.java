@@ -154,7 +154,7 @@ abstract public class AbstractJob implements Runnable, IJob {
     }
 
     /**
-     * Returns the minimum allowed schedule period in milliseconds for this job. Subclasses can override this method to enforce a minimum period.
+     * Returns the minimum allowed schedule period in milliseconds for this job.
      *
      * @return the minimum period in milliseconds, or 0 if no minimum is enforced
      */
@@ -163,8 +163,7 @@ abstract public class AbstractJob implements Runnable, IJob {
     }
 
     /**
-     * Checks if this job has a minimum schedule period enforcement. Rate-limited jobs need lock tracking even when not clustered to persist last run time
-     * across restarts.
+     * Checks if this job has a minimum schedule period enforcement. Rate-limited jobs need lock tracking to persist last run time across restarts.
      *
      * @return true if the job is rate-limited, false otherwise
      */
