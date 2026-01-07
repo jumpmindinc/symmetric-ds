@@ -37,191 +37,182 @@ class ScheduleEnforcerTest {
     void setUp() {
         enforcer = new ScheduleEnforcer();
     }
-    // isPeriodicSchedule tests
 
     @Test
-    void testIsPeriodicSchedule_withDigits_returnsTrue() {
+    void testIsPeriodicSchedule_withDigits() {
         assertTrue(enforcer.isPeriodicSchedule("60000"));
     }
 
     @Test
-    void testIsPeriodicSchedule_withCron_returnsFalse() {
+    void testIsPeriodicSchedule_withCron() {
         assertFalse(enforcer.isPeriodicSchedule("0/10 * * * * *"));
     }
 
     @Test
-    void testIsPeriodicSchedule_withNull_returnsFalse() {
+    void testIsPeriodicSchedule_withNull() {
         assertFalse(enforcer.isPeriodicSchedule(null));
     }
 
     @Test
-    void testIsPeriodicSchedule_withEmpty_returnsFalse() {
+    void testIsPeriodicSchedule_withEmpty() {
         assertFalse(enforcer.isPeriodicSchedule(""));
     }
-    // isCronSchedule tests
 
     @Test
-    void testIsCronSchedule_withCron_returnsTrue() {
+    void testIsCronSchedule_withCron() {
         assertTrue(enforcer.isCronSchedule("0/10 * * * * *"));
     }
 
     @Test
-    void testIsCronSchedule_withDigits_returnsFalse() {
+    void testIsCronSchedule_withDigits() {
         assertFalse(enforcer.isCronSchedule("60000"));
     }
 
     @Test
-    void testIsCronSchedule_withNull_returnsFalse() {
+    void testIsCronSchedule_withNull() {
         assertFalse(enforcer.isCronSchedule(null));
     }
 
     @Test
-    void testIsCronSchedule_withEmpty_returnsFalse() {
+    void testIsCronSchedule_withEmpty() {
         assertFalse(enforcer.isCronSchedule(""));
     }
-    // getPeriodicIntervalMs tests
 
     @Test
-    void testGetPeriodicIntervalMs_withValidSchedule_returnsInterval() {
+    void testGetPeriodicIntervalMs_withValidSchedule() {
         assertEquals(60000L, enforcer.getPeriodicIntervalMs("60000"));
     }
 
     @Test
-    void testGetPeriodicIntervalMs_withCronSchedule_returnsNegative() {
+    void testGetPeriodicIntervalMs_withCronSchedule() {
         assertEquals(-1L, enforcer.getPeriodicIntervalMs("0/10 * * * * *"));
     }
 
     @Test
-    void testGetPeriodicIntervalMs_withNull_returnsNegative() {
+    void testGetPeriodicIntervalMs_withNull() {
         assertEquals(-1L, enforcer.getPeriodicIntervalMs(null));
     }
-    // getCronIntervalMs tests
 
     @Test
-    void testGetCronIntervalMs_every10Seconds_returns10000() {
+    void testGetCronIntervalMs_withEvery10Seconds() {
         long interval = enforcer.getCronIntervalMs("0/10 * * * * *");
         assertEquals(TEN_SECONDS_MS, interval);
     }
 
     @Test
-    void testGetCronIntervalMs_everyHour_returns3600000() {
+    void testGetCronIntervalMs_withEveryHour() {
         long interval = enforcer.getCronIntervalMs("0 0 * * * *");
         assertEquals(ONE_HOUR_MS, interval);
     }
 
     @Test
-    void testGetCronIntervalMs_invalidCron_returnsNegative() {
+    void testGetCronIntervalMs_withInvalidCron() {
         assertEquals(-1L, enforcer.getCronIntervalMs("invalid"));
     }
 
     @Test
-    void testGetCronIntervalMs_null_returnsNegative() {
+    void testGetCronIntervalMs_withNull() {
         assertEquals(-1L, enforcer.getCronIntervalMs(null));
     }
-    // getIntervalMs tests
 
     @Test
-    void testGetIntervalMs_periodicSchedule_returnsInterval() {
+    void testGetIntervalMs_withPeriodicSchedule() {
         assertEquals(60000L, enforcer.getIntervalMs("60000"));
     }
 
     @Test
-    void testGetIntervalMs_cronSchedule_returnsInterval() {
+    void testGetIntervalMs_withCronSchedule() {
         assertEquals(TEN_SECONDS_MS, enforcer.getIntervalMs("0/10 * * * * *"));
     }
 
     @Test
-    void testGetIntervalMs_null_returnsNegative() {
+    void testGetIntervalMs_withNull() {
         assertEquals(-1L, enforcer.getIntervalMs(null));
     }
-    // enforceMinimum tests - periodic schedules
 
     @Test
-    void testEnforceMinimum_periodicBelowMin_returnsMinimum() {
+    void testEnforceMinimum_withPeriodicBelowMin() {
         String result = enforcer.enforceMinimum(String.valueOf(TEN_SECONDS_MS), ONE_HOUR_MS);
         assertEquals(String.valueOf(ONE_HOUR_MS), result);
     }
 
     @Test
-    void testEnforceMinimum_periodicAboveMin_returnsOriginal() {
+    void testEnforceMinimum_withPeriodicAboveMin() {
         String result = enforcer.enforceMinimum(String.valueOf(TWO_HOURS_MS), ONE_HOUR_MS);
         assertEquals(String.valueOf(TWO_HOURS_MS), result);
     }
 
     @Test
-    void testEnforceMinimum_periodicEqualsMin_returnsOriginal() {
+    void testEnforceMinimum_withPeriodicEqualsMin() {
         String result = enforcer.enforceMinimum(String.valueOf(ONE_HOUR_MS), ONE_HOUR_MS);
         assertEquals(String.valueOf(ONE_HOUR_MS), result);
     }
 
     @Test
-    void testEnforceMinimum_noMinimum_returnsOriginal() {
+    void testEnforceMinimum_withNoMinimum() {
         String result = enforcer.enforceMinimum(String.valueOf(TEN_SECONDS_MS), 0);
         assertEquals(String.valueOf(TEN_SECONDS_MS), result);
     }
-    // enforceMinimum tests - cron schedules
 
     @Test
-    void testEnforceMinimum_cronBelowMin_returnsMinimum() {
+    void testEnforceMinimum_withCronBelowMin() {
         // Cron every 10 seconds, minimum 1 hour
         String result = enforcer.enforceMinimum("0/10 * * * * *", ONE_HOUR_MS);
         assertEquals(String.valueOf(ONE_HOUR_MS), result);
     }
 
     @Test
-    void testEnforceMinimum_cronAboveMin_returnsOriginal() {
+    void testEnforceMinimum_withCronAboveMin() {
         // Cron every 2 hours, minimum 1 hour
         String result = enforcer.enforceMinimum("0 0 0/2 * * *", ONE_HOUR_MS);
         assertEquals("0 0 0/2 * * *", result);
     }
 
     @Test
-    void testEnforceMinimum_cronNoMinimum_returnsOriginal() {
+    void testEnforceMinimum_withCronNoMinimum() {
         String result = enforcer.enforceMinimum("0/10 * * * * *", 0);
         assertEquals("0/10 * * * * *", result);
     }
-    // enforceMinimum tests - edge cases
 
     @Test
-    void testEnforceMinimum_nullSchedule_returnsNull() {
+    void testEnforceMinimum_withNullSchedule() {
         String result = enforcer.enforceMinimum(null, ONE_HOUR_MS);
         assertEquals(null, result);
     }
 
     @Test
-    void testEnforceMinimum_emptySchedule_returnsEmpty() {
+    void testEnforceMinimum_withEmptySchedule() {
         String result = enforcer.enforceMinimum("", ONE_HOUR_MS);
         assertEquals("", result);
     }
-    // wasEnforced tests
 
     @Test
-    void testWasEnforced_periodicBelowMin_returnsTrue() {
+    void testWasEnforced_withPeriodicBelowMin() {
         assertTrue(enforcer.wasEnforced(String.valueOf(TEN_SECONDS_MS), ONE_HOUR_MS));
     }
 
     @Test
-    void testWasEnforced_periodicAboveMin_returnsFalse() {
+    void testWasEnforced_withPeriodicAboveMin() {
         assertFalse(enforcer.wasEnforced(String.valueOf(TWO_HOURS_MS), ONE_HOUR_MS));
     }
 
     @Test
-    void testWasEnforced_cronBelowMin_returnsTrue() {
+    void testWasEnforced_withCronBelowMin() {
         assertTrue(enforcer.wasEnforced("0/10 * * * * *", ONE_HOUR_MS));
     }
 
     @Test
-    void testWasEnforced_cronAboveMin_returnsFalse() {
+    void testWasEnforced_withCronAboveMin() {
         assertFalse(enforcer.wasEnforced("0 0 0/2 * * *", ONE_HOUR_MS));
     }
 
     @Test
-    void testWasEnforced_noMinimum_returnsFalse() {
+    void testWasEnforced_withNoMinimum() {
         assertFalse(enforcer.wasEnforced(String.valueOf(TEN_SECONDS_MS), 0));
     }
 
     @Test
-    void testWasEnforced_nullSchedule_returnsFalse() {
+    void testWasEnforced_withNullSchedule() {
         assertFalse(enforcer.wasEnforced(null, ONE_HOUR_MS));
     }
 }
