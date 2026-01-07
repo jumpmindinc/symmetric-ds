@@ -197,7 +197,6 @@ class AbstractJobTest {
 
     @Test
     void testGetTimeBetweenRunsInMs_rateLimitedJob_enforcesMinimum() {
-        // Create a Push job which should enforce minimum schedule
         PushJob pushJob = new PushJob(engine, taskScheduler);
         pushJob.setJobDefinition(jobDefinition);
         when(parameterService.getString(anyString())).thenReturn(null);

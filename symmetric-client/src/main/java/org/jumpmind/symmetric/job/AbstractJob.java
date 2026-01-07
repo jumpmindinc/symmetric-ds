@@ -106,9 +106,9 @@ abstract public class AbstractJob implements Runnable, IJob {
                 // Log warning if minimum period enforcement was applied
                 String configuredSchedule = getConfiguredSchedule();
                 long minPeriod = getMinSchedulePeriodMs();
-                if (scheduleEnforcer.wasEnforced(configuredSchedule, minPeriod)) {
+                if (scheduleEnforcer.exceedsScheduleLimit(configuredSchedule, minPeriod)) {
                     log.warn("The configured schedule '{}' for job '{}' runs more frequently than the minimum allowed period of {}ms. " +
-                            "The minimum period will be used instead. To increase the frequency, a SymmetricDS Pro license is required.",
+                            "The minimum period will be used instead. To increase the frequency, contact SymmetricDS sales team.",
                             configuredSchedule, jobName, minPeriod);
                 }
                 if (randomTimeSlot == null) {

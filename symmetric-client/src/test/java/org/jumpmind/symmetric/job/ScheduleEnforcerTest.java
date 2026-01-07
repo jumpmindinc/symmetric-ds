@@ -187,32 +187,32 @@ class ScheduleEnforcerTest {
     }
 
     @Test
-    void testWasEnforced_withPeriodicBelowMin() {
-        assertTrue(enforcer.wasEnforced(String.valueOf(TEN_SECONDS_MS), ONE_HOUR_MS));
+    void testExceedsScheduleLimit_withPeriodicBelowMin() {
+        assertTrue(enforcer.exceedsScheduleLimit(String.valueOf(TEN_SECONDS_MS), ONE_HOUR_MS));
     }
 
     @Test
-    void testWasEnforced_withPeriodicAboveMin() {
-        assertFalse(enforcer.wasEnforced(String.valueOf(TWO_HOURS_MS), ONE_HOUR_MS));
+    void testExceedsScheduleLimit_withPeriodicAboveMin() {
+        assertFalse(enforcer.exceedsScheduleLimit(String.valueOf(TWO_HOURS_MS), ONE_HOUR_MS));
     }
 
     @Test
-    void testWasEnforced_withCronBelowMin() {
-        assertTrue(enforcer.wasEnforced("0/10 * * * * *", ONE_HOUR_MS));
+    void testExceedsScheduleLimit_withCronBelowMin() {
+        assertTrue(enforcer.exceedsScheduleLimit("0/10 * * * * *", ONE_HOUR_MS));
     }
 
     @Test
-    void testWasEnforced_withCronAboveMin() {
-        assertFalse(enforcer.wasEnforced("0 0 0/2 * * *", ONE_HOUR_MS));
+    void testExceedsScheduleLimit_withCronAboveMin() {
+        assertFalse(enforcer.exceedsScheduleLimit("0 0 0/2 * * *", ONE_HOUR_MS));
     }
 
     @Test
-    void testWasEnforced_withNoMinimum() {
-        assertFalse(enforcer.wasEnforced(String.valueOf(TEN_SECONDS_MS), 0));
+    void testExceedsScheduleLimit_withNoMinimum() {
+        assertFalse(enforcer.exceedsScheduleLimit(String.valueOf(TEN_SECONDS_MS), 0));
     }
 
     @Test
-    void testWasEnforced_withNullSchedule() {
-        assertFalse(enforcer.wasEnforced(null, ONE_HOUR_MS));
+    void testExceedsScheduleLimit_withNullSchedule() {
+        assertFalse(enforcer.exceedsScheduleLimit(null, ONE_HOUR_MS));
     }
 }

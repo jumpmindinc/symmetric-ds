@@ -148,15 +148,15 @@ public class ScheduleEnforcer {
     }
 
     /**
-     * Checks if the given schedule was enforced (i.e., the configured schedule runs more frequently than the allowed period).
+     * Checks if the given schedule exceeds the allowed frequency limit (i.e., runs more frequently than the minimum period).
      *
      * @param configuredSchedule
      *            the original configured schedule
      * @param minPeriodMs
      *            the minimum allowed period in milliseconds
-     * @return true if the schedule was enforced, false otherwise
+     * @return true if the schedule exceeds the limit, false otherwise
      */
-    public boolean wasEnforced(String configuredSchedule, long minPeriodMs) {
+    public boolean exceedsScheduleLimit(String configuredSchedule, long minPeriodMs) {
         if (minPeriodMs <= 0 || StringUtils.isEmpty(configuredSchedule)) {
             return false;
         }
