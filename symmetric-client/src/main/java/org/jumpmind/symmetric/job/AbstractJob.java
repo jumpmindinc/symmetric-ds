@@ -168,7 +168,7 @@ abstract public class AbstractJob implements Runnable, IJob {
      * @return true if the job is rate-limited, false otherwise
      */
     protected boolean isRateLimited() {
-        return getMinSchedulePeriodMs() > 0;
+        return false;
     }
 
     public boolean stop() {

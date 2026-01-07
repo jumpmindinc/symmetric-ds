@@ -48,6 +48,11 @@ public class PullJob extends AbstractJob {
     }
 
     @Override
+    protected boolean isRateLimited() {
+        return true;
+    }
+
+    @Override
     public void doJob(boolean force) throws Exception {
         engine.getPullService().pullData(force);
     }

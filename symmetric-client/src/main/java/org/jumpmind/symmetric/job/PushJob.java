@@ -47,6 +47,11 @@ public class PushJob extends AbstractJob {
     }
 
     @Override
+    protected boolean isRateLimited() {
+        return true;
+    }
+
+    @Override
     public void doJob(boolean force) throws Exception {
         if (engine != null) {
             engine.getPushService().pushData(force).getDataProcessedCount();
