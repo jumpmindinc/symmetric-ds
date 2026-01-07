@@ -107,17 +107,9 @@ abstract public class AbstractJob implements Runnable, IJob {
                 String configuredSchedule = getConfiguredSchedule();
                 long minPeriod = getMinSchedulePeriodMs();
                 if (scheduleEnforcer.wasEnforced(configuredSchedule, minPeriod)) {
-                    if (scheduleEnforcer.isPeriodicSchedule(configuredSchedule)) {
-                        log.warn("The configured schedule of {}ms for job '{}' is below the minimum allowed period of {}ms. " +
-                                "The minimum period of {}ms will be used instead. " +
-                                "To increase the frequency, a SymmetricDS Pro license is required.",
-                                configuredSchedule, jobName, minPeriod, minPeriod);
-                    } else {
-                        log.warn("The configured cron schedule '{}' for job '{}' runs more frequently than the minimum allowed period of {}ms. " +
-                                "The minimum period of {}ms will be used instead. " +
-                                "To increase the frequency, a SymmetricDS Pro license is required.",
-                                configuredSchedule, jobName, minPeriod, minPeriod);
-                    }
+                    log.warn("The configured schedule '{}' for job '{}' runs more frequently than the minimum allowed period of {}ms. " +
+                            "The minimum period will be used instead. To increase the frequency, a SymmetricDS Pro license is required.",
+                            configuredSchedule, jobName, minPeriod);
                 }
                 if (randomTimeSlot == null) {
                     this.randomTimeSlot = new RandomTimeSlot(parameterService.getExternalId(),
