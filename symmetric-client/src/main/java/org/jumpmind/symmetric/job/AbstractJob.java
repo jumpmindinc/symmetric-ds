@@ -338,7 +338,7 @@ abstract public class AbstractJob implements Runnable, IJob {
         if (lastFinishTime != null) {
             return lastFinishTime;
         }
-        // For clustered or rate-limited jobs, fall back to lock's lastLockTime
+        
         if ((jobDefinition != null && jobDefinition.isClustered()) || isRateLimited()) {
             if (engine != null) {
                 Lock lock = engine.getClusterService().findLocks().get(getName());
@@ -389,11 +389,10 @@ abstract public class AbstractJob implements Runnable, IJob {
                 }
             }));
         } else if (isPeriodicSchedule()) {
-            Date lastFinishTime = getLastFinishTime();
-            if (lastFinishTime != null) {
-                return new Date(lastFinishTime.getTime() + getTimeBetweenRunsInMs());
+            if (getLastFinishTime() != null) {
+                return new Date(getLastFinishTime().getTime() + getTimeBetweenRunsInMs());
             } else if (periodicFirstRunTime != null) {
-                return periodicFirstRunTime;
+                return new Date(periodicFirstRunTime.getTime() + getTimeBetweenRunsInMs());
             }
         }
         return null;
