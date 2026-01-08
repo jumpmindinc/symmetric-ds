@@ -88,7 +88,7 @@ abstract public class AbstractJob implements Runnable, IJob {
         if (this.scheduledJob == null && engine != null
                 && !engine.getClusterService().isInfiniteLocked(getName())) {
             if (isCronSchedule()) {
-            	// TODO: implement support for cron schedule throttling
+                // TODO: implement support for cron schedule throttling
                 String cronExpression = getSchedule();
                 cronTrigger = new CronTrigger(cronExpression);
                 log.info("Starting job '{}' on cron schedule '{}' with the first run at {}", jobName, cronExpression,
@@ -105,13 +105,7 @@ abstract public class AbstractJob implements Runnable, IJob {
                 if (timeBetweenRunsInMs <= 0) {
                     return;
                 }
-                String configuredSchedule = getConfiguredSchedule();
-                long minPeriod = getMinSchedulePeriodMs();
-                if (scheduleEnforcer.exceedsScheduleLimit(configuredSchedule, minPeriod)) {
-                    log.warn("The configured schedule '{}' for job '{}' runs more frequently than the minimum allowed period of {}ms. " +
-                            "The minimum period will be used instead. To increase the frequency, contact SymmetricDS sales team.",
-                            configuredSchedule, jobName, minPeriod);
-                }
+                logAnyScheduleViolations();
                 if (randomTimeSlot == null) {
                     this.randomTimeSlot = new RandomTimeSlot(parameterService.getExternalId(),
                             parameterService.getInt(ParameterConstants.JOB_RANDOM_MAX_START_TIME_MS));
@@ -214,9 +208,8 @@ abstract public class AbstractJob implements Runnable, IJob {
                 return false;
             }
             long startTime = System.currentTimeMillis();
-            // Need lock tracking for clustered jobs OR rate-limited jobs (to persist last run time across restarts)
-            boolean needsLockTracking = jobDefinition.isClustered() || isRateLimited();
-            if (!needsLockTracking || engine.getClusterService().lock(jobName)) {
+            boolean hasLockTracking = jobDefinition.isClustered() || isRateLimited();
+            if (!hasLockTracking || engine.getClusterService().lock(jobName)) {
                 try {
                     if (!running.compareAndSet(false, true)) { // This ensures this job only runs once on this instance.
                         log.info("Job '{}' is already running on another thread and will not run at this time.", getName());
@@ -230,7 +223,7 @@ abstract public class AbstractJob implements Runnable, IJob {
                         doJob(force);
                     }
                 } finally {
-                    if (needsLockTracking) {
+                    if (hasLockTracking) {
                         engine.getClusterService().unlock(jobName);
                     }
                     lastFinishTime = new Date();
@@ -338,7 +331,6 @@ abstract public class AbstractJob implements Runnable, IJob {
         if (lastFinishTime != null) {
             return lastFinishTime;
         }
-        
         if ((jobDefinition != null && jobDefinition.isClustered()) || isRateLimited()) {
             if (engine != null) {
                 Lock lock = engine.getClusterService().findLocks().get(getName());
@@ -429,6 +421,16 @@ abstract public class AbstractJob implements Runnable, IJob {
             return periodicSchedule;
         }
         return jobDefinition.getDefaultSchedule();
+    }
+
+    protected void logAnyScheduleViolations() {
+        String configuredSchedule = getConfiguredSchedule();
+        long minPeriod = getMinSchedulePeriodMs();
+        if (scheduleEnforcer.exceedsScheduleLimit(configuredSchedule, minPeriod)) {
+            log.warn("The configured schedule '{}' for job '{}' runs more frequently than the minimum allowed period of {}ms. " +
+                    "The minimum period will be used instead. To increase the frequency, contact SymmetricDS sales team.",
+                    configuredSchedule, jobName, minPeriod);
+        }
     }
 
     public String getSchedule() {
