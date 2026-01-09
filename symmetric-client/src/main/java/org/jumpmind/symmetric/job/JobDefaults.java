@@ -25,6 +25,7 @@ public class JobDefaults {
     public static final String EVERY_10_SECONDS = "10000";
     public static final String EVERY_30_SECONDS = "30000";
     public static final String EVERY_MINUTE = "60000";
+    public static final String EVERY_FIVE_MINUTES = "300000";
     public static final String EVERY_FIFTEEN_MINUTES = "900000";
     public static final String EVERY_HOUR = "3600000";
     public static final String EVERY_NIGHT_AT_MIDNIGHT = "0 0 0 * * *";
