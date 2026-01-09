@@ -96,7 +96,7 @@ abstract public class AbstractJob implements Runnable, IJob {
                 Instant lastCompletion = (lastLockTime != null) ? lastLockTime.toInstant() : null;
                 SimpleTriggerContext triggerContext = new SimpleTriggerContext(lastCompletion, lastCompletion, lastCompletion);
                 Instant firstRun = cronTrigger.nextExecution(triggerContext);
-                log.info("Starting job '{}' on cron schedule '{}', with the first run at {}, and last run at {}.", jobName, cronExpression,
+                log.info("Starting job '{}' on cron schedule '{}', with the first run at {}, and previous run at {}.", jobName, cronExpression,
                         Date.from(firstRun), lastLockTime);
                 try {
                     this.scheduledJob = taskScheduler.schedule(this, cronTrigger);
@@ -125,7 +125,7 @@ abstract public class AbstractJob implements Runnable, IJob {
                     }
                 }
                 periodicFirstRunTime = new Date(lastRunTime + timeBetweenRunsInMs + startDelay);
-                log.info("Starting job '{}' on periodic schedule every {}ms, with the first run at {}, and last run at {}.", jobName,
+                log.info("Starting job '{}' on periodic schedule every {}ms, with the first run at {}, and previous run at {}.", jobName,
                         timeBetweenRunsInMs, periodicFirstRunTime, lock != null ? lock.getLastLockTime() : null);
                 this.scheduledJob = taskScheduler.scheduleWithFixedDelay(this,
                         periodicFirstRunTime.toInstant(), Duration.ofMillis(timeBetweenRunsInMs));
@@ -236,7 +236,7 @@ abstract public class AbstractJob implements Runnable, IJob {
                     totalExecutionTimeInMs += lastExecutionTimeInMs;
                     numberOfRuns++;
                     running.set(false);
-                    log.debug("Job '{}' completed execution at {}, took {}ms, with the next run at {}.", jobName, lastFinishTime,
+                    log.debug("Job '{}' completed execution at {}, took {}ms, with the next run scheduled no earlier than {}.", jobName, lastFinishTime,
                             lastExecutionTimeInMs, getNextExecutionTime());
                 }
             }
