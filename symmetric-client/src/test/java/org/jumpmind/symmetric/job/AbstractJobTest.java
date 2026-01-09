@@ -112,6 +112,39 @@ class AbstractJobTest {
     void testStart_withCronSchedule_schedulesJob() {
         when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0 0 * * * *");
         when(clusterService.isInfiniteLocked(TEST_JOB_NAME)).thenReturn(false);
+        Map<String, Lock> locks = new HashMap<>();
+        when(clusterService.findLocks()).thenReturn(locks);
+        testJob.start();
+        assertTrue(testJob.isStarted());
+        verify(taskScheduler).schedule(eq(testJob), any(CronTrigger.class));
+    }
+
+    @Test
+    void testStart_withCronSchedule_usesLastLockTime() {
+        when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0 0 * * * *");
+        when(clusterService.isInfiniteLocked(TEST_JOB_NAME)).thenReturn(false);
+        Map<String, Lock> locks = new HashMap<>();
+        Lock lock = new Lock();
+        lock.setLockAction(TEST_JOB_NAME);
+        lock.setLastLockTime(new Date(System.currentTimeMillis() - 1800000)); // 30 minutes ago
+        locks.put(TEST_JOB_NAME, lock);
+        when(clusterService.findLocks()).thenReturn(locks);
+        testJob.start();
+        assertTrue(testJob.isStarted());
+        verify(taskScheduler).schedule(eq(testJob), any(CronTrigger.class));
+        verify(clusterService).findLocks();
+    }
+
+    @Test
+    void testStart_withCronSchedule_noLastLockTime() {
+        when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0 0 * * * *");
+        when(clusterService.isInfiniteLocked(TEST_JOB_NAME)).thenReturn(false);
+        Map<String, Lock> locks = new HashMap<>();
+        Lock lock = new Lock();
+        lock.setLockAction(TEST_JOB_NAME);
+        lock.setLastLockTime(null);
+        locks.put(TEST_JOB_NAME, lock);
+        when(clusterService.findLocks()).thenReturn(locks);
         testJob.start();
         assertTrue(testJob.isStarted());
         verify(taskScheduler).schedule(eq(testJob), any(CronTrigger.class));

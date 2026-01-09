@@ -87,12 +87,17 @@ abstract public class AbstractJob implements Runnable, IJob {
     public void start() {
         if (this.scheduledJob == null && engine != null
                 && !engine.getClusterService().isInfiniteLocked(getName())) {
+            logAnyScheduleViolations();
             if (isCronSchedule()) {
-                // TODO: implement support for cron schedule throttling
                 String cronExpression = getSchedule();
                 cronTrigger = new CronTrigger(cronExpression);
+                Lock lock = engine.getClusterService().findLocks().get(getName());
+                Date lastLockTime = (lock != null) ? lock.getLastLockTime() : null;
+                Instant lastCompletion = (lastLockTime != null) ? lastLockTime.toInstant() : null;
+                SimpleTriggerContext triggerContext = new SimpleTriggerContext(lastCompletion, lastCompletion, lastCompletion);
+                Instant firstRun = cronTrigger.nextExecution(triggerContext);
                 log.info("Starting job '{}' on cron schedule '{}' with the first run at {}", jobName, cronExpression,
-                        Date.from(cronTrigger.nextExecution(new SimpleTriggerContext())));
+                        Date.from(firstRun));
                 try {
                     this.scheduledJob = taskScheduler.schedule(this, cronTrigger);
                 } catch (Exception ex) {
@@ -105,7 +110,6 @@ abstract public class AbstractJob implements Runnable, IJob {
                 if (timeBetweenRunsInMs <= 0) {
                     return;
                 }
-                logAnyScheduleViolations();
                 if (randomTimeSlot == null) {
                     this.randomTimeSlot = new RandomTimeSlot(parameterService.getExternalId(),
                             parameterService.getInt(ParameterConstants.JOB_RANDOM_MAX_START_TIME_MS));
