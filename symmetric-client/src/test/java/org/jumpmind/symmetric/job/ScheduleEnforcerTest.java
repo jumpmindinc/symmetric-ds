@@ -31,6 +31,7 @@ class ScheduleEnforcerTest {
     private static final long ONE_HOUR_MS = 3600000L;
     private static final long TEN_SECONDS_MS = 10000L;
     private static final long TWO_HOURS_MS = 7200000L;
+    private static final long ONE_DAY_MS = 86400000L;
     private ScheduleEnforcer enforcer;
 
     @BeforeEach
@@ -106,6 +107,13 @@ class ScheduleEnforcerTest {
     }
 
     @Test
+    void testGetCronIntervalMs_withDailyAt1AM() {
+        // Cron "0 0 1 * * *" runs at 1:00 AM every day = 24 hour interval
+        long interval = enforcer.getCronIntervalMs("0 0 1 * * *");
+        assertEquals(ONE_DAY_MS, interval);
+    }
+
+    @Test
     void testGetCronIntervalMs_withInvalidCron() {
         assertEquals(-1L, enforcer.getCronIntervalMs("invalid"));
     }
@@ -169,6 +177,13 @@ class ScheduleEnforcerTest {
     }
 
     @Test
+    void testEnforceMinimum_withCronDailyAt1AM() {
+        // Cron at 1:00 AM daily (24 hour interval), minimum 1 hour - should not be throttled
+        String result = enforcer.enforceMinimum("0 0 1 * * *", ONE_HOUR_MS);
+        assertEquals("0 0 1 * * *", result);
+    }
+
+    @Test
     void testEnforceMinimum_withCronNoMinimum() {
         String result = enforcer.enforceMinimum("0/10 * * * * *", 0);
         assertEquals("0/10 * * * * *", result);
@@ -204,6 +219,12 @@ class ScheduleEnforcerTest {
     @Test
     void testExceedsScheduleLimit_withCronAboveMin() {
         assertFalse(enforcer.exceedsScheduleLimit("0 0 0/2 * * *", ONE_HOUR_MS));
+    }
+
+    @Test
+    void testExceedsScheduleLimit_withCronDailyAt1AM() {
+        // Cron at 1:00 AM daily (24 hour interval) should not exceed 1 hour minimum
+        assertFalse(enforcer.exceedsScheduleLimit("0 0 1 * * *", ONE_HOUR_MS));
     }
 
     @Test
