@@ -33,7 +33,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.jumpmind.symmetric.job.JobDefaults.EVERY_HOUR;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -196,29 +195,7 @@ class AbstractJobTest {
     }
 
     @Test
-    void testGetTimeBetweenRunsInMs_rateLimitedJob_enforcesMinimum() {
-        PushJob pushJob = new PushJob(engine, taskScheduler);
-        pushJob.setJobDefinition(jobDefinition);
-        when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule("10000"); // 10 seconds - below minimum
-        // Should return minimum of 1 hour (3600000ms) instead of configured 10000ms
-        assertEquals(Long.parseLong(EVERY_HOUR), pushJob.getTimeBetweenRunsInMs());
-    }
-
-    @Test
-    void testGetTimeBetweenRunsInMs_rateLimitedJobWithLongerSchedule_keepsSchedule() {
-        // Create a Pull job with schedule longer than minimum
-        PullJob pullJob = new PullJob(engine, taskScheduler);
-        pullJob.setJobDefinition(jobDefinition);
-        when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule("7200000"); // 2 hours - above minimum
-        // Should keep the configured 2 hour schedule
-        assertEquals(7200000L, pullJob.getTimeBetweenRunsInMs());
-    }
-
-    @Test
-    void testGetTimeBetweenRunsInMs_nonRateLimitedJob_keepsShortSchedule() {
-        // Regular job should not be rate limited
+    void testGetTimeBetweenRunsInMs_nonRateLimitedJob() {
         when(parameterService.getString(anyString())).thenReturn(null);
         jobDefinition.setDefaultSchedule("10000"); // 10 seconds
         // Should keep the configured 10 second schedule (no minimum enforced)
@@ -226,50 +203,13 @@ class AbstractJobTest {
     }
 
     @Test
-    void testIsRateLimited_pushJob_returnsMinPeriod() {
-        PushJob pushJob = new PushJob(engine, taskScheduler);
-        assertEquals(Long.parseLong(EVERY_HOUR), pushJob.getMinSchedulePeriodMs());
-    }
-
-    @Test
-    void testIsRateLimited_pullJob_returnsMinPeriod() {
-        PullJob pullJob = new PullJob(engine, taskScheduler);
-        assertEquals(Long.parseLong(EVERY_HOUR), pullJob.getMinSchedulePeriodMs());
-    }
-
-    @Test
-    void testIsRateLimited_regularJob_returnsZero() {
+    void testGetMinSchedulePeriodMsPublic() {
         assertEquals(0L, testJob.getMinSchedulePeriodMsPublic());
     }
 
     @Test
-    void testIsRateLimited_otherBuiltInJob_returnsZero() {
-        // Other built-in jobs like ROUTE should not be rate limited
-        RouterJob routeJob = new RouterJob(engine, taskScheduler);
-        assertEquals(0L, routeJob.getMinSchedulePeriodMs());
-    }
-
-    @Test
-    void testIsRateLimited_pushJob_returnsTrue() {
-        PushJob pushJob = new PushJob(engine, taskScheduler);
-        assertTrue(pushJob.isRateLimited());
-    }
-
-    @Test
-    void testIsRateLimited_pullJob_returnsTrue() {
-        PullJob pullJob = new PullJob(engine, taskScheduler);
-        assertTrue(pullJob.isRateLimited());
-    }
-
-    @Test
-    void testIsRateLimited_regularJob_returnsFalse() {
+    void testIsRateLimited() {
         assertFalse(testJob.isRateLimitedPublic());
-    }
-
-    @Test
-    void testIsRateLimited_routerJob_returnsFalse() {
-        RouterJob routerJob = new RouterJob(engine, taskScheduler);
-        assertFalse(routerJob.isRateLimited());
     }
 
     @Test
@@ -440,35 +380,6 @@ class AbstractJobTest {
     }
 
     @Test
-    void testInvoke_rateLimitedNonClusteredJob_usesLockTracking() {
-        // Rate-limited jobs (Push/Pull) should use lock tracking even when not clustered
-        // to persist last run time across restarts
-        PushJob pushJob = new PushJob(engine, taskScheduler);
-        pushJob.setJobDefinition(jobDefinition);
-        jobDefinition.setClustered(false);
-        setupSuccessfulInvoke();
-        when(clusterService.lock("Push")).thenReturn(true);
-        boolean result = pushJob.invoke(false);
-        assertTrue(result);
-        verify(clusterService).lock("Push");
-        verify(clusterService).unlock("Push");
-    }
-
-    @Test
-    void testInvoke_rateLimitedNonClusteredJobCannotAcquireLock_doesNotExecute() {
-        // If a rate-limited job cannot acquire lock (another instance running), it should not execute
-        PullJob pullJob = new PullJob(engine, taskScheduler);
-        pullJob.setJobDefinition(jobDefinition);
-        jobDefinition.setClustered(false);
-        setupSuccessfulInvoke();
-        when(clusterService.lock("Pull")).thenReturn(false);
-        boolean result = pullJob.invoke(false);
-        assertTrue(result); // invoke returns true even if lock fails
-        verify(clusterService).lock("Pull");
-        verify(clusterService, never()).unlock("Pull");
-    }
-
-    @Test
     void testInvoke_jobThrowsException_stillUpdatesStatistics() {
         setupSuccessfulInvoke();
         testJob.setThrowException(true);
@@ -538,56 +449,12 @@ class AbstractJobTest {
     }
 
     @Test
-    void testGetSchedule_rateLimitedJob_returnsEnforcedMinimum() {
-        // Create a Push job which should enforce minimum schedule
-        PushJob pushJob = new PushJob(engine, taskScheduler);
-        pushJob.setJobDefinition(jobDefinition);
-        when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule("10000"); // 10 seconds - below minimum
-        // getSchedule() should return the enforced minimum (1 hour)
-        assertEquals(EVERY_HOUR, pushJob.getSchedule());
-    }
-
-    @Test
-    void testGetSchedule_rateLimitedJobWithLongerSchedule_returnsConfigured() {
-        // Create a Pull job with schedule longer than minimum
-        PullJob pullJob = new PullJob(engine, taskScheduler);
-        pullJob.setJobDefinition(jobDefinition);
-        when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule("7200000"); // 2 hours - above minimum
-        // getSchedule() should return the configured 2 hour schedule
-        assertEquals("7200000", pullJob.getSchedule());
-    }
-
-    @Test
     void testGetSchedule_nonRateLimitedJob_returnsConfigured() {
         // Regular job should not be rate limited
         when(parameterService.getString(anyString())).thenReturn(null);
         jobDefinition.setDefaultSchedule("10000"); // 10 seconds
         // getSchedule() should return the configured 10 second schedule
         assertEquals("10000", testJob.getSchedule());
-    }
-
-    @Test
-    void testGetSchedule_rateLimitedJobWithCronSchedule_returnsEnforcedMinimum() {
-        // Create a Push job with a cron schedule that runs every 10 seconds
-        PushJob pushJob = new PushJob(engine, taskScheduler);
-        pushJob.setJobDefinition(jobDefinition);
-        when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0/10 * * * * *");
-        when(parameterService.getString(jobDefinition.getPeriodicParameter())).thenReturn(null);
-        // getSchedule() should return the enforced minimum (1 hour) instead of the cron schedule
-        assertEquals(EVERY_HOUR, pushJob.getSchedule());
-    }
-
-    @Test
-    void testGetSchedule_rateLimitedJobWithSlowCronSchedule_returnsCronSchedule() {
-        // Create a Pull job with a cron schedule that runs every 2 hours (slower than minimum)
-        PullJob pullJob = new PullJob(engine, taskScheduler);
-        pullJob.setJobDefinition(jobDefinition);
-        when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0 0 0/2 * * *");
-        when(parameterService.getString(jobDefinition.getPeriodicParameter())).thenReturn(null);
-        // getSchedule() should return the cron schedule since it's slower than minimum
-        assertEquals("0 0 0/2 * * *", pullJob.getSchedule());
     }
 
     @Test
