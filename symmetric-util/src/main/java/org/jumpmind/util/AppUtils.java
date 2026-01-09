@@ -41,6 +41,7 @@ import java.util.zip.ZipInputStream;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.FastDateFormat;
 import org.jumpmind.exception.IoException;
 import org.slf4j.Logger;
@@ -58,6 +59,9 @@ public class AppUtils {
     public static final String OS_COMMAND_HOSTNAME = "hostname";
     private static String UNKNOWN = "unknown";
     private static String DEFAULT_LOCALHOST = "localhost";
+    private static String IPV4_LOOPBACK = "127.0.0.1";
+    private static String IPV6_LOOPBACK = "0:0:0:0:0:0:0:1";
+    private static String IPV6_LOOPBACK_SHORT = "::1";
     static String hostName = DEFAULT_LOCALHOST;
     private static Logger log = LoggerFactory.getLogger(AppUtils.class);
     private static FastDateFormat timezoneFormatter = FastDateFormat.getInstance("Z");
@@ -124,6 +128,10 @@ public class AppUtils {
             log.error("Failed to identify hostname (using " + DEFAULT_LOCALHOST + " instead): " + ex.getMessage());
         }
         return hostName;
+    }
+
+    public static boolean isLocalHostLoopback(String hostName) {
+        return Strings.CI.equalsAny(hostName, DEFAULT_LOCALHOST, IPV4_LOOPBACK, IPV6_LOOPBACK, IPV6_LOOPBACK_SHORT);
     }
 
     public static String fetchHostNameFromJvm() {
