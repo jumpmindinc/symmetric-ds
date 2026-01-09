@@ -22,6 +22,8 @@ package org.jumpmind.symmetric.job;
 
 import static org.jumpmind.symmetric.job.JobDefaults.EVERY_HOUR;
 
+import java.time.LocalDateTime;
+
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -54,6 +56,7 @@ public class PullJob extends AbstractJob {
 
     @Override
     public void doJob(boolean force) throws Exception {
+        log.debug("{} executing at {}", this.getClass().getSimpleName(), LocalDateTime.now());
         engine.getPullService().pullData(force);
     }
 }
