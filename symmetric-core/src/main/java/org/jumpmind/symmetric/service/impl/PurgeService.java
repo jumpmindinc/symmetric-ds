@@ -826,7 +826,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
     }
 
     private long purgeIncomingError() {
-        log.info("Purging incoming error rows");
+        log.info("Purging incoming_error table");
         long rowCount = 0;
         if (getSymmetricDialect().supportsSubselectsInDelete()) {
             rowCount = sqlTemplate.update(getSql("deleteIncomingErrorsSql"));
@@ -834,7 +834,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
             rowCount = selectIdsAndDelete(getSql("selectIncomingErrorsBatchIdsSql"),
                     "batch_id", getSql("deleteIncomingErrorsBatchIdsSql"));
         }
-        log.info("Purged {} incoming error rows", rowCount);
+        log.info("Purged {} rows from incoming_error", rowCount);
         return rowCount;
     }
 

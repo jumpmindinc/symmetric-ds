@@ -85,7 +85,7 @@ public class BshColumnTransform extends AbstractColumnTransform implements ISing
             DataContext context,
             TransformColumn column, TransformedData data, Map<String, String> sourceValues,
             String newValue, String oldValue) throws IgnoreColumnException, IgnoreRowException {
-        String transformBeanshellInfo = "";
+        String transformBeanshellInfo = "", targetTableName = "";
         try {
             transformBeanshellInfo = String.format("transform script for column %s, transform_id=%s, BSH=", column.getTargetColumnName(), column
                     .getTransformId());
@@ -102,7 +102,8 @@ public class BshColumnTransform extends AbstractColumnTransform implements ISing
             if (csvData != null && csvData.getTriggerHistory() != null) {
                 interpreter.set("sourceSchemaName", csvData.getTriggerHistory().getSourceSchemaName());
                 interpreter.set("sourceCatalogName", csvData.getTriggerHistory().getSourceCatalogName());
-                interpreter.set("sourceTableName", csvData.getTriggerHistory().getSourceTableName());
+                targetTableName = csvData.getTriggerHistory().getSourceTableName();
+                interpreter.set("sourceTableName", targetTableName);
             }
             for (String columnName : sourceValues.keySet()) {
                 interpreter.set(columnName.toUpperCase(), sourceValues.get(columnName));
@@ -136,7 +137,7 @@ public class BshColumnTransform extends AbstractColumnTransform implements ISing
                 String transformBeanshellBody = String.format("%s {\n%s\n}", methodName, transformExpression);
                 interpreter.eval(transformBeanshellBody);
                 transformBeanshellInfo += "\n" + transformBeanshellBody;
-                log.debug("Combined {}", transformBeanshellInfo);
+                log.debug("Combined BSH script {}", transformBeanshellInfo);
                 context.put(methodName, Boolean.TRUE);
             }
             Object result = interpreter.eval(methodName);
@@ -163,26 +164,42 @@ public class BshColumnTransform extends AbstractColumnTransform implements ISing
             }
         } catch (TargetError evalEx) {
             Throwable ex = evalEx.getTarget();
-            log.error("TargetError detected for " + transformBeanshellInfo, ex);
             if (ex instanceof IgnoreColumnException) {
+                if (log.isDebugEnabled()) {
+                    String details = String.format("Detected IgnoreColumnException for target column %s (table %s) on transform \"%s\" \n%s",
+                            column.getTargetColumnName(), targetTableName, column.getTransformId(), transformBeanshellInfo);
+                    log.debug(details, ex);
+                }
                 throw (IgnoreColumnException) ex;
             } else if (ex instanceof IgnoreRowException) {
+                if (log.isDebugEnabled()) {
+                    String details = String.format("Detected IgnoreRowException for target column %s (table %s) on transform \"%s\" \n%s",
+                            column.getTargetColumnName(), targetTableName, column.getTransformId(), transformBeanshellInfo);
+                    log.debug(details, ex);
+                }
                 throw (IgnoreRowException) ex;
             } else {
-                throw new TransformColumnException(String.format("Beanshell script error on line %d for target column %s on transform %s", evalEx
-                        .getErrorLineNumber(), column.getTargetColumnName(),
-                        column.getTransformId()), ex);
+                String errorDetails = String.format("Beanshell script error on line %d for target column %s (table %s) on transform \"%s\"",
+                        evalEx.getErrorLineNumber(), column.getTargetColumnName(), targetTableName, column.getTransformId());
+                log.error("Detected " + errorDetails + "\n" + transformBeanshellInfo, ex);
+                throw new TransformColumnException(errorDetails, ex);
             }
         } catch (Exception ex) {
-            log.error("Exception detected for " + transformBeanshellInfo, ex);
+
             if (ex instanceof IgnoreColumnException) {
+                if (log.isDebugEnabled()) {
+                    log.debug("IgnoreColumnException detected for " + transformBeanshellInfo, ex);
+                }
                 throw (IgnoreColumnException) ex;
             } else if (ex instanceof IgnoreRowException) {
+                if (log.isDebugEnabled()) {
+                    log.debug("IgnoreRowException detected for " + transformBeanshellInfo, ex);
+                }
                 throw (IgnoreRowException) ex;
             } else {
-                log.error(String.format("Beanshell script error for target column %s on transform %s", column.getTargetColumnName(),
-                        column.getTransformId()), ex);
-                log.error("Beanshell script failed.\n%s", transformBeanshellInfo);
+                String errorDetails = String.format("Beanshell transform error for target column %s (table %s) on transform \"%s\"",
+                        column.getTargetColumnName(), targetTableName, column.getTransformId());
+                log.error("Detected " + errorDetails + "\n" + transformBeanshellInfo, ex);
                 throw new TransformColumnException(ex);
             }
         }
