@@ -185,7 +185,6 @@ public class BshColumnTransform extends AbstractColumnTransform implements ISing
                 throw new TransformColumnException(errorDetails, ex);
             }
         } catch (Exception ex) {
-
             if (ex instanceof IgnoreColumnException) {
                 if (log.isDebugEnabled()) {
                     log.debug("IgnoreColumnException detected for " + transformBeanshellInfo, ex);
