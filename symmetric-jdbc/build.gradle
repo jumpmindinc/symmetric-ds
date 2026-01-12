@@ -42,9 +42,4 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation "org.apache.hive:hive-jdbc:4.0.1:standalone"
         testImplementation "com.databricks:databricks-jdbc:2.7.3"
         testImplementation "com.sap.cloud.db.jdbc:ngdbc:2.24.8"
-        
-        implementation 'software.amazon.awssdk:s3:2.40.12'
-	    implementation 'software.amazon.awssdk:redshift:2.40.12'	
-	    
-        
-    }
+}

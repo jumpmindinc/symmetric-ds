@@ -301,7 +301,9 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             String filePath = file.getParentFile().getPath().replace('\\', '/');
             String fileName = file.getName();
             String nodeId = null;
-            if (engine.getParameterService().is(ParameterConstants.FILE_SYNC_PREVENT_PING_BACK)) {
+            if (fileSnapshot.getLastUpdateBy() != null) {
+            	nodeId = fileSnapshot.getLastUpdateBy();
+            } else if (engine.getParameterService().is(ParameterConstants.FILE_SYNC_PREVENT_PING_BACK)) {
                 nodeId = findSourceNodeIdFromFileIncoming(filePath,
                         fileName, fileSnapshot.getFileModifiedTime());
             }
@@ -1082,6 +1084,8 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                                     }
                                 }
                                 try {
+                                	//log.info("SCRIPT : " + script);
+                                    
                                     @SuppressWarnings("unchecked")
                                     Map<String, String> filesToEventType = (Map<String, String>) interpreter
                                             .eval(script);
