@@ -151,6 +151,24 @@ class AbstractJobTest {
     }
 
     @Test
+    void testStart_withCronSchedule_lastLockTimeInDistantPast_schedulesForFuture() {
+        when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0 5 * * * *"); // Every hour at 5 minutes past
+        when(clusterService.isInfiniteLocked(TEST_JOB_NAME)).thenReturn(false);
+        Map<String, Lock> locks = new HashMap<>();
+        Lock lock = new Lock();
+        lock.setLockAction(TEST_JOB_NAME);
+        // Set last lock time to 3 days ago - simulating a node that was down
+        long threeDaysAgo = System.currentTimeMillis() - (3L * 24 * 60 * 60 * 1000);
+        lock.setLastLockTime(new Date(threeDaysAgo));
+        locks.put(TEST_JOB_NAME, lock);
+        when(clusterService.findLocks()).thenReturn(locks);
+        testJob.start();
+        assertTrue(testJob.isStarted());
+        verify(taskScheduler).schedule(eq(testJob), any(CronTrigger.class));
+        verify(clusterService).findLocks();
+    }
+
+    @Test
     void testStart_whenInfiniteLocked_doesNotStart() {
         when(clusterService.isInfiniteLocked(TEST_JOB_NAME)).thenReturn(true);
         testJob.start();

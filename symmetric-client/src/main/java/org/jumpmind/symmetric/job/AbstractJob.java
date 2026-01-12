@@ -95,7 +95,11 @@ abstract public class AbstractJob implements Runnable, IJob {
                 Date lastLockTime = (lock != null) ? lock.getLastLockTime() : null;
                 Instant lastCompletion = (lastLockTime != null) ? lastLockTime.toInstant() : null;
                 SimpleTriggerContext triggerContext = new SimpleTriggerContext(lastCompletion, lastCompletion, lastCompletion);
-                Instant firstRun = cronTrigger.nextExecution(triggerContext);
+                Instant firstRunCouldBeInPast = cronTrigger.nextExecution(triggerContext);
+                Instant now = Instant.now();
+                Instant firstRun = (firstRunCouldBeInPast != null && firstRunCouldBeInPast.isBefore(now))
+                        ? cronTrigger.nextExecution(new SimpleTriggerContext(now, now, now))
+                        : firstRunCouldBeInPast;
                 log.info("Starting job '{}' on cron schedule '{}', with the first run at {}, and previous run at {}.", jobName, cronExpression,
                         Date.from(firstRun), lastLockTime);
                 try {
