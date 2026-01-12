@@ -347,6 +347,8 @@ public class SnapshotUtil {
         extract(export, new File(exportDir, "compare_table_status.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_COMPARE_TABLE_STATUS));
         extract(export, new File(exportDir, "table_group.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_GROUP));
         extract(export, new File(exportDir, "table_group_hier.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_GROUP_HIER));
+        extract(export, new File(exportDir, "console_role.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE));
+        extract(export, new File(exportDir, "console_role_privilege.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE_PRIVILEGE));
         log.info("Writing runtime data - parameters");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         try {
