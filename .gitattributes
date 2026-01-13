@@ -8,7 +8,7 @@
 *.gitattributes text
 .gitignore text
 *.md text diff=markdown
-
+*.MD text diff=markdown
 
 # Java sources
 *.java text diff=java
