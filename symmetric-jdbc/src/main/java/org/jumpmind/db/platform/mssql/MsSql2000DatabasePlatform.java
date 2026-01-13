@@ -154,7 +154,13 @@ public class MsSql2000DatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     private String formatTimeValue(String t) {
-        return t == null ? null : t.substring(0, t.indexOf(".") > 0 ? t.indexOf(".") : t.length());
+        if (t == null) {
+            return null;
+        }
+        if (t.indexOf(" ") > 0) {
+            t = t.substring(t.indexOf(" ") + 1, t.length());
+        }
+        return t.substring(0, t.indexOf(".") > 0 ? t.indexOf(".") : t.length());
     }
 
     @Override
