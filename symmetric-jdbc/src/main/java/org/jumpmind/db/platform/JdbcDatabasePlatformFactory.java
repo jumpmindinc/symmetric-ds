@@ -314,7 +314,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
                 }
             } else if (majorVersion >= 23) {
                 if (isOracle122Compatible(connection)) {
-                    nameVersion.setName(DatabaseNamesConstants.ORACLE23);
+                    nameVersion.setVersion(23);
                 }
             }
         }
