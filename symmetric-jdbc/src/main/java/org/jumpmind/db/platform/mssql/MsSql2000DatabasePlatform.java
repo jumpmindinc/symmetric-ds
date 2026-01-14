@@ -153,7 +153,7 @@ public class MsSql2000DatabasePlatform extends AbstractJdbcDatabasePlatform {
         }
     }
 
-    private String formatTimeValue(String t) {
+    protected String formatTimeValue(String t) {
         if (t == null) {
             return null;
         }
