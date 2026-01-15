@@ -2730,11 +2730,18 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
     public void initCteExpression() {
     }
 
+    @Override
     public String getTriggerDelimiterReplacementCharacters() {
         return triggerDelimiterReplacementCharacters;
     }
 
+    @Override
     public void setTriggerDelimiterReplacementCharacters(String triggerDelimiterReplacementCharacters) {
         this.triggerDelimiterReplacementCharacters = triggerDelimiterReplacementCharacters;
+    }
+
+    @Override
+    public String getCteExpressionPrefix() {
+        return "";
     }
 }

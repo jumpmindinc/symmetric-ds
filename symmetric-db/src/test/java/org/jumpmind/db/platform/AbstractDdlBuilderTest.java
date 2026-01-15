@@ -42,9 +42,6 @@ import org.jumpmind.db.platform.hsqldb.HsqlDbDdlBuilder;
 import org.jumpmind.db.platform.hsqldb2.HsqlDb2DdlBuilder;
 import org.jumpmind.db.platform.informix.InformixDdlBuilder;
 import org.jumpmind.db.platform.interbase.InterbaseDdlBuilder;
-import org.jumpmind.db.platform.mssql.MsSql2000DdlBuilder;
-import org.jumpmind.db.platform.mssql.MsSql2005DdlBuilder;
-import org.jumpmind.db.platform.mssql.MsSql2008DdlBuilder;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.platform.nuodb.NuoDbDdlBuilder;
 import org.jumpmind.db.platform.oracle.OracleDdlBuilder;
@@ -59,7 +56,7 @@ import org.junit.jupiter.api.Test;
 
 public class AbstractDdlBuilderTest {
     AbstractDdlBuilder[] ddlBuilders;
-    DdlBuilderForeignKeySupport[] foreignKeyDdlBuilders;
+    protected DdlBuilderForeignKeySupport[] foreignKeyDdlBuilders;
     private Database database;
 
     public class DdlBuilderForeignKeySupport {
@@ -180,7 +177,7 @@ public class AbstractDdlBuilderTest {
         database.addTable(t10);
     }
 
-    private void buildForeignKeyDdlBuilders() {
+    protected void buildForeignKeyDdlBuilders() {
         foreignKeyDdlBuilders = new DdlBuilderForeignKeySupport[] {
                 // Sybase
                 new DdlBuilderForeignKeySupport(new AseDdlBuilder(),
@@ -244,24 +241,7 @@ public class AbstractDdlBuilderTest {
                                 ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL },
                         true, new ForeignKeyAction[] {
                                 ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL }),
-                // MSsql 2000
-                new DdlBuilderForeignKeySupport(new MsSql2000DdlBuilder(),
-                        true, new ForeignKeyAction[] {
-                                ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL },
-                        true, new ForeignKeyAction[] {
-                                ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL }),
-                // MSsql 2005
-                new DdlBuilderForeignKeySupport(new MsSql2005DdlBuilder(),
-                        true, new ForeignKeyAction[] {
-                                ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL },
-                        true, new ForeignKeyAction[] {
-                                ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL }),
-                // MSsql 2008
-                new DdlBuilderForeignKeySupport(new MsSql2008DdlBuilder(),
-                        true, new ForeignKeyAction[] {
-                                ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL },
-                        true, new ForeignKeyAction[] {
-                                ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL }),
+
                 // MySql
                 new DdlBuilderForeignKeySupport(new MySqlDdlBuilder(),
                         true, new ForeignKeyAction[] {

@@ -73,10 +73,6 @@ import org.jumpmind.db.platform.ingres.IngresDatabasePlatform;
 import org.jumpmind.db.platform.interbase.InterbaseDatabasePlatform;
 import org.jumpmind.db.platform.kafka.KafkaPlatform;
 import org.jumpmind.db.platform.mariadb.MariaDBDatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2000DatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2005DatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2008DatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2016DatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
 import org.jumpmind.db.platform.nuodb.NuoDbDatabasePlatform;
 import org.jumpmind.db.platform.oracle.Oracle122DatabasePlatform;
@@ -105,7 +101,7 @@ import org.slf4j.LoggerFactory;
  */
 public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
     public static final String JDBC_PREFIX = "jdbc:";
-    private static final Logger log = LoggerFactory.getLogger(JdbcDatabasePlatformFactory.class);
+    protected static final Logger log = LoggerFactory.getLogger(JdbcDatabasePlatformFactory.class);
     /* The database name -> platform map. */
     protected Map<String, Class<? extends IDatabasePlatform>> platforms = new HashMap<String, Class<? extends IDatabasePlatform>>();
     /* Maps the sub-protocol part of a jdbc connection url to platform */
@@ -133,12 +129,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         addPlatform(platforms, DatabaseNamesConstants.INFORMIX, InformixDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.INTERBASE, InterbaseDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.KAFKA, KafkaPlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.MSSQL, MsSql2000DatabasePlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.MSSQL2000, MsSql2000DatabasePlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.MSSQL2005, MsSql2005DatabasePlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.MSSQL2008, MsSql2008DatabasePlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.MSSQL2016, MsSql2016DatabasePlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.MSSQLAZURE, MsSql2016DatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.MYSQL, MySqlDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.NUODB, NuoDbDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.ORACLE, OracleDatabasePlatform.class);
@@ -155,12 +145,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         /**
          * Match on name + version to get a specific version
          */
-        addPlatform(platforms, "microsoft sql server8", MsSql2000DatabasePlatform.class);
-        addPlatform(platforms, "microsoft sql server9", MsSql2005DatabasePlatform.class);
-        addPlatform(platforms, "microsoft sql server10", MsSql2008DatabasePlatform.class);
-        addPlatform(platforms, "microsoft sql server11", MsSql2008DatabasePlatform.class);
-        addPlatform(platforms, "microsoft sql server12", MsSql2008DatabasePlatform.class);
-        addPlatform(platforms, "microsoft sql server13", MsSql2016DatabasePlatform.class);
         addPlatform(platforms, "HSQL Database Engine2", HsqlDb2DatabasePlatform.class);
         /**
          * Match on database product name when sub-protocol is used by different platforms
@@ -168,7 +152,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         addPlatform(platforms, "Adaptive Server Enterprise", AseDatabasePlatform.class);
         addPlatform(platforms, "Adaptive Server Anywhere", SqlAnywhereDatabasePlatform.class);
         addPlatform(platforms, "SQL Anywhere", SqlAnywhereDatabasePlatform.class);
-        addPlatform(platforms, "Microsoft SQL Server", MsSql2016DatabasePlatform.class);
         /**
          * Matching on sub-protocol is usually enough to find platform
          */
@@ -184,7 +167,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         jdbcSubProtocolToPlatform.put(IngresDatabasePlatform.JDBC_SUBPROTOCOL, IngresDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(InterbaseDatabasePlatform.JDBC_SUBPROTOCOL, InterbaseDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(MariaDBDatabasePlatform.JDBC_SUBPROTOCOL, MariaDBDatabasePlatform.class);
-        jdbcSubProtocolToPlatform.put(MsSql2000DatabasePlatform.JDBC_SUBPROTOCOL, MsSql2000DatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(MySqlDatabasePlatform.JDBC_SUBPROTOCOL, MySqlDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(NuoDbDatabasePlatform.JDBC_SUBPROTOCOL, NuoDbDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(OracleDatabasePlatform.JDBC_SUBPROTOCOL_THIN, OracleDatabasePlatform.class);
@@ -205,6 +187,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         return instance;
     }
 
+    @Override
     public synchronized IDatabasePlatform create(DataSource dataSource, SqlTemplateSettings settings, boolean delimitedIdentifierMode,
             boolean caseSensitive)
             throws DdlException {
@@ -220,6 +203,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
      * 
      * @return The platform or <code>null</code> if the database is not supported
      */
+    @Override
     public synchronized IDatabasePlatform create(DataSource dataSource, SqlTemplateSettings settings, boolean delimitedIdentifierMode,
             boolean caseSensitive, boolean isLoadOnly, boolean isLogBased)
             throws DdlException {
@@ -267,6 +251,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         return platformClass;
     }
 
+    @Override
     public DatabaseVersion determineDatabaseNameVersionSubprotocol(DataSource dataSource) {
         DatabaseVersion nameVersion = new DatabaseVersion();
         try (Connection connection = dataSource.getConnection()) {
@@ -324,14 +309,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
                 }
             }
         }
-        if (nameVersion.getProtocol().equalsIgnoreCase(MsSql2016DatabasePlatform.JDBC_SUBPROTOCOL)) {
-            int engineEdition = getMsSqlEngineEdition(connection);
-            if (isMSSQLAzureManagedInstance(engineEdition)) {
-                nameVersion.setName(DatabaseNamesConstants.MSSQLAZURE);
-            } else if (engineEdition >= 5) {
-                nameVersion.setName(DatabaseNamesConstants.MSSQL2016);
-            }
-        }
         if (nameVersion.getProtocol().equalsIgnoreCase(SqlAnywhereDatabasePlatform.JDBC_SUBPROTOCOL_SHORT) && nameVersion.getVersion() >= 12 && !nameVersion
                 .getName().equals("Adaptive Server Enterprise")) {
             nameVersion.setName(DatabaseNamesConstants.SQLANYWHERE12);
@@ -385,23 +362,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
             }
         }
         return isDialect1;
-    }
-
-    private boolean isMSSQLAzureManagedInstance(int engineEdition) {
-        return engineEdition == 8;
-    }
-
-    private int getMsSqlEngineEdition(Connection connection) {
-        int engineEdition = -1;
-        try (Statement s = connection.createStatement()) {
-            ResultSet rs = s.executeQuery("SELECT CAST(SERVERPROPERTY('EngineEdition') AS INT)");
-            if (rs.next()) {
-                engineEdition = rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            log.info("Unable to get Sql Server Engine Edition");
-        }
-        return engineEdition;
     }
 
     private boolean isOracle122Compatible(Connection connection) {

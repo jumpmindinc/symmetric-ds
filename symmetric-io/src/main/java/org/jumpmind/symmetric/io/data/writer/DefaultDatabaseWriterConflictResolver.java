@@ -45,7 +45,6 @@ import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2008DdlBuilder;
 import org.jumpmind.db.sql.DmlStatement;
 import org.jumpmind.db.sql.DmlStatement.DmlType;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -139,7 +138,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                             !Boolean.TRUE.equals(databaseWriter.getContext().get(AbstractDatabaseWriter.TRANSACTION_ABORTED)))) {
                 // make sure we lock the row that is in conflict to prevent a race with other data loading
                 if (primaryKeyUpdateAllowed(databaseWriter, targetTable)) {
-                    st.updateCteExpression(writer.getBatch().getSourceNodeId());
+                    st.updateCteExpression(writer.getBatch().getSourceNodeId(), databaseWriter.getPlatform().getDdlBuilder().getCteExpressionPrefix());
                     Object[] values = databaseWriter.getPlatform().getObjectValues(writer.getBatch().getBinaryEncoding(),
                             pkData, targetTable.getPrimaryKeyColumns());
                     databaseWriter.getTransaction().prepareAndExecute(st.getSql(), ArrayUtils.addAll(values, values), st.getTypes());
@@ -150,7 +149,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                         st = databaseWriter.getPlatform().createDmlStatement(DmlType.UPDATE, targetTable.getCatalog(), targetTable.getSchema(),
                                 targetTable.getName(), targetTable.getPrimaryKeyColumns(), new Column[] { columns[0] },
                                 new boolean[targetTable.getPrimaryKeyColumnCount()], databaseWriter.getWriterSettings().getTextColumnExpression());
-                        st.updateCteExpression(writer.getBatch().getSourceNodeId());
+                        st.updateCteExpression(writer.getBatch().getSourceNodeId(), databaseWriter.getPlatform().getDdlBuilder().getCteExpressionPrefix());
                         Object[] values = databaseWriter.getPlatform().getObjectValues(writer.getBatch().getBinaryEncoding(),
                                 ArrayUtils.addAll(new String[] { rowDataMap.get(columns[0].getName()) }, pkData),
                                 ArrayUtils.addAll(new Column[] { columns[0] }, targetTable.getPrimaryKeyColumns()));
@@ -335,7 +334,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                     DmlStatement st = databaseWriter.getPlatform().createDmlStatement(DmlType.UPDATE, targetTable.getCatalog(), targetTable.getSchema(),
                             targetTable.getName(), uniqueKeyColumns, uniqueKeyColumns, nullKeyValues,
                             databaseWriter.getWriterSettings().getTextColumnExpression());
-                    st.updateCteExpression(databaseWriter.getBatch().getSourceNodeId());
+                    st.updateCteExpression(databaseWriter.getBatch().getSourceNodeId(), databaseWriter.getPlatform().getDdlBuilder().getCteExpressionPrefix());
                     count = databaseWriter.getTransaction().prepareAndExecute(st.getSql(), addKeyArgs(values, values));
                 }
                 if (count > 0) {
@@ -530,6 +529,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
         return false;
     }
 
+    @Override
     protected boolean checkIfMismatchedPrimaryKey(AbstractDatabaseWriter writer) {
         boolean mismatched = false;
         DefaultDatabaseWriter databaseWriter = (DefaultDatabaseWriter) writer;
@@ -618,7 +618,8 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                 targetTable.getName(), whereColumns.toArray(new Column[0]), targetTable.getColumns(), nullKeyValues,
                 databaseWriter.getWriterSettings().getTextColumnExpression());
         long line = databaseWriter.getStatistics().get(databaseWriter.getBatch()).get(DataWriterStatisticConstants.LINENUMBER);
-        String cte = updateCteExpression(platform.getDatabaseInfo().getCteExpression(), databaseWriter.getBatch().getSourceNodeId());
+        String cte = updateCteExpression(platform.getDatabaseInfo().getCteExpression(), databaseWriter.getBatch().getSourceNodeId(), platform.getDdlBuilder()
+                .getCteExpressionPrefix());
         String sql = cte + " DELETE " + fromStmt.getSql();
         int count = 0;
         try {
@@ -695,6 +696,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                 Object[] keys = platform.getObjectValues(encoding, pkData, sourceTable.getColumns());
                 DmlStatement selectSt = platform.createDmlStatement(DmlType.SELECT, targetTable, null);
                 Row targetRow = doInTransaction(platform, databaseWriter, new ITransactionCallback<Row>() {
+                    @Override
                     public Row execute(ISqlTransaction transaction) {
                         return transaction.queryForRow(selectSt.getSql(), keys);
                     }
@@ -709,6 +711,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
             tableRows.add(new TableRow(targetTable, new Row(sourceTable.getColumnNames(), objectValues), null, null, null));
         }
         List<TableRow> foreignTableRows = doInTransaction(platform, databaseWriter, new ITransactionCallback<List<TableRow>>() {
+            @Override
             public List<TableRow> execute(ISqlTransaction transaction) {
                 return platform.getDdlReader().getExportedForeignTableRows(transaction, tableRows, new HashSet<TableRow>(), databaseWriter.getBatch()
                         .getBinaryEncoding());
@@ -729,7 +732,8 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                 DatabaseInfo info = platform.getDatabaseInfo();
                 String tableName = Table.getFullyQualifiedTableName(foreignTable.getCatalog(), foreignTable.getSchema(), foreignTable.getName(),
                         info.getDelimiterToken(), info.getCatalogSeparator(), info.getSchemaSeparator());
-                String cte = updateCteExpression(info.getCteExpression(), databaseWriter.getBatch().getSourceNodeId());
+                String cte = updateCteExpression(info.getCteExpression(), databaseWriter.getBatch().getSourceNodeId(), platform.getDdlBuilder()
+                        .getCteExpressionPrefix());
                 String sql = cte + " DELETE FROM " + tableName + " WHERE " + foreignTableRow.getWhereSql();
                 prepareAndExecute(platform, databaseWriter, sql);
             }
@@ -741,13 +745,14 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
     protected void captureMissingDelete(Conflict conflict, AbstractDatabaseWriter writer, CsvData data) {
     }
 
-    protected String updateCteExpression(String sql, String nodeId) {
-        return sql != null ? sql.replaceAll(MsSql2008DdlBuilder.CHANGE_TRACKING_SYM_PREFIX + ":",
-                MsSql2008DdlBuilder.CHANGE_TRACKING_SYM_PREFIX + ":" + nodeId) : "";
+    protected String updateCteExpression(String sql, String nodeId, String prefix) {
+        return sql != null ? sql.replaceAll(prefix + ":",
+                prefix + ":" + nodeId) : "";
     }
 
     protected int prepareAndExecute(IDatabasePlatform platform, DefaultDatabaseWriter databaseWriter, String sql, Object... values) {
         return doInTransaction(platform, databaseWriter, new ITransactionCallback<Integer>() {
+            @Override
             public Integer execute(ISqlTransaction transaction) {
                 return transaction.prepareAndExecute(sql, values);
             }
@@ -756,6 +761,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
 
     protected Row queryForRow(IDatabasePlatform platform, DefaultDatabaseWriter databaseWriter, String sql, Object... values) {
         return doInTransaction(platform, databaseWriter, new ITransactionCallback<Row>() {
+            @Override
             public Row execute(ISqlTransaction transaction) {
                 return transaction.queryForRow(sql, values);
             }
@@ -764,6 +770,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
 
     protected int queryForInt(IDatabasePlatform platform, DefaultDatabaseWriter databaseWriter, String sql, Object[] values, int[] types) {
         return doInTransaction(platform, databaseWriter, new ITransactionCallback<Integer>() {
+            @Override
             public Integer execute(ISqlTransaction transaction) {
                 List<Number> list = transaction.query(sql, new NumberMapper(), values, types);
                 if (list.size() > 0) {

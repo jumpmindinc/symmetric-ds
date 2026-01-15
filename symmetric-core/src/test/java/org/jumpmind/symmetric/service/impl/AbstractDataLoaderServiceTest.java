@@ -40,12 +40,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
+import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.ase.AseDatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2000DatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2005DatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2008DatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2016DatabasePlatform;
 import org.jumpmind.db.platform.oracle.OracleDatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDatabasePlatform;
 import org.jumpmind.symmetric.TestConstants;
@@ -131,7 +128,7 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
         String[] updateValues = new String[TEST_COLUMNS.length + 1];
         updateValues[0] = updateValues[updateValues.length - 1] = getNextId();
         updateValues[2] = updateValues[4] = "required string";
-        String[] insertValues = (String[]) ArrayUtils.subarray(updateValues, 0,
+        String[] insertValues = ArrayUtils.subarray(updateValues, 0,
                 updateValues.length - 1);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         CsvWriter writer = getWriter(out);
@@ -303,13 +300,13 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
     }
 
     private String[] massageExpectectedResultsForDialect(String[] values) {
-        if (values[5] != null && (getSymmetricEngine().getDatabasePlatform() instanceof MsSql2008DatabasePlatform || getSymmetricEngine()
-                .getDatabasePlatform() instanceof MsSql2016DatabasePlatform)) {
+        if (values[5] != null && (getSymmetricEngine().getDatabasePlatform().getName().startsWith(DatabaseNamesConstants.MSSQL2008) || getSymmetricEngine()
+                .getDatabasePlatform().getName().startsWith(DatabaseNamesConstants.MSSQL2016))) {
             // No time portion for a date field
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d\\.000", "");
         }
-        if (values[6] != null && (getSymmetricEngine().getDatabasePlatform() instanceof MsSql2008DatabasePlatform || getSymmetricEngine()
-                .getDatabasePlatform() instanceof MsSql2016DatabasePlatform)) {
+        if (values[6] != null && (getSymmetricEngine().getDatabasePlatform().getName().startsWith(DatabaseNamesConstants.MSSQL2008) || getSymmetricEngine()
+                .getDatabasePlatform().getName().startsWith(DatabaseNamesConstants.MSSQL2016))) {
             if (values[6].length() == 23) {
                 values[6] = values[6] + "0000";
             }
@@ -703,9 +700,9 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
     protected String translateExpectedDate(String value) {
         IDatabasePlatform platform = engine.getDatabasePlatform();
         if (value != null && (!(platform instanceof OracleDatabasePlatform
-                || ((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
-                        && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
-                || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
+                || ((platform.getName().startsWith(DatabaseNamesConstants.MSSQL2000) || platform.getName().startsWith(DatabaseNamesConstants.MSSQL2005))
+                        && !(platform.getName().startsWith(DatabaseNamesConstants.MSSQL2008) || platform.getName().startsWith(DatabaseNamesConstants.MSSQL2016))
+                        || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform)))) {
             value = value.replaceAll(" 00:00:00\\.0*", "");
         }
         return value;
