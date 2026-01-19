@@ -33,7 +33,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.ArrayUtils;
 import org.jumpmind.db.model.Table;
-import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.ase.AseDatabasePlatform;
 import org.jumpmind.db.platform.mssql.MsSql2000DatabasePlatform;
@@ -315,8 +314,7 @@ public abstract class AbstractBulkDatabaseWriterTest extends AbstractWriterTest 
     }
 
     protected String[] massageExpectectedResultsForDialect(String[] values) {
-        if (values[5] != null && (!(platform.getName().startsWith(DatabaseNamesConstants.ORACLE)
-                || ((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
+        if (values[5] != null && (!(((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
                         && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
                 || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");
