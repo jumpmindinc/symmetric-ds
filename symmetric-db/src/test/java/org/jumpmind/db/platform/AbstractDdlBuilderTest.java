@@ -241,7 +241,6 @@ public class AbstractDdlBuilderTest {
                                 ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL },
                         true, new ForeignKeyAction[] {
                                 ForeignKeyAction.CASCADE, ForeignKeyAction.NOACTION, ForeignKeyAction.SETDEFAULT, ForeignKeyAction.SETNULL }),
-
                 // MySql
                 new DdlBuilderForeignKeySupport(new MySqlDdlBuilder(),
                         true, new ForeignKeyAction[] {
