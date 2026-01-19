@@ -108,7 +108,7 @@ public class JavaJob extends AbstractJob {
     }
 
     @Override
-    protected boolean isRateLimited() {
+    public boolean isRateLimited() {
         return true;
     }
 }
