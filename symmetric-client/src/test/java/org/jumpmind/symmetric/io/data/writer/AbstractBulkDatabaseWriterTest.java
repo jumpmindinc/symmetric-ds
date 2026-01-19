@@ -319,7 +319,8 @@ public abstract class AbstractBulkDatabaseWriterTest extends AbstractWriterTest 
                 || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");
         }
-        if (values[6] != null && (platform.getName().startsWith(DatabaseNamesConstants.MSSQL2008) || platform.getName().startsWith(DatabaseNamesConstants.MSSQL2016)
+        if (values[6] != null && (platform.getName().startsWith(DatabaseNamesConstants.MSSQL2008) || platform.getName().startsWith(
+                DatabaseNamesConstants.MSSQL2016)
                 || platform instanceof MySqlDatabasePlatform || platform instanceof PostgreSqlDatabasePlatform)) {
             if (values[6].length() == 23) {
                 values[6] = values[6] + "0000";
