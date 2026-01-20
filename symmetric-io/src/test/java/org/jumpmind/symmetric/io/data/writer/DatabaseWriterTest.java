@@ -560,11 +560,6 @@ public class DatabaseWriterTest extends AbstractWriterTest {
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d\\.000", "");
         } else if (values[5] != null
                 && (!(platform instanceof OracleDatabasePlatform
-                        ||
-                        // Only SqlServer 2000 and 2005 should not be mangled. 2008 now uses Date and Time data types.
-                        ((platform.getName().startsWith(DatabaseNamesConstants.MSSQL2000) || platform.getName().startsWith(DatabaseNamesConstants.MSSQL2005))
-                                && !(platform.getName().startsWith(DatabaseNamesConstants.MSSQL2008) || platform.getName().startsWith(
-                                        DatabaseNamesConstants.MSSQL2016)))
                         || platform instanceof AseDatabasePlatform
                         || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");
@@ -594,11 +589,6 @@ public class DatabaseWriterTest extends AbstractWriterTest {
     private String[] massageExpectectedResultsForDialect2(String[] values) {
         if (values[6] != null
                 && (!(platform instanceof OracleDatabasePlatform
-                        ||
-                        // Only SqlServer 2000 and 2005 should not be mangled. 2008 now uses Date and Time data types.
-                        ((platform.getName().startsWith(DatabaseNamesConstants.MSSQL2000) || platform.getName().startsWith(DatabaseNamesConstants.MSSQL2005))
-                                && !(platform.getName().startsWith(DatabaseNamesConstants.MSSQL2008) || platform.getName().startsWith(
-                                        DatabaseNamesConstants.MSSQL2016)))
                         || platform instanceof AseDatabasePlatform
                         || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[6] = values[6].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");

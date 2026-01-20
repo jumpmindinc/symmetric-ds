@@ -700,9 +700,7 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
     protected String translateExpectedDate(String value) {
         IDatabasePlatform platform = engine.getDatabasePlatform();
         if (value != null && (!(platform instanceof OracleDatabasePlatform
-                || ((platform.getName().startsWith(DatabaseNamesConstants.MSSQL2000) || platform.getName().startsWith(DatabaseNamesConstants.MSSQL2005))
-                        && !(platform.getName().startsWith(DatabaseNamesConstants.MSSQL2008) || platform.getName().startsWith(DatabaseNamesConstants.MSSQL2016))
-                        || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform)))) {
+                || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
             value = value.replaceAll(" 00:00:00\\.0*", "");
         }
         return value;
