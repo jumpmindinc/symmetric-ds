@@ -20,6 +20,8 @@
  */
 package org.jumpmind.symmetric.job;
 
+import static org.jumpmind.symmetric.job.JobDefaults.EVERY_HOUR;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -69,5 +71,15 @@ public class SqlJob extends AbstractJob {
         replacementTokens.put(TokenConstants.NODE_ID, engine.getNodeId());
         replacementTokens.put(TokenConstants.NODE_GROUP_ID, engine.getNodeService().findIdentity().getNodeGroupId());
         return replacementTokens;
+    }
+
+    @Override
+    protected long getMinSchedulePeriodMs() {
+        return Long.parseLong(EVERY_HOUR);
+    }
+
+    @Override
+    public boolean isRateLimited() {
+        return true;
     }
 }

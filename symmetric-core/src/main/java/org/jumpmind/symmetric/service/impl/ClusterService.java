@@ -65,6 +65,9 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateUtils;
+import org.jumpmind.db.sql.ISqlRowMapper;
+import org.jumpmind.db.sql.Row;
+import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
@@ -129,6 +132,7 @@ public class ClusterService extends AbstractService implements IClusterService {
             lock.setSharedCount(0);
             lock.setSharedEnable(false);
         }
+        loadLocksFromDatabase();
     }
 
     @Override
@@ -246,6 +250,58 @@ public class ClusterService extends AbstractService implements IClusterService {
             lock.setLockAction(action);
             lock.setLockType(TYPE_SHARED);
             lockCache.put(action, lock);
+        }
+    }
+
+    /**
+     * Loads locks from the database and merges lastLockTime values into the cache. This loads persisted lock info after restarts.
+     */
+    protected void loadLocksFromDatabase() {
+        try {
+            List<Lock> dbLocks = sqlTemplate.query(getSql("selectLocksSql"), new ISqlRowMapper<Lock>() {
+                @Override
+                public Lock mapRow(Row row) {
+                    Lock lock = new Lock();
+                    lock.setLockAction(row.getString("lock_action"));
+                    lock.setLockType(row.getString("lock_type"));
+                    lock.setLockingServerId(row.getString("locking_server_id"));
+                    lock.setLockTime(row.getDateTime("lock_time"));
+                    lock.setSharedCount(row.getInt("shared_count"));
+                    lock.setSharedEnable(row.getInt("shared_enable") == 1);
+                    lock.setLastLockTime(row.getDateTime("last_lock_time"));
+                    lock.setLastLockingServerId(row.getString("last_locking_server_id"));
+                    return lock;
+                }
+            });
+            for (Lock dbLock : dbLocks) {
+                Lock cachedLock = lockCache.get(dbLock.getLockAction());
+                if (cachedLock != null) {
+                    cachedLock.setLastLockTime(dbLock.getLastLockTime());
+                    cachedLock.setLastLockingServerId(dbLock.getLastLockingServerId());
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Could not load locks from database (table may not exist yet): {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Persists the lastLockTime for a lock to the database. This is called after unlock to ensure lock info persists across restarts.
+     */
+    protected void persistLastLockTime(String action, Date lastLockTime, String lastLockingServerId) {
+        try {
+            // Attempt updating the lock first, since it is the more common case.
+            int updated = sqlTemplate.update(getSql("updateLastLockTimeSql"), lastLockTime, lastLockingServerId, action);
+            if (updated <= 0) {
+                // Row may not exist, or DB didn't return row count - try insert
+                try {
+                    sqlTemplate.update(getSql("insertCompleteLockSql"), action, TYPE_CLUSTER, null, null, 0, 0, lastLockTime, lastLockingServerId);
+                } catch (UniqueKeyException e) {
+                    // Row already existed, UPDATE already updated it
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Could not persist lastLockTime for action '{}': {}", action, e.getMessage());
         }
     }
 
@@ -476,6 +532,8 @@ public class ClusterService extends AbstractService implements IClusterService {
                     lock.setLockingServerId(null);
                     lock.setLastLockTime(lock.getLockTime());
                     lock.setLockTime(null);
+                    // Persist lastLockTime to database so it survives restarts
+                    persistLastLockTime(action, lock.getLastLockTime(), lock.getLastLockingServerId());
                     return true;
                 }
             }
