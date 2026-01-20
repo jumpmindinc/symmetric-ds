@@ -170,7 +170,8 @@ abstract public class AbstractJob implements Runnable, IJob {
      *
      * @return true if the job is rate-limited, false otherwise
      */
-    protected boolean isRateLimited() {
+    @Override
+    public boolean isRateLimited() {
         return false;
     }
 

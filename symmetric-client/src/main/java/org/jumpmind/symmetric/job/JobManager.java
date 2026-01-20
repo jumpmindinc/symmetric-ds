@@ -33,6 +33,7 @@ import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.model.JobDefinition;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.impl.AbstractService;
+import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -45,7 +46,7 @@ public class JobManager extends AbstractService implements IJobManager {
     private List<IJob> jobs;
     private ThreadPoolTaskScheduler taskScheduler;
     private ISymmetricEngine engine;
-    private JobCreator jobCreator = new JobCreator();
+    private JobCreator jobCreator;
     private boolean started = false;
 
     public JobManager(ISymmetricEngine engine) {
@@ -58,6 +59,13 @@ public class JobManager extends AbstractService implements IJobManager {
         this.taskScheduler.initialize();
     }
 
+    protected JobCreator getJobCreator() {
+        if (jobCreator == null) {
+            jobCreator = AppUtils.newInstance(JobCreator.class, JobCreator.class);
+        }
+        return jobCreator;
+    }
+
     @Override
     public void init() {
         this.stopJobs();
@@ -66,12 +74,12 @@ public class JobManager extends AbstractService implements IJobManager {
         jobDefinitions = builtInJobs.syncBuiltInJobs(jobDefinitions, engine, taskScheduler); // TODO save built in jobs
         this.jobs = new ArrayList<IJob>();
         for (JobDefinition jobDefinition : jobDefinitions) {
-            IJob job = jobCreator.createJob(jobDefinition, engine, taskScheduler);
+            IJob job = getJobCreator().createJob(jobDefinition, engine, taskScheduler);
             if (job != null) {
                 jobs.add(job);
-            }
-            if (jobDefinition.isClustered()) {
-                engine.getClusterService().addLock(jobDefinition.getJobName(), ClusterConstants.TYPE_CLUSTER);
+                if (jobDefinition.isClustered() || job.isRateLimited()) {
+                    engine.getClusterService().addLock(jobDefinition.getJobName(), ClusterConstants.TYPE_CLUSTER);
+                }
             }
         }
     }
@@ -210,7 +218,8 @@ public class JobManager extends AbstractService implements IJobManager {
                             job.isDefaultAutomaticStartup() ? 1 : 0, job.getDefaultSchedule(), job.getNodeGroupId(), job.isClustered() ? 1 : 0,
                             job.getCreateBy(), new Date(), job.getLastUpdateBy(), new Date(), job.getJobName() });
         }
-        if (job.isClustered()) {
+        if (job.isClustered() || job.getJobType() == JobDefinition.JobType.BSH
+                || job.getJobType() == JobDefinition.JobType.JAVA || job.getJobType() == JobDefinition.JobType.SQL) {
             engine.getClusterService().addLock(job.getJobName(), ClusterConstants.TYPE_CLUSTER);
         }
     }
