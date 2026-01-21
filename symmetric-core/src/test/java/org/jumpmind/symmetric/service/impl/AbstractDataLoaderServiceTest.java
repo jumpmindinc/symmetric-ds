@@ -40,7 +40,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
-import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.ase.AseDatabasePlatform;
 import org.jumpmind.db.platform.oracle.OracleDatabasePlatform;
@@ -281,7 +280,7 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
         getNextBatchId();
         for (long i = 0; i < 7; i++) {
             batchId--;
-            testSimple(CsvConstants.INSERT, values, massageExpectectedResultsForDialect(values));
+            testSimple(CsvConstants.INSERT, values, values);
             assertEquals(findIncomingBatchStatus(batchId, TestConstants.TEST_CLIENT_EXTERNAL_ID),
                     IncomingBatch.Status.OK, "Wrong status");
             IncomingBatch batch = getIncomingBatchService().findIncomingBatch(batchId,
@@ -300,17 +299,6 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
     }
 
     private String[] massageExpectectedResultsForDialect(String[] values) {
-        if (values[5] != null && (getSymmetricEngine().getDatabasePlatform().getName().startsWith(DatabaseNamesConstants.MSSQL2008) || getSymmetricEngine()
-                .getDatabasePlatform().getName().startsWith(DatabaseNamesConstants.MSSQL2016))) {
-            // No time portion for a date field
-            values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d\\.000", "");
-        }
-        if (values[6] != null && (getSymmetricEngine().getDatabasePlatform().getName().startsWith(DatabaseNamesConstants.MSSQL2008) || getSymmetricEngine()
-                .getDatabasePlatform().getName().startsWith(DatabaseNamesConstants.MSSQL2016))) {
-            if (values[6].length() == 23) {
-                values[6] = values[6] + "0000";
-            }
-        }
         return values;
     }
 
@@ -319,7 +307,7 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
         Level old = setLoggingLevelForTest(Level.OFF);
         String[] values = { getNextId(), "string2", "string not null2", "char2", "char not null2",
                 "2007-01-02 00:00:00.000", "2007-02-03 04:05:06.000", "0", "47", "67.89", "0.474" };
-        testSimple(CsvConstants.INSERT, values, massageExpectectedResultsForDialect(values));
+        testSimple(CsvConstants.INSERT, values, values);
         assertEquals(findIncomingBatchStatus(batchId, TestConstants.TEST_CLIENT_EXTERNAL_ID),
                 IncomingBatch.Status.OK, "Wrong status");
         IncomingBatch batch = getIncomingBatchService().findIncomingBatch(batchId,
@@ -453,7 +441,7 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
         values[1] = "A smaller string that will succeed";
         values[5] = "2007-01-02 00:00:00.000";
         values[9] = "67.89";
-        testSimple(CsvConstants.INSERT, values, massageExpectectedResultsForDialect(values));
+        testSimple(CsvConstants.INSERT, values, values);
         assertEquals(findIncomingBatchStatus(batchId, TestConstants.TEST_CLIENT_EXTERNAL_ID),
                 IncomingBatch.Status.OK, "Wrong status. " + printDatabase());
         IncomingBatch batch = getIncomingBatchService().findIncomingBatch(batchId,
@@ -494,7 +482,7 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
         writer.writeRecord(new String[] { CsvConstants.COMMIT, nextBatchId2 });
         writer.close();
         load(out);
-        assertTestTableEquals(values[0], massageExpectectedResultsForDialect(values));
+        assertTestTableEquals(values[0], values);
         assertTestTableEquals(values2[0], null);
         assertEquals(
                 findIncomingBatchStatus(Integer.parseInt(nextBatchId),

@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
@@ -746,8 +747,11 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
     }
 
     protected String updateCteExpression(String sql, String nodeId, String prefix) {
-        return sql != null ? sql.replaceAll(prefix + ":",
-                prefix + ":" + nodeId) : "";
+        if (!StringUtils.isBlank(prefix)) {
+            sql = sql.replaceAll(prefix + ":",
+                    prefix + ":" + nodeId);
+        }
+        return sql;
     }
 
     protected int prepareAndExecute(IDatabasePlatform platform, DefaultDatabaseWriter databaseWriter, String sql, Object... values) {

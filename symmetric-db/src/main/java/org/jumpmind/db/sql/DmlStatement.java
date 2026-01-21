@@ -35,6 +35,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.TypeMap;
@@ -551,13 +552,18 @@ public class DmlStatement {
     }
 
     public void updateCteExpression(String value, String prefix) {
+        if (!StringUtils.isBlank(prefix)) {
         this.sql = this.sql.replaceAll(prefix + ":",
                 prefix + ":" + value);
+        }
     }
 
     public static String updateCteExpression(String sql, String value, String prefix) {
-        return sql.replaceAll(prefix + ":",
-                prefix + ":" + value);
+        if (!StringUtils.isBlank(prefix)) {
+            sql = sql.replaceAll(prefix + ":",
+                    prefix + ":" + value);
+        }
+        return sql;
     }
 
     public static boolean[] getNullKeyValues(Object[] values) {
