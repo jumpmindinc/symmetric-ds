@@ -27,7 +27,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -70,6 +69,7 @@ abstract public class AbstractJob implements Runnable, IJob {
     private long processedCount;
     private String targetNodeId;
     private int targetNodeCount;
+    protected ScheduleEnforcer scheduleEnforcer;
 
     public AbstractJob() {
     }
@@ -81,16 +81,27 @@ abstract public class AbstractJob implements Runnable, IJob {
         this.parameterService = engine.getParameterService();
         this.randomTimeSlot = new RandomTimeSlot(parameterService.getExternalId(),
                 parameterService.getInt(ParameterConstants.JOB_RANDOM_MAX_START_TIME_MS));
+        this.scheduleEnforcer = new ScheduleEnforcer();
     }
 
     public void start() {
         if (this.scheduledJob == null && engine != null
                 && !engine.getClusterService().isInfiniteLocked(getName())) {
+            logAnyScheduleViolations();
             if (isCronSchedule()) {
                 String cronExpression = getSchedule();
                 cronTrigger = new CronTrigger(cronExpression);
-                log.info("Starting job '{}' on cron schedule '{}' with the first run at {}", jobName, cronExpression,
-                        Date.from(cronTrigger.nextExecution(new SimpleTriggerContext())));
+                Lock lock = engine.getClusterService().findLocks().get(getName());
+                Date lastLockTime = (lock != null) ? lock.getLastLockTime() : null;
+                Instant lastCompletion = (lastLockTime != null) ? lastLockTime.toInstant() : null;
+                SimpleTriggerContext triggerContext = new SimpleTriggerContext(lastCompletion, lastCompletion, lastCompletion);
+                Instant firstRunCouldBeInPast = cronTrigger.nextExecution(triggerContext);
+                Instant now = Instant.now();
+                Instant firstRun = (firstRunCouldBeInPast != null && firstRunCouldBeInPast.isBefore(now))
+                        ? cronTrigger.nextExecution(new SimpleTriggerContext(now, now, now))
+                        : firstRunCouldBeInPast;
+                log.info("Starting job '{}' on cron schedule '{}', with the first run at {}, and previous run at {}.", jobName, cronExpression,
+                        Date.from(firstRun), lastLockTime);
                 try {
                     this.scheduledJob = taskScheduler.schedule(this, cronTrigger);
                 } catch (Exception ex) {
@@ -118,8 +129,8 @@ abstract public class AbstractJob implements Runnable, IJob {
                     }
                 }
                 periodicFirstRunTime = new Date(lastRunTime + timeBetweenRunsInMs + startDelay);
-                log.info("Starting job '{}' on periodic schedule every {}ms with the first run at {}", new Object[] { jobName,
-                        timeBetweenRunsInMs, periodicFirstRunTime });
+                log.info("Starting job '{}' on periodic schedule every {}ms, with the first run at {}, and previous run at {}.", jobName,
+                        timeBetweenRunsInMs, periodicFirstRunTime, lock != null ? lock.getLastLockTime() : null);
                 this.scheduledJob = taskScheduler.scheduleWithFixedDelay(this,
                         periodicFirstRunTime.toInstant(), Duration.ofMillis(timeBetweenRunsInMs));
                 started = true;
@@ -128,22 +139,40 @@ abstract public class AbstractJob implements Runnable, IJob {
     }
 
     protected long getTimeBetweenRunsInMs() {
-        long timeBetweenRunsInMs = -1;
         String schedule = getSchedule();
         try {
             if (StringUtils.isEmpty(schedule)) {
                 throw new SymmetricException("Schedule value is not defined for " + jobDefinition.getPeriodicParameter());
             }
-            timeBetweenRunsInMs = Long.parseLong(getSchedule());
+            long timeBetweenRunsInMs = Long.parseLong(schedule);
             if (timeBetweenRunsInMs <= 0) {
                 throw new SymmetricException("Schedule value must be positive, but was '" + schedule + "'");
             }
+            return timeBetweenRunsInMs;
         } catch (Exception ex) {
             log.error("Failed to schedule job '" + jobName + "' because of an invalid schedule: '" +
-                    getSchedule() + "' Check the " + jobDefinition.getPeriodicParameter() + " parameter.", ex);
+                    schedule + "' Check the " + jobDefinition.getPeriodicParameter() + " parameter.", ex);
             return -1;
         }
-        return timeBetweenRunsInMs;
+    }
+
+    /**
+     * Returns the minimum allowed schedule period in milliseconds for this job.
+     *
+     * @return the minimum period in milliseconds, or 0 if no minimum is enforced
+     */
+    protected long getMinSchedulePeriodMs() {
+        return 0;
+    }
+
+    /**
+     * Checks if this job has a minimum schedule period enforcement.
+     *
+     * @return true if the job is rate-limited, false otherwise
+     */
+    @Override
+    public boolean isRateLimited() {
+        return false;
     }
 
     public boolean stop() {
@@ -188,7 +217,8 @@ abstract public class AbstractJob implements Runnable, IJob {
                 return false;
             }
             long startTime = System.currentTimeMillis();
-            if (!jobDefinition.isClustered() || engine.getClusterService().lock(jobName)) {
+            boolean hasLockTracking = jobDefinition.isClustered() || isRateLimited();
+            if (!hasLockTracking || engine.getClusterService().lock(jobName)) {
                 try {
                     if (!running.compareAndSet(false, true)) { // This ensures this job only runs once on this instance.
                         log.info("Job '{}' is already running on another thread and will not run at this time.", getName());
@@ -202,7 +232,7 @@ abstract public class AbstractJob implements Runnable, IJob {
                         doJob(force);
                     }
                 } finally {
-                    if (jobDefinition.isClustered()) {
+                    if (hasLockTracking) {
                         engine.getClusterService().unlock(jobName);
                     }
                     lastFinishTime = new Date();
@@ -211,6 +241,8 @@ abstract public class AbstractJob implements Runnable, IJob {
                     totalExecutionTimeInMs += lastExecutionTimeInMs;
                     numberOfRuns++;
                     running.set(false);
+                    log.debug("Job '{}' completed execution at {}, took {}ms, with the next run scheduled no earlier than {}.", jobName, lastFinishTime,
+                            lastExecutionTimeInMs, getNextExecutionTime());
                 }
             }
         } catch (final Throwable ex) {
@@ -307,7 +339,18 @@ abstract public class AbstractJob implements Runnable, IJob {
     @Override
     @ManagedAttribute(description = "The last time this job completed execution")
     public Date getLastFinishTime() {
-        return lastFinishTime;
+        if (lastFinishTime != null) {
+            return lastFinishTime;
+        }
+        if ((jobDefinition != null && jobDefinition.isClustered()) || isRateLimited()) {
+            if (engine != null) {
+                Lock lock = engine.getClusterService().findLocks().get(getName());
+                if (lock != null && lock.getLastLockTime() != null) {
+                    return lock.getLastLockTime();
+                }
+            }
+        }
+        return null;
     }
 
     @Override
@@ -369,15 +412,17 @@ abstract public class AbstractJob implements Runnable, IJob {
     }
 
     public boolean isCronSchedule() {
-        return !isPeriodicSchedule();
+        return scheduleEnforcer.isCronSchedule(getSchedule());
     }
 
     public boolean isPeriodicSchedule() {
-        String schedule = getSchedule();
-        return NumberUtils.isDigits(schedule);
+        return scheduleEnforcer.isPeriodicSchedule(getSchedule());
     }
 
-    public String getSchedule() {
+    /**
+     * Returns the raw configured schedule before any minimum period is enforced.
+     */
+    protected String getConfiguredSchedule() {
         String cronSchedule = parameterService.getString(jobDefinition.getCronParameter());
         if (!StringUtils.isEmpty(cronSchedule)) {
             return cronSchedule;
@@ -387,6 +432,21 @@ abstract public class AbstractJob implements Runnable, IJob {
             return periodicSchedule;
         }
         return jobDefinition.getDefaultSchedule();
+    }
+
+    protected void logAnyScheduleViolations() {
+        String configuredSchedule = getConfiguredSchedule();
+        long minPeriod = getMinSchedulePeriodMs();
+        if (scheduleEnforcer.exceedsScheduleLimit(configuredSchedule, minPeriod)) {
+            log.warn("The configured schedule '{}' for job '{}' runs more frequently than the minimum allowed period of {}ms. " +
+                    "The minimum period will be used instead. To increase the frequency, contact SymmetricDS sales team.",
+                    configuredSchedule, jobName, minPeriod);
+        }
+    }
+
+    public String getSchedule() {
+        String schedule = getConfiguredSchedule();
+        return scheduleEnforcer.enforceMinimum(schedule, getMinSchedulePeriodMs());
     }
 
     public abstract JobDefaults getDefaults();

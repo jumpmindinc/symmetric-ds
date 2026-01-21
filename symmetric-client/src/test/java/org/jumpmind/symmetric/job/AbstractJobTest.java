@@ -44,6 +44,7 @@ import org.jumpmind.symmetric.model.JobDefinition;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IClusterService;
+import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRegistrationService;
@@ -61,6 +62,7 @@ class AbstractJobTest {
     private IClusterService clusterService;
     private IRegistrationService registrationService;
     private INodeService nodeService;
+    private IExtensionService extensionService;
     private ThreadPoolTaskScheduler taskScheduler;
     private TestableJob testJob;
     private JobDefinition jobDefinition;
@@ -72,10 +74,12 @@ class AbstractJobTest {
         clusterService = mock(IClusterService.class);
         registrationService = mock(IRegistrationService.class);
         nodeService = mock(INodeService.class);
+        extensionService = mock(IExtensionService.class);
         taskScheduler = mock(ThreadPoolTaskScheduler.class);
         jobDefinition = createJobDefinition();
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getClusterService()).thenReturn(clusterService);
+        when(engine.getExtensionService()).thenReturn(extensionService);
         when(parameterService.getExternalId()).thenReturn(TEST_NODE_ID);
         when(parameterService.getInt(anyString())).thenReturn(10000);
         testJob = new TestableJob(TEST_JOB_NAME, engine, taskScheduler);
@@ -108,9 +112,60 @@ class AbstractJobTest {
     void testStart_withCronSchedule_schedulesJob() {
         when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0 0 * * * *");
         when(clusterService.isInfiniteLocked(TEST_JOB_NAME)).thenReturn(false);
+        Map<String, Lock> locks = new HashMap<>();
+        when(clusterService.findLocks()).thenReturn(locks);
         testJob.start();
         assertTrue(testJob.isStarted());
         verify(taskScheduler).schedule(eq(testJob), any(CronTrigger.class));
+    }
+
+    @Test
+    void testStart_withCronSchedule_usesLastLockTime() {
+        when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0 0 * * * *");
+        when(clusterService.isInfiniteLocked(TEST_JOB_NAME)).thenReturn(false);
+        Map<String, Lock> locks = new HashMap<>();
+        Lock lock = new Lock();
+        lock.setLockAction(TEST_JOB_NAME);
+        lock.setLastLockTime(new Date(System.currentTimeMillis() - 1800000)); // 30 minutes ago
+        locks.put(TEST_JOB_NAME, lock);
+        when(clusterService.findLocks()).thenReturn(locks);
+        testJob.start();
+        assertTrue(testJob.isStarted());
+        verify(taskScheduler).schedule(eq(testJob), any(CronTrigger.class));
+        verify(clusterService).findLocks();
+    }
+
+    @Test
+    void testStart_withCronSchedule_noLastLockTime() {
+        when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0 0 * * * *");
+        when(clusterService.isInfiniteLocked(TEST_JOB_NAME)).thenReturn(false);
+        Map<String, Lock> locks = new HashMap<>();
+        Lock lock = new Lock();
+        lock.setLockAction(TEST_JOB_NAME);
+        lock.setLastLockTime(null);
+        locks.put(TEST_JOB_NAME, lock);
+        when(clusterService.findLocks()).thenReturn(locks);
+        testJob.start();
+        assertTrue(testJob.isStarted());
+        verify(taskScheduler).schedule(eq(testJob), any(CronTrigger.class));
+    }
+
+    @Test
+    void testStart_withCronSchedule_lastLockTimeInDistantPast_schedulesForFuture() {
+        when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0 5 * * * *"); // Every hour at 5 minutes past
+        when(clusterService.isInfiniteLocked(TEST_JOB_NAME)).thenReturn(false);
+        Map<String, Lock> locks = new HashMap<>();
+        Lock lock = new Lock();
+        lock.setLockAction(TEST_JOB_NAME);
+        // Set last lock time to 3 days ago - simulating a node that was down
+        long threeDaysAgo = System.currentTimeMillis() - (3L * 24 * 60 * 60 * 1000);
+        lock.setLastLockTime(new Date(threeDaysAgo));
+        locks.put(TEST_JOB_NAME, lock);
+        when(clusterService.findLocks()).thenReturn(locks);
+        testJob.start();
+        assertTrue(testJob.isStarted());
+        verify(taskScheduler).schedule(eq(testJob), any(CronTrigger.class));
+        verify(clusterService).findLocks();
     }
 
     @Test
@@ -188,6 +243,24 @@ class AbstractJobTest {
         when(parameterService.getString(anyString())).thenReturn(null);
         jobDefinition.setDefaultSchedule(null);
         assertEquals(-1L, testJob.getTimeBetweenRunsInMsPublic());
+    }
+
+    @Test
+    void testGetTimeBetweenRunsInMs_nonRateLimitedJob() {
+        when(parameterService.getString(anyString())).thenReturn(null);
+        jobDefinition.setDefaultSchedule("10000"); // 10 seconds
+        // Should keep the configured 10 second schedule (no minimum enforced)
+        assertEquals(10000L, testJob.getTimeBetweenRunsInMsPublic());
+    }
+
+    @Test
+    void testGetMinSchedulePeriodMsPublic() {
+        assertEquals(0L, testJob.getMinSchedulePeriodMsPublic());
+    }
+
+    @Test
+    void testIsRateLimited() {
+        assertFalse(testJob.isRateLimitedPublic());
     }
 
     @Test
@@ -427,6 +500,24 @@ class AbstractJobTest {
     }
 
     @Test
+    void testGetSchedule_nonRateLimitedJob_returnsConfigured() {
+        // Regular job should not be rate limited
+        when(parameterService.getString(anyString())).thenReturn(null);
+        jobDefinition.setDefaultSchedule("10000"); // 10 seconds
+        // getSchedule() should return the configured 10 second schedule
+        assertEquals("10000", testJob.getSchedule());
+    }
+
+    @Test
+    void testGetSchedule_nonRateLimitedJobWithCronSchedule_returnsCronSchedule() {
+        // Regular job should not have cron schedule rate limited
+        when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0/10 * * * * *");
+        when(parameterService.getString(jobDefinition.getPeriodicParameter())).thenReturn(null);
+        // getSchedule() should return the cron schedule unchanged
+        assertEquals("0/10 * * * * *", testJob.getSchedule());
+    }
+
+    @Test
     void testGetAverageExecutionTimeInMs_noRuns_returnsZero() {
         assertEquals(0, testJob.getAverageExecutionTimeInMs());
     }
@@ -534,6 +625,14 @@ class AbstractJobTest {
 
         public void setDoJobSleepMs(long doJobSleepMs) {
             this.doJobSleepMs = doJobSleepMs;
+        }
+
+        public long getMinSchedulePeriodMsPublic() {
+            return getMinSchedulePeriodMs();
+        }
+
+        public boolean isRateLimitedPublic() {
+            return isRateLimited();
         }
     }
 }
