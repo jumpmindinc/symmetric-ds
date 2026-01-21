@@ -33,7 +33,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.jumpmind.db.DbTestUtils;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
-import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.ase.AseDatabasePlatform;
 import org.jumpmind.db.platform.informix.InformixDatabasePlatform;
 import org.jumpmind.db.platform.mssql.MsSql2000DatabasePlatform;
@@ -561,9 +560,9 @@ public class DatabaseWriterTest extends AbstractWriterTest {
             // No time portion for a date field
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d\\.000", "");
         } else if (values[5] != null
-                && (!(  // Only SqlServer 2000 and 2005 should not be mangled. 2008 now uses Date and Time data types.
-                        ((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
-                                && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
+                && (!( // Only SqlServer 2000 and 2005 should not be mangled. 2008 now uses Date and Time data types.
+                ((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
+                        && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
                         || platform instanceof AseDatabasePlatform
                         || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");
@@ -591,13 +590,11 @@ public class DatabaseWriterTest extends AbstractWriterTest {
     private String[] massageExpectectedResultsForDialect2(String[] values) {
         if (values[6] != null
                 && (!( // Only SqlServer 2000 and 2005 should not be mangled. 2008 now uses Date and Time data types.
-                        ((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
-                                && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
+                ((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
+                        && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
                         || platform instanceof AseDatabasePlatform
                         || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[6] = values[6].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");
-        } else if (values[6] != null && values[6].length() == 23 && (platform.getName().startsWith(DatabaseNamesConstants.ORACLE))) {
-            values[6] = values[6] + "0000";
         }
         if (values[7] != null && values[7].length() == 23) {
             values[7] = values[7] + "0000";
