@@ -855,6 +855,12 @@
         <column name="last_update_time" type="TIMESTAMP" required="true" description="Timestamp when a user or the system last updated this entry." />
         <column name="batch_bulk_load_count" type="BIGINT" required="true" default="0" description="The number of batches that were loaded with the bulk loader." />
         <column name="row_bulk_load_count" type="BIGINT" required="true" default="0" description="The number of rows that were loaded with the bulk loader."/>
+        <index name="idx_tbl_rld_sts">
+            <index-column name="target_node_id"/>
+            <index-column name="source_node_id"/>
+            <index-column name="completed"/>
+            <index-column name="cancelled"/>
+        </index>
     </table>
     
     <table name="transform_column" description="Defines the column mappings and optional data transformation for a data loader transformation.">

@@ -20,7 +20,9 @@
  */
 package org.jumpmind.symmetric.job;
 
-import static org.jumpmind.symmetric.job.JobDefaults.EVERY_30_SECONDS;
+import static org.jumpmind.symmetric.job.JobDefaults.EVERY_HOUR;
+
+import java.time.LocalDateTime;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.service.ClusterConstants;
@@ -37,13 +39,24 @@ public class PushJob extends AbstractJob {
     @Override
     public JobDefaults getDefaults() {
         return new JobDefaults()
-                .schedule(EVERY_30_SECONDS)
+                .schedule(EVERY_HOUR)
                 .description("Push batches to other nodes");
+    }
+
+    @Override
+    protected long getMinSchedulePeriodMs() {
+        return Long.parseLong(EVERY_HOUR);
+    }
+
+    @Override
+    public boolean isRateLimited() {
+        return true;
     }
 
     @Override
     public void doJob(boolean force) throws Exception {
         if (engine != null) {
+            log.debug("{} executing at {}", this.getClass().getSimpleName(), LocalDateTime.now());
             engine.getPushService().pushData(force).getDataProcessedCount();
         }
     }
