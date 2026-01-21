@@ -38,9 +38,6 @@ import org.jumpmind.db.platform.mssql.MsSql2008DdlBuilder;
 import org.jumpmind.db.platform.mssql.MsSql2016DdlBuilder;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.platform.nuodb.NuoDbDdlBuilder;
-import org.jumpmind.db.platform.oracle.Oracle122DdlBuilder;
-import org.jumpmind.db.platform.oracle.Oracle23DdlBuilder;
-import org.jumpmind.db.platform.oracle.OracleDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder95;
 import org.jumpmind.db.platform.redshift.RedshiftDdlBuilder;
@@ -65,6 +62,7 @@ public class DdlBuilderFactory implements IDdlBuilderFactory {
         return instance;
     }
 
+    @Override
     public IDdlBuilder create(String databaseName) {
         if (DatabaseNamesConstants.DB2.equals(databaseName)) {
             return new Db2DdlBuilder();
@@ -96,12 +94,6 @@ public class DdlBuilderFactory implements IDdlBuilderFactory {
             return new MsSql2016DdlBuilder();
         } else if (DatabaseNamesConstants.MYSQL.equalsIgnoreCase(databaseName)) {
             return new MySqlDdlBuilder();
-        } else if (DatabaseNamesConstants.ORACLE.equalsIgnoreCase(databaseName)) {
-            return new OracleDdlBuilder();
-        } else if (DatabaseNamesConstants.ORACLE122.equalsIgnoreCase(databaseName)) {
-            return new Oracle122DdlBuilder();
-        } else if (DatabaseNamesConstants.ORACLE23.equalsIgnoreCase(databaseName)) {
-            return new Oracle23DdlBuilder();
         } else if (DatabaseNamesConstants.POSTGRESQL.equalsIgnoreCase(databaseName)) {
             return new PostgreSqlDdlBuilder();
         } else if (DatabaseNamesConstants.POSTGRESQL95.equalsIgnoreCase(databaseName)) {

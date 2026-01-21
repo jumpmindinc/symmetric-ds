@@ -40,7 +40,6 @@ import org.jumpmind.db.platform.mssql.MsSql2005DatabasePlatform;
 import org.jumpmind.db.platform.mssql.MsSql2008DatabasePlatform;
 import org.jumpmind.db.platform.mssql.MsSql2016DatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
-import org.jumpmind.db.platform.oracle.OracleDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDatabasePlatform;
 import org.jumpmind.db.util.BinaryEncoding;
@@ -315,9 +314,8 @@ public abstract class AbstractBulkDatabaseWriterTest extends AbstractWriterTest 
     }
 
     protected String[] massageExpectectedResultsForDialect(String[] values) {
-        if (values[5] != null && (!(platform instanceof OracleDatabasePlatform
-                || ((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
-                        && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
+        if (values[5] != null && (!(((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
+                && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
                 || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");
         }

@@ -46,7 +46,6 @@ import org.jumpmind.db.platform.mssql.MsSql2000DatabasePlatform;
 import org.jumpmind.db.platform.mssql.MsSql2005DatabasePlatform;
 import org.jumpmind.db.platform.mssql.MsSql2008DatabasePlatform;
 import org.jumpmind.db.platform.mssql.MsSql2016DatabasePlatform;
-import org.jumpmind.db.platform.oracle.OracleDatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDatabasePlatform;
 import org.jumpmind.symmetric.TestConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -131,7 +130,7 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
         String[] updateValues = new String[TEST_COLUMNS.length + 1];
         updateValues[0] = updateValues[updateValues.length - 1] = getNextId();
         updateValues[2] = updateValues[4] = "required string";
-        String[] insertValues = (String[]) ArrayUtils.subarray(updateValues, 0,
+        String[] insertValues = ArrayUtils.subarray(updateValues, 0,
                 updateValues.length - 1);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         CsvWriter writer = getWriter(out);
@@ -702,9 +701,8 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
 
     protected String translateExpectedDate(String value) {
         IDatabasePlatform platform = engine.getDatabasePlatform();
-        if (value != null && (!(platform instanceof OracleDatabasePlatform
-                || ((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
-                        && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
+        if (value != null && (!(((platform instanceof MsSql2000DatabasePlatform || platform instanceof MsSql2005DatabasePlatform)
+                && !(platform instanceof MsSql2008DatabasePlatform || platform instanceof MsSql2016DatabasePlatform))
                 || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
             value = value.replaceAll(" 00:00:00\\.0*", "");
         }
