@@ -106,7 +106,7 @@ public class TransportManagerFactory {
         }
     }
 
-    protected HttpTransportManager createHttpTransportManager(ISymmetricEngine symmetricEngine) {
+    protected ITransportManager createHttpTransportManager(ISymmetricEngine symmetricEngine) {
         String impl = symmetricEngine.getParameterService().getString(ServerConstants.HTTP_TRANSPORT_MANAGER_CLASS);
         if (StringUtils.isEmpty(impl)) {
             return new HttpTransportManager(symmetricEngine);
@@ -114,15 +114,15 @@ public class TransportManagerFactory {
             String className = impl.trim();
             try {
                 Class<?> clazz = ClassUtils.getClass(className);
-                HttpTransportManager httpTransportManager = null;
+                ITransportManager httpTransportManager = null;
                 for (Constructor<?> c : clazz.getConstructors()) {
                     if (c.getParameterTypes().length == 1
                             && c.getParameterTypes()[0].isAssignableFrom(ISymmetricEngine.class)) {
-                        httpTransportManager = (HttpTransportManager) c.newInstance(symmetricEngine);
+                        httpTransportManager = (ITransportManager) c.newInstance(symmetricEngine);
                     }
                 }
                 if (httpTransportManager == null) {
-                    httpTransportManager = (HttpTransportManager) clazz.getDeclaredConstructor().newInstance();
+                    httpTransportManager = (ITransportManager) clazz.getDeclaredConstructor().newInstance();
                 }
                 return httpTransportManager;
             } catch (Exception ex) {
