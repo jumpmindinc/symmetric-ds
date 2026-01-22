@@ -1,4 +1,4 @@
-[![SymmetricDS](https://www.jumpmind.com/images/common/symmetricds.png)](https://www.jumpmind.com/products/symmetricds/overview)
+[![SymmetricDS](https://www.jumpmind.com/wp-content/uploads/2023/02/symmetricds.png)](https://www.jumpmind.com/products/symmetricds/overview)
 - - -
 This repository contains the JumpMind Inc. official Docker image for SymmetricDS. This Docker image is based on the openjdk:alpine image. This installation contains the default web server configuration for SymmetricDS.
 
