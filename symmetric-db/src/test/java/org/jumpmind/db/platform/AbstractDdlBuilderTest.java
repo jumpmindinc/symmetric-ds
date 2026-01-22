@@ -44,7 +44,6 @@ import org.jumpmind.db.platform.informix.InformixDdlBuilder;
 import org.jumpmind.db.platform.interbase.InterbaseDdlBuilder;
 import org.jumpmind.db.platform.mysql.MySqlDdlBuilder;
 import org.jumpmind.db.platform.nuodb.NuoDbDdlBuilder;
-import org.jumpmind.db.platform.oracle.OracleDdlBuilder;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder;
 import org.jumpmind.db.platform.raima.RaimaDdlBuilder;
 import org.jumpmind.db.platform.redshift.RedshiftDdlBuilder;
@@ -55,16 +54,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class AbstractDdlBuilderTest {
-    AbstractDdlBuilder[] ddlBuilders;
+    protected AbstractDdlBuilder[] ddlBuilders;
     protected DdlBuilderForeignKeySupport[] foreignKeyDdlBuilders;
-    private Database database;
+    protected Database database;
 
     public class DdlBuilderForeignKeySupport {
-        private AbstractDdlBuilder ddlBuilder;
-        private ForeignKeyAction[] onDeleteForeignKeyAction;
-        private ForeignKeyAction[] onUpdateForeignKeyAction;
-        private boolean supportsOnDelete;
-        private boolean supportsOnUpdate;
+        protected AbstractDdlBuilder ddlBuilder;
+        protected ForeignKeyAction[] onDeleteForeignKeyAction;
+        protected ForeignKeyAction[] onUpdateForeignKeyAction;
+        protected boolean supportsOnDelete;
+        protected boolean supportsOnUpdate;
 
         public DdlBuilderForeignKeySupport(AbstractDdlBuilder ddlBuilder, boolean supportsOnDelete, ForeignKeyAction[] onDeleteForeignKeyAction,
                 boolean supportsOnUpdate, ForeignKeyAction[] onUpdateForeignKeyAction) {
@@ -98,9 +97,13 @@ public class AbstractDdlBuilderTest {
 
     @BeforeEach
     public void setup() {
-        ddlBuilders = new AbstractDdlBuilder[] { new H2DdlBuilder(), new OracleDdlBuilder(), new PostgreSqlDdlBuilder() };
+        ddlBuilders = getDdlBuilders();
         buildForeignKeyDdlBuilders();
         buildForeignKeyTables();
+    }
+
+    protected AbstractDdlBuilder[] getDdlBuilders() {
+        return new AbstractDdlBuilder[] { new H2DdlBuilder(), new PostgreSqlDdlBuilder() };
     }
 
     private void buildForeignKeyTables() {
@@ -252,11 +255,6 @@ public class AbstractDdlBuilderTest {
                 // NuoDb
                 new DdlBuilderForeignKeySupport(new NuoDbDdlBuilder(),
                         false, new ForeignKeyAction[] {},
-                        false, new ForeignKeyAction[] {}),
-                // Oracle
-                new DdlBuilderForeignKeySupport(new OracleDdlBuilder(),
-                        true, new ForeignKeyAction[] {
-                                ForeignKeyAction.CASCADE, ForeignKeyAction.SETNULL },
                         false, new ForeignKeyAction[] {}),
                 // Postgres
                 new DdlBuilderForeignKeySupport(new PostgreSqlDdlBuilder(),

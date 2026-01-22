@@ -42,7 +42,6 @@ import org.apache.logging.log4j.LogManager;
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.ase.AseDatabasePlatform;
-import org.jumpmind.db.platform.oracle.OracleDatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDatabasePlatform;
 import org.jumpmind.symmetric.TestConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -687,8 +686,7 @@ abstract public class AbstractDataLoaderServiceTest extends AbstractServiceTest 
 
     protected String translateExpectedDate(String value) {
         IDatabasePlatform platform = engine.getDatabasePlatform();
-        if (value != null && (!(platform instanceof OracleDatabasePlatform
-                || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
+        if (value != null && (!(platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
             value = value.replaceAll(" 00:00:00\\.0*", "");
         }
         return value;

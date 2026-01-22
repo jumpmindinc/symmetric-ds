@@ -23,7 +23,6 @@ package org.jumpmind.db.platform;
 import org.jumpmind.db.platform.ase.AseDmlStatement;
 import org.jumpmind.db.platform.hbase.HbaseDmlStatement;
 import org.jumpmind.db.platform.mysql.MySqlDmlStatement;
-import org.jumpmind.db.platform.oracle.OracleDmlStatement;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDmlStatement;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDmlStatement95;
 import org.jumpmind.db.platform.redshift.RedshiftDmlStatement;
@@ -48,10 +47,7 @@ public class DmlStatementFactory implements IDmlStatementFactory {
 
     @Override
     public DmlStatement create(String databaseName, DmlStatementOptions options) {
-        if (DatabaseNamesConstants.ORACLE.equals(databaseName) || DatabaseNamesConstants.ORACLE122.equals(databaseName) || DatabaseNamesConstants.ORACLE23
-                .equals(databaseName)) {
-            return new OracleDmlStatement(options);
-        } else if (DatabaseNamesConstants.POSTGRESQL.equals(databaseName) || (DatabaseNamesConstants.POSTGRESQL95.equals(databaseName) &&
+        if (DatabaseNamesConstants.POSTGRESQL.equals(databaseName) || (DatabaseNamesConstants.POSTGRESQL95.equals(databaseName) &&
                 System.getProperty("postgres.use.on.conflict", "").equalsIgnoreCase("false"))) {
             return new PostgreSqlDmlStatement(options);
         } else if (DatabaseNamesConstants.POSTGRESQL95.equals(databaseName)) {

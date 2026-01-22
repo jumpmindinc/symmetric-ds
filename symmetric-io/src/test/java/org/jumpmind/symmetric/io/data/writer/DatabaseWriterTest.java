@@ -37,7 +37,6 @@ import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.ase.AseDatabasePlatform;
 import org.jumpmind.db.platform.informix.InformixDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
-import org.jumpmind.db.platform.oracle.OracleDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDatabasePlatform;
 import org.jumpmind.symmetric.io.AbstractWriterTest;
@@ -559,11 +558,10 @@ public class DatabaseWriterTest extends AbstractWriterTest {
             // No time portion for a date field
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d\\.000", "");
         } else if (values[5] != null
-                && (!(platform instanceof OracleDatabasePlatform
-                        || platform instanceof AseDatabasePlatform
+                && (!(platform instanceof AseDatabasePlatform
                         || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");
-        } else if (values[5] != null && values[5].length() == 23 && (platform instanceof OracleDatabasePlatform)) {
+        } else if (values[5] != null && values[5].length() == 23) {
             values[5] = values[5] + "0000";
         }
         if (values[6] != null && values[6].length() == 23) {
@@ -571,8 +569,6 @@ public class DatabaseWriterTest extends AbstractWriterTest {
         }
         if (values[10] != null) {
             values[10] = values[10].replace(',', '.');
-        }
-        if (values[10] != null && !(platform instanceof OracleDatabasePlatform)) {
             int scale = 17;
             if (platform instanceof MySqlDatabasePlatform) {
                 scale = 16;
@@ -588,12 +584,9 @@ public class DatabaseWriterTest extends AbstractWriterTest {
 
     private String[] massageExpectectedResultsForDialect2(String[] values) {
         if (values[6] != null
-                && (!(platform instanceof OracleDatabasePlatform
-                        || platform instanceof AseDatabasePlatform
+                && (!(platform instanceof AseDatabasePlatform
                         || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[6] = values[6].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");
-        } else if (values[6] != null && values[6].length() == 23 && (platform instanceof OracleDatabasePlatform)) {
-            values[6] = values[6] + "0000";
         }
         if (values[7] != null && values[7].length() == 23) {
             values[7] = values[7] + "0000";

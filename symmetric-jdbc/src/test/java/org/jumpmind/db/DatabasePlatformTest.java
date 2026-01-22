@@ -46,13 +46,13 @@ import org.jumpmind.db.platform.IDdlBuilder;
 import org.jumpmind.db.platform.PermissionResult;
 import org.jumpmind.db.platform.PermissionResult.Status;
 import org.jumpmind.db.platform.PermissionType;
-import org.jumpmind.db.platform.oracle.OracleDdlBuilder;
+import org.jumpmind.db.platform.h2.H2DdlBuilder;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlScript;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class DatabasePlatformTest {
@@ -332,7 +332,7 @@ public class DatabasePlatformTest {
                         assertTrue("Platform column not created as an enum in platform " + platform.getName(), readFc.getType().equalsIgnoreCase("enum"));
                     }
                     // Pick a database platform that does not implement enum, and check definition of column (should be varchar)
-                    String ddl = new OracleDdlBuilder().createTable(table);
+                    String ddl = new H2DdlBuilder().createTable(table);
                     assertTrue("Non-implementing enum platform not defined as type varchar", ddl.contains("varchar") || ddl.contains("VARCHAR"));
                 }
             }

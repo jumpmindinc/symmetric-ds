@@ -36,7 +36,6 @@ import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.ase.AseDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
-import org.jumpmind.db.platform.oracle.OracleDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDatabasePlatform;
 import org.jumpmind.db.util.BinaryEncoding;
@@ -311,8 +310,7 @@ public abstract class AbstractBulkDatabaseWriterTest extends AbstractWriterTest 
     }
 
     protected String[] massageExpectectedResultsForDialect(String[] values) {
-        if (values[5] != null && (!(platform instanceof OracleDatabasePlatform
-                || platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
+        if (values[5] != null && (!(platform instanceof AseDatabasePlatform || platform instanceof SqlAnywhereDatabasePlatform))) {
             values[5] = values[5].replaceFirst(" \\d\\d:\\d\\d:\\d\\d.*", "");
         }
         if (values[6] != null && (platform instanceof MySqlDatabasePlatform || platform instanceof PostgreSqlDatabasePlatform)) {

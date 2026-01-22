@@ -64,5 +64,7 @@ public interface IJob extends IExtensionPoint {
 
     public boolean invoke(boolean force);
 
+    public boolean isRateLimited();
+
     public String getDeprecatedStartParameter();
 }

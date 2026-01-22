@@ -75,9 +75,6 @@ import org.jumpmind.db.platform.kafka.KafkaPlatform;
 import org.jumpmind.db.platform.mariadb.MariaDBDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
 import org.jumpmind.db.platform.nuodb.NuoDbDatabasePlatform;
-import org.jumpmind.db.platform.oracle.Oracle122DatabasePlatform;
-import org.jumpmind.db.platform.oracle.Oracle23DatabasePlatform;
-import org.jumpmind.db.platform.oracle.OracleDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSql95DatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
 import org.jumpmind.db.platform.raima.RaimaDatabasePlatform;
@@ -131,9 +128,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         addPlatform(platforms, DatabaseNamesConstants.KAFKA, KafkaPlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.MYSQL, MySqlDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.NUODB, NuoDbDatabasePlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.ORACLE, OracleDatabasePlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.ORACLE122, Oracle122DatabasePlatform.class);
-        addPlatform(platforms, DatabaseNamesConstants.ORACLE23, Oracle23DatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.POSTGRESQL, PostgreSqlDatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.POSTGRESQL95, PostgreSql95DatabasePlatform.class);
         addPlatform(platforms, DatabaseNamesConstants.SQLITE, SqliteDatabasePlatform.class);
@@ -169,9 +163,6 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         jdbcSubProtocolToPlatform.put(MariaDBDatabasePlatform.JDBC_SUBPROTOCOL, MariaDBDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(MySqlDatabasePlatform.JDBC_SUBPROTOCOL, MySqlDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(NuoDbDatabasePlatform.JDBC_SUBPROTOCOL, NuoDbDatabasePlatform.class);
-        jdbcSubProtocolToPlatform.put(OracleDatabasePlatform.JDBC_SUBPROTOCOL_THIN, OracleDatabasePlatform.class);
-        jdbcSubProtocolToPlatform.put(OracleDatabasePlatform.JDBC_SUBPROTOCOL_OCI8, OracleDatabasePlatform.class);
-        jdbcSubProtocolToPlatform.put(OracleDatabasePlatform.JDBC_SUBPROTOCOL_THIN_OLD, OracleDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(PostgreSqlDatabasePlatform.JDBC_SUBPROTOCOL, PostgreSqlDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(SqliteDatabasePlatform.JDBC_SUBPROTOCOL, SqliteDatabasePlatform.class);
         jdbcSubProtocolToPlatform.put(SqlAnywhereDatabasePlatform.JDBC_SUBPROTOCOL, SqlAnywhereDatabasePlatform.class);
@@ -305,7 +296,7 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
                 }
             } else if (majorVersion >= 23) {
                 if (isOracle122Compatible(connection)) {
-                    nameVersion.setName(DatabaseNamesConstants.ORACLE23);
+                    nameVersion.setVersion(23);
                 }
             }
         }

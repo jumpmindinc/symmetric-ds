@@ -36,7 +36,6 @@ import org.jumpmind.db.platform.interbase.InterbaseDatabasePlatform;
 import org.jumpmind.db.platform.mariadb.MariaDBDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
 import org.jumpmind.db.platform.nuodb.NuoDbDatabasePlatform;
-import org.jumpmind.db.platform.oracle.OracleDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
 import org.jumpmind.db.platform.raima.RaimaDatabasePlatform;
 import org.jumpmind.db.platform.redshift.RedshiftDatabasePlatform;
@@ -62,7 +61,6 @@ import org.jumpmind.symmetric.db.interbase.InterbaseSymmetricDialect;
 import org.jumpmind.symmetric.db.mariadb.MariaDBSymmetricDialect;
 import org.jumpmind.symmetric.db.mysql.MySqlSymmetricDialect;
 import org.jumpmind.symmetric.db.nuodb.NuoDbSymmetricDialect;
-import org.jumpmind.symmetric.db.oracle.OracleSymmetricDialect;
 import org.jumpmind.symmetric.db.postgresql.GreenplumSymmetricDialect;
 import org.jumpmind.symmetric.db.postgresql.PostgreSqlSymmetricDialect;
 import org.jumpmind.symmetric.db.raima.RaimaSymmetricDialect;
@@ -97,8 +95,6 @@ public class JdbcSymmetricDialectFactory implements ISymmetricDialectFactory {
             dialect = new MariaDBSymmetricDialect(parameterService, platform);
         } else if (platform instanceof MySqlDatabasePlatform) {
             dialect = new MySqlSymmetricDialect(parameterService, platform);
-        } else if (platform instanceof OracleDatabasePlatform) {
-            dialect = new OracleSymmetricDialect(parameterService, platform);
         } else if (platform instanceof GreenplumPlatform) {
             dialect = new GreenplumSymmetricDialect(parameterService, platform);
         } else if (platform instanceof RedshiftDatabasePlatform) {
