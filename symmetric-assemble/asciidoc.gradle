@@ -48,106 +48,112 @@ task unzipProJar(type: Copy) {
 		into outputDir2
 }
 
+task generateReleaseNotesActual(type: JavaExec) {
+	dependsOn unzipProJar
+	mainClass = 'org.jumpmind.db.io.ReleaseNotesGenerator'
+	classpath = configurations.generateReleaseNotesDependencies
+	args = [
+		symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-default.properties",
+		symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-schema.xml",
+		symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/symmetric-console-default.properties",
+		symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/console-schema.xml",
+		symAssembleDir + '/src/asciidoc/generated/release-notes.ad',
+		version.substring(0, version.lastIndexOf(".")),
+		"https://jumpmind.atlassian.net"
+	]
+}
 
 task generateReleaseNotes {
 	dependsOn unzipProJar
 	dependsOn project(":symmetric-util").jar
 	dependsOn project(":symmetric-db").jar
-	doFirst{
-		javaexec {
-			mainClass = 'org.jumpmind.db.io.ReleaseNotesGenerator'
-			classpath = configurations.generateReleaseNotesDependencies
-			args = [
-				symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-default.properties",
-				symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-schema.xml",
-				symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/symmetric-console-default.properties",
-				symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/console-schema.xml",
-				symAssembleDir + '/src/asciidoc/generated/release-notes.ad',
-				version.substring(0, version.lastIndexOf(".")),
-				"https://jumpmind.atlassian.net"
-			]
-		}
-	}
+	dependsOn generateReleaseNotesActual
+}
+
+task generateServerParameters(type: JavaExec) {
+	mainClass = 'org.jumpmind.properties.DefaultParameterParser'
+    classpath = configurations.generateAppendixesDependencies
+    args = [
+        symAssembleDir + '/../symmetric-server/src/main/deploy/conf/symmetric-server.properties',
+        symAssembleDir + '/src/asciidoc/generated/server-parameters.ad',
+        'false',
+        'asciidoc'
+    ]
+}
+
+task generateStartupParametersPro(type: JavaExec) {
+	mainClass = 'org.jumpmind.properties.DefaultParameterParser'
+	classpath = configurations.generateAppendixesDependencies
+	args = [
+		symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-default.properties,' + symAssembleDir + '/../../symmetric-pro/symmetric-pro/src/main/resources/symmetric-console-default.properties',
+		symAssembleDir + '/src/asciidoc/generated/startup-parameters.ad',
+		'false',
+		'asciidoc'        		
+	]
+}
+
+task generateRuntimeParametersPro(type: JavaExec) {
+	mainClass = 'org.jumpmind.properties.DefaultParameterParser'
+	classpath = configurations.generateAppendixesDependencies
+	args = [
+		symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-default.properties,' + symAssembleDir + '/../../symmetric-pro/symmetric-pro/src/main/resources/symmetric-console-default.properties',
+		symAssembleDir + '/src/asciidoc/generated/runtime-parameters.ad',
+		'true',
+		'asciidoc'        		
+	]
+}
+
+task generateSchemaPro(type: JavaExec) {
+	mainClass = 'org.jumpmind.db.io.DatabaseXmlAsciiDocBuilder'
+    classpath = configurations.generateAppendixesDependencies
+    args = [
+        symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-schema.xml,' + symAssembleDir + '/../../symmetric-pro/symmetric-pro/src/main/resources/console-schema.xml',
+        symAssembleDir + '/src/asciidoc/generated/schema.ad'
+    ]
+}
+
+task generateStartupParameters(type: JavaExec) {
+	mainClass = 'org.jumpmind.properties.DefaultParameterParser'
+	classpath = configurations.generateAppendixesDependencies
+	args = [
+    	symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-default.properties',
+   		symAssembleDir + '/src/asciidoc/generated/startup-parameters.ad',
+    	'false',
+    	'asciidoc'
+	]
+}
+
+task generateRuntimeParameters(type: JavaExec) {
+	mainClass = 'org.jumpmind.properties.DefaultParameterParser'
+	classpath = configurations.generateAppendixesDependencies
+	args = [
+ 	    symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-default.properties',
+ 	    symAssembleDir + '/src/asciidoc/generated/runtime-parameters.ad',
+ 	    'true',
+	    'asciidoc'
+ 	]
+}
+
+task generateSchema(type: JavaExec) {
+	mainClass = 'org.jumpmind.db.io.DatabaseXmlAsciiDocBuilder'
+    classpath = configurations.generateAppendixesDependencies
+    args = [
+        symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-schema.xml',
+        symAssembleDir + '/src/asciidoc/generated/schema.ad'
+    ]
 }
 
 task generateAppendixes {
     dependsOn project(":symmetric-db").jar
-    doLast{
-        javaexec {
-            mainClass = 'org.jumpmind.properties.DefaultParameterParser'
-            classpath = configurations.generateAppendixesDependencies
-            args = [
-                symAssembleDir + '/../symmetric-server/src/main/deploy/conf/symmetric-server.properties',
-                symAssembleDir + '/src/asciidoc/generated/server-parameters.ad',
-                'false',
-                'asciidoc'
-            ]
-        }
-
-        if (project.properties.containsKey('pro')) {
-        	javaexec {
-        		mainClass = 'org.jumpmind.properties.DefaultParameterParser'
-        		classpath = configurations.generateAppendixesDependencies
-        		args = [
-					symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-default.properties,' + symAssembleDir + '/../../symmetric-pro/symmetric-pro/src/main/resources/symmetric-console-default.properties',
-					symAssembleDir + '/src/asciidoc/generated/startup-parameters.ad',
-					'false',
-					'asciidoc'        		
-        		]
-        	}
-        	
-        	javaexec {
-        		mainClass = 'org.jumpmind.properties.DefaultParameterParser'
-        		classpath = configurations.generateAppendixesDependencies
-        		args = [
-					symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-default.properties,' + symAssembleDir + '/../../symmetric-pro/symmetric-pro/src/main/resources/symmetric-console-default.properties',
-					symAssembleDir + '/src/asciidoc/generated/runtime-parameters.ad',
-					'true',
-					'asciidoc'        		
-        		]
-        	}
-        	
-	        javaexec {
-	            mainClass = 'org.jumpmind.db.io.DatabaseXmlAsciiDocBuilder'
-	            classpath = configurations.generateAppendixesDependencies
-	            args = [
-	                symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-schema.xml,' + symAssembleDir + '/../../symmetric-pro/symmetric-pro/src/main/resources/console-schema.xml',
-	                symAssembleDir + '/src/asciidoc/generated/schema.ad'
-	            ]
-	        }
-        } else {
-        	javaexec {
-            	mainClass = 'org.jumpmind.properties.DefaultParameterParser'
-            	classpath = configurations.generateAppendixesDependencies
-            	args = [
-                	symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-default.properties',
-               		symAssembleDir + '/src/asciidoc/generated/startup-parameters.ad',
-                	'false',
-                	'asciidoc'
-            	]
-        	}
-
-        	javaexec {
-            	mainClass = 'org.jumpmind.properties.DefaultParameterParser'
-            	classpath = configurations.generateAppendixesDependencies
-            	args = [
-             	    symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-default.properties',
-             	    symAssembleDir + '/src/asciidoc/generated/runtime-parameters.ad',
-             	    'true',
-            	    'asciidoc'
-           	 	]
-       		}
-       		
-	        javaexec {
-	            mainClass = 'org.jumpmind.db.io.DatabaseXmlAsciiDocBuilder'
-	            classpath = configurations.generateAppendixesDependencies
-	            args = [
-	                symAssembleDir + '/../symmetric-core/src/main/resources/symmetric-schema.xml',
-	                symAssembleDir + '/src/asciidoc/generated/schema.ad'
-	            ]
-	        }
-        }
-
+    dependsOn generateServerParameters
+    if (project.properties.containsKey('pro')) {
+    	dependsOn generateStartupParametersPro
+    	dependsOn generateRuntimeParametersPro
+    	dependsOn generateSchemaPro
+    } else {
+    	dependsOn generateStartupParameters
+    	dependsOn generateRuntimeParameters
+    	dependsOn generateSchema
     }
 }
 

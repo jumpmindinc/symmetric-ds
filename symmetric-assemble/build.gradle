@@ -6,16 +6,16 @@ buildscript {
     dependencies {
         // classpath 'org.asciidoctor:asciidoctorj-pdf:4.0.4'
         classpath 'org.asciidoctor:asciidoctor-gradle-jvm:4.0.4'
-		classpath 'com.diffplug.spotless:spotless-plugin-gradle:7.0.3'
-		classpath 'com.bmuschko:gradle-docker-plugin:9.4.0'
+        classpath 'com.diffplug.spotless:spotless-plugin-gradle:7.0.3'
+        classpath 'com.bmuschko:gradle-docker-plugin:9.4.0'
         classpath 'org.jacoco:org.jacoco.ant:0.8.12'
     }
 }
 
 plugins {
     id "org.sonarqube" version "6.2.0.5505"
-	id 'com.vaadin' version "$vaadinPluginVersion" apply false
-	id 'org.asciidoctor.jvm.convert' version '4.0.4' apply false
+    id 'com.vaadin' version "$vaadinPluginVersion" apply false
+    id 'org.asciidoctor.jvm.convert' version '4.0.4' apply false
     id 'eu.kakde.gradle.sonatype-maven-central-publisher' version '1.0.6' apply false
 }
 
@@ -26,12 +26,12 @@ apply plugin: 'com.bmuschko.docker-remote-api'
 apply plugin: 'jacoco'
 
 allprojects {
-	apply plugin: 'com.diffplug.spotless'
-	spotless {
-	  java {
-		eclipse().configFile(project.rootDir.toString() + '/formatter.eclipse.xml')
-	  }
-	}
+    apply plugin: 'com.diffplug.spotless'
+    spotless {
+      java {
+        eclipse().configFile(project.rootDir.toString() + '/formatter.eclipse.xml')
+      }
+    }
 }
 
 task develop {
@@ -40,8 +40,8 @@ task develop {
 
 idea {
     module {
-        testResourceDirs = []
-        testSourceDirs = [ file('src/test/java') ]
+        testResources = files([])
+        testSources = files(['src/test/java'])
         resourceDirs += file('src/test/resources')
         excludeDirs += file('bin')
         excludeDirs += file('build')
@@ -70,14 +70,14 @@ task buildScriptDependencies(type: org.gradle.api.tasks.diagnostics.DependencyRe
 
 //This section applies the sonarqube plugin to all subprojects and then specifies an xml report path in symmetric-assemble
 subprojects {
-	apply plugin: 'org.sonarqube'
+    apply plugin: 'org.sonarqube'
     sonar {
         properties {
             property 'sonar.coverage.jacoco.xmlReportPaths', "${rootDir}/build/reports/jacoco/codeCoverageReport/codeCoverageReport.xml"
-       		//this could be set to sonar.coverage.exclusions as that only excludes these files from coverage
-       		property "sonar.coverage.exclusions", "**/*.ad, **/*.js, **/*.c"
-	     	property "sonar.exclusions","**/ui/**"
-			property "sonar.scm.disabled", "true"    
+            //this could be set to sonar.coverage.exclusions as that only excludes these files from coverage
+            property "sonar.coverage.exclusions", "**/*.ad, **/*.js, **/*.c"
+            property "sonar.exclusions","**/ui/**"
+            property "sonar.scm.disabled", "true"    
         }
     }
     tasks.withType(Test).configureEach {
@@ -94,63 +94,63 @@ if (project.properties.containsKey('pro')) {
 
 //used to specify the jacoco version
 jacoco {
-	toolVersion = "0.8.12"
+    toolVersion = "0.8.12"
 }
 
 task codeCoverageReport(type: JacocoReport) {
-	dependsOn ':symmetric-client:compileTestJava'
-	dependsOn ':symmetric-client:integrationTest'
-	dependsOn ':symmetric-client:test'
-	dependsOn ':symmetric-client:jacocoTestReport'
-	dependsOn ':symmetric-client:processTestResources'
-	dependsOn ':symmetric-core:compileTestJava'
-	dependsOn ':symmetric-core:integrationTest'
-	dependsOn ':symmetric-core:test'
-	dependsOn ':symmetric-core:jacocoTestReport'
-	dependsOn ':symmetric-core:processTestResources'
-	dependsOn ':symmetric-csv:integrationTest'
-	dependsOn ':symmetric-csv:test'
-	dependsOn ':symmetric-db:compileTestJava'
-	dependsOn ':symmetric-db:integrationTest'
-	dependsOn ':symmetric-db:test'
-	dependsOn ':symmetric-db:jacocoTestReport'
-	dependsOn ':symmetric-db:processTestResources'
-	dependsOn ':symmetric-io:compileTestJava'
-	dependsOn ':symmetric-io:integrationTest'
-	dependsOn ':symmetric-io:test'
-	dependsOn ':symmetric-io:jacocoTestReport'
-	dependsOn ':symmetric-io:processTestResources'
-	dependsOn ':symmetric-jdbc:compileTestJava'
-	dependsOn ':symmetric-jdbc:integrationTest'
-	dependsOn ':symmetric-jdbc:test'
-	dependsOn ':symmetric-jdbc:jacocoTestReport'
-	dependsOn ':symmetric-jdbc:processTestResources'
-	dependsOn ':symmetric-server:compileTestJava'
-	dependsOn ':symmetric-server:integrationTest'
-	dependsOn ':symmetric-server:test'
-	dependsOn ':symmetric-server:jacocoTestReport'
-	dependsOn ':symmetric-server:processTestResources'
-	dependsOn ':symmetric-sqlexplorer:integrationTest'
-	dependsOn ':symmetric-sqlexplorer:test'
-	dependsOn ':symmetric-util:compileTestJava'
-	dependsOn ':symmetric-util:integrationTest'
-	dependsOn ':symmetric-util:test'
-	dependsOn ':symmetric-util:jacocoTestReport'
-	dependsOn ':symmetric-util:processTestResources'
-	dependsOn ':symmetric-wrapper:integrationTest'
-	dependsOn ':symmetric-wrapper:test'
-	dependsOn ':test'
+    dependsOn ':symmetric-client:compileTestJava'
+    dependsOn ':symmetric-client:integrationTest'
+    dependsOn ':symmetric-client:test'
+    dependsOn ':symmetric-client:jacocoTestReport'
+    dependsOn ':symmetric-client:processTestResources'
+    dependsOn ':symmetric-core:compileTestJava'
+    dependsOn ':symmetric-core:integrationTest'
+    dependsOn ':symmetric-core:test'
+    dependsOn ':symmetric-core:jacocoTestReport'
+    dependsOn ':symmetric-core:processTestResources'
+    dependsOn ':symmetric-csv:integrationTest'
+    dependsOn ':symmetric-csv:test'
+    dependsOn ':symmetric-db:compileTestJava'
+    dependsOn ':symmetric-db:integrationTest'
+    dependsOn ':symmetric-db:test'
+    dependsOn ':symmetric-db:jacocoTestReport'
+    dependsOn ':symmetric-db:processTestResources'
+    dependsOn ':symmetric-io:compileTestJava'
+    dependsOn ':symmetric-io:integrationTest'
+    dependsOn ':symmetric-io:test'
+    dependsOn ':symmetric-io:jacocoTestReport'
+    dependsOn ':symmetric-io:processTestResources'
+    dependsOn ':symmetric-jdbc:compileTestJava'
+    dependsOn ':symmetric-jdbc:integrationTest'
+    dependsOn ':symmetric-jdbc:test'
+    dependsOn ':symmetric-jdbc:jacocoTestReport'
+    dependsOn ':symmetric-jdbc:processTestResources'
+    dependsOn ':symmetric-server:compileTestJava'
+    dependsOn ':symmetric-server:integrationTest'
+    dependsOn ':symmetric-server:test'
+    dependsOn ':symmetric-server:jacocoTestReport'
+    dependsOn ':symmetric-server:processTestResources'
+    dependsOn ':symmetric-sqlexplorer:integrationTest'
+    dependsOn ':symmetric-sqlexplorer:test'
+    dependsOn ':symmetric-util:compileTestJava'
+    dependsOn ':symmetric-util:integrationTest'
+    dependsOn ':symmetric-util:test'
+    dependsOn ':symmetric-util:jacocoTestReport'
+    dependsOn ':symmetric-util:processTestResources'
+    dependsOn ':symmetric-wrapper:integrationTest'
+    dependsOn ':symmetric-wrapper:test'
+    dependsOn ':test'
     // Gather execution data from all subprojects
     executionData = files(
     subprojects.collect { subproject ->
         file("${subproject.buildDir}/jacoco/test.exec")
     }.findAll { it.exists() }
-	)
-	
+    )
+    
     allprojects.each {
         sourceSets it.sourceSets.main
     }
-	//controls what reports are generated. XML is needed for sonarqube to run. HTML is for a human readable option to check things
+    //controls what reports are generated. XML is needed for sonarqube to run. HTML is for a human readable option to check things
     reports {
         xml.required = true
         html.required = true        
@@ -168,26 +168,26 @@ tasks['sonar'].with {
 task generateJavadoc(type: Javadoc) {
     destinationDir = new File(buildDir, 'doc/javadoc')
     title = "SymmetricDS API $version"
-	group = 'SymmetricDS'
-	description = 'Generate JavaDoc HTML pages for API documentation'
-	options.addStringOption 'Xdoclint:none', '-quiet'
-	
-	subprojects.each { proj ->
-		proj.tasks.withType(Javadoc).each { javadocTask ->
-			source += javadocTask.source
-			classpath += javadocTask.classpath
-			excludes += javadocTask.excludes
-			includes += javadocTask.includes
-		}
-	}
+    group = 'SymmetricDS'
+    description = 'Generate JavaDoc HTML pages for API documentation'
+    options.addStringOption 'Xdoclint:none', '-quiet'
+    
+    subprojects.each { proj ->
+        proj.tasks.withType(Javadoc).each { javadocTask ->
+            source += javadocTask.source
+            classpath += javadocTask.classpath
+            excludes += javadocTask.excludes
+            includes += javadocTask.includes
+        }
+    }
 }
 
 def isLatest = project.hasProperty("latest") && project.property("latest") == "true"
 
 task publishJavadoc {
     dependsOn generateJavadoc
-	group = 'SymmetricDS'
-	description = 'Publish javadoc to SourceForge website'
+    group = 'SymmetricDS'
+    description = 'Publish javadoc to SourceForge website'
     doLast {
         ant.taskdef(name: 'scp', classname: 'org.apache.tools.ant.taskdefs.optional.ssh.Scp',
         classpath: configurations.sshAntTask.asPath)
@@ -203,15 +203,15 @@ task publishJavadoc {
 }
 
 task buildSymmetric {
-	group = 'SymmetricDS'
-	description = 'Build software, documentation, and distribution ZIP files'
+    group = 'SymmetricDS'
+    description = 'Build software, documentation, and distribution ZIP files'
     dependsOn ':symmetric-server:serverDistZip'
 }
 
 task publishSymmetric {
     dependsOn buildSymmetric
-	group = 'SymmetricDS'
-	description = 'Publish software to SourceForge website'
+    group = 'SymmetricDS'
+    description = 'Publish software to SourceForge website'
     doLast {
         ant.taskdef(name: 'scp', classname: 'org.apache.tools.ant.taskdefs.optional.ssh.Scp',
         classpath: configurations.sshAntTask.asPath)
@@ -226,7 +226,7 @@ task publishSymmetric {
             }
         }
         if (isLatest) {    
-	    println "Setting latest file on SourceForge to symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
+        println "Setting latest file on SourceForge to symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
             exec {
                 commandLine "curl"
                 args "-s", "-S", "-H", "Accept: application/json", "-X", "PUT",
@@ -234,15 +234,15 @@ task publishSymmetric {
                     "-d", "api_key=$sourceforgeApiKey",
                     "https://sourceforge.net/projects/symmetricds/files/symmetricds/symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
             }     
-	}
+    }
     }
 }
 
 task releaseSymmetric {
     dependsOn publishSymmetric
     dependsOn tasks.getByPath('symmetric-server:publishDoc')
-	group = 'SymmetricDS'
-	description = 'Publish software to SourceForge website and online documentation to SymmetricDS website'
+    group = 'SymmetricDS'
+    description = 'Publish software to SourceForge website and online documentation to SymmetricDS website'
 }
 
 
@@ -279,7 +279,7 @@ task publishDocker(type: com.bmuschko.gradle.docker.tasks.image.DockerPushImage)
     images.add("jumpmind/symmetricds:${majorMinorVersion}".toString())
     
     if (isLatest) {
-	images.add("jumpmind/symmetricds:latest")
+    images.add("jumpmind/symmetricds:latest")
     }
 
     doLast {
