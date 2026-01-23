@@ -150,7 +150,13 @@ public class Row extends LinkedCaseInsensitiveMap<Object> {
             if (index > 0) {
                 concatenatedRow.append(",");
             }
-            concatenatedRow.append(obj != null ? obj.toString() : "");
+            if (obj != null) {
+                if (obj instanceof byte[]) {
+                    concatenatedRow.append(Hex.encodeHexString((byte[]) obj));
+                } else {
+                    concatenatedRow.append(obj.toString());
+                }
+            }
             index++;
         }
         return concatenatedRow.toString();
