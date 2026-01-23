@@ -552,13 +552,16 @@ public class DmlStatement {
     }
 
     public void updateCteExpression(String value, String prefix) {
-        if (!StringUtils.isBlank(prefix)) {
+        if (!StringUtils.isBlank(prefix) && this.sql != null) {
             this.sql = this.sql.replaceAll(prefix + ":",
                     prefix + ":" + value);
         }
     }
 
     public static String updateCteExpression(String sql, String value, String prefix) {
+        if (sql == null) {
+            return "";
+        }
         if (!StringUtils.isBlank(prefix)) {
             sql = sql.replaceAll(prefix + ":",
                     prefix + ":" + value);

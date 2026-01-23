@@ -747,6 +747,9 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
     }
 
     protected String updateCteExpression(String sql, String nodeId, String prefix) {
+        if (sql == null) {
+            return "";
+        }
         if (!StringUtils.isBlank(prefix)) {
             sql = sql.replaceAll(prefix + ":",
                     prefix + ":" + nodeId);
