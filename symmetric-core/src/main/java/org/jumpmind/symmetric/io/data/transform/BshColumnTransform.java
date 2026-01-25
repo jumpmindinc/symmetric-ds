@@ -163,12 +163,12 @@ public class BshColumnTransform extends AbstractColumnTransform implements ISing
             }
         } catch (TargetError evalEx) {
             Throwable ex = evalEx.getTarget();
-            log.error("TargetError detected for " + transformBeanshellInfo, ex);
             if (ex instanceof IgnoreColumnException) {
                 throw (IgnoreColumnException) ex;
             } else if (ex instanceof IgnoreRowException) {
                 throw (IgnoreRowException) ex;
             } else {
+            	log.error("TargetError detected for " + transformBeanshellInfo, ex);
                 throw new TransformColumnException(String.format("Beanshell script error on line %d for target column %s on transform %s", evalEx
                         .getErrorLineNumber(), column.getTargetColumnName(),
                         column.getTransformId()), ex);
