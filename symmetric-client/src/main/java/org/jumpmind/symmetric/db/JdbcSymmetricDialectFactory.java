@@ -34,10 +34,6 @@ import org.jumpmind.db.platform.informix.InformixDatabasePlatform;
 import org.jumpmind.db.platform.ingres.IngresDatabasePlatform;
 import org.jumpmind.db.platform.interbase.InterbaseDatabasePlatform;
 import org.jumpmind.db.platform.mariadb.MariaDBDatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2000DatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2005DatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2008DatabasePlatform;
-import org.jumpmind.db.platform.mssql.MsSql2016DatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
 import org.jumpmind.db.platform.nuodb.NuoDbDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
@@ -63,10 +59,6 @@ import org.jumpmind.symmetric.db.informix.InformixSymmetricDialect;
 import org.jumpmind.symmetric.db.ingres.IngresSymmetricDialect;
 import org.jumpmind.symmetric.db.interbase.InterbaseSymmetricDialect;
 import org.jumpmind.symmetric.db.mariadb.MariaDBSymmetricDialect;
-import org.jumpmind.symmetric.db.mssql.MsSql2008SymmetricDialect;
-import org.jumpmind.symmetric.db.mssql.MsSql2016SymmetricDialect;
-import org.jumpmind.symmetric.db.mssql.MsSqlSymmetricDialect;
-import org.jumpmind.symmetric.db.mssql2000.MsSql2000SymmetricDialect;
 import org.jumpmind.symmetric.db.mysql.MySqlSymmetricDialect;
 import org.jumpmind.symmetric.db.nuodb.NuoDbSymmetricDialect;
 import org.jumpmind.symmetric.db.postgresql.GreenplumSymmetricDialect;
@@ -103,14 +95,6 @@ public class JdbcSymmetricDialectFactory implements ISymmetricDialectFactory {
             dialect = new MariaDBSymmetricDialect(parameterService, platform);
         } else if (platform instanceof MySqlDatabasePlatform) {
             dialect = new MySqlSymmetricDialect(parameterService, platform);
-        } else if (platform instanceof MsSql2016DatabasePlatform) {
-            dialect = new MsSql2016SymmetricDialect(parameterService, platform);
-        } else if (platform instanceof MsSql2008DatabasePlatform) {
-            dialect = new MsSql2008SymmetricDialect(parameterService, platform);
-        } else if (platform instanceof MsSql2005DatabasePlatform) {
-            dialect = new MsSqlSymmetricDialect(parameterService, platform);
-        } else if (platform instanceof MsSql2000DatabasePlatform) {
-            dialect = new MsSql2000SymmetricDialect(parameterService, platform);
         } else if (platform instanceof GreenplumPlatform) {
             dialect = new GreenplumSymmetricDialect(parameterService, platform);
         } else if (platform instanceof RedshiftDatabasePlatform) {

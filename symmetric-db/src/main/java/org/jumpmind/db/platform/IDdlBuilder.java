@@ -50,6 +50,8 @@ public interface IDdlBuilder {
 
     public String dropTables(Database database);
 
+    public String getCteExpressionPrefix();
+
     /*
      * Determines whether delimited identifiers are used or normal SQL92 identifiers (which may only contain alpha numerical characters and the underscore, must
      * start with a letter and cannot be a reserved keyword). Per default, delimited identifiers are not used

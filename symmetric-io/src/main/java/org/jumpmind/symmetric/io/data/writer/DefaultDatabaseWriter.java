@@ -241,7 +241,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
 
     protected void replaceCteExpression() {
         if (isCteExpression()) {
-            currentDmlStatement.updateCteExpression(batch.getSourceNodeId());
+            currentDmlStatement.updateCteExpression(batch.getSourceNodeId(), getPlatform().getDdlBuilder().getCteExpressionPrefix());
         }
     }
 
@@ -249,7 +249,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
         String retSql = sql;
         if (isCteExpression()) {
             retSql = getPlatform().getDdlBuilder().getDatabaseInfo().getCteExpression() + " " + sql;
-            retSql = DmlStatement.updateCteExpression(retSql, batch.getSourceNodeId());
+            retSql = DmlStatement.updateCteExpression(retSql, batch.getSourceNodeId(), getPlatform().getDdlBuilder().getCteExpressionPrefix());
         }
         return retSql;
     }
