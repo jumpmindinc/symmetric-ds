@@ -444,7 +444,7 @@ public class InternalTransportManager extends AbstractTransportManager implement
         pw.close();
     }
 
-    protected void runAtClient(final String url, final InputStream is, final OutputStream os,
+    public void runAtClient(final String url, final InputStream is, final OutputStream os,
             final IClientRunnable runnable) {
         new Thread() {
             public void run() {
@@ -483,7 +483,7 @@ public class InternalTransportManager extends AbstractTransportManager implement
         }
     }
 
-    protected interface IClientRunnable {
+    public interface IClientRunnable {
         public void run(ISymmetricEngine engine, InputStream is, OutputStream os) throws Exception;
     }
 
