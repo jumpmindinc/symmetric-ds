@@ -51,6 +51,7 @@ import org.jumpmind.symmetric.transport.http.HttpTransportManager;
 import org.jumpmind.symmetric.transport.http.SelfSignedX509TrustManager;
 import org.jumpmind.symmetric.transport.http.SimpleHostnameVerifier;
 import org.jumpmind.symmetric.transport.internal.InternalTransportManager;
+import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,7 +100,8 @@ public class TransportManagerFactory {
         } else if (Constants.PROTOCOL_FILE.equalsIgnoreCase(transport)) {
             return new FileTransportManager(symmetricEngine);
         } else if (Constants.PROTOCOL_INTERNAL.equalsIgnoreCase(transport)) {
-            return new InternalTransportManager(symmetricEngine);
+            return AppUtils.newInstance(InternalTransportManager.class, InternalTransportManager.class,
+                    new Object[] { symmetricEngine }, new Class<?>[] { ISymmetricEngine.class });
         } else {
             throw new IllegalStateException("An invalid transport type of " + transport
                     + " was specified.");

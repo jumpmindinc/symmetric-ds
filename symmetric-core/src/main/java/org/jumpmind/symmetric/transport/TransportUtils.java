@@ -28,10 +28,18 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.model.OutgoingBatch;
+import org.jumpmind.symmetric.service.IConfigurationService;
+import org.jumpmind.symmetric.service.IOutgoingBatchService;
+import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.web.WebConstants;
 import org.jumpmind.util.AppUtils;
 
@@ -54,6 +62,39 @@ public class TransportUtils {
         }
         buff.setLength(buff.length() - 1);
         return buff.toString();
+    }
+
+    public static int[] countLoadedBatches(List<OutgoingBatch> batchList) {
+        int batchesCount = 0;
+        int dataCount = 0;
+        for (OutgoingBatch outgoingBatch : batchList) {
+            if (outgoingBatch.getStatus() == OutgoingBatch.Status.LD) {
+                batchesCount++;
+                dataCount += outgoingBatch.getDataRowCount();
+            }
+        }
+        return new int[] { dataCount, batchesCount };
+    }
+
+    public static String buildReadyQueuesHeader(IParameterService parameterService,
+            IConfigurationService configurationService, IOutgoingBatchService outgoingBatchService, String nodeId) {
+        if (parameterService.is(ParameterConstants.SYNC_USE_READY_QUEUES) && configurationService.getQueues(false).size() > 1
+                && !parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT)) {
+            Collection<String> readyQueues = outgoingBatchService.getReadyQueues(nodeId, false);
+            return StringUtils.joinWith(",", readyQueues.toArray());
+        }
+        return null;
+    }
+
+    public static String buildPendingBatchCountsHeader(IParameterService parameterService,
+            IOutgoingBatchService outgoingBatchService, String targetNodeId) {
+        if (parameterService.is(ParameterConstants.HYBRID_PUSH_PULL_ENABLED)) {
+            Map<String, Integer> batchesToSendByChannel = outgoingBatchService.countOutgoingBatchesPendingByChannel(targetNodeId);
+            if (batchesToSendByChannel != null && !batchesToSendByChannel.isEmpty()) {
+                return toCSV(batchesToSendByChannel);
+            }
+        }
+        return null;
     }
 
     public static Node convertPropertiesToNode(Map<String, String> prop) throws IOException {
