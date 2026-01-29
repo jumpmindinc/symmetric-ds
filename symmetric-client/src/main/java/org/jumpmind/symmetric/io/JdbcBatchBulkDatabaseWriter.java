@@ -28,12 +28,18 @@ import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
+import org.jumpmind.symmetric.io.data.reader.DataReaderStatistics;
 import org.jumpmind.symmetric.io.data.writer.Conflict;
 import org.jumpmind.symmetric.io.data.writer.DatabaseWriterSettings;
+import org.jumpmind.util.Statistics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
+    private final Logger log = LoggerFactory.getLogger(getClass());
     private int lastRowCount = 0;
-    private int expectedRowCount = 0;
+    private int expectedRowCount = 0; // Helps detect conflicts at the target
+    private int lastUncommittedRows = 0; // Helps detect commits
 
     public JdbcBatchBulkDatabaseWriter(IDatabasePlatform symmetricPlatform, IDatabasePlatform targetPlatform,
             String tablePrefix, DatabaseWriterSettings writerSettings) {
@@ -43,10 +49,23 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
     @Override
     public void start(Batch batch) {
         super.start(batch);
+        String batchInfo = "batch=" + batch.getBatchId();
         if (context.get(ContextConstants.CONTEXT_BULK_WRITER_TO_USE) == null || !context.get(ContextConstants.CONTEXT_BULK_WRITER_TO_USE).equals("default")) {
+            int bulkCommitLimit = ((JdbcSqlTemplate) getPlatform().getSqlTemplate()).getSettings().getBatchBulkLoaderSize();
+            if (log.isDebugEnabled()) {
+                Statistics batchStats = batch.getStatistics();
+                if (batchStats != null) {
+                    long totalRowCount = batch.getStatistics().get(DataReaderStatistics.DATA_ROW_COUNT);
+                    log.debug("Starting batch that has {} rows. Bulk commit limit={}, {}", totalRowCount, bulkCommitLimit, batchInfo);
+                } else {
+                    log.debug("Starting batch. Bulk commit limit={}, {}", bulkCommitLimit, batchInfo);
+                }
+            }
             getTransaction().setInBatchMode(true);
-            ((JdbcSqlTransaction) getTransaction()).setBatchSize(((JdbcSqlTemplate) getPlatform()
-                    .getSqlTemplate()).getSettings().getBatchBulkLoaderSize());
+            ((JdbcSqlTransaction) getTransaction()).setBatchSize(bulkCommitLimit);
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Initial DML row count: Actual={}, Expected={}, Uncommitted={}", lastRowCount, expectedRowCount, lastUncommittedRows);
         }
     }
 
@@ -89,9 +108,22 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
         if (isDml) {
             expectedRowCount++;
         }
-        if (getTransaction().getUnflushedMarkers(false).size() == 0) {
+        int pendingRows = getTransaction().getUnflushedMarkers(false).size();
+        if (lastUncommittedRows > pendingRows) {
+            expectedRowCount -= lastUncommittedRows;
+            if (log.isDebugEnabled()) {
+                log.debug("Commit detected, decresaing number of expected rows. Actual={}, Expected={}, Pending={}", lastRowCount, expectedRowCount,
+                        pendingRows);
+            }
+        }
+        lastUncommittedRows = pendingRows;
+        if (pendingRows == 0) {
             if (expectedRowCount != lastRowCount) {
+                log.warn("DML row count mismatch indicates a conflict at target! Actual={}, Expected={}, Pending={}", lastRowCount, expectedRowCount,
+                        pendingRows);
                 throw new SymmetricException("JdbcBatchBulkDataWriter was in conflict, will attempt to fallback using default writer.");
+            } else if (log.isDebugEnabled()) {
+                log.debug("No conflict. DML row count update: Actual={}, Expected={}, Pending={}", lastRowCount, expectedRowCount, pendingRows);
             }
             expectedRowCount = 0;
             lastRowCount = 0;
@@ -107,6 +139,7 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
         super.prepare();
     }
 
+    @Override
     protected int execute(CsvData data, String[] values) {
         lastRowCount = super.execute(data, values);
         return lastRowCount;
