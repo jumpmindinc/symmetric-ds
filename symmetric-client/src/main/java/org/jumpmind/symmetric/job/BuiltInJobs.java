@@ -43,8 +43,6 @@ public class BuiltInJobs {
         builtInJobs.add(new RouterJob(engine, taskScheduler));
         builtInJobs.add(createJob(PushJob.class, engine, taskScheduler));
         builtInJobs.add(createJob(PullJob.class, engine, taskScheduler));
-        builtInJobs.add(new OfflinePushJob(engine, taskScheduler));
-        builtInJobs.add(new OfflinePullJob(engine, taskScheduler));
         builtInJobs.add(new OutgoingPurgeJob(engine, taskScheduler));
         builtInJobs.add(new IncomingPurgeJob(engine, taskScheduler));
         builtInJobs.add(new StatisticFlushJob(engine, taskScheduler));

@@ -52,14 +52,12 @@ import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.TransportUtils;
 import org.jumpmind.symmetric.web.WebConstants;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Allow remote communication to nodes, in order to push data, pull data, and send messages.
  */
 public class HttpTransportManager extends AbstractTransportManager implements ITransportManager {
-    private static final Logger log = LoggerFactory.getLogger(HttpTransportManager.class);
     public static final int DEFAULT_MAX_FORM_KEYS = 100000;
     protected ISymmetricEngine engine;
     protected Map<String, String> sessionIdByUri = new HashMap<String, String>();
@@ -68,6 +66,7 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     protected int backOffPostCount;
 
     public HttpTransportManager() {
+        log = LoggerFactory.getLogger(HttpTransportManager.class);
     }
 
     public HttpTransportManager(ISymmetricEngine engine) {
@@ -75,6 +74,7 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
         this.engine = engine;
         useHeaderSecurityToken = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN);
         useSessionAuth = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_SESSION_AUTH);
+        log = LoggerFactory.getLogger(HttpTransportManager.class);
     }
 
     public int sendCopyRequest(Node local) throws IOException {

@@ -67,9 +67,13 @@ IMPORTANT: Please see <<Initial Loads>> for important details around initial loa
 and registration when using registration redirect.
 
 
+ifdef::pro[]
+
 === Offline Synchronization
 
 include::advanced/offline.ad[]
+
+endif::pro[]
 
 === Encrypted Passwords
 

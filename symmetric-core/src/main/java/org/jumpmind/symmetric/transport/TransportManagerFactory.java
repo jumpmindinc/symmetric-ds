@@ -20,7 +20,6 @@
  */
 package org.jumpmind.symmetric.transport;
 
-import java.lang.reflect.Constructor;
 import java.security.GeneralSecurityException;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
@@ -36,32 +35,35 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
-import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.exception.SecurityException;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.SymmetricException;
-import org.jumpmind.symmetric.common.Constants;
-import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
-import org.jumpmind.symmetric.transport.file.FileTransportManager;
 import org.jumpmind.symmetric.transport.http.HttpTransportManager;
 import org.jumpmind.symmetric.transport.http.SelfSignedX509TrustManager;
 import org.jumpmind.symmetric.transport.http.SimpleHostnameVerifier;
-import org.jumpmind.symmetric.transport.internal.InternalTransportManager;
-import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TransportManagerFactory {
     private static final Logger log = LoggerFactory.getLogger(TransportManagerFactory.class);
     private static boolean isStaticInitialized;
-    private ISymmetricEngine symmetricEngine;
+    protected ISymmetricEngine symmetricEngine;
 
     public TransportManagerFactory(ISymmetricEngine symmetricEngine) {
         this.symmetricEngine = symmetricEngine;
+    }
+    
+    protected void initHttps() {
+        String httpSslVerifiedServerNames = symmetricEngine.getParameterService().getString(
+                ServerConstants.HTTPS_VERIFIED_SERVERS);
+        // Allow self signed certs based on the parameter value.
+        boolean allowSelfSignedCerts = symmetricEngine.getParameterService().is(
+                ServerConstants.HTTPS_ALLOW_SELF_SIGNED_CERTS, false);
+        boolean https2Enabled = symmetricEngine.getParameterService().is(ServerConstants.HTTPS2_ENABLE, false);
+        initHttps(httpSslVerifiedServerNames, allowSelfSignedCerts, https2Enabled);
     }
 
     public static synchronized void initHttps(final String httpSslVerifiedServerNames,
@@ -83,54 +85,8 @@ public class TransportManagerFactory {
     }
 
     public ITransportManager create() {
-        return create(symmetricEngine.getParameterService().getString(
-                ParameterConstants.TRANSPORT_TYPE));
-    }
-
-    public ITransportManager create(String transport) {
-        if (Constants.PROTOCOL_HTTP.equalsIgnoreCase(transport)) {
-            String httpSslVerifiedServerNames = symmetricEngine.getParameterService().getString(
-                    ServerConstants.HTTPS_VERIFIED_SERVERS);
-            // Allow self signed certs based on the parameter value.
-            boolean allowSelfSignedCerts = symmetricEngine.getParameterService().is(
-                    ServerConstants.HTTPS_ALLOW_SELF_SIGNED_CERTS, false);
-            boolean https2Enabled = symmetricEngine.getParameterService().is(ServerConstants.HTTPS2_ENABLE, false);
-            initHttps(httpSslVerifiedServerNames, allowSelfSignedCerts, https2Enabled);
-            return createHttpTransportManager(symmetricEngine);
-        } else if (Constants.PROTOCOL_FILE.equalsIgnoreCase(transport)) {
-            return new FileTransportManager(symmetricEngine);
-        } else if (Constants.PROTOCOL_INTERNAL.equalsIgnoreCase(transport)) {
-            return AppUtils.newInstance(InternalTransportManager.class, InternalTransportManager.class,
-                    new Object[] { symmetricEngine }, new Class<?>[] { ISymmetricEngine.class });
-        } else {
-            throw new IllegalStateException("An invalid transport type of " + transport
-                    + " was specified.");
-        }
-    }
-
-    protected ITransportManager createHttpTransportManager(ISymmetricEngine symmetricEngine) {
-        String impl = symmetricEngine.getParameterService().getString(ServerConstants.HTTP_TRANSPORT_MANAGER_CLASS);
-        if (StringUtils.isEmpty(impl)) {
-            return new HttpTransportManager(symmetricEngine);
-        } else {
-            String className = impl.trim();
-            try {
-                Class<?> clazz = ClassUtils.getClass(className);
-                ITransportManager httpTransportManager = null;
-                for (Constructor<?> c : clazz.getConstructors()) {
-                    if (c.getParameterTypes().length == 1
-                            && c.getParameterTypes()[0].isAssignableFrom(ISymmetricEngine.class)) {
-                        httpTransportManager = (ITransportManager) c.newInstance(symmetricEngine);
-                    }
-                }
-                if (httpTransportManager == null) {
-                    httpTransportManager = (ITransportManager) clazz.getDeclaredConstructor().newInstance();
-                }
-                return httpTransportManager;
-            } catch (Exception ex) {
-                throw new SymmetricException("Failed to create custom HttpTransportManager impl '" + impl + "'", ex);
-            }
-        }
+        initHttps();
+        return new HttpTransportManager(symmetricEngine);
     }
 
     /**

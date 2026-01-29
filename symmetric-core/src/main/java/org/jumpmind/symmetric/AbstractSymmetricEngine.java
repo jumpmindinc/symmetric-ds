@@ -100,8 +100,6 @@ import org.jumpmind.symmetric.service.IInitialLoadService;
 import org.jumpmind.symmetric.service.ILoadFilterService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.INodeService;
-import org.jumpmind.symmetric.service.IOfflinePullService;
-import org.jumpmind.symmetric.service.IOfflinePushService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IPullService;
@@ -130,8 +128,6 @@ import org.jumpmind.symmetric.service.impl.InitialLoadService;
 import org.jumpmind.symmetric.service.impl.LoadFilterService;
 import org.jumpmind.symmetric.service.impl.NodeCommunicationService;
 import org.jumpmind.symmetric.service.impl.NodeService;
-import org.jumpmind.symmetric.service.impl.OfflinePullService;
-import org.jumpmind.symmetric.service.impl.OfflinePushService;
 import org.jumpmind.symmetric.service.impl.OutgoingBatchService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.jumpmind.symmetric.service.impl.PullService;
@@ -182,7 +178,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected IStatisticManager statisticManager;
     protected IConcurrentConnectionManager concurrentConnectionManager;
     protected ITransportManager transportManager;
-    protected ITransportManager offlineTransportManager;
     protected IClusterService clusterService;
     protected IPurgeService purgeService;
     protected ITransformService transformService;
@@ -200,8 +195,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected IAcknowledgeService acknowledgeService;
     protected IPushService pushService;
     protected IPullService pullService;
-    protected IOfflinePushService offlinePushService;
-    protected IOfflinePullService offlinePullService;
     protected IJobManager jobManager;
     protected ISequenceService sequenceService;
     protected IExtensionService extensionService;
@@ -339,19 +332,12 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.incomingBatchService = new IncomingBatchService(parameterService, symmetricDialect, clusterService);
         this.initialLoadService = new InitialLoadService(this);
         this.dataExtractorService = new DataExtractorService(this);
-        this.transportManager = new TransportManagerFactory(this).create();
-        this.offlineTransportManager = new TransportManagerFactory(this).create(Constants.PROTOCOL_FILE);
+        this.transportManager = buildTransportManager();
         this.dataLoaderService = new DataLoaderService(this);
         this.registrationService = new RegistrationService(this);
         this.acknowledgeService = new AcknowledgeService(this);
         this.pushService = new PushService(this);
         this.pullService = new PullService(this);
-        this.offlinePushService = new OfflinePushService(parameterService, symmetricDialect,
-                dataExtractorService, acknowledgeService, offlineTransportManager, nodeService,
-                clusterService, nodeCommunicationService, statisticManager, configurationService, extensionService);
-        this.offlinePullService = new OfflinePullService(parameterService, symmetricDialect,
-                nodeService, dataLoaderService, clusterService, nodeCommunicationService,
-                configurationService, extensionService, offlineTransportManager);
         this.fileSyncService = buildFileSyncService();
         this.fileSyncExtractorService = new FileSyncExtractorService(this);
         String updateServiceClassName = properties.get(ParameterConstants.UPDATE_SERVICE_CLASS);
@@ -395,9 +381,15 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected IRouterService buildRouterService() {
         return new RouterService(this);
     }
+    
+    protected ITransportManager buildTransportManager() {
+        TransportManagerFactory factory = AppUtils.newInstance(TransportManagerFactory.class,
+                TransportManagerFactory.class, new Object[] { this }, new Class<?>[] { ISymmetricEngine.class });
+        return factory.create();
+    }
 
     protected IFileSyncService buildFileSyncService() {
-        return new FileSyncService(this);
+        return AppUtils.newInstance(IFileSyncService.class, FileSyncService.class, new Object[] { this }, new Class<?>[] { ISymmetricEngine.class });
     }
 
     protected INodeCommunicationService buildNodeCommunicationService() {
@@ -1278,16 +1270,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     @Override
-    public IOfflinePullService getOfflinePullService() {
-        return this.offlinePullService;
-    }
-
-    @Override
-    public IOfflinePushService getOfflinePushService() {
-        return this.offlinePushService;
-    }
-
-    @Override
     public IRouterService getRouterService() {
         return this.routerService;
     }
@@ -1350,10 +1332,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     @Override
     public ITransportManager getTransportManager() {
         return transportManager;
-    }
-
-    public ITransportManager getOfflineTransportManager() {
-        return offlineTransportManager;
     }
 
     @Override

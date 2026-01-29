@@ -65,8 +65,6 @@ final public class ParameterConstants {
     public static final String START_STATISTIC_FLUSH_JOB = "start.stat.flush.job";
     public static final String START_STAGE_MGMT_JOB = "start.stage.management.job";
     public static final String START_WATCHDOG_JOB = "start.watchdog.job";
-    public static final String START_OFFLINE_PULL_JOB = "start.offline.pull.job";
-    public static final String START_OFFLINE_PUSH_JOB = "start.offline.push.job";
     public static final String START_REFRESH_CACHE_JOB = "start.refresh.cache.job";
     public static final String START_FILE_SYNC_TRACKER_JOB = "start.file.sync.tracker.job";
     public static final String START_FILE_SYNC_PUSH_JOB = "start.file.sync.push.job";
@@ -271,7 +269,7 @@ final public class ParameterConstants {
     public static final String TRANSPORT_HTTP_SESSION_EXPIRE_SECONDS = "http.session.expire.seconds";
     public static final String TRANSPORT_HTTP_SESSION_MAX_COUNT = "http.session.max.count";
     public static final String TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN = "http.use.header.security.token";
-    public static final String TRANSPORT_TYPE = "transport.type";
+    public static final String TRANSPORT_TYPE_LEGACY = "transport.type";
     public static final String TRANSPORT_MAX_BYTES_TO_SYNC = "transport.max.bytes.to.sync";
     public static final String TRANSPORT_MAX_FORM_KEYS = "transport.max.form.keys";
     public static final String TRANSPORT_MAX_ERROR_MILLIS = "transport.max.error.millis";

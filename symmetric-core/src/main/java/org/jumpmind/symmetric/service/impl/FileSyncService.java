@@ -46,7 +46,6 @@ import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.exception.IoException;
-import org.jumpmind.symmetric.AbstractSymmetricEngine;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.cache.ICacheManager;
@@ -99,8 +98,6 @@ import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.NoContentException;
-import org.jumpmind.symmetric.transport.file.FileIncomingTransport;
-import org.jumpmind.symmetric.transport.file.FileOutgoingTransport;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.ExceptionUtils;
 
@@ -955,28 +952,14 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         IOutgoingWithResponseTransport transport = null;
         ITransportManager transportManager = null;
         try {
-            if (!engine.getParameterService().is(ParameterConstants.NODE_OFFLINE)) {
-                transportManager = engine.getTransportManager();
-                transport = transportManager.getFilePushTransport(
-                        nodeCommunication.getNode(), identity, security.getNodePassword(),
-                        parameterService.getRegistrationUrl());
-            } else {
-                transportManager = ((AbstractSymmetricEngine) engine).getOfflineTransportManager();
-                transport = transportManager.getFilePushTransport(
-                        nodeCommunication.getNode(), identity, security.getNodePassword(),
-                        parameterService.getRegistrationUrl());
-            }
+            transportManager = getTransportManager(engine);
+            transport = transportManager.getFilePushTransport(
+                    nodeCommunication.getNode(), identity, security.getNodePassword(),
+                    parameterService.getRegistrationUrl());
             List<OutgoingBatch> batches = sendFiles(processInfo, nodeCommunication.getNode(),
                     transport);
             if (batches.size() > 0) {
-                if (transport instanceof FileOutgoingTransport) {
-                    ((FileOutgoingTransport) transport).setProcessedBatches(batches);
-                }
-                if (transport.isOpen()) {
-                    List<BatchAck> batchAcks = readAcks(batches, status.getNodeId(), transport,
-                            transportManager, engine.getAcknowledgeService(), null);
-                    status.updateOutgoingStatus(batches, batchAcks);
-                }
+                ackPushedBatches(batches, transport, transportManager, status);
             }
             if (!status.failed() && batches.size() > 0) {
                 log.info("Pushed files to {}. {} files and {} batches were processed",
@@ -990,15 +973,25 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         } catch (Exception e) {
             fireOffline(e, nodeCommunication.getNode(), status);
         } finally {
-            if (processInfo.getStatus() != ProcessInfo.ProcessStatus.ERROR) {
-                processInfo.setStatus(ProcessInfo.ProcessStatus.OK);
-            }
-            if (transport != null) {
-                transport.close();
-                if (transport instanceof FileOutgoingTransport) {
-                    ((FileOutgoingTransport) transport).complete(processInfo.getStatus() == ProcessInfo.ProcessStatus.OK);
-                }
-            }
+            completePush(transport, processInfo);
+        }
+    }
+    
+    protected void ackPushedBatches(List<OutgoingBatch> batches, IOutgoingWithResponseTransport transport,
+            ITransportManager transportManager, RemoteNodeStatus status) throws IOException {
+        if (transport.isOpen()) {
+            List<BatchAck> batchAcks = readAcks(batches, status.getNodeId(), transport,
+                    transportManager, engine.getAcknowledgeService(), null);
+            status.updateOutgoingStatus(batches, batchAcks);
+        }
+    }
+    
+    protected void completePush(IOutgoingWithResponseTransport transport, ProcessInfo processInfo) {
+        if (processInfo.getStatus() != ProcessInfo.ProcessStatus.ERROR) {
+            processInfo.setStatus(ProcessInfo.ProcessStatus.OK);
+        }
+        if (transport != null) {
+            transport.close();
         }
     }
 
@@ -1196,18 +1189,10 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                         ProcessType.FILE_SYNC_PULL_JOB));
         try {
             processInfo.setStatus(ProcessInfo.ProcessStatus.TRANSFERRING);
-            ITransportManager transportManager;
-            if (!engine.getParameterService().is(ParameterConstants.NODE_OFFLINE)) {
-                transportManager = engine.getTransportManager();
-                transport = transportManager.getFilePullTransport(
-                        nodeCommunication.getNode(), identity, security.getNodePassword(), null,
-                        parameterService.getRegistrationUrl());
-            } else {
-                transportManager = ((AbstractSymmetricEngine) engine).getOfflineTransportManager();
-                transport = transportManager.getFilePullTransport(
-                        nodeCommunication.getNode(), identity, security.getNodePassword(), null,
-                        parameterService.getRegistrationUrl());
-            }
+            ITransportManager transportManager = getTransportManager(engine);
+            transport = transportManager.getFilePullTransport(
+                    nodeCommunication.getNode(), identity, security.getNodePassword(), null,
+                    parameterService.getRegistrationUrl());
             List<IncomingBatch> batchesProcessed = processZip(transport.openStream(),
                     nodeCommunication.getNodeId(), processInfo);
             if (batchesProcessed.size() > 0) {
@@ -1230,14 +1215,15 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         } catch (Exception e) {
             fireOffline(e, nodeCommunication.getNode(), status);
         } finally {
-            if (transport != null) {
-                transport.close();
-                if (processInfo.getStatus() != ProcessInfo.ProcessStatus.ERROR) {
-                    processInfo.setStatus(ProcessInfo.ProcessStatus.OK);
-                }
-                if (transport instanceof FileIncomingTransport) {
-                    ((FileIncomingTransport) transport).complete(!status.failed());
-                }
+            completePull(transport, processInfo, status);
+        }
+    }
+    
+    protected void completePull(IIncomingTransport transport, ProcessInfo processInfo, RemoteNodeStatus status) {
+        if (transport != null) {
+            transport.close();
+            if (processInfo.getStatus() != ProcessInfo.ProcessStatus.ERROR) {
+                processInfo.setStatus(ProcessInfo.ProcessStatus.OK);
             }
         }
     }
@@ -1295,6 +1281,10 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             ctlFile = new File(file.getAbsolutePath().substring(0, extPosition) + ".ctl");
         }
         return ctlFile;
+    }
+    
+    protected ITransportManager getTransportManager(ISymmetricEngine engine) {
+        return engine.getTransportManager();
     }
 
     class FileTriggerMapper implements ISqlRowMapper<FileTrigger> {

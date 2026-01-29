@@ -63,7 +63,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 abstract public class AbstractService implements IService {
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+    protected Logger log = LoggerFactory.getLogger(getClass());
     protected IParameterService parameterService;
     protected ISymmetricDialect symmetricDialect;
     protected ISqlTemplate sqlTemplate;
