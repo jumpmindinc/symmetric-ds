@@ -20,7 +20,7 @@
  */
 package org.jumpmind.symmetric.job;
 
-import static org.jumpmind.symmetric.job.JobDefaults.EVERY_HOUR;
+import static org.jumpmind.symmetric.job.JobDefaults.EVERY_FIFTEEN_MINUTES;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -86,7 +86,7 @@ class PullJobTest {
 
     @Test
     void testGetMinSchedulePeriodMs() {
-        assertEquals(Long.parseLong(EVERY_HOUR), pullJob.getMinSchedulePeriodMs());
+        assertEquals(Long.parseLong(EVERY_FIFTEEN_MINUTES), pullJob.getMinSchedulePeriodMs());
     }
 
     @Test
@@ -98,8 +98,8 @@ class PullJobTest {
     void testGetTimeBetweenRunsInMs_belowMinimum() {
         when(parameterService.getString(anyString())).thenReturn(null);
         jobDefinition.setDefaultSchedule("10000"); // 10 seconds - below minimum
-        // Should return minimum of 1 hour (3600000ms) instead of configured 10000ms
-        assertEquals(Long.parseLong(EVERY_HOUR), pullJob.getTimeBetweenRunsInMs());
+        // Should return minimum of 15 minutes (900000ms) instead of configured 10000ms
+        assertEquals(Long.parseLong(EVERY_FIFTEEN_MINUTES), pullJob.getTimeBetweenRunsInMs());
     }
 
     @Test
@@ -114,8 +114,8 @@ class PullJobTest {
     void testGetSchedule_belowMinimum_returnsEnforcedMinimum() {
         when(parameterService.getString(anyString())).thenReturn(null);
         jobDefinition.setDefaultSchedule("10000"); // 10 seconds - below minimum
-        // getSchedule() should return the enforced minimum (1 hour)
-        assertEquals(EVERY_HOUR, pullJob.getSchedule());
+        // getSchedule() should return the enforced minimum (15 minutes)
+        assertEquals(EVERY_FIFTEEN_MINUTES, pullJob.getSchedule());
     }
 
     @Test
@@ -130,8 +130,8 @@ class PullJobTest {
     void testGetSchedule_cronBelowMinimum_returnsEnforcedMinimum() {
         when(parameterService.getString(jobDefinition.getCronParameter())).thenReturn("0/10 * * * * *");
         when(parameterService.getString(jobDefinition.getPeriodicParameter())).thenReturn(null);
-        // getSchedule() should return the enforced minimum (1 hour) instead of the cron schedule
-        assertEquals(EVERY_HOUR, pullJob.getSchedule());
+        // getSchedule() should return the enforced minimum (15 minutes) instead of the cron schedule
+        assertEquals(EVERY_FIFTEEN_MINUTES, pullJob.getSchedule());
     }
 
     @Test

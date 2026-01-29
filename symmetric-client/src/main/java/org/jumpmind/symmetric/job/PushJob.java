@@ -20,7 +20,7 @@
  */
 package org.jumpmind.symmetric.job;
 
-import static org.jumpmind.symmetric.job.JobDefaults.EVERY_HOUR;
+import static org.jumpmind.symmetric.job.JobDefaults.EVERY_FIFTEEN_MINUTES;
 
 import java.time.LocalDateTime;
 
@@ -39,13 +39,13 @@ public class PushJob extends AbstractJob {
     @Override
     public JobDefaults getDefaults() {
         return new JobDefaults()
-                .schedule(EVERY_HOUR)
+                .schedule(EVERY_FIFTEEN_MINUTES)
                 .description("Push batches to other nodes");
     }
 
     @Override
     protected long getMinSchedulePeriodMs() {
-        return Long.parseLong(EVERY_HOUR);
+        return Long.parseLong(EVERY_FIFTEEN_MINUTES);
     }
 
     @Override
