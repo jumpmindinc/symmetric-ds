@@ -110,6 +110,7 @@ final public class Constants {
     public static final String PROTOCOL_INTERNAL = "internal";
     public static final String PROTOCOL_FILE = "file";
     public static final String PROTOCOL_EXT = "ext";
+    public static final String PROTOCOL_HYBRID = "hybrid";
     public static final String TRANSPORT_HTTPS_VERIFIED_SERVERS_ALL = "all";
     public static final String TRANSFORM_SERVICE = "transformService";
     public static final String SEQUENCE_TRIGGER_HIST = TableConstants.SYM_TRIGGER_HIST;

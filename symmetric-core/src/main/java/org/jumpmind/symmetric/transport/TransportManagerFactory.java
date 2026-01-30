@@ -88,7 +88,8 @@ public class TransportManagerFactory {
     }
 
     public ITransportManager create(String transport) {
-        if (Constants.PROTOCOL_HTTP.equalsIgnoreCase(transport)) {
+        boolean isHttp = Constants.PROTOCOL_HTTP.equalsIgnoreCase(transport);
+        if (isHttp || Constants.PROTOCOL_HYBRID.equalsIgnoreCase(transport)) {
             String httpSslVerifiedServerNames = symmetricEngine.getParameterService().getString(
                     ServerConstants.HTTPS_VERIFIED_SERVERS);
             // Allow self signed certs based on the parameter value.
@@ -96,19 +97,21 @@ public class TransportManagerFactory {
                     ServerConstants.HTTPS_ALLOW_SELF_SIGNED_CERTS, false);
             boolean https2Enabled = symmetricEngine.getParameterService().is(ServerConstants.HTTPS2_ENABLE, false);
             initHttps(httpSslVerifiedServerNames, allowSelfSignedCerts, https2Enabled);
-            return createHttpTransportManager(symmetricEngine);
+            if (isHttp) {
+                return createHttpTransportManager(symmetricEngine);
+            }
+            return new HybridTransportManager(symmetricEngine);
         } else if (Constants.PROTOCOL_FILE.equalsIgnoreCase(transport)) {
             return new FileTransportManager(symmetricEngine);
         } else if (Constants.PROTOCOL_INTERNAL.equalsIgnoreCase(transport)) {
-            return AppUtils.newInstance(InternalTransportManager.class, InternalTransportManager.class,
-                    new Object[] { symmetricEngine }, new Class<?>[] { ISymmetricEngine.class });
+            return createInternalTransportManager(symmetricEngine);
         } else {
             throw new IllegalStateException("An invalid transport type of " + transport
                     + " was specified.");
         }
     }
 
-    protected ITransportManager createHttpTransportManager(ISymmetricEngine symmetricEngine) {
+    public static HttpTransportManager createHttpTransportManager(ISymmetricEngine symmetricEngine) {
         String impl = symmetricEngine.getParameterService().getString(ServerConstants.HTTP_TRANSPORT_MANAGER_CLASS);
         if (StringUtils.isEmpty(impl)) {
             return new HttpTransportManager(symmetricEngine);
@@ -116,21 +119,26 @@ public class TransportManagerFactory {
             String className = impl.trim();
             try {
                 Class<?> clazz = ClassUtils.getClass(className);
-                ITransportManager httpTransportManager = null;
+                HttpTransportManager httpTransportManager = null;
                 for (Constructor<?> c : clazz.getConstructors()) {
                     if (c.getParameterTypes().length == 1
                             && c.getParameterTypes()[0].isAssignableFrom(ISymmetricEngine.class)) {
-                        httpTransportManager = (ITransportManager) c.newInstance(symmetricEngine);
+                        httpTransportManager = (HttpTransportManager) c.newInstance(symmetricEngine);
                     }
                 }
                 if (httpTransportManager == null) {
-                    httpTransportManager = (ITransportManager) clazz.getDeclaredConstructor().newInstance();
+                    httpTransportManager = (HttpTransportManager) clazz.getDeclaredConstructor().newInstance();
                 }
                 return httpTransportManager;
             } catch (Exception ex) {
                 throw new SymmetricException("Failed to create custom HttpTransportManager impl '" + impl + "'", ex);
             }
         }
+    }
+
+    public static InternalTransportManager createInternalTransportManager(ISymmetricEngine symmetricEngine) {
+        return AppUtils.newInstance(InternalTransportManager.class, InternalTransportManager.class,
+                new Object[] { symmetricEngine }, new Class<?>[] { ISymmetricEngine.class });
     }
 
     /**
