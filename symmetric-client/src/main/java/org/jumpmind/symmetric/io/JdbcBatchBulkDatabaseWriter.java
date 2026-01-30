@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.io;
 
+import org.apache.commons.lang3.time.DateUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.DmlStatement.DmlType;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
@@ -40,6 +41,10 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
     private int lastRowCount = 0;
     private int expectedRowCount = 0; // Helps detect conflicts at the target
     private int lastUncommittedRows = 0; // Helps detect commits
+    private int totalCommittedRows = 0;
+    private long batchStartTimeMillis;
+    private long batchLastLogUpdateMillis = 0;
+    private long commitLogUpdateMillis = DateUtils.MILLIS_PER_MINUTE;
 
     public JdbcBatchBulkDatabaseWriter(IDatabasePlatform symmetricPlatform, IDatabasePlatform targetPlatform,
             String tablePrefix, DatabaseWriterSettings writerSettings) {
@@ -50,19 +55,28 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
     public void start(Batch batch) {
         super.start(batch);
         String batchInfo = "batch=" + batch.getBatchId();
+        batchStartTimeMillis = System.currentTimeMillis();
+        batchLastLogUpdateMillis = batchStartTimeMillis;
+        long jdbcMaxRowsBeforeCommit = writerSettings.getMaxRowsBeforeCommit();
         if (context.get(ContextConstants.CONTEXT_BULK_WRITER_TO_USE) == null || !context.get(ContextConstants.CONTEXT_BULK_WRITER_TO_USE).equals("default")) {
-            int bulkCommitLimit = ((JdbcSqlTemplate) getPlatform().getSqlTemplate()).getSettings().getBatchBulkLoaderSize();
+            int bulkLoaderCommitLimit = ((JdbcSqlTemplate) getPlatform().getSqlTemplate()).getSettings().getBatchBulkLoaderSize();
+            if (jdbcMaxRowsBeforeCommit > 0 && jdbcMaxRowsBeforeCommit < bulkLoaderCommitLimit) {
+                log.info(
+                        "Expect more frequent commits, because the dataloader.max.rows.before.commit limit ({}) overrides the db.jdbc.bulk.execute.batch.size limit ({}), {}",
+                        jdbcMaxRowsBeforeCommit, bulkLoaderCommitLimit, batchInfo);
+                bulkLoaderCommitLimit = (int) jdbcMaxRowsBeforeCommit;
+            }
             if (log.isDebugEnabled()) {
                 Statistics batchStats = batch.getStatistics();
                 if (batchStats != null) {
-                    long totalRowCount = batch.getStatistics().get(DataReaderStatistics.DATA_ROW_COUNT);
-                    log.debug("Starting batch that has {} rows. Bulk commit limit={}, {}", totalRowCount, bulkCommitLimit, batchInfo);
+                    long totalBatchRowCount = batch.getStatistics().get(DataReaderStatistics.DATA_ROW_COUNT);
+                    log.debug("Starting batch that contains {} data rows. Commit limit={}, {}", totalBatchRowCount, bulkLoaderCommitLimit, batchInfo);
                 } else {
-                    log.debug("Starting batch. Bulk commit limit={}, {}", bulkCommitLimit, batchInfo);
+                    log.debug("Starting batch. Commit limit={}, {}", bulkLoaderCommitLimit, batchInfo);
                 }
             }
             getTransaction().setInBatchMode(true);
-            ((JdbcSqlTransaction) getTransaction()).setBatchSize(bulkCommitLimit);
+            ((JdbcSqlTransaction) getTransaction()).setBatchSize(bulkLoaderCommitLimit);
         }
         if (log.isDebugEnabled()) {
             log.debug("Initial DML row count: Actual={}, Expected={}, Uncommitted={}", lastRowCount, expectedRowCount, lastUncommittedRows);
@@ -80,7 +94,7 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
         if (!getTransaction().isInBatchMode()) {
             return loadStatus;
         }
-        checkForConflict(true);
+        throwForConflict(loadStatus, true);
         return LoadStatus.SUCCESS;
     }
 
@@ -90,7 +104,7 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
         if (!getTransaction().isInBatchMode()) {
             return loadStatus;
         }
-        checkForConflict(true);
+        throwForConflict(loadStatus, true);
         return LoadStatus.SUCCESS;
     }
 
@@ -100,58 +114,112 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
         if (!getTransaction().isInBatchMode()) {
             return loadStatus;
         }
-        checkForConflict(true);
+        throwForConflict(loadStatus, true);
         return LoadStatus.SUCCESS;
     }
 
-    protected void checkForConflict(boolean isDml) {
+    protected void throwForConflict(boolean isDml) {
+        throwForConflict(LoadStatus.SUCCESS, isDml);
+    }
+
+    protected void throwForConflict(LoadStatus loadStatus, boolean isDml) {
         if (isDml) {
             expectedRowCount++;
         }
         int pendingRows = getTransaction().getUnflushedMarkers(false).size();
-        if (lastUncommittedRows > pendingRows) {
-            expectedRowCount -= lastUncommittedRows;
-            if (log.isDebugEnabled()) {
-                log.debug("Commit detected, decresaing number of expected rows. Actual={}, Expected={}, Pending={}", lastRowCount, expectedRowCount,
-                        pendingRows);
-            }
+        if (loadStatus != LoadStatus.SUCCESS) {
+            log.warn("There was a row conflict at target! Actual={}, Expected={}, Pending={}, (Previous) Uncommitted={}, Total committed={}",
+                    lastRowCount, expectedRowCount, pendingRows, lastUncommittedRows, totalCommittedRows);
+            throw new SymmetricException("JdbcBatchBulkDataWriter was in conflict, will attempt to fallback using default writer.");
         }
-        lastUncommittedRows = pendingRows;
         if (pendingRows == 0) {
-            if (expectedRowCount != lastRowCount) {
-                log.warn("DML row count mismatch indicates a conflict at target! Actual={}, Expected={}, Pending={}", lastRowCount, expectedRowCount,
-                        pendingRows);
+            if (expectedRowCount != totalCommittedRows) {
+                log.warn(
+                        "Number of committed rows does not match expected, which indicates a conflict at target! Actual={}, Expected={}, Pending={}, Prev.Uncommitted={}, Total committed={}",
+                        lastRowCount, expectedRowCount, totalCommittedRows, pendingRows, lastUncommittedRows, totalCommittedRows);
                 throw new SymmetricException("JdbcBatchBulkDataWriter was in conflict, will attempt to fallback using default writer.");
             } else if (log.isDebugEnabled()) {
-                log.debug("No conflict. DML row count update: Actual={}, Expected={}, Pending={}", lastRowCount, expectedRowCount, pendingRows);
+                log.debug("No conflict. DML row count update: Actual={}, Expected={}, Pending={}, Prev.Uncommitted={}, Total committed={}", lastRowCount,
+                        expectedRowCount, pendingRows, lastUncommittedRows, totalCommittedRows);
             }
-            expectedRowCount = 0;
-            lastRowCount = 0;
         }
     }
 
     @Override
     protected void prepare() {
         if (getTransaction().isInBatchMode()) {
-            lastRowCount = getTransaction().flush();
-            checkForConflict(false);
+            int pendingRows = getTransaction().getUnflushedMarkers(false).size();
+            if (pendingRows > 0) {
+                lastRowCount = getTransaction().flush();
+                totalCommittedRows += lastRowCount;
+                if (log.isDebugEnabled()) {
+                    log.debug(
+                            "Committed existing rows to prepare for a new set. Row count update: Actual={}, Expected={}, Pending-before flush={}, Total committed={}",
+                            lastRowCount, expectedRowCount, pendingRows, totalCommittedRows);
+                }
+                lastUncommittedRows = 0;
+                throwForConflict(false);
+            }
         }
         super.prepare();
     }
 
     @Override
     protected int execute(CsvData data, String[] values) {
+        int pendingRowsBefore = getTransaction().getUnflushedMarkers(false).size();
+        if (pendingRowsBefore == 0 && lastUncommittedRows > 0) {
+            totalCommittedRows += lastUncommittedRows;
+            if (log.isDebugEnabled()) {
+                log.debug("Detected an out-of-band commit. Rows update: Expected={}, Last uncommitted={}, Total committed={}", expectedRowCount,
+                        lastUncommittedRows, totalCommittedRows);
+            }
+        }
+        lastUncommittedRows = pendingRowsBefore;
         lastRowCount = super.execute(data, values);
-        return lastRowCount;
+        int pendingRowsAfter = getTransaction().getUnflushedMarkers(false).size();
+        long currentTimeMillis = System.currentTimeMillis();
+        if (pendingRowsAfter == 0) {
+            totalCommittedRows += lastRowCount;
+            if (currentTimeMillis - batchLastLogUpdateMillis >= commitLogUpdateMillis) {
+                String batchInfo = String.format("Committed %d rows for batch=%d, Table=%s, Rows=%d, Rows per second=%.1f", lastRowCount,
+                        batch.getBatchId(), targetTable.getName(), totalCommittedRows, getRowsPerSecond());
+                log.info("Commit point reached. " + batchInfo);
+                batchLastLogUpdateMillis = currentTimeMillis;
+            } else if (log.isDebugEnabled()) {
+                log.debug("Committed rows={}, Expected={}, Pending after={}, before={}, Total committed={}", lastRowCount,
+                        expectedRowCount, pendingRowsAfter, pendingRowsBefore, totalCommittedRows);
+            }
+            lastUncommittedRows = 0;
+            return lastRowCount;
+        } else {
+            lastUncommittedRows = pendingRowsAfter;
+            if (log.isDebugEnabled()) {
+                log.debug("Executed, actually just buffered rows={}, Expected={}, Pending after={}, before={}, Total committed={}", lastRowCount,
+                        expectedRowCount, pendingRowsAfter, pendingRowsBefore, totalCommittedRows);
+            }
+            return pendingRowsAfter - pendingRowsBefore;
+        }
     }
 
     @Override
     public void end(Batch batch, boolean inError) {
         if (getTransaction().isInBatchMode()) {
-            lastRowCount = getTransaction().flush();
-            checkForConflict(false);
+            int pendingRows = getTransaction().getUnflushedMarkers(false).size();
+            if (pendingRows > 0) {
+                lastRowCount = getTransaction().flush();
+                totalCommittedRows += lastRowCount;
+                if (log.isDebugEnabled()) {
+                    log.debug("Committed at the end of batch. Rows={}, Expected={}, Pending-before flush={}, Total committed={}",
+                            lastRowCount, expectedRowCount, pendingRows, totalCommittedRows);
+                }
+                lastUncommittedRows = 0;
+                throwForConflict(false);
+            }
         }
         super.end(batch, inError);
+        String batchInfo = String.format("batch=%d, Table=%s, Rows=%d, Rows per second=%.1f",
+                batch.getBatchId(), targetTable.getName(), totalCommittedRows, getRowsPerSecond());
+        log.info("Batch committed. " + batchInfo);
     }
 
     @Override
@@ -162,5 +230,14 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
             applyChangesOnly = false;
         }
         return super.requireNewStatement(currentType, data, applyChangesOnly, useConflictDetection, detectType);
+    }
+
+    public double getRowsPerSecond() {
+        long durationMillis = System.currentTimeMillis() - batchStartTimeMillis;
+        double rowsPerSecond = totalCommittedRows; // Just in case durationMillis is zero
+        if (durationMillis > 0) {
+            rowsPerSecond = Math.round(totalCommittedRows * 10000.0 / durationMillis) / 10.0;
+        }
+        return rowsPerSecond;
     }
 }
