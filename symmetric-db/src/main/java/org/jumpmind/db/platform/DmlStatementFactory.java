@@ -22,9 +22,7 @@ package org.jumpmind.db.platform;
 
 import org.jumpmind.db.platform.ase.AseDmlStatement;
 import org.jumpmind.db.platform.hbase.HbaseDmlStatement;
-import org.jumpmind.db.platform.mssql.MsSqlDmlStatement;
 import org.jumpmind.db.platform.mysql.MySqlDmlStatement;
-import org.jumpmind.db.platform.oracle.OracleDmlStatement;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDmlStatement;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDmlStatement95;
 import org.jumpmind.db.platform.redshift.RedshiftDmlStatement;
@@ -47,11 +45,9 @@ public class DmlStatementFactory implements IDmlStatementFactory {
         return instance;
     }
 
+    @Override
     public DmlStatement create(String databaseName, DmlStatementOptions options) {
-        if (DatabaseNamesConstants.ORACLE.equals(databaseName) || DatabaseNamesConstants.ORACLE122.equals(databaseName) || DatabaseNamesConstants.ORACLE23
-                .equals(databaseName)) {
-            return new OracleDmlStatement(options);
-        } else if (DatabaseNamesConstants.POSTGRESQL.equals(databaseName) || (DatabaseNamesConstants.POSTGRESQL95.equals(databaseName) &&
+        if (DatabaseNamesConstants.POSTGRESQL.equals(databaseName) || (DatabaseNamesConstants.POSTGRESQL95.equals(databaseName) &&
                 System.getProperty("postgres.use.on.conflict", "").equalsIgnoreCase("false"))) {
             return new PostgreSqlDmlStatement(options);
         } else if (DatabaseNamesConstants.POSTGRESQL95.equals(databaseName)) {
@@ -64,8 +60,6 @@ public class DmlStatementFactory implements IDmlStatementFactory {
             return new SqliteDmlStatement(options);
         } else if (DatabaseNamesConstants.SQLANYWHERE.equals(databaseName)) {
             return new SqlAnywhereDmlStatement(options);
-        } else if (databaseName != null && databaseName.startsWith(DatabaseNamesConstants.MSSQL)) {
-            return new MsSqlDmlStatement(options);
         } else if (DatabaseNamesConstants.HBASE.equals(databaseName)) {
             return new HbaseDmlStatement(options);
         } else if (DatabaseNamesConstants.ASE.equals(databaseName)) {

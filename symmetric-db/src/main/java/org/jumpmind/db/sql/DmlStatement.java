@@ -35,11 +35,11 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.DatabaseInfo;
-import org.jumpmind.db.platform.mssql.MsSql2008DdlBuilder;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
@@ -364,7 +364,7 @@ public class DmlStatement {
     }
 
     public Column[] getColumnKeyMetaData() {
-        return (Column[]) ArrayUtils.addAll(columns, keys);
+        return ArrayUtils.addAll(columns, keys);
     }
 
     public Column[] getMetaData() {
@@ -390,7 +390,7 @@ public class DmlStatement {
         switch (dmlType) {
             case UPDATE:
             case UPSERT:
-                return (T[]) ArrayUtils.addAll(columnValues, keyValues);
+                return ArrayUtils.addAll(columnValues, keyValues);
             case INSERT:
                 return columnValues;
             case DELETE:
@@ -519,7 +519,7 @@ public class DmlStatement {
 
     public String buildDynamicSql(BinaryEncoding encoding, Row row,
             boolean useVariableDates, boolean useJdbcTimestampFormat) {
-        return buildDynamicSql(encoding, row, useVariableDates, useJdbcTimestampFormat, (Column[]) ArrayUtils.addAll(columns, keys));
+        return buildDynamicSql(encoding, row, useVariableDates, useJdbcTimestampFormat, ArrayUtils.addAll(columns, keys));
     }
 
     public boolean isUpsertSupported() {
@@ -551,14 +551,22 @@ public class DmlStatement {
         return value;
     }
 
-    public void updateCteExpression(String value) {
-        this.sql = this.sql.replaceAll(MsSql2008DdlBuilder.CHANGE_TRACKING_SYM_PREFIX + ":",
-                MsSql2008DdlBuilder.CHANGE_TRACKING_SYM_PREFIX + ":" + value);
+    public void updateCteExpression(String value, String prefix) {
+        if (!StringUtils.isBlank(prefix) && this.sql != null) {
+            this.sql = this.sql.replaceAll(prefix + ":",
+                    prefix + ":" + value);
+        }
     }
 
-    public static String updateCteExpression(String sql, String value) {
-        return sql.replaceAll(MsSql2008DdlBuilder.CHANGE_TRACKING_SYM_PREFIX + ":",
-                MsSql2008DdlBuilder.CHANGE_TRACKING_SYM_PREFIX + ":" + value);
+    public static String updateCteExpression(String sql, String value, String prefix) {
+        if (sql == null) {
+            return "";
+        }
+        if (!StringUtils.isBlank(prefix)) {
+            sql = sql.replaceAll(prefix + ":",
+                    prefix + ":" + value);
+        }
+        return sql;
     }
 
     public static boolean[] getNullKeyValues(Object[] values) {
