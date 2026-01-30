@@ -20,7 +20,8 @@
  */
 package org.jumpmind.symmetric.job;
 
-import static org.jumpmind.symmetric.job.JobDefaults.EVERY_HOUR;
+import static org.jumpmind.symmetric.job.JobDefaults.EVERY_FIFTEEN_MINUTES;
+import static org.jumpmind.symmetric.job.JobDefaults.EVERY_10_SECONDS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -76,7 +77,7 @@ class JavaJobTest {
 
     @Test
     void testGetMinSchedulePeriodMs() {
-        assertEquals(Long.parseLong(EVERY_HOUR), javaJob.getMinSchedulePeriodMs());
+        assertEquals(Long.parseLong(EVERY_FIFTEEN_MINUTES), javaJob.getMinSchedulePeriodMs());
     }
 
     @Test
@@ -87,8 +88,8 @@ class JavaJobTest {
     @Test
     void testGetTimeBetweenRunsInMs_belowMinimum() {
         when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule("10000");
-        assertEquals(Long.parseLong(EVERY_HOUR), javaJob.getTimeBetweenRunsInMs());
+        jobDefinition.setDefaultSchedule(EVERY_10_SECONDS);
+        assertEquals(Long.parseLong(EVERY_FIFTEEN_MINUTES), javaJob.getTimeBetweenRunsInMs());
     }
 
     @Test
@@ -101,7 +102,7 @@ class JavaJobTest {
     @Test
     void testGetTimeBetweenRunsInMs_exactlyMinimum() {
         when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule(EVERY_HOUR);
-        assertEquals(Long.parseLong(EVERY_HOUR), javaJob.getTimeBetweenRunsInMs());
+        jobDefinition.setDefaultSchedule(EVERY_FIFTEEN_MINUTES);
+        assertEquals(Long.parseLong(EVERY_FIFTEEN_MINUTES), javaJob.getTimeBetweenRunsInMs());
     }
 }
