@@ -562,8 +562,8 @@ public class MsSqlSymmetricDialect extends AbstractSymmetricDialect implements I
     public String getMasterCollation() {
         String ret = "";
         String collation = super.getMasterCollation();
-        if (! StringUtils.isEmpty(collation)) {
-            if (! Strings.CI.contains(collation, "COLLATE")) {
+        if (!StringUtils.isEmpty(collation)) {
+            if (!Strings.CI.contains(collation, "COLLATE")) {
                 ret = " COLLATE";
             }
             ret += " " + collation + " ";
