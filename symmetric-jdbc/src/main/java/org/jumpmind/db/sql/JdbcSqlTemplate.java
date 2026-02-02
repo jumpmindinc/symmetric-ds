@@ -68,6 +68,7 @@ import org.springframework.jdbc.support.lob.LobHandler;
 
 public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate {
     private static final Logger log = LoggerFactory.getLogger(JdbcSqlTemplate.class);
+    private static final ThreadLocal<IConnectionHandler> threadLocalConnectionHandler = new ThreadLocal<IConnectionHandler>();
     protected DataSource dataSource;
     protected boolean requiresAutoCommitFalseToSetFetchSize = false;
     protected SqlTemplateSettings settings;
@@ -520,12 +521,23 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
 
     public <T> T execute(IConnectionCallback<T> callback) {
         Connection c = null;
+        IConnectionHandler handler = threadLocalConnectionHandler.get();
         try {
             c = getConnection();
+            if (handler != null) {
+                handler.before(c);
+            }
             return callback.execute(c);
         } catch (SQLException ex) {
             throw translate(ex);
         } finally {
+            if (handler != null && c != null) {
+                try {
+                    handler.after(c);
+                } catch (Exception e) {
+                    log.warn("Error in connection handler after callback", e);
+                }
+            }
             close(c);
         }
     }
@@ -1322,5 +1334,15 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
             }
         }
         return indexName;
+    }
+
+    @Override
+    public void setThreadLocalConnectionHandler(IConnectionHandler handler) {
+        threadLocalConnectionHandler.set(handler);
+    }
+
+    @Override
+    public void clearThreadLocalConnectionHandler() {
+        threadLocalConnectionHandler.remove();
     }
 }

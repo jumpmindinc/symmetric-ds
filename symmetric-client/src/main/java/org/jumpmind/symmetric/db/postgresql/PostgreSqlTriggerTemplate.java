@@ -144,7 +144,7 @@ public class PostgreSqlTriggerTemplate extends AbstractTriggerTemplate {
                 + "\n      INSERT INTO $(defaultSchema)$(prefixName)_data(table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, transaction_id, create_time) "
                 + "\n      VALUES (tableName, 'S', histId, "
                 + "\n         '\"delimiter " + sqlBatchDelimiter + ";' || chr(13) || chr(10) || replace(replace(eventDdl,'\\','\\\\'),'\"','\\\"') || chr(13) || chr(10) || '\",ddl',"
-                + "\n         channelId, 'source',"
+                + "\n         channelId, $(defaultSchema)$(prefixName)_node_disabled(),"
                 + "\n         TO_CHAR(CURRENT_TIMESTAMP, 'truncate-YYYY-MM-DD')||'T'||TO_CHAR(CURRENT_TIMESTAMP, 'HH24:MI:MSOF'), " + currentTimestampAndZoneExpression + "); "
                 + "\n      RAISE NOTICE 'Captured truncate event for table; Schema=%, Table=%, Channel=%, Command=%', tableSchema, tableName, channelId, eventDdl;"
                 + "\n    else "

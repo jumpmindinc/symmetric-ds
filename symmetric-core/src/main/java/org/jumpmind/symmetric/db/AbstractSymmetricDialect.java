@@ -826,6 +826,14 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     }
 
     @Override
+    public void disableSyncTriggers(java.sql.Connection connection, String nodeId) {
+    }
+
+    @Override
+    public void enableSyncTriggers(java.sql.Connection connection) {
+    }
+
+    @Override
     public boolean supportsTransactionId() {
         return false;
     }
