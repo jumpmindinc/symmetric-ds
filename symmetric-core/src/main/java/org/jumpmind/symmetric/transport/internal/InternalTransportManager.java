@@ -107,7 +107,7 @@ public class InternalTransportManager extends AbstractTransportManager implement
                         engine.getNodeService().findIdentityNodeId(), localNodeId, ProcessType.FILE_SYNC_PULL_HANDLER));
                 try {
                     engine.getFileSyncService().sendFiles(processInfo, local, transport);
-                    if (processInfo.getTotalBatchCount() == 0 && local.isVersionGreaterThanOrEqualTo(3, 8, 0)) {
+                    if (processInfo.getTotalBatchCount() == 0) {
                         log.debug("No files to pull");
                     }
                     processInfo.setStatus(ProcessStatus.OK);
