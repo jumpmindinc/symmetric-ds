@@ -28,6 +28,7 @@ import java.sql.Statement;
 import java.sql.Types;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
@@ -555,5 +556,18 @@ public class MsSqlSymmetricDialect extends AbstractSymmetricDialect implements I
         PermissionType[] permissions = { PermissionType.CREATE_TABLE, PermissionType.DROP_TABLE, PermissionType.CREATE_TRIGGER, PermissionType.DROP_TRIGGER,
                 PermissionType.CREATE_FUNCTION };
         return permissions;
+    }
+
+    @Override
+    public String getMasterCollation() {
+        String ret = "";
+        String collation = super.getMasterCollation();
+        if (! StringUtils.isEmpty(collation)) {
+            if (! Strings.CI.contains(collation, "COLLATE")) {
+                ret = " COLLATE";
+            }
+            ret += " " + collation + " ";
+        }
+        return ret;
     }
 }
