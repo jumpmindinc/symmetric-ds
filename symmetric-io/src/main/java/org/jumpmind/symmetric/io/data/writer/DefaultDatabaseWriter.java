@@ -702,7 +702,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
             }
             IDdlExecutionCallback callback = writerSettings.getDdlExecutionCallback();
             String sourceNodeId = batch != null ? batch.getSourceNodeId() : null;
-            boolean shouldUseCallback = callback != null && sourceNodeId != null && !sourceNodeId.isEmpty();
+            boolean shouldUseCallback = callback != null && StringUtils.isNotEmpty(sourceNodeId);
             if (shouldUseCallback) {
                 callback.beforeDdlExecution(getTargetPlatform().getSqlTemplate(), sourceNodeId);
             }
