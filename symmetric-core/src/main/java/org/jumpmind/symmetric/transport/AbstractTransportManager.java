@@ -266,6 +266,9 @@ abstract public class AbstractTransportManager {
 
     protected Map<String, String> getParametersFromQueryUrl(String parameterString) throws IOException {
         Map<String, String> parameters = new HashMap<String, String>();
+        if (parameterString == null) {
+            return parameters;
+        }
         String[] tokens = parameterString.split("&");
         for (String param : tokens) {
             String[] nameValuePair = param.split("=");

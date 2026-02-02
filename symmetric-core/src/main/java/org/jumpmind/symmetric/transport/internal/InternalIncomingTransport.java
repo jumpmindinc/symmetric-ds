@@ -24,24 +24,52 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.jumpmind.symmetric.transport.IIncomingTransport;
 import org.jumpmind.symmetric.transport.TransportUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Wraps an incoming stream that comes from memory
  */
 public class InternalIncomingTransport implements IIncomingTransport {
+    private static final Logger log = LoggerFactory.getLogger(InternalIncomingTransport.class);
+    private static final long HEADERS_TIMEOUT_HOURS = 2;
     BufferedReader reader = null;
     InputStream is;
+    Map<String, String> headers;
+    CountDownLatch headersReady;
 
     public InternalIncomingTransport(InputStream is) {
+        this(is, null, null);
+    }
+
+    public InternalIncomingTransport(InputStream is, Map<String, String> headers) {
+        this(is, headers, null);
+    }
+
+    public InternalIncomingTransport(InputStream is, Map<String, String> headers, CountDownLatch headersReady) {
         this.is = is;
         this.reader = TransportUtils.toReader(is);
+        this.headers = headers;
+        this.headersReady = headersReady;
     }
 
     public InternalIncomingTransport(BufferedReader reader) {
+        this(reader, null, null);
+    }
+
+    public InternalIncomingTransport(BufferedReader reader, Map<String, String> headers) {
+        this(reader, headers, null);
+    }
+
+    public InternalIncomingTransport(BufferedReader reader, Map<String, String> headers, CountDownLatch headersReady) {
         this.reader = reader;
+        this.headers = headers;
+        this.headersReady = headersReady;
     }
 
     public void close() {
@@ -83,6 +111,15 @@ public class InternalIncomingTransport implements IIncomingTransport {
 
     @Override
     public Map<String, String> getHeaders() {
-        return null;
+        if (headersReady != null) {
+            try {
+                if (!headersReady.await(HEADERS_TIMEOUT_HOURS, TimeUnit.HOURS)) {
+                    log.warn("Timeout waiting for internal transport headers");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        return headers;
     }
 }

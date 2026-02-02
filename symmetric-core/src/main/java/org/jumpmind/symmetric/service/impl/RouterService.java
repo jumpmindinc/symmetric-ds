@@ -936,8 +936,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
         }
         if (triggerRouters != null && triggerRouters.size() > 0) {
             for (TriggerRouter triggerRouter : triggerRouters) {
-                DataMetaData dataMetaData = new DataMetaData(data, table, triggerRouter.getRouter(),
-                        context.getChannel());
+                Router router = triggerRouter.getRouter();
+                DataMetaData dataMetaData = new DataMetaData(data, table, router, context.getChannel());
                 Collection<String> nodeIds = null;
                 if (triggerRouter.isRouted(data.getDataEventType())) {
                     String targetNodeIds = data.getNodeList();
@@ -954,7 +954,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                         if (nodeIds.size() == 0 && log.isDebugEnabled()) {
                             log.debug(
                                     "None of the target nodes specified in the data.node_list field ({}) were qualified nodes. Data id {} for table '{}' will not be routed using the {} router",
-                                    new Object[] { targetNodeIds, data.getDataId(), data.getTableName(), triggerRouter.getRouter().getRouterId() });
+                                    new Object[] { targetNodeIds, data.getDataId(), data.getTableName(), router.getRouterId() });
                         }
                     } else if (data.getTriggerHistory().getLastTriggerBuildReason() == TriggerReBuildReason.TRIGGER_HIST_MISSING && !doesColumnCountMatchValues(
                             dataMetaData, data)) {
@@ -967,7 +967,10 @@ public class RouterService extends AbstractService implements IRouterService, IN
                         counterStat.incrementCount();
                     } else {
                         try {
-                            IDataRouter dataRouter = getDataRouter(triggerRouter.getRouter(), dataMetaData);
+                            if (shouldSkipSqlEvent(data, router)) {
+                                continue;
+                            }
+                            IDataRouter dataRouter = getDataRouter(router, dataMetaData);
                             long ts = System.currentTimeMillis();
                             nodeIds = dataRouter.routeToNodes(context, dataMetaData,
                                     findAvailableNodes(triggerRouter, context), false, false,
@@ -1027,6 +1030,16 @@ public class RouterService extends AbstractService implements IRouterService, IN
         context.incrementStat(numberOfDataEventsInserted,
                 ChannelRouterContext.STAT_DATA_EVENTS_INSERTED);
         return numberOfDataEventsInserted;
+    }
+
+    protected boolean shouldSkipSqlEvent(Data data, Router router) {
+        if (data.getDataEventType() == DataEventType.SQL) {
+            NodeGroupLink link = engine.getConfigurationService().getNodeGroupLinkFor(
+                    router.getNodeGroupLink().getSourceNodeGroupId(),
+                    router.getNodeGroupLink().getTargetNodeGroupId(), false);
+            return link != null && !link.isSyncSqlEnabled();
+        }
+        return false;
     }
 
     protected int insertDataEvents(ProcessInfo processInfo, ChannelRouterContext context, DataMetaData dataMetaData,

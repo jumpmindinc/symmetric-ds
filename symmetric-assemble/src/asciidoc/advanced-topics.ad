@@ -56,7 +56,7 @@ When deploying a multi-tiered system it may be advantageous to have only one reg
 could be any of a number of nodes in the system.  In SymmetricDS the parent node is always the node that a child registers with.  The
 <<REGISTRATION_REDIRECT>> table allows a single node, usually the root server in the network, to
 redirect registering nodes to their true parents.  It does so based on a mapping found in the table of the external id (`registrant_external_id`) to the parent's node
-id (`registration_node_id`).
+id (`registration_node_id`).  A registration redirect cannot be performed for multi-homed nodes that communicate internally.
         
 For example, if it is desired to have a series of regional servers that workstations at retail stores get assigned to based on their `external_id`, the store number, then
 you might insert into <<REGISTRATION_REDIRECT>> the store number as the `registrant_external_id` and the `node_id` of

@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -31,10 +32,14 @@ import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
+import org.jumpmind.symmetric.model.Data;
+import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerRouter;
+import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +50,7 @@ public class RouterServiceTest {
     final static String SOURCE_NODE_GROUP = "source";
     final static String TARGET_NODE_GROUP = "target";
     RouterService routerService;
+    IConfigurationService configurationService;
 
     @BeforeEach
     public void setup() {
@@ -53,12 +59,14 @@ public class RouterServiceTest {
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         IDatabasePlatform databasePlatform = mock(IDatabasePlatform.class);
         IExtensionService extensionService = mock(IExtensionService.class);
+        configurationService = mock(IConfigurationService.class);
         when(databasePlatform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
         when(symmetricDialect.getPlatform()).thenReturn(databasePlatform);
         when(engine.getDatabasePlatform()).thenReturn(databasePlatform);
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getExtensionService()).thenReturn(extensionService);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
         routerService = new RouterService(engine);
     }
 
@@ -133,5 +141,47 @@ public class RouterServiceTest {
         triggerRouters.add(new TriggerRouter(tableTrigger2, new Router("test", TARGET_NODE_GROUP, SOURCE_NODE_GROUP, "default")));
         triggerRouters.add(new TriggerRouter(tableTrigger3, new Router("test", TARGET_NODE_GROUP, SOURCE_NODE_GROUP, "default")));
         assertTrue(routerService.producesCommonBatches(CHANNEL_2_TEST, SOURCE_NODE_GROUP, triggerRouters));
+    }
+
+    @Test
+    public void testShouldSkipSqlEventWhenSyncSqlDisabled() {
+        NodeGroupLink link = new NodeGroupLink(SOURCE_NODE_GROUP, TARGET_NODE_GROUP);
+        link.setSyncSqlEnabled(false);
+        when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(link);
+        Data data = new Data();
+        data.setDataEventType(DataEventType.SQL);
+        Router router = new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "default");
+        assertTrue(routerService.shouldSkipSqlEvent(data, router));
+    }
+
+    @Test
+    public void testShouldNotSkipSqlEventWhenSyncSqlEnabled() {
+        NodeGroupLink link = new NodeGroupLink(SOURCE_NODE_GROUP, TARGET_NODE_GROUP);
+        link.setSyncSqlEnabled(true);
+        when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(link);
+        Data data = new Data();
+        data.setDataEventType(DataEventType.SQL);
+        Router router = new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "default");
+        assertFalse(routerService.shouldSkipSqlEvent(data, router));
+    }
+
+    @Test
+    public void testShouldNotSkipNonSqlEventWhenSyncSqlDisabled() {
+        NodeGroupLink link = new NodeGroupLink(SOURCE_NODE_GROUP, TARGET_NODE_GROUP);
+        link.setSyncSqlEnabled(false);
+        when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(link);
+        Data data = new Data();
+        data.setDataEventType(DataEventType.INSERT);
+        Router router = new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "default");
+        assertFalse(routerService.shouldSkipSqlEvent(data, router));
+    }
+
+    @Test
+    public void testShouldNotSkipSqlEventWhenLinkNotFound() {
+        when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false)).thenReturn(null);
+        Data data = new Data();
+        data.setDataEventType(DataEventType.SQL);
+        Router router = new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "default");
+        assertFalse(routerService.shouldSkipSqlEvent(data, router));
     }
 }
