@@ -22,13 +22,10 @@ package org.jumpmind.symmetric.web;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.common.Constants;
-import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeSecurity;
@@ -144,33 +141,23 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
     }
 
     private void addReadyQueuesHeader(String nodeId, HttpServletResponse res) {
-        if (parameterService.is(ParameterConstants.SYNC_USE_READY_QUEUES) && configurationService.getQueues(false).size() > 1 &&
-                !parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT)) {
-            Collection<String> readyQueues = outgoingBatchService.getReadyQueues(nodeId, false);
-            String readyQueuesHeader = StringUtils.joinWith(",", readyQueues.toArray());
-            log.debug("Ready queues for node {}: {}", nodeId, readyQueuesHeader);
-            res.setHeader(WebConstants.HEADER_READY_QUEUES, readyQueuesHeader);
+        String headerValue = TransportUtils.buildReadyQueuesHeader(parameterService, configurationService, outgoingBatchService, nodeId);
+        if (headerValue != null) {
+            log.debug("Ready queues for node {}: {}", nodeId, headerValue);
+            res.setHeader(WebConstants.HEADER_READY_QUEUES, headerValue);
         }
     }
 
     private void addPendingBatchCounts(String targetNodeId, HttpServletResponse res) {
-        if (this.parameterService.is(ParameterConstants.HYBRID_PUSH_PULL_ENABLED)) {
-            Map<String, Integer> batchesToSendByChannel = this.outgoingBatchService.countOutgoingBatchesPendingByChannel(targetNodeId);
-            if (batchesToSendByChannel != null && !batchesToSendByChannel.isEmpty()) {
-                res.addHeader(WebConstants.BATCH_TO_SEND_COUNT, TransportUtils.toCSV(batchesToSendByChannel));
-            }
+        String headerValue = TransportUtils.buildPendingBatchCountsHeader(parameterService, outgoingBatchService, targetNodeId);
+        if (headerValue != null) {
+            res.addHeader(WebConstants.BATCH_TO_SEND_COUNT, headerValue);
         }
     }
 
     private void logDataReceivedFromPull(Node targetNode, List<OutgoingBatch> batchList, ProcessInfo processInfo, String remoteHost) {
-        int batchesCount = 0;
-        int dataCount = 0;
-        for (OutgoingBatch outgoingBatch : batchList) {
-            if (outgoingBatch.getStatus() == org.jumpmind.symmetric.model.OutgoingBatch.Status.LD) {
-                batchesCount++;
-                dataCount += outgoingBatch.getDataRowCount();
-            }
-        }
+        int[] counts = TransportUtils.countLoadedBatches(batchList);
+        int dataCount = counts[0], batchesCount = counts[1];
         if (batchesCount > 0) {
             log.info("{} data and {} batches sent during pull request from {}", dataCount, batchesCount, targetNode);
         }
