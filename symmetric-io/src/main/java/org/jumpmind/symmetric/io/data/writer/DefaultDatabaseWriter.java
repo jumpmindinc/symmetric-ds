@@ -51,6 +51,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.DataTruncationException;
 import org.jumpmind.db.sql.DmlStatement;
 import org.jumpmind.db.sql.DmlStatement.DmlType;
+import org.jumpmind.db.sql.IDdlExecutionCallback;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -699,11 +700,23 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                     }
                 }
             }
-            if (writerSettings.isAlterTable()) {
-                getTargetPlatform().alterTables(!writerSettings.isCreateTableFailOnError(), writerSettings.isCreateTableIncludeApplicationTriggers(),
-                        writerSettings.getRuntimeConfigTriggerPrefix(), writerSettings.getAlterDatabaseInterceptors(), db.getTables());
-            } else {
-                getTargetPlatform().createDatabase(db, writerSettings.isCreateTableDropFirst(), !writerSettings.isCreateTableFailOnError());
+            IDdlExecutionCallback callback = writerSettings.getDdlExecutionCallback();
+            String sourceNodeId = batch != null ? batch.getSourceNodeId() : null;
+            boolean shouldUseCallback = callback != null && StringUtils.isNotEmpty(sourceNodeId);
+            if (shouldUseCallback) {
+                callback.beforeDdlExecution(getTargetPlatform().getSqlTemplate(), sourceNodeId);
+            }
+            try {
+                if (writerSettings.isAlterTable()) {
+                    getTargetPlatform().alterTables(!writerSettings.isCreateTableFailOnError(), writerSettings.isCreateTableIncludeApplicationTriggers(),
+                            writerSettings.getRuntimeConfigTriggerPrefix(), writerSettings.getAlterDatabaseInterceptors(), db.getTables());
+                } else {
+                    getTargetPlatform().createDatabase(db, writerSettings.isCreateTableDropFirst(), !writerSettings.isCreateTableFailOnError());
+                }
+            } finally {
+                if (shouldUseCallback) {
+                    callback.afterDdlExecution(getTargetPlatform().getSqlTemplate());
+                }
             }
             getTargetPlatform().resetCachedTableModel();
             statistics.get(batch).increment(DataWriterStatisticConstants.CREATECOUNT);

@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.db;
 
+import java.sql.Connection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -169,6 +170,10 @@ public interface ISymmetricDialect {
     public void disableSyncTriggers(ISqlTransaction transaction, String nodeId);
 
     public void enableSyncTriggers(ISqlTransaction transaction);
+
+    public void disableSyncTriggers(Connection connection, String nodeId);
+
+    public void enableSyncTriggers(Connection connection);
 
     public String getSyncTriggersExpression();
 

@@ -20,12 +20,17 @@
  */
 package org.jumpmind.symmetric.load;
 
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.sql.IConnectionHandler;
+import org.jumpmind.db.sql.IDdlExecutionCallback;
+import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.writer.Conflict;
 import org.jumpmind.symmetric.io.data.writer.DatabaseWriterSettings;
 import org.jumpmind.symmetric.io.data.writer.Conflict.DetectConflict;
@@ -39,7 +44,15 @@ public abstract class AbstractDataLoaderFactory {
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     public DatabaseWriterSettings buildParameterDatabaseWriterSettings(List<? extends Conflict> conflictSettings) {
+        return buildParameterDatabaseWriterSettings(null, conflictSettings);
+    }
+
+    public DatabaseWriterSettings buildParameterDatabaseWriterSettings(final ISymmetricDialect symmetricDialect,
+            List<? extends Conflict> conflictSettings) {
         DatabaseWriterSettings settings = new DatabaseWriterSettings();
+        if (symmetricDialect != null) {
+            setDdlExecutionCallback(settings, symmetricDialect);
+        }
         settings.setCreateTableAlterCaseToMatchDatabaseDefault(
                 parameterService.is(ParameterConstants.DATA_LOADER_CREATE_TABLE_ALTER_TO_MATCH_DB_CASE, true));
         settings.setCreateTableWithoutDefaultsOnError(
@@ -115,6 +128,30 @@ public abstract class AbstractDataLoaderFactory {
         settings.setKeepBulkStagingFiles(parameterService.is(ParameterConstants.KEEP_BULK_STAGING_FILES));
         settings.setMsSqlBulkLoadBcpCodePage(parameterService.getString(ParameterConstants.MSSQL_BULK_LOAD_BCP_CODE_PAGE));
         return settings;
+    }
+
+    protected void setDdlExecutionCallback(DatabaseWriterSettings settings, ISymmetricDialect symmetricDialect) {
+        settings.setDdlExecutionCallback(new IDdlExecutionCallback() {
+            @Override
+            public void beforeDdlExecution(ISqlTemplate sqlTemplate, String sourceNodeId) {
+                sqlTemplate.setThreadLocalConnectionHandler(new IConnectionHandler() {
+                    @Override
+                    public void before(Connection connection) {
+                        symmetricDialect.disableSyncTriggers(connection, sourceNodeId);
+                    }
+
+                    @Override
+                    public void after(Connection connection) {
+                        symmetricDialect.enableSyncTriggers(connection);
+                    }
+                });
+            }
+
+            @Override
+            public void afterDdlExecution(ISqlTemplate sqlTemplate) {
+                sqlTemplate.clearThreadLocalConnectionHandler();
+            }
+        });
     }
 
     protected boolean getDefaultTreatBitAsInteger() {

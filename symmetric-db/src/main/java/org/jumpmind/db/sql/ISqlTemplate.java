@@ -152,4 +152,8 @@ public interface ISqlTemplate {
 
     public long insertWithGeneratedKey(final String sql, String column, final String sequenceName,
             final Object[] args, final int[] types);
+
+    void setThreadLocalConnectionHandler(IConnectionHandler handler);
+
+    void clearThreadLocalConnectionHandler();
 }

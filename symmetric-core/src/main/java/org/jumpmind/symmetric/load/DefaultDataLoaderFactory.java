@@ -100,7 +100,7 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
                 // TODO: Evaluate if ConflictResolver will work for Cassandra and if so remove duplicate code.
                 return new CassandraDatabaseWriter(symmetricDialect.getPlatform(), symmetricDialect.getTargetPlatform(),
                         symmetricDialect.getTablePrefix(), new DefaultTransformWriterConflictResolver(transformWriter),
-                        buildDatabaseWriterSettings(filters, errorHandlers, conflictSettings, resolvedData));
+                        buildDatabaseWriterSettings(symmetricDialect, filters, errorHandlers, conflictSettings, resolvedData));
             } else if (targetPlatform instanceof KafkaPlatform) {
                 String url;
                 String producer;
@@ -128,7 +128,7 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
                 channelReload = Constants.CHANNEL_RELOAD;
                 return new KafkaWriter(symmetricDialect.getPlatform(), symmetricDialect.getTargetPlatform(),
                         runtimeConfigTablePrefix, new DefaultTransformWriterConflictResolver(transformWriter),
-                        buildDatabaseWriterSettings(filters, errorHandlers, conflictSettings, resolvedData), producer, outputFormat, topicBy,
+                        buildDatabaseWriterSettings(symmetricDialect, filters, errorHandlers, conflictSettings, resolvedData), producer, outputFormat, topicBy,
                         messageBy, confluentUrl, schemaPackage, externalNodeID, url, loadOnlyPrefix, props, channelReload);
             }
         } catch (Exception e) {
@@ -292,7 +292,8 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
         DynamicDefaultDatabaseWriter writer = null;
         if (engine.getCacheManager().isUsingTargetExternalId(false)) {
             writer = new DynamicDefaultDatabaseWriter(symmetricDialect.getPlatform(), symmetricDialect.getTargetPlatform(),
-                    symmetricDialect.getTablePrefix(), resolver, buildDatabaseWriterSettings(filters, errorHandlers, conflictSettings, resolvedData)) {
+                    symmetricDialect.getTablePrefix(), resolver, buildDatabaseWriterSettings(symmetricDialect, filters, errorHandlers, conflictSettings,
+                            resolvedData)) {
                 @Override
                 protected String getTableKey(Table table) {
                     if (!table.getName().contains(batch.getSourceNodeId())) {
@@ -331,7 +332,8 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
             };
         } else {
             writer = new DynamicDefaultDatabaseWriter(symmetricDialect.getPlatform(), symmetricDialect.getTargetPlatform(),
-                    symmetricDialect.getTablePrefix(), resolver, buildDatabaseWriterSettings(filters, errorHandlers, conflictSettings, resolvedData));
+                    symmetricDialect.getTablePrefix(), resolver, buildDatabaseWriterSettings(symmetricDialect, filters, errorHandlers, conflictSettings,
+                            resolvedData));
         }
         return writer;
     }
@@ -344,6 +346,12 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
     protected DatabaseWriterSettings buildDatabaseWriterSettings(List<IDatabaseWriterFilter> filters,
             List<IDatabaseWriterErrorHandler> errorHandlers, List<? extends Conflict> conflictSettings,
             List<ResolvedData> resolvedDatas) {
+        return buildDatabaseWriterSettings(null, filters, errorHandlers, conflictSettings, resolvedDatas);
+    }
+
+    protected DatabaseWriterSettings buildDatabaseWriterSettings(final ISymmetricDialect symmetricDialect,
+            List<IDatabaseWriterFilter> filters, List<IDatabaseWriterErrorHandler> errorHandlers,
+            List<? extends Conflict> conflictSettings, List<ResolvedData> resolvedDatas) {
         DatabaseWriterSettings settings = buildParameterDatabaseWriterSettings(conflictSettings);
         settings.setDatabaseWriterFilters(filters);
         settings.setDatabaseWriterErrorHandlers(errorHandlers);
@@ -354,6 +362,9 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
         IAlterDatabaseInterceptor[] interceptors = alterDatabaseInterceptors
                 .toArray(new IAlterDatabaseInterceptor[alterDatabaseInterceptors.size()]);
         settings.setAlterDatabaseInterceptors(interceptors);
+        if (symmetricDialect != null) {
+            setDdlExecutionCallback(settings, symmetricDialect);
+        }
         return settings;
     }
 
