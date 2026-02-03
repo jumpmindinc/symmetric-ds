@@ -1512,9 +1512,17 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 log.info("Detected change in SymmetricDS startup database parameters. Hash {} != {}", currentHashDbParamsAsString,
                         priorHashDbParams);
             }
+        } catch (SqlException ex) {
+            dbParamsDifferent = true;
+            String exMessage = ex.getMessage();
+            if (exMessage != null && exMessage.contains("does not exist")) {
+                log.warn("Unable to compare SymmetricDS startup database parameters. Assuming there are differences. SqlMessage={}", exMessage);
+            } else {
+                log.warn("Unable to compare SymmetricDS startup database parameters! Assuming there are differences.", ex);
+            }
         } catch (Exception e) {
             dbParamsDifferent = true;
-            log.warn("Unable to compare SymmetricDS startup database parameters! Assuming there are differences.", e);
+            log.warn("Unknown exception trying to check SymmetricDS startup database parameters! Assuming there are differences.", e);
         }
         return dbParamsDifferent;
     }
