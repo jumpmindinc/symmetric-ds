@@ -333,4 +333,12 @@ abstract public class AbstractSqlTemplate implements ISqlTemplate {
     public boolean doesObjectNotExist(Throwable ex) {
         return false;
     }
+
+    @Override
+    public void setThreadLocalConnectionHandler(IConnectionHandler handler) {
+    }
+
+    @Override
+    public void clearThreadLocalConnectionHandler() {
+    }
 }

@@ -84,7 +84,7 @@ catalog,
 schema,
 table,SYM_CHANNEL
 keys,CHANNEL_ID
-columns,CHANNEL_ID,PROCESSING_ORDER,MAX_BATCH_SIZE,MAX_BATCH_TO_SEND,MAX_DATA_TO_ROUTE,EXTRACT_PERIOD_MILLIS,ENABLED,USE_OLD_DATA_TO_ROUTE,USE_ROW_DATA_TO_ROUTE,USE_PK_DATA_TO_ROUTE,CONTAINS_BIG_LOB,BATCH_ALGORITHM,DATA_LOADER_TYPE,DESCRIPTION,CREATE_TIME,LAST_UPDATE_BY,LAST_UPDATE_TIME
+columns,CHANNEL_ID,PROCESSING_ORDER,MAX_BATCH_SIZE,MAX_BATCH_TO_SEND,MAX_DATA_TO_ROUTE,EXTRACT_PERIOD_MILLIS,ENABLED,USE_OLD_DATA_TO_ROUTE,USE_ROW_DATA_TO_ROUTE,USE_PK_DATA_TO_ROUTE,RELOAD_FLAG,FILE_SYNC_FLAG,CONTAINS_BIG_LOB,BATCH_ALGORITHM,DATA_LOADER_TYPE,DESCRIPTION,QUEUE,MAX_NETWORK_KBPS,DATA_EVENT_ACTION,CREATE_TIME,LAST_UPDATE_BY,LAST_UPDATE_TIME
 sql,delete from sym_channel
 catalog,
 schema,
@@ -114,17 +114,17 @@ insert,"root","client","W","2013-05-12 16:30:31.148","admin","2013-05-12 16:30:3
 catalog,
 schema,
 table,SYM_CHANNEL
-insert,"config","0","2000","100","10000","0","1","1","1","1","1","default","default",,"2013-05-12 16:29:48.449",,"2013-05-12 16:29:48.443"
-insert,"reload","1","1","1","10000","0","1","1","1","1","0","default","default",,"2013-05-12 16:29:48.451",,"2013-05-12 16:29:48.451"
-insert,"heartbeat","2","100","100","10000","0","1","1","1","1","0","default","default",,"2013-05-12 16:29:48.452",,"2013-05-12 16:29:48.452"
-insert,"default","99999","1000","100","10000","0","1","1","1","1","0","default","default",,"2013-05-12 16:29:48.453",,"2013-05-12 16:29:48.453"
-insert,"filesync","3","100","100","10000","0","1","1","1","1","0","default","default",,"2013-05-12 16:29:48.454",,"2013-05-12 16:29:48.454"
-insert,"data","50","10000","10","10000","0","1","1","1","1","0","default","default",,"2013-05-12 16:30:43.354","admin","2013-05-12 16:30:43.352"
-insert,"dynamic","99999","1000","100","10000","0","1","1","1","1","0","default","default",,"2014-03-22 18:48:35.485",,"2014-03-22 18:48:35.482"
+insert,"config","0","2000","10","500000","0","1","1","1","1","0","0","1","default","default",,"system","0.000",,"2026-01-29 14:00:26.607",,"2026-01-29 14:00:26.606"
+insert,"default","500000","1000","10","500000","0","1","1","1","1","0","0","0","default","default",,"default","0.000",,"2026-01-29 14:00:26.618",,"2026-01-29 14:00:26.618"
+insert,"dynamic","99999","1000","10","500000","0","1","1","1","1","0","0","0","default","default",,"default","0.000",,"2026-01-29 14:00:26.62",,"2026-01-29 14:00:26.619"
+insert,"heartbeat","2","100","10","500000","0","1","1","1","1","0","0","0","default","default",,"system","0.000",,"2026-01-29 14:00:26.617",,"2026-01-29 14:00:26.616"
+insert,"monitor","2","100","10","500000","0","1","1","1","1","0","0","1","default","default",,"system","0.000",,"2026-01-29 14:00:26.615",,"2026-01-29 14:00:26.613"
+insert,"reload","1","500000","10","500000","0","1","1","1","1","1","0","0","default","bulk",,"reload","0.000",,"2026-01-29 14:00:26.612",,"2026-01-29 14:00:26.611"
+insert,"system","0","2000","10","500000","0","1","1","1","1","0","0","1","default","default",,"system","0.000",,"2026-01-29 14:00:26.61",,"2026-01-29 14:00:26.609"
 catalog,
 schema,
 table,SYM_TRIGGER
-insert,"wildcard",,,"*,!c,!sqlite_sequence","data","1","1","1","0",,,,"1=1","1=1","1=1",,,,,"0","0","1","0","2013-05-12 16:31:56.644","admin","2013-05-12 16:31:56.644"
+insert,"wildcard",,,"*,!c,!sqlite_sequence","default","1","1","1","0",,,,"1=1","1=1","1=1",,,,,"0","0","1","0","2013-05-12 16:31:56.644","admin","2013-05-12 16:31:56.644"
 catalog,
 schema,
 table,SYM_ROUTER

@@ -20,9 +20,13 @@
  */
 package org.jumpmind.symmetric.db.postgresql;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Table;
@@ -55,6 +59,10 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
     protected String sharedNodeDisabledFunction;
     protected String sharedReadLargeObjectFunction;
     protected boolean versionSupportsReplaceTriggers;
+    private int triggersDisabledCount;
+    private int nodeDisabledCount;
+    private int triggersEnabledCount;
+    private int nodeEnabledCount;
 
     public PostgreSqlSymmetricDialect(IParameterService parameterService, IDatabasePlatform platform) {
         super(parameterService, platform);
@@ -275,21 +283,59 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         }
     }
 
+    private String getDisableSyncTriggersSql() {
+        triggersDisabledCount++;
+        return "select set_config('" + SYNC_TRIGGERS_DISABLED_VARIABLE + "', '1', false)";
+    }
+
+    private String getDisableSyncNodeSql(String nodeId) {
+        nodeDisabledCount++;
+        return "select set_config('" + SYNC_NODE_DISABLED_VARIABLE + "', '" + nodeId + "', false)";
+    }
+
+    private String getEnableSyncTriggersSql() {
+        triggersEnabledCount++;
+        return "select set_config('" + SYNC_TRIGGERS_DISABLED_VARIABLE + "', '', false)";
+    }
+
+    private String getEnableSyncNodeSql() {
+        nodeEnabledCount++;
+        return "select set_config('" + SYNC_NODE_DISABLED_VARIABLE + "', '', false)";
+    }
+
     @Override
     public void disableSyncTriggers(ISqlTransaction transaction, String nodeId) {
-        transaction.prepareAndExecute("select set_config('" + SYNC_TRIGGERS_DISABLED_VARIABLE + "', '1', false)");
+        transaction.prepareAndExecute(getDisableSyncTriggersSql());
         if (nodeId == null) {
             nodeId = "";
         }
-        transaction.prepareAndExecute("select set_config('" + SYNC_NODE_DISABLED_VARIABLE + "', '" + nodeId + "', false)");
+        transaction.prepareAndExecute(getDisableSyncNodeSql(nodeId));
     }
 
     @Override
     public void enableSyncTriggers(ISqlTransaction transaction) {
-        transaction.prepareAndExecute("select set_config('" + SYNC_TRIGGERS_DISABLED_VARIABLE
-                + "', '', false)");
-        transaction.prepareAndExecute("select set_config('" + SYNC_NODE_DISABLED_VARIABLE
-                + "', '', false)");
+        transaction.prepareAndExecute(getEnableSyncTriggersSql());
+        transaction.prepareAndExecute(getEnableSyncNodeSql());
+    }
+
+    @Override
+    public void disableSyncTriggers(Connection connection, String nodeId) {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(getDisableSyncTriggersSql());
+            stmt.execute(getDisableSyncNodeSql(Objects.toString(nodeId, "")));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void enableSyncTriggers(Connection connection) {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(getEnableSyncTriggersSql());
+            stmt.execute(getEnableSyncNodeSql());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -382,5 +428,21 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
 
     public boolean supportsReplaceTriggers() {
         return versionSupportsReplaceTriggers;
+    }
+
+    public int getTriggersDisabledCount() {
+        return triggersDisabledCount;
+    }
+
+    public int getNodeDisabledCount() {
+        return nodeDisabledCount;
+    }
+
+    public int getTriggersEnabledCount() {
+        return triggersEnabledCount;
+    }
+
+    public int getNodeEnabledCount() {
+        return nodeEnabledCount;
     }
 }

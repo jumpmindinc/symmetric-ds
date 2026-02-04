@@ -28,6 +28,7 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IAlterDatabaseInterceptor;
+import org.jumpmind.db.sql.IDdlExecutionCallback;
 import org.jumpmind.symmetric.io.data.Batch;
 
 public class DatabaseWriterSettings {
@@ -69,6 +70,7 @@ public class DatabaseWriterSettings {
     protected boolean createTableIncludeApplicationTriggers = false;
     protected boolean keepBulkStagingFiles = false;
     protected String msSqlBulkLoadBcpCodePage;
+    protected IDdlExecutionCallback ddlExecutionCallback;
 
     public void setAlterDatabaseInterceptors(IAlterDatabaseInterceptor[] alterDatabaseInterceptors) {
         this.alterDatabaseInterceptors = alterDatabaseInterceptors;
@@ -419,5 +421,13 @@ public class DatabaseWriterSettings {
 
     public void setMsSqlBulkLoadBcpCodePage(String msSqlBulkLoadBcpCodePage) {
         this.msSqlBulkLoadBcpCodePage = msSqlBulkLoadBcpCodePage;
+    }
+
+    public IDdlExecutionCallback getDdlExecutionCallback() {
+        return ddlExecutionCallback;
+    }
+
+    public void setDdlExecutionCallback(IDdlExecutionCallback ddlExecutionCallback) {
+        this.ddlExecutionCallback = ddlExecutionCallback;
     }
 }
