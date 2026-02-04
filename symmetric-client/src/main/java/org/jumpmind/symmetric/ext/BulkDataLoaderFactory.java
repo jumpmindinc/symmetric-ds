@@ -54,10 +54,10 @@ public class BulkDataLoaderFactory extends AbstractDataLoaderFactory implements 
         IDatabasePlatform platform = engine.getTargetDialect().getPlatform();
         if (engine.getParameterService().is(ParameterConstants.JDBC_EXECUTE_BULK_BATCH_OVERRIDE, false)) {
             return new JdbcBatchBulkDatabaseWriter(symmetricDialect.getPlatform(), platform,
-                    symmetricDialect.getTablePrefix(), buildParameterDatabaseWriterSettings(conflictSettings));
+                    symmetricDialect.getTablePrefix(), buildParameterDatabaseWriterSettings(symmetricDialect, conflictSettings));
         } else {
             return new JdbcBatchBulkDatabaseWriter(symmetricDialect.getPlatform(), platform,
-                    symmetricDialect.getTablePrefix(), buildParameterDatabaseWriterSettings(conflictSettings));
+                    symmetricDialect.getTablePrefix(), buildParameterDatabaseWriterSettings(symmetricDialect, conflictSettings));
         }
     }
 
