@@ -404,6 +404,8 @@ public class InternalTransportManagerTest {
 
     @Test
     void testGetPushTransport_returnsOutgoingWithResponseTransport() throws IOException {
+        when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(new NodeChannels());
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
         doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
         IOutgoingWithResponseTransport transport = manager.getPushTransport(remoteNode, localNode, "token", "http://reg");
         assertNotNull(transport);
@@ -412,12 +414,53 @@ public class InternalTransportManagerTest {
 
     @Test
     void testGetPushTransport_withRequestProperties() throws IOException {
+        when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(new NodeChannels());
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
         doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
         Map<String, String> requestProperties = new HashMap<String, String>();
         requestProperties.put(WebConstants.CHANNEL_QUEUE, "custom-queue");
         IOutgoingWithResponseTransport transport = manager.getPushTransport(remoteNode, localNode, "token", requestProperties, "http://reg");
         assertNotNull(transport);
         assertInstanceOf(InternalOutgoingWithResponseTransport.class, transport);
+    }
+
+    @Test
+    void testGetPushTransport_fetchesRemoteSuspendIgnoreConfig() throws IOException {
+        NodeChannels remoteNodeChannels = new NodeChannels();
+        remoteNodeChannels.addSuspendChannels("local-001", "suspended-channel");
+        when(configurationService.getSuspendIgnoreChannelLists(eq("local-001"))).thenReturn(remoteNodeChannels);
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
+        IOutgoingWithResponseTransport transport = manager.getPushTransport(remoteNode, localNode, "token", "http://reg");
+        assertNotNull(transport);
+        assertInstanceOf(InternalOutgoingWithResponseTransport.class, transport);
+        verify(configurationService).getSuspendIgnoreChannelLists(eq("local-001"));
+    }
+
+    @Test
+    void testGetPushTransport_combinesRemoteAndLocalSuspendIgnoreConfig() throws IOException {
+        NodeChannels remoteNodeChannels = new NodeChannels();
+        remoteNodeChannels.addSuspendChannels("local-001", "remote-suspend");
+        remoteNodeChannels.addIgnoreChannels("local-001", "remote-ignore");
+        when(configurationService.getSuspendIgnoreChannelLists(eq("local-001"))).thenReturn(remoteNodeChannels);
+        NodeChannels localNodeChannels = new NodeChannels();
+        localNodeChannels.addSuspendChannels("local-001", "local-suspend");
+        localNodeChannels.addIgnoreChannels("local-001", "local-ignore");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(localNodeChannels);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
+        IOutgoingWithResponseTransport transport = manager.getPushTransport(remoteNode, localNode, "token", "http://reg");
+        assertNotNull(transport);
+        Node mockTargetNode = mock(Node.class);
+        when(mockTargetNode.getNodeId()).thenReturn("local-001");
+        NodeChannels combined = transport.getSuspendIgnoreChannelLists(configurationService, "default", mockTargetNode);
+        String suspendChannels = combined.getSuspendChannelsAsString("local-001");
+        String ignoreChannels = combined.getIgnoreChannelsAsString("local-001");
+        assertTrue(suspendChannels.contains("remote-suspend"));
+        assertTrue(suspendChannels.contains("local-suspend"));
+        assertTrue(ignoreChannels.contains("remote-ignore"));
+        assertTrue(ignoreChannels.contains("local-ignore"));
     }
 
     @Test

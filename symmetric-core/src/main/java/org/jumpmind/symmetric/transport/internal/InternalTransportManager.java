@@ -241,6 +241,11 @@ public class InternalTransportManager extends AbstractTransportManager implement
     @Override
     public IOutgoingWithResponseTransport getPushTransport(final Node remote, final Node local, String securityToken,
             Map<String, String> requestProperties, String registrationUrl) throws IOException {
+        ISymmetricEngine targetEngine = getTargetEngine(remote.getSyncUrl());
+        NodeChannels remoteNodeChannels = null;
+        if (targetEngine != null) {
+            remoteNodeChannels = targetEngine.getConfigurationService().getSuspendIgnoreChannelLists(local.getNodeId());
+        }
         final PipedOutputStream pushOs = new PipedOutputStream();
         final PipedInputStream pushIs = new PipedInputStream(pushOs);
         final PipedOutputStream respOs = new PipedOutputStream();
@@ -254,7 +259,7 @@ public class InternalTransportManager extends AbstractTransportManager implement
                 log.debug("Internal push completed for {}", local.getNodeId());
             }
         });
-        return new InternalOutgoingWithResponseTransport(pushOs, respIs);
+        return new InternalOutgoingWithResponseTransport(pushOs, respIs, remoteNodeChannels);
     }
 
     protected void handlePush(ISymmetricEngine engine, Node local, String channelQueue, InputStream is, OutputStream os) throws IOException {

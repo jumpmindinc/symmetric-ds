@@ -37,11 +37,17 @@ public class InternalOutgoingWithResponseTransport implements IOutgoingWithRespo
     BufferedReader reader = null;
     OutputStream os = null;
     boolean open = true;
+    NodeChannels nodeChannels = null;
 
     public InternalOutgoingWithResponseTransport(OutputStream os, InputStream respIs) {
+        this(os, respIs, null);
+    }
+
+    public InternalOutgoingWithResponseTransport(OutputStream os, InputStream respIs, NodeChannels nodeChannels) {
         this.os = os;
         this.writer = TransportUtils.toWriter(os);
         this.reader = TransportUtils.toReader(respIs);
+        this.nodeChannels = nodeChannels;
     }
 
     public OutputStream openStream() {
@@ -94,6 +100,14 @@ public class InternalOutgoingWithResponseTransport implements IOutgoingWithRespo
     }
 
     public NodeChannels getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode) {
-        return configurationService.getSuspendIgnoreChannelLists();
+        NodeChannels suspendIgnoreChannelsList = new NodeChannels();
+        if (nodeChannels != null) {
+            suspendIgnoreChannelsList.addSuspendChannels(nodeChannels.getSuspendChannels());
+            suspendIgnoreChannelsList.addIgnoreChannels(nodeChannels.getIgnoreChannels());
+        }
+        NodeChannels localSuspendIgnoreChannelsList = configurationService.getSuspendIgnoreChannelLists();
+        suspendIgnoreChannelsList.addSuspendChannels(localSuspendIgnoreChannelsList.getSuspendChannels());
+        suspendIgnoreChannelsList.addIgnoreChannels(localSuspendIgnoreChannelsList.getIgnoreChannels());
+        return suspendIgnoreChannelsList;
     }
 }
