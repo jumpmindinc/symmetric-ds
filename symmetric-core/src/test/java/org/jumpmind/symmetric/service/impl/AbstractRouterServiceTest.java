@@ -843,6 +843,12 @@ abstract public class AbstractRouterServiceTest extends AbstractServiceTest {
                 transaction.addRow(i, new Object[] { routingVarcharFieldValue }, new int[] { Types.VARCHAR });
                 if (!transactional) {
                     transaction.commit();
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
             }
             if (node2disable != null) {
@@ -853,6 +859,12 @@ abstract public class AbstractRouterServiceTest extends AbstractServiceTest {
             } else {
                 transaction.flush();
                 transaction.commit();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
             }
         } finally {
             if (transaction != null) {
