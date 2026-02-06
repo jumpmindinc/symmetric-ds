@@ -217,8 +217,14 @@ public class JdbcBatchBulkDatabaseWriter extends AbstractBulkDatabaseWriter {
             }
         }
         super.end(batch, inError);
-        String batchInfo = String.format("batch=%d, Table=%s, Rows=%d, Rows per second=%.1f",
-                batch.getBatchId(), targetTable.getName(), totalCommittedRows, getRowsPerSecond());
+        String batchInfo;
+        if (targetTable != null) {
+            batchInfo = String.format("batch=%d, Table=%s, Rows=%d, Rows per second=%.1f",
+                    batch.getBatchId(), targetTable.getName(), totalCommittedRows, getRowsPerSecond());
+        } else {
+            batchInfo = String.format("batch=%d, Rows=%d, Rows per second=%.1f",
+                    batch.getBatchId(), totalCommittedRows, getRowsPerSecond());
+        }
         log.info("Batch committed. " + batchInfo);
     }
 
