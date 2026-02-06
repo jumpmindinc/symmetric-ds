@@ -843,6 +843,11 @@ abstract public class AbstractRouterServiceTest extends AbstractServiceTest {
                 transaction.addRow(i, new Object[] { routingVarcharFieldValue }, new int[] { Types.VARCHAR });
                 if (!transactional) {
                     transaction.commit();
+                    try {
+                        Thread.sleep(100); // In MySQL a commit is not enough to switch Transaction ID to the next value, which is essential for this test.
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
             if (node2disable != null) {
@@ -853,6 +858,11 @@ abstract public class AbstractRouterServiceTest extends AbstractServiceTest {
             } else {
                 transaction.flush();
                 transaction.commit();
+                try {
+                    Thread.sleep(100); // In MySQL a commit is not enough to switch Transaction ID to the next value, which is essential for this test.
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         } finally {
             if (transaction != null) {
