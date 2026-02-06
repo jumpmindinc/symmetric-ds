@@ -844,7 +844,7 @@ abstract public class AbstractRouterServiceTest extends AbstractServiceTest {
                 if (!transactional) {
                     transaction.commit();
                     try {
-                        Thread.sleep(100);
+                        Thread.sleep(100); // In MySQL a commit is not enough to switch Transaction ID to the next value, which is essential for this test.
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -859,7 +859,7 @@ abstract public class AbstractRouterServiceTest extends AbstractServiceTest {
                 transaction.flush();
                 transaction.commit();
                 try {
-                    Thread.sleep(100);
+                    Thread.sleep(100);  // In MySQL a commit is not enough to switch Transaction ID to the next value, which is essential for this test.
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
