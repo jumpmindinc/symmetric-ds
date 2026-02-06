@@ -846,7 +846,6 @@ abstract public class AbstractRouterServiceTest extends AbstractServiceTest {
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
                 }
@@ -862,7 +861,6 @@ abstract public class AbstractRouterServiceTest extends AbstractServiceTest {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             }
