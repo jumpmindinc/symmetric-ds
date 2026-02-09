@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.SymmetricException;
+import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.JobDefinition;
 import org.jumpmind.symmetric.model.Lock;
@@ -438,10 +439,27 @@ abstract public class AbstractJob implements Runnable, IJob {
         String configuredSchedule = getConfiguredSchedule();
         long minPeriod = getMinSchedulePeriodMs();
         if (scheduleEnforcer.exceedsScheduleLimit(configuredSchedule, minPeriod)) {
-            log.warn("The configured schedule '{}' for job '{}' runs more frequently than the minimum allowed period of {}ms. " +
-                    "The minimum period will be used instead. To increase the frequency, contact SymmetricDS sales team.",
-                    configuredSchedule, jobName, minPeriod);
+            String message = getScheduleViolationMessage(configuredSchedule, jobName, minPeriod);
+            if (configuredSchedule.equals(getDefaultParameterValue())) {
+                log.info(message);
+            } else {
+                log.warn(message);
+            }
         }
+    }
+
+    protected String getDefaultParameterValue() {
+        ParameterMetaData metaData = ParameterConstants.getParameterMetaData().get(jobDefinition.getPeriodicParameter());
+        if (metaData == null) {
+            metaData = ParameterConstants.getParameterMetaData().get(jobDefinition.getCronParameter());
+        }
+        return metaData != null ? metaData.getDefaultValue() : null;
+    }
+
+    protected String getScheduleViolationMessage(String configuredSchedule, String jobName, long minSchedulePeriod) {
+        return String.format("The configured schedule '%s' for job '%s' runs more frequently than the minimum allowed period of %dms. " +
+                "The minimum period will be used instead. To increase the frequency, contact SymmetricDS sales team.",
+                configuredSchedule, jobName, minSchedulePeriod);
     }
 
     public String getSchedule() {
