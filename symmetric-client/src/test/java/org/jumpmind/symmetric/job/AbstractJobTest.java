@@ -579,6 +579,27 @@ class AbstractJobTest {
         assertEquals(5, testJob.getTargetNodeCount());
     }
 
+    @Test
+    void testGetDefaultParameterValue_returnsPeriodicDefault() {
+        jobDefinition.setJobName("Push");
+        assertNotNull(testJob.getDefaultParameterValuePublic());
+        assertEquals("10000", testJob.getDefaultParameterValuePublic());
+    }
+
+    @Test
+    void testGetDefaultParameterValue_returnsNullWhenNoDefault() {
+        jobDefinition.setJobName("Nonexistent Job");
+        assertNull(testJob.getDefaultParameterValuePublic());
+    }
+
+    @Test
+    void testGetScheduleViolationMessage() {
+        String message = testJob.getScheduleViolationMessagePublic("10000", "My Job", 60000);
+        assertTrue(message.contains("10000"));
+        assertTrue(message.contains("My Job"));
+        assertTrue(message.contains("60000ms"));
+    }
+
     private void setupSuccessfulInvoke() {
         when(engine.isStarted()).thenReturn(true);
         when(engine.getRegistrationService()).thenReturn(registrationService);
@@ -633,6 +654,14 @@ class AbstractJobTest {
 
         public boolean isRateLimitedPublic() {
             return isRateLimited();
+        }
+
+        public String getScheduleViolationMessagePublic(String configuredSchedule, String jobName, long minSchedulePeriod) {
+            return getScheduleViolationMessage(configuredSchedule, jobName, minSchedulePeriod);
+        }
+
+        public String getDefaultParameterValuePublic() {
+            return getDefaultParameterValue();
         }
     }
 }
