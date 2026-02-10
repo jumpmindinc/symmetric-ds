@@ -16,7 +16,7 @@ import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.TriggerRouter;
 
 public class RelationalToFileRouter implements IDataRouter {
-	public static final String ROUTER_TYPE = "dataToFile";
+    public static final String ROUTER_TYPE = "dataToFile";
     private ISymmetricEngine engine;
 
     public RelationalToFileRouter(ISymmetricEngine engine) {
@@ -24,48 +24,39 @@ public class RelationalToFileRouter implements IDataRouter {
     }
 
     @Override
-	public Set<String> routeToNodes(SimpleRouterContext context, DataMetaData dataMetaData, Set<Node> nodes,
-			boolean initialLoad, boolean initialLoadSelectUsed, TriggerRouter triggerRouter) {
-    	
-    	dataMetaData.getData().getAttribute(CsvData.ROW_DATA);
-    	
-    	DataContext ctx = null;
-		
-		LastEventType lastEventType = null;
-		if (ctx.getData().getDataEventType() == DataEventType.INSERT) {
-			lastEventType = LastEventType.CREATE;
-			
-		}
-		FileTriggerRouter fileTriggerRouter = engine.getFileSyncService().getFileTriggerRouter("S3", "router", false);
-		
-		FileSnapshot snapshot = new FileSnapshot(fileTriggerRouter, null, lastEventType);
-		engine.getFileSyncService().save(ctx.findTransaction(), snapshot);
-		
-		return null;
-	}
+    public Set<String> routeToNodes(SimpleRouterContext context, DataMetaData dataMetaData, Set<Node> nodes,
+            boolean initialLoad, boolean initialLoadSelectUsed, TriggerRouter triggerRouter) {
+        dataMetaData.getData().getAttribute(CsvData.ROW_DATA);
+        DataContext ctx = null;
+        LastEventType lastEventType = null;
+        if (ctx.getData().getDataEventType() == DataEventType.INSERT) {
+            lastEventType = LastEventType.CREATE;
+        }
+        FileTriggerRouter fileTriggerRouter = engine.getFileSyncService().getFileTriggerRouter("S3", "router", false);
+        FileSnapshot snapshot = new FileSnapshot(fileTriggerRouter, null, lastEventType);
+        engine.getFileSyncService().save(ctx.findTransaction(), snapshot);
+        return null;
+    }
 
-	@Override
-	public void completeBatch(SimpleRouterContext context, OutgoingBatch batch) {
-		// TODO Auto-generated method stub
+    @Override
+    public void completeBatch(SimpleRouterContext context, OutgoingBatch batch) {
+        // TODO Auto-generated method stub
+    }
 
-	}
+    @Override
+    public void contextCommitted(SimpleRouterContext context) {
+        // TODO Auto-generated method stub
+    }
 
-	@Override
-	public void contextCommitted(SimpleRouterContext context) {
-		// TODO Auto-generated method stub
+    @Override
+    public boolean isConfigurable() {
+        // TODO Auto-generated method stub
+        return false;
+    }
 
-	}
-
-	@Override
-	public boolean isConfigurable() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public boolean isDmlOnly() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
+    @Override
+    public boolean isDmlOnly() {
+        // TODO Auto-generated method stub
+        return false;
+    }
 }

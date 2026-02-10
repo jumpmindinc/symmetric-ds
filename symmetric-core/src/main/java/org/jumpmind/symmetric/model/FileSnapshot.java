@@ -75,7 +75,7 @@ public class FileSnapshot implements Serializable {
     private String lastUpdateBy;
     private Date lastUpdateTime;
     private String externalFileData;
-    
+
     public FileSnapshot() {
     }
 
@@ -260,14 +260,14 @@ public class FileSnapshot implements Serializable {
     }
 
     public String getExternalFileData() {
-		return externalFileData;
-	}
+        return externalFileData;
+    }
 
-	public void setExternalFileData(String externalFileData) {
-		this.externalFileData = externalFileData;
-	}
+    public void setExternalFileData(String externalFileData) {
+        this.externalFileData = externalFileData;
+    }
 
-	/***
+    /***
      * Checks whether two snapshots refer to the same file location (path + file name). Case-sensitive!
      * 
      * @return true, for identical file locations.
@@ -343,9 +343,9 @@ public class FileSnapshot implements Serializable {
         } else if (!routerId.equals(other.routerId))
             return false;
         if (externalFileData == null) {
-        	if (other.externalFileData != null) {
-        		return false;
-        	}
+            if (other.externalFileData != null) {
+                return false;
+            }
         }
         return true;
     }

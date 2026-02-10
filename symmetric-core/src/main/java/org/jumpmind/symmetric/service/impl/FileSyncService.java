@@ -302,7 +302,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             String fileName = file.getName();
             String nodeId = null;
             if (fileSnapshot.getLastUpdateBy() != null) {
-            	nodeId = fileSnapshot.getLastUpdateBy();
+                nodeId = fileSnapshot.getLastUpdateBy();
             } else if (engine.getParameterService().is(ParameterConstants.FILE_SYNC_PREVENT_PING_BACK)) {
                 nodeId = findSourceNodeIdFromFileIncoming(filePath,
                         fileName, fileSnapshot.getFileModifiedTime());
@@ -597,7 +597,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                             snapshot.getRelativeDir(), snapshot.getFileName(), snapshot.getExternalFileData() }, new int[] {
                                     Types.VARCHAR, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
                                     Types.TIMESTAMP, Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
-                                    Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR});
+                                    Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR });
         }
         // now that we have captured an update, delete the row for cleanup
         if (snapshot.getLastEventType() == LastEventType.DELETE) {
@@ -1084,8 +1084,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                                     }
                                 }
                                 try {
-                                	//log.info("SCRIPT : " + script);
-                                    
+                                    // log.info("SCRIPT : " + script);
                                     @SuppressWarnings("unchecked")
                                     Map<String, String> filesToEventType = (Map<String, String>) interpreter
                                             .eval(script);
