@@ -2936,12 +2936,12 @@ public class DataService extends AbstractService implements IDataService {
                     }
                 }
             }
-            return false;  // Tentative: reloadTableImmediate sent, parent still existed at source
+            return false; // Tentative: reloadTableImmediate sent, parent still existed at source
         } else {
             sendSQL(nodeId, "update " + engine.getParameterService().getTablePrefix() +
                     "_incoming_error set resolve_ignore = 1 where batch_id = " + batchId + " and node_id = '" + engine.getNodeId() +
                     "' and failed_row_number = " + rowNumber);
-            return true;   // Definitive: resolve_ignore=1 sent, parent missing at source
+            return true; // Definitive: resolve_ignore=1 sent, parent missing at source
         }
     }
 
