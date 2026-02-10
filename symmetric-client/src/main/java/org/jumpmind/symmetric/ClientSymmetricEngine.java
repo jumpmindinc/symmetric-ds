@@ -320,7 +320,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
 
     public static IDatabasePlatform createDatabasePlatform(ApplicationContext springContext, TypedProperties properties,
             DataSource dataSource, boolean waitOnAvailableDatabase) {
-    		boolean delimitedIdentifierMode = properties.is(ParameterConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
+        boolean delimitedIdentifierMode = properties.is(ParameterConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
         return createDatabasePlatform(springContext, properties, dataSource, waitOnAvailableDatabase, properties.is(ParameterConstants.NODE_LOAD_ONLY),
                 properties.is(ParameterConstants.START_LOG_MINER_JOB), delimitedIdentifierMode);
     }
