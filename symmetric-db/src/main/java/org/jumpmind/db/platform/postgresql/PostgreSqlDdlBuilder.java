@@ -134,8 +134,9 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
         databaseInfo.setBlankCharColumnSpacePadded(true);
         databaseInfo.setCharColumnSpaceTrimmed(false);
         databaseInfo.setEmptyStringNulled(false);
-        databaseInfo.setBinaryQuoteStart("0x");
-        databaseInfo.setBinaryQuoteEnd("");
+        databaseInfo.setBinaryQuoteStart("decode('");
+        databaseInfo.setBinaryQuoteEnd("', 'hex')");
+        
         // we need to handle the backslash first otherwise the other
         // already escaped sequences would be affected
         addEscapedCharSequence("\\", "\\\\");
