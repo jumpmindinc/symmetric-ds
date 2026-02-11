@@ -1084,7 +1084,6 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                                     }
                                 }
                                 try {
-                                    // log.info("SCRIPT : " + script);
                                     @SuppressWarnings("unchecked")
                                     Map<String, String> filesToEventType = (Map<String, String>) interpreter
                                             .eval(script);

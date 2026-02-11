@@ -301,6 +301,7 @@ public class FileSnapshot implements Serializable {
         result = prime * result + ((lastEventType == null) ? 0 : lastEventType.hashCode());
         result = prime * result + ((triggerId == null) ? 0 : triggerId.hashCode());
         result = prime * result + ((routerId == null) ? 0 : routerId.hashCode());
+        result = prime * result + ((externalFileData == null) ? 0 : externalFileData.hashCode());
         return result;
     }
 
