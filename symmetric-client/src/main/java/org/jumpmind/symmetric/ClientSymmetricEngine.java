@@ -359,11 +359,9 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         if (waitOnAvailableDatabase && dataSource != null) {
             waitForAvailableDatabase(dataSource);
         }
-        
-        if(delimitedIdentifierMode == null) {
-        		delimitedIdentifierMode = properties.is(ParameterConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
+        if (delimitedIdentifierMode == null) {
+            delimitedIdentifierMode = properties.is(ParameterConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
         }
-        
         boolean caseSensitive = !properties.is(ParameterConstants.DB_METADATA_IGNORE_CASE, true);
         return JdbcDatabasePlatformFactory.getInstance().create(dataSource,
                 createSqlTemplateSettings(properties), delimitedIdentifierMode, caseSensitive, isLoadOnly, isLogBased);
