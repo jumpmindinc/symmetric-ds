@@ -64,7 +64,7 @@ public class FileSyncServiceSqlMap extends AbstractSqlMap {
         putSql("selectFileSnapshotSql",
                 " select trigger_id, router_id, channel_id, reload_channel_id, relative_dir, file_name, " +
                 " last_event_type, crc32_checksum, " +
-                "  file_size, file_modified_time, create_time, last_update_time, last_update_by        " +
+                "  file_size, file_modified_time, create_time, last_update_time, last_update_by, external_file_data       " +
                 " from $(file_snapshot) where trigger_id=? and router_id=?                             ");
         
         putSql("relativeDirWhere", "and relative_dir=?");
@@ -104,8 +104,9 @@ public class FileSyncServiceSqlMap extends AbstractSqlMap {
                 " insert into $(file_snapshot) (                                                " +
                 "  last_event_type, crc32_checksum,                                             " +
                 "  file_size, file_modified_time, create_time, last_update_time,                " +
-                "  last_update_by, channel_id, reload_channel_id, trigger_id, router_id, relative_dir, file_name   " +
-                " ) values(?,?,?,?,?,?,?,?,?,?,?,?,?)                                                 ");
+                "  last_update_by, channel_id, reload_channel_id, trigger_id, router_id, relative_dir, file_name, " +
+                "  external_file_data " +
+                " ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)                                                 ");
 
         putSql("selectFileTriggerRoutersSql",
                 " select                                                                        " +
