@@ -2863,19 +2863,19 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     @Override
-    public void reloadMissingForeignKeyRows(long batchId, String nodeId, long dataId, long rowNumber) {
-        reloadMissingForeignKeyRows(findData(dataId), batchId, nodeId, dataId, rowNumber);
+    public boolean reloadMissingForeignKeyRows(long batchId, String nodeId, long dataId, long rowNumber) {
+        return reloadMissingForeignKeyRows(findData(dataId), batchId, nodeId, dataId, rowNumber);
     }
 
-    protected void reloadMissingForeignKeyRows(Data data, long batchId, String nodeId, long dataId, long rowNumber) {
+    protected boolean reloadMissingForeignKeyRows(Data data, long batchId, String nodeId, long dataId, long rowNumber) {
         String batchName = nodeId + "-" + batchId + " " + (dataId == -1 ? "row " + rowNumber : "data " + dataId);
         if (data == null) {
             log.warn("Unable to reload missing foreign data for data ID {} because data is not found", dataId);
-            return;
+            return false;
         } else if (data.getDataEventType() != DataEventType.INSERT && data.getDataEventType() != DataEventType.UPDATE &&
                 data.getDataEventType() != DataEventType.DELETE) {
             log.warn("Unable to reload missing foreign data for data ID {} because event type {} is not DML", dataId, data.getDataEventType());
-            return;
+            return false;
         }
         log.debug("reloadMissingForeignKeyRows for batch {} table {}", batchName, data.getTableName());
         TriggerHistory hist = data.getTriggerHistory();
@@ -2884,7 +2884,7 @@ public class DataService extends AbstractService implements IDataService {
         Table table = targetPlatform.getTableFromCache(hist.getSourceCatalogName(), hist.getSourceSchemaName(), hist.getSourceTableName(), false);
         if (table == null) {
             log.info("Unable to lookup table " + hist.getFullyQualifiedSourceTableName());
-            return;
+            return false;
         }
         table = table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
         Object[] values = targetPlatform.getObjectValues(targetDialect.getBinaryEncoding(), data.getParsedData(CsvData.ROW_DATA), table.getColumns());
@@ -2900,6 +2900,7 @@ public class DataService extends AbstractService implements IDataService {
         if (foreignTableRows.isEmpty()) {
             log.info("Could not determine foreign table rows to fix foreign key violation for "
                     + "batch {} table {}", batchName, data.getTableName());
+            return false;
         }
         sortTableRowsByForeignKeys(foreignTableRows);
         Set<TableRow> visited = new HashSet<TableRow>();
@@ -2937,10 +2938,12 @@ public class DataService extends AbstractService implements IDataService {
                     }
                 }
             }
+            return false; // Tentative: reloadTableImmediate sent, parent still existed at source
         } else {
             sendSQL(nodeId, "update " + engine.getParameterService().getTablePrefix() +
                     "_incoming_error set resolve_ignore = 1 where batch_id = " + batchId + " and node_id = '" + engine.getNodeId() +
                     "' and failed_row_number = " + rowNumber);
+            return true; // Definitive: resolve_ignore=1 sent, parent missing at source
         }
     }
 
