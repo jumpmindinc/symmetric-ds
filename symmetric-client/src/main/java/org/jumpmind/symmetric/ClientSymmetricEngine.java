@@ -285,13 +285,13 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         if (parameterService.is(ParameterConstants.NODE_LOAD_ONLY, false)) {
             TypedProperties properties = new TypedProperties();
             String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
-            boolean targetDelimitedIdentifierMode = parameterService.is(ParameterConstants.TARGET_DB_DELIMITED_IDENTIFIER_MODE, true);
             copyProperties(properties, prefix, BasicDataSourcePropertyConstants.ALL_PROPS);
             copyProperties(properties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_KAFKA_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_GOOGLE_BIG_QUERY_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_MONGODB_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_COSMOS_PARAMS);
+            boolean targetDelimitedIdentifierMode = parameterService.is(prefix+BasicDataSourcePropertyConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
             IDatabasePlatform targetPlatform = createDatabasePlatform(null, properties, null, true, true,
                     parameterService.is(ParameterConstants.START_LOG_MINER_JOB, false), targetDelimitedIdentifierMode);
             if (targetPlatform instanceof GenericJdbcDatabasePlatform) {
@@ -320,13 +320,12 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
 
     public static IDatabasePlatform createDatabasePlatform(ApplicationContext springContext, TypedProperties properties,
             DataSource dataSource, boolean waitOnAvailableDatabase) {
-    		boolean delimitedIdentifierMode = properties.is(ParameterConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
         return createDatabasePlatform(springContext, properties, dataSource, waitOnAvailableDatabase, properties.is(ParameterConstants.NODE_LOAD_ONLY),
-                properties.is(ParameterConstants.START_LOG_MINER_JOB), delimitedIdentifierMode);
+                properties.is(ParameterConstants.START_LOG_MINER_JOB), null);
     }
 
     public static IDatabasePlatform createDatabasePlatform(ApplicationContext springContext, TypedProperties properties,
-            DataSource dataSource, boolean waitOnAvailableDatabase, boolean isLoadOnly, boolean isLogBased, boolean delimitedIdentifierMode) {
+            DataSource dataSource, boolean waitOnAvailableDatabase, boolean isLoadOnly, boolean isLogBased, Boolean delimitedIdentifierMode) {
         log.info("Initializing connection to database");
         if (dataSource == null) {
             String jndiName = properties.getProperty(ParameterConstants.DB_JNDI_NAME);
@@ -359,6 +358,11 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         if (waitOnAvailableDatabase && dataSource != null) {
             waitForAvailableDatabase(dataSource);
         }
+        
+        if(delimitedIdentifierMode == null) {
+        		delimitedIdentifierMode = properties.is(ParameterConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
+        }
+        
         boolean caseSensitive = !properties.is(ParameterConstants.DB_METADATA_IGNORE_CASE, true);
         return JdbcDatabasePlatformFactory.getInstance().create(dataSource,
                 createSqlTemplateSettings(properties), delimitedIdentifierMode, caseSensitive, isLoadOnly, isLogBased);

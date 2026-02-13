@@ -299,7 +299,6 @@ final public class ParameterConstants {
     public static final String DB_QUERY_TIMEOUT_SECS = "db.sql.query.timeout.seconds";
     public static final String DB_FETCH_SIZE = "db.jdbc.streaming.results.fetch.size";
     public static final String DB_DELIMITED_IDENTIFIER_MODE = "db.delimited.identifier.mode";
-    public static final String TARGET_DB_DELIMITED_IDENTIFIER_MODE = "target.db.delimited.identifier.mode";
     public static final String DB_JNDI_NAME = "db.jndi.name";
     public static final String DB_SPRING_BEAN_NAME = "db.spring.bean.name";
     public static final String RUNTIME_CONFIG_TRIGGER_PREFIX = "sync.trigger.prefix";

@@ -45,8 +45,9 @@ final public class BasicDataSourcePropertyConstants {
     public final static String DB_POOL_TEST_WHILE_IDLE = "db.test.while.idle";
     public final static String DB_POOL_INIT_SQL = "db.init.sql";
     public final static String DB_POOL_CONNECTION_PROPERTIES = "db.connection.properties";
+    public static final String DB_DELIMITED_IDENTIFIER_MODE = "db.delimited.identifier.mode";
     public final static String[] ALL_PROPS = new String[] { DB_POOL_URL, DB_POOL_DRIVER, DB_POOL_USER, DB_POOL_PASSWORD, DB_POOL_INITIAL_SIZE,
             DB_POOL_MAX_ACTIVE, DB_POOL_MAX_IDLE, DB_POOL_MIN_IDLE, DB_POOL_MAX_WAIT, DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS,
             DB_POOL_VALIDATION_QUERY, DB_POOL_TEST_ON_BORROW, DB_POOL_TEST_ON_RETURN, DB_POOL_TEST_WHILE_IDLE, DB_POOL_INIT_SQL,
-            DB_POOL_CONNECTION_PROPERTIES };
+            DB_POOL_CONNECTION_PROPERTIES, DB_DELIMITED_IDENTIFIER_MODE };
 }
