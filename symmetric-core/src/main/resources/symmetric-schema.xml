@@ -476,6 +476,7 @@
         <column name="sync_config_enabled" type="BOOLEANINT" size="1" default="1" required="true"  description="Indicates whether configuration that has changed should be synchronized to target nodes on this link. Affects all SymmetricDS configuration tables except for sym_extract_request, sym_file_snapshot, sym_monitor_event, sym_node, sym_node_host, sym_node_security, sym_table_reload_request, and sym_table_reload_status." />
         <column name="sync_sql_enabled" type="BOOLEANINT" size="1" default="1" required="true"  description="Whether SQL/DDL events are routed and synced on this link." />
         <column name="is_reversible" type="BOOLEANINT" size="1" default="0" required="true"  description="Indicates if communication can work in reverse as specified on the channel.  A reversible push link can be overridden to pull, and a reversible pull link can be overridden to push on the channel." />
+        <column name="description" type="VARCHAR" size="255" description="An optional description of this link." />
         <column name="create_time" type="TIMESTAMP" description="Timestamp when this entry was created." />
         <column name="last_update_by" type="VARCHAR" size="50"  description="The user who last updated this entry." />
         <column name="last_update_time" type="TIMESTAMP" description="Timestamp when a user last updated this entry." />
