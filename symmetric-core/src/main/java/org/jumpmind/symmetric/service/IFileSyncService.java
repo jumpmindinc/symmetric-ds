@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.file.DirectorySnapshot;
 import org.jumpmind.symmetric.model.FileSnapshot;
 import org.jumpmind.symmetric.model.FileTrigger;
@@ -67,6 +68,8 @@ public interface IFileSyncService {
     public DirectorySnapshot getDirectorySnapshot(FileTriggerRouter fileTriggerRouter);
 
     public void save(List<FileSnapshot> changes);
+
+    public void save(ISqlTransaction sqlTransaction, FileSnapshot snapshot);
 
     public List<FileTriggerRouter> getFileTriggerRoutersForCurrentNode(boolean refreshCache);
 

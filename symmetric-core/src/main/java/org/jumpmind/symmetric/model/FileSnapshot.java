@@ -74,6 +74,7 @@ public class FileSnapshot implements Serializable {
     private Date createTime = new Date();
     private String lastUpdateBy;
     private Date lastUpdateTime;
+    private String externalFileData;
 
     public FileSnapshot() {
     }
@@ -92,6 +93,7 @@ public class FileSnapshot implements Serializable {
         this.lastUpdateTime = copy.lastUpdateTime;
         this.channelId = copy.channelId;
         this.reloadChannelId = copy.getReloadChannelId();
+        this.externalFileData = copy.externalFileData;
     }
 
     public FileSnapshot(FileTriggerRouter fileTriggerRouter, File file, LastEventType lastEventType) {
@@ -257,6 +259,14 @@ public class FileSnapshot implements Serializable {
         this.lastUpdateTime = lastUpdateTime;
     }
 
+    public String getExternalFileData() {
+        return externalFileData;
+    }
+
+    public void setExternalFileData(String externalFileData) {
+        this.externalFileData = externalFileData;
+    }
+
     /***
      * Checks whether two snapshots refer to the same file location (path + file name). Case-sensitive!
      * 
@@ -291,6 +301,7 @@ public class FileSnapshot implements Serializable {
         result = prime * result + ((lastEventType == null) ? 0 : lastEventType.hashCode());
         result = prime * result + ((triggerId == null) ? 0 : triggerId.hashCode());
         result = prime * result + ((routerId == null) ? 0 : routerId.hashCode());
+        result = prime * result + ((externalFileData == null) ? 0 : externalFileData.hashCode());
         return result;
     }
 
@@ -332,6 +343,11 @@ public class FileSnapshot implements Serializable {
                 return false;
         } else if (!routerId.equals(other.routerId))
             return false;
+        if (externalFileData == null) {
+            if (other.externalFileData != null) {
+                return false;
+            }
+        }
         return true;
     }
 
