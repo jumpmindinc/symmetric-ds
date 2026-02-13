@@ -292,7 +292,6 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             copyProperties(properties, "", ParameterConstants.ALL_GOOGLE_BIG_QUERY_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_MONGODB_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_COSMOS_PARAMS);
-            boolean targetDelimitedIdentifierMode = parameterService.is(prefix+BasicDataSourcePropertyConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
             IDatabasePlatform targetPlatform = createDatabasePlatform(null, properties, null, true, true,
                     parameterService.is(ParameterConstants.START_LOG_MINER_JOB, false), targetDelimitedIdentifierMode);
             if (targetPlatform instanceof GenericJdbcDatabasePlatform) {
