@@ -78,24 +78,28 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
         Node identity = engine.getNodeService().findIdentity();
         if (identity != null && identity.isSyncEnabled()) {
             if (force || engine.getClusterService().lock(ClusterConstants.INITIAL_LOAD_QUEUE)) {
-                ProcessInfo processInfo = null;
-                try {
-                    processInfo = engine.getStatisticManager().newProcessInfo(
-                            new ProcessInfoKey(identity.getNodeId(), null, ProcessType.INSERT_LOAD_EVENTS));
-                    processInfo.setStatus(ProcessInfo.ProcessStatus.PROCESSING);
-                    processInitialLoadEnabledFlag(identity, processInfo);
-                    processTableRequestLoads(identity, processInfo);
-                    processInfo.setStatus(ProcessInfo.ProcessStatus.OK);
-                } catch (Exception e) {
-                    if (processInfo != null) {
-                        processInfo.setStatus(ProcessInfo.ProcessStatus.ERROR);
-                    }
-                    log.error("Error while queuing initial loads", e);
-                } finally {
-                    if (!force) {
-                        engine.getClusterService().unlock(ClusterConstants.INITIAL_LOAD_QUEUE);
-                    }
-                }
+            	if (!engine.getClusterService().isLocked(ClusterConstants.SYNC_TRIGGERS)) {
+	                ProcessInfo processInfo = null;
+	                try {
+	                    processInfo = engine.getStatisticManager().newProcessInfo(
+	                            new ProcessInfoKey(identity.getNodeId(), null, ProcessType.INSERT_LOAD_EVENTS));
+	                    processInfo.setStatus(ProcessInfo.ProcessStatus.PROCESSING);
+	                    processInitialLoadEnabledFlag(identity, processInfo);
+	                    processTableRequestLoads(identity, processInfo);
+	                    processInfo.setStatus(ProcessInfo.ProcessStatus.OK);
+	                } catch (Exception e) {
+	                    if (processInfo != null) {
+	                        processInfo.setStatus(ProcessInfo.ProcessStatus.ERROR);
+	                    }
+	                    log.error("Error while queuing initial loads", e);
+	                } finally {
+	                    if (!force) {
+	                        engine.getClusterService().unlock(ClusterConstants.INITIAL_LOAD_QUEUE);
+	                    }
+	                }
+            	} else {
+            		log.info("Not queuing loads because Sync Triggers is currently running");
+            	}
             }
         }
     }
