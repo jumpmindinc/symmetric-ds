@@ -64,6 +64,7 @@ public class ConfigurationChangedHelper {
     private static final String CTX_KEY_FLUSH_ROUTERS_NEEDED = "FlushRouters." + SUFFIX;
     private static final String CTX_KEY_FLUSH_PARAMETERS_NEEDED = "FlushParameters." + SUFFIX;
     private static final String CTX_KEY_FLUSH_TRANSFORMS_NEEDED = "FlushTransforms." + SUFFIX;
+    private static final String CTX_KEY_FLUSH_FILE_TRIGGERS_NEEDED = "FlushFileTriggers." + SUFFIX;
     private static final String CTX_KEY_RESYNC_NEEDED = "Resync." + SUFFIX;
     private static final String CTX_KEY_RESYNC_ALLOWED = "ResyncAllowed." + SUFFIX;
     private static final String CTX_KEY_CHANGED_TRIGGER_IDS = "ChangedTriggerIds." + SUFFIX;
@@ -103,6 +104,7 @@ public class ConfigurationChangedHelper {
         updateContext(TableConstants.SYM_TRANSFORM_TABLE, table, context, CTX_KEY_FLUSH_TRANSFORMS_NEEDED);
         updateContext(TableConstants.SYM_TRANSFORM_COLUMN, table, context, CTX_KEY_FLUSH_TRANSFORMS_NEEDED);
         updateContext(TableConstants.SYM_TRIGGER_ROUTER_GROUPLET, table, context, CTX_KEY_FLUSH_GROUPLETS_NEEDED, CTX_KEY_RESYNC_NEEDED);
+        updateContext(TableConstants.SYM_FILE_TRIGGER, table, context, CTX_KEY_FLUSH_FILE_TRIGGERS_NEEDED);
         if (matchesTable(table, TableConstants.SYM_PARAMETER) && matchesDmlEventType(data) && matchesExternalId(table, data, "external_id")
                 && matchesNodeGroupId(table, data, "node_group_id")) {
             String jobName = JobDefinition.getJobNameFromData(data);
@@ -190,6 +192,10 @@ public class ConfigurationChangedHelper {
             log.info("Clearing cache for routers");
             engine.getCacheManager().flushAllWithRouters();
             engine.getRouterService().flushCache();
+        }
+        if (context.remove(CTX_KEY_FLUSH_FILE_TRIGGERS_NEEDED) != null) {
+            log.info("Clearing cache for file triggers");
+            engine.getCacheManager().flushFileTriggerRouters();
         }
         if (context.remove(CTX_KEY_CLUSTER_NEEDED) != null) {
             engine.getClusterService().refreshLockEntries();

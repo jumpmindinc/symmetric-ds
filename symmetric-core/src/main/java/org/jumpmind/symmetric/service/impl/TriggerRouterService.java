@@ -478,10 +478,13 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return getNewestTriggerHistoryForTrigger(triggerHistories, triggerId, catalogName, schemaName, tableName);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public List<TriggerHistory> getActiveTriggerHistoriesFromCache() {
-        return new ArrayList<TriggerHistory>(historyMap != null ? historyMap.values() : Collections.EMPTY_LIST);
+        List<TriggerHistory> historyList = new ArrayList<TriggerHistory>();
+        if (historyMap != null) {
+            historyList.addAll(historyMap.values().stream().filter(h -> h.getInactiveTime() == null).collect(Collectors.toList()));
+        }
+        return historyList;
     }
 
     /**

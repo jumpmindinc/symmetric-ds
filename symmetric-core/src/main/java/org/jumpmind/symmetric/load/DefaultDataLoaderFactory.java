@@ -84,10 +84,12 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
         this.parameterService = engine.getParameterService();
     }
 
+    @Override
     public String getTypeName() {
         return "default";
     }
 
+    @Override
     public IDataWriter getDataWriter(final String sourceNodeId, Channel channel, final ISymmetricDialect symmetricDialect,
             TransformWriter transformWriter, List<IDatabaseWriterFilter> filters,
             List<IDatabaseWriterErrorHandler> errorHandlers, List<? extends Conflict> conflictSettings,
@@ -122,12 +124,12 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
                 loadOnlyPrefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
                 props = parameterService.getAllParameters();
                 url = parameterService.getString(ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + "db.url");
-                runtimeConfigTablePrefix = parameterService.getString(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX);
+                runtimeConfigTablePrefix = symmetricDialect.getTablePrefix();
                 channelReload = Constants.CHANNEL_RELOAD;
                 return new KafkaWriter(symmetricDialect.getPlatform(), symmetricDialect.getTargetPlatform(),
-                        symmetricDialect.getTablePrefix(), new DefaultTransformWriterConflictResolver(transformWriter),
+                        runtimeConfigTablePrefix, new DefaultTransformWriterConflictResolver(transformWriter),
                         buildDatabaseWriterSettings(filters, errorHandlers, conflictSettings, resolvedData), producer, outputFormat, topicBy,
-                        messageBy, confluentUrl, schemaPackage, externalNodeID, url, loadOnlyPrefix, props, runtimeConfigTablePrefix, channelReload);
+                        messageBy, confluentUrl, schemaPackage, externalNodeID, url, loadOnlyPrefix, props, channelReload);
             }
         } catch (Exception e) {
             log.warn("Failed to create writer for platform " + targetPlatform.getClass().getSimpleName(), e);
@@ -291,6 +293,7 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
         if (engine.getCacheManager().isUsingTargetExternalId(false)) {
             writer = new DynamicDefaultDatabaseWriter(symmetricDialect.getPlatform(), symmetricDialect.getTargetPlatform(),
                     symmetricDialect.getTablePrefix(), resolver, buildDatabaseWriterSettings(filters, errorHandlers, conflictSettings, resolvedData)) {
+                @Override
                 protected String getTableKey(Table table) {
                     if (!table.getName().contains(batch.getSourceNodeId())) {
                         return super.getTableKey(table);
@@ -304,6 +307,7 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
                     }
                 }
 
+                @Override
                 protected Table lookupTableFromCache(Table sourceTable, String tableKey) {
                     if (!sourceTable.getName().contains(batch.getSourceNodeId())) {
                         return super.lookupTableFromCache(sourceTable, tableKey);
@@ -320,6 +324,7 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
                     }
                 }
 
+                @Override
                 protected void putTableInCache(String tableKey, Table table) {
                     targetTableMap.put(tableKey, table);
                 }
@@ -331,6 +336,7 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
         return writer;
     }
 
+    @Override
     public boolean isPlatformSupported(IDatabasePlatform platform) {
         return true;
     }

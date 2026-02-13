@@ -28,6 +28,7 @@ import java.sql.Statement;
 import java.sql.Types;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
@@ -40,6 +41,7 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -339,8 +341,9 @@ public class MsSqlSymmetricDialect extends AbstractSymmetricDialect implements I
     public void removeTrigger(StringBuilder sqlBuffer, final String catalogName, String schemaName,
             final String triggerName, String tableName, ISqlTransaction transaction) {
         schemaName = StringUtils.isBlank(schemaName) ? ""
-                : (platform.getDatabaseInfo().getDelimiterToken() + schemaName + platform.getDatabaseInfo().getDelimiterToken() + ".");
-        final String sql = "drop trigger " + schemaName + triggerName;
+                : (platform.getDatabaseInfo().getDelimiterToken() + SqlUtils.sanitizeIdentifier(schemaName)
+                        + platform.getDatabaseInfo().getDelimiterToken() + ".");
+        final String sql = "drop trigger " + schemaName + SqlUtils.sanitizeIdentifier(triggerName);
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
             log.info("Dropping {} trigger for {}", triggerName, Table.getFullyQualifiedTableName(catalogName, schemaName, tableName));
@@ -402,7 +405,7 @@ public class MsSqlSymmetricDialect extends AbstractSymmetricDialect implements I
         if (parameterService.is(ParameterConstants.MSSQL_TRIGGER_ORDER_FIRST, false)) {
             String schemaName = "";
             if (StringUtils.isNotBlank(trigger.getSourceSchemaName())) {
-                schemaName = trigger.getSourceSchemaName() + ".";
+                schemaName = SqlUtils.sanitizeIdentifier(trigger.getSourceSchemaName()) + ".";
             }
             String triggerNameFirst = (String) transaction.queryForObject(
                     "select tr.name " +
@@ -410,7 +413,7 @@ public class MsSqlSymmetricDialect extends AbstractSymmetricDialect implements I
                             "inner join sys.tables t with (nolock) on t.object_id = tr.parent_id " +
                             "where t.name = ? and te.type_desc = ? and te.is_first = 1", String.class, table.getName(), dml.name());
             if (StringUtils.isNotBlank(triggerNameFirst)) {
-                String sql = "exec sys.sp_settriggerorder @triggername = '" + schemaName + triggerNameFirst
+                String sql = "exec sys.sp_settriggerorder @triggername = '" + schemaName + SqlUtils.sanitizeIdentifier(triggerNameFirst)
                         + "', @order = 'None', @stmttype = '" + dml.name() + "'";
                 logSql(sql, sqlBuffer);
                 if (sqlBuffer == null) {
@@ -427,7 +430,7 @@ public class MsSqlSymmetricDialect extends AbstractSymmetricDialect implements I
                 triggerName = hist.getNameForDeleteTrigger();
             }
             String sql = "exec sys.sp_settriggerorder @triggername = '" + schemaName +
-                    triggerName + "', @order = 'First', @stmttype = '" + dml.name() + "'";
+                    SqlUtils.sanitizeIdentifier(triggerName) + "', @order = 'First', @stmttype = '" + dml.name() + "'";
             logSql(sql, sqlBuffer);
             if (sqlBuffer == null) {
                 transaction.execute(sql);
@@ -553,5 +556,18 @@ public class MsSqlSymmetricDialect extends AbstractSymmetricDialect implements I
         PermissionType[] permissions = { PermissionType.CREATE_TABLE, PermissionType.DROP_TABLE, PermissionType.CREATE_TRIGGER, PermissionType.DROP_TRIGGER,
                 PermissionType.CREATE_FUNCTION };
         return permissions;
+    }
+
+    @Override
+    public String getMasterCollation() {
+        String ret = "";
+        String collation = super.getMasterCollation();
+        if (!StringUtils.isEmpty(collation)) {
+            if (!Strings.CI.contains(collation, "COLLATE")) {
+                ret = " COLLATE";
+            }
+            ret += " " + collation + " ";
+        }
+        return ret;
     }
 }

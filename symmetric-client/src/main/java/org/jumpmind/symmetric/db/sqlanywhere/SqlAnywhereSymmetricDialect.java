@@ -33,6 +33,7 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.AbstractSymmetricDialect;
@@ -136,7 +137,8 @@ public class SqlAnywhereSymmetricDialect extends AbstractSymmetricDialect implem
     @Override
     public void removeTrigger(StringBuilder sqlBuffer, final String catalogName, String schemaName,
             final String triggerName, String tableName, ISqlTransaction transaction) {
-        final String sql = "drop trigger " + (StringUtils.isBlank(schemaName) ? platform.getDefaultSchema() : schemaName) + "." + tableName + "." + triggerName;
+        final String sql = "drop trigger " + (StringUtils.isBlank(schemaName) ? SqlUtils.sanitizeIdentifier(platform.getDefaultSchema())
+                : SqlUtils.sanitizeIdentifier(schemaName)) + "." + SqlUtils.sanitizeIdentifier(tableName) + "." + SqlUtils.sanitizeIdentifier(triggerName);
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
             log.info("Dropping {} trigger for {}", triggerName, (StringUtils.isBlank(schemaName) ? platform.getDefaultSchema() : schemaName) + "." + tableName

@@ -188,7 +188,7 @@ public class DataService extends AbstractService implements IDataService {
                                                     request.getTargetNodeId(), request
                                                             .getSourceNodeId(), request
                                                                     .getTriggerId(), request.getRouterId()),
-                                            false, -1, null);
+                                            false, -1, null, null);
                                 }
                                 deleteTableReloadRequest(transaction, request);
                                 transaction.commit();
@@ -428,6 +428,12 @@ public class DataService extends AbstractService implements IDataService {
     public List<TableReloadStatus> getActiveOutgoingTableReloadStatus() {
         return sqlTemplateDirty.query(getSql("selectActiveTableReloadStatus", "andSourceNodeId", "orderTableReloadStatus"),
                 new TableReloadStatusMapper(), engine.getNodeId());
+    }
+
+    @Override
+    public List<TableReloadStatus> getActiveOutgoingTableReloadStatusByTargetNodeId(String targetNodeId) {
+        return sqlTemplateDirty.query(getSql("selectActiveTableReloadStatus", "andSourceNodeId", "andTargetNodeId", "orderTableReloadStatus"),
+                new TableReloadStatusMapper(), engine.getNodeId(), targetNodeId);
     }
 
     @Override
@@ -1466,7 +1472,7 @@ public class DataService extends AbstractService implements IDataService {
                             && engine.getGroupletService().isTargetEnabled(triggerRouter, targetNode)
                             && !triggerHistory.getSourceTableNameLowerCase().startsWith(symmetricDialect.getTablePrefix().toLowerCase() + "_")) {
                         insertCreateEvent(transaction, targetNode, triggerHistory, triggerRouter.getTrigger().getReloadChannelId(), true,
-                                loadId, createBy, false, false, false, Status.LS);
+                                loadId, createBy, false, false, false, Status.LS, null, null);
                         createEventsSent++;
                         if (!transactional) {
                             transaction.commit();
@@ -1489,7 +1495,7 @@ public class DataService extends AbstractService implements IDataService {
                                 && engine.getGroupletService().isTargetEnabled(triggerRouter,
                                         targetNode)) {
                             insertCreateEvent(transaction, targetNode, triggerHistory, triggerRouter.getRouter().getRouterId(), true,
-                                    loadId, createBy, false, false, false, Status.LS);
+                                    loadId, createBy, false, false, false, Status.LS, null, null);
                             createEventsSent++;
                             if (!transactional) {
                                 transaction.commit();
@@ -1602,7 +1608,7 @@ public class DataService extends AbstractService implements IDataService {
                         for (String sql : sqlStatements) {
                             insertSqlEvent(transaction, triggerHistory, triggerRouter.getTrigger().getChannelId(),
                                     targetNode, sql,
-                                    true, loadId, createBy, Status.LS);
+                                    true, loadId, null, createBy, Status.LS);
                             sqlEventsSent++;
                         }
                         if (!transactional) {
@@ -2048,20 +2054,20 @@ public class DataService extends AbstractService implements IDataService {
         TriggerHistory history = engine.getTriggerRouterService()
                 .findTriggerHistoryForGenericSync();
         insertSqlEvent(transaction, history, Constants.CHANNEL_CONFIG, targetNode, sql, isLoad,
-                loadId, createBy, outgoingBatchStatus);
+                loadId, null, createBy, outgoingBatchStatus);
     }
 
     @Override
     public void insertSqlEvent(ISqlTransaction transaction, TriggerHistory history,
             String channelId, Node targetNode, String sql, boolean isLoad, long loadId,
-            String createBy) {
+            String externalData, String createBy) {
         insertSqlEvent(transaction, history, channelId, targetNode, sql, isLoad, loadId,
-                createBy, Status.NE);
+                externalData, createBy, Status.NE);
     }
 
     public void insertSqlEvent(ISqlTransaction transaction, TriggerHistory history,
             String channelId, Node targetNode, String sql, boolean isLoad, long loadId,
-            String createBy, Status outgoingBatchStatus) {
+            String externalData, String createBy, Status outgoingBatchStatus) {
         Trigger trigger = engine.getTriggerRouterService().getTriggerById(history.getTriggerId(),
                 false);
         String reloadChannelId = getReloadChannelIdForTrigger(trigger, engine
@@ -2069,6 +2075,7 @@ public class DataService extends AbstractService implements IDataService {
         Data data = new Data(history.getSourceTableName(), DataEventType.SQL,
                 CsvUtils.escapeCsvData(sql), null, history, isLoad ? reloadChannelId : channelId,
                 null, null);
+        data.setExternalData(externalData);
         data.setNodeList(targetNode.getNodeId());
         if (isLoad) {
             insertDataAndDataEventAndOutgoingBatch(transaction, data, targetNode.getNodeId(),
@@ -2167,7 +2174,7 @@ public class DataService extends AbstractService implements IDataService {
             transaction = sqlTemplate.startSqlTransaction();
             Trigger trigger = engine.getTriggerRouterService().getTriggerById(triggerHistory.getTriggerId(), false);
             insertCreateEvent(transaction, targetNode, triggerHistory, trigger.getChannelId(), false, -1, createBy,
-                    excludeIndices, excludeForeignKeys, excludeDefaults);
+                    excludeIndices, excludeForeignKeys, excludeDefaults, null, null);
             transaction.commit();
         } catch (Error ex) {
             if (transaction != null) {
@@ -2193,22 +2200,23 @@ public class DataService extends AbstractService implements IDataService {
                 .getConfigurationService().getChannels(false));
         insertCreateEvent(transaction, targetNode, triggerHistory, isLoad ? reloadChannelId
                 : Constants.CHANNEL_CONFIG, isLoad, loadId, createBy,
-                excludeIndices, excludeForeignKeys, excludeDefaults);
+                excludeIndices, excludeForeignKeys, excludeDefaults, null, null);
     }
 
     @Override
     public void insertCreateEvent(ISqlTransaction transaction, Node targetNode,
             TriggerHistory triggerHistory, String channelId, boolean isLoad, long loadId, String createBy,
-            boolean excludeIndices, boolean excludeForeignKeys, boolean excludeDefaults) {
+            boolean excludeIndices, boolean excludeForeignKeys, boolean excludeDefaults, String rowData, String externalData) {
         insertCreateEvent(transaction, targetNode, triggerHistory, channelId, isLoad, loadId,
-                createBy, excludeIndices, excludeForeignKeys, excludeDefaults, Status.NE);
+                createBy, excludeIndices, excludeForeignKeys, excludeDefaults, Status.NE, rowData, externalData);
     }
 
     public void insertCreateEvent(ISqlTransaction transaction, Node targetNode,
             TriggerHistory triggerHistory, String channelId, boolean isLoad, long loadId, String createBy,
-            boolean excludeIndices, boolean excludeForeignKeys, boolean excludeDefaults, Status outgoingBatchStatus) {
+            boolean excludeIndices, boolean excludeForeignKeys, boolean excludeDefaults, Status outgoingBatchStatus, String rowData, String externalData) {
         Data data = new Data(triggerHistory.getSourceTableName(), DataEventType.CREATE,
-                null, null, triggerHistory, channelId, null, null);
+                rowData, null, triggerHistory, channelId, null, null);
+        data.setExternalData(externalData);
         data.setNodeList(targetNode.getNodeId());
         data.setOldData(getOptionsForExclusions(excludeIndices, excludeForeignKeys, excludeDefaults));
         try {
@@ -2585,7 +2593,7 @@ public class DataService extends AbstractService implements IDataService {
                 try {
                     transaction = sqlTemplate.startSqlTransaction();
                     insertSqlEvent(transaction, triggerHistory, trigger.getChannelId(), targetNode,
-                            sql, false, -1, null);
+                            sql, false, -1, null, null);
                     transaction.commit();
                     return "Successfully create SQL event for node " + targetNode.getNodeId();
                 } catch (Error ex) {

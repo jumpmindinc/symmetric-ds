@@ -30,6 +30,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.Row;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -51,7 +52,7 @@ public class ParameterService extends AbstractParameterService implements IParam
     private List<DatabaseParameter> offlineParameters;
 
     public ParameterService(IDatabasePlatform platform, ITypedPropertiesFactory factory, String tablePrefix) {
-        this.tablePrefix = tablePrefix;
+        this.tablePrefix = SqlUtils.sanitizeTablePrefix(tablePrefix);
         this.factory = factory;
         this.sql = new ParameterServiceSqlMap(platform, tablePrefix);
         this.sqlTemplate = platform.getSqlTemplate();

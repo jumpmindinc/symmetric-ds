@@ -12,8 +12,8 @@ dependencies {
     generateReleaseNotesDependencies project(":symmetric-db")
 }
 
-def downloadURLCore = 'http://maven.jumpmind.com/repo/org/jumpmind/symmetric/symmetric-core/%s/symmetric-core-%s.jar'
-def downloadURLPro = 'http://maven.jumpmind.com/repo/org/jumpmind/symmetric/symmetric-pro/%s/symmetric-pro-%s.jar'
+def downloadURLCore = 'https://repo1.maven.org/maven2/org/jumpmind/symmetric/symmetric-core/%s/symmetric-core-%s.jar'
+def downloadURLPro = 'https://repo1.maven.org/maven2/org/jumpmind/symmetric/symmetric-pro/%s/symmetric-pro-%s.jar'
 
 task downloadJars {
 	doFirst{
@@ -63,7 +63,8 @@ task generateReleaseNotes {
 				symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/symmetric-console-default.properties",
 				symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/console-schema.xml",
 				symAssembleDir + '/src/asciidoc/generated/release-notes.ad',
-				'https://status.symmetricds.org/api/get-issues.php?version=' + version.substring(0, version.lastIndexOf(".")) + '&secret=' + restAPISecret
+				version.substring(0, version.lastIndexOf(".")),
+				"https://jumpmind.atlassian.net"
 			]
 		}
 	}

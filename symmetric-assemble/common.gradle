@@ -31,14 +31,6 @@ allprojects {
     group = 'org.jumpmind.symmetric'
          
     repositories {
-        maven {
-            url = "https://maven.jumpmind.com/repo"
-            metadataSources {
-                mavenPom()
-                artifact()
-            }
-        }
-
         mavenCentral()
         maven { url = "https://maven.vaadin.com/vaadin-addons" }
         maven { url = 'https://plugins.gradle.org/m2' }
@@ -62,7 +54,6 @@ allprojects {
 	    	property "sonar.scm.disabled", "false"    
 		}
 	}
-    
 }
 
 def ignoreDerivedResources(projectDescription, directories = ["build", "test-output"]) {
@@ -140,6 +131,9 @@ subprojects { subproject ->
     }
 
 	java {
+		toolchain {
+    		languageVersion = JavaLanguageVersion.of(17)
+    	}
     	sourceCompatibility=JavaVersion.VERSION_17
     	targetCompatibility=JavaVersion.VERSION_17
     }
@@ -218,7 +212,7 @@ subprojects { subproject ->
     
     artifacts { archives sourcesJar }    
     
-    if (!project.name.contains("log-miner")) {
+    if (!project.name.contains("log-miner") && !project.name.contains("izpack")) {
         publishing {
 	    	publications {
 	        	symmetricLibrary(MavenPublication) {
@@ -241,6 +235,37 @@ subprojects { subproject ->
 			useInMemoryPgpKeys(findProperty("signingKey"), findProperty("signingPassword"))
 			sign publishing.publications.symmetricLibrary
 		}
+
+        apply plugin: 'eu.kakde.gradle.sonatype-maven-central-publisher'
+
+        def licenseName = project.name.contains("-pro") ? "Commercial" : "GNU GPL version 3.0";
+        sonatypeCentralPublishExtension {
+            groupId.set("${project.group}")
+            artifactId.set("${project.name}")
+            version.set("${project.version}")
+            componentType.set("java")
+            publishingType.set("AUTOMATIC")
+            username.set(getProperty("sonatypeUser"))
+            password.set(getProperty("sonatypePassword"))
+            pom {
+                name.set("${project.name}")
+                description.set("Data replication")
+                url.set("https://symmetricds.org/")
+                licenses {
+                    license {
+                        name.set(licenseName)
+                    }
+                }
+                developers {
+                    developer {
+                        name.set("Jumpmind")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/jumpmindinc/symmetric-ds/")
+                }
+            }
+        }
     }
 
     task deploy {
@@ -286,8 +311,6 @@ subprojects { subproject ->
                        "Build-Scm-Version": scmVersion)
         }    
     }
-    
-
 
     artifacts { testArtifacts testJar }
 
@@ -325,13 +348,13 @@ subprojects { subproject ->
         powerMockVersion = '2.0.9'
         mysqlVersion = '8.4.0'
         servletVersion = '4.0.1'
-        springVersion = '6.2.11'
-        springBootVersion = '3.5.5'
+        springVersion = '6.2.15'
+        springBootVersion = '3.5.9'
         jtdsVersion = '1.3.1'
         bouncyCastleVersion = '1.81'
         animalSnifferVersion = '1.23'
         jnaVersion = '5.14.0'
-        jettyVersion = '12.0.25'
+        jettyVersion = '12.0.31'
         websocketVersion = '2.2.0'
         env = System.getenv()
     }

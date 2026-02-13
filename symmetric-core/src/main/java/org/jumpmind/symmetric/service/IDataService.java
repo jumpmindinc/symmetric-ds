@@ -78,6 +78,8 @@ public interface IDataService {
 
     public List<TableReloadStatus> getActiveTableReloadStatus();
 
+    public List<TableReloadStatus> getActiveOutgoingTableReloadStatusByTargetNodeId(String targetNodeId);
+
     public List<TableReloadStatus> getActiveOutgoingTableReloadStatus();
 
     public List<TableReloadStatus> getActiveIncomingTableReloadStatus();
@@ -176,7 +178,7 @@ public interface IDataService {
     public void insertSqlEvent(ISqlTransaction transaction, Node targetNode, String sql, boolean isLoad, long loadId, String createBy);
 
     public void insertSqlEvent(ISqlTransaction transaction, TriggerHistory history, String channelId, Node targetNode, String sql, boolean isLoad, long loadId,
-            String createBy);
+            String externalData, String createBy);
 
     public void insertSqlEvent(Node targetNode, String sql, boolean isLoad, long loadId, String createBy);
 
@@ -193,7 +195,7 @@ public interface IDataService {
             boolean excludeForeignKeys, boolean excludeDefaults);
 
     public void insertCreateEvent(ISqlTransaction transaction, Node targetNode, TriggerHistory triggerHistory, String channelId, boolean isLoad, long loadId,
-            String createBy, boolean excludeIndices, boolean excludeForeignKeys, boolean excludeDefaults);
+            String createBy, boolean excludeIndices, boolean excludeForeignKeys, boolean excludeDefaults, String rowData, String externalData);
 
     public Set<TriggerHistory> insertCreateEventsForOutgoingBatchInError(OutgoingBatch batch, String createBy);
 
