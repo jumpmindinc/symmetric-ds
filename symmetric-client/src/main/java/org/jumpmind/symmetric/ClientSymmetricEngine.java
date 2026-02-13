@@ -285,6 +285,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         if (parameterService.is(ParameterConstants.NODE_LOAD_ONLY, false)) {
             TypedProperties properties = new TypedProperties();
             String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
+            boolean targetDelimitedIdentifierMode = parameterService.is(ParameterConstants.TARGET_DB_DELIMITED_IDENTIFIER_MODE, true);
             copyProperties(properties, prefix, BasicDataSourcePropertyConstants.ALL_PROPS);
             copyProperties(properties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_KAFKA_PARAMS);
@@ -320,6 +321,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
 
     public static IDatabasePlatform createDatabasePlatform(ApplicationContext springContext, TypedProperties properties,
             DataSource dataSource, boolean waitOnAvailableDatabase) {
+        boolean delimitedIdentifierMode = properties.is(ParameterConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
         return createDatabasePlatform(springContext, properties, dataSource, waitOnAvailableDatabase, properties.is(ParameterConstants.NODE_LOAD_ONLY),
                 properties.is(ParameterConstants.START_LOG_MINER_JOB), null);
     }

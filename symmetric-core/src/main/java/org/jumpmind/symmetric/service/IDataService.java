@@ -108,7 +108,7 @@ public interface IDataService {
     public String reloadTableImmediate(String nodeId, String catalogName, String schemaName, String tableName,
             String overrideInitialLoadSelect, String overrideChannelId);
 
-    public void reloadMissingForeignKeyRows(long batchId, String nodeId, long dataId, long rowNumber);
+    public boolean reloadMissingForeignKeyRows(long batchId, String nodeId, long dataId, long rowNumber);
 
     public void reloadMissingForeignKeyRowsForLoad(String sourceNodeId, long batchId, long rowNumber, Table table, CsvData data, String channelId);
 
