@@ -185,6 +185,7 @@ final public class ParameterConstants {
     public static final String PARAMETER_REFRESH_PERIOD_IN_MS = "parameter.reload.timeout.ms";
     public static final String CONCURRENT_WORKERS = "http.concurrent.workers.max";
     public static final String CONCURRENT_RESERVATION_TIMEOUT = "http.concurrent.reservation.timeout.ms";
+    public static final String CONCURRENT_RESERVATION_HARD_TIMEOUT = "http.concurrent.reservation.hard.timeout.ms";
     public static final String OUTGOING_BATCH_PEEK_AHEAD_BATCH_COMMIT_SIZE = "outgoing.batches.peek.ahead.batch.commit.size";
     public static final String OUTGOING_BATCH_COPY_TO_INCOMING_STAGING = "outgoing.batches.copy.to.incoming.staging";
     public static final String ROUTING_FLUSH_JDBC_BATCH_SIZE = "routing.flush.jdbc.batch.size";

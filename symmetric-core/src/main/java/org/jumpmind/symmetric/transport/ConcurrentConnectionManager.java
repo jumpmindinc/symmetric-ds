@@ -124,6 +124,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         Map<String, Reservation> reservations = getReservationMap(poolId);
         int maxPoolSize = parameterService.getInt(ParameterConstants.CONCURRENT_WORKERS);
         long timeout = parameterService.getLong(ParameterConstants.CONCURRENT_RESERVATION_TIMEOUT);
+        long hardTimeout = parameterService.getLong(ParameterConstants.CONCURRENT_RESERVATION_HARD_TIMEOUT, 0);
         removeTimedOutReservations(reservations);
         Reservation existingReservation = reservations.get(reservationId);
         if (requiresExistingReservation && existingReservation == null) {
@@ -136,9 +137,10 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
             return ReservationStatus.NOT_FOUND;
         } else if (reservations.size() < maxPoolSize || existingReservation != null || whiteList.contains(nodeId)) {
             if (existingReservation == null || existingReservation.getType() == ReservationType.SOFT) {
+                long hardTtl = hardTimeout > 0 ? System.currentTimeMillis() + hardTimeout : Long.MAX_VALUE;
                 reservations.put(reservationId, new Reservation(reservationId,
                         reservationRequest == ReservationType.SOFT ? System.currentTimeMillis()
-                                + timeout : Long.MAX_VALUE, reservationRequest));
+                                + timeout : hardTtl, reservationRequest));
                 transportErrorTimeByNode.remove(nodeId);
                 return ReservationStatus.ACCEPTED;
             } else {
