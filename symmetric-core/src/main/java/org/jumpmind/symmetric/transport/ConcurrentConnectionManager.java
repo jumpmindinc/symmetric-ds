@@ -74,21 +74,21 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         return stats;
     }
 
+    @Override
     public synchronized boolean releaseConnection(String nodeId, String channelId, String poolId) {
         String reservationId = getReservationIdentifier(nodeId, channelId);
-        log.debug("Releasing connection for {} {}", poolId, reservationId);
+
         Map<String, Reservation> reservations = getReservationMap(poolId);
         Reservation reservation = reservations.remove(reservationId);
         if (reservation != null) {
-            logConnectedTimePeriod(reservationId, reservation.createTime, System.currentTimeMillis(),
-                    poolId);
+            logConnectedTimePeriod(reservationId, reservation.createTime, System.currentTimeMillis(),                    poolId);
             return true;
         } else {
-            log.warn("Failed to release connection for {}", reservationId);
             return false;
         }
     }
 
+    @Override
     public synchronized boolean releaseConnection(String nodeId, String poolId) {
         Map<String, Reservation> reservations = getReservationMap(poolId);
         Reservation reservation = reservations.remove(nodeId);
@@ -101,22 +101,27 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         }
     }
 
+    @Override
     public synchronized void addToWhitelist(String nodeId) {
         whiteList.add(nodeId);
     }
 
+    @Override
     public synchronized void removeFromWhiteList(String nodeId) {
         whiteList.remove(nodeId);
     }
 
+    @Override
     public synchronized String[] getWhiteList() {
         return whiteList.toArray(new String[whiteList.size()]);
     }
 
+    @Override
     public synchronized int getReservationCount(String poolId) {
         return getReservationMap(poolId).size();
     }
 
+    @Override
     public synchronized ReservationStatus reserveConnection(String nodeId, String channelId, String poolId,
             ReservationType reservationRequest, boolean requiresExistingReservation) {
         String reservationId = getReservationIdentifier(nodeId, channelId);
@@ -136,9 +141,11 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
             return ReservationStatus.NOT_FOUND;
         } else if (reservations.size() < maxPoolSize || existingReservation != null || whiteList.contains(nodeId)) {
             if (existingReservation == null || existingReservation.getType() == ReservationType.SOFT) {
-                reservations.put(reservationId, new Reservation(reservationId,
-                        reservationRequest == ReservationType.SOFT ? System.currentTimeMillis()
-                                + timeout : Long.MAX_VALUE, reservationRequest));
+                long reservationExpiration = System.currentTimeMillis() + timeout;
+                if (reservationRequest != ReservationType.SOFT) {
+                    reservationExpiration += timeout; // Allow HARD reservations extra time to call releaseConnection() gracefully
+                }
+                reservations.put(reservationId, new Reservation(reservationId, reservationExpiration, reservationRequest));
                 transportErrorTimeByNode.remove(nodeId);
                 return ReservationStatus.ACCEPTED;
             } else {
@@ -155,10 +162,12 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         }
     }
 
+    @Override
     public Map<String, Date> getPullReservationsByNodeId() {
         return getReservationsByNodeId("pull");
     }
 
+    @Override
     public Map<String, Date> getPushReservationsByNodeId() {
         return getReservationsByNodeId("push");
     }
@@ -265,6 +274,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         return channelId == null || channelId.equals("0") ? nodeId : nodeId + "-" + channelId;
     }
 
+    @Override
     public Map<String, Map<String, NodeConnectionStatistics>> getNodeConnectionStatisticsByPoolByNodeId() {
         return this.nodeConnectionStatistics;
     }
@@ -302,6 +312,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         }
     }
 
+    @Override
     public Map<String, Map<String, Reservation>> getActiveReservationsByNodeByPool() {
         return activeReservationsByNodeByPool;
     }
