@@ -77,11 +77,10 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     @Override
     public synchronized boolean releaseConnection(String nodeId, String channelId, String poolId) {
         String reservationId = getReservationIdentifier(nodeId, channelId);
-
         Map<String, Reservation> reservations = getReservationMap(poolId);
         Reservation reservation = reservations.remove(reservationId);
         if (reservation != null) {
-            logConnectedTimePeriod(reservationId, reservation.createTime, System.currentTimeMillis(),                    poolId);
+            logConnectedTimePeriod(reservationId, reservation.createTime, System.currentTimeMillis(), poolId);
             return true;
         } else {
             return false;
