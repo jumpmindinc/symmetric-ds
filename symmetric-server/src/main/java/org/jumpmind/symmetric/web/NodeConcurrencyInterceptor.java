@@ -22,11 +22,6 @@ package org.jumpmind.symmetric.web;
 
 import java.io.IOException;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.model.ChannelMap;
 import org.jumpmind.symmetric.model.NodeSecurity;
@@ -38,6 +33,11 @@ import org.jumpmind.symmetric.transport.IConcurrentConnectionManager.Reservation
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager.ReservationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * An intercepter that controls access to this node for pushes and pulls. It is configured within symmetric-web.xml
@@ -57,6 +57,7 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
         this.statisticManager = statisticManager;
     }
 
+    @Override
     public boolean before(HttpServletRequest req, HttpServletResponse resp) throws IOException,
             ServletException {
         String poolId = req.getRequestURI();
@@ -73,8 +74,12 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
                 try {
                     buildSuspendIgnoreResponseHeaders(nodeId, resp);
                 } catch (Exception ex) {
-                    concurrentConnectionManager.releaseConnection(nodeId, threadChannel, poolId);
                     log.error("Error building response headers", ex);
+                    log.debug("Releasing reservation for node={}, pool={}, channel={}", nodeId, poolId, threadChannel);
+                    if (!concurrentConnectionManager.releaseConnection(nodeId, threadChannel, poolId)) {
+                        log.warn("Failed to locate connection reservation (to release it) for node={}, pool={}, channel={}", nodeId, poolId,
+                                threadChannel);
+                    }
                     ServletUtils.sendError(resp, WebConstants.SC_SERVICE_ERROR);
                 }
             } else {
@@ -113,8 +118,12 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
                     buildSuspendIgnoreResponseHeaders(nodeId, resp);
                     return true;
                 } catch (Exception ex) {
-                    concurrentConnectionManager.releaseConnection(nodeId, threadChannel, poolId);
                     log.error("Error building response headers", ex);
+                    log.debug("Releasing reservation for node={}, pool={}, channel={}", nodeId, poolId, threadChannel);
+                    if (!concurrentConnectionManager.releaseConnection(nodeId, threadChannel, poolId)) {
+                        log.warn("Failed to locate connection reservation (to release it) for node={}, pool={}, channel={}", nodeId, poolId,
+                                threadChannel);
+                    }
                     ServletUtils.sendError(resp, WebConstants.SC_SERVICE_ERROR);
                     return false;
                 }
@@ -151,12 +160,16 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
         return nodeId;
     }
 
+    @Override
     public void after(HttpServletRequest req, HttpServletResponse resp) throws IOException,
             ServletException {
         String poolId = req.getRequestURI();
         String nodeId = getNodeId(req);
         String threadChannel = req.getHeader(WebConstants.CHANNEL_QUEUE);
-        concurrentConnectionManager.releaseConnection(nodeId, threadChannel, poolId);
+        log.debug("Releasing reservation for node={}, pool={}, channel={}", nodeId, poolId, threadChannel);
+        if (!concurrentConnectionManager.releaseConnection(nodeId, threadChannel, poolId)) {
+            log.warn("Failed to locate connection reservation (to release it) for node={}, pool={}, channel={}", nodeId, poolId, threadChannel);
+        }
     }
 
     protected void buildSuspendIgnoreResponseHeaders(final String nodeId, final ServletResponse resp) {
