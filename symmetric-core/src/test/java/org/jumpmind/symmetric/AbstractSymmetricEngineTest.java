@@ -96,7 +96,7 @@ class AbstractSymmetricEngineTest {
         setPlatform(createGenericPlatformMock(null));
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
-    
+
     /**
      * Creates a mock platform that simulates a generic (non-dedicated) platform with the given database name reported in its DatabaseVersion.
      */
