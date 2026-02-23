@@ -237,6 +237,10 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
             platformClass = jdbcSubProtocolToPlatform.get(nameVersion.getProtocol());
         }
         if (platformClass == null) {
+            log.warn("No dedicated database platform found for '{}'. "
+                    + "Falling back to GenericJdbcDatabasePlatform, which has limited functionality. "
+                    + "For more information contact the SymmetricDS sales team.",
+                    nameVersion.getName());
             platformClass = GenericJdbcDatabasePlatform.class;
         }
         return platformClass;
