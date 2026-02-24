@@ -1,6 +1,14 @@
 
 === Tibero
 
+ifndef::pro[]
+
+Tibero is only supported in the professional version of SymmetricDS.
+
+endif::pro[]
+
+ifdef::pro[]
+
 Use `symadmin module install tibero` to install driver files, or copy your own files into the `lib` sub-directory.
 
 This section describes Tibero specific SymmetricDS details.
@@ -15,3 +23,4 @@ GRANT RESOURCE TO SYMMETRIC;
 GRANT CREATE ANY TRIGGER TO SYMMETRIC;
 GRANT EXECUTE ON UTL_RAW TO SYMMETRIC;
 
+endif::pro[]
