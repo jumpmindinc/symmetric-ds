@@ -2,7 +2,7 @@ name: Cherry-pick merged PR
 on:
   push:
     branches:
-      - 'release/3.16'
+      - 'release/*'
   workflow_dispatch:
     inputs:
       commit_hash:
