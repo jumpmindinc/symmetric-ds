@@ -52,6 +52,11 @@ public class GenericJdbcDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public boolean isDedicatedPlatform() {
+        return false;
+    }
+
+    @Override
     public String getDefaultSchema() {
         return null;
     }

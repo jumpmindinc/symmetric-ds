@@ -1545,4 +1545,14 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     public TypedProperties getProperties() {
         return properties;
     }
+
+    /**
+     * Returns whether this platform is a dedicated (non-generic) implementation for the underlying database. A dedicated platform provides database-specific
+     * features, while the generic fallback has limited functionality.
+     *
+     * @return {@code true} by default; {@code false} for generic/fallback platforms
+     */
+    public boolean isDedicatedPlatform() {
+        return true;
+    }
 }
