@@ -196,10 +196,15 @@ public class SymmetricEngineHolder {
     }
 
     public ISymmetricEngine install(Properties passedInProperties) throws Exception {
-        return install(passedInProperties, null);
+        return install(passedInProperties, null, true, true);
     }
 
     public ISymmetricEngine install(Properties passedInProperties, IDatabaseInstallStatementListener listener) throws Exception {
+        return install(passedInProperties, listener, true, true);
+    }
+
+    public ISymmetricEngine install(Properties passedInProperties, IDatabaseInstallStatementListener listener, boolean startJobs,
+            boolean createConfig) throws Exception {
         ITypedPropertiesFactory factory = PropertiesUtil.createTypedPropertiesFactory(null, passedInProperties);
         TypedProperties properties = factory.reload(passedInProperties);
         String password = properties.getProperty(BasicDataSourcePropertyConstants.DB_POOL_PASSWORD);
@@ -245,7 +250,7 @@ public class SymmetricEngineHolder {
         ISymmetricEngine engine = null;
         try {
             String registrationUrl = properties.getProperty(ParameterConstants.REGISTRATION_URL);
-            if (StringUtils.isNotBlank(registrationUrl)) {
+            if (createConfig && StringUtils.isNotBlank(registrationUrl)) {
                 Collection<ServerSymmetricEngine> all = new ArrayList<ServerSymmetricEngine>(getEngines().values());
                 for (ISymmetricEngine currentEngine : all) {
                     if (currentEngine.getParameterService().getSyncUrl().equals(registrationUrl)) {
@@ -303,7 +308,7 @@ public class SymmetricEngineHolder {
                 if (listener != null) {
                     engine.getExtensionService().addExtensionPoint(listener);
                 }
-                engine.start();
+                engine.start(startJobs);
             } else {
                 FileUtils.deleteQuietly(symmetricProperties);
                 log.warn("The engine could not be created.  It will not be started");

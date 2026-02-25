@@ -57,6 +57,8 @@ public interface IFileSyncService {
 
     public void deleteFileTriggerRouter(FileTriggerRouter fileTriggerRouter);
 
+    public void deleteFileTriggerRouter(ISqlTransaction transaction, FileTriggerRouter fileTriggerRouter);
+
     public void deleteAllFileTriggerRouters();
 
     public void deleteFileTrigger(FileTrigger fileTrigger);

@@ -196,6 +196,11 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         deleteTrigger(trigger.getTriggerId());
     }
 
+    @Override
+    public void deleteTrigger(ISqlTransaction transaction, Trigger trigger) {
+        transaction.prepareAndExecute(getSql("deleteTriggerSql"), (Object) trigger.getTriggerId());
+    }
+
     private void deleteTrigger(String id) {
         sqlTemplate.update(getSql("deleteTriggerSql"), (Object) id);
     }
@@ -1140,6 +1145,12 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     @Override
+    public void deleteTriggerRouter(ISqlTransaction transaction, TriggerRouter triggerRouter) {
+        transaction.prepareAndExecute(getSql("deleteTriggerRouterSql"), (Object) triggerRouter.getTrigger()
+                .getTriggerId(), triggerRouter.getRouter().getRouterId());
+    }
+
+    @Override
     public void deleteTriggerRouters(Collection<TriggerRouter> triggerRouters) {
         ISqlTransaction transaction = null;
         try {
@@ -1194,6 +1205,21 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                     getTriggerRouterSqlTypes());
         }
         clearCache();
+    }
+
+    @Override
+    public void saveTriggerRouter(ISqlTransaction transaction, TriggerRouter triggerRouter, boolean updateTriggerRouterTableOnly) {
+        if (!updateTriggerRouterTableOnly) {
+            saveTrigger(transaction, triggerRouter.getTrigger());
+            saveRouter(transaction, triggerRouter.getRouter());
+        }
+        triggerRouter.setLastUpdateTime(new Date());
+        if (0 >= transaction.prepareAndExecute(getSql("updateTriggerRouterSql"), getTriggerRouterSqlValues(triggerRouter),
+                getTriggerRouterSqlTypes())) {
+            triggerRouter.setCreateTime(triggerRouter.getLastUpdateTime());
+            transaction.prepareAndExecute(getSql("insertTriggerRouterSql"), getTriggerRouterSqlValues(triggerRouter),
+                    getTriggerRouterSqlTypes());
+        }
     }
 
     public void renameTriggerRouter(String oldTriggerId, String oldRouterId, TriggerRouter triggerRouter) {
@@ -1341,6 +1367,45 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         clearCache();
     }
 
+    @Override
+    public void saveRouter(ISqlTransaction transaction, Router router) {
+        router.setLastUpdateTime(new Date());
+        router.nullOutBlankFields();
+        if (0 >= transaction.prepareAndExecute(
+                getSql("updateRouterSql"),
+                new Object[] { router.getTargetCatalogName(), router.getTargetSchemaName(),
+                        router.getTargetTableName(),
+                        router.getNodeGroupLink().getSourceNodeGroupId(),
+                        router.getNodeGroupLink().getTargetNodeGroupId(), router.getRouterType(),
+                        router.getRouterExpression(), router.isSyncOnUpdate() ? 1 : 0,
+                        router.isSyncOnInsert() ? 1 : 0, router.isSyncOnDelete() ? 1 : 0,
+                        router.isUseSourceCatalogSchema() ? 1 : 0,
+                        router.getLastUpdateBy(), router.getLastUpdateTime(),
+                        router.getRouterId() }, new int[] {
+                                Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                                Types.VARCHAR, Types.VARCHAR, Types.SMALLINT, Types.SMALLINT,
+                                Types.SMALLINT, Types.SMALLINT, Types.VARCHAR, Types.TIMESTAMP,
+                                Types.VARCHAR })) {
+            router.setCreateTime(router.getLastUpdateTime());
+            transaction.prepareAndExecute(
+                    getSql("insertRouterSql"),
+                    new Object[] { router.getTargetCatalogName(), router.getTargetSchemaName(),
+                            router.getTargetTableName(),
+                            router.getNodeGroupLink().getSourceNodeGroupId(),
+                            router.getNodeGroupLink().getTargetNodeGroupId(),
+                            router.getRouterType(), router.getRouterExpression(),
+                            router.isSyncOnUpdate() ? 1 : 0, router.isSyncOnInsert() ? 1 : 0,
+                            router.isSyncOnDelete() ? 1 : 0, router.isUseSourceCatalogSchema() ? 1 : 0,
+                            router.getCreateTime(),
+                            router.getLastUpdateBy(), router.getLastUpdateTime(), router.getRouterId() },
+                    new int[] {
+                            Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                            Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT,
+                            Types.SMALLINT, Types.SMALLINT, Types.SMALLINT, Types.TIMESTAMP, Types.VARCHAR,
+                            Types.TIMESTAMP, Types.VARCHAR });
+        }
+    }
+
     public Router saveRouterAsCopy(Router router) {
         String newId = router.getRouterId();
         List<Router> routers = sqlTemplate.query(
@@ -1363,6 +1428,25 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         deleteRouter(oldId);
     }
 
+    @Override
+    public void renameRouter(ISqlTransaction transaction, String oldId, Router router) {
+        saveRouter(transaction, router);
+        List<TriggerRouter> triggerRouters = transaction.query(
+                getTriggerRouterSql("selectTriggerRoutersByRouterIdSql"),
+                new TriggerRouterMapper(), new Object[] { oldId }, null);
+        if (triggerRouters != null && !triggerRouters.isEmpty()) {
+            String oldRouterId = triggerRouters.get(0).getRouterId();
+            for (TriggerRouter triggerRouter : triggerRouters) {
+                triggerRouter.setRouterId(router.getRouterId());
+                saveTriggerRouter(transaction, triggerRouter, true);
+            }
+            transaction.prepareAndExecute(getSql("updateTriggerRouterIdSql1"), router.getRouterId(), oldRouterId);
+            transaction.prepareAndExecute(getSql("deleteTriggerRoutersByRouterIdSql"), oldRouterId);
+        }
+        transaction.prepareAndExecute(getSql("updateFileTriggerRouterSql"), router.getRouterId(), oldId);
+        transaction.prepareAndExecute(getSql("deleteRouterSql"), (Object) oldId);
+    }
+
     public boolean isRouterBeingUsed(String routerId) {
         return sqlTemplate.queryForInt(getSql("countTriggerRoutersByRouterIdSql"), routerId) > 0;
     }
@@ -1373,6 +1457,17 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             sqlTemplate.update(getSql("deleteFileTriggerRoutersByRouterSql"), router.getRouterId());
             groupletService.deleteTriggerRouterGroupletsFor(router);
             sqlTemplate.update(getSql("deleteRouterSql"), router.getRouterId());
+        }
+    }
+
+    @Override
+    public void deleteRouter(ISqlTransaction transaction, Router router) {
+        if (router != null) {
+            String routerId = router.getRouterId();
+            transaction.prepareAndExecute(getSql("deleteTriggerRoutersByRouterSql"), routerId);
+            transaction.prepareAndExecute(getSql("deleteFileTriggerRoutersByRouterSql"), routerId);
+            transaction.prepareAndExecute(getSql("deleteTriggerRouterGroupletByRouterSql"), routerId);
+            transaction.prepareAndExecute(getSql("deleteRouterSql"), routerId);
         }
     }
 
@@ -1393,6 +1488,16 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             sqlTemplate.update(getSql("insertTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes());
         }
         clearCache();
+    }
+
+    @Override
+    public void saveTrigger(ISqlTransaction transaction, Trigger trigger) {
+        trigger.setLastUpdateTime(new Date());
+        trigger.nullOutBlankFields();
+        if (0 >= transaction.prepareAndExecute(getSql("updateTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes())) {
+            trigger.setCreateTime(trigger.getLastUpdateTime());
+            transaction.prepareAndExecute(getSql("insertTriggerSql"), getTriggerSqlValues(trigger), getTriggerSqlTypes());
+        }
     }
 
     public void saveTriggerAsCopy(String originalId, Trigger trigger) {

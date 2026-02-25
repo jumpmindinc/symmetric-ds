@@ -71,11 +71,14 @@ import org.jumpmind.symmetric.db.sqlite.SqliteJdbcSymmetricDialect;
 import org.jumpmind.symmetric.db.voltdb.VoltDbSymmetricDialect;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.util.AppUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Factory class that is responsible for creating the appropriate {@link ISymmetricDialect} for the configured database.
  */
 public class JdbcSymmetricDialectFactory implements ISymmetricDialectFactory {
+    protected static final Logger log = LoggerFactory.getLogger(JdbcSymmetricDialectFactory.class);
     protected static ISymmetricDialectFactory instance;
 
     protected JdbcSymmetricDialectFactory() {
@@ -150,6 +153,10 @@ public class JdbcSymmetricDialectFactory implements ISymmetricDialectFactory {
         } else if (platform instanceof IngresDatabasePlatform) {
             dialect = new IngresSymmetricDialect(parameterService, platform);
         } else {
+            log.warn("No dedicated SymmetricDS dialect found for platform '{}'. "
+                    + "Falling back to GenericSymmetricDialect, which has limited functionality. "
+                    + "For more information contact the SymmetricDS sales team.",
+                    platform.getClass().getSimpleName());
             dialect = new GenericSymmetricDialect(parameterService, platform);
         }
         return dialect;

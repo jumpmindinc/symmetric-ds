@@ -1,5 +1,14 @@
 
 === Oracle
+
+ifndef::pro[]
+
+Oracle is only supported in the professional version of SymmetricDS.
+
+endif::pro[]
+
+ifdef::pro[]
+
 This section describes Oracle specific SymmetricDS details.
 
 ==== Permissions
@@ -12,7 +21,6 @@ GRANT RESOURCE TO SYMMETRIC;
 GRANT CREATE ANY TRIGGER TO SYMMETRIC;
 GRANT EXECUTE ON UTL_RAW TO SYMMETRIC;
 
-ifdef::pro[]
 .Log Miner Permissions
 When using Log Miner instead of triggers, the SYSDBA should put the database into archive log mode:
 
@@ -36,10 +44,8 @@ grant create session, alter session, select any dictionary, execute_catalog_role
 If using Oracle 12c with PDB, use the following permissions:
 
 [source, SQL]
-grant create session, alter session, set container, select any dictionary, logmining, execute_catalog_role to c##symmetric CONTAINER=all;
-alter user c##symmetric set container_data = (cdb$root, <PDB name>) container=current;
-
-endif::pro[]
+grant create session, alter session, set container, select any dictionary, logmining, execute_catalog_role to symmetric CONTAINER=all;
+alter user symmetric set container_data = (cdb$root, <PDB name>) container=current;
 
 ==== Known Limitations
 * The LONG data type is not supported with change capture, since LONG columns cannot be accessed from triggers.  The data in LONG columns can still be kept in sync by enabling the use_stream_lobs feature in <<TRIGGER>>.
@@ -146,3 +152,5 @@ CREATE UNIQUE INDEX IDX_D_CHANNEL_ID ON SYM_DATA (DATA_ID, CHANNEL_ID)  LOCAL
 | Blob | Yes
 | BFile | No
 |===
+
+endif::pro[]

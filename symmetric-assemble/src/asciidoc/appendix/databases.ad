@@ -268,7 +268,7 @@ by database.
 |
 |
 
-|Oracle
+|Oracle *
 |10g and above
 |✔
 |✔
@@ -347,7 +347,7 @@ by database.
 |
 |
 
-|SQL Server
+|SQL Server *
 |2005 and above
 |✔
 |✔
@@ -360,7 +360,7 @@ by database.
 |✔
 |✔
  
-|SQL Server Azure
+|SQL Server Azure *
 |Tested on 11.00.2065
 |✔
 |✔
@@ -412,7 +412,7 @@ by database.
 |
 |
    
-|Tibero
+|Tibero *
 |6 and above
 |✔
 |✔
@@ -622,7 +622,7 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 |select db_name()
 |✔
 |select schema_name()
- 
+
 |SQL Server Azure
 |
 |✔

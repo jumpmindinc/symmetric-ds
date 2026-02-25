@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.cache.TriggerRouterRoutersCache;
 import org.jumpmind.symmetric.config.ITriggerCreationListener;
 import org.jumpmind.symmetric.io.data.DataEventType;
@@ -130,13 +131,19 @@ public interface ITriggerRouterService {
 
     public void deleteRouter(Router router);
 
+    public void deleteRouter(ISqlTransaction transaction, Router router);
+
     public void deleteAllRouters();
 
     public void saveRouter(Router router);
 
+    public void saveRouter(ISqlTransaction transaction, Router router);
+
     public Router saveRouterAsCopy(Router router);
 
     public void renameRouter(String oldId, Router router);
+
+    public void renameRouter(ISqlTransaction transaction, String oldId, Router router);
 
     public List<TriggerRouter> getAllTriggerRoutersForCurrentNode(String sourceNodeGroupId);
 
@@ -149,6 +156,8 @@ public interface ITriggerRouterService {
 
     public void saveTrigger(Trigger trigger);
 
+    public void saveTrigger(ISqlTransaction transaction, Trigger trigger);
+
     public void insertTriggers(Collection<Trigger> triggers);
 
     public void updateTriggers(Collection<Trigger> triggers);
@@ -158,6 +167,8 @@ public interface ITriggerRouterService {
     public void renameTrigger(String oldId, Trigger trigger);
 
     public void deleteTrigger(Trigger trigger);
+
+    public void deleteTrigger(ISqlTransaction transaction, Trigger trigger);
 
     public void deleteTriggers(Collection<Trigger> triggers);
 
@@ -219,6 +230,8 @@ public interface ITriggerRouterService {
 
     public void deleteTriggerRouter(TriggerRouter triggerRouter);
 
+    public void deleteTriggerRouter(ISqlTransaction transaction, TriggerRouter triggerRouter);
+
     public void deleteTriggerRouter(String triggerId, String routerId);
 
     public void deleteTriggerRouters(Collection<TriggerRouter> triggerRouters);
@@ -226,6 +239,8 @@ public interface ITriggerRouterService {
     public void deleteAllTriggerRouters();
 
     public void saveTriggerRouter(TriggerRouter triggerRouter, boolean updateTriggerRouterTableOnly);
+
+    public void saveTriggerRouter(ISqlTransaction transaction, TriggerRouter triggerRouter, boolean updateTriggerRouterTableOnly);
 
     public void saveTriggerRouter(TriggerRouter triggerRouter);
 

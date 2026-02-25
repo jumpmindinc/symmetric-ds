@@ -48,6 +48,9 @@ import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
+import org.jumpmind.db.platform.AbstractDatabasePlatform;
+import org.jumpmind.db.platform.DatabaseNamesConstants;
+import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlResultsListener;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -656,6 +659,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             try {
                 starting = true;
                 symmetricDialect.verifyDatabaseIsCompatible();
+                checkForProOnlyDatabase();
                 setup();
                 if (isConfigured()) {
                     Node node = nodeService.findIdentity();
@@ -727,6 +731,28 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             log.info(getEngineDescription("NOT STARTED:"));
         }
         return started;
+    }
+
+    protected void checkForProOnlyDatabase() {
+        if (platform instanceof AbstractDatabasePlatform
+                && ((AbstractDatabasePlatform) platform).isDedicatedPlatform()) {
+            return;
+        }
+        DatabaseVersion dbVersion = platform.getDatabaseVersion();
+        if (dbVersion != null) {
+            String dbVersionName = dbVersion.getName();
+            if (dbVersionName != null) {
+                String nameLower = dbVersionName.toLowerCase();
+                if (nameLower.startsWith(DatabaseNamesConstants.ORACLE)
+                        || nameLower.contains("sql server")) {
+                    throw new SymmetricException(
+                            "The detected database platform '%s' is not supported in SymmetricDS open source. "
+                                    + "Some DB platforms, including Oracle and Microsoft SQL Server, require SymmetricDS Pro. "
+                                    + "Contact the SymmetricDS sales team for more information.",
+                            dbVersionName);
+                }
+            }
+        }
     }
 
     protected Node checkSystemIntegrity(Node node) {
