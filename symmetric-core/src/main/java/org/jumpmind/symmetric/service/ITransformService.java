@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.service;
 import java.util.List;
 import java.util.Map;
 
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.io.data.transform.IColumnTransform;
 import org.jumpmind.symmetric.io.data.transform.TransformColumn;
 import org.jumpmind.symmetric.io.data.transform.TransformPoint;
@@ -49,11 +50,15 @@ public interface ITransformService {
 
     public void saveTransformTable(TransformTableNodeGroupLink transformTable, boolean saveTransformColumns);
 
+    public void saveTransformTable(ISqlTransaction transaction, TransformTableNodeGroupLink transformTable, boolean saveTransformColumns);
+
     public void saveTransformTableAsCopy(String originalId, TransformTableNodeGroupLink transformTable);
 
     public void renameTransformTable(String oldId, TransformTableNodeGroupLink transformTable);
 
     public void deleteTransformTable(String transformTableId);
+
+    public void deleteTransformTable(ISqlTransaction transaction, String transformTableId);
 
     public void deleteAllTransformTables();
 

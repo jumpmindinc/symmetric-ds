@@ -70,6 +70,8 @@ public interface IDataLoaderService {
 
     public void delete(ConflictNodeGroupLink settings);
 
+    public void delete(ISqlTransaction transaction, ConflictNodeGroupLink settings);
+
     public void deleteAllConflicts();
 
     public void save(ConflictNodeGroupLink settings);

@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.NodeChannel;
@@ -43,13 +44,21 @@ public interface IConfigurationService {
 
     public void saveNodeGroup(NodeGroup group);
 
+    public void saveNodeGroup(ISqlTransaction transaction, NodeGroup group);
+
     public void saveNodeGroupLink(NodeGroupLink link);
+
+    public void saveNodeGroupLink(ISqlTransaction transaction, NodeGroupLink link);
 
     public void renameNodeGroupLink(String oldSourceId, String oldTargetId, NodeGroupLink link);
 
     public void deleteNodeGroup(String nodeGroupId);
 
+    public void deleteNodeGroup(ISqlTransaction transaction, String nodeGroupId);
+
     public void deleteNodeGroupLink(NodeGroupLink link);
+
+    public void deleteNodeGroupLink(ISqlTransaction transaction, NodeGroupLink link);
 
     public void deleteAllNodeGroupLinks();
 
