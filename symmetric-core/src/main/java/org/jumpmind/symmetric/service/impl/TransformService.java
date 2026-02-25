@@ -515,6 +515,44 @@ public class TransformService extends AbstractService implements ITransformServi
     }
 
     @Override
+    public void saveTransformTable(ISqlTransaction transaction, TransformTableNodeGroupLink transformTable, boolean saveTransformColumns) {
+        transformTable.setLastUpdateTime(new Date());
+        if (transaction.prepareAndExecute(getSql("updateTransformTableSql"), transformTable
+                .getNodeGroupLink().getSourceNodeGroupId(), transformTable.getNodeGroupLink()
+                        .getTargetNodeGroupId(), transformTable.getSourceCatalogName(), transformTable
+                                .getSourceSchemaName(), transformTable.getSourceTableName(), transformTable
+                                        .getTargetCatalogName(), transformTable.getTargetSchemaName(), transformTable
+                                                .getTargetTableName(), transformTable.getTransformPoint().toString(),
+                transformTable.isUpdateFirst() ? 1 : 0, transformTable.getDeleteAction()
+                        .toString(), transformTable.getUpdateAction(), transformTable.getTransformOrder(), transformTable
+                                .getColumnPolicy().toString(), transformTable.getLastUpdateTime(),
+                transformTable.getLastUpdateBy(), transformTable.getTransformId()) == 0) {
+            transformTable.setCreateTime(new Date());
+            transaction.prepareAndExecute(getSql("insertTransformTableSql"), transformTable
+                    .getNodeGroupLink().getSourceNodeGroupId(), transformTable
+                            .getNodeGroupLink().getTargetNodeGroupId(), transformTable
+                                    .getSourceCatalogName(), transformTable.getSourceSchemaName(),
+                    transformTable.getSourceTableName(), transformTable.getTargetCatalogName(),
+                    transformTable.getTargetSchemaName(), transformTable.getTargetTableName(),
+                    transformTable.getTransformPoint().toString(), transformTable
+                            .isUpdateFirst() ? 1 : 0, transformTable.getDeleteAction()
+                                    .toString(), transformTable.getUpdateAction(), transformTable.getTransformOrder(), transformTable
+                                            .getColumnPolicy().toString(), transformTable.getLastUpdateTime(),
+                    transformTable.getLastUpdateBy(), transformTable.getCreateTime(),
+                    transformTable.getTransformId());
+        }
+        if (saveTransformColumns) {
+            deleteTransformColumns(transaction, transformTable.getTransformId());
+            List<TransformColumn> columns = transformTable.getTransformColumns();
+            if (columns != null) {
+                for (TransformColumn transformColumn : columns) {
+                    saveTransformColumn(transaction, transformColumn);
+                }
+            }
+        }
+    }
+
+    @Override
     public void saveTransformTableAsCopy(String originalId, TransformTableNodeGroupLink transformTable) {
         String newId = transformTable.getTransformId();
         List<TransformTableNodeGroupLink> transformTables = sqlTemplate
@@ -599,6 +637,13 @@ public class TransformService extends AbstractService implements ITransformServi
             close(transaction);
             clearCache();
         }
+    }
+
+    @Override
+    public void deleteTransformTable(ISqlTransaction transaction, String transformTableId) {
+        deleteTransformColumns(transaction, transformTableId);
+        transaction.prepareAndExecute(getSql("deleteTransformTableSql"),
+                (Object) transformTableId);
     }
 
     @Override

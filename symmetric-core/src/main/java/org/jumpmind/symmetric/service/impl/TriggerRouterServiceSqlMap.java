@@ -222,6 +222,7 @@ public class TriggerRouterServiceSqlMap extends AbstractSqlMap {
         
         putSql("updateTriggerRouterIdSql0", "update $(trigger_router_grouplet) set trigger_id=? where trigger_id=?");
         putSql("updateTriggerRouterIdSql1", "update $(trigger_router_grouplet) set router_id=? where router_id=?");
+        putSql("deleteTriggerRouterGroupletByRouterSql", "delete from $(trigger_router_grouplet) where router_id=?");
 
         putSql("updateFileTriggerRouterSql", "update $(file_trigger_router) set router_id=? where router_id=?");
         putSql("deleteFileTriggerRoutersByRouterSql", "delete from $(file_trigger_router) where router_id=?");

@@ -505,6 +505,12 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
     }
 
     @Override
+    public void deleteFileTriggerRouter(ISqlTransaction transaction, FileTriggerRouter fileTriggerRouter) {
+        transaction.prepareAndExecute(getSql("deleteFileTriggerRouterSql"), fileTriggerRouter
+                .getFileTrigger().getTriggerId(), fileTriggerRouter.getRouter().getRouterId());
+    }
+
+    @Override
     public void deleteFileTrigger(FileTrigger fileTrigger) {
         deleteFileTrigger(fileTrigger.getTriggerId());
     }

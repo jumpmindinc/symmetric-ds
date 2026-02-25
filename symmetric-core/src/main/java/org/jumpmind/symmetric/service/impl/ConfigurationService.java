@@ -214,6 +214,22 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
+    public void saveNodeGroupLink(ISqlTransaction transaction, NodeGroupLink link) {
+        link.setLastUpdateTime(new Date());
+        if (transaction.prepareAndExecute(getSql("updateNodeGroupLinkSql"), link.getDataEventAction().name(),
+                link.isSyncConfigEnabled() ? 1 : 0, link.isSyncSqlEnabled() ? 1 : 0, link.isReversible() ? 1 : 0,
+                link.getLastUpdateTime(),
+                link.getLastUpdateBy(), link.getSourceNodeGroupId(), link.getTargetNodeGroupId()) <= 0) {
+            link.setCreateTime(new Date());
+            transaction.prepareAndExecute(getSql("insertNodeGroupLinkSql"), link.getDataEventAction().name(),
+                    link.getSourceNodeGroupId(), link.getTargetNodeGroupId(),
+                    link.isSyncConfigEnabled() ? 1 : 0, link.isSyncSqlEnabled() ? 1 : 0, link.isReversible() ? 1 : 0,
+                    link.getLastUpdateTime(),
+                    link.getLastUpdateBy(), link.getCreateTime());
+        }
+    }
+
+    @Override
     public void renameNodeGroupLink(String oldSourceId, String oldTargetId, NodeGroupLink link) {
         saveNodeGroupLink(link);
         ISqlTransaction transaction = null;
@@ -277,13 +293,35 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     }
 
     @Override
+    public void saveNodeGroup(ISqlTransaction transaction, NodeGroup group) {
+        group.setLastUpdateTime(new Date());
+        if (transaction.prepareAndExecute(getSql("updateNodeGroupSql"), group.getDescription(),
+                group.getLastUpdateTime(), group.getLastUpdateBy(), group.getNodeGroupId()) <= 0) {
+            group.setCreateTime(new Date());
+            transaction.prepareAndExecute(getSql("insertNodeGroupSql"), group.getDescription(),
+                    group.getNodeGroupId(), group.getLastUpdateTime(), group.getLastUpdateBy(),
+                    group.getCreateTime());
+        }
+    }
+
+    @Override
     public void deleteNodeGroup(String nodeGroupId) {
         sqlTemplate.update(getSql("deleteNodeGroupSql"), nodeGroupId);
     }
 
     @Override
+    public void deleteNodeGroup(ISqlTransaction transaction, String nodeGroupId) {
+        transaction.prepareAndExecute(getSql("deleteNodeGroupSql"), nodeGroupId);
+    }
+
+    @Override
     public void deleteNodeGroupLink(NodeGroupLink link) {
         deleteNodeGroupLink(link.getSourceNodeGroupId(), link.getTargetNodeGroupId());
+    }
+
+    @Override
+    public void deleteNodeGroupLink(ISqlTransaction transaction, NodeGroupLink link) {
+        transaction.prepareAndExecute(getSql("deleteNodeGroupLinkSql"), link.getSourceNodeGroupId(), link.getTargetNodeGroupId());
     }
 
     private void deleteNodeGroupLink(String sourceId, String targetId) {

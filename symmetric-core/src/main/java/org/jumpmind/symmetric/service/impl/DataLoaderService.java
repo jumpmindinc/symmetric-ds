@@ -837,6 +837,11 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
         delete(settings.getConflictId());
     }
 
+    @Override
+    public void delete(ISqlTransaction transaction, ConflictNodeGroupLink settings) {
+        transaction.prepareAndExecute(getSql("deleteConflictSettingsSql"), settings.getConflictId());
+    }
+
     private void delete(String id) {
         sqlTemplate.update(getSql("deleteConflictSettingsSql"), id);
     }

@@ -129,6 +129,37 @@ public class ModuleManager {
         return dirName;
     }
 
+    public void checkAvailability(String moduleId) throws ModuleException {
+        checkModuleValid(moduleId, false);
+        List<MavenArtifact> artifacts = resolveArtifacts(moduleId);
+        for (MavenArtifact artifact : artifacts) {
+            if (new File(buildFileName(modulesDir, artifact)).exists()) {
+                continue;
+            }
+            boolean reachable = false;
+            String lastError = null;
+            for (String repo : repos) {
+                String urlString = buildUrl(repo, artifact);
+                try {
+                    HttpURLConnection conn = getHttpUrlConnection(urlString, WebConstants.METHOD_HEAD);
+                    if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                        reachable = true;
+                        break;
+                    } else {
+                        lastError = "HTTP " + conn.getResponseCode() + " for " + urlString;
+                    }
+                } catch (IOException e) {
+                    lastError = e.getClass().getName() + ": " + e.getMessage() + " for " + urlString;
+                }
+            }
+            if (!reachable) {
+                logAndThrow("Module " + moduleId + " is not available for download. "
+                        + "Please check your internet connection and firewall settings. "
+                        + "(" + artifact.toFileName() + ": " + lastError + ")");
+            }
+        }
+    }
+
     public void install(String moduleId) throws ModuleException {
         install(moduleId, null);
     }
