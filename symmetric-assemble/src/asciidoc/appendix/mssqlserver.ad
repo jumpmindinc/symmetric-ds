@@ -1,6 +1,14 @@
 
 === SQL Server
 
+ifndef::pro[]
+
+SQL Server is only supported in the professional version of SymmetricDS.
+
+endif::pro[]
+
+ifdef::pro[]
+
 Microsoft SQL Server was tested using the http://jtds.sourceforge.net/[jTDS JDBC driver].
 
 SQL Server allows the update of primary key fields via the SQL update statement. If your application allows 
@@ -88,7 +96,6 @@ GRANT INSERT, EXECUTE ON DATABASE::SYM_DATABASE to APP_USER;
 ----
 ====
 
-ifdef::pro[]
 .Log Miner Permissions
 When using Log Miner instead of triggers, SymmetricDS will alter the database to enable change tracking,
 if it's not already enabled, which requires ALTER ANY DATABASE permission.
@@ -106,8 +113,6 @@ if it's not already enabled, which requires ALTER TABLE permission.
 
 [source, SQL]
 alter table mytable enable change_tracking;
-
-endif::pro[]
 
 .Supported Data Types
 |===
@@ -129,3 +134,5 @@ endif::pro[]
 ==== Bulk Loading
 
 When registering a SQL Server database with SymmetricDS, bulk loading will be be enabled by default. In order to make use of bulk loading, SymmetricDS must have access to a bcp executable. Windows and Linux installations will include a bcp executable if the SQL Server driver was downloaded during installation. Otherwise, either the bcp executable must be available on the PATH or the user must provide a path to the bcp executable via the Deploy Wizard, the Connect Database Wizard, or the mssql.bulk.load.bcp.cmd parameter.
+
+endif::pro[]
