@@ -36,7 +36,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
 public class ReleaseNotesGeneratorTest {
-	
     @Test
     public void testCompareMajorMinor_EarlierVersion() throws Exception {
         assertTrue(invokeCompareMajorMinor("3.16", "3.17") < 0);
@@ -365,7 +364,7 @@ public class ReleaseNotesGeneratorTest {
             assertTrue(output.contains(section));
         }
     }
-    
+
     @SuppressWarnings("unchecked")
     private List<Issue> invokeParseIssues(String majorMinorVersion, JsonObject root) throws Exception {
         Method method = ReleaseNotesGenerator.class.getDeclaredMethod("parseIssues", String.class, JsonObject.class);
