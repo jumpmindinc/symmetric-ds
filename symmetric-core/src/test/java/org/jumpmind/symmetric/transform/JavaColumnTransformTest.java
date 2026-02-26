@@ -86,6 +86,51 @@ public class JavaColumnTransformTest {
     }
 
     @Test
+    public void testMultipleColumnsUseDifferentTransforms() throws Exception {
+        TransformColumn idColumn = new TransformColumn("id", "id", true, "java", "return newValue + \"0\";");
+        idColumn.setTransformId("transform1");
+        TransformColumn testColumn = new TransformColumn("test", "test", false, "java", "return newValue + \"1\";");
+        testColumn.setTransformId("transform1");
+        TransformTable table = new TransformTable("sTable", "tTable", TransformPoint.LOAD, idColumn, testColumn);
+        Map<String, String> sourceKeyValues = new HashMap<String, String>();
+        Map<String, String> sourceValues = new HashMap<String, String>();
+        sourceValues.put("id", "test");
+        sourceValues.put("test", "test");
+        Map<String, String> oldSourceValues = new HashMap<String, String>();
+        TransformedData data = new TransformedData(table, DataEventType.INSERT, sourceKeyValues, oldSourceValues, sourceValues);
+        DataContext realContext = new DataContext();
+        JavaColumnTransform transform = new JavaColumnTransform();
+        transform.setExtensionService(extensionService);
+        String idResult = transform.transform(platform, realContext, idColumn, data, sourceValues, "test", null);
+        String testResult = transform.transform(platform, realContext, testColumn, data, sourceValues, "test", null);
+        assertEquals("test0", idResult);
+        assertEquals("test1", testResult);
+    }
+
+    @Test
+    public void testSameColumnDifferentIncludeOnUseDifferentTransforms() throws Exception {
+        TransformColumn insertColumn = new TransformColumn("col", "col", false, "java", "return newValue + \"_insert\";");
+        insertColumn.setTransformId("transform1");
+        insertColumn.setIncludeOn(TransformColumn.IncludeOnType.INSERT);
+        TransformColumn updateColumn = new TransformColumn("col", "col", false, "java", "return newValue + \"_update\";");
+        updateColumn.setTransformId("transform1");
+        updateColumn.setIncludeOn(TransformColumn.IncludeOnType.UPDATE);
+        TransformTable table = new TransformTable("sTable", "tTable", TransformPoint.LOAD, insertColumn, updateColumn);
+        Map<String, String> sourceKeyValues = new HashMap<String, String>();
+        Map<String, String> sourceValues = new HashMap<String, String>();
+        sourceValues.put("col", "val");
+        Map<String, String> oldSourceValues = new HashMap<String, String>();
+        TransformedData data = new TransformedData(table, DataEventType.INSERT, sourceKeyValues, oldSourceValues, sourceValues);
+        DataContext realContext = new DataContext();
+        JavaColumnTransform transform = new JavaColumnTransform();
+        transform.setExtensionService(extensionService);
+        String insertResult = transform.transform(platform, realContext, insertColumn, data, sourceValues, "val", null);
+        String updateResult = transform.transform(platform, realContext, updateColumn, data, sourceValues, "val", null);
+        assertEquals("val_insert", insertResult);
+        assertEquals("val_update", updateResult);
+    }
+
+    @Test
     public void testInnerClass() throws Exception {
         String javaCode = "final DataContext ctx = context;"
                 + "HashMap namedParams = new HashMap();"
