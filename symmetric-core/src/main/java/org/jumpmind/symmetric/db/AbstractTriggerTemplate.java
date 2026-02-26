@@ -218,7 +218,6 @@ abstract public class AbstractTriggerTemplate {
         sql = FormatUtils.replace("prefixName", symmetricDialect.getTablePrefix(), sql);
         sql = FormatUtils.replace("oracleToClob",
                 triggerRouter.getTrigger().isUseCaptureLobs() ? toClobExpression(table) : "", sql);
-        sql = replaceOracleQueryHint(sql);
         return sql;
     }
 
@@ -327,7 +326,6 @@ abstract public class AbstractTriggerTemplate {
         sql = FormatUtils.replace("columns", columnsText, sql);
         sql = FormatUtils.replace("oracleToClob",
                 trigger.isUseCaptureLobs() ? toClobExpression(table) : "", sql);
-        sql = replaceOracleQueryHint(sql);
         sql = FormatUtils.replace("tableName", SymmetricUtils.quote(symmetricDialect, table.getName()), sql);
         sql = FormatUtils.replace("schemaName", getSourceTablePrefix(triggerHistory), sql);
         sql = FormatUtils.replace("schemaNameOnly", getSchemaNameOnly(triggerHistory), sql);
@@ -337,7 +335,6 @@ abstract public class AbstractTriggerTemplate {
                 getPrimaryKeyWhereString(symmetricDialect.getInitialLoadTableAlias(),
                         table.hasPrimaryKey() ? table.getPrimaryKeyColumns() : table.getColumns()),
                 sql);
-        sql = replaceOracleQueryHint(sql);
         sql = replaceDefaultSchemaAndCatalog(sql);
         return sql;
     }
@@ -352,7 +349,6 @@ abstract public class AbstractTriggerTemplate {
         sql = FormatUtils.replace("columns", columnsText, sql);
         sql = FormatUtils.replace("oracleToClob",
                 trigger.isUseCaptureLobs() ? toClobExpression(table) : "", sql);
-        sql = replaceOracleQueryHint(sql);
         sql = FormatUtils.replace("tableName", SymmetricUtils.quote(symmetricDialect, table.getName()), sql);
         sql = FormatUtils.replace("schemaName",
                 triggerHistory == null ? getSourceTablePrefix(table)
@@ -1214,13 +1210,6 @@ abstract public class AbstractTriggerTemplate {
             }
         }
         return hashedValue;
-    }
-
-    public String replaceOracleQueryHint(String sql) {
-        return FormatUtils.replace("oracleQueryHint",
-                this.symmetricDialect.getParameterService().getInt(ParameterConstants.DBDIALECT_ORACLE_LOAD_QUERY_HINT_PARALLEL_COUNT) > 1 ? "/*+ parallel("
-                        + this.symmetricDialect.getParameterService()
-                                .getString(ParameterConstants.DBDIALECT_ORACLE_LOAD_QUERY_HINT_PARALLEL_COUNT) + ") */" : "", sql);
     }
 
     protected String getHasPrimaryKeysDefinedString(Table table) {
