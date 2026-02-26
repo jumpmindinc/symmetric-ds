@@ -63,7 +63,6 @@ import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
 import org.jumpmind.db.platform.DatabaseMetaDataWrapper;
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.db.sql.IConnectionCallback;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.Row;
@@ -338,51 +337,6 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
         } else {
             return super.mapUnknownJdbcTypeForColumn(values);
         }
-    }
-
-    @Override
-    public List<String> getCatalogNames() {
-        JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
-        return sqlTemplate.execute(new IConnectionCallback<List<String>>() {
-            public List<String> execute(Connection connection) throws SQLException {
-                List<String> catalogs = new ArrayList<String>();
-                java.sql.Statement stmt = null;
-                ResultSet rs = null;
-                try {
-                    stmt = connection.createStatement();
-                    rs = stmt.executeQuery("VALUES CURRENT SERVER");
-                    if (rs.next()) {
-                        String dbName = rs.getString(1);
-                        if (dbName != null) {
-                            catalogs.add(dbName.trim());
-                        }
-                    }
-                } finally {
-                    JdbcSqlTemplate.close(rs);
-                    if (stmt != null) {
-                        stmt.close();
-                    }
-                }
-                return catalogs;
-            }
-        });
-    }
-
-    @Override
-    protected Table readTableFromConnection(Connection connection, String catalog,
-            String schema, String table) throws SQLException {
-        return super.readTableFromConnection(connection, null, schema, table);
-    }
-
-    @Override
-    public List<String> getTableNames(String catalog, String schema, String[] tableTypes) {
-        return super.getTableNames(null, schema, tableTypes);
-    }
-
-    @Override
-    public List<String> getTableNamesFromDatabase(String catalog, String schema,
-            String[] tableTypes) {
-        return super.getTableNamesFromDatabase(null, schema, tableTypes);
     }
 
     @Override

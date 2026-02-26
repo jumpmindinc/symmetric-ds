@@ -108,14 +108,7 @@ public class Db2DatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     public String getDefaultCatalog() {
-        if (defaultCatalog == null) {
-            defaultCatalog = (String) getSqlTemplate().queryForObject(
-                    "VALUES CURRENT SERVER", String.class);
-            if (defaultCatalog != null) {
-                defaultCatalog = defaultCatalog.trim();
-            }
-        }
-        return defaultCatalog;
+        return null;
     }
 
     @Override
