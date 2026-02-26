@@ -77,11 +77,12 @@ public class JavaColumnTransform extends AbstractColumnTransform implements ISin
     }
 
     protected ISingleValueColumnTransform getCompiledClass(DataContext context, TransformColumn column) throws Exception {
-        ISingleValueColumnTransform colTransform = (ISingleValueColumnTransform) context.get(TRANSFORM_KEY);
+        String columnKey = TRANSFORM_KEY + "." + column.getTransformId() + "." + column.getTargetColumnName() + "." + column.getIncludeOn();
+        ISingleValueColumnTransform colTransform = (ISingleValueColumnTransform) context.get(columnKey);
         if (colTransform == null) {
             String javaCode = CODE_START + column.getTransformExpression() + CODE_END;
             colTransform = (ISingleValueColumnTransform) extensionService.getCompiledClass(javaCode);
-            context.put(TRANSFORM_KEY, colTransform);
+            context.put(columnKey, colTransform);
         }
         return colTransform;
     }
