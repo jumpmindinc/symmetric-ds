@@ -246,7 +246,6 @@ final public class ParameterConstants {
     public static final String DBDIALECT_ORACLE_SEQUENCE_NOORDER = "oracle.sequence.noorder";
     public static final String DBDIALECT_ORACLE_SEQUENCE_NOORDER_NEXTVALUE_DB_URLS = "oracle.sequence.noorder.nextvalue.db.urls";
     public static final String DBDIALECT_ORACLE_USE_NTYPES_FOR_SYNC = "oracle.use.ntypes.for.sync";
-    public static final String DBDIALECT_ORACLE_JDBC_LOB_HANDLING = "oracle.jdbc.lob.handling";
     public static final String DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS = "oracle.transaction.view.clock.sync.threshold.ms";
     public static final String DATA_ID_INCREMENT_BY = "data.id.increment.by";
     public static final String TRANSPORT_HTTP_MANUAL_REDIRECTS_ENABLED = "http.manual.redirects.enabled";

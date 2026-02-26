@@ -39,7 +39,7 @@ public class SqlTemplateSettings {
     protected LogSqlBuilder logSqlBuilder;
     protected boolean allowUpdatesWithResults = false;
     protected boolean allowTriggerCreateOrReplace;
-    protected JdbcLobHandling jdbcLobHandling;
+    protected JdbcLobHandling jdbcLobHandling = JdbcLobHandling.PLAIN;
     protected boolean includeRowIdentifierAsColumn = false;
     protected TypedProperties properties = new TypedProperties();
 
