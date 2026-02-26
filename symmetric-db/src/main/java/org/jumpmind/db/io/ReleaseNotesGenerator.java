@@ -202,7 +202,10 @@ public class ReleaseNotesGenerator {
             return issues;
         }
         for (JsonElement issueElement : issuesArray) {
-            issues.add(parseIssue(majorMinorVersion, issueElement.getAsJsonObject()));
+            Issue issue = parseIssue(majorMinorVersion, issueElement.getAsJsonObject());
+            if (issue != null) {
+                issues.add(issue);
+            }
         }
         return issues;
     }
@@ -221,6 +224,7 @@ public class ReleaseNotesGenerator {
         issue.setCategory(getNestedStringValue(fields, "issuetype", "name"));
         issue.setPriority(getNestedStringValue(fields, "priority", "name"));
         JsonArray fixVersions = fields.getAsJsonArray("fixVersions");
+        boolean hasEarlierMinorVersion = false;
         if (fixVersions != null && fixVersions.size() > 0) {
             for (JsonElement issueFixVersionEle : fixVersions) {
                 JsonObject issueFixVersionObj = issueFixVersionEle.getAsJsonObject();
@@ -231,9 +235,15 @@ public class ReleaseNotesGenerator {
                         : issueFixVersion;
                 if (majorMinorVersion.equals(fixVersionMajorMinor)) {
                     issue.setVersion(issueFixVersion);
-                    break;
+                } else if (compareMajorMinor(fixVersionMajorMinor, majorMinorVersion) < 0) {
+                    hasEarlierMinorVersion = true;
                 }
             }
+        }
+        if (hasEarlierMinorVersion && isPatchZero(issue.getVersion())) {
+            System.out.println("INFO: Excluding " + issue.getId()
+                    + " from release notes - already released in an earlier minor version");
+            return null;
         }
         parseComponents(fields, issue);
         return issue;
@@ -269,6 +279,34 @@ public class ReleaseNotesGenerator {
         }
         JsonObject parent = obj.getAsJsonObject(parentKey);
         return getStringValue(parent, childKey);
+    }
+
+    /**
+     * Returns true if the version string has a patch number of 0 (e.g., "3.17.0"). A .0 patch version on the target line indicates a forward-port from an
+     * earlier minor version, as opposed to a back-port from a later patch release.
+     */
+    private static boolean isPatchZero(String version) {
+        if (version == null) {
+            return false;
+        }
+        String[] parts = version.split("\\.");
+        return parts.length >= 3 && "0".equals(parts[2]);
+    }
+
+    /**
+     * Compares two "major.minor" version strings numerically. Returns negative if v1 is earlier, positive if later, zero if equal.
+     */
+    private static int compareMajorMinor(String v1, String v2) {
+        String[] parts1 = v1.split("\\.");
+        String[] parts2 = v2.split("\\.");
+        int major1 = Integer.parseInt(parts1[0]);
+        int major2 = Integer.parseInt(parts2[0]);
+        if (major1 != major2) {
+            return Integer.compare(major1, major2);
+        }
+        int minor1 = parts1.length > 1 ? Integer.parseInt(parts1[1]) : 0;
+        int minor2 = parts2.length > 1 ? Integer.parseInt(parts2[1]) : 0;
+        return Integer.compare(minor1, minor2);
     }
 
     /**
