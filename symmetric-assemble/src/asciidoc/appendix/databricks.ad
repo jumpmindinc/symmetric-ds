@@ -1,0 +1,38 @@
+
+=== Databricks
+
+ifndef::pro[]
+
+NOTE: Support for Databricks is available in https://www.jumpmind.com/products/symmetricds/symmetricds-overview[SymmetricDS Pro].
+
+endif::pro[]
+
+ifdef::pro[]
+
+Use `symadmin module install databricks` to install driver files, or copy your own files into the `lib` sub-directory.
+
+Send changes from your relational database to Databricks.
+
+==== Setup
+
+Databricks is only supported as a write-only node in SymmetricDS.  See <<Write-Only Node>> for details on setting up a write-only node in SymmetricDS.
+
+Setup the Databricks node by using the <<Add Node,Connect Database>> wizard and selecting Databricks as the type.
+
+The Databricks JDBC driver requires Apache Arrow, which needs an additional JVM option to allow memory access. Add the following line to the `conf/sym_service.conf` file:
+
+[source]
+----
+wrapper.java.additional=--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED
+----
+
+See Apache Arrow JVM requirements and documentation for more details.
+
+SymmetricDS runtime metadata is stored in a separate H2 database rather than in Databricks, keeping your lakehouse environment clean and optimized for analytics.
+
+==== Known Limitations
+* Databricks is supported as a load-only (write-only) target. Change capture from Databricks is not supported.
+* The Databricks JDBC driver requires the JVM option `--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED` to be set at startup. Without this option, the driver will fail with a `MemoryUtil` initialization error.
+* Numeric column precision and scale from the source database may not map directly to Databricks DECIMAL types. If inserts fail with SQL state `22023` and an `INVALID_PARAMETER_MARKER_VALUE` error referencing an invalid DECIMAL precision, verify that the source column's precision and scale produce a valid Databricks DECIMAL definition (e.g., precision must be greater than or equal to scale).
+
+endif::pro[]
