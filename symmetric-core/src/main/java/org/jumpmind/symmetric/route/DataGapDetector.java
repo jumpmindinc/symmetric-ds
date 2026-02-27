@@ -99,7 +99,7 @@ public class DataGapDetector {
                 Date date = symmetricDialect.getEarliestTransactionStartTime();
                 if (date != null) {
                     earliestTransactionTime = date.getTime() - parameterService.getLong(
-                            ParameterConstants.DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS, 60000);
+                            ParameterConstants.ROUTING_GAPS_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS, 10000);
                 }
             }
             for (final DataGap dataGap : gaps) {
