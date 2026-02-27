@@ -233,37 +233,36 @@ subprojects { subproject ->
 			sign publishing.publications.symmetricLibrary
 		}
 
-        // Commented out for local build - not needed for development
-        // apply plugin: 'eu.kakde.gradle.sonatype-maven-central-publisher'
-        //
-        // def licenseName = project.name.contains("-pro") ? "Commercial" : "GNU GPL version 3.0";
-        // sonatypeCentralPublishExtension {
-        //     groupId.set("${project.group}")
-        //     artifactId.set("${project.name}")
-        //     version.set("${project.version}")
-        //     componentType.set("java")
-        //     publishingType.set("AUTOMATIC")
-        //     username.set(getProperty("sonatypeUser"))
-        //     password.set(getProperty("sonatypePassword"))
-        //     pom {
-        //         name.set("${project.name}")
-        //         description.set("Data replication")
-        //         url.set("https://symmetricds.org/")
-        //         licenses {
-        //             license {
-        //                 name.set(licenseName)
-        //             }
-        //         }
-        //         developers {
-        //             developer {
-        //                 name.set("Jumpmind")
-        //             }
-        //         }
-        //         scm {
-        //             url.set("https://github.com/jumpmindinc/symmetric-ds/")
-        //         }
-        //     }
-        // }
+        apply plugin: 'eu.kakde.gradle.sonatype-maven-central-publisher'
+
+        def licenseName = project.name.contains("-pro") ? "Commercial" : "GNU GPL version 3.0";
+        sonatypeCentralPublishExtension {
+            groupId.set("${project.group}")
+            artifactId.set("${project.name}")
+            version.set("${project.version}")
+            componentType.set("java")
+            publishingType.set("AUTOMATIC")
+            username.set(getProperty("sonatypeUser"))
+            password.set(getProperty("sonatypePassword"))
+            pom {
+                name.set("${project.name}")
+                description.set("Data replication")
+                url.set("https://symmetricds.org/")
+                licenses {
+                    license {
+                        name.set(licenseName)
+                    }
+                }
+                developers {
+                    developer {
+                        name.set("Jumpmind")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/jumpmindinc/symmetric-ds/")
+                }
+            }
+        }
     }
 
     task deploy {
