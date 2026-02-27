@@ -4,7 +4,7 @@ ifdef::pro[]
 
 === Redesigned Dashboard: Network and Pipeline Views
 --
-The SymmetricDS Pro Dashboard has been rebuilt from the ground up with two purpose-built views that give you instant visibility into replication health — no matter how your topology is structured.
+The SymmetricDS Pro Dashboard has been rebuilt with two purpose-built views that give you instant visibility into replication health — no matter how your topology is structured.
 
 The *Network View* is built for deployments where the central node actively participates in replication. A new Activity panel breaks down replication health across five pipeline stages — Route, Extract, Transfer, Load Out, and Load In — with backlog counts, timing, node coverage, and historical graphs for each stage. Filter by All, Online, or Offline nodes to pinpoint exactly where work is piling up. A companion Throughput panel provides a real-time pulse on data movement across your entire network.
 
@@ -19,11 +19,6 @@ The Configure Canvas has been renamed to the *Configure Diagram* and now support
 === Databricks Platform Support
 --
 SymmetricDS Pro now supports *Databricks* as a replication target, providing a direct path from your operational databases to your data lakehouse. The Databricks endpoint operates as write-only, with SymmetricDS runtime metadata stored in a separate H2 database.
---
-
-=== Named Pipelines
---
-Pipelines can now be assigned meaningful names via `sym_node_group_link.description`. When managing dozens of pipelines across a large deployment, descriptive names like "Store 101 → HQ" make the Dashboard, Load Data Wizard, and Configure Diagram dramatically easier to navigate. A small change with a big quality-of-life payoff at scale.
 --
 
 === Job Schedule Frequency Controls
