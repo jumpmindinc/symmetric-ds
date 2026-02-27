@@ -46,7 +46,7 @@ public class PostgreSqlJdbcSqlTemplate extends JdbcSqlTemplate {
         dataTruncationStates = new String[] { "22001" };
         deadlockSqlStates = new String[] { "40P01" };
         objectAlreadyExistsStates = new String[] { "42723", "42P05", "42P06", "42P07", "42712", "42710" };
-        objectDoesNotExistStates = new String[] { "42883", "42P01", "42704" };
+        objectDoesNotExistStates = new String[] { "42883", "42P01", "42704", "42703" };
     }
 
     @Override
