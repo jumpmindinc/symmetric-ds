@@ -87,6 +87,7 @@ import org.jumpmind.symmetric.route.CommonBatchCollisionException;
 import org.jumpmind.symmetric.route.ConfigurationChangedDataRouter;
 import org.jumpmind.symmetric.route.ConvertToReloadRouter;
 import org.jumpmind.symmetric.route.DBFRouter;
+import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.route.DataGapDetector;
 import org.jumpmind.symmetric.route.DataGapFastDetector;
 import org.jumpmind.symmetric.route.DataGapRouteReader;
@@ -105,13 +106,19 @@ import org.jumpmind.symmetric.route.SubSelectDataRouter;
 import org.jumpmind.symmetric.route.TPSRouter;
 import org.jumpmind.symmetric.route.TransactionalBatchAlgorithm;
 import org.jumpmind.symmetric.service.ClusterConstants;
+import org.jumpmind.symmetric.service.IClusterService;
+import org.jumpmind.symmetric.service.IContextService;
+import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.INodeCommunicationService.INodeCommunicationExecutor;
+import org.jumpmind.symmetric.service.INodeService;
+import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRouterService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.statistic.StatisticConstants;
 import org.jumpmind.symmetric.util.CounterStat;
+import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.FormatUtils;
 
 /**
@@ -159,8 +166,11 @@ public class RouterService extends AbstractService implements IRouterService, IN
         extensionService.addExtensionPoint(ConvertToReloadRouter.ROUTER_ID, new ConvertToReloadRouter(engine));
         setSqlMap(new RouterServiceSqlMap(symmetricDialect.getPlatform(),
                 createSqlReplacementTokens()));
-        gapDetector = new DataGapFastDetector(engine.getDataService(), parameterService, engine.getContextService(),
-                symmetricDialect, this, engine.getStatisticManager(), engine.getNodeService(), engine.getClusterService());
+        gapDetector = AppUtils.newInstance(DataGapFastDetector.class, DataGapFastDetector.class,
+                new Object[] { engine.getDataService(), parameterService, engine.getContextService(),
+                        symmetricDialect, this, engine.getStatisticManager(), engine.getNodeService(), engine.getClusterService() },
+                new Class<?>[] { IDataService.class, IParameterService.class, IContextService.class,
+                        ISymmetricDialect.class, IRouterService.class, IStatisticManager.class, INodeService.class, IClusterService.class });
     }
 
     /**
@@ -751,8 +761,14 @@ public class RouterService extends AbstractService implements IRouterService, IN
         return nodes;
     }
 
+    protected IDataToRouteReader createReader(ChannelRouterContext context) {
+        return AppUtils.newInstance(DataGapRouteReader.class, DataGapRouteReader.class,
+                new Object[] { context, engine },
+                new Class<?>[] { ChannelRouterContext.class, ISymmetricEngine.class });
+    }
+
     protected IDataToRouteReader startReading(ChannelRouterContext context) {
-        IDataToRouteReader reader = new DataGapRouteReader(context, engine);
+        IDataToRouteReader reader = createReader(context);
         if (parameterService.is(ParameterConstants.SYNCHRONIZE_ALL_JOBS)) {
             reader.run();
         } else {

@@ -129,13 +129,7 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
                     if (outgoingBatch.isLoadFlag()) {
                         isNewError = outgoingBatch.getSentCount() == 1;
                     } else if (batch.getErrorLine() != outgoingBatch.getFailedLineNumber()) {
-                        String sql = getSql("selectDataIdSql");
-                        if (parameterService.is(ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER, false)) {
-                            sql = getSql("selectDataIdByCreateTimeSql");
-                        } else if (parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
-                            sql += getSql("orderByDataId");
-                        }
-                        List<Number> ids = sqlTemplateDirty.query(sql, new NumberMapper(), outgoingBatch.getBatchId());
+                        List<Number> ids = sqlTemplateDirty.query(getSelectDataIdSql(), new NumberMapper(), outgoingBatch.getBatchId());
                         if (ids.size() >= batch.getErrorLine()) {
                             long failedDataId = ids.get((int) batch.getErrorLine() - 1).longValue();
                             isNewError = outgoingBatch.getFailedDataId() == 0 || outgoingBatch.getFailedDataId() != failedDataId;
@@ -260,6 +254,14 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
             }
         }
         return result;
+    }
+
+    protected String getSelectDataIdSql() {
+        String sql = getSql("selectDataIdSql");
+        if (parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
+            sql += getSql("orderByDataId");
+        }
+        return sql;
     }
 
     protected String getErrorMessage(BatchAck batch) {

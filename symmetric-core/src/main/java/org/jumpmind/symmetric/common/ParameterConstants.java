@@ -243,8 +243,6 @@ final public class ParameterConstants {
     public static final String DATA_EXTRACTOR_TEXT_COLUMN_EXPRESSION = "dataextractor.text.column.expression";
     public static final String DATA_FLUSH_JDBC_BATCH_SIZE = "data.flush.jdbc.batch.size";
     public static final String OUTGOING_BATCH_MAX_BATCHES_TO_SELECT = "outgoing.batches.max.to.select";
-    public static final String DBDIALECT_ORACLE_SEQUENCE_NOORDER = "oracle.sequence.noorder";
-    public static final String DBDIALECT_ORACLE_SEQUENCE_NOORDER_NEXTVALUE_DB_URLS = "oracle.sequence.noorder.nextvalue.db.urls";
     public static final String DBDIALECT_ORACLE_USE_TRANSACTION_VIEW_LEGACY = "oracle.use.transaction.view";
     public static final String DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS_LEGACY = "oracle.transaction.view.clock.sync.threshold.ms";
     public static final String DATA_ID_INCREMENT_BY = "data.id.increment.by";

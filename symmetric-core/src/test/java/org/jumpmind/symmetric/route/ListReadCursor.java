@@ -27,7 +27,7 @@ import java.util.List;
 import org.jumpmind.db.sql.ISqlReadCursor;
 import org.jumpmind.symmetric.model.Data;
 
-class ListReadCursor implements ISqlReadCursor<Data> {
+public class ListReadCursor implements ISqlReadCursor<Data> {
     Iterator<Data> iterator;
 
     public ListReadCursor() {

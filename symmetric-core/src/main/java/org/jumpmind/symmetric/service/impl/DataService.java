@@ -3508,9 +3508,7 @@ public class DataService extends AbstractService implements IDataService {
 
     protected String getDataOrderBy() {
         String orderBy = "";
-        if (parameterService.is(ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER, false)) {
-            orderBy = " order by d.create_time asc, d.data_id asc";
-        } else if (parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
+        if (parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
             orderBy = " order by d.data_id asc";
         }
         return orderBy;
