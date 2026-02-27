@@ -661,6 +661,7 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 
 |===
 include::{includedir}/appendix/bigquery.ad[]
+include::{includedir}/appendix/databricks.ad[]
 include::{includedir}/appendix/db2.ad[]
 include::{includedir}/appendix/derby.ad[]
 include::{includedir}/appendix/elasticsearch.ad[]
