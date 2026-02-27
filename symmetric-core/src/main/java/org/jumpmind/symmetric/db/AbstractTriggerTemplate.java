@@ -216,7 +216,7 @@ abstract public class AbstractTriggerTemplate {
         sql = FormatUtils.replace("nodeId", node.getNodeId(), sql);
         sql = replaceDefaultSchemaAndCatalog(sql);
         sql = FormatUtils.replace("prefixName", symmetricDialect.getTablePrefix(), sql);
-        sql = FormatUtils.replace("oracleToClob",
+        sql = FormatUtils.replace("toClob",
                 triggerRouter.getTrigger().isUseCaptureLobs() ? toClobExpression(table) : "", sql);
         return sql;
     }
@@ -324,7 +324,7 @@ abstract public class AbstractTriggerTemplate {
                 symmetricDialect.getInitialLoadTableAlias(), "", table, columns, DataEventType.INSERT,
                 false, channel, trigger).columnString;
         sql = FormatUtils.replace("columns", columnsText, sql);
-        sql = FormatUtils.replace("oracleToClob",
+        sql = FormatUtils.replace("toClob",
                 trigger.isUseCaptureLobs() ? toClobExpression(table) : "", sql);
         sql = FormatUtils.replace("tableName", SymmetricUtils.quote(symmetricDialect, table.getName()), sql);
         sql = FormatUtils.replace("schemaName", getSourceTablePrefix(triggerHistory), sql);
@@ -347,7 +347,7 @@ abstract public class AbstractTriggerTemplate {
                 symmetricDialect.getInitialLoadTableAlias(), "", table, columns, DataEventType.INSERT,
                 false, channel, trigger).toString();
         sql = FormatUtils.replace("columns", columnsText, sql);
-        sql = FormatUtils.replace("oracleToClob",
+        sql = FormatUtils.replace("toClob",
                 trigger.isUseCaptureLobs() ? toClobExpression(table) : "", sql);
         sql = FormatUtils.replace("tableName", SymmetricUtils.quote(symmetricDialect, table.getName()), sql);
         sql = FormatUtils.replace("schemaName",
@@ -500,10 +500,8 @@ abstract public class AbstractTriggerTemplate {
                 ddl);
         ddl = FormatUtils.replace("sourceNodeExpression",
                 symmetricDialect.getSourceNodeExpression(), ddl);
-        ddl = FormatUtils.replace("oracleLobType", trigger.isUseCaptureLobs() ? getClobType(table)
-                : symmetricDialect.getParameterService().is(ParameterConstants.DBDIALECT_ORACLE_USE_NTYPES_FOR_SYNC) ? "NVARCHAR2(4000)" : "VARCHAR2(4000)",
-                ddl);
-        ddl = FormatUtils.replace("oracleLobTypeClobAlways", getClobType(table), ddl);
+        ddl = FormatUtils.replace("lobType", trigger.isUseCaptureLobs() ? getClobType(table) : getVarcharLobType(table), ddl);
+        ddl = FormatUtils.replace("lobTypeClobAlways", getClobType(table), ddl);
         String syncTriggersExpression = symmetricDialect.getSyncTriggersExpression();
         ddl = FormatUtils.replace("syncOnIncomingBatchCondition",
                 trigger.isSyncOnIncomingBatch() ? symmetricDialect.getSyncTriggersOnIncomingExpression()
@@ -517,11 +515,11 @@ abstract public class AbstractTriggerTemplate {
         clonedChannel.setContainsBigLob(true);
         ColumnString columnClobAlways = buildColumnsString(ORIG_TABLE_ALIAS, newTriggerValue,
                 newColumnPrefix, table, orderedColumns, dml, false, clonedChannel, trigger);
-        String columnClobAlwaysString = FormatUtils.replace("oracleToClob", toClobExpression(table), columnClobAlways.toString());
+        String columnClobAlwaysString = FormatUtils.replace("toClob", toClobExpression(table), columnClobAlways.toString());
         ddl = FormatUtils.replace("columnsClobAlways", columnClobAlwaysString, ddl);
         ColumnString oldColumnsClobAlways = buildColumnsString(ORIG_TABLE_ALIAS,
                 oldTriggerValue, oldColumnPrefix, table, orderedColumns, dml, true, clonedChannel, trigger);
-        String oldColumnsClobAlwaysString = FormatUtils.replace("oracleToClob", toClobExpression(table), oldColumnsClobAlways.toString());
+        String oldColumnsClobAlwaysString = FormatUtils.replace("toClob", toClobExpression(table), oldColumnsClobAlways.toString());
         ddl = FormatUtils.replace("oldColumnsClobAlways",
                 trigger.isUseCaptureOldData() ? oldColumnsClobAlwaysString : "null", ddl);
         ddl = replaceDefaultSchemaAndCatalog(ddl);
@@ -598,9 +596,9 @@ abstract public class AbstractTriggerTemplate {
         ddl = replaceDefaultSchemaAndCatalog(ddl);
         ddl = FormatUtils.replace("hasPrimaryKeysDefined", getHasPrimaryKeysDefinedString(table), ddl);
         ddl = FormatUtils.replace("primaryKeysUpdated", getPrimaryKeysUpdatedString(table), ddl);
-        ddl = FormatUtils.replace("oracleToClob",
+        ddl = FormatUtils.replace("toClob",
                 trigger.isUseCaptureLobs() ? toClobExpression(table) : "", ddl);
-        ddl = FormatUtils.replace("oracleToClobAlways", toClobExpression(table), ddl);
+        ddl = FormatUtils.replace("toClobAlways", toClobExpression(table), ddl);
         switch (dml) {
             case DELETE:
                 ddl = FormatUtils.replace("curTriggerValue", oldTriggerValue, ddl);
@@ -633,15 +631,15 @@ abstract public class AbstractTriggerTemplate {
     }
 
     protected String toClobExpression(Table table) {
-        if (symmetricDialect.getParameterService().is(ParameterConstants.DBDIALECT_ORACLE_USE_NTYPES_FOR_SYNC)) {
-            return "to_nclob('')||";
-        } else {
-            return "to_clob('')||";
-        }
+        return "";
     }
 
     protected String getClobType(Table table) {
-        return symmetricDialect.getParameterService().is(ParameterConstants.DBDIALECT_ORACLE_USE_NTYPES_FOR_SYNC) ? "nclob" : "clob";
+        return "clob";
+    }
+
+    protected String getVarcharLobType(Table table) {
+        return "";
     }
 
     protected String getChannelExpression(Trigger trigger, TriggerHistory history, Table originalTable) {

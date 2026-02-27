@@ -31,7 +31,7 @@ import org.jumpmind.util.FormatUtils;
 public class Db2zOsTriggerTemplate extends Db2TriggerTemplate {
     public Db2zOsTriggerTemplate(ISymmetricDialect symmetricDialect) {
         super(symmetricDialect);
-        stringColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null or $(tableAlias).\"$(columnName)\" = '' then $(oracleToClob)'' else '\"' || $(oracleToClob)replace(replace($(tableAlias).\"$(columnName)\",'\\','\\\\'),'\"','\\\"') || '\"' end";
+        stringColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null or $(tableAlias).\"$(columnName)\" = '' then $(toClob)'' else '\"' || $(toClob)replace(replace($(tableAlias).\"$(columnName)\",'\\','\\\\'),'\"','\\\"') || '\"' end";
         datetimeColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else '\"' || lpad(rtrim(char(year(timestamp_iso($(tableAlias).\"$(columnName)\")))),4,'0') ||'-'||substr(digits(month(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||'-'||substr(digits(day(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||' '||substr(digits(hour(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||':'||substr(digits(minute(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||':'||substr(digits(second(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||'.'||RIGHT(REPEAT('0',6)||rtrim(char(microsecond(timestamp_iso($(tableAlias).\"$(columnName)\")))),6) || '\"' end";
         sqlTemplates.put("insertTriggerTemplate",
                 "CREATE TRIGGER $(schemaName)$(triggerName)                                                                                                                                                             \n"
