@@ -800,7 +800,8 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                             handleRuntimeException(ex, sql, newTransaction);
                         }
                     } else if (platform.getSqlTemplate().doesObjectNotExist(ex)) {
-                        if (sql.trim().toUpperCase().startsWith("DROP")) {
+                        String upperSql = sql.trim().toUpperCase();
+                        if (upperSql.startsWith("DROP") || (upperSql.startsWith("ALTER") && upperSql.contains("DROP"))) {
                             log.info("Skipping the following sql because the dropped object does not exist: {}", sql);
                             if (newTransaction != null) {
                                 newTransaction.rollback();
