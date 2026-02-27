@@ -36,8 +36,8 @@ grant create session, alter session, select any dictionary, execute_catalog_role
 If using Oracle 12c with PDB, use the following permissions:
 
 [source, SQL]
-grant create session, alter session, set container, select any dictionary, logmining, execute_catalog_role to c##symmetric CONTAINER=all;
-alter user c##symmetric set container_data = (cdb$root, <PDB name>) container=current;
+grant create session, alter session, set container, select any dictionary, logmining, execute_catalog_role to symmetric CONTAINER=all;
+alter user symmetric set container_data = (cdb$root, <PDB name>) container=current;
 
 endif::pro[]
 
