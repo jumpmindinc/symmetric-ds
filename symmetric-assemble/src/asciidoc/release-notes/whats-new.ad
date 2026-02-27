@@ -2,14 +2,57 @@
 
 ifdef::pro[]
 
+=== Redesigned Dashboard: Network and Pipeline Views
+--
+The SymmetricDS Pro Dashboard has been rebuilt with two purpose-built views that give you instant visibility into replication health — no matter how your topology is structured.
 
+The *Network View* is built for deployments where the central node actively participates in replication. A new Activity panel breaks down replication health across five pipeline stages — Route, Extract, Transfer, Load Out, and Load In — with backlog counts, timing, node coverage, and historical graphs for each stage. Filter by All, Online, or Offline nodes to pinpoint exactly where work is piling up. A companion Throughput panel provides a real-time pulse on data movement across your entire network.
+
+The *Pipeline View* is purpose-built for hub-and-spoke deployments where the central node acts as a relay. Each endpoint pair is displayed as an individual pipeline with its own status indicator, giving operators an at-a-glance operational board. Common actions like triggering an initial load or pausing replication are available directly from the pipeline grid — no menu hunting required.
+--
+
+=== Redesigned Configure Diagram with Pipeline Support
+--
+The Configure Canvas has been renamed to the *Configure Diagram* and now supports both network and pipeline layouts. During initial deployment, the Deploy Wizard asks which mode fits your topology. In pipeline mode, the hub node is minimized in the diagram to reduce visual clutter and keep the focus on the endpoint pairs that matter most to your day-to-day operations.
+--
+
+=== Databricks Platform Support
+--
+SymmetricDS Pro now supports *Databricks* as a replication target, providing a direct path from your operational databases to your data lakehouse. The Databricks endpoint operates as write-only, with SymmetricDS runtime metadata stored in a separate H2 database.
+--
+
+=== Job Schedule Frequency Controls
+--
+The Job Schedule Manager now supports fine-grained scheduling for Push, Pull, and custom jobs (SQL, BeanShell, Java, and more), with minimum intervals tied to your license tier. Standard Pro Edition supports intervals as low as every 1 minute, while Enterprise Pro Edition removes the lower limit entirely — enabling near-real-time push and pull cycles for the most latency-sensitive deployments.
+--
+
+=== Microsoft SQL Server and Oracle: Now Pro Platform Features
+--
+Starting with SymmetricDS 3.17, support for *Microsoft SQL Server* and *Oracle* database platforms has moved to SymmetricDS Pro. Organizations using these enterprise databases will benefit from Pro-exclusive capabilities including enhanced monitoring, the redesigned Dashboard, and priority support. Existing open source deployments using these platforms should plan to upgrade to Pro to continue receiving updates and support for these platforms.
+--
 
 endif::pro[]
 
+=== Capture Changes Only Per Trigger
+--
+Fine-tune how SymmetricDS captures update data on a per-trigger basis. Previously, capturing only changed columns on updates was an all-or-nothing setting at the node level (`trigger.update.capture.changed.data.only.enabled`). Version 3.17 introduces a `capture_changes_only` column on `sym_trigger`, giving you precise control over which tables use change-only capture and which require full row capture — without blanket node-level overrides.
+--
+
+=== DDL Replication Loop Prevention
+--
+Multi-master and bidirectional deployments with DDL capture enabled no longer need custom workarounds to prevent schema changes from looping back to the originating node. SymmetricDS 3.17 includes built-in DDL loop detection and prevention, ensuring schema changes replicate to their intended targets and stop — making DDL replication production-ready out of the box.
+--
+
+=== Enhanced Replication Statistics
+--
+SymmetricDS 3.17 significantly expands the statistics available for monitoring and diagnostics, giving operations teams and monitoring integrations deeper visibility into replication health:
+
+* `sym_node_host_channel_stats` now tracks `data_received`, `data_bytes_received`, `data_min_create_time`, and `data_max_create_time` — enabling inbound throughput measurement and data latency tracking per channel.
+* `sym_outgoing_batch` now records `data_min_create_time` and `data_max_create_time`, so you can calculate true end-to-end replication lag from data capture to batch delivery.
+* `sym_node_host_stats` now records gap counts and unrouted row counts, providing early warning signals for routing backlogs before they become problems.
+--
+
 === Node Channel Control Improvements
 --
-The node_channel_control table now includes a target_node_id column. This makes it possible to suspend or ignore synchronization
-between two specific nodes in an individual direction. For ease of use and increased visibility, SymmetricDS now synchronizes this
-table between nodes via the config channel. In addition, the behavior of this table is more consistent and no longer affected by
-the group link's data event action. When upgrading to 3.17, all rows will be deleted from the node_channel_control table. 
+The node_channel_control table now includes a target_node_id column, making it possible to suspend or ignore synchronization between two specific nodes in an individual direction. For ease of use and increased visibility, SymmetricDS now synchronizes this table between nodes via the config channel. In addition, the behavior of this table is more consistent and no longer affected by the group link's data event action. When upgrading to 3.17, all rows will be deleted from the node_channel_control table.
 --
