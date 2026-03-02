@@ -1810,10 +1810,8 @@ public class DataService extends AbstractService implements IDataService {
 
     protected boolean isLocalNodeUsingBulkLoad(String nodeId) {
         ISymmetricEngine targetEngine = AbstractSymmetricEngine.findEngineByNodeId(nodeId);
-        boolean isTargetUsingBulkLoad = targetEngine != null &&
-                ((targetEngine.getParameterService().is("mssql.bulk.load.use.bcp") &&
-                        targetEngine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.MSSQL)) ||
-                        (targetEngine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.ASE)));
+        boolean isTargetUsingBulkLoad = targetEngine != null && targetEngine.getSymmetricDialect().getTargetPlatform()
+                .getName().startsWith(DatabaseNamesConstants.ASE);
         return isTargetUsingBulkLoad;
     }
 
