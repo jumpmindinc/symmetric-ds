@@ -1188,18 +1188,10 @@ public class SnapshotUtil {
                     changedParameters.put(key, currentValue == null ? "" : currentValue);
                 }
             }
-            redactParameters(changedParameters);
+            RedactionUtil.redactParameters(changedParameters);
             writeProperties(changedParameters, tmpDir, "parameters-changed.properties");
         } catch (Exception e) {
             log.warn("Failed to export parameters-changed information", e);
-        }
-    }
-
-    private static void redactParameters(Properties parameters) {
-        for (String name : ParameterConstants.REDACTED_PROPERTIES) {
-            if (parameters.containsKey(name)) {
-                parameters.put(name, ParameterConstants.REDACTED);
-            }
         }
     }
 
