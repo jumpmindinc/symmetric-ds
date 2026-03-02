@@ -1073,11 +1073,7 @@ public class DataService extends AbstractService implements IDataService {
                         transaction = platform.getSqlTemplate().startSqlTransaction();
                         if (loadId == LOAD_ID_UNASSIGNED) {
                             loadId = generateNewLoadId(transaction);
-                            if (platform.supportsMultiThreadedTransactions()) {
-                                loadId = engine.getSequenceService().nextVal(Constants.SEQUENCE_OUTGOING_BATCH_LOAD_ID);
-                            } else {
-                                loadId = engine.getSequenceService().nextVal(transaction, Constants.SEQUENCE_OUTGOING_BATCH_LOAD_ID);
-                            }
+
                         }
                         processInfo.setCurrentLoadId(loadId);
                         String createBy = reverse ? nodeSecurity.getRevInitialLoadCreateBy() : nodeSecurity.getInitialLoadCreateBy();
