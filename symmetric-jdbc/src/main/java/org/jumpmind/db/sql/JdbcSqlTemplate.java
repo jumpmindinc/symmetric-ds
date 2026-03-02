@@ -137,6 +137,10 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return lobHandler;
     }
 
+    public void setLobHandler(SymmetricLobHandler lobHandler) {
+        this.lobHandler = lobHandler;
+    }
+
     @Override
     public <T> ISqlReadCursor<T> queryForCursor(String sql, ISqlRowMapper<T> mapper, Object[] args,
             int[] types) {

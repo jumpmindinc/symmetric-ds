@@ -122,8 +122,9 @@ import org.jumpmind.util.FormatUtils;
  * @see IDataService
  */
 public class DataService extends AbstractService implements IDataService {
-    private ISymmetricEngine engine;
+    protected ISymmetricEngine engine;
     private IExtensionService extensionService;
+    public static final long LOAD_ID_UNASSIGNED = 0l;
     public static final int RECAPTURE_DATA_COMMIT_LIMIT = 1000;
     public static final int PROGRESS_LOG_UPDATE_DELAY_MS = 30000;
     public static final transient String TIMESTAMP_ISO_JSON_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"; // Zulu == UTC is used in transaction ID for stale data
@@ -633,10 +634,11 @@ public class DataService extends AbstractService implements IDataService {
         String sql = getSql("updateTableReloadRequestLoadId");
         int[] types = new int[] { symmetricDialect.getSqlTypeForIds(), Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR,
                 Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP };
+        int rowsAffected = -1;
         if (transaction == null) {
             try {
                 transaction = sqlTemplate.startSqlTransaction();
-                transaction.prepareAndExecute(sql, args, types);
+                rowsAffected = transaction.prepareAndExecute(sql, args, types);
                 transaction.commit();
             } catch (Error ex) {
                 if (transaction != null) {
@@ -652,7 +654,14 @@ public class DataService extends AbstractService implements IDataService {
                 close(transaction);
             }
         } else {
-            transaction.prepareAndExecute(sql, args, types);
+            rowsAffected = transaction.prepareAndExecute(sql, args, types);
+        }
+        if (rowsAffected < 1) {
+            String message = String.format(
+                    "Failed to assign load_id %d to the request record! source.node=%s, target.node=%s, table.capture=%s, create_time=%s",
+                    loadId, request.getSourceNodeId(), request.getTargetNodeId(), request.getTriggerId(), request.getCreateTime().toString());
+            log.error(message + " (Verify that the JDBC driver matches datetime value exactly).");
+            throw new RuntimeException(message);
         }
     }
 
@@ -1063,23 +1072,18 @@ public class DataService extends AbstractService implements IDataService {
                     ISqlTransaction transaction = null;
                     try {
                         transaction = platform.getSqlTemplate().startSqlTransaction();
-                        if (loadId == 0) {
-                            if (platform.supportsMultiThreadedTransactions()) {
-                                loadId = engine.getSequenceService().nextVal(Constants.SEQUENCE_OUTGOING_BATCH_LOAD_ID);
-                            } else {
-                                loadId = engine.getSequenceService().nextVal(transaction, Constants.SEQUENCE_OUTGOING_BATCH_LOAD_ID);
-                            }
+                        if (loadId == LOAD_ID_UNASSIGNED) {
+                            loadId = generateNewLoadId(transaction);
                         }
                         processInfo.setCurrentLoadId(loadId);
                         String createBy = reverse ? nodeSecurity.getRevInitialLoadCreateBy() : nodeSecurity.getInitialLoadCreateBy();
                         if (reloadRequests != null && reloadRequests.size() > 0) {
                             createBy = reloadRequests.get(0).getLastUpdateBy();
-                            createTableReloadStatus(platform.supportsMultiThreadedTransactions() ? null : transaction,
-                                    loadId, isFullLoad, reloadRequests.get(0).getSourceNodeId(), reloadRequests.get(0).getTargetNodeId());
+                            // These three actions must share transaction: new table_reload_status, update original table_reload_request and node status:
+                            createTableReloadStatus(transaction, loadId, isFullLoad, reloadRequests.get(0).getSourceNodeId(), reloadRequests.get(0)
+                                    .getTargetNodeId());
                             for (TableReloadRequest request : reloadRequests) {
-                                updateTableReloadRequestsLoadId(
-                                        platform.supportsMultiThreadedTransactions() ? null : transaction,
-                                        loadId, request);
+                                updateTableReloadRequestsLoadId(transaction, loadId, request);
                             }
                             if (!isFullLoad && !reverse) {
                                 nodeService.setPartialLoadStarted(transaction, nodeIdRecord, loadId, createBy);
@@ -1242,6 +1246,16 @@ public class DataService extends AbstractService implements IDataService {
             log.info("Not attempting to insert reload events because sync trigger is currently running");
         }
         return extractRequests;
+    }
+
+    private long generateNewLoadId(ISqlTransaction transaction) {
+        long loadId;
+        if (platform.supportsMultiThreadedTransactions()) {
+            loadId = engine.getSequenceService().nextVal(Constants.SEQUENCE_OUTGOING_BATCH_LOAD_ID);
+        } else {
+            loadId = engine.getSequenceService().nextVal(transaction, Constants.SEQUENCE_OUTGOING_BATCH_LOAD_ID);
+        }
+        return loadId;
     }
 
     private void update_outgoing_batch_and_extract_request_for_processing(
@@ -1637,10 +1651,7 @@ public class DataService extends AbstractService implements IDataService {
         if (extractRequests != null) {
             requests.putAll(extractRequests);
         }
-        boolean canEngineBulkOperation = (engine.getParameterService().is(ParameterConstants.MSSQL_BULK_EXTRACT_USE_BCP) &&
-                engine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.MSSQL)) ||
-                (engine.getParameterService().is(ParameterConstants.ASE_BULK_EXTRACT_USE_BCP) &&
-                        engine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.ASE));
+        boolean canEngineBulkOperation = isUsingBulkExtract();
         boolean canBulkOperation = canEngineBulkOperation && isLocalNodeUsingBulkLoad(targetNode.getNodeId());
         boolean canParentBulkOperation = true;
         if (extractRequests != null && extractRequests.size() > 0) {
@@ -1808,12 +1819,15 @@ public class DataService extends AbstractService implements IDataService {
         return transformMultiplier;
     }
 
+    protected boolean isUsingBulkExtract() {
+        return engine.getParameterService().is(ParameterConstants.ASE_BULK_EXTRACT_USE_BCP)
+                && engine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.ASE);
+    }
+
     protected boolean isLocalNodeUsingBulkLoad(String nodeId) {
         ISymmetricEngine targetEngine = AbstractSymmetricEngine.findEngineByNodeId(nodeId);
-        boolean isTargetUsingBulkLoad = targetEngine != null &&
-                ((targetEngine.getParameterService().is("mssql.bulk.load.use.bcp") &&
-                        targetEngine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.MSSQL)) ||
-                        (targetEngine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.ASE)));
+        boolean isTargetUsingBulkLoad = targetEngine != null && targetEngine.getSymmetricDialect().getTargetPlatform()
+                .getName().startsWith(DatabaseNamesConstants.ASE);
         return isTargetUsingBulkLoad;
     }
 
@@ -3508,9 +3522,7 @@ public class DataService extends AbstractService implements IDataService {
 
     protected String getDataOrderBy() {
         String orderBy = "";
-        if (parameterService.is(ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER, false)) {
-            orderBy = " order by d.create_time asc, d.data_id asc";
-        } else if (parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
+        if (parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
             orderBy = " order by d.data_id asc";
         }
         return orderBy;

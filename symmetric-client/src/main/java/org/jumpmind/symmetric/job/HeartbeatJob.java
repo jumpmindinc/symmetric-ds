@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.job;
 import static org.jumpmind.symmetric.job.JobDefaults.EVERY_FIFTEEN_MINUTES;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
@@ -33,9 +32,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 public class HeartbeatJob extends AbstractJob {
     public HeartbeatJob(ISymmetricEngine engine, ThreadPoolTaskScheduler taskScheduler) {
         super(ClusterConstants.HEARTBEAT, engine, taskScheduler);
-        if (engine.getParameterService().is(ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER)) {
-            engine.getExtensionService().addExtensionPoint(new OracleNoOrderHeartbeat(engine));
-        }
     }
 
     @Override

@@ -247,20 +247,8 @@ final public class ParameterConstants {
     public static final String DATA_EXTRACTOR_TEXT_COLUMN_EXPRESSION = "dataextractor.text.column.expression";
     public static final String DATA_FLUSH_JDBC_BATCH_SIZE = "data.flush.jdbc.batch.size";
     public static final String OUTGOING_BATCH_MAX_BATCHES_TO_SELECT = "outgoing.batches.max.to.select";
-    public static final String DBDIALECT_ORACLE_USE_TRANSACTION_VIEW = "oracle.use.transaction.view";
-    public static final String DBDIALECT_ORACLE_TEMPLATE_NUMBER_SPEC = "oracle.template.precision";
-    public static final String DBDIALECT_ORACLE_TEMPLATE_NUMBER_TEXT_MINIMUM = "oracle.template.precision.text.minimum";
-    public static final String DBDIALECT_ORACLE_USE_HINTS = "oracle.use.hints";
-    public static final String DBDIALECT_ORACLE_USE_SELECT_START_DATA_ID_HINT = "oracle.use.select.data.using.start.data.id.hint";
-    public static final String DBDIALECT_ORACLE_SEQUENCE_NOORDER = "oracle.sequence.noorder";
-    public static final String DBDIALECT_ORACLE_SEQUENCE_NOORDER_NEXTVALUE_DB_URLS = "oracle.sequence.noorder.nextvalue.db.urls";
-    public static final String DBDIALECT_ORACLE_LOAD_QUERY_HINT_PARALLEL_COUNT = "oracle.load.query.hint.parallel.count";
-    public static final String DBDIALECT_ORACLE_USE_NTYPES_FOR_SYNC = "oracle.use.ntypes.for.sync";
-    public static final String DBDIALECT_ORACLE_JDBC_LOB_HANDLING = "oracle.jdbc.lob.handling";
-    public static final String DBDIALECT_TIBERO_USE_TRANSACTION_VIEW = "tibero.use.transaction.view";
-    public static final String DBDIALECT_TIBERO_TEMPLATE_NUMBER_SPEC = "tibero.template.precision";
-    public static final String DBDIALECT_TIBERO_USE_HINTS = "tibero.use.hints";
-    public static final String DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS = "oracle.transaction.view.clock.sync.threshold.ms";
+    public static final String DBDIALECT_ORACLE_USE_TRANSACTION_VIEW_LEGACY = "oracle.use.transaction.view";
+    public static final String DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS_LEGACY = "oracle.transaction.view.clock.sync.threshold.ms";
     public static final String DATA_ID_INCREMENT_BY = "data.id.increment.by";
     public static final String TRANSPORT_HTTP_MANUAL_REDIRECTS_ENABLED = "http.manual.redirects.enabled";
     public static final String TRANSPORT_HTTP_TIMEOUT = "http.timeout.ms";
@@ -374,16 +362,6 @@ final public class ParameterConstants {
     public static final String BSH_LOAD_FILTER_HANDLES_MISSING_TABLES = "bsh.load.filter.handles.missing.tables";
     public static final String BSH_TRANSFORM_GLOBAL_SCRIPT = "bsh.transform.global.script";
     public static final String BSH_EXTENSION_GLOBAL_SCRIPT = "bsh.extension.global.script";
-    public static final String MSSQL_ROW_LEVEL_LOCKS_ONLY = "mssql.allow.only.row.level.locks.on.runtime.tables";
-    public static final String MSSQL_USE_NTYPES_FOR_SYNC = "mssql.use.ntypes.for.sync";
-    public static final String MSSQL_USE_VARCHAR_FOR_LOB_IN_SYNC = "mssql.use.varchar.for.lob.in.sync";
-    public static final String MSSQL_LOCK_ESCALATION_DISABLED = "mssql.lock.escalation.disabled";
-    public static final String MSSQL_INCLUDE_CATALOG_IN_TRIGGERS = "mssql.include.catalog.in.triggers";
-    public static final String MSSQL_TRIGGER_EXECUTE_AS = "mssql.trigger.execute.as";
-    public static final String MSSQL_TRIGGER_ORDER_FIRST = "mssql.trigger.order.first";
-    public static final String MSSQL_USE_SNAPSHOT_ISOLATION = "mssql.use.snapshot.isolation";
-    public static final String MSSQL_BULK_EXTRACT_USE_BCP = "mssql.bulk.extract.use.bcp";
-    public static final String MSSQL_METADATA_QUERY_FOR_COMPRESSION_FILTERS_INCLUDECOLUMNS = "mssql.metadata.query.for.compression.filters.includecolumns";
     public static final String DBDIALECT_SYBASE_ASE_CONVERT_UNITYPES_FOR_SYNC = "sybase.ase.convert.unitypes.for.sync";
     public static final String SYBASE_ROW_LEVEL_LOCKS_ONLY = "sybase.allow.only.row.level.locks.on.runtime.tables";
     public static final String SYBASE_CHANGE_IDENTITY_GAP = "sybase.change.identity.gap.on.runtime.tables";
@@ -489,7 +467,6 @@ final public class ParameterConstants {
     public static final String FILESYNCTRACKER_MAX_ROWS_BEFORE_COMMIT = "filesynctracker.max.rows.before.commit";
     public static final String SYNC_USE_READY_QUEUES = "sync.use.ready.queues";
     public static final String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
-    public static final String MSSQL_BULK_LOAD_BCP_CODE_PAGE = "mssql.bulk.load.bcp.code.page";
     public static final String SHOW_PIPELINES_VIEW = "console.show.pipelines.view";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {

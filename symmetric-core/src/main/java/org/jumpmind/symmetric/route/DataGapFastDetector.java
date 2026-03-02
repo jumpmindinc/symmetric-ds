@@ -30,18 +30,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
-import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
-import org.jumpmind.symmetric.db.SequenceIdentifier;
 import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
@@ -152,7 +149,7 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
             Date date = symmetricDialect.getEarliestTransactionStartTime();
             if (date != null) {
                 earliestTransactionTime = date.getTime() - parameterService.getLong(
-                        ParameterConstants.DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS, 60000);
+                        ParameterConstants.ROUTING_GAPS_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS, 60000);
                 log.debug("Earliest transaction time is {}", earliestTransactionTime);
             }
             routingStartTime = symmetricDialect.getDatabaseTime();
@@ -176,11 +173,6 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
         long printStats = System.currentTimeMillis();
         long gapTimoutInMs = parameterService.getLong(ParameterConstants.ROUTING_STALE_DATA_ID_GAP_TIME);
         final int dataIdIncrementBy = parameterService.getInt(ParameterConstants.DATA_ID_INCREMENT_BY);
-        boolean isOracleNoOrder = parameterService.is(ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER, false);
-        List<Long> oracleNextValues = null;
-        if (isOracleNoOrder) {
-            oracleNextValues = getOracleNextValues();
-        }
         Date currentDate = new Date(routingStartTime);
         boolean isBusyExpire = false;
         long lastBusyExpireRunTime = getLastBusyExpireRunTime();
@@ -217,27 +209,15 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                     gapsDeleted.add(dataGap);
                     gapsAll.remove(dataGap);
                     // if we did not find data in the gap and it was not the last gap
-                } else if (!lastGap && (isAllDataRead || isBusyExpire)) {
-                    Date createTime = dataGap.getCreateTime();
-                    boolean isExpired = false;
-                    if (isOracleNoOrder && oracleNextValues != null) {
-                        isExpired = createTime != null && routingStartTime - createTime.getTime() > gapTimoutInMs
-                                && !dataGap.containsAny(oracleNextValues);
-                    } else if (supportsTransactionViews) {
-                        isExpired = createTime != null && (createTime.getTime() < earliestTransactionTime || earliestTransactionTime == 0);
-                    } else {
-                        isExpired = createTime != null && routingStartTime - createTime.getTime() > gapTimoutInMs;
+                } else if (!lastGap && (isAllDataRead || isBusyExpire) && isGapExpired(dataGap, gapTimoutInMs)) {
+                    boolean isGapEmpty = false;
+                    if (!isAllDataRead) {
+                        isGapEmpty = dataService.countDataInRange(dataGap.getStartId() - 1, dataGap.getEndId() + 1) == 0;
+                        expireChecked++;
                     }
-                    if (isExpired) {
-                        boolean isGapEmpty = false;
-                        if (!isAllDataRead) {
-                            isGapEmpty = dataService.countDataInRange(dataGap.getStartId() - 1, dataGap.getEndId() + 1) == 0;
-                            expireChecked++;
-                        }
-                        if (isAllDataRead || isGapEmpty) {
-                            gapsExpired.add(dataGap);
-                            gapsAll.remove(dataGap);
-                        }
+                    if (isAllDataRead || isGapEmpty) {
+                        gapsExpired.add(dataGap);
+                        gapsAll.remove(dataGap);
                     }
                 }
                 for (Number number : ids) {
@@ -531,26 +511,12 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                 gapsExpired.size(), minDataId, maxDataId, minDate, maxDate);
     }
 
-    private List<Long> getOracleNextValues() {
-        if (StringUtils.isBlank(parameterService.getString(ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER_NEXTVALUE_DB_URLS))) {
-            ISqlTemplate sqlTemplate = symmetricDialect.getPlatform().getSqlTemplate();
-            try {
-                return sqlTemplate.query(routerService.getSql("selectOracleNextValueSql"), new ISqlRowMapper<Long>() {
-                    @Override
-                    public Long mapRow(Row row) {
-                        return row.getLong("nextvalue");
-                    }
-                }, symmetricDialect.getSequenceName(SequenceIdentifier.DATA));
-            } catch (SqlException e) {
-                log.error("Before using " + ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER +
-                        " parameter, you must 'grant select on gv$_sequences to " +
-                        parameterService.getString(ParameterConstants.DB_USER) +
-                        "' or set the " + ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER_NEXTVALUE_DB_URLS +
-                        " parameter to a list of db URLs");
-                throw e;
-            }
+    protected boolean isGapExpired(DataGap dataGap, long gapTimoutInMs) {
+        Date createTime = dataGap.getCreateTime();
+        if (supportsTransactionViews) {
+            return createTime != null && (createTime.getTime() < earliestTransactionTime || earliestTransactionTime == 0);
         }
-        return null;
+        return createTime != null && routingStartTime - createTime.getTime() > gapTimoutInMs;
     }
 
     protected void checkInterrupted() {
