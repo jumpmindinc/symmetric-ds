@@ -1150,7 +1150,7 @@ public class SnapshotUtil {
             Properties effectiveParameters = engine.getParameterService().getAllParameters();
             Properties parameters = new Properties();
             parameters.putAll(effectiveParameters);
-            redactParameters(parameters);
+            RedactionUtil.redactParameters(parameters);
             writeProperties(parameters, tmpDir, "parameters.properties");
         } catch (Exception e) {
             log.warn("Failed to export parameter information", e);
