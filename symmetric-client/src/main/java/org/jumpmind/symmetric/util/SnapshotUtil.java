@@ -1148,9 +1148,9 @@ public class SnapshotUtil {
     private static void writeRuntimeParameters(ISymmetricEngine engine, File tmpDir) {
         try {
             Properties effectiveParameters = engine.getParameterService().getAllParameters();
-            Properties parameters = new Properties();
+            Properties parameters = ParametersUtil.deepCopy(effectiveParameters);
             parameters.putAll(effectiveParameters);
-            RedactionUtil.redactParameters(parameters);
+            ParametersUtil.redactParameters(parameters);
             writeProperties(parameters, tmpDir, "parameters.properties");
         } catch (Exception e) {
             log.warn("Failed to export parameter information", e);
@@ -1177,7 +1177,7 @@ public class SnapshotUtil {
                 }
             }
             Properties effectiveParameters = engine.getParameterService().getAllParameters();
-            Properties changedParameters = new Properties();
+            Properties changedParameters = ParametersUtil.deepCopy(effectiveParameters);
             Properties sysProp = System.getProperties();
             Map<String, String> env = System.getenv();
             for (String key : effectiveParameters.stringPropertyNames()) {
@@ -1188,7 +1188,7 @@ public class SnapshotUtil {
                     changedParameters.put(key, currentValue == null ? "" : currentValue);
                 }
             }
-            RedactionUtil.redactParameters(changedParameters);
+            ParametersUtil.redactParameters(changedParameters);
             writeProperties(changedParameters, tmpDir, "parameters-changed.properties");
         } catch (Exception e) {
             log.warn("Failed to export parameters-changed information", e);
