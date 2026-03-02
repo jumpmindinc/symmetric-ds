@@ -35,6 +35,10 @@ import org.jumpmind.symmetric.service.IParameterService;
 final public class ParameterConstants {
     public static final String ALL = "ALL";
     private static Map<String, ParameterMetaData> parameterMetaData = new DefaultParameterParser("/symmetric-default.properties").parse();
+    public static final String REDACTED = "***REDACTED***";
+    public static final String[] REDACTED_PROPERTIES = new String[] { "db.password", "target.db.password", "smtp.password", "redshift.bulk.load.s3.access.key",
+            "redshift.bulk.load.s3.secret.key", "opensearch.load.aws.access.key", "opensearch.load.aws.secret.key", "cloud.bulk.load.s3.access.key",
+            "cloud.bulk.load.s3.secret.key", "cloud.bulk.load.azure.sas.token", "registration.secret", "file.sync.s3.secret.key" };
 
     private ParameterConstants() {
     }
