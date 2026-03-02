@@ -1073,7 +1073,6 @@ public class DataService extends AbstractService implements IDataService {
                         transaction = platform.getSqlTemplate().startSqlTransaction();
                         if (loadId == LOAD_ID_UNASSIGNED) {
                             loadId = generateNewLoadId(transaction);
-
                         }
                         processInfo.setCurrentLoadId(loadId);
                         String createBy = reverse ? nodeSecurity.getRevInitialLoadCreateBy() : nodeSecurity.getInitialLoadCreateBy();
