@@ -358,7 +358,6 @@ final public class ParameterConstants {
     public static final String BSH_LOAD_FILTER_HANDLES_MISSING_TABLES = "bsh.load.filter.handles.missing.tables";
     public static final String BSH_TRANSFORM_GLOBAL_SCRIPT = "bsh.transform.global.script";
     public static final String BSH_EXTENSION_GLOBAL_SCRIPT = "bsh.extension.global.script";
-    public static final String MSSQL_BULK_EXTRACT_USE_BCP = "mssql.bulk.extract.use.bcp";
     public static final String DBDIALECT_SYBASE_ASE_CONVERT_UNITYPES_FOR_SYNC = "sybase.ase.convert.unitypes.for.sync";
     public static final String SYBASE_ROW_LEVEL_LOCKS_ONLY = "sybase.allow.only.row.level.locks.on.runtime.tables";
     public static final String SYBASE_CHANGE_IDENTITY_GAP = "sybase.change.identity.gap.on.runtime.tables";

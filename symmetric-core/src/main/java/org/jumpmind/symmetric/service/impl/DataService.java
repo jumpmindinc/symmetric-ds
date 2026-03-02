@@ -122,7 +122,7 @@ import org.jumpmind.util.FormatUtils;
  * @see IDataService
  */
 public class DataService extends AbstractService implements IDataService {
-    private ISymmetricEngine engine;
+    protected ISymmetricEngine engine;
     private IExtensionService extensionService;
     public static final int RECAPTURE_DATA_COMMIT_LIMIT = 1000;
     public static final int PROGRESS_LOG_UPDATE_DELAY_MS = 30000;
@@ -1637,10 +1637,7 @@ public class DataService extends AbstractService implements IDataService {
         if (extractRequests != null) {
             requests.putAll(extractRequests);
         }
-        boolean canEngineBulkOperation = (engine.getParameterService().is(ParameterConstants.MSSQL_BULK_EXTRACT_USE_BCP) &&
-                engine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.MSSQL)) ||
-                (engine.getParameterService().is(ParameterConstants.ASE_BULK_EXTRACT_USE_BCP) &&
-                        engine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.ASE));
+        boolean canEngineBulkOperation = isUsingBulkExtract();
         boolean canBulkOperation = canEngineBulkOperation && isLocalNodeUsingBulkLoad(targetNode.getNodeId());
         boolean canParentBulkOperation = true;
         if (extractRequests != null && extractRequests.size() > 0) {
@@ -1806,6 +1803,11 @@ public class DataService extends AbstractService implements IDataService {
         }
         transformMultiplier = Math.max(1, transformMultiplier);
         return transformMultiplier;
+    }
+
+    protected boolean isUsingBulkExtract() {
+        return engine.getParameterService().is(ParameterConstants.ASE_BULK_EXTRACT_USE_BCP)
+                && engine.getSymmetricDialect().getTargetPlatform().getName().startsWith(DatabaseNamesConstants.ASE);
     }
 
     protected boolean isLocalNodeUsingBulkLoad(String nodeId) {
