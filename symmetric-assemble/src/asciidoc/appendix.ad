@@ -283,6 +283,7 @@ recorded in <<NODE>>.
 [appendix]
 == Utilities
 
+include::appendix/symadmin.ad[]
 include::appendix/dbcompare.ad[]
 include::appendix/dbimport.ad[]
 include::appendix/dbexport.ad[]
