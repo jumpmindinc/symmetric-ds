@@ -108,7 +108,7 @@ public class Db2DatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     public String getDefaultCatalog() {
-        return "";
+        return null;
     }
 
     @Override

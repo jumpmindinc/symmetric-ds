@@ -20,11 +20,16 @@
  */
 package org.jumpmind.symmetric.db.db2;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 import java.util.HashMap;
 
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.model.TriggerHistory;
+import org.jumpmind.symmetric.util.SymmetricUtils;
 
 public class Db2TriggerTemplate extends AbstractTriggerTemplate {
     public Db2TriggerTemplate(ISymmetricDialect symmetricDialect) {
@@ -245,6 +250,31 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
                         "                                END                                                                                                                                                                    ");
         sqlTemplates.put("initialLoadSqlTemplate",
                 "select $(oracleToClob)$(columns) from $(schemaName)$(tableName) t where $(whereClause)                                                                                                                                ");
+    }
+
+    @Override
+    protected String getSourceTablePrefix(Table table) {
+        String prefix = isNotBlank(table.getSchema()) ? table.getSchema()
+                + symmetricDialect.getPlatform().getDatabaseInfo().getSchemaSeparator() : "";
+        if (isBlank(prefix)) {
+            prefix = isNotBlank(symmetricDialect.getPlatform().getDefaultSchema()) ? SymmetricUtils
+                    .quote(symmetricDialect, symmetricDialect.getPlatform().getDefaultSchema())
+                    + "." : "";
+        }
+        return prefix;
+    }
+
+    @Override
+    protected String getSourceTablePrefix(TriggerHistory triggerHistory) {
+        String schemaName = triggerHistory.getSourceSchemaName();
+        if (isBlank(schemaName)) {
+            schemaName = symmetricDialect.getPlatform().getDefaultSchema();
+        }
+        if (isNotBlank(schemaName)) {
+            return SymmetricUtils.quote(symmetricDialect, schemaName)
+                    + symmetricDialect.getPlatform().getDatabaseInfo().getSchemaSeparator();
+        }
+        return "";
     }
 
     protected String toClobExpression(Table table) {
