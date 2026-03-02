@@ -115,10 +115,6 @@ public class SnapshotUtil {
     protected static final int THREAD_INDENT_SPACE = 50;
     public static final String SNAPSHOT_DIR = "snapshots";
     public static final String ERROR_BATCHES_SUBDIR = "batches";
-    public static final String REDACTED = "***REDACTED***";
-    public static final String[] REDACTED_PROPERTIES = new String[] { "db.password", "target.db.password", "smtp.password", "redshift.bulk.load.s3.access.key",
-            "redshift.bulk.load.s3.secret.key", "opensearch.load.aws.access.key", "opensearch.load.aws.secret.key", "cloud.bulk.load.s3.access.key",
-            "cloud.bulk.load.s3.secret.key", "cloud.bulk.load.azure.sas.token", "registration.secret", "file.sync.s3.secret.key" };
 
     public static File getSnapshotDirectory(ISymmetricEngine engine) {
         File snapshotsDir = new File(engine.getParameterService().getTempDirectory(), SNAPSHOT_DIR);
@@ -1200,9 +1196,9 @@ public class SnapshotUtil {
     }
 
     private static void redactParameters(Properties parameters) {
-        for (String name : REDACTED_PROPERTIES) {
+        for (String name : ParameterConstants.REDACTED_PROPERTIES) {
             if (parameters.containsKey(name)) {
-                parameters.put(name, REDACTED);
+                parameters.put(name, ParameterConstants.REDACTED);
             }
         }
     }
