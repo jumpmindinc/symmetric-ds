@@ -56,7 +56,8 @@ public enum ProcessType {
     //@formatter:on
 
     public static final ProcessType[] dataSyncProcessTypes = new ProcessType[] { PUSH_JOB_EXTRACT, PUSH_JOB_TRANSFER, PULL_JOB_TRANSFER, PULL_JOB_LOAD,
-            PUSH_HANDLER_TRANSFER, PUSH_HANDLER_LOAD, PULL_HANDLER_TRANSFER, PULL_HANDLER_EXTRACT, INSERT_LOAD_EVENTS, INITIAL_LOAD_EXTRACT_JOB };
+            PUSH_HANDLER_TRANSFER, PUSH_HANDLER_LOAD, PULL_HANDLER_TRANSFER, PULL_HANDLER_EXTRACT, INSERT_LOAD_EVENTS, INITIAL_LOAD_EXTRACT_JOB,
+            ROUTER_JOB };
     private final String displayName;
     private final String shortName;
     private final String shortPastTense;
