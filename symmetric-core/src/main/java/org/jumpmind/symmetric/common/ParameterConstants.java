@@ -358,16 +358,6 @@ final public class ParameterConstants {
     public static final String BSH_LOAD_FILTER_HANDLES_MISSING_TABLES = "bsh.load.filter.handles.missing.tables";
     public static final String BSH_TRANSFORM_GLOBAL_SCRIPT = "bsh.transform.global.script";
     public static final String BSH_EXTENSION_GLOBAL_SCRIPT = "bsh.extension.global.script";
-    public static final String MSSQL_ROW_LEVEL_LOCKS_ONLY = "mssql.allow.only.row.level.locks.on.runtime.tables";
-    public static final String MSSQL_USE_NTYPES_FOR_SYNC = "mssql.use.ntypes.for.sync";
-    public static final String MSSQL_USE_VARCHAR_FOR_LOB_IN_SYNC = "mssql.use.varchar.for.lob.in.sync";
-    public static final String MSSQL_LOCK_ESCALATION_DISABLED = "mssql.lock.escalation.disabled";
-    public static final String MSSQL_INCLUDE_CATALOG_IN_TRIGGERS = "mssql.include.catalog.in.triggers";
-    public static final String MSSQL_TRIGGER_EXECUTE_AS = "mssql.trigger.execute.as";
-    public static final String MSSQL_TRIGGER_ORDER_FIRST = "mssql.trigger.order.first";
-    public static final String MSSQL_USE_SNAPSHOT_ISOLATION = "mssql.use.snapshot.isolation";
-    public static final String MSSQL_BULK_EXTRACT_USE_BCP = "mssql.bulk.extract.use.bcp";
-    public static final String MSSQL_METADATA_QUERY_FOR_COMPRESSION_FILTERS_INCLUDECOLUMNS = "mssql.metadata.query.for.compression.filters.includecolumns";
     public static final String DBDIALECT_SYBASE_ASE_CONVERT_UNITYPES_FOR_SYNC = "sybase.ase.convert.unitypes.for.sync";
     public static final String SYBASE_ROW_LEVEL_LOCKS_ONLY = "sybase.allow.only.row.level.locks.on.runtime.tables";
     public static final String SYBASE_CHANGE_IDENTITY_GAP = "sybase.change.identity.gap.on.runtime.tables";
@@ -473,7 +463,6 @@ final public class ParameterConstants {
     public static final String FILESYNCTRACKER_MAX_ROWS_BEFORE_COMMIT = "filesynctracker.max.rows.before.commit";
     public static final String SYNC_USE_READY_QUEUES = "sync.use.ready.queues";
     public static final String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
-    public static final String MSSQL_BULK_LOAD_BCP_CODE_PAGE = "mssql.bulk.load.bcp.code.page";
     public static final String SHOW_PIPELINES_VIEW = "console.show.pipelines.view";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
