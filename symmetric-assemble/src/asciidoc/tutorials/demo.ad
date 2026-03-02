@@ -162,7 +162,7 @@ Open an interactive SQL session with the store node database and add a new sale 
 
 [source, SQL]
 ----
-insert into sale_transaction (tran_id, store_id, workstation, day, seq) 
+insert into sale_transaction (tran_id, store_id, workstation, "day", seq)
 	values (1000, '001', '3', '2014-03-21', 100);
 	
 insert into sale_return_line_item (tran_id, item_id, price, quantity) 
