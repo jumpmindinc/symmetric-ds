@@ -57,6 +57,7 @@ import org.jumpmind.symmetric.ext.ISymmetricEngineAware;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.service.IConfigurationService;
+import org.jumpmind.symmetric.service.IParameterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -360,12 +361,28 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 reloadChannel.setDataLoaderType("bulk");
                 configService.saveChannel(reloadChannel, false);
             }
+            migrateOracleTransactionViewParameters();
         }
         if (engine.getDatabasePlatform().getName().equals(DatabaseNamesConstants.H2)) {
             createH2SequenceIfMissing(symmetricDialect, tablePrefix);
         }
         engine.getPullService().pullConfigData(false);
         return sb.toString();
+    }
+
+    protected void migrateOracleTransactionViewParameters() {
+        IParameterService parameterService = engine.getParameterService();
+        if (parameterService.is(ParameterConstants.DBDIALECT_ORACLE_USE_TRANSACTION_VIEW_LEGACY)) {
+            parameterService.saveParameter(ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW, true, "upgrade");
+            log.info("Migrated {} to {}", ParameterConstants.DBDIALECT_ORACLE_USE_TRANSACTION_VIEW_LEGACY,
+                    ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW);
+        }
+        long threshold = parameterService.getLong(ParameterConstants.DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS_LEGACY, 60000);
+        if (threshold != 60000) {
+            parameterService.saveParameter(ParameterConstants.ROUTING_GAPS_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS, threshold, "upgrade");
+            log.info("Migrated {} ({}) to {}", ParameterConstants.DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS_LEGACY,
+                    threshold, ParameterConstants.ROUTING_GAPS_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS);
+        }
     }
 
     protected void checkForDroppedColumns(Database currentModel, Database desiredModel) {

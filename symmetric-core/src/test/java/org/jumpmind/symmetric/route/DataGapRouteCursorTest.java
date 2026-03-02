@@ -36,7 +36,6 @@ import static org.mockito.Mockito.when;
 
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -135,7 +134,6 @@ public class DataGapRouteCursorTest {
         dataGaps.add(new DataGap(0, Long.MAX_VALUE));
         IDataGapRouteCursor cursor = buildCursor(dataGaps, false);
         assertTrue("Should query each gap", cursor.isEachGapQueried());
-        assertFalse("Should not be Oracle no-order", cursor.isOracleNoOrder());
         Object[] args = new Object[] { Constants.CHANNEL_DEFAULT, 0l, Long.MAX_VALUE };
         int[] types = new int[] { Types.VARCHAR, Types.BIGINT, Types.BIGINT };
         verify(sqlTemplate).queryForCursor(contains("order by d.data_id"), any(), eq(args), eq(types));
@@ -148,7 +146,6 @@ public class DataGapRouteCursorTest {
         dataGaps.add(new DataGap(0, Long.MAX_VALUE));
         IDataGapRouteCursor cursor = buildCursor(dataGaps, false);
         assertTrue(cursor.isEachGapQueried());
-        assertFalse(cursor.isOracleNoOrder());
         Object[] args = new Object[] { Constants.CHANNEL_DEFAULT, 0l, Long.MAX_VALUE };
         int[] types = new int[] { Types.VARCHAR, Types.BIGINT, Types.BIGINT };
         verify(sqlTemplate).queryForCursor(not(contains("order by")), any(), eq(args), eq(types));
@@ -172,49 +169,9 @@ public class DataGapRouteCursorTest {
             assertTrue(data.getDataId() == i);
         }
         assertTrue(cursor.isEachGapQueried());
-        assertFalse(cursor.isOracleNoOrder());
         Object[] args = new Object[] { Constants.CHANNEL_DEFAULT, 0l, Long.MAX_VALUE };
         int[] types = new int[] { Types.VARCHAR, Types.BIGINT, Types.BIGINT };
         verify(sqlTemplate).queryForCursor(not(contains("order by d.data_id")), any(), eq(args), eq(types));
-    }
-
-    @Test
-    public void testMemoryOrderByTime() throws Exception {
-        when(parameterService.is(ParameterConstants.ROUTING_DATA_READER_INTO_MEMORY_ENABLED, false)).thenReturn(true);
-        when(parameterService.is(ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER, false)).thenReturn(true);
-        List<DataGap> dataGaps = new ArrayList<DataGap>();
-        dataGaps.add(new DataGap(0, Long.MAX_VALUE));
-        List<Data> datas = new ArrayList<Data>();
-        long dateAsMillis = 0;
-        datas.add(new Data(1, null, null, null, null, new Date(dateAsMillis + 3), null, null, null, null));
-        datas.add(new Data(2, null, null, null, null, new Date(dateAsMillis + 1), null, null, null, null));
-        datas.add(new Data(3, null, null, null, null, new Date(dateAsMillis + 2), null, null, null, null));
-        ISqlRowMapper<Data> mapper = any();
-        when(sqlTemplate.queryForCursor((String) any(), mapper, (Object[]) any(), (int[]) any())).thenReturn(new ListReadCursor(datas));
-        IDataGapRouteCursor cursor = buildCursor(dataGaps, false);
-        for (int i = 1; i < 4; i++) {
-            Data data = cursor.next();
-            assertTrue(data != null);
-            assertTrue(data.getCreateTime().getTime() == i);
-        }
-        assertTrue(cursor.isEachGapQueried());
-        assertTrue(cursor.isOracleNoOrder());
-        Object[] args = new Object[] { Constants.CHANNEL_DEFAULT, 0l, Long.MAX_VALUE };
-        int[] types = new int[] { Types.VARCHAR, Types.BIGINT, Types.BIGINT };
-        verify(sqlTemplate).queryForCursor(not(contains("order by d.create_time")), any(), eq(args), eq(types));
-    }
-
-    @Test
-    public void testOracleNoOrder() throws Exception {
-        when(parameterService.is(ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER, false)).thenReturn(true);
-        List<DataGap> dataGaps = new ArrayList<DataGap>();
-        dataGaps.add(new DataGap(0, Long.MAX_VALUE));
-        IDataGapRouteCursor cursor = buildCursor(dataGaps, false);
-        assertTrue(cursor.isEachGapQueried());
-        assertTrue(cursor.isOracleNoOrder());
-        Object[] args = new Object[] { Constants.CHANNEL_DEFAULT, 0l, Long.MAX_VALUE };
-        int[] types = new int[] { Types.VARCHAR, Types.BIGINT, Types.BIGINT };
-        verify(sqlTemplate).queryForCursor(contains("order by d.create_time"), any(), eq(args), eq(types));
     }
 
     @Test
@@ -266,7 +223,6 @@ public class DataGapRouteCursorTest {
         dataGaps.add(new DataGap(12, Long.MAX_VALUE));
         IDataGapRouteCursor cursor = buildCursor(dataGaps, false);
         assertFalse(cursor.isEachGapQueried());
-        assertFalse(cursor.isOracleNoOrder());
         Object[] args = new Object[] { Constants.CHANNEL_DEFAULT, 1l };
         int[] types = getTypes(args.length);
         verify(sqlTemplate).queryForCursor(argThat(new SqlArgMatcher(args.length)), any(), eq(args), eq(types));
@@ -282,7 +238,6 @@ public class DataGapRouteCursorTest {
         dataGaps.add(new DataGap(12, Long.MAX_VALUE));
         IDataGapRouteCursor cursor = buildCursor(dataGaps, false);
         assertFalse(cursor.isEachGapQueried());
-        assertFalse(cursor.isOracleNoOrder());
         Object[] args = new Object[] { Constants.CHANNEL_DEFAULT, 1l, 3l, 5l, 5l, 7l, Long.MAX_VALUE };
         int[] types = getTypes(args.length);
         verify(sqlTemplate).queryForCursor(argThat(new SqlArgMatcher(args.length)), any(), eq(args), eq(types));
@@ -298,7 +253,6 @@ public class DataGapRouteCursorTest {
         dataGaps.add(new DataGap(12, Long.MAX_VALUE));
         IDataGapRouteCursor cursor = buildCursor(dataGaps, true);
         assertTrue(cursor.isEachGapQueried());
-        assertFalse(cursor.isOracleNoOrder());
         while (cursor.next() != null) {
         }
         InOrder inOrder = Mockito.inOrder(sqlTemplate);
@@ -321,7 +275,6 @@ public class DataGapRouteCursorTest {
         dataGaps.add(new DataGap(40, Long.MAX_VALUE));
         IDataGapRouteCursor cursor = buildCursor(dataGaps, true);
         assertTrue(cursor.isEachGapQueried());
-        assertFalse(cursor.isOracleNoOrder());
         while (cursor.next() != null) {
         }
         InOrder inOrder = Mockito.inOrder(sqlTemplate);
@@ -345,7 +298,6 @@ public class DataGapRouteCursorTest {
         dataGaps.add(new DataGap(40, Long.MAX_VALUE));
         IDataGapRouteCursor cursor = buildCursor(dataGaps, true);
         assertTrue(cursor.isEachGapQueried());
-        assertFalse(cursor.isOracleNoOrder());
         while (cursor.next() != null) {
         }
         InOrder inOrder = Mockito.inOrder(sqlTemplate);

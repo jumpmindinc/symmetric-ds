@@ -324,7 +324,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.stagingManager = createStagingManager();
         this.nodeService = new NodeService(this);
         this.configurationService = new ConfigurationService(this, symmetricDialect);
-        this.dataService = new DataService(this, extensionService);
+        this.dataService = createDataService();
         this.clusterService = createClusterService();
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
@@ -346,7 +346,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.offlineTransportManager = new TransportManagerFactory(this).create(Constants.PROTOCOL_FILE);
         this.dataLoaderService = new DataLoaderService(this);
         this.registrationService = new RegistrationService(this);
-        this.acknowledgeService = new AcknowledgeService(this);
+        this.acknowledgeService = createAcknowledgeService();
         this.pushService = new PushService(this);
         this.pullService = new PullService(this);
         this.offlinePushService = new OfflinePushService(parameterService, symmetricDialect,
@@ -393,6 +393,16 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected IClusterService createClusterService() {
         return AppUtils.newInstance(IClusterService.class, ClusterService.class, new Object[] { parameterService, symmetricDialect, nodeService,
                 extensionService }, new Class<?>[] { IParameterService.class, ISymmetricDialect.class, INodeService.class, IExtensionService.class });
+    }
+
+    protected IDataService createDataService() {
+        return AppUtils.newInstance(IDataService.class, DataService.class,
+                new Object[] { this, extensionService }, new Class<?>[] { ISymmetricEngine.class, IExtensionService.class });
+    }
+
+    protected IAcknowledgeService createAcknowledgeService() {
+        return AppUtils.newInstance(IAcknowledgeService.class, AcknowledgeService.class,
+                new Object[] { this }, new Class<?>[] { ISymmetricEngine.class });
     }
 
     protected IRouterService buildRouterService() {

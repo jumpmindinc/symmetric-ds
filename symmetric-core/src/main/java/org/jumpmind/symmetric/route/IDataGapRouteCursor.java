@@ -25,6 +25,4 @@ import org.jumpmind.symmetric.model.Data;
 
 public interface IDataGapRouteCursor extends ISqlReadCursor<Data> {
     public boolean isEachGapQueried();
-
-    public boolean isOracleNoOrder();
 }

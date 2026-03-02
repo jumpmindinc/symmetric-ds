@@ -44,7 +44,6 @@ public abstract class AbstractDataGapRouteCursor implements IDataGapRouteCursor 
     protected ChannelRouterContext context;
     protected List<DataGap> dataGaps;
     protected ISqlReadCursor<Data> cursor;
-    protected boolean isOracleNoOrder;
     protected boolean isSortInMemory;
     protected boolean isEachGapQueried;
 
@@ -52,7 +51,6 @@ public abstract class AbstractDataGapRouteCursor implements IDataGapRouteCursor 
         this.engine = engine;
         this.context = context;
         parameterService = engine.getParameterService();
-        isOracleNoOrder = parameterService.is(ParameterConstants.DBDIALECT_ORACLE_SEQUENCE_NOORDER, false);
         isSortInMemory = parameterService.is(ParameterConstants.ROUTING_DATA_READER_INTO_MEMORY_ENABLED, false);
         dataGaps = context.getDataGaps();
     }
@@ -88,9 +86,7 @@ public abstract class AbstractDataGapRouteCursor implements IDataGapRouteCursor 
 
     protected ISqlReadCursor<Data> getDataMemoryCursor(ISqlReadCursor<Data> cursor) {
         Comparator<Data> comparator = null;
-        if (isOracleNoOrder) {
-            comparator = DataMemoryCursor.SORT_BY_TIME;
-        } else if (parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
+        if (parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
             comparator = DataMemoryCursor.SORT_BY_ID;
         }
         return new DataMemoryCursor(cursor, context, comparator);
@@ -126,12 +122,8 @@ public abstract class AbstractDataGapRouteCursor implements IDataGapRouteCursor 
     }
 
     protected String qualifyForOrder(String sql) {
-        if (!isSortInMemory) {
-            if (isOracleNoOrder) {
-                sql = String.format("%s %s", sql, engine.getRouterService().getSql("orderByCreateTime"));
-            } else if (parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
-                sql = String.format("%s %s", sql, engine.getRouterService().getSql("orderByDataId"));
-            }
+        if (!isSortInMemory && parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)) {
+            sql = String.format("%s %s", sql, engine.getRouterService().getSql("orderByDataId"));
         }
         return sql;
     }
@@ -139,10 +131,5 @@ public abstract class AbstractDataGapRouteCursor implements IDataGapRouteCursor 
     @Override
     public boolean isEachGapQueried() {
         return isEachGapQueried;
-    }
-
-    @Override
-    public boolean isOracleNoOrder() {
-        return isOracleNoOrder;
     }
 }

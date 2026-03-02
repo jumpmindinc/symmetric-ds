@@ -30,10 +30,10 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
     public Db2TriggerTemplate(ISymmetricDialect symmetricDialect) {
         super(symmetricDialect);
         emptyColumnTemplate = "''";
-        stringColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then $(oracleToClob)'' else $(oracleToClob)'\"' || replace(replace($(tableAlias).\"$(columnName)\",'\\','\\\\'),'\"','\\\"') || '\"' end";
+        stringColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then $(toClob)'' else $(toClob)'\"' || replace(replace($(tableAlias).\"$(columnName)\",'\\','\\\\'),'\"','\\\"') || '\"' end";
         arrayColumnTemplate = null;
-        numberColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else $(oracleToClob)'\"' || trim(char($(tableAlias).\"$(columnName)\")) || '\"' end";
-        datetimeColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else $(oracleToClob)'\"' || lpad(rtrim(char(year(timestamp_iso($(tableAlias).\"$(columnName)\")))),4,'0') ||'-'||substr(digits(month(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||'-'||substr(digits(day(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||' '||substr(digits(hour(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||':'||substr(digits(minute(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||':'||substr(digits(second(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||'.'||RIGHT(REPEAT('0',6)||rtrim(char(microsecond(timestamp_iso($(tableAlias).\"$(columnName)\")))),6) || '\"' end";
+        numberColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else $(toClob)'\"' || trim(char($(tableAlias).\"$(columnName)\")) || '\"' end";
+        datetimeColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else $(toClob)'\"' || lpad(rtrim(char(year(timestamp_iso($(tableAlias).\"$(columnName)\")))),4,'0') ||'-'||substr(digits(month(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||'-'||substr(digits(day(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||' '||substr(digits(hour(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||':'||substr(digits(minute(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||':'||substr(digits(second(timestamp_iso($(tableAlias).\"$(columnName)\"))),9)||'.'||RIGHT(REPEAT('0',6)||rtrim(char(microsecond(timestamp_iso($(tableAlias).\"$(columnName)\")))),6) || '\"' end";
         timeColumnTemplate = null;
         dateColumnTemplate = null;
         clobColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' when length($(tableAlias).\"$(columnName)\") > 32672 then '\b' else '\"' || replace(replace(cast($(tableAlias).\"$(columnName)\" as varchar(32672)),'\\','\\\\'),'\"','\\\"') || '\"' end";
@@ -68,7 +68,7 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
                         +
                         "                                        VALUES('$(targetTableName)', 'I', $(triggerHistoryId),                                                                                                         \n"
                         +
-                        "                                            $(oracleToClob)$(columns),                                                                                                                                 \n"
+                        "                                            $(toClob)$(columns),                                                                                                                                 \n"
                         +
                         "                                            $(channelExpression), $(txIdExpression), $(sourceNodeExpression),                                                                                              \n"
                         +
@@ -101,7 +101,7 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
                         +
                         "                                        VALUES('$(targetTableName)', 'R', $(triggerHistoryId),                                                                                                         \n"
                         +
-                        "                                            $(oracleToClob)$(newKeys),                                                                                                                                 \n"
+                        "                                            $(toClob)$(newKeys),                                                                                                                                 \n"
                         +
                         "                                            $(channelExpression), $(txIdExpression), $(sourceNodeExpression),                                                                                              \n"
                         +
@@ -132,9 +132,9 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
                         "                                    $(custom_before_update_text) \n" +
                         "                                    IF $(syncOnUpdateCondition) and $(syncOnIncomingBatchCondition) then                                                                                               \n"
                         +
-                        "                                        SET var_row_data = $(oracleToClob)$(columns);                                                                                                                                 \n"
+                        "                                        SET var_row_data = $(toClob)$(columns);                                                                                                                                 \n"
                         +
-                        "                                        SET var_old_data = $(oracleToClob)$(oldColumns);                                                                                                                              \n"
+                        "                                        SET var_old_data = $(toClob)$(oldColumns);                                                                                                                              \n"
                         +
                         "                                        IF $(dataHasChangedCondition) THEN                                                                                                                             \n"
                         +
@@ -144,7 +144,7 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
                         +
                         "                                            VALUES('$(targetTableName)', 'U', $(triggerHistoryId),                                                                                                     \n"
                         +
-                        "                                                $(oracleToClob)$(oldKeys),                                                                                                                             \n"
+                        "                                                $(toClob)$(oldKeys),                                                                                                                             \n"
                         +
                         "                                                var_row_data,                                                                                                                                          \n"
                         +
@@ -187,7 +187,7 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
                         +
                         "                                            VALUES('$(targetTableName)', 'R', $(triggerHistoryId),                                                                                                     \n"
                         +
-                        "                                                $(oracleToClob)$(newKeys),                                                                                                                             \n"
+                        "                                                $(toClob)$(newKeys),                                                                                                                             \n"
                         +
                         "                                                $(channelExpression),                                                                                                                                      \n"
                         +
@@ -224,9 +224,9 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
                         +
                         "                                        VALUES ('$(targetTableName)', 'D', $(triggerHistoryId),                                                                                                        \n"
                         +
-                        "                                            $(oracleToClob)$(oldKeys),                                                                                                                                 \n"
+                        "                                            $(toClob)$(oldKeys),                                                                                                                                 \n"
                         +
-                        "                                            $(oracleToClob)$(oldColumns),                                                                                                                              \n"
+                        "                                            $(toClob)$(oldColumns),                                                                                                                              \n"
                         +
                         "                                            $(channelExpression),                                                                                                                                          \n"
                         +
@@ -244,7 +244,7 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
                         +
                         "                                END                                                                                                                                                                    ");
         sqlTemplates.put("initialLoadSqlTemplate",
-                "select $(oracleToClob)$(columns) from $(schemaName)$(tableName) t where $(whereClause)                                                                                                                                ");
+                "select $(toClob)$(columns) from $(schemaName)$(tableName) t where $(whereClause)                                                                                                                                ");
     }
 
     protected String toClobExpression(Table table) {

@@ -66,7 +66,6 @@ public class DataGapRouteReader implements IDataToRouteReader {
     protected long peekAheadSizeInBytes = 0;
     protected boolean finishTransactionMode = false;
     protected boolean isEachGapQueried;
-    protected boolean isOracleNoOrder;
     protected String lastTransactionId = null;
     protected long lastStatsPrintOutBaselineInMs = System.currentTimeMillis();
 
@@ -95,6 +94,21 @@ public class DataGapRouteReader implements IDataToRouteReader {
         }
     }
 
+    protected IDataGapRouteCursor createCursor(ChannelRouterContext context, ISymmetricEngine engine) {
+        if (engine.getParameterService().is(ParameterConstants.ROUTING_DATA_READER_USE_MULTIPLE_QUERIES)) {
+            return new DataGapRouteMultiCursor(context, engine);
+        }
+        return new DataGapRouteCursor(context, engine);
+    }
+
+    protected void initializeGaps(IDataGapRouteCursor cursor) {
+        isEachGapQueried = cursor.isEachGapQueried();
+        if (!isEachGapQueried) {
+            dataGaps = new ArrayList<DataGap>(context.getDataGaps());
+            currentGap = dataGaps.remove(0);
+        }
+    }
+
     protected void execute() {
         ISymmetricDialect symmetricDialect = engine.getSymmetricDialect();
         IDataGapRouteCursor cursor = null;
@@ -107,21 +121,8 @@ public class DataGapRouteReader implements IDataToRouteReader {
                     .equals(NonTransactionalBatchAlgorithm.NAME)
                     || !symmetricDialect.supportsTransactionId();
             processInfo.setStatus(ProcessStatus.QUERYING);
-            if (engine.getParameterService().is(ParameterConstants.ROUTING_DATA_READER_USE_MULTIPLE_QUERIES)) {
-                cursor = new DataGapRouteMultiCursor(context, engine);
-            } else {
-                cursor = new DataGapRouteCursor(context, engine);
-            }
-            isOracleNoOrder = cursor.isOracleNoOrder();
-            isEachGapQueried = cursor.isEachGapQueried();
-            if (isOracleNoOrder) {
-                // for oracle no-order mode, it will use a read-only check that each data is in a gap
-                dataGaps = context.getDataGaps();
-            } else if (!isEachGapQueried) {
-                // for a wide-open query that uses only the first gap, it will check each gap in memory and remove it from the list
-                dataGaps = new ArrayList<DataGap>(context.getDataGaps());
-                currentGap = dataGaps.remove(0);
-            }
+            cursor = createCursor(context, engine);
+            initializeGaps(cursor);
             processInfo.setStatus(ProcessStatus.EXTRACTING);
             if (transactional) {
                 executeTransactional(cursor);
@@ -232,8 +233,6 @@ public class DataGapRouteReader implements IDataToRouteReader {
                         .equals(data.getTransactionId()))) {
             if (isEachGapQueried) {
                 okToProcess = true;
-            } else if (isOracleNoOrder) {
-                okToProcess = isInDataGap(dataId);
             } else {
                 while (!okToProcess && currentGap != null && dataId >= currentGap.getStartId()) {
                     if (dataId <= currentGap.getEndId()) {
