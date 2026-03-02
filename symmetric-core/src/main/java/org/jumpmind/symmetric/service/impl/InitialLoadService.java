@@ -84,7 +84,7 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
             log.warn("Not queuing new loads because node identity is not yet intialized!");
             return;
         }
-        String nodeInfo = String.format("NodeId=%s, ExternalId=%s, Group=%s",
+        String nodeInfo = String.format("Current NodeId=%s, ExternalId=%s, Group=%s",
                 identity.getNodeId(), identity.getExternalId(), identity.getNodeGroupId());
         if (!identity.isSyncEnabled()) {
             log.warn("Not queuing new loads because sync is disabled for this node! " + nodeInfo);
@@ -98,13 +98,13 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
         try {
             processInfo = engine.getStatisticManager().newProcessInfo(
                     new ProcessInfoKey(identity.getNodeId(), null, ProcessType.INSERT_LOAD_EVENTS));
-            log.debug("Queuing initial loads for " + nodeInfo);
+            log.debug("Queuing initial loads ... " + nodeInfo);
             processInfo.setStatus(ProcessInfo.ProcessStatus.PROCESSING);
             queueLoadsSynchronized(identity, processInfo);
             if (!processInfo.isStatusFinal()) {
                 processInfo.setStatus(ProcessInfo.ProcessStatus.OK);
             }
-            log.debug("Done queuing new loads for " + nodeInfo);
+            log.debug("Done queuing new loads. " + nodeInfo);
         } catch (Exception ex) {
             log.error("Error while queuing new loads! " + nodeInfo, ex);
             if (processInfo != null) {
