@@ -74,34 +74,52 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
     }
 
     @Override
-    public synchronized void queueLoads(boolean force) {
+    public void queueLoads(boolean force) {
+        if (engine.getClusterService().isLocked(ClusterConstants.SYNC_TRIGGERS)) {
+            log.info("Not queuing new loads because Sync Triggers is currently running");
+            return;
+        }
         Node identity = engine.getNodeService().findIdentity();
-        if (identity != null && identity.isSyncEnabled()) {
-            if (force || engine.getClusterService().lock(ClusterConstants.INITIAL_LOAD_QUEUE)) {
-                if (!engine.getClusterService().isLocked(ClusterConstants.SYNC_TRIGGERS)) {
-                    ProcessInfo processInfo = null;
-                    try {
-                        processInfo = engine.getStatisticManager().newProcessInfo(
-                                new ProcessInfoKey(identity.getNodeId(), null, ProcessType.INSERT_LOAD_EVENTS));
-                        processInfo.setStatus(ProcessInfo.ProcessStatus.PROCESSING);
-                        processInitialLoadEnabledFlag(identity, processInfo);
-                        processTableRequestLoads(identity, processInfo);
-                        processInfo.setStatus(ProcessInfo.ProcessStatus.OK);
-                    } catch (Exception e) {
-                        if (processInfo != null) {
-                            processInfo.setStatus(ProcessInfo.ProcessStatus.ERROR);
-                        }
-                        log.error("Error while queuing initial loads", e);
-                    } finally {
-                        if (!force) {
-                            engine.getClusterService().unlock(ClusterConstants.INITIAL_LOAD_QUEUE);
-                        }
-                    }
-                } else {
-                    log.info("Not queuing loads because Sync Triggers is currently running");
-                }
+        if (identity == null) {
+            log.warn("Not queuing new loads because node identity is not yet intialized!");
+            return;
+        }
+        String nodeInfo = String.format("NodeId=%s, ExternalId=%s, Group=%s",
+                identity.getNodeId(), identity.getExternalId(), identity.getNodeGroupId());
+        if (!identity.isSyncEnabled()) {
+            log.warn("Not queuing new loads because sync is disabled for this node! " + nodeInfo);
+            return;
+        }
+        if (!force && !engine.getClusterService().lock(ClusterConstants.INITIAL_LOAD_QUEUE)) {
+            log.debug("Not queuing new loads because cluster lock was not acquired. " + nodeInfo);
+            return;
+        }
+        ProcessInfo processInfo = null;
+        try {
+            processInfo = engine.getStatisticManager().newProcessInfo(
+                    new ProcessInfoKey(identity.getNodeId(), null, ProcessType.INSERT_LOAD_EVENTS));
+            log.debug("Queuing initial loads for " + nodeInfo);
+            processInfo.setStatus(ProcessInfo.ProcessStatus.PROCESSING);
+            queueLoadsSynchronized(identity, processInfo);
+            if (!processInfo.isStatusFinal()) {
+                processInfo.setStatus(ProcessInfo.ProcessStatus.OK);
+            }
+            log.debug("Done queuing new loads for " + nodeInfo);
+        } catch (Exception ex) {
+            log.error("Error while queuing new loads! " + nodeInfo, ex);
+            if (processInfo != null) {
+                processInfo.setStatus(ProcessInfo.ProcessStatus.ERROR);
+            }
+        } finally {
+            if (!force) {
+                engine.getClusterService().unlock(ClusterConstants.INITIAL_LOAD_QUEUE);
             }
         }
+    }
+
+    private synchronized void queueLoadsSynchronized(Node identity, ProcessInfo processInfo) {
+        processInitialLoadEnabledFlag(identity, processInfo);
+        processTableRequestLoads(identity, processInfo);
     }
 
     @Override
