@@ -36,6 +36,7 @@ import org.jumpmind.symmetric.io.data.writer.DatabaseWriterSettings;
 import org.jumpmind.symmetric.io.data.writer.Conflict.DetectConflict;
 import org.jumpmind.symmetric.io.data.writer.Conflict.ResolveConflict;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +50,7 @@ public abstract class AbstractDataLoaderFactory {
 
     public DatabaseWriterSettings buildParameterDatabaseWriterSettings(final ISymmetricDialect symmetricDialect,
             List<? extends Conflict> conflictSettings) {
-        DatabaseWriterSettings settings = new DatabaseWriterSettings();
+        DatabaseWriterSettings settings = AppUtils.newInstance(DatabaseWriterSettings.class, DatabaseWriterSettings.class);
         if (symmetricDialect != null) {
             setDdlExecutionCallback(settings, symmetricDialect);
         }
@@ -126,7 +127,6 @@ public abstract class AbstractDataLoaderFactory {
         settings.setConflictSettingsByChannel(byChannel);
         settings.setConflictSettingsByTable(byTable);
         settings.setKeepBulkStagingFiles(parameterService.is(ParameterConstants.KEEP_BULK_STAGING_FILES));
-        settings.setMsSqlBulkLoadBcpCodePage(parameterService.getString(ParameterConstants.MSSQL_BULK_LOAD_BCP_CODE_PAGE));
         return settings;
     }
 

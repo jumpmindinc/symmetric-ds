@@ -9,7 +9,8 @@ endif::pro[]
 
 ifdef::pro[]
 
-Microsoft SQL Server was tested using the http://jtds.sourceforge.net/[jTDS JDBC driver].
+Microsoft SQL Server was tested using the https://learn.microsoft.com/en-us/sql/connect/jdbc/download-microsoft-jdbc-driver-for-sql-server?view=sql-server-ver17/[Microsoft JDBC driver]. 
+Versions of SQL Server older than 2008 were tested using the https://jtds.sourceforge.net/[jTDS JDBC driver]
 
 SQL Server allows the update of primary key fields via the SQL update statement. If your application allows 
 updating of the primary key field(s) for a table, and you want those updates synchronized, you will need to set the 
@@ -24,7 +25,7 @@ Connections are pooled and expected to be in the database context like a new con
 Transact-SQL statement in extension code.
 
 If SQL Server is configured with a default collation that does NOT support unicode then we have experienced bad performance for update and delete statements when 
-a table has character based primary keys.  This is because statements are prepared for a unicode type and as a result the indexes are not used.  You can turn this 
+a table has character based primary keys.  This is because statements are prepared for a unicode type and as a result the indexes are not used. If you are using JTDS drivers, you can turn this 
 functionality off in JTDS by appending the following to your db.url:  ;sendStringParametersAsUnicode=false
 
 ==== Permissions
