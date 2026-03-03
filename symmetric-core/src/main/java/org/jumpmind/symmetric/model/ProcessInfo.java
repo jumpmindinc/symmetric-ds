@@ -112,9 +112,17 @@ public class ProcessInfo implements Serializable, Comparable<ProcessInfo>, Clone
     public void setStatus(ProcessStatus status) {
         this.status = status;
         this.lastStatusChangeTime = new Date();
-        if (status == ProcessStatus.OK || status == ProcessStatus.ERROR) {
+        if (isStatusFinal(status)) {
             this.endTime = new Date();
         }
+    }
+
+    public boolean isStatusFinal() {
+        return isStatusFinal(this.status);
+    }
+
+    public static boolean isStatusFinal(ProcessStatus status) {
+        return status == ProcessStatus.OK || status == ProcessStatus.ERROR;
     }
 
     public long getCurrentDataCount() {
@@ -363,12 +371,15 @@ public class ProcessInfo implements Serializable, Comparable<ProcessInfo>, Clone
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         ProcessInfo other = (ProcessInfo) obj;
         return key.equals(other.getKey());
     }

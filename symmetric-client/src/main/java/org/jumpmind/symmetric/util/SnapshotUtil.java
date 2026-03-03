@@ -351,56 +351,8 @@ public class SnapshotUtil {
         extract(export, new File(exportDir, "console_role_privilege.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE_PRIVILEGE));
         log.info("Writing runtime data - parameters");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        try {
-            Properties effectiveParameters = engine.getParameterService().getAllParameters();
-            Properties parameters = new Properties();
-            parameters.putAll(effectiveParameters);
-            parameters.remove("db.password");
-            writeProperties(parameters, tmpDir, "parameters.properties");
-        } catch (Exception e) {
-            log.warn("Failed to export parameter information", e);
-        }
-        try {
-            Properties defaultParameters = new Properties();
-            InputStream in = SnapshotUtil.class.getResourceAsStream("/symmetric-default.properties");
-            defaultParameters.load(in);
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException e) {
-                }
-            }
-            in = SnapshotUtil.class.getResourceAsStream("/symmetric-console-default.properties");
-            if (in != null) {
-                defaultParameters.load(in);
-                try {
-                    in.close();
-                } catch (IOException e) {
-                }
-            }
-            Properties effectiveParameters = engine.getParameterService().getAllParameters();
-            Properties changedParameters = new Properties();
-            Properties sysProp = System.getProperties();
-            Map<String, String> env = System.getenv();
-            for (String key : effectiveParameters.stringPropertyNames()) {
-                String defaultValue = defaultParameters.getProperty(key);
-                String currentValue = effectiveParameters.getProperty(key);
-                if ((defaultValue == null && currentValue != null || (defaultValue != null && !defaultValue.equals(currentValue))) && ((!sysProp.containsKey(
-                        key) && !env.containsKey(key)) || defaultParameters.containsKey(key))) {
-                    changedParameters.put(key, currentValue == null ? "" : currentValue);
-                }
-            }
-            for (String name : new String[] { "db.password", "target.db.password", "smtp.password", "redshift.bulk.load.s3.access.key",
-                    "redshift.bulk.load.s3.secret.key", "opensearch.load.aws.access.key", "opensearch.load.aws.secret.key", "cloud.bulk.load.s3.access.key",
-                    "cloud.bulk.load.s3.secret.key", "cloud.bulk.load.azure.sas.token", "registration.secret", "file.sync.s3.secret.key" }) {
-                if (changedParameters.containsKey(name)) {
-                    changedParameters.put(name, StringUtils.repeat("*", changedParameters.getProperty(name, "").length()));
-                }
-            }
-            writeProperties(changedParameters, tmpDir, "parameters-changed.properties");
-        } catch (Exception e) {
-            log.warn("Failed to export parameters-changed information", e);
-        }
+        writeRuntimeParameters(engine, tmpDir);
+        writeChangedParameters(engine, tmpDir);
         try {
             Properties props = new Properties();
             props.putAll(System.getProperties());
@@ -1191,6 +1143,56 @@ public class SnapshotUtil {
             }
         }
         return transformsByTable;
+    }
+
+    private static void writeRuntimeParameters(ISymmetricEngine engine, File tmpDir) {
+        try {
+            Properties effectiveParameters = engine.getParameterService().getAllParameters();
+            Properties parameters = ParametersUtil.deepCopy(effectiveParameters);
+            parameters.putAll(effectiveParameters);
+            ParametersUtil.redactParameters(parameters);
+            writeProperties(parameters, tmpDir, "parameters.properties");
+        } catch (Exception e) {
+            log.warn("Failed to export parameter information", e);
+        }
+    }
+
+    private static void writeChangedParameters(ISymmetricEngine engine, File tmpDir) {
+        try {
+            Properties defaultParameters = new Properties();
+            InputStream in = SnapshotUtil.class.getResourceAsStream("/symmetric-default.properties");
+            defaultParameters.load(in);
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                }
+            }
+            in = SnapshotUtil.class.getResourceAsStream("/symmetric-console-default.properties");
+            if (in != null) {
+                defaultParameters.load(in);
+                try {
+                    in.close();
+                } catch (IOException e) {
+                }
+            }
+            Properties effectiveParameters = engine.getParameterService().getAllParameters();
+            Properties changedParameters = ParametersUtil.deepCopy(effectiveParameters);
+            Properties sysProp = System.getProperties();
+            Map<String, String> env = System.getenv();
+            for (String key : effectiveParameters.stringPropertyNames()) {
+                String defaultValue = defaultParameters.getProperty(key);
+                String currentValue = effectiveParameters.getProperty(key);
+                if ((defaultValue == null && currentValue != null || (defaultValue != null && !defaultValue.equals(currentValue))) && ((!sysProp.containsKey(
+                        key) && !env.containsKey(key)) || defaultParameters.containsKey(key))) {
+                    changedParameters.put(key, currentValue == null ? "" : currentValue);
+                }
+            }
+            ParametersUtil.redactParameters(changedParameters);
+            writeProperties(changedParameters, tmpDir, "parameters-changed.properties");
+        } catch (Exception e) {
+            log.warn("Failed to export parameters-changed information", e);
+        }
     }
 
     static class FileComparator implements Comparator<File> {
