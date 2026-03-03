@@ -47,7 +47,7 @@ A "SQL" event runs SQL you specify at the target nodes.
 [source, sql]
 ----
 insert into sym_data (node_list, table_name, event_type, row_data, trigger_hist_id, channel_id, create_time)
-select '00001', source_table_name, 'S', '"delete from sale_transaction where day = ''2012-12-01''"', trigger_hist_id, 'reload', current_timestamp
+select '00001', source_table_name, 'S', '"delete from sale_transaction where ""day"" = ''2012-12-01''"', trigger_hist_id, 'reload', current_timestamp
 from sym_trigger_hist where source_table_name = 'sale_transaction' and inactive_time is null;
 ----
 
