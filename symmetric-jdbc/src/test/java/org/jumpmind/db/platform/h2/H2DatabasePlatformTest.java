@@ -23,7 +23,7 @@ public class H2DatabasePlatformTest {
     private DatabaseMetaData metaData;
     private H2DatabasePlatform platform;
     private SqlTemplateSettings sqlTemplateSettings;
-    private H2JdbcSqlTemplate sqlTemplate;
+    private H2JdbcSqlTemplate mockSqlTemplate;
 
     @BeforeEach
     void setUp() throws SQLException {
@@ -34,10 +34,11 @@ public class H2DatabasePlatformTest {
         when(connection.getMetaData()).thenReturn(metaData);
         when(metaData.getDatabaseMajorVersion()).thenReturn(2);
         sqlTemplateSettings = mock(SqlTemplateSettings.class);
-        sqlTemplate = mock(H2JdbcSqlTemplate.class);
+        mockSqlTemplate = mock(H2JdbcSqlTemplate.class);
         platform = new H2DatabasePlatform(dataSource, sqlTemplateSettings) {
-            {
-                this.sqlTemplate = mock(H2JdbcSqlTemplate.class);
+            @Override
+            protected H2JdbcSqlTemplate createSqlTemplate() {
+                return mockSqlTemplate;
             }
         };
     }
@@ -48,9 +49,14 @@ public class H2DatabasePlatformTest {
     }
 
     @Test
+    void testConstructorDisablesAutoClose() {
+        verify(mockSqlTemplate, times(1)).update("SET DB_CLOSE_ON_EXIT FALSE");
+    }
+
+    @Test
     void testShutdown() {
-        when(sqlTemplate.update("SHUTDOWN COMPACT")).thenReturn(0);
+        when(mockSqlTemplate.update("SHUTDOWN COMPACT")).thenReturn(0);
         platform.shutdown();
-        verify(platform.getSqlTemplate(), times(1)).update("SHUTDOWN COMPACT");
+        verify(mockSqlTemplate, times(1)).update("SHUTDOWN COMPACT");
     }
 }

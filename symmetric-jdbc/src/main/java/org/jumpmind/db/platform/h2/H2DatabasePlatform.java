@@ -65,6 +65,7 @@ public class H2DatabasePlatform extends AbstractJdbcDatabasePlatform implements 
      */
     public H2DatabasePlatform(DataSource dataSource, SqlTemplateSettings settings) {
         super(dataSource, settings);
+        disableAutoClose();
     }
 
     @Override
@@ -141,6 +142,14 @@ public class H2DatabasePlatform extends AbstractJdbcDatabasePlatform implements 
             sql = sql.substring(0, sql.length() - 1);
         }
         return sql + " limit " + limit + " offset " + offset + ";";
+    }
+
+    private void disableAutoClose() {
+        try {
+            getSqlTemplate().update("SET DB_CLOSE_ON_EXIT FALSE");
+        } catch (SqlException e) {
+            log.info("Caught {} when trying to disable DB_CLOSE_ON_EXIT, with message: {}", e.getClass().getName(), e.getMessage());
+        }
     }
 
     private void shutdownAndCompact() {
