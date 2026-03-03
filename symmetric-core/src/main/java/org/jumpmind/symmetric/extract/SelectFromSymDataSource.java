@@ -200,7 +200,8 @@ public class SelectFromSymDataSource extends SelectFromSource {
                                     ".  Corrupted row for data ID " + data.getDataId() + ": " + data.getPkData();
                             throw new ProtocolException(message, data.getTableName(), columnCount, expectedColumnCount);
                         }
-                    } else if (data.getDataEventType() == DataEventType.CREATE && StringUtils.isBlank(data.getCsvData(CsvData.ROW_DATA))) {
+                    } else if (data.getDataEventType() == DataEventType.CREATE && (StringUtils.isBlank(data.getCsvData(CsvData.ROW_DATA))
+                            || data.getRowData().contains(AbstractTriggerTemplate.CREATE_EVENT_DDL_GENERATED))) {
                         if (!processCreateEvent(triggerHistory, routerId, data)) {
                             return null;
                         }
