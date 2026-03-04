@@ -17,14 +17,13 @@ endif::pro[]
 
 .Define an API key with the following property.
 ----
-Rest.writer.api.key
+rest.writer.api.key
 ----
-[horizontal]
 ==== Output Message Format
 
 .Set the output message format with the following property
 ----
-Rest.writer.format=JSON|XML
+rest.writer.format=JSON|XML
 ----
 
 [horizontal]        
@@ -42,6 +41,7 @@ JSON::  Json formatted output message
   }
 ]    
 ----
+[horizontal]
 XML::  Xml formatted output message
 [source, xml]
 ----
