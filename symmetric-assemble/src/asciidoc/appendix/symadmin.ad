@@ -15,19 +15,10 @@ Use `symadmin help <subcommand>` for detailed help on a specific subcommand.
 
 ==== Common Options
 
-The following options are available for most subcommands:
+The following options are available for all subcommands:
 
 - *-e, --engine <arg>* : The name of a configured engine.  The name should correspond to an engine.name setting in one of the properties files in the engines directory.
 - *-p, --properties <arg>* : The properties file with settings for the SymmetricDS engine.  If not provided, defaults are used, then overridden with first symmetric.properties in classpath, then overridden with symmetric.properties values in user.home directory.
-- *-n, --node <arg>* : Send to this node ID.
-- *-g, --node-group <arg>* : Send to all nodes in this node group ID.
-- *-c, --catalog <arg>* : Look for tables in catalog.
-- *-s, --schema <arg>* : Look for tables in schema.
-- *-w, --where <arg>* : Add where clause to SQL statement that selects data from table.
-- *-o, --out <arg>* : Write output to file.
-- *-i, --in <arg>* : Read from file.
-- *-f, --force* : Force triggers to regenerate even if no change is detected.
-- *-r, --reverse* : Reverse initial load from client to server.
 - *--debug* : Print debug information in logging.
 - *--no-log-console* : No output will be sent to the console.
 - *--no-log-file* : No output will be sent to the log file.
@@ -55,6 +46,8 @@ symadmin open-registration --engine corp-000 store 001
 *remove-node* _<node-id>_::
 Remove specified node (unregister and clean up) for the specified engine.
 +
+Additional options: *-n, --node <arg>* specifies the node ID.
++
 [source]
 ----
 symadmin remove-node --engine corp-000 001
@@ -63,6 +56,8 @@ symadmin remove-node --engine corp-000 001
 *reload-node* _<node-id>_::
 Send an initial load of data to reload a remote node.
 +
+Additional options: *-r, --reverse* reverses the initial load from client to server.
++
 [source]
 ----
 symadmin reload-node --engine corp-000 001
@@ -70,6 +65,8 @@ symadmin reload-node --engine corp-000 001
 
 *reload-table* _<table> [<table> ...]_::
 Send the data from the specified tables to a node or group of nodes.
++
+Additional options: *-n, --node <arg>* send to a specific node ID.  *-g, --node-group <arg>* send to all nodes in a node group.  *-c, --catalog <arg>* look for tables in catalog.  *-s, --schema <arg>* look for tables in schema.  *-w, --where <arg>* add where clause to SQL statement that selects data from table.
 +
 [source]
 ----
@@ -97,6 +94,8 @@ symadmin import-batch --engine corp-000 batch-1234.csv
 *send-sql* _<table> <sql>_::
 Send a SQL statement to be executed on a remote node.
 +
+Additional options: *-n, --node <arg>* send to a specific node ID.  *-g, --node-group <arg>* send to all nodes in a node group.  *-c, --catalog <arg>* look for tables in catalog.  *-s, --schema <arg>* look for tables in schema.
++
 [source]
 ----
 symadmin send-sql --engine corp-000 -n 001 item "update item set name='Widget' where item_id=100"
@@ -104,6 +103,8 @@ symadmin send-sql --engine corp-000 -n 001 item "update item set name='Widget' w
 
 *send-schema* _[<table>] ..._::
 Send a schema update for a table to be executed on a remote node.  The table definition is sent in torque XML format.  If the target table is missing, it is created; if it exists it will be altered, if possible, otherwise dropped and re-created.  Specify which tables to send or use no arguments to mean all configured tables.
++
+Additional options: *-n, --node <arg>* send to a specific node ID.  *-g, --node-group <arg>* send to all nodes in a node group.  *-c, --catalog <arg>* look for tables in catalog.  *-s, --schema <arg>* look for tables in schema.  *--exclude-indices* excludes indices from the schema definition.  *--exclude-fk* excludes foreign keys from the schema definition.  *--exclude-defaults* excludes default values from the schema definition.
 +
 [source]
 ----
@@ -113,6 +114,8 @@ symadmin send-schema --engine corp-000 -n 001 item
 *send-script* _<filename>_::
 Send a script to a node to be run there.  The script is read from the filename provided as an argument or read from standard input.  Only BeanShell scripts are supported.
 +
+Additional options: *-n, --node <arg>* send to a specific node ID.  *-g, --node-group <arg>* send to all nodes in a node group.
++
 [source]
 ----
 symadmin send-script --engine corp-000 -n 001 myscript.bsh
@@ -121,19 +124,25 @@ symadmin send-script --engine corp-000 -n 001 myscript.bsh
 ===== Triggers
 
 *sync-triggers* _[<tablename> ...]_::
-Run the sync triggers process to create database triggers that are missing or re-create database triggers that have a configuration change.  If a filename is specified, the SQL statements are also written to file.  If triggers should not be applied automatically then set the auto.sync.triggers property to false.
+Run the sync triggers process to create database triggers that are missing or re-create database triggers that have a configuration change.  If a filename is specified with the `-o` option, the SQL statements are written to file and triggers are not applied to the database.  If triggers should not be applied automatically then set the auto.sync.triggers property to false.
++
+Additional options: *-o, --out <arg>* write trigger SQL to file (triggers are not executed).  *-f, --force* force triggers to regenerate even if no change is detected.  *-c, --catalog <arg>* look for tables in catalog.  *-s, --schema <arg>* look for tables in schema.
 +
 [source]
 ----
 symadmin sync-triggers --engine corp-000
+symadmin sync-triggers --engine corp-000 -o triggers.sql
 ----
 
 *drop-triggers* _[<tablename> ...]_::
 Drop one or more configured database triggers.  Specify a list of table names whose triggers should be dropped, otherwise all triggers will be dropped.
 +
+Additional options: *--sym* also drop SymmetricDS system triggers (by default, only user-configured triggers are dropped).
++
 [source]
 ----
 symadmin drop-triggers --engine corp-000 item
+symadmin drop-triggers --engine corp-000 --sym
 ----
 
 ===== Configuration
@@ -157,6 +166,8 @@ symadmin export-config --engine corp-000 my-config.csv
 *backup-config*::
 Backup configuration files to a zip file for later restoration if necessary.  Does not require an engine or properties file.
 +
+Additional options: *-o, --out <arg>* specify the output file.
++
 [source]
 ----
 symadmin backup-config
@@ -164,6 +175,8 @@ symadmin backup-config
 
 *restore-config*::
 Restore configuration files from a zip file.  Does not require an engine or properties file.
++
+Additional options: *-i, --in <arg>* specify the input file.
 +
 [source]
 ----
@@ -218,13 +231,15 @@ Additional options: *--exclude-log4j* excludes log4j logging framework and confi
 symadmin create-war symmetric.war
 ----
 
-*module* _[install <module> | remove <module> | list-files <module> | list | list-all | upgrade | convert]_::
+*module* _[install <module> | remove <module> | list-files <module> | list-deps <module> | list | list-all | list-upgrade | upgrade | convert]_::
 Manage modules to add or remove features.  Does not require an engine or properties file.
 +
 [source]
 ----
 symadmin module list
 symadmin module list-all
+symadmin module list-deps <module>
+symadmin module list-upgrade
 symadmin module install <module>
 symadmin module remove <module>
 ----
