@@ -1,10 +1,10 @@
 
 === Rest
 
-Send changes from your relational database to a Rest endpoint in a XML or JSON.  A RabbitMQ node can be setup as a <<Write-Only Node>> to receive changes from another node that is capturing changes.
+Send changes from your relational database to a Rest endpoint in a XML or JSON format.  A Rest node can be setup as a <<Write-Only Node>> to receive changes from another node that is capturing changes.
 
 ifdef::pro[]
-Setup the Rest node by using the configure canvas and selecting Rest as the type.   The URL will be the connection point to RabbitMQ.
+Set up the Rest node by using the Configure Diagram and selecting Rest as the type.   The URL will be the connection point to the Rest endpoint.
 
 image::images/appendix/rest-node-setup.png[]
 
