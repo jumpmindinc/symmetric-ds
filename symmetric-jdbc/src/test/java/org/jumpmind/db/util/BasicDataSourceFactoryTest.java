@@ -39,10 +39,23 @@ public class BasicDataSourceFactoryTest {
     }
 
     @Test
-    void testCreateSkipsDbCloseOnExitWhenH2AutoServerEnabled() throws Exception {
+    void testCreateSkipsDbCloseOnExitWhenAutoServerInUrl() throws Exception {
         TypedProperties props = new TypedProperties();
         props.put(BasicDataSourcePropertyConstants.DB_POOL_DRIVER, "org.h2.Driver");
-        props.put(BasicDataSourcePropertyConstants.DB_POOL_URL, "jdbc:h2:file:./build/test-auto-server;AUTO_SERVER=TRUE;LOCK_TIMEOUT=60000");
+        props.put(BasicDataSourcePropertyConstants.DB_POOL_URL, "jdbc:h2:file:./build/test-auto-server-url;AUTO_SERVER=TRUE;LOCK_TIMEOUT=60000");
+        ResettableBasicDataSource ds = BasicDataSourceFactory.create(props);
+        assertDoesNotThrow(() -> {
+            ds.getConnection().close();
+        });
+        ds.close();
+    }
+
+    @Test
+    void testCreateSkipsDbCloseOnExitWhenAutoServerInConnectionProperties() throws Exception {
+        TypedProperties props = new TypedProperties();
+        props.put(BasicDataSourcePropertyConstants.DB_POOL_DRIVER, "org.h2.Driver");
+        props.put(BasicDataSourcePropertyConstants.DB_POOL_URL, "jdbc:h2:file:./build/test-auto-server-props;LOCK_TIMEOUT=60000");
+        props.put(BasicDataSourcePropertyConstants.DB_POOL_CONNECTION_PROPERTIES, "AUTO_SERVER=TRUE");
         ResettableBasicDataSource ds = BasicDataSourceFactory.create(props);
         assertDoesNotThrow(() -> {
             ds.getConnection().close();

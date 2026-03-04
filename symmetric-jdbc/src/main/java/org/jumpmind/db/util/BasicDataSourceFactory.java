@@ -156,9 +156,11 @@ public class BasicDataSourceFactory {
                 }
             }
         }
+        boolean h2AutoServer = Strings.CI.contains(url, "AUTO_SERVER=TRUE")
+                || Strings.CI.contains(connectionProperties, "AUTO_SERVER=TRUE");
         for (String key : requiredConnectionProperties.keySet()) {
-            if (Strings.CI.contains(url, key + "=")
-                    || (key.equalsIgnoreCase("DB_CLOSE_ON_EXIT") && Strings.CI.contains(url, "AUTO_SERVER=TRUE"))) {
+            if (Strings.CI.contains(url, key + "=") || Strings.CI.contains(connectionProperties, key + "=")
+                    || (key.equalsIgnoreCase("DB_CLOSE_ON_EXIT") && h2AutoServer)) {
                 continue;
             }
             String value = requiredConnectionProperties.get(key);
