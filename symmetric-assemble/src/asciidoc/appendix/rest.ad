@@ -1,0 +1,56 @@
+
+=== Rest
+
+Send changes from your relational database to a Rest endpoint in a XML or JSON format.  A Rest node can be setup as a <<Write-Only Node>> to receive changes from another node that is capturing changes.
+
+ifdef::pro[]
+Set up the Rest node by using the Configure Diagram and selecting Rest as the type.   The URL will be the connection point to the Rest endpoint.
+
+image::images/appendix/rest-node-setup.png[]
+
+Further settings can be configured in the deploy wizard.
+
+image::images/appendix/rest-advanced-settings.png[]
+endif::pro[]
+
+==== API Key
+
+.Define an API key with the following property.
+----
+Rest.writer.api.key
+----
+
+==== Output Message Format
+
+.Set the output message format with the following property
+----
+Rest.writer.format=JSON|XML
+----
+
+[horizontal]        
+JSON::  Json formatted output message 
+[source, json]
+----
+[
+  {
+    "table name": {
+      "eventType": "INSERT|UPDATE|DELETE",
+      "data": {
+        "column name": "value",....
+      }
+    }
+  }
+]    
+----
+XML::  Xml formatted output message
+[source, xml]
+----
+<rows>
+	<row entity="table name" dml="INSERT|UPDATE|DELETE">
+		<data key="column name">value</data>
+		...
+	</row>
+</rows>
+----
+
+
