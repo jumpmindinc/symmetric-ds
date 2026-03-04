@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityConstants;
@@ -61,6 +62,9 @@ public class BasicDataSourceFactory {
                 }
             }
         }
+        if (clazzName.equals("org.h2.Driver")) {
+            requiredConnectionProperties.put("DB_CLOSE_ON_EXIT", "FALSE");
+        }
         if (clazzName.equals("org.firebirdsql.jdbc.FBDriver")) {
             requiredConnectionProperties.put("columnLabelForName", "true");
         }
@@ -89,7 +93,8 @@ public class BasicDataSourceFactory {
             }
             throw new IllegalStateException("Had trouble registering the JDBC driver: " + dataSource.getDriverClassName(), e);
         }
-        dataSource.setUrl(properties.get(BasicDataSourcePropertyConstants.DB_POOL_URL, null));
+        String url = properties.get(BasicDataSourcePropertyConstants.DB_POOL_URL, null);
+        dataSource.setUrl(url);
         String user = properties.get(BasicDataSourcePropertyConstants.DB_POOL_USER, "");
         if (user != null && user.startsWith(SecurityConstants.PREFIX_ENC)) {
             try {
@@ -152,6 +157,10 @@ public class BasicDataSourceFactory {
             }
         }
         for (String key : requiredConnectionProperties.keySet()) {
+            if (Strings.CI.contains(url, key + "=")
+                    || (key.equalsIgnoreCase("DB_CLOSE_ON_EXIT") && Strings.CI.contains(url, "AUTO_SERVER=TRUE"))) {
+                continue;
+            }
             String value = requiredConnectionProperties.get(key);
             LoggerFactory.getLogger(BasicDataSourceFactory.class).info(
                     "Setting required database connection property {}={}", key, value);

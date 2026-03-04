@@ -466,6 +466,9 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
     @Override
     public synchronized void destroy() {
         super.destroy();
+        if (platform != null) {
+            platform.shutdown();
+        }
         if (springContext != null) {
             if (springContext instanceof AbstractApplicationContext) {
                 try {
@@ -475,9 +478,6 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             }
         }
         springContext = null;
-        if (platform != null) {
-            platform.shutdown();
-        }
         if (dataSource != null && dataSource instanceof BasicDataSource) {
             try {
                 ((BasicDataSource) dataSource).close();
