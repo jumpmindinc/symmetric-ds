@@ -1,0 +1,315 @@
+[id="symadmin",reftext="SymAdmin"]
+=== SymAdmin
+
+The SymAdmin utility provides administrative commands for managing a SymmetricDS instance.  It can be used to perform tasks such as initial loads, trigger management, encryption, configuration import/export, and more.
+
+==== Usage
+
+[source]
+----
+symadmin <subcommand> --engine <engine.name> [options] [args]
+symadmin <subcommand> --properties <properties-file> [options] [args]
+----
+
+Use `symadmin help <subcommand>` for detailed help on a specific subcommand.
+
+==== Common Options
+
+The following options are available for all subcommands:
+
+- *-e, --engine <arg>* : The name of a configured engine.  The name should correspond to an engine.name setting in one of the properties files in the engines directory.
+- *-p, --properties <arg>* : The properties file with settings for the SymmetricDS engine.  If not provided, defaults are used, then overridden with first symmetric.properties in classpath, then overridden with symmetric.properties values in user.home directory.
+- *--debug* : Print debug information in logging.
+- *--no-log-console* : No output will be sent to the console.
+- *--no-log-file* : No output will be sent to the log file.
+
+==== Subcommands
+
+===== Node Management
+
+*list-engines*::
+List each engine name and properties file configured on this instance.  Does not require an engine or properties file.
++
+[source]
+----
+symadmin list-engines
+----
+
+*open-registration* _<node-group> <external-id> [<sync-url>]_::
+Open registration for the passed in node group and external id.  An optional sync URL can be provided.
++
+[source]
+----
+symadmin open-registration --engine corp-000 store 001
+----
+
+*remove-node* _<node-id>_::
+Remove specified node (unregister and clean up) for the specified engine.
++
+Additional options: *-n, --node <arg>* specifies the node ID.
++
+[source]
+----
+symadmin remove-node --engine corp-000 001
+----
+
+*reload-node* _<node-id>_::
+Send an initial load of data to reload a remote node.
++
+Additional options: *-r, --reverse* reverses the initial load from client to server.
++
+[source]
+----
+symadmin reload-node --engine corp-000 001
+----
+
+*reload-table* _<table> [<table> ...]_::
+Send the data from the specified tables to a node or group of nodes.
++
+Additional options: *-n, --node <arg>* send to a specific node ID.  *-g, --node-group <arg>* send to all nodes in a node group.  *-c, --catalog <arg>* look for tables in catalog.  *-s, --schema <arg>* look for tables in schema.  *-w, --where <arg>* add where clause to SQL statement that selects data from table.
++
+[source]
+----
+symadmin reload-table --engine corp-000 -n 001 item sale_transaction
+----
+
+===== Data and Batches
+
+*export-batch* _<node-id> <batch-number> [<filename>]_::
+Export the batch CSV data for the given batch ID.  If a filename is given, the data is written to file, otherwise it uses standard output.
++
+[source]
+----
+symadmin export-batch --engine corp-000 001 1234 batch-1234.csv
+----
+
+*import-batch* _[<filename>]_::
+Import the batch CSV data from the specified file into the database.  If a filename is given, the batch data is read from it, otherwise standard input is used.
++
+[source]
+----
+symadmin import-batch --engine corp-000 batch-1234.csv
+----
+
+*send-sql* _<table> <sql>_::
+Send a SQL statement to be executed on a remote node.
++
+Additional options: *-n, --node <arg>* send to a specific node ID.  *-g, --node-group <arg>* send to all nodes in a node group.  *-c, --catalog <arg>* look for tables in catalog.  *-s, --schema <arg>* look for tables in schema.
++
+[source]
+----
+symadmin send-sql --engine corp-000 -n 001 item "update item set name='Widget' where item_id=100"
+----
+
+*send-schema* _[<table>] ..._::
+Send a schema update for a table to be executed on a remote node.  The table definition is sent in torque XML format.  If the target table is missing, it is created; if it exists it will be altered, if possible, otherwise dropped and re-created.  Specify which tables to send or use no arguments to mean all configured tables.
++
+Additional options: *-n, --node <arg>* send to a specific node ID.  *-g, --node-group <arg>* send to all nodes in a node group.  *-c, --catalog <arg>* look for tables in catalog.  *-s, --schema <arg>* look for tables in schema.  *--exclude-indices* excludes indices from the schema definition.  *--exclude-fk* excludes foreign keys from the schema definition.  *--exclude-defaults* excludes default values from the schema definition.
++
+[source]
+----
+symadmin send-schema --engine corp-000 -n 001 item
+----
+
+*send-script* _<filename>_::
+Send a script to a node to be run there.  The script is read from the filename provided as an argument or read from standard input.  Only BeanShell scripts are supported.
++
+Additional options: *-n, --node <arg>* send to a specific node ID.  *-g, --node-group <arg>* send to all nodes in a node group.
++
+[source]
+----
+symadmin send-script --engine corp-000 -n 001 myscript.bsh
+----
+
+===== Triggers
+
+*sync-triggers* _[<tablename> ...]_::
+Run the sync triggers process to create database triggers that are missing or re-create database triggers that have a configuration change.  If a filename is specified with the `-o` option, the SQL statements are written to file and triggers are not applied to the database.  If triggers should not be applied automatically then set the auto.sync.triggers property to false.
++
+Additional options: *-o, --out <arg>* write trigger SQL to file (triggers are not executed).  *-f, --force* force triggers to regenerate even if no change is detected.  *-c, --catalog <arg>* look for tables in catalog.  *-s, --schema <arg>* look for tables in schema.
++
+[source]
+----
+symadmin sync-triggers --engine corp-000
+symadmin sync-triggers --engine corp-000 -o triggers.sql
+----
+
+*drop-triggers* _[<tablename> ...]_::
+Drop one or more configured database triggers.  Specify a list of table names whose triggers should be dropped, otherwise all triggers will be dropped.
++
+Additional options: *--sym* also drop SymmetricDS system triggers (by default, only user-configured triggers are dropped).
++
+[source]
+----
+symadmin drop-triggers --engine corp-000 item
+symadmin drop-triggers --engine corp-000 --sym
+----
+
+===== Configuration
+
+*import-config* _<filename>_::
+Import configuration for a node in the form of CSV or SQL data.
++
+[source]
+----
+symadmin import-config --engine corp-000 my-config.csv
+----
+
+*export-config* _<filename>_::
+Export a node's configuration in the form of CSV or SQL data.
++
+[source]
+----
+symadmin export-config --engine corp-000 my-config.csv
+----
+
+*backup-config*::
+Backup configuration files to a zip file for later restoration if necessary.  Does not require an engine or properties file.
++
+Additional options: *-o, --out <arg>* specify the output file.
++
+[source]
+----
+symadmin backup-config
+----
+
+*restore-config*::
+Restore configuration files from a zip file.  Does not require an engine or properties file.
++
+Additional options: *-i, --in <arg>* specify the input file.
++
+[source]
+----
+symadmin restore-config
+----
+
+===== Installation and Tables
+
+*create-sym-tables*::
+Attempts to create the SymmetricDS tables in the configured database.
++
+[source]
+----
+symadmin create-sym-tables --engine corp-000
+----
+
+*export-sym-tables* _<filename>_::
+Output the SQL to create the SymmetricDS tables.  If --alters is specified, then alters to the existing tables will be output.  If a filename is given, the SQL statements are written to it, otherwise standard output is used.
++
+Additional options: *--alters* outputs DDL changes necessary to alter tables.
++
+[source]
+----
+symadmin export-sym-tables --engine corp-000 sym-tables.sql
+----
+
+*export-sym-objects* _<filename>_::
+Output the SQL to create the SymmetricDS database objects (not including triggers).  If --exclude-tables is specified, then tables will be excluded.  If a filename is given, the SQL statements are written to it, otherwise standard output is used.
++
+Additional options: *-x, --exclude-tables* excludes tables from the exported SQL.
++
+[source]
+----
+symadmin export-sym-objects --engine corp-000 sym-objects.sql
+----
+
+*export-properties* _[<filename>]_::
+Export all properties with their default values, along with comments describing them.  If a filename is given, the properties are written to it, otherwise standard output is used.  Does not require an engine or properties file.
++
+[source]
+----
+symadmin export-properties sym-defaults.properties
+----
+
+*create-war* _<filename>_::
+Generate a web archive that can be deployed to a web server like Tomcat.  The name of the output file must be provided.  If a properties file is designated, it will be renamed and packaged as symmetric.properties.  Other than the optional properties file, a war is made up of the contents of the web directory and the conf directory of the standalone installation.  Does not require an engine or properties file.
++
+Additional options: *--exclude-log4j* excludes log4j logging framework and configuration.  *--external-security* uses security files outside of the WAR file for encryption keys and certificates.
++
+[source]
+----
+symadmin create-war symmetric.war
+----
+
+*module* _[install <module> | remove <module> | list-files <module> | list-deps <module> | list | list-all | list-upgrade | upgrade | convert]_::
+Manage modules to add or remove features.  Does not require an engine or properties file.
++
+[source]
+----
+symadmin module list
+symadmin module list-all
+symadmin module list-deps <module>
+symadmin module list-upgrade
+symadmin module install <module>
+symadmin module remove <module>
+----
+
+*uninstall*::
+Uninstall all SymmetricDS objects from the database, including the SYM tables, sequences, functions, stored procedures, and triggers.
++
+[source]
+----
+symadmin uninstall --engine corp-000
+----
+
+===== Security
+
+*encrypt-text* _<text>_::
+Encrypts the given text for use with db.user and db.password properties.  Does not require an engine or properties file.
++
+[source]
+----
+symadmin encrypt-text mypassword
+----
+
+*obfuscate-text* _<text>_::
+Obfuscates the given text to prevent casual observation for use with javax.net.ssl.trustStorePassword and javax.net.ssl.keyStorePassword system properties.  Does not require an engine or properties file.
++
+[source]
+----
+symadmin obfuscate-text mypassword
+----
+
+*unobfuscate-text* _<text>_::
+Reverses the obfuscation of a previously obfuscated text string.  Does not require an engine or properties file.
++
+[source]
+----
+symadmin unobfuscate-text obf:aWdvcmU=
+----
+
+*import-cert* _<url>_::
+Import a CA certificate chain via a URL.  The server certificate and authority chain are retrieved and each authority's certificate in the chain gets imported.
++
+Additional options: *--accept-all* accepts each certificate in the chain without asking.
++
+[source]
+----
+symadmin import-cert --engine corp-000 https://remote-server:31415/sync/corp-000
+----
+
+===== Jobs and Maintenance
+
+*run-job* _[pull | push | route | sync-triggers | purge | heartbeat]_::
+Run one of the scheduled jobs immediately.
++
+[source]
+----
+symadmin run-job --engine corp-000 purge
+----
+
+*run-purge* _[all | outgoing | incoming]_::
+Run the purge process against the configured database.
++
+[source]
+----
+symadmin run-purge --engine corp-000 all
+----
+
+*take-snapshot*::
+Take a support snapshot.  The path to the new support snapshot will be output to the console.
++
+[source]
+----
+symadmin take-snapshot --engine corp-000
+----
