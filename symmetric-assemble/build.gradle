@@ -208,11 +208,14 @@ task buildSymmetric {
     dependsOn ':symmetric-server:serverDistZip'
 }
 
-task publishSymmetric {
-    dependsOn buildSymmetric
-    group = 'SymmetricDS'
-    description = 'Publish software to SourceForge website'
-    doLast {
+interface InjectedExecOps {
+    @Inject
+    ExecOperations getExecOps()
+}
+
+tasks.register('pushArtifactToSourceForge') {
+	dependsOn buildSymmetric
+	doLast {
         ant.taskdef(name: 'scp', classname: 'org.apache.tools.ant.taskdefs.optional.ssh.Scp',
         classpath: configurations.sshAntTask.asPath)
 
@@ -225,17 +228,29 @@ task publishSymmetric {
                 include(name: 'symmetric-server-' + version + '.zip')
             }
         }
-        if (isLatest) {    
+    }
+}
+
+tasks.register('markAsLatestOnSourceForge') {
+	dependsOn pushArtifactToSourceForge
+	if (isLatest) {    
         println "Setting latest file on SourceForge to symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
-            project.exec {
-                commandLine "curl"
-                args "-s", "-S", "-H", "Accept: application/json", "-X", "PUT",
+        def injected = project.objects.newInstance(InjectedExecOps)
+		doLast {
+	        injected.execOps.exec {
+	            commandLine "curl", "-s", "-S", "-H", "Accept: application/json", "-X", "PUT",
                     "-d", "default=windows&default=mac&default=linux&default=bsd&default=solaris&default=others",
                     "-d", "api_key=$sourceforgeApiKey",
                     "https://sourceforge.net/projects/symmetricds/files/symmetricds/symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
-            }     
+	        }
+	    }
     }
-    }
+}
+
+task publishSymmetric {
+    dependsOn markAsLatestOnSourceForge
+    group = 'SymmetricDS'
+    description = 'Publish software to SourceForge website'
 }
 
 task releaseSymmetric {
