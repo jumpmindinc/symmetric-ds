@@ -228,7 +228,7 @@ task publishSymmetric {
         
         if (isLatest) {
         	println "Setting latest file on SourceForge to symmetricds-$majorMinorVersion/symmetric-server-" + version + ".zip"
-        	exec {
+        	project.exec {
             	commandLine "curl"
             	args "-s", "-S", "-H", "Accept: application/json", "-X", "PUT",
                 	"-d", "default=windows&default=mac&default=linux&default=bsd&default=solaris&default=others",
