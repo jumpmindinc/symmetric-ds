@@ -406,10 +406,12 @@ public class QueryPanel extends CustomSplitLayout implements IContentTab {
                                 for (Component resultComponent : results) {
                                     ((HasSize) resultComponent).setSizeFull();
                                     if (forceNewTab || generalResultsTab == null || results.size() > 1) {
-                                        if (resultComponent instanceof TabularResultLayout) {
-                                            resultComponent = ((TabularResultLayout) resultComponent).refreshWithoutSaveButton();
+                                        String tabLabel = sql;
+                                        if (resultComponent instanceof TabularResultLayout tabularResultLayout) {
+                                            tabLabel = tabularResultLayout.getSql();
+                                            resultComponent = tabularResultLayout.refreshWithoutSaveButton();
                                         }
-                                        addResultsTab(resultComponent, StringUtils.abbreviate(sql, 20), new Icon(icon), tabPosition);
+                                        addResultsTab(resultComponent, StringUtils.abbreviate(tabLabel, 20), new Icon(icon), tabPosition);
                                     } else {
                                         replaceGeneralResultsWith(resultComponent, icon);
                                         resultsTabs.setSelectedTab(generalResultsTab.getComponent());
