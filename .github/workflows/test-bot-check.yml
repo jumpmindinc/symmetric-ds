@@ -2,7 +2,7 @@ name: Test bot check logic
 on:
   push:
     branches:
-      - 'test/bot-check'
+      - 'fix/SYM-7401_fix_cherry_pick_loop_with_test'
 
 permissions:
   contents: read
