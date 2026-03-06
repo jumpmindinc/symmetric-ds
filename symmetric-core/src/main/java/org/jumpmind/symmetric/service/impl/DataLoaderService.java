@@ -260,6 +260,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
         }
         try {
             NodeSecurity localSecurity = nodeService.findNodeSecurity(local.getNodeId(), true);
+            String registrationUrl = parameterService.getRegistrationUrl();
             IIncomingTransport transport = null;
             boolean isRegisterTransport = false;
             if (remote != null && localSecurity != null) {
@@ -272,8 +273,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                         suspendIgnoreChannels.getIgnoreChannelsAsString(local.getNodeId()));
                 requestProperties.put(WebConstants.CHANNEL_QUEUE, status.getQueue());
                 transport = transportManager.getPullTransport(remote, local,
-                        localSecurity.getNodePassword(), requestProperties,
-                        parameterService.getRegistrationUrl());
+                        localSecurity.getNodePassword(), requestProperties, registrationUrl);
             } else {
                 List<INodeRegistrationListener> registrationListeners = extensionService.getExtensionPointList(INodeRegistrationListener.class);
                 Map<String, String> requestProps = new HashMap<String, String>();
@@ -283,14 +283,14 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                         requestProps.putAll(props);
                     }
                 }
-                transport = transportManager.getRegisterTransport(local,
-                        parameterService.getRegistrationUrl(), requestProps);
-                log.info("Using registration URL of {}", transport.getUrl());
+                transport = transportManager.getRegisterTransport(local, registrationUrl, requestProps);
+                String transportUrl = StringUtils.defaultIfBlank(transport.getUrl(), registrationUrl);
+                log.info("Using registration URL of {}", transportUrl);
                 for (INodeRegistrationListener l : registrationListeners) {
-                    l.registrationUrlUpdated(transport.getUrl());
+                    l.registrationUrlUpdated(transportUrl);
                 }
                 remote = new Node();
-                remote.setSyncUrl(parameterService.getRegistrationUrl());
+                remote.setSyncUrl(registrationUrl);
                 isRegisterTransport = true;
             }
             ProcessInfo transferInfo = statisticManager.newProcessInfo(new ProcessInfoKey(remote
