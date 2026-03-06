@@ -2742,4 +2742,8 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
     public boolean supportDefaultValues() {
         return true;
     }
+
+    public boolean supportDefaultValues() {
+        return true;
+    }
 }

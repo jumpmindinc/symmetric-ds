@@ -485,7 +485,11 @@ final public class ParameterConstants {
     public static final String FILESYNCTRACKER_MAX_ROWS_BEFORE_COMMIT = "filesynctracker.max.rows.before.commit";
     public static final String SYNC_USE_READY_QUEUES = "sync.use.ready.queues";
     public static final String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
+<<<<<<< HEAD
     public static final String MSSQL_BULK_LOAD_BCP_CODE_PAGE = "mssql.bulk.load.bcp.code.page";
+=======
+    public static final String SHOW_PIPELINES_VIEW = "console.show.pipelines.view";
+>>>>>>> 64cc436e6 (SYM-7015: DDL capture support for cross platform #431 (#618))
     public final static String TRIGGER_CAPTURE_DDL_SEND_TABLE = "trigger.capture.ddl.send.table";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
