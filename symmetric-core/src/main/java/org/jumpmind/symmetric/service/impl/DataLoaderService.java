@@ -286,8 +286,8 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                 transport = transportManager.getRegisterTransport(local, registrationUrl, requestProps);
                 String transportUrl = StringUtils.defaultIfBlank(transport.getUrl(), registrationUrl);
                 log.info("Using registration URL of {}", transportUrl);
-                for (INodeRegistrationListener l : registrationListeners) {
-                    l.registrationUrlUpdated(transportUrl);
+                for (INodeRegistrationListener listener : registrationListeners) {
+                    listener.registrationUrlUpdated(transportUrl);
                 }
                 remote = new Node();
                 remote.setSyncUrl(registrationUrl);
