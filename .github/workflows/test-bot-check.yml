@@ -9,7 +9,7 @@ permissions:
   pull-requests: read
 
 env:
-  GITHUB_BOT_NAME: 'jm-commerce-bot[bot]'
+  GITHUB_BOT_NAME: 'jumpmind-commerce-bot[bot]'
 
 jobs:
   test-human-pr:
