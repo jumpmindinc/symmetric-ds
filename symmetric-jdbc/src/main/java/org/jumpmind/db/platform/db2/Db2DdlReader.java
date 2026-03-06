@@ -145,6 +145,13 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
     @Override
     protected Column readColumn(DatabaseMetaDataWrapper metaData, Map<String, Object> values)
             throws SQLException {
+        String columnName = (String) values.get("COLUMN_NAME");
+        if (columnName == null) {
+            String altName = (String) values.get("NAME");
+            if (altName != null) {
+                values.put("COLUMN_NAME", altName);
+            }
+        }
         Column column = super.readColumn(metaData, values);
         if (column.getDefaultValue() != null) {
             if (column.getMappedTypeCode() == Types.TIME) {
@@ -324,12 +331,39 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
         } else if (typeName != null && typeName.endsWith("CLOB")) {
             return Types.LONGVARCHAR;
         } else if (typeName != null && typeName.endsWith("LONG VARCHAR")) {
-            return Types.CLOB;
+            return Types.LONGVARCHAR;
         } else if (typeName != null && typeName.endsWith("XML")) {
             return Types.SQLXML;
         } else {
             return super.mapUnknownJdbcTypeForColumn(values);
         }
+    }
+
+    @Override
+    protected void readForeignKey(DatabaseMetaDataWrapper metaData, Map<String, Object> values,
+            Map<String, ForeignKey> knownFks) throws SQLException {
+        String pkTableName = (String) values.get("PKTABLE_NAME");
+        if (pkTableName == null) {
+            String altName = (String) values.get("REFTBNAME");
+            if (altName == null) {
+                altName = (String) values.get("TBNAME");
+            }
+            if (altName != null) {
+                values.put("PKTABLE_NAME", altName);
+            }
+        }
+        String pkColumnName = (String) values.get("PKCOLUMN_NAME");
+        if (pkColumnName == null) {
+            String altColName = (String) values.get("COLNAME");
+            if (altColName != null) {
+                values.put("PKCOLUMN_NAME", altColName);
+            }
+        }
+        if (values.get("PKTABLE_NAME") == null) {
+            log.warn("Skipping foreign key - could not determine referenced table from metadata");
+            return;
+        }
+        super.readForeignKey(metaData, values, knownFks);
     }
 
     @Override

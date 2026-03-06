@@ -153,9 +153,15 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
                         if (!outgoingBatch.isLoadFlag() && outgoingBatch.getReloadRowCount() == 0 &&
                                 parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION)) {
                             try {
-                                engine.getDataService().reloadMissingForeignKeyRows(outgoingBatch.getBatchId(), outgoingBatch.getNodeId(),
+                                boolean definitive = engine.getDataService().reloadMissingForeignKeyRows(outgoingBatch.getBatchId(), outgoingBatch.getNodeId(),
                                         outgoingBatch.getFailedDataId(), outgoingBatch.getFailedLineNumber());
                                 suppressError = true;
+                                if (!definitive) {
+                                    // Reload was sent but may be undone by a competing delete in bidirectional sync.
+                                    // Reset error tracking to allow re-triggering FK resolution on next failure.
+                                    outgoingBatch.setFailedLineNumber(0);
+                                    outgoingBatch.setFailedDataId(0);
+                                }
                             } catch (Exception e) {
                                 log.error("Failed to request a reload of missing foreign key rows for batch " + outgoingBatch.getNodeBatchId() +
                                         " data ID " + outgoingBatch.getFailedDataId(), e);

@@ -363,7 +363,7 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
 "rowData = current_query();\n" +
 "for cmd in select * from pg_event_trigger_dropped_objects() loop\n" +
 "    if (upper(cmd.object_identity) not like upper('$(prefixName)%') and upper(cmd.object_identity) not like upper('%.$(prefixName)%') and" + 
-"    upper(cmd.object_identity) not like upper('f$(prefixName)%') and upper(cmd.object_identity) not like upper('%.f$(prefixName)%') and cmd.original) then\n" +
+"    upper(cmd.object_identity) not like upper('f$(prefixName)%') and upper(cmd.object_identity) not like upper('%.f$(prefixName)%') and cmd.original and upper(rowData) not like 'ALTER%') then\n" +
 "        select trigger_hist_id into histId from $(defaultSchema)$(prefixName)_trigger_hist where upper(source_table_name) = upper('$(prefixName)_node') and inactive_time is null;\n" +
 "        insert into $(defaultSchema)$(prefixName)_data\n" +
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
@@ -433,7 +433,7 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
 "rowData = current_query();\n" +
 "for cmd in select * from pg_event_trigger_dropped_objects() loop\n" +
 "    if (upper(cmd.object_identity) not like upper('$(prefixName)%') and upper(cmd.object_identity) not like upper('%.$(prefixName)%') and" + 
-"    upper(cmd.object_identity) not like upper('f$(prefixName)%') and upper(cmd.object_identity) not like upper('%.f$(prefixName)%') and cmd.original) then\n" +
+"    upper(cmd.object_identity) not like upper('f$(prefixName)%') and upper(cmd.object_identity) not like upper('%.f$(prefixName)%') and cmd.original and upper(rowData) not like 'ALTER%') then\n" +
 "        select trigger_hist_id into histId from $(defaultSchema)$(prefixName)_trigger_hist where upper(source_table_name) = upper('$(prefixName)_node') and inactive_time is null;\n" +
 "        insert into $(defaultSchema)$(prefixName)_data\n" +
 "        (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +

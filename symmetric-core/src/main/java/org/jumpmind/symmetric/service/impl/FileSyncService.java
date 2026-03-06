@@ -301,7 +301,9 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             String filePath = file.getParentFile().getPath().replace('\\', '/');
             String fileName = file.getName();
             String nodeId = null;
-            if (engine.getParameterService().is(ParameterConstants.FILE_SYNC_PREVENT_PING_BACK)) {
+            if (fileSnapshot.getLastUpdateBy() != null) {
+                nodeId = fileSnapshot.getLastUpdateBy();
+            } else if (engine.getParameterService().is(ParameterConstants.FILE_SYNC_PREVENT_PING_BACK)) {
                 nodeId = findSourceNodeIdFromFileIncoming(filePath,
                         fileName, fileSnapshot.getFileModifiedTime());
             }
@@ -592,10 +594,10 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                             snapshot.getLastUpdateTime(), snapshot.getLastUpdateBy(), snapshot.getChannelId(),
                             snapshot.getReloadChannelId(),
                             snapshot.getTriggerId(), snapshot.getRouterId(),
-                            snapshot.getRelativeDir(), snapshot.getFileName() }, new int[] {
+                            snapshot.getRelativeDir(), snapshot.getFileName(), snapshot.getExternalFileData() }, new int[] {
                                     Types.VARCHAR, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
                                     Types.TIMESTAMP, Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
-                                    Types.VARCHAR, Types.VARCHAR, Types.VARCHAR });
+                                    Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR });
         }
         // now that we have captured an update, delete the row for cleanup
         if (snapshot.getLastEventType() == LastEventType.DELETE) {
@@ -1368,6 +1370,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             fileSnapshot.setLastEventType(LastEventType.fromCode(rs.getString("last_event_type")));
             fileSnapshot.setTriggerId(rs.getString("trigger_id"));
             fileSnapshot.setRouterId(rs.getString("router_id"));
+            fileSnapshot.setExternalFileData(rs.getString("external_file_data"));
             return fileSnapshot;
         }
     }

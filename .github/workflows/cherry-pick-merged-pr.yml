@@ -2,7 +2,7 @@ name: Cherry-pick merged PR
 on:
   push:
     branches:
-      - 'release/3.16'
+      - 'release/*'
   workflow_dispatch:
     inputs:
       commit_hash:
@@ -87,8 +87,6 @@ jobs:
         env:
           JIRA_KEY: ${{ steps.extract-jira-ticket.outputs.jira_ticket }}
           JIRA_URL: ${{ secrets.JIRA_URL }}
-          JIRA_USER: ${{ secrets.JIRA_USER }}
-          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
         run: |
           RESPONSE_STATUS=$(curl -s -w "%{response_code}" -o /tmp/jira_response.json -X GET \
             --user '${{ secrets.JIRA_USER }}:${{ secrets.JIRA_API_KEY }}' \

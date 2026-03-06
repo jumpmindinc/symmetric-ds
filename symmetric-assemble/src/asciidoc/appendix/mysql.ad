@@ -45,11 +45,23 @@ MySQL allows '0000-00-00 00:00:00' to be entered as a value for datetime and tim
 JDBC cannot deal with a date value with a year of 0. In order to work around this SymmetricDS can be configured to treat date and time 
 columns as varchar columns for data capture and data load. To enable this feature set the db.treat.date.time.as.varchar.enabled property to true.
 
-If you are using UTF-8 encoding in the database, you might consider using the characterEncoding parameter in the JDBC URL.
+
+MySQL allows to control character set and collation at several levels: column, table, logical database (schema), server.
+
+If you are using UTF-8 encoding in the database, you might consider using the `+characterEncoding+` parameter in the JDBC URL.
 
 ----
 jdbc:mysql://hostname/databasename?tinyInt1isBit=false&characterEncoding=utf8
 ----
+
+If you are using extended ASCII character set with the "latin1" collation, you should consider using several advanced parameters in the JDBC URL to tune behavior of the MySQL JDBC driver: `+useUnicode+`, `+characterEncoding+`, `+connectionCollation+`. 
+
+----
+jdbc:mysql://hostname/databasename?useUnicode=true&characterEncoding=Cp1252&connectionCollation=latin1_swedish_ci&<plus_any_other_parameters>
+----
+
+
+Amazon-hosted MySQL is known to have different features and behaviors from Oracle's native MySQL.
 
 If you are using Amazon Web Services to run the MySQL instance, Amazon by default uses binary log replication and disables the creation
 of triggers. In order to allow SymmetricDS to function correctly, the parameter 'log_bin_trust_function_creators' needs to be set
@@ -65,17 +77,32 @@ If you can not log into the server as root, then you can set the parameter in a 
 
 ifdef::pro[]
 
+==== Log Miner (BINLOG capture)
+
 If you are using log-based capture, then you must start MySQL using the `+--log-bin+` option. In addition, you must set the following system variables:
 
 ----
 binlog_format=ROW
 enforce_gtid_consistency=ON
 gtid_mode=ON
+binlog_encryption=OFF
+binlog_transaction_compression=OFF
 ----
 
 Note that there are four possible values for `+gtid_mode+` and it must be set one step at a time. If `+gtid_mode+` is set to "OFF", then it must be set to
-"OFF_PERMISSIVE" and then "ON_PERMISSIVE" before it can be set to "ON". Also note that in versions earlier than MySQL 5.7.6, the `+gtid_mode+` variable must
+"OFF_PERMISSIVE" and then "ON_PERMISSIVE" before it can be set to "ON" (and watch output for errors). 
+----
+SHOW VARIABLES LIKE '%gtid%';
+set global enforce_gtid_consistency='ON';
+set global gtid_mode='OFF_PERMISSIVE';
+set global gtid_mode='ON_PERMISSIVE';
+set global gtid_mode='ON';
+----
+
+Also note that in versions earlier than MySQL 5.7.6, the `+gtid_mode+` variable must
 be set by starting the server with the `+--gtid-mode=ON+` option. Prior to MySQL 5.7.5, the `+--log-slave-updates+` option must also be used at startup.
+
+
 
 endif::pro[]
 
