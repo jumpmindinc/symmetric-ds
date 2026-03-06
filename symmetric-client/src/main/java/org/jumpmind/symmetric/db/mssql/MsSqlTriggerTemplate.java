@@ -51,6 +51,7 @@ public class MsSqlTriggerTemplate extends AbstractTriggerTemplate {
         String triggerExecuteAs = symmetricDialect.getParameterService().getString(ParameterConstants.MSSQL_TRIGGER_EXECUTE_AS, "self");
         String defaultCatalog = symmetricDialect.getParameterService().is(ParameterConstants.MSSQL_INCLUDE_CATALOG_IN_TRIGGERS, true) ? "$(defaultCatalog)"
                 : "";
+        boolean ddlSendTable = symmetricDialect.getParameterService().is(ParameterConstants.TRIGGER_CAPTURE_DDL_SEND_TABLE);
         // @formatter:off
         emptyColumnTemplate = "''" ;
         stringColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else '\"' + replace(replace(convert("+
@@ -434,12 +435,18 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
 "declare @tableName nvarchar(255)\n" +
 "declare @histId int\n" +
 "declare @channelId nvarchar(128)\n" +
+"declare @ddlSendTable nvarchar(10)\n" + 
+"declare @isTableChange nvarchar(10)\n" + 
+"set @ddlSendTable = '" + ddlSendTable + "'\n" +
 "set @data = eventdata()\n" +
 "if (@data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)') not like '$(prefixName)%') begin\n" +
 "  set @eventType = @data.value('(/EVENT_INSTANCE/EventType)[1]', 'nvarchar(128)')\n" +
 "  set @tableName = '$(prefixName)_node'\n" +
-"  if (@eventType like '%_TABLE')\n" +
+"  if (@eventType like '%_TABLE') begin\n" +
+"    if (@ddlSendTable = 'true')\n" +
+"		set @isTableChange = 'true'\n" +
 "    set @tableName = @data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)')\n" +
+"  end\n" +
 "  if (@eventType like '%_TRIGGER' or @eventType like '%_INDEX')\n" +
 "    set @tableName = @data.value('(/EVENT_INSTANCE/TargetObjectName)[1]', 'nvarchar(128)')\n" +
 "  select @histId = max(trigger_hist_id) from " + defaultCatalog + "$(defaultSchema)$(prefixName)_trigger_hist where source_table_name = @tableName and inactive_time is null\n" +
@@ -447,11 +454,18 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
 "    select @channelId = channel_id from " + defaultCatalog + "$(defaultSchema)$(prefixName)_trigger where source_table_name = @tableName\n" +
 "    if (@channelId is null)\n" +
 "      set @channelId = 'config'\n" +
-"    insert into " + defaultCatalog + "$(defaultSchema)$(prefixName)_data\n" +
-"    (table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
-"    values (@tableName, '" + DataEventType.SQL.getCode() + "', @histId,\n" +
-"    '\"delimiter " + delimiter + ";' + CHAR(13) + char(10) + replace(replace(@data.value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'nvarchar(max)'),'\\','\\\\'),'\"','\\\"') + '\",ddl',\n" +
-"    @channelId, " + defaultCatalog + "$(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression() + ")\n" +
+"    if (@isTableChange = 'true')\n" +
+"    		insert into " + defaultCatalog + "$(defaultSchema)$(prefixName)_data\n" +
+"    		(table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
+"    		values (@tableName, '" + DataEventType.CREATE.getCode() + "', @histId,\n" +
+"    		'" + AbstractTriggerTemplate.CREATE_EVENT_DDL_GENERATED + "',\n" +
+"    		@channelId, " + defaultCatalog + "$(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression() + ")\n" +
+"    else\n" +
+"    		insert into " + defaultCatalog + "$(defaultSchema)$(prefixName)_data\n" +
+"    		(table_name, event_type, trigger_hist_id, row_data, channel_id, source_node_id, create_time)\n" +
+"    		values (@tableName, '" + DataEventType.SQL.getCode() + "', @histId,\n" +
+"    		'\"delimiter " + delimiter + ";' + CHAR(13) + char(10) + replace(replace(@data.value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'nvarchar(max)'),'\\','\\\\'),'\"','\\\"') + '\",ddl',\n" +
+"    		@channelId, " + defaultCatalog + "$(defaultSchema)$(prefixName)_node_disabled(), " + getCreateTimeExpression() + ")\n" +
 "  end\n" +
 "end\n" + "---- go");
         

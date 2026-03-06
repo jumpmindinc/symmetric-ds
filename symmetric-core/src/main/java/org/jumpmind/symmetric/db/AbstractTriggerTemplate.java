@@ -62,6 +62,7 @@ abstract public class AbstractTriggerTemplate {
     protected static final String UPDATE_WITH_RELOAD_TRIGGER_TEMPLATE = "updateReloadTriggerTemplate";
     protected static final String DELETE_TRIGGER_TEMPLATE = "deleteTriggerTemplate";
     protected static final String INITIAL_LOAD_SQL_TEMPLATE = "initialLoadSqlTemplate";
+    public static final String CREATE_EVENT_DDL_GENERATED = "ddl.generated";
     protected Map<String, String> sqlTemplates;
     protected String emptyColumnTemplate = "''";
     protected String stringColumnTemplate;

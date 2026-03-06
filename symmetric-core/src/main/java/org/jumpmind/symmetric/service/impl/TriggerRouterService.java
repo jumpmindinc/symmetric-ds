@@ -2228,6 +2228,10 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public boolean syncTriggers(List<Trigger> triggers, ITriggerCreationListener listener, boolean force, boolean verifyInDatabase) {
+        return syncTriggers(triggers, listener, force, verifyInDatabase, true);
+    }
+
+    public boolean syncTriggers(List<Trigger> triggers, ITriggerCreationListener listener, boolean force, boolean verifyInDatabase, boolean useTableCache) {
         if (clusterService.lock(ClusterConstants.SYNC_TRIGGERS)) {
             TriggerRouterContext context = new TriggerRouterContext();
             long startTime = System.currentTimeMillis();
@@ -2294,7 +2298,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                                 }
                             }
                             Map<String, List<TriggerTableSupportingInfo>> triggerToTableSupportingInfo = getTriggerToTableSupportingInfo(
-                                    Collections.singletonList(trigger), allHistories, true, context);
+                                    Collections.singletonList(trigger), allHistories, useTableCache, context);
                             updateOrCreateDatabaseTrigger(trigger, triggersForCurrentNode, null, force,
                                     verifyInDatabase, allHistories, false, triggerToTableSupportingInfo, context);
                         } else {

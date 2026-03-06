@@ -486,6 +486,7 @@ final public class ParameterConstants {
     public static final String SYNC_USE_READY_QUEUES = "sync.use.ready.queues";
     public static final String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
     public static final String MSSQL_BULK_LOAD_BCP_CODE_PAGE = "mssql.bulk.load.bcp.code.page";
+    public final static String TRIGGER_CAPTURE_DDL_SEND_TABLE = "trigger.capture.ddl.send.table";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;
