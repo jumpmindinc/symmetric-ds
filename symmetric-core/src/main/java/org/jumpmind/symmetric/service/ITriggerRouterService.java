@@ -258,6 +258,8 @@ public interface ITriggerRouterService {
 
     public boolean syncTriggers(List<Trigger> triggers, ITriggerCreationListener listener, boolean force, boolean verifyInDatabase);
 
+    public boolean syncTriggers(List<Trigger> triggers, ITriggerCreationListener listener, boolean force, boolean verifyInDatabase, boolean useTableCache);
+
     public boolean syncTriggers(Table table, boolean genAlways);
 
     public boolean syncTriggers(List<Table> tables, boolean genAlways);

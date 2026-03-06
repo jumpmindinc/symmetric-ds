@@ -2741,7 +2741,12 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
     }
 
     @Override
+<<<<<<< HEAD
     public String getCteExpressionPrefix() {
         return "";
+=======
+    public boolean supportDefaultValues() {
+        return true;
+>>>>>>> eb8e5408c (SYM-7015: DDL capture support for cross platform (#431))
     }
 }
