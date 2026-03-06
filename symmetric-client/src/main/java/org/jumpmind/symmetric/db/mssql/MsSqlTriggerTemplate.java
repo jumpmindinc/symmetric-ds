@@ -52,7 +52,6 @@ public class MsSqlTriggerTemplate extends AbstractTriggerTemplate {
         String defaultCatalog = symmetricDialect.getParameterService().is(ParameterConstants.MSSQL_INCLUDE_CATALOG_IN_TRIGGERS, true) ? "$(defaultCatalog)"
                 : "";
         boolean ddlSendTable = symmetricDialect.getParameterService().is(ParameterConstants.TRIGGER_CAPTURE_DDL_SEND_TABLE);
-        
         // @formatter:off
         emptyColumnTemplate = "''" ;
         stringColumnTemplate = "case when $(tableAlias).\"$(columnName)\" is null then '' else '\"' + replace(replace(convert("+
