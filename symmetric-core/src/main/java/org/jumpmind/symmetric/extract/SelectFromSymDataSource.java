@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.extract;
 
 import java.sql.Types;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,7 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.Batch.BatchType;
 import org.jumpmind.symmetric.io.data.CsvData;
@@ -198,7 +200,8 @@ public class SelectFromSymDataSource extends SelectFromSource {
                                     ".  Corrupted row for data ID " + data.getDataId() + ": " + data.getPkData();
                             throw new ProtocolException(message, data.getTableName(), columnCount, expectedColumnCount);
                         }
-                    } else if (data.getDataEventType() == DataEventType.CREATE && StringUtils.isBlank(data.getCsvData(CsvData.ROW_DATA))) {
+                    } else if (data.getDataEventType() == DataEventType.CREATE && (StringUtils.isBlank(data.getCsvData(CsvData.ROW_DATA))
+                            || data.getRowData().contains(AbstractTriggerTemplate.CREATE_EVENT_DDL_GENERATED))) {
                         if (!processCreateEvent(triggerHistory, routerId, data)) {
                             return null;
                         }
@@ -282,6 +285,15 @@ public class SelectFromSymDataSource extends SelectFromSource {
     }
 
     protected boolean processCreateEvent(TriggerHistory triggerHistory, String routerId, Data data) {
+        if (data.getRowData() != null && data.getRowData().contains(AbstractTriggerTemplate.CREATE_EVENT_DDL_GENERATED)) {
+            data.putCsvData(CsvData.ROW_DATA, "");
+            Trigger trigger = engine.getTriggerRouterService().getTriggerById(triggerHistory.getTriggerId());
+            engine.getTriggerRouterService().syncTriggers(Collections.singletonList(trigger), null, true, false, false);
+            List<TriggerHistory> latestTriggerHistory = engine.getTriggerRouterService().getActiveTriggerHistories(trigger);
+            for (TriggerHistory th : latestTriggerHistory) {
+                triggerHistory = th;
+            }
+        }
         String oldData = data.getCsvData(CsvData.OLD_DATA);
         boolean sendSchemaExcludeIndices = false;
         boolean sendSchemaExcludeForeignKeys = false;

@@ -116,6 +116,8 @@ public class DbFill {
     // Minimum column size for all columns with foreign key references
     // For example, if pid varchar(10) references id varchar(5), then both id and pid will return min column size as 5
     private Map<String, Integer> minColumnSizes = new HashMap<String, Integer>();
+    // Cache of SET column values: key = "tableName.columnName", value = valid SET values
+    private Map<String, String[]> setColumnValues = new HashMap<>();
     // -1 for no limit
     private static final int RANDOM_SELECT_SIZE = 100;
     // Must remain 0-2 to choose randomly.
@@ -841,13 +843,59 @@ public class DbFill {
         }
     }
 
+    private void loadSetColumnValues(Table table) {
+        if (!platform.getName().equals(DatabaseNamesConstants.MYSQL)) {
+            return;
+        }
+        String tableKey = table.getName() + ".";
+        for (String key : setColumnValues.keySet()) {
+            if (key.startsWith(tableKey)) {
+                return;
+            }
+        }
+        try {
+            String sql = "SELECT column_name, column_type FROM information_schema.columns " +
+                    "WHERE table_schema = ? AND table_name = ? AND column_type LIKE 'set(%'";
+            List<Row> rows = platform.getSqlTemplate().query(sql, new Object[] { getCatalogToUse(), table.getName() });
+            for (Row row : rows) {
+                String columnName = row.getString("column_name");
+                String columnType = row.getString("column_type");
+                String valuesStr = columnType.substring(4, columnType.length() - 1);
+                String[] values = valuesStr.split(",");
+                for (int i = 0; i < values.length; i++) {
+                    values[i] = StringUtils.unwrap(values[i].trim(), "'");
+                }
+                setColumnValues.put(table.getName() + "." + columnName, values);
+            }
+        } catch (Exception e) {
+            log.debug("Could not load SET column values for table {}", table.getName(), e);
+        }
+    }
+
     private Object generateRandomValueForColumn(Table table, Column column) {
         Object objectValue = null;
         int type = column.getMappedTypeCode();
+        loadSetColumnValues(table);
         if (column.getPlatformColumns() != null && column.getPlatformColumns().get(platform.getName()) != null && column.getPlatformColumns().get(platform
                 .getName()).isEnum()) {
             objectValue = column.getPlatformColumns().get(platform.getName()).getEnumValues()[getRand().nextInt(column.getPlatformColumns().get(platform
                     .getName()).getEnumValues().length)];
+        } else if (setColumnValues.containsKey(table.getName() + "." + column.getName())) {
+            String[] setValues = setColumnValues.get(table.getName() + "." + column.getName());
+            StringBuilder sb = new StringBuilder();
+            boolean first = true;
+            for (String val : setValues) {
+                if (getRand().nextBoolean()) {
+                    if (!first)
+                        sb.append(",");
+                    sb.append(val);
+                    first = false;
+                }
+            }
+            if (sb.length() == 0) {
+                sb.append(setValues[getRand().nextInt(setValues.length)]);
+            }
+            objectValue = sb.toString();
         } else if (column.getJdbcTypeName() != null && column.getJdbcTypeName().equals("uniqueidentifier")) {
             objectValue = randomUUID();
         } else if (column.isTimestampWithTimezone()) {

@@ -90,6 +90,9 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
     protected LogSqlBuilder logSqlBuilder = new LogSqlBuilder();
     protected Boolean isCteExpression;
     protected boolean hasUncommittedDdl;
+    protected List<Column> lookupKeys = null;
+    protected ArrayList<Column> changedColumnsList = new ArrayList<>();
+    boolean[] nullKeyValues = null;
 
     public DefaultDatabaseWriter(IDatabasePlatform platform) {
         this(platform, null, null);
@@ -347,7 +350,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
             if (requireNewStatement(DmlType.DELETE, data, useConflictDetection, useConflictDetection,
                     conflict.getDetectType())) {
                 lastUseConflictDetection = useConflictDetection;
-                List<Column> lookupKeys = null;
+                lookupKeys = null;
                 if (!useConflictDetection) {
                     lookupKeys = targetTable.getPrimaryKeyColumnsAsList();
                 } else {
@@ -410,7 +413,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                     throw new IllegalStateException(msg);
                 }
                 lookupDataMap = getLookupDataMap(data, conflict);
-                boolean[] nullKeyValues = new boolean[lookupKeys.size()];
+                nullKeyValues = new boolean[lookupKeys.size()];
                 for (int i = 0; i < lookupKeys.size(); i++) {
                     Column column = lookupKeys.get(i);
                     nullKeyValues[i] = !column.isRequired()
@@ -469,7 +472,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
             String[] rowData = getRowData(data, CsvData.ROW_DATA);
             String[] oldData = getRowData(data, CsvData.OLD_DATA);
             ArrayList<String> changedColumnValueList = new ArrayList<>();
-            ArrayList<Column> changedColumnsList = new ArrayList<>();
+            changedColumnsList = new ArrayList<>();
             for (int i = 0; i < targetTable.getColumnCount(); i++) {
                 Column column = targetTable.getColumn(i);
                 if (column != null) {
@@ -486,7 +489,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                         useConflictDetection, conflict.getDetectType())) {
                     lastApplyChangesOnly = applyChangesOnly;
                     lastUseConflictDetection = useConflictDetection;
-                    List<Column> lookupKeys = null;
+                    lookupKeys = null;
                     if (!useConflictDetection) {
                         lookupKeys = targetTable.getPrimaryKeyColumnsAsList();
                     } else {
@@ -567,7 +570,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                         throw new IllegalStateException(msg);
                     }
                     lookupDataMap = getLookupDataMap(data, conflict);
-                    boolean[] nullKeyValues = new boolean[lookupKeys.size()];
+                    nullKeyValues = new boolean[lookupKeys.size()];
                     for (int i = 0; i < lookupKeys.size(); i++) {
                         Column column = lookupKeys.get(i);
                         // the isRequired is a bit of a hack. This nullKeyValues

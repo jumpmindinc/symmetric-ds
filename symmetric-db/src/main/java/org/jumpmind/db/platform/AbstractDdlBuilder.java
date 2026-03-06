@@ -2744,4 +2744,8 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
     public String getCteExpressionPrefix() {
         return "";
     }
+
+    public boolean supportDefaultValues() {
+        return true;
+    }
 }

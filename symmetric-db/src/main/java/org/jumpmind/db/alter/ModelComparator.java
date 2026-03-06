@@ -467,7 +467,7 @@ public class ModelComparator {
                 changes.add(new ColumnSizeChange(sourceTable, sourceColumn, targetColumn.getSizeAsInt(), targetColumn.getScale()));
             }
         }
-        if (supportsDefaultValues() && !defaultValuesAreEqual(sourceColumn, targetColumn)) {
+        if (supportsDefaultValues() && ddlBuilder.supportDefaultValues() && !defaultValuesAreEqual(sourceColumn, targetColumn)) {
             log.info("The {} column on the {} table changed default value from {} to {} ", sourceColumn.getName(), sourceTable.getName(),
                     sourceColumn.getDefaultValue(), targetColumn.getDefaultValue());
             changes.add(new ColumnDefaultValueChange(sourceTable, sourceColumn, targetColumn.getDefaultValue()));
