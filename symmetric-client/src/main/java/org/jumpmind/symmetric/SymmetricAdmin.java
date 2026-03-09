@@ -82,6 +82,7 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.ext.IConfigImportInterceptor;
 import org.jumpmind.symmetric.io.data.DbExportUtils;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.IncomingBatch;
@@ -490,6 +491,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                             engine.getParameterService().getNodeGroupId()));
                     System.exit(1);
                 }
+                content = interceptImport(content, true);
                 IDataLoaderService service = getSymmetricEngine().getDataLoaderService();
                 List<IncomingBatch> batches = service.loadDataBatch(content);
                 for (IncomingBatch batch : batches) {
@@ -507,12 +509,18 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                 }
                 String sql = SymmetricUtils.removeInvalidTablesFromImportedSql(getSymmetricEngine().getTablePrefix(),
                         new SqlScriptReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8.name())));
+                sql = interceptImport(sql, false);
                 SqlScript script = new SqlScript(sql, getSymmetricEngine().getDatabasePlatform().getSqlTemplate(), true, null);
                 script.execute();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String interceptImport(String content, boolean isCsv) {
+        IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService().getExtensionPoint(IConfigImportInterceptor.class);
+        return interceptor != null ? interceptor.interceptImport(content, isCsv) : content;
     }
 
     private void exportConfig(CommandLine line, List<String> args) {
