@@ -84,6 +84,7 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.ext.IConfigImportInterceptor;
 import org.jumpmind.symmetric.io.data.DbExportUtils;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.IncomingBatch;
@@ -464,8 +465,9 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         String fileName = popArg(args, "file name");
         try {
             File configFile = new File(fileName);
+            String content = FileUtils.readFileToString(configFile, Charset.defaultCharset());
             if (fileName.toLowerCase().endsWith(".csv")) {
-                String content = FileUtils.readFileToString(configFile, Charset.defaultCharset());
+                content = interceptImport(content, true);
                 IDataLoaderService service = getSymmetricEngine().getDataLoaderService();
                 List<IncomingBatch> batches = service.loadDataBatch(content);
                 for (IncomingBatch batch : batches) {
@@ -475,8 +477,8 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                     }
                 }
             } else if (fileName.toLowerCase().endsWith(".sql")) {
-                URL url = configFile.toURI().toURL();
-                SqlScript script = new SqlScript(url, getSymmetricEngine().getDatabasePlatform().getSqlTemplate());
+                content = interceptImport(content, false);
+                SqlScript script = new SqlScript(content, getSymmetricEngine().getDatabasePlatform().getSqlTemplate(), true, null);
                 script.execute();
             } else {
                 System.err.println("ERROR: Expected a .csv or .sql file.");
@@ -485,6 +487,11 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String interceptImport(String content, boolean isCsv) {
+        IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService().getExtensionPoint(IConfigImportInterceptor.class);
+        return interceptor != null ? interceptor.interceptImport(content, isCsv) : content;
     }
 
     private void exportConfig(CommandLine line, List<String> args) {
