@@ -84,6 +84,7 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.ext.IConfigImportInterceptor;
 import org.jumpmind.symmetric.io.data.DbExportUtils;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.IncomingBatch;
@@ -466,6 +467,15 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
             File configFile = new File(fileName);
             if (fileName.toLowerCase().endsWith(".csv")) {
                 String content = FileUtils.readFileToString(configFile, Charset.defaultCharset());
+<<<<<<< HEAD
+=======
+                if (!SymmetricUtils.importContainsCurrentGroup(getSymmetricEngine(), content, true)) {
+                    System.err.println(String.format("ERROR: Imported .csv file doesn't contain current node group (%s)",
+                            engine.getParameterService().getNodeGroupId()));
+                    System.exit(1);
+                }
+                content = interceptImport(content, true);
+>>>>>>> b476feb13 (SYM-7147: Prevented config import from replacing a valid license key with an invalid license key (#623))
                 IDataLoaderService service = getSymmetricEngine().getDataLoaderService();
                 List<IncomingBatch> batches = service.loadDataBatch(content);
                 for (IncomingBatch batch : batches) {
@@ -476,7 +486,19 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                 }
             } else if (fileName.toLowerCase().endsWith(".sql")) {
                 URL url = configFile.toURI().toURL();
+<<<<<<< HEAD
                 SqlScript script = new SqlScript(url, getSymmetricEngine().getDatabasePlatform().getSqlTemplate());
+=======
+                if (!SymmetricUtils.importContainsCurrentGroup(getSymmetricEngine(), url, false)) {
+                    System.err.println(String.format("ERROR: Imported .sql file doesn't contain current node group (%s)",
+                            engine.getParameterService().getNodeGroupId()));
+                    System.exit(1);
+                }
+                String sql = SymmetricUtils.removeInvalidTablesFromImportedSql(getSymmetricEngine().getTablePrefix(),
+                        new SqlScriptReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8.name())));
+                sql = interceptImport(sql, false);
+                SqlScript script = new SqlScript(sql, getSymmetricEngine().getDatabasePlatform().getSqlTemplate(), true, null);
+>>>>>>> b476feb13 (SYM-7147: Prevented config import from replacing a valid license key with an invalid license key (#623))
                 script.execute();
             } else {
                 System.err.println("ERROR: Expected a .csv or .sql file.");
@@ -485,6 +507,11 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String interceptImport(String content, boolean isCsv) {
+        IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService().getExtensionPoint(IConfigImportInterceptor.class);
+        return interceptor != null ? interceptor.interceptImport(content, isCsv) : content;
     }
 
     private void exportConfig(CommandLine line, List<String> args) {
