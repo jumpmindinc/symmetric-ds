@@ -491,11 +491,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                             engine.getParameterService().getNodeGroupId()));
                     System.exit(1);
                 }
-                IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService()
-                        .getExtensionPoint(IConfigImportInterceptor.class);
-                if (interceptor != null) {
-                    content = interceptor.interceptImport(content, true);
-                }
+                content = interceptImport(content, true);
                 IDataLoaderService service = getSymmetricEngine().getDataLoaderService();
                 List<IncomingBatch> batches = service.loadDataBatch(content);
                 for (IncomingBatch batch : batches) {
@@ -513,17 +509,18 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                 }
                 String sql = SymmetricUtils.removeInvalidTablesFromImportedSql(getSymmetricEngine().getTablePrefix(),
                         new SqlScriptReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8.name())));
-                IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService()
-                        .getExtensionPoint(IConfigImportInterceptor.class);
-                if (interceptor != null) {
-                    sql = interceptor.interceptImport(sql, false);
-                }
+                sql = interceptImport(sql, false);
                 SqlScript script = new SqlScript(sql, getSymmetricEngine().getDatabasePlatform().getSqlTemplate(), true, null);
                 script.execute();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String interceptImport(String content, boolean isCsv) {
+        IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService().getExtensionPoint(IConfigImportInterceptor.class);
+        return interceptor != null ? interceptor.interceptImport(content, isCsv) : content;
     }
 
     private void exportConfig(CommandLine line, List<String> args) {
