@@ -458,7 +458,7 @@ public class ClusterService extends AbstractService implements IClusterService {
      * local file system. The intension is to uniquely identity SymmetricDS installations, and protect against situations where things are misconfigured and
      * potentially pointed at the wrong databases, or pointed at the same database without the cluster.lock.enabled parameter turned on.
      */
-    protected static String generateInstanceId(String hostName) {
+    public static String generateInstanceId(String hostName) {
         final int MAX_HOST_LENGTH = 23;
         StringBuilder buff = new StringBuilder();
         buff.append(hostName);
