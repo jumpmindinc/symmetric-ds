@@ -72,6 +72,14 @@ endif::pro[]
 * :REDIRECT_NODE
 ====
 
+[TIP]
+.Virtual columns that resolve from trigger history
+====
+
+* :SOURCE_SCHEMA
+* :SOURCE_CATALOG
+====
+
 . Consider a table that needs to be routed to only nodes in the target group whose STORE_ID column matches the external id of a node. 
 
 ifdef::pro[]
@@ -163,6 +171,29 @@ insert into SYM_ROUTER (router_id,
 	('corp-2-store-multiple-matches','corp', 'store', 'column',
 	'STORE_ID=NULL or STORE_ID=:EXTERNAL_ID', current_timestamp,
 	current_timestamp); 
+----
+endif::pro[]
+
+. Consider a table captured with a wildcard schema trigger (source_schema_name=*) that needs to route to nodes whose external id matches the source schema name.
+
+ifdef::pro[]
+.Router Expression
+
+----
+:SOURCE_SCHEMA=:EXTERNAL_ID
+----
+endif::pro[]
+
+ifndef::pro[]
+.The following SQL statement will insert a column router to accomplish that.
+[source, SQL]
+----
+insert into SYM_ROUTER (router_id,
+	source_node_group_id, target_node_group_id, router_type,
+	router_expression, create_time, last_update_time) values
+	('corp-2-store-by-schema','corp', 'store', 'column',
+	':SOURCE_SCHEMA=:EXTERNAL_ID', current_timestamp,
+	current_timestamp);
 ----
 endif::pro[]
 

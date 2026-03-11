@@ -333,7 +333,7 @@ public class ColumnMatchDataRouterTest {
     }
 
     @Test
-    public void testExpressionSourceSchemaEqualsExternalId() {
+    void testExpressionSourceSchemaEqualsExternalId() {
         HashSet<Node> nodes = new HashSet<Node>();
         Node node1 = new Node("1", "client");
         node1.setExternalId("warehouse");
@@ -362,7 +362,7 @@ public class ColumnMatchDataRouterTest {
         Table table = new Table();
         NodeChannel nodeChannel = new NodeChannel();
         Router route = new Router();
-        route.setRouterExpression("SOURCE_SCHEMA = :EXTERNAL_ID");
+        route.setRouterExpression(":SOURCE_SCHEMA = :EXTERNAL_ID");
         route.setRouterId("route1");
         DataMetaData dataMetaData = new DataMetaData(data, table, route, nodeChannel);
         Set<String> result = router.routeToNodes(routingContext, dataMetaData, nodes, false, false, null);
@@ -371,7 +371,7 @@ public class ColumnMatchDataRouterTest {
     }
 
     @Test
-    public void testExpressionSourceSchemaNotEquals() {
+    void testExpressionSourceSchemaNotEquals() {
         HashSet<Node> nodes = new HashSet<Node>();
         Node node1 = new Node("1", "client");
         node1.setExternalId("warehouse");
@@ -400,7 +400,7 @@ public class ColumnMatchDataRouterTest {
         Table table = new Table();
         NodeChannel nodeChannel = new NodeChannel();
         Router route = new Router();
-        route.setRouterExpression("SOURCE_SCHEMA != :EXTERNAL_ID");
+        route.setRouterExpression(":SOURCE_SCHEMA != :EXTERNAL_ID");
         route.setRouterId("route1");
         DataMetaData dataMetaData = new DataMetaData(data, table, route, nodeChannel);
         Set<String> result = router.routeToNodes(routingContext, dataMetaData, nodes, false, false, null);
@@ -410,7 +410,7 @@ public class ColumnMatchDataRouterTest {
     }
 
     @Test
-    public void testExpressionSourceCatalogEqualsExternalId() {
+    void testExpressionSourceCatalogEqualsExternalId() {
         HashSet<Node> nodes = new HashSet<Node>();
         Node node1 = new Node("1", "client");
         node1.setExternalId("proddb");
@@ -436,7 +436,7 @@ public class ColumnMatchDataRouterTest {
         Table table = new Table();
         NodeChannel nodeChannel = new NodeChannel();
         Router route = new Router();
-        route.setRouterExpression("SOURCE_CATALOG = :EXTERNAL_ID");
+        route.setRouterExpression(":SOURCE_CATALOG = :EXTERNAL_ID");
         route.setRouterId("route1");
         DataMetaData dataMetaData = new DataMetaData(data, table, route, nodeChannel);
         Set<String> result = router.routeToNodes(routingContext, dataMetaData, nodes, false, false, null);
