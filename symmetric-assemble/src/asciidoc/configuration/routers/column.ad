@@ -8,8 +8,10 @@ Column routers are configured by setting the router_type column on the ROUTER ta
 the router_expression column to an equality expression that represents the expected value of the column.
 endif::pro[]
 
-The first part of the expression is always the column name. The column name should always be defined in upper case. 
+The first part of the expression is typically a column name, defined in upper case.
 The upper case column name prefixed by OLD_ can be used for a comparison being done with the old column data value.
+The virtual column tokens :SOURCE_SCHEMA and :SOURCE_CATALOG can also be used in place of a column name to match
+against the source schema or catalog from the trigger history.
 
 The second part of the expression can be a constant value, a token that represents another column, or a token that 
 represents some other SymmetricDS concept. Token values always begin with a colon (:).
