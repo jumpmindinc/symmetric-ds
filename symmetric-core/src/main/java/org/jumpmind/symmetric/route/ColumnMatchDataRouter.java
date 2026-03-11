@@ -92,10 +92,12 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
                     String columnValue = columnValues.get(column);
                     if (columnValue == null && TokenConstants.SOURCE_SCHEMA.equalsIgnoreCase(column)) {
                         columnValue = dataMetaData.getTriggerHistory() != null
-                                ? dataMetaData.getTriggerHistory().getSourceSchemaName() : null;
+                                ? dataMetaData.getTriggerHistory().getSourceSchemaName()
+                                : null;
                     } else if (columnValue == null && TokenConstants.SOURCE_CATALOG.equalsIgnoreCase(column)) {
                         columnValue = dataMetaData.getTriggerHistory() != null
-                                ? dataMetaData.getTriggerHistory().getSourceCatalogName() : null;
+                                ? dataMetaData.getTriggerHistory().getSourceCatalogName()
+                                : null;
                     }
                     if (value.equalsIgnoreCase(TokenConstants.NODE_ID)) {
                         for (Node node : nodes) {
