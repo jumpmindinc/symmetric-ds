@@ -52,6 +52,8 @@ import org.jumpmind.symmetric.model.TriggerRouter;
  * <li>:NODE_ID</li>
  * <li>:EXTERNAL_ID</li>
  * <li>:NODE_GROUP_ID</li>
+ * <li>:SOURCE_SCHEMA</li>
+ * <li>:SOURCE_CATALOG</li>
  * <li>:REDIRECT_NODE</li>
  * <li>:{column name}</li>
  * </ol>
@@ -89,6 +91,13 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
                     String column = e.getTokens()[0].trim();
                     String value = e.getTokens()[1];
                     String columnValue = columnValues.get(column);
+                    if (columnValue == null && "SOURCE_SCHEMA".equalsIgnoreCase(column)) {
+                        columnValue = dataMetaData.getTriggerHistory() != null
+                                ? dataMetaData.getTriggerHistory().getSourceSchemaName() : null;
+                    } else if (columnValue == null && "SOURCE_CATALOG".equalsIgnoreCase(column)) {
+                        columnValue = dataMetaData.getTriggerHistory() != null
+                                ? dataMetaData.getTriggerHistory().getSourceCatalogName() : null;
+                    }
                     if (value.equalsIgnoreCase(TokenConstants.NODE_ID)) {
                         for (Node node : nodes) {
                             nodeIds = runExpression(e, columnValue, node.getNodeId(), nodes,
@@ -120,6 +129,20 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
                         String sourceNodeGroupId = identity.getNodeGroupId();
                         for (Node node : nodes) {
                             nodeIds = runExpression(e, columnValue, sourceNodeGroupId, nodes,
+                                    nodeIds, node);
+                        }
+                    } else if (value.equalsIgnoreCase(TokenConstants.SOURCE_SCHEMA)) {
+                        String sourceSchema = dataMetaData.getTriggerHistory() != null
+                                ? dataMetaData.getTriggerHistory().getSourceSchemaName() : null;
+                        for (Node node : nodes) {
+                            nodeIds = runExpression(e, columnValue, sourceSchema, nodes,
+                                    nodeIds, node);
+                        }
+                    } else if (value.equalsIgnoreCase(TokenConstants.SOURCE_CATALOG)) {
+                        String sourceCatalog = dataMetaData.getTriggerHistory() != null
+                                ? dataMetaData.getTriggerHistory().getSourceCatalogName() : null;
+                        for (Node node : nodes) {
+                            nodeIds = runExpression(e, columnValue, sourceCatalog, nodes,
                                     nodeIds, node);
                         }
                     } else if (e.hasEquals() && value.equalsIgnoreCase(TokenConstants.REDIRECT_NODE)) {

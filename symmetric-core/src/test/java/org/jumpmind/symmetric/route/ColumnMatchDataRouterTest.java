@@ -331,4 +331,116 @@ public class ColumnMatchDataRouterTest {
         assertEquals(true, result.contains("100"));
         assertEquals(true, result.contains("300"));
     }
+
+    @Test
+    public void testExpressionSourceSchemaEqualsExternalId() {
+        HashSet<Node> nodes = new HashSet<Node>();
+        Node node1 = new Node("1", "client");
+        node1.setExternalId("warehouse");
+        nodes.add(node1);
+        Node node2 = new Node("2", "client");
+        node2.setExternalId("retail");
+        nodes.add(node2);
+        Node node3 = new Node("3", "client");
+        node3.setExternalId("office");
+        nodes.add(node3);
+        ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
+        INodeService nodeService = mock(INodeService.class);
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        doReturn(symmetricDialect).when(engine).getSymmetricDialect();
+        doReturn(nodeService).when(engine).getNodeService();
+        doReturn(new Node("0", "server")).when(nodeService).findIdentity(true, true);
+        ColumnMatchDataRouter router = new ColumnMatchDataRouter(engine);
+        SimpleRouterContext routingContext = new SimpleRouterContext();
+        TriggerHistory triggerHist = new TriggerHistory("mytable", "ID", "ID,COLUMN2");
+        triggerHist.setSourceSchemaName("warehouse");
+        Data data = new Data();
+        data.setDataId(1);
+        data.setDataEventType(DataEventType.INSERT);
+        data.setRowData("1,Super Dooper");
+        data.setTriggerHistory(triggerHist);
+        Table table = new Table();
+        NodeChannel nodeChannel = new NodeChannel();
+        Router route = new Router();
+        route.setRouterExpression("SOURCE_SCHEMA = :EXTERNAL_ID");
+        route.setRouterId("route1");
+        DataMetaData dataMetaData = new DataMetaData(data, table, route, nodeChannel);
+        Set<String> result = router.routeToNodes(routingContext, dataMetaData, nodes, false, false, null);
+        assertEquals(1, result.size());
+        assertEquals(true, result.contains("1"));
+    }
+
+    @Test
+    public void testExpressionSourceSchemaNotEquals() {
+        HashSet<Node> nodes = new HashSet<Node>();
+        Node node1 = new Node("1", "client");
+        node1.setExternalId("warehouse");
+        nodes.add(node1);
+        Node node2 = new Node("2", "client");
+        node2.setExternalId("retail");
+        nodes.add(node2);
+        Node node3 = new Node("3", "client");
+        node3.setExternalId("office");
+        nodes.add(node3);
+        ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
+        INodeService nodeService = mock(INodeService.class);
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        doReturn(symmetricDialect).when(engine).getSymmetricDialect();
+        doReturn(nodeService).when(engine).getNodeService();
+        doReturn(new Node("0", "server")).when(nodeService).findIdentity(true, true);
+        ColumnMatchDataRouter router = new ColumnMatchDataRouter(engine);
+        SimpleRouterContext routingContext = new SimpleRouterContext();
+        TriggerHistory triggerHist = new TriggerHistory("mytable", "ID", "ID,COLUMN2");
+        triggerHist.setSourceSchemaName("warehouse");
+        Data data = new Data();
+        data.setDataId(1);
+        data.setDataEventType(DataEventType.INSERT);
+        data.setRowData("1,Super Dooper");
+        data.setTriggerHistory(triggerHist);
+        Table table = new Table();
+        NodeChannel nodeChannel = new NodeChannel();
+        Router route = new Router();
+        route.setRouterExpression("SOURCE_SCHEMA != :EXTERNAL_ID");
+        route.setRouterId("route1");
+        DataMetaData dataMetaData = new DataMetaData(data, table, route, nodeChannel);
+        Set<String> result = router.routeToNodes(routingContext, dataMetaData, nodes, false, false, null);
+        assertEquals(2, result.size());
+        assertEquals(true, result.contains("2"));
+        assertEquals(true, result.contains("3"));
+    }
+
+    @Test
+    public void testExpressionSourceCatalogEqualsExternalId() {
+        HashSet<Node> nodes = new HashSet<Node>();
+        Node node1 = new Node("1", "client");
+        node1.setExternalId("proddb");
+        nodes.add(node1);
+        Node node2 = new Node("2", "client");
+        node2.setExternalId("devdb");
+        nodes.add(node2);
+        ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
+        INodeService nodeService = mock(INodeService.class);
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        doReturn(symmetricDialect).when(engine).getSymmetricDialect();
+        doReturn(nodeService).when(engine).getNodeService();
+        doReturn(new Node("0", "server")).when(nodeService).findIdentity(true, true);
+        ColumnMatchDataRouter router = new ColumnMatchDataRouter(engine);
+        SimpleRouterContext routingContext = new SimpleRouterContext();
+        TriggerHistory triggerHist = new TriggerHistory("mytable", "ID", "ID,COLUMN2");
+        triggerHist.setSourceCatalogName("proddb");
+        Data data = new Data();
+        data.setDataId(1);
+        data.setDataEventType(DataEventType.INSERT);
+        data.setRowData("1,Super Dooper");
+        data.setTriggerHistory(triggerHist);
+        Table table = new Table();
+        NodeChannel nodeChannel = new NodeChannel();
+        Router route = new Router();
+        route.setRouterExpression("SOURCE_CATALOG = :EXTERNAL_ID");
+        route.setRouterId("route1");
+        DataMetaData dataMetaData = new DataMetaData(data, table, route, nodeChannel);
+        Set<String> result = router.routeToNodes(routingContext, dataMetaData, nodes, false, false, null);
+        assertEquals(1, result.size());
+        assertEquals(true, result.contains("1"));
+    }
 }
