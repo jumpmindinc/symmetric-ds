@@ -4,9 +4,11 @@
 Export your configuration at any time through the web console. Open the Configure tab, then click the Details tab. On the Overview screen you there is an [export] button. Use the drop down to select the format you would like to use for the export.
 
 
-Exporting your configuration might be useful in order to save a configuration in source control or to be used as an import 
-into another environment.  Export and Import are frequently used to migrate configuration between test and production environments.
+Exporting SymmetricDS configuration might be useful in order to save it in source control or to be used as an import 
+into another environment. Export and Import actions are frequently used to migrate configuration between test and production environments. 
 
+NOTE: Group identifiers (node_group_id) are significant in the SymmetricDS configuration. It is a *requirement that Group IDs are identical* in both production and test environments. See the Groups section (below) for details. 
 
-Consider setting the topbar.system.text=YOUR_ENRIONMENT_NAME parameter in the engine properties file to help visually separate environments with identical configuration.
+In contrast, server hostnames, database connection strings and other start up parmaeters are not included in configuration export file at all. 
 
+NOTE: Consider setting the *topbar.system.text*=YOUR_ENRIONMENT_NAME parameter in the engine properties file to help visually separate environments with identical configuration.
