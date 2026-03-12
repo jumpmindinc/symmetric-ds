@@ -1006,7 +1006,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
     /**
      * Used for unit tests
      */
-    public void setTransportManager(ITransportManager transportManager) {
+    protected void setTransportManager(ITransportManager transportManager) {
         this.transportManager = transportManager;
     }
 
