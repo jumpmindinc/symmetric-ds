@@ -51,7 +51,8 @@ public class ConfigImportHelper implements AutoCloseable {
         engineName = "import-" + uuid;
         TypedProperties engineProperties = new TypedProperties();
         engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_DRIVER, "org.h2.Driver");
-        engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_URL, "jdbc:h2:mem:" + engineName + ";DB_CLOSE_DELAY=-1");
+        engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_URL,
+                "jdbc:h2:mem:" + engineName + ";DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");
         engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_VALIDATION_QUERY, "select 1");
         engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_INIT_SQL, "SET MODE LEGACY");
         engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_USER, "");
