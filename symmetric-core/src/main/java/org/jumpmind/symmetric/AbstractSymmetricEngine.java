@@ -150,7 +150,6 @@ import org.jumpmind.symmetric.transport.IConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
 import org.jumpmind.symmetric.util.PropertiesUtil;
-import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.ExceptionUtils;
 import org.jumpmind.util.FormatUtils;
@@ -607,7 +606,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                     if (fileUrl != null) {
                         fileUrlMap.put(sqlScript, fileUrl);
                         if (!containsCurrentGroup) {
-                            containsCurrentGroup = SymmetricUtils.importContainsCurrentGroup(this, fileUrl, false);
+                            containsCurrentGroup = checkImportContainsCurrentGroup(fileUrl);
                         }
                     } else {
                         log.warn("Could not find the {}: '{}' to execute.  We would have run it if we had found it",
@@ -629,6 +628,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             }
         }
         return loaded;
+    }
+
+    protected boolean checkImportContainsCurrentGroup(URL fileUrl) {
+        return true;
     }
 
     protected void disableRegistrationIfNecessary(String registrationServerNodeId) {
