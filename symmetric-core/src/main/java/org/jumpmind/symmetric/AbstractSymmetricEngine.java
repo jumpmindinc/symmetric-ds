@@ -603,10 +603,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return loaded;
     }
 
-    protected boolean checkImportContainsCurrentGroup(URL fileUrl) {
-        return true;
-    }
-
     public synchronized boolean start() {
         return start(true);
     }
