@@ -22,21 +22,8 @@ package org.jumpmind.symmetric.util;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
-<<<<<<< HEAD
 import java.io.InputStream;
 import java.nio.charset.Charset;
-=======
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.Charset;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
->>>>>>> 8e12a6b94 (SYM-7147: Created helper class for importing configuration (#630))
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -54,10 +41,6 @@ import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Node;
-<<<<<<< HEAD
-=======
-import org.jumpmind.symmetric.transport.http.HttpConnection;
->>>>>>> 8e12a6b94 (SYM-7147: Created helper class for importing configuration (#630))
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.CollectionUtils;
 import org.jumpmind.util.FormatUtils;
@@ -303,46 +286,4 @@ final public class SymmetricUtils {
         }
         return Constants.DEPLOYMENT_SUB_TYPE_TRIGGER_BASED;
     }
-<<<<<<< HEAD
-=======
-
-    public static Certificate[] getCertificates(String urlString)
-            throws MalformedURLException, IOException, NoSuchAlgorithmException, KeyManagementException {
-        URL url = new URL(urlString);
-        if (!"https".equals(url.getProtocol())) {
-            return null;
-        }
-        HttpConnection connection = null;
-        try {
-            connection = new HttpConnection(url);
-            connection.setHostnameVerifier((string, session) -> true);
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            X509TrustManager trustManager = new X509TrustManager() {
-                private X509Certificate[] accepted = {};
-
-                @Override
-                public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {
-                }
-
-                @Override
-                public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {
-                    accepted = xcs;
-                }
-
-                @Override
-                public X509Certificate[] getAcceptedIssuers() {
-                    return accepted;
-                }
-            };
-            sslContext.init(null, new TrustManager[] { trustManager }, null);
-            connection.setSslSocketFactory(sslContext.getSocketFactory());
-            return connection.getServerCertificates();
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-                connection.close();
-            }
-        }
-    }
->>>>>>> 8e12a6b94 (SYM-7147: Created helper class for importing configuration (#630))
 }

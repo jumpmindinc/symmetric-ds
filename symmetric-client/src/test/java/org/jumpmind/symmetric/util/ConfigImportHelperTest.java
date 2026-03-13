@@ -21,7 +21,6 @@
 package org.jumpmind.symmetric.util;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -30,27 +29,6 @@ import java.io.IOException;
 import org.junit.jupiter.api.Test;
 
 class ConfigImportHelperTest {
-    @Test
-    void containsNodeGroupReturnsTrueForLoadedGroup() throws IOException {
-        try (ConfigImportHelper helper = new ConfigImportHelper("sym")) {
-            String sql = """
-                    insert into sym_node_group (node_group_id, description) values ('server', 'Server Group');\n
-                    insert into sym_node_group (node_group_id, description) values ('client', 'Client Group');\n
-                    """;
-            helper.loadContent(sql, false);
-            assertTrue(helper.containsNodeGroup("server"));
-            assertTrue(helper.containsNodeGroup("client"));
-            assertFalse(helper.containsNodeGroup("nonexistent"));
-        }
-    }
-
-    @Test
-    void containsNodeGroupReturnsFalseForEmptyImport() {
-        try (ConfigImportHelper helper = new ConfigImportHelper("sym")) {
-            assertFalse(helper.containsNodeGroup("server"));
-        }
-    }
-
     @Test
     void exportAsSqlProducesOutput() throws IOException {
         try (ConfigImportHelper helper = new ConfigImportHelper("sym")) {

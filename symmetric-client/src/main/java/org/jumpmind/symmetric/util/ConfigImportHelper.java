@@ -21,14 +21,11 @@
 package org.jumpmind.symmetric.util;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
 import java.util.UUID;
 
-import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.sql.SqlScript;
-import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ClientSymmetricEngine;
@@ -38,7 +35,6 @@ import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.io.data.DbExportUtils;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.IncomingBatch;
-import org.jumpmind.symmetric.model.NodeGroup;
 
 public class ConfigImportHelper implements AutoCloseable {
     private ISymmetricEngine tempEngine;
@@ -76,39 +72,15 @@ public class ConfigImportHelper implements AutoCloseable {
                 }
             }
         } else {
-            String filteredSql = removeInvalidTablesFromSql(content);
-            new SqlScript(filteredSql, tempEngine.getSqlTemplate(), true, null).execute();
+            new SqlScript(content, tempEngine.getSqlTemplate(), true, null).execute();
         }
         tempEngine.getParameterService().rereadParameters();
         tempEngine.getNodeService().deleteNode(engineName, false);
         tempEngine.getConfigurationService().deleteNodeGroup(engineName);
     }
 
-    private String removeInvalidTablesFromSql(String sql) throws IOException {
-        String[] invalidTableNames = TableConstants.getRemovedConfigTables(tablePrefix).toArray(new String[0]);
-        StringBuilder sqlBuilder = new StringBuilder();
-        try (SqlScriptReader reader = new SqlScriptReader(new StringReader(sql))) {
-            String sqlStatement;
-            while ((sqlStatement = reader.readSqlStatement()) != null) {
-                if (!Strings.CI.containsAny(sqlStatement, invalidTableNames)) {
-                    sqlBuilder.append(sqlStatement).append(";").append(System.lineSeparator());
-                }
-            }
-        }
-        return sqlBuilder.toString();
-    }
-
     public ISymmetricEngine getEngine() {
         return tempEngine;
-    }
-
-    public boolean containsNodeGroup(String groupId) {
-        for (NodeGroup group : tempEngine.getConfigurationService().getNodeGroups()) {
-            if (groupId.equals(group.getNodeGroupId())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public String exportConfigAsSql() throws IOException {

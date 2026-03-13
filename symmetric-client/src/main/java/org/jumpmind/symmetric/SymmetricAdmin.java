@@ -94,11 +94,8 @@ import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IPurgeService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
-<<<<<<< HEAD
 import org.jumpmind.symmetric.transport.http.HttpConnection;
-=======
 import org.jumpmind.symmetric.util.ConfigImportHelper;
->>>>>>> 8e12a6b94 (SYM-7147: Created helper class for importing configuration (#630))
 import org.jumpmind.symmetric.util.ModuleException;
 import org.jumpmind.symmetric.util.ModuleManager;
 import org.jumpmind.symmetric.util.PropertiesUtil;
@@ -465,43 +462,22 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
 
     private void importConfig(CommandLine line, List<String> args) {
         String fileName = popArg(args, "file name");
+        boolean isCsv = fileName.toLowerCase().endsWith(".csv");
+        boolean isSql = fileName.toLowerCase().endsWith(".sql");
+        if (!isCsv && !isSql) {
+            System.err.println("ERROR: Expected a .csv or .sql file.");
+            System.exit(1);
+        }
         try {
-<<<<<<< HEAD
-            File configFile = new File(fileName);
-            String content = FileUtils.readFileToString(configFile, Charset.defaultCharset());
-            if (fileName.toLowerCase().endsWith(".csv")) {
-                content = interceptImport(content, true);
-                IDataLoaderService service = getSymmetricEngine().getDataLoaderService();
-                List<IncomingBatch> batches = service.loadDataBatch(content);
-                for (IncomingBatch batch : batches) {
-                    if (batch.getStatus() == Status.ER) {
-                        System.err.println("ERROR: batch failed with batch ID " + batch.getBatchId() + ".");
-                        System.exit(1);
-                    }
-                }
-            } else if (fileName.toLowerCase().endsWith(".sql")) {
-                content = interceptImport(content, false);
-                SqlScript script = new SqlScript(content, getSymmetricEngine().getDatabasePlatform().getSqlTemplate(), true, null);
-                script.execute();
-            } else {
-                System.err.println("ERROR: Expected a .csv or .sql file.");
-                System.exit(1);
-=======
             String content = FileUtils.readFileToString(new File(fileName), Charset.defaultCharset());
             try (ConfigImportHelper helper = new ConfigImportHelper(getSymmetricEngine().getTablePrefix())) {
                 helper.loadContent(content, isCsv);
-                if (!helper.containsNodeGroup(engine.getParameterService().getNodeGroupId())) {
-                    log.error(String.format("ERROR: Imported configuration doesn't contain current node group (%s)",
-                            engine.getParameterService().getNodeGroupId()));
-                    System.exit(1);
-                }
                 IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService()
                         .getExtensionPoint(IConfigImportInterceptor.class);
                 if (interceptor != null) {
                     interceptor.interceptImport(helper.getEngine());
                 }
                 new SqlScript(helper.exportConfigAsSql(), getSymmetricEngine().getSqlTemplate(), true, null).execute();
->>>>>>> 8e12a6b94 (SYM-7147: Created helper class for importing configuration (#630))
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
