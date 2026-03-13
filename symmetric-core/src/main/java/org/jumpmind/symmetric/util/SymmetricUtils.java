@@ -22,16 +22,11 @@ package org.jumpmind.symmetric.util;
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
@@ -52,25 +47,13 @@ import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
-import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
-import org.jumpmind.db.sql.SqlScriptReader;
-import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
-import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
-import org.jumpmind.symmetric.io.data.Batch.BatchType;
-import org.jumpmind.symmetric.io.data.CsvData;
-import org.jumpmind.symmetric.io.data.DataContext;
-import org.jumpmind.symmetric.io.data.DataEventType;
-import org.jumpmind.symmetric.io.data.IDataReader;
-import org.jumpmind.symmetric.io.data.reader.ProtocolDataReader;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.transport.http.HttpConnection;
-import org.jumpmind.symmetric.transport.internal.InternalIncomingTransport;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.CollectionUtils;
 import org.jumpmind.util.FormatUtils;
@@ -79,12 +62,6 @@ import org.slf4j.LoggerFactory;
 
 import bsh.EvalError;
 import bsh.Interpreter;
-import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.insert.Insert;
 
 final public class SymmetricUtils {
     private static final Logger log = LoggerFactory.getLogger(SymmetricUtils.class);
@@ -321,120 +298,6 @@ final public class SymmetricUtils {
             }
         }
         return Constants.DEPLOYMENT_SUB_TYPE_TRIGGER_BASED;
-    }
-
-    public static boolean importContainsCurrentGroup(ISymmetricEngine engine, String importedContent, boolean isCsv) {
-        return importContainsCurrentGroup(engine, new StringReader(importedContent), isCsv);
-    }
-
-    public static boolean importContainsCurrentGroup(ISymmetricEngine engine, URL importedContentUrl, boolean isCsv) {
-        try {
-            return importContainsCurrentGroup(engine, new InputStreamReader(importedContentUrl.openStream(), StandardCharsets.UTF_8.name()), isCsv);
-        } catch (IOException e) {
-            log.warn("Unable to read imported configuration, so assuming it includes the {} group", engine.getParameterService().getNodeGroupId());
-            log.debug("Exception: ", e);
-            return true;
-        }
-    }
-
-    public static boolean importContainsCurrentGroup(ISymmetricEngine engine, Reader importedContentReader, boolean isCsv) {
-        boolean foundGroup = false;
-        String groupId = engine.getParameterService().getNodeGroupId();
-        String groupTableName = TableConstants.getTableName(engine.getTablePrefix(), TableConstants.SYM_NODE_GROUP);
-        if (isCsv) {
-            IDataReader dataReader = null;
-            try {
-                dataReader = new ProtocolDataReader(BatchType.LOAD, engine.getNodeId(),
-                        new InternalIncomingTransport(new BufferedReader(importedContentReader)).openReader(), false);
-                dataReader.open(new DataContext());
-                dataReader.nextBatch();
-                Table table = dataReader.nextTable();
-                tableLoop: while (table != null) {
-                    if (Strings.CI.equals(table.getName(), groupTableName)) {
-                        CsvData data = dataReader.nextData();
-                        while (data != null) {
-                            if (DataEventType.INSERT.equals(data.getDataEventType())) {
-                                if (Strings.CS.equals(groupId, data.toKeyColumnValuePairs(table).get("node_group_id"))) {
-                                    foundGroup = true;
-                                    break tableLoop;
-                                }
-                            }
-                            data = dataReader.nextData();
-                        }
-                    }
-                    table = dataReader.nextTable();
-                }
-            } catch (IOException e) {
-                log.warn("Unable to read imported CSV data, so assuming it includes the {} group", groupId);
-                log.debug("Exception: ", e);
-                foundGroup = true;
-            } finally {
-                if (dataReader != null) {
-                    dataReader.close();
-                }
-            }
-        } else {
-            SqlScriptReader sqlReader = new SqlScriptReader(importedContentReader, false);
-            String sql = sqlReader.readSqlStatement();
-            sqlLoop: while (sql != null) {
-                try {
-                    Statement statement = CCJSqlParserUtil.parse(sql);
-                    if (statement instanceof Insert insert
-                            && Strings.CI.equalsAny(insert.getTable().getName(), groupTableName, "\"" + groupTableName + "\"")) {
-                        ExpressionList<?> valueList = insert.getValues().getExpressions();
-                        if (valueList != null && !valueList.isEmpty()) {
-                            List<Column> columnList = insert.getColumns();
-                            if (columnList != null && !columnList.isEmpty()) {
-                                for (int i = 0; i < columnList.size() && i < valueList.size(); i++) {
-                                    if (Strings.CI.equalsAny(columnList.get(i).getColumnName(), "node_group_id", "\"node_group_id\"")
-                                            && Strings.CS.equals(valueList.get(i).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
-                                        foundGroup = true;
-                                        break sqlLoop;
-                                    }
-                                }
-                            } else if (Strings.CS.equals(valueList.get(0).getASTNode().jjtGetValue().toString(), "'" + groupId + "'")) {
-                                foundGroup = true;
-                                break;
-                            }
-                        }
-                    }
-                } catch (JSQLParserException e) {
-                    if (Strings.CI.contains(sql, "insert") && Strings.CI.contains(sql, groupTableName) && sql.contains(groupId)) {
-                        log.warn("Unable to parse the following imported SQL, so assuming it's an insert for the {} node group: {}", groupId, sql);
-                        log.debug("Parse exception: ", e);
-                        foundGroup = true;
-                        break;
-                    }
-                }
-                sql = sqlReader.readSqlStatement();
-            }
-            try {
-                sqlReader.close();
-            } catch (IOException e) {
-                log.warn("Failed to close reader after reading imported SQL", e);
-            }
-        }
-        return foundGroup;
-    }
-
-    public static String removeInvalidTablesFromImportedSql(String tablePrefix, String sql) throws IOException {
-        return removeInvalidTablesFromImportedSql(tablePrefix, new SqlScriptReader(new StringReader(sql)));
-    }
-
-    public static String removeInvalidTablesFromImportedSql(String tablePrefix, SqlScriptReader sqlReader) throws IOException {
-        try {
-            StringBuilder sqlBuilder = new StringBuilder();
-            String[] invalidTableNames = TableConstants.getRemovedConfigTables(tablePrefix).toArray(String[]::new);
-            String sqlStatement;
-            while ((sqlStatement = sqlReader.readSqlStatement()) != null) {
-                if (!Strings.CI.containsAny(sqlStatement, invalidTableNames)) {
-                    sqlBuilder.append(sqlStatement).append(";").append(System.lineSeparator());
-                }
-            }
-            return sqlBuilder.toString();
-        } finally {
-            sqlReader.close();
-        }
     }
 
     public static Certificate[] getCertificates(String urlString)

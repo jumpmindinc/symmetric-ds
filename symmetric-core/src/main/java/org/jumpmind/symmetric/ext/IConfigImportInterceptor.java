@@ -21,7 +21,8 @@
 package org.jumpmind.symmetric.ext;
 
 import org.jumpmind.extension.IExtensionPoint;
+import org.jumpmind.symmetric.ISymmetricEngine;
 
 public interface IConfigImportInterceptor extends IExtensionPoint {
-    String interceptImport(String content, boolean isCsv);
+    void interceptImport(ISymmetricEngine tempEngine);
 }
