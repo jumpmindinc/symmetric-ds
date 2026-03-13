@@ -9,6 +9,6 @@ into another environment. Export and Import actions are frequently used to migra
 
 NOTE: Group identifiers (node_group_id) are significant in the SymmetricDS configuration. It is a *requirement that Group IDs are identical* in both production and test environments. See the Groups section (below) for details. 
 
-In contrast, server hostnames, database connection strings and other start up parmaeters are not included in configuration export file at all. 
+In contrast, server hostnames, database connection strings and other startup parameters are not included in configuration export file at all. 
 
 NOTE: Consider setting the *topbar.system.text*=YOUR_ENRIONMENT_NAME parameter in the engine properties file to help visually separate environments with identical configuration.
