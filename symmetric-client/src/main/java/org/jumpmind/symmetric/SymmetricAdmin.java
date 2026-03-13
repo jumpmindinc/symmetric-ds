@@ -485,7 +485,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
             try (ConfigImportHelper helper = new ConfigImportHelper(getSymmetricEngine().getTablePrefix())) {
                 helper.loadContent(content, isCsv);
                 if (!helper.containsNodeGroup(engine.getParameterService().getNodeGroupId())) {
-                    System.err.println(String.format("ERROR: Imported configuration doesn't contain current node group (%s)",
+                    log.error(String.format("ERROR: Imported configuration doesn't contain current node group (%s)",
                             engine.getParameterService().getNodeGroupId()));
                     System.exit(1);
                 }

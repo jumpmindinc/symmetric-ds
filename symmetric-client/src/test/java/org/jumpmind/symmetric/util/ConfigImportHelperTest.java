@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,12 +29,14 @@ import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
 
-public class ConfigImportHelperTest {
+class ConfigImportHelperTest {
     @Test
     void containsNodeGroupReturnsTrueForLoadedGroup() throws IOException {
         try (ConfigImportHelper helper = new ConfigImportHelper("sym")) {
-            String sql = "insert into sym_node_group (node_group_id, description) values ('server', 'Server Group');\n"
-                    + "insert into sym_node_group (node_group_id, description) values ('client', 'Client Group');\n";
+            String sql = """
+                    insert into sym_node_group (node_group_id, description) values ('server', 'Server Group');\n
+                    insert into sym_node_group (node_group_id, description) values ('client', 'Client Group');\n
+                    """;
             helper.loadContent(sql, false);
             assertTrue(helper.containsNodeGroup("server"));
             assertTrue(helper.containsNodeGroup("client"));
@@ -42,7 +45,7 @@ public class ConfigImportHelperTest {
     }
 
     @Test
-    void containsNodeGroupReturnsFalseForEmptyImport() throws IOException {
+    void containsNodeGroupReturnsFalseForEmptyImport() {
         try (ConfigImportHelper helper = new ConfigImportHelper("sym")) {
             assertFalse(helper.containsNodeGroup("server"));
         }
@@ -72,18 +75,21 @@ public class ConfigImportHelperTest {
     }
 
     @Test
-    void closeReleasesResources() throws IOException {
-        ConfigImportHelper helper = new ConfigImportHelper("sym");
-        helper.close();
-        // no exception means success
+    void closeReleasesResources() {
+        assertDoesNotThrow(() -> {
+            ConfigImportHelper helper = new ConfigImportHelper("sym");
+            helper.close();
+        });
     }
 
     @Test
     void unknownTableThrowsWithoutCorrupting() {
-        try (ConfigImportHelper helper = new ConfigImportHelper("sym")) {
-            helper.loadContent("insert into nonexistent_table (col) values ('val');\n", false);
-        } catch (Exception e) {
-            // H2 throws on unknown tables, which is fine — the helper is still safely closeable
-        }
+        assertDoesNotThrow(() -> {
+            try (ConfigImportHelper helper = new ConfigImportHelper("sym")) {
+                helper.loadContent("insert into nonexistent_table (col) values ('val');\n", false);
+            } catch (Exception e) {
+                // H2 throws on unknown tables, which is fine — the helper is still safely closeable
+            }
+        });
     }
 }
