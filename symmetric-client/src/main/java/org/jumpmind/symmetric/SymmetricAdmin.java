@@ -70,7 +70,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.sql.SqlScript;
-import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
@@ -84,8 +83,6 @@ import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.ext.IConfigImportInterceptor;
 import org.jumpmind.symmetric.io.data.DbExportUtils;
-import org.jumpmind.symmetric.model.AbstractBatch.Status;
-import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.service.IDataExtractorService;
@@ -94,6 +91,7 @@ import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IPurgeService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
+import org.jumpmind.symmetric.util.ConfigImportHelper;
 import org.jumpmind.symmetric.util.ModuleException;
 import org.jumpmind.symmetric.util.ModuleManager;
 import org.jumpmind.symmetric.util.PropertiesUtil;
@@ -483,44 +481,24 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
             System.exit(1);
         }
         try {
-            File configFile = new File(fileName);
-            if (isCsv) {
-                String content = FileUtils.readFileToString(configFile, Charset.defaultCharset());
-                if (!SymmetricUtils.importContainsCurrentGroup(getSymmetricEngine(), content, true)) {
-                    System.err.println(String.format("ERROR: Imported .csv file doesn't contain current node group (%s)",
+            String content = FileUtils.readFileToString(new File(fileName), Charset.defaultCharset());
+            try (ConfigImportHelper helper = new ConfigImportHelper(getSymmetricEngine().getTablePrefix())) {
+                helper.loadContent(content, isCsv);
+                if (!helper.containsNodeGroup(engine.getParameterService().getNodeGroupId())) {
+                    log.error(String.format("ERROR: Imported configuration doesn't contain current node group (%s)",
                             engine.getParameterService().getNodeGroupId()));
                     System.exit(1);
                 }
-                content = interceptImport(content, true);
-                IDataLoaderService service = getSymmetricEngine().getDataLoaderService();
-                List<IncomingBatch> batches = service.loadDataBatch(content);
-                for (IncomingBatch batch : batches) {
-                    if (batch.getStatus() == Status.ER) {
-                        System.err.println("ERROR: batch failed with batch ID " + batch.getBatchId() + ".");
-                        System.exit(1);
-                    }
+                IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService()
+                        .getExtensionPoint(IConfigImportInterceptor.class);
+                if (interceptor != null) {
+                    interceptor.interceptImport(helper.getEngine());
                 }
-            } else {
-                URL url = configFile.toURI().toURL();
-                if (!SymmetricUtils.importContainsCurrentGroup(getSymmetricEngine(), url, false)) {
-                    System.err.println(String.format("ERROR: Imported .sql file doesn't contain current node group (%s)",
-                            engine.getParameterService().getNodeGroupId()));
-                    System.exit(1);
-                }
-                String sql = SymmetricUtils.removeInvalidTablesFromImportedSql(getSymmetricEngine().getTablePrefix(),
-                        new SqlScriptReader(new InputStreamReader(url.openStream(), StandardCharsets.UTF_8.name())));
-                sql = interceptImport(sql, false);
-                SqlScript script = new SqlScript(sql, getSymmetricEngine().getDatabasePlatform().getSqlTemplate(), true, null);
-                script.execute();
+                new SqlScript(helper.exportConfigAsSql(), getSymmetricEngine().getSqlTemplate(), true, null).execute();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private String interceptImport(String content, boolean isCsv) {
-        IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService().getExtensionPoint(IConfigImportInterceptor.class);
-        return interceptor != null ? interceptor.interceptImport(content, isCsv) : content;
     }
 
     private void exportConfig(CommandLine line, List<String> args) {
