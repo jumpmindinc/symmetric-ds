@@ -588,11 +588,18 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                         }
                     }
                     if (fileUrl != null) {
+<<<<<<< HEAD
                         log.info("Executing {} '{}' ({})", ParameterConstants.AUTO_CONFIGURE_REG_SVR_SQL_SCRIPT, sqlScript, fileUrl);
                         new SqlScript(fileUrl, symmetricDialect.getPlatform().getSqlTemplate(),
                                 true, SqlScriptReader.QUERY_ENDS, getSymmetricDialect().getPlatform()
                                         .getSqlScriptReplacementTokens()).execute();
                         loaded = true;
+=======
+                        fileUrlMap.put(sqlScript, fileUrl);
+                        if (!containsCurrentGroup) {
+                            containsCurrentGroup = checkImportContainsCurrentGroup(fileUrl);
+                        }
+>>>>>>> 8e12a6b94 (SYM-7147: Created helper class for importing configuration (#630))
                     } else {
                         log.warn("Could not find the {}: '{}' to execute.  We would have run it if we had found it",
                                 ParameterConstants.AUTO_CONFIGURE_REG_SVR_SQL_SCRIPT, sqlScript);
@@ -603,6 +610,24 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return loaded;
     }
 
+<<<<<<< HEAD
+=======
+    protected boolean checkImportContainsCurrentGroup(URL fileUrl) {
+        return true;
+    }
+
+    protected void disableRegistrationIfNecessary(String registrationServerNodeId) {
+        NodeSecurity nodeSecurity = nodeService.findNodeSecurity(registrationServerNodeId);
+        if (nodeSecurity != null && nodeSecurity.isRegistrationEnabled()) {
+            log.info("Node {} is a registration server and its registration_enabled flag in {} is set to 1. Setting it back to 0.",
+                    registrationServerNodeId, TableConstants.getTableName(getTablePrefix(), TableConstants.SYM_NODE_SECURITY));
+            nodeSecurity.setRegistrationEnabled(false);
+            nodeService.updateNodeSecurity(nodeSecurity);
+        }
+    }
+
+    @Override
+>>>>>>> 8e12a6b94 (SYM-7147: Created helper class for importing configuration (#630))
     public synchronized boolean start() {
         return start(true);
     }
