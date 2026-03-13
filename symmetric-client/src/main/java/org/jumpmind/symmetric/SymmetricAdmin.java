@@ -86,8 +86,6 @@ import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.ext.IConfigImportInterceptor;
 import org.jumpmind.symmetric.io.data.DbExportUtils;
-import org.jumpmind.symmetric.model.AbstractBatch.Status;
-import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.service.IDataExtractorService;
@@ -97,6 +95,7 @@ import org.jumpmind.symmetric.service.IPurgeService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.transport.http.HttpConnection;
+import org.jumpmind.symmetric.util.ConfigImportHelper;
 import org.jumpmind.symmetric.util.ModuleException;
 import org.jumpmind.symmetric.util.ModuleManager;
 import org.jumpmind.symmetric.util.PropertiesUtil;
@@ -463,35 +462,26 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
 
     private void importConfig(CommandLine line, List<String> args) {
         String fileName = popArg(args, "file name");
+        boolean isCsv = fileName.toLowerCase().endsWith(".csv");
+        boolean isSql = fileName.toLowerCase().endsWith(".sql");
+        if (!isCsv && !isSql) {
+            System.err.println("ERROR: Expected a .csv or .sql file.");
+            System.exit(1);
+        }
         try {
-            File configFile = new File(fileName);
-            String content = FileUtils.readFileToString(configFile, Charset.defaultCharset());
-            if (fileName.toLowerCase().endsWith(".csv")) {
-                content = interceptImport(content, true);
-                IDataLoaderService service = getSymmetricEngine().getDataLoaderService();
-                List<IncomingBatch> batches = service.loadDataBatch(content);
-                for (IncomingBatch batch : batches) {
-                    if (batch.getStatus() == Status.ER) {
-                        System.err.println("ERROR: batch failed with batch ID " + batch.getBatchId() + ".");
-                        System.exit(1);
-                    }
+            String content = FileUtils.readFileToString(new File(fileName), Charset.defaultCharset());
+            try (ConfigImportHelper helper = new ConfigImportHelper(getSymmetricEngine().getTablePrefix())) {
+                helper.loadContent(content, isCsv);
+                IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService()
+                        .getExtensionPoint(IConfigImportInterceptor.class);
+                if (interceptor != null) {
+                    interceptor.interceptImport(helper.getEngine());
                 }
-            } else if (fileName.toLowerCase().endsWith(".sql")) {
-                content = interceptImport(content, false);
-                SqlScript script = new SqlScript(content, getSymmetricEngine().getDatabasePlatform().getSqlTemplate(), true, null);
-                script.execute();
-            } else {
-                System.err.println("ERROR: Expected a .csv or .sql file.");
-                System.exit(1);
+                new SqlScript(helper.exportConfigAsSql(), getSymmetricEngine().getSqlTemplate(), true, null).execute();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private String interceptImport(String content, boolean isCsv) {
-        IConfigImportInterceptor interceptor = getSymmetricEngine().getExtensionService().getExtensionPoint(IConfigImportInterceptor.class);
-        return interceptor != null ? interceptor.interceptImport(content, isCsv) : content;
     }
 
     private void exportConfig(CommandLine line, List<String> args) {
