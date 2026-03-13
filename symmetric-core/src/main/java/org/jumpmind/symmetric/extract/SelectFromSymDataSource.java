@@ -345,7 +345,7 @@ public class SelectFromSymDataSource extends SelectFromSource {
         if (excludeForeignKeys || deferConstraints) {
             copyTargetTable.removeAllForeignKeys();
         }
-        if (excludeIndexes || deferConstraints) {
+        if (excludeIndexes || (deferConstraints && !sendSchemaExcludeForeignKeys)) {
             copyTargetTable.removeAllIndexes();
         }
         if (includeTriggerDdl) {
