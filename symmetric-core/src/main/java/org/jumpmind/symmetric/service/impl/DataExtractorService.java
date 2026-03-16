@@ -2220,23 +2220,26 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             return;
         }
         for (ExtractRequest request : getTablesForExtractByLoadId(loadId)) {
-            if (request.getParentRequestId() > 0 || !isDeferredCreateRequired(request)) {
-                continue;
+            if (request.getParentRequestId() <= 0 && isDeferredCreateRequired(request)) {
+                sendDeferredForeignKeysForRequest(request, loadId, targetNode);
             }
-            Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
-            if (trigger == null || configurationService.getChannel(trigger.getReloadChannelId()).isFileSyncFlag()) {
-                continue;
-            }
-            TriggerHistory history = findMatchingHistory(trigger, request.getTableName());
-            if (history == null) {
-                continue;
-            }
-            log.info("Deferred create event (foreign keys) for load {} table {} on channel {}",
-                    loadId, history.getSourceTableName(), trigger.getChannelId());
-            insertDeferredCreateData(history, trigger.getChannelId(), loadId, targetNode.getNodeId(), null);
-            insertDeferredCreateDataForChildren(getExtractChildRequestsForNode(request), history,
-                    trigger.getChannelId(), null);
         }
+    }
+
+    private void sendDeferredForeignKeysForRequest(ExtractRequest request, long loadId, Node targetNode) {
+        Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
+        if (trigger == null || configurationService.getChannel(trigger.getReloadChannelId()).isFileSyncFlag()) {
+            return;
+        }
+        TriggerHistory history = findMatchingHistory(trigger, request.getTableName());
+        if (history == null) {
+            return;
+        }
+        log.info("Deferred create event (foreign keys) for load {} table {} on channel {}",
+                loadId, history.getSourceTableName(), trigger.getChannelId());
+        insertDeferredCreateData(history, trigger.getChannelId(), loadId, targetNode.getNodeId(), null);
+        insertDeferredCreateDataForChildren(getExtractChildRequestsForNode(request), history,
+                trigger.getChannelId(), null);
     }
 
     private boolean isDeferredCreateRequired(ExtractRequest request) {
