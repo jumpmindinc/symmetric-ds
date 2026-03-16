@@ -377,7 +377,7 @@ public class DataServiceTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    void testInsertReloadEventsWithDeferConstraints() throws Exception {
+    void testInsertReloadEventsWithDeferConstraints() {
         Node targetNode = new Node();
         targetNode.setNodeGroupId("client");
         targetNode.setExternalId("client");

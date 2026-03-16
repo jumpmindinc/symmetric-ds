@@ -2190,49 +2190,28 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     protected void checkSendDeferredIndexes(ExtractRequest request, List<ExtractRequest> childRequests, Node targetNode) {
-        if (parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)) {
-            TableReloadRequest reloadRequest = dataService.getTableReloadRequest(request.getLoadId(), request.getTriggerId(), request.getRouterId());
-            if ((reloadRequest != null && reloadRequest.isCreateTable()) ||
-                    (reloadRequest == null && parameterService.is(ParameterConstants.INITIAL_LOAD_CREATE_SCHEMA_BEFORE_RELOAD))) {
-                boolean success = false;
-                Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
-                if (trigger != null) {
-                    Channel channel = configurationService.getChannel(trigger.getReloadChannelId());
-                    if (channel.isFileSyncFlag()) {
-                        return;
-                    }
-                    List<TriggerHistory> histories = triggerRouterService.getActiveTriggerHistories(trigger);
-                    if (histories != null && histories.size() > 0) {
-                        for (TriggerHistory history : histories) {
-                            if (history.getSourceTableName().equalsIgnoreCase(request.getTableName())) {
-                                Data data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
-                                        history, trigger.getChannelId(), String.valueOf(request.getLoadId()), null);
-                                data.setNodeList(targetNode.getNodeId());
-                                data.setOldData(Constants.SEND_SCHEMA_EXCLUDE_FOREIGN_KEYS);
-                                log.info("Deferred create event (indexes only) for load {} table {} on channel {}",
-                                        request.getLoadId(), history.getSourceTableName(), trigger.getChannelId());
-                                dataService.insertData(data);
-                                if (childRequests != null) {
-                                    for (ExtractRequest childRequest : childRequests) {
-                                        data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
-                                                history, trigger.getChannelId(), String.valueOf(childRequest.getLoadId()), null);
-                                        data.setNodeList(childRequest.getNodeId());
-                                        data.setOldData(Constants.SEND_SCHEMA_EXCLUDE_FOREIGN_KEYS);
-                                        dataService.insertData(data);
-                                    }
-                                }
-                                success = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (!success) {
-                    log.warn("Unable to send deferred constraints for trigger '{}' router '{}' in load {}",
-                            reloadRequest.getTriggerId(), reloadRequest.getRouterId(), reloadRequest.getLoadId());
-                }
-            }
+        if (!parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false) || !isDeferredCreateRequired(request)) {
+            return;
         }
+        Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
+        if (trigger == null) {
+            logDeferredConstraintWarning(request);
+            return;
+        }
+        if (configurationService.getChannel(trigger.getReloadChannelId()).isFileSyncFlag()) {
+            return;
+        }
+        TriggerHistory history = findMatchingHistory(trigger, request.getTableName());
+        if (history == null) {
+            logDeferredConstraintWarning(request);
+            return;
+        }
+        log.info("Deferred create event (indexes only) for load {} table {} on channel {}",
+                request.getLoadId(), history.getSourceTableName(), trigger.getChannelId());
+        insertDeferredCreateData(history, trigger.getChannelId(), request.getLoadId(), targetNode.getNodeId(),
+                Constants.SEND_SCHEMA_EXCLUDE_FOREIGN_KEYS);
+        insertDeferredCreateDataForChildren(childRequests, history, trigger.getChannelId(),
+                Constants.SEND_SCHEMA_EXCLUDE_FOREIGN_KEYS);
     }
 
     protected void checkSendDeferredForeignKeys(long loadId, Node targetNode) {
@@ -2241,44 +2220,67 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             return;
         }
         for (ExtractRequest request : getTablesForExtractByLoadId(loadId)) {
-            if (request.getParentRequestId() > 0) {
+            if (request.getParentRequestId() > 0 || !isDeferredCreateRequired(request)) {
                 continue;
             }
-            String triggerId = request.getTriggerId();
-            TableReloadRequest reloadRequest = dataService.getTableReloadRequest(loadId, triggerId, request.getRouterId());
-            if ((reloadRequest != null && reloadRequest.isCreateTable()) ||
-                    (reloadRequest == null && parameterService.is(ParameterConstants.INITIAL_LOAD_CREATE_SCHEMA_BEFORE_RELOAD))) {
-                Trigger trigger = triggerRouterService.getTriggerById(triggerId);
-                if (trigger != null) {
-                    Channel channel = configurationService.getChannel(trigger.getReloadChannelId());
-                    if (channel.isFileSyncFlag()) {
-                        continue;
-                    }
-                    List<TriggerHistory> histories = triggerRouterService.getActiveTriggerHistories(trigger);
-                    if (histories != null) {
-                        for (TriggerHistory history : histories) {
-                            if (history.getSourceTableName().equalsIgnoreCase(request.getTableName())) {
-                                Data data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
-                                        history, trigger.getChannelId(), String.valueOf(loadId), null);
-                                data.setNodeList(targetNode.getNodeId());
-                                log.info("Deferred create event (foreign keys) for load {} table {} on channel {}",
-                                        loadId, history.getSourceTableName(), trigger.getChannelId());
-                                dataService.insertData(data);
-                                List<ExtractRequest> childRequests = getExtractChildRequestsForNode(request);
-                                if (childRequests != null) {
-                                    for (ExtractRequest childRequest : childRequests) {
-                                        data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
-                                                history, trigger.getChannelId(), String.valueOf(childRequest.getLoadId()), null);
-                                        data.setNodeList(childRequest.getNodeId());
-                                        dataService.insertData(data);
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }
+            Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
+            if (trigger == null || configurationService.getChannel(trigger.getReloadChannelId()).isFileSyncFlag()) {
+                continue;
+            }
+            TriggerHistory history = findMatchingHistory(trigger, request.getTableName());
+            if (history == null) {
+                continue;
+            }
+            log.info("Deferred create event (foreign keys) for load {} table {} on channel {}",
+                    loadId, history.getSourceTableName(), trigger.getChannelId());
+            insertDeferredCreateData(history, trigger.getChannelId(), loadId, targetNode.getNodeId(), null);
+            insertDeferredCreateDataForChildren(getExtractChildRequestsForNode(request), history,
+                    trigger.getChannelId(), null);
+        }
+    }
+
+    private boolean isDeferredCreateRequired(ExtractRequest request) {
+        TableReloadRequest reloadRequest = dataService.getTableReloadRequest(request.getLoadId(), request.getTriggerId(), request.getRouterId());
+        return (reloadRequest != null && reloadRequest.isCreateTable()) ||
+                (reloadRequest == null && parameterService.is(ParameterConstants.INITIAL_LOAD_CREATE_SCHEMA_BEFORE_RELOAD));
+    }
+
+    private TriggerHistory findMatchingHistory(Trigger trigger, String tableName) {
+        List<TriggerHistory> histories = triggerRouterService.getActiveTriggerHistories(trigger);
+        if (histories != null) {
+            for (TriggerHistory history : histories) {
+                if (history.getSourceTableName().equalsIgnoreCase(tableName)) {
+                    return history;
                 }
             }
+        }
+        return null;
+    }
+
+    private void insertDeferredCreateData(TriggerHistory history, String channelId, long loadId, String nodeId, String oldData) {
+        Data data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null, history, channelId,
+                String.valueOf(loadId), null);
+        data.setNodeList(nodeId);
+        if (oldData != null) {
+            data.setOldData(oldData);
+        }
+        dataService.insertData(data);
+    }
+
+    private void insertDeferredCreateDataForChildren(List<ExtractRequest> childRequests, TriggerHistory history,
+            String channelId, String oldData) {
+        if (childRequests != null) {
+            for (ExtractRequest childRequest : childRequests) {
+                insertDeferredCreateData(history, channelId, childRequest.getLoadId(), childRequest.getNodeId(), oldData);
+            }
+        }
+    }
+
+    private void logDeferredConstraintWarning(ExtractRequest request) {
+        TableReloadRequest reloadRequest = dataService.getTableReloadRequest(request.getLoadId(), request.getTriggerId(), request.getRouterId());
+        if (reloadRequest != null) {
+            log.warn("Unable to send deferred constraints for trigger '{}' router '{}' in load {}",
+                    reloadRequest.getTriggerId(), reloadRequest.getRouterId(), reloadRequest.getLoadId());
         }
     }
 

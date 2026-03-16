@@ -59,7 +59,7 @@ import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class SelectFromSymDataSourceTest {
+class SelectFromSymDataSourceTest {
     private ISymmetricEngine engine;
     private IParameterService parameterService;
     private IDataService dataService;
@@ -72,7 +72,7 @@ public class SelectFromSymDataSourceTest {
     private Table tableWithFksAndIndexes;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         engine = mock(ISymmetricEngine.class);
         parameterService = mock(IParameterService.class);
         dataService = mock(IDataService.class);
@@ -152,7 +152,7 @@ public class SelectFromSymDataSourceTest {
     }
 
     @Test
-    public void processCreateEvent_preSetupFkDrop_stripsFksKeepsIndexes() throws Exception {
+    void processCreateEvent_preSetupFkDrop_stripsFksKeepsIndexes() throws Exception {
         when(outgoingBatch.isLoadFlag()).thenReturn(true);
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
         SelectFromSymDataSource source = createSource();
@@ -169,7 +169,7 @@ public class SelectFromSymDataSourceTest {
     }
 
     @Test
-    public void processCreateEvent_setupBatch_stripsBothFksAndIndexes() throws Exception {
+    void processCreateEvent_setupBatch_stripsBothFksAndIndexes() throws Exception {
         when(outgoingBatch.isLoadFlag()).thenReturn(true);
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
         SelectFromSymDataSource source = createSource();
@@ -185,7 +185,7 @@ public class SelectFromSymDataSourceTest {
     }
 
     @Test
-    public void processCreateEvent_phase1Finalize_stripsFksKeepsIndexes() throws Exception {
+    void processCreateEvent_phase1Finalize_stripsFksKeepsIndexes() throws Exception {
         when(outgoingBatch.isLoadFlag()).thenReturn(false);
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
         SelectFromSymDataSource source = createSource();
@@ -202,7 +202,7 @@ public class SelectFromSymDataSourceTest {
     }
 
     @Test
-    public void processCreateEvent_phase2Finalize_keepsAll() throws Exception {
+    void processCreateEvent_phase2Finalize_keepsAll() throws Exception {
         when(outgoingBatch.isLoadFlag()).thenReturn(false);
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
         SelectFromSymDataSource source = createSource();
