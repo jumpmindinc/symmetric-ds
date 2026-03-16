@@ -443,7 +443,7 @@ getCreateTriggerString() + " $(triggerName) on database\n" +
 "  set @eventType = @data.value('(/EVENT_INSTANCE/EventType)[1]', 'nvarchar(128)')\n" +
 "  set @tableName = '$(prefixName)_node'\n" +
 "  if (@eventType like '%_TABLE') begin\n" +
-"    if (@ddlSendTable = 'true')\n" +
+"    if (@ddlSendTable = 'true' and @eventType != 'DROP_TABLE')\n" +
 "		set @isTableChange = 'true'\n" +
 "    set @tableName = @data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'nvarchar(128)')\n" +
 "  end\n" +
