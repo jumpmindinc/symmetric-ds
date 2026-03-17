@@ -375,6 +375,149 @@ public class DataServiceTest {
         assertEquals(actualResults, expectedResults);
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    void testInsertReloadEventsWithDeferConstraints() {
+        Node targetNode = new Node();
+        targetNode.setNodeGroupId("client");
+        targetNode.setExternalId("client");
+        targetNode.setNodeId("client");
+        Node sourceNode = new Node();
+        sourceNode.setExternalId("server");
+        sourceNode.setNodeGroupId("server");
+        sourceNode.setNodeId("server");
+        NodeGroupLink link = new NodeGroupLink("server", "client");
+        Trigger trigger = new Trigger("testTable", "default");
+        Router router = new Router("testRouter", link);
+        TriggerRouter triggerRouter = new TriggerRouter(trigger, router);
+        TableReloadRequest reloadRequestForAll = new TableReloadRequest();
+        reloadRequestForAll.setLoadId(1);
+        reloadRequestForAll.setTriggerId("ALL");
+        reloadRequestForAll.setRouterId("ALL");
+        reloadRequestForAll.setCreateTable(true);
+        Table table = new Table("testTable");
+        Column idCol = new Column("Id");
+        idCol.setPrimaryKey(true);
+        table.addColumn(idCol);
+        table.addColumn(new Column("age"));
+        table.addColumn(new Column("weight"));
+        TableReloadStatus tableReloadStatus = new TableReloadStatus();
+        List<TableReloadRequest> reloadRequestsForAll = new ArrayList<TableReloadRequest>();
+        reloadRequestsForAll.add(reloadRequestForAll);
+        ProcessInfo processInfo = new ProcessInfo();
+        List<TriggerRouter> triggerRouters = new ArrayList<TriggerRouter>();
+        triggerRouters.add(triggerRouter);
+        Map<Integer, ExtractRequest> extractRequests = new HashMap<Integer, ExtractRequest>();
+        ExtractRequest extractRequest = new ExtractRequest();
+        extractRequest.setEndBatchId(2L);
+        extractRequest.setLoadId(0);
+        extractRequest.setNodeId("server");
+        extractRequest.setParentRequestId(0);
+        extractRequest.setRequestId(1);
+        extractRequest.setStartBatchId(0);
+        extractRequest.setTriggerRouter(triggerRouter);
+        extractRequests.put(0, extractRequest);
+        Map<Integer, List<TriggerRouter>> triggerRouterByHist = new HashMap<Integer, List<TriggerRouter>>();
+        triggerRouterByHist.put(0, triggerRouters);
+        List<TriggerHistory> triggerHistories = new ArrayList<TriggerHistory>();
+        TriggerHistory triggerHistory = new TriggerHistory("testTable", "Id", "Id,age,weight");
+        triggerHistory.setTriggerId("testTable");
+        triggerHistories.add(triggerHistory);
+        Map<String, Channel> channelMap = new HashMap<String, Channel>();
+        Channel channel = new Channel("default", 0);
+        channelMap.put("default", channel);
+        Set<TriggerRouter> triggerRouterSet = new HashSet<TriggerRouter>();
+        Trigger triggerForSet = new Trigger("sym_node_security", "default");
+        Router routerForSet = new Router("routerForSet", link);
+        TriggerRouter triggerRouterForSet = new TriggerRouter(triggerForSet, routerForSet);
+        TriggerHistory triggerHist = new TriggerHistory("sym_node_security", "NODE_ID",
+                "NODE_ID,NODE_PASSWORD,REGISTRATION_ENABLED,REGISTRATION_TIME,REGISTRATION_NOT_BEFORE,REGISTRATION_NOT_AFTER,INITIAL_LOAD_ENABLED,INITIAL_LOAD_TIME,INITIAL_LOAD_END_TIME,INITIAL_LOAD_ID,INITIAL_LOAD_CREATE_BY,REV_INITIAL_LOAD_ENABLED,REV_INITIAL_LOAD_TIME,REV_INITIAL_LOAD_ID,REV_INITIAL_LOAD_CREATE_BY,FAILED_LOGINS,CREATED_AT_NODE_ID");
+        triggerHist.setTriggerId("sym_node_security");
+        triggerRouterSet.add(triggerRouterForSet);
+        IReloadGenerator reloadGenerator = mock(IReloadGenerator.class);
+        IClusterService clusterService = mock(IClusterService.class);
+        INodeService nodeService = mock(INodeService.class);
+        TriggerRouterService triggerRouterService = mock(TriggerRouterService.class);
+        IInitialLoadService initialLoadService = mock(IInitialLoadService.class);
+        NodeSecurity nodeSecurity = mock(NodeSecurity.class);
+        ISequenceService sequenceService = mock(ISequenceService.class);
+        IDataExtractorService dataExtractorService = mock(IDataExtractorService.class);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        IGroupletService groupletService = mock(IGroupletService.class);
+        ITransformService transformService = mock(ITransformService.class);
+        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
+        IStatisticManager statisticManager = mock(IStatisticManager.class);
+        IPurgeService purgeService = mock(IPurgeService.class);
+        when(engine.getClusterService()).thenReturn(clusterService);
+        when(clusterService.lock(ClusterConstants.SYNC_TRIGGERS)).thenReturn(true);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        when(nodeService.findIdentity()).thenReturn(sourceNode);
+        when(nodeService.findNodeSecurity(ArgumentMatchers.anyString())).thenReturn(nodeSecurity);
+        when(engine.getTriggerRouterService()).thenReturn(triggerRouterService);
+        when(parameterService.is(ParameterConstants.DATA_RELOAD_IS_BATCH_INSERT_TRANSACTIONAL)).thenReturn(true);
+        when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
+        when(engine.getNodeId()).thenReturn("server");
+        when(engine.getInitialLoadService()).thenReturn(initialLoadService);
+        doNothing().when(initialLoadService).cancelLoad(ArgumentMatchers.any());
+        when(engine.getDatabasePlatform()).thenReturn(platform);
+        when(sqlTemplate.startSqlTransaction()).thenReturn(sqlTransaction);
+        when(sqlTransaction.prepareAndExecute(ArgumentMatchers.anyString(), (JdbcSqlTransaction) ArgumentMatchers.any())).thenReturn(1);
+        when(reloadGenerator.getActiveTriggerHistories(targetNode)).thenReturn(triggerHistories);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.supportsMultiThreadedTransactions()).thenReturn(false);
+        when(engine.getSequenceService()).thenReturn(sequenceService);
+        when(sequenceService.nextVal(ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(1L);
+        when(nodeSecurity.getInitialLoadCreateBy()).thenReturn("test user");
+        when(triggerRouterService.getActiveTriggerHistories((Trigger) ArgumentMatchers.any())).thenReturn(triggerHistories);
+        when(triggerRouterService.fillTriggerRoutersByHistIdAndSortHist(ArgumentMatchers.anyString(),
+                ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyList(), ArgumentMatchers.anyList(),
+                ArgumentMatchers.anyBoolean())).thenReturn(triggerRouterByHist);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        when(configurationService.getChannels(false)).thenReturn(channelMap);
+        when(engine.getConfigurationService().getChannels(false)).thenReturn(channelMap);
+        when(engine.getGroupletService()).thenReturn(groupletService);
+        when(groupletService.isTargetEnabled(triggerRouter, targetNode)).thenReturn(true);
+        when(engine.getDataExtractorService()).thenReturn(dataExtractorService);
+        when(symmetricDialect.getTargetDialect()).thenReturn(symmetricDialect);
+        when(symmetricDialect.getTablePrefix()).thenReturn("sym");
+        when(platform.getTableFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.anyBoolean())).thenReturn(
+                table);
+        doNothing().when(dataExtractorService).releaseMissedExtractRequests();
+        when(triggerRouterService.getRouterById(ArgumentMatchers.anyString(), ArgumentMatchers.anyBoolean())).thenReturn(router);
+        when(engine.getTransformService()).thenReturn(transformService);
+        when(transformService.findTransformsFor(ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(null);
+        when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
+        doNothing().when(outgoingBatchService).insertOutgoingBatch(ArgumentMatchers.any(), ArgumentMatchers.any());
+        when(engine.getStatisticManager()).thenReturn(statisticManager);
+        doNothing().when(statisticManager).incrementNodesLoaded(1);
+        when(sqlTransaction.prepareAndExecute(ArgumentMatchers.anyString(), ArgumentMatchers.any(Object[].class))).thenReturn(1);
+        when(sqlTransaction.prepareAndExecute(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(1);
+        when(sqlTemplate.queryForObject(ArgumentMatchers.anyString(), (ISqlRowMapper<TableReloadStatus>) ArgumentMatchers.any(), ArgumentMatchers.anyLong(),
+                ArgumentMatchers.anyString())).thenReturn(tableReloadStatus);
+        when(dataExtractorService.requestExtractRequest(sqlTransaction, targetNode.getNodeId(), channel.getQueue(), triggerRouter, -1, -1, 1, table.getName(),
+                0, 0)).thenReturn(extractRequest);
+        // Full load mocks (same as scenario 1)
+        doNothing().when(outgoingBatchService).markAllAsSentForNode(targetNode.getNodeId(), false);
+        doReturn(triggerRouterSet).when(triggerRouterService).getTriggerRouterForTableForCurrentNode(ArgumentMatchers.any(), ArgumentMatchers.any(),
+                ArgumentMatchers.anyString(), ArgumentMatchers.anyBoolean());
+        doReturn(triggerHist).when(triggerRouterService).getNewestTriggerHistoryForTrigger(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers
+                .any(), ArgumentMatchers.any());
+        when(engine.getTriggerRouterService()
+                .findTriggerHistoryForGenericSync()).thenReturn(triggerHistory);
+        when(engine.getTriggerRouterService().getTriggerById("testTable", false)).thenReturn(trigger);
+        when(engine.getPurgeService()).thenReturn(purgeService);
+        doNothing().when(purgeService).purgeAllIncomingEventsForNode(ArgumentMatchers.anyString());
+        Map<Integer, ExtractRequest> actualResults = dataService.insertReloadEvents(targetNode, false, reloadRequestsForAll, processInfo, triggerRouters,
+                extractRequests, reloadGenerator);
+        Map<Integer, ExtractRequest> expectedResults = new HashMap<Integer, ExtractRequest>();
+        expectedResults.put(0, extractRequest);
+        assertEquals(actualResults, expectedResults);
+        // Verify sortByFk=false when deferConstraints is true and createTable is true
+        verify(triggerRouterService).fillTriggerRoutersByHistIdAndSortHist(
+                ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyString(),
+                ArgumentMatchers.anyList(), ArgumentMatchers.anyList(), ArgumentMatchers.eq(false));
+    }
+
     @ParameterizedTest
     @CsvSource({ "" + 0 + "", "" + 1 + "", "" + 2 + "" })
     void testSendSQL(int scenario) throws Exception {
