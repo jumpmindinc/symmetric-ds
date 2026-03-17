@@ -64,6 +64,7 @@ import org.jumpmind.symmetric.model.FileTriggerRouter;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.NodeSecurity;
+import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.TableReloadRequest;
@@ -92,7 +93,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 public class DataServiceTest {
     ISqlTemplate sqlTemplate;
@@ -376,12 +379,13 @@ public class DataServiceTest {
     }
 
     @SuppressWarnings("unchecked")
-    @Test
-    void testInsertReloadEventsWithDeferConstraints() {
+    private ReloadTestFixture setupFullReloadTest(boolean deferConstraints) {
+        ReloadTestFixture fixture = new ReloadTestFixture();
         Node targetNode = new Node();
         targetNode.setNodeGroupId("client");
         targetNode.setExternalId("client");
         targetNode.setNodeId("client");
+        fixture.targetNode = targetNode;
         Node sourceNode = new Node();
         sourceNode.setExternalId("server");
         sourceNode.setNodeGroupId("server");
@@ -404,9 +408,11 @@ public class DataServiceTest {
         TableReloadStatus tableReloadStatus = new TableReloadStatus();
         List<TableReloadRequest> reloadRequestsForAll = new ArrayList<TableReloadRequest>();
         reloadRequestsForAll.add(reloadRequestForAll);
-        ProcessInfo processInfo = new ProcessInfo();
+        fixture.reloadRequests = reloadRequestsForAll;
+        fixture.processInfo = new ProcessInfo();
         List<TriggerRouter> triggerRouters = new ArrayList<TriggerRouter>();
         triggerRouters.add(triggerRouter);
+        fixture.triggerRouters = triggerRouters;
         Map<Integer, ExtractRequest> extractRequests = new HashMap<Integer, ExtractRequest>();
         ExtractRequest extractRequest = new ExtractRequest();
         extractRequest.setEndBatchId(2L);
@@ -417,6 +423,7 @@ public class DataServiceTest {
         extractRequest.setStartBatchId(0);
         extractRequest.setTriggerRouter(triggerRouter);
         extractRequests.put(0, extractRequest);
+        fixture.extractRequests = extractRequests;
         Map<Integer, List<TriggerRouter>> triggerRouterByHist = new HashMap<Integer, List<TriggerRouter>>();
         triggerRouterByHist.put(0, triggerRouters);
         List<TriggerHistory> triggerHistories = new ArrayList<TriggerHistory>();
@@ -426,6 +433,9 @@ public class DataServiceTest {
         Map<String, Channel> channelMap = new HashMap<String, Channel>();
         Channel channel = new Channel("default", 0);
         channelMap.put("default", channel);
+        Channel reloadChannel = new Channel("reload", 0);
+        reloadChannel.setReloadFlag(true);
+        channelMap.put("reload", reloadChannel);
         Set<TriggerRouter> triggerRouterSet = new HashSet<TriggerRouter>();
         Trigger triggerForSet = new Trigger("sym_node_security", "default");
         Router routerForSet = new Router("routerForSet", link);
@@ -435,9 +445,11 @@ public class DataServiceTest {
         triggerHist.setTriggerId("sym_node_security");
         triggerRouterSet.add(triggerRouterForSet);
         IReloadGenerator reloadGenerator = mock(IReloadGenerator.class);
+        fixture.reloadGenerator = reloadGenerator;
         IClusterService clusterService = mock(IClusterService.class);
         INodeService nodeService = mock(INodeService.class);
         TriggerRouterService triggerRouterService = mock(TriggerRouterService.class);
+        fixture.triggerRouterService = triggerRouterService;
         IInitialLoadService initialLoadService = mock(IInitialLoadService.class);
         NodeSecurity nodeSecurity = mock(NodeSecurity.class);
         ISequenceService sequenceService = mock(ISequenceService.class);
@@ -446,6 +458,7 @@ public class DataServiceTest {
         IGroupletService groupletService = mock(IGroupletService.class);
         ITransformService transformService = mock(ITransformService.class);
         IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
+        fixture.outgoingBatchService = outgoingBatchService;
         IStatisticManager statisticManager = mock(IStatisticManager.class);
         IPurgeService purgeService = mock(IPurgeService.class);
         when(engine.getClusterService()).thenReturn(clusterService);
@@ -455,7 +468,8 @@ public class DataServiceTest {
         when(nodeService.findNodeSecurity(ArgumentMatchers.anyString())).thenReturn(nodeSecurity);
         when(engine.getTriggerRouterService()).thenReturn(triggerRouterService);
         when(parameterService.is(ParameterConstants.DATA_RELOAD_IS_BATCH_INSERT_TRANSACTIONAL)).thenReturn(true);
-        when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
+        when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(deferConstraints);
+        when(parameterService.is(ParameterConstants.INITIAL_LOAD_USE_RELOAD_CHANNEL)).thenReturn(true);
         when(engine.getNodeId()).thenReturn("server");
         when(engine.getInitialLoadService()).thenReturn(initialLoadService);
         doNothing().when(initialLoadService).cancelLoad(ArgumentMatchers.any());
@@ -475,6 +489,7 @@ public class DataServiceTest {
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(configurationService.getChannels(false)).thenReturn(channelMap);
         when(engine.getConfigurationService().getChannels(false)).thenReturn(channelMap);
+        when(configurationService.getChannel("reload")).thenReturn(reloadChannel);
         when(engine.getGroupletService()).thenReturn(groupletService);
         when(groupletService.isTargetEnabled(triggerRouter, targetNode)).thenReturn(true);
         when(engine.getDataExtractorService()).thenReturn(dataExtractorService);
@@ -496,7 +511,6 @@ public class DataServiceTest {
                 ArgumentMatchers.anyString())).thenReturn(tableReloadStatus);
         when(dataExtractorService.requestExtractRequest(sqlTransaction, targetNode.getNodeId(), channel.getQueue(), triggerRouter, -1, -1, 1, table.getName(),
                 0, 0)).thenReturn(extractRequest);
-        // Full load mocks (same as scenario 1)
         doNothing().when(outgoingBatchService).markAllAsSentForNode(targetNode.getNodeId(), false);
         doReturn(triggerRouterSet).when(triggerRouterService).getTriggerRouterForTableForCurrentNode(ArgumentMatchers.any(), ArgumentMatchers.any(),
                 ArgumentMatchers.anyString(), ArgumentMatchers.anyBoolean());
@@ -507,15 +521,45 @@ public class DataServiceTest {
         when(engine.getTriggerRouterService().getTriggerById("testTable", false)).thenReturn(trigger);
         when(engine.getPurgeService()).thenReturn(purgeService);
         doNothing().when(purgeService).purgeAllIncomingEventsForNode(ArgumentMatchers.anyString());
-        Map<Integer, ExtractRequest> actualResults = dataService.insertReloadEvents(targetNode, false, reloadRequestsForAll, processInfo, triggerRouters,
-                extractRequests, reloadGenerator);
+        return fixture;
+    }
+
+    @Test
+    void testInsertReloadEventsWithDeferConstraints() {
+        ReloadTestFixture f = setupFullReloadTest(true);
+        Map<Integer, ExtractRequest> actualResults = dataService.insertReloadEvents(f.targetNode, false, f.reloadRequests,
+                f.processInfo, f.triggerRouters, f.extractRequests, f.reloadGenerator);
         Map<Integer, ExtractRequest> expectedResults = new HashMap<Integer, ExtractRequest>();
-        expectedResults.put(0, extractRequest);
+        expectedResults.put(0, f.extractRequests.get(0));
         assertEquals(actualResults, expectedResults);
         // Verify sortByFk=false when deferConstraints is true and createTable is true
-        verify(triggerRouterService).fillTriggerRoutersByHistIdAndSortHist(
+        verify(f.triggerRouterService).fillTriggerRoutersByHistIdAndSortHist(
                 ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyString(),
                 ArgumentMatchers.anyList(), ArgumentMatchers.anyList(), ArgumentMatchers.eq(false));
+        // Verify deferred index batches were created on the reload channel
+        ArgumentCaptor<OutgoingBatch> batchCaptor = ArgumentCaptor.forClass(OutgoingBatch.class);
+        verify(f.outgoingBatchService, Mockito.atLeastOnce()).insertOutgoingBatch(ArgumentMatchers.any(ISqlTransaction.class), batchCaptor.capture());
+        List<OutgoingBatch> capturedBatches = batchCaptor.getAllValues();
+        long reloadChannelBatchCount = capturedBatches.stream()
+                .filter(b -> "reload".equals(b.getChannelId()))
+                .count();
+        assertEquals(6, reloadChannelBatchCount,
+                "Expected 6 batches on reload channel (base batches + DROP FK + deferred index)");
+    }
+
+    @Test
+    void testDeferredIndexBatchesNotCreatedWhenDisabled() {
+        ReloadTestFixture f = setupFullReloadTest(false);
+        dataService.insertReloadEvents(f.targetNode, false, f.reloadRequests, f.processInfo,
+                f.triggerRouters, f.extractRequests, f.reloadGenerator);
+        ArgumentCaptor<OutgoingBatch> batchCaptor = ArgumentCaptor.forClass(OutgoingBatch.class);
+        verify(f.outgoingBatchService, Mockito.atLeastOnce()).insertOutgoingBatch(ArgumentMatchers.any(ISqlTransaction.class), batchCaptor.capture());
+        List<OutgoingBatch> capturedBatches = batchCaptor.getAllValues();
+        long reloadChannelBatchCount = capturedBatches.stream()
+                .filter(b -> "reload".equals(b.getChannelId()))
+                .count();
+        assertEquals(4, reloadChannelBatchCount,
+                "Expected 4 batches on reload channel (no DROP FK or deferred index)");
     }
 
     @ParameterizedTest
@@ -864,5 +908,19 @@ public class DataServiceTest {
             row = new Row(columnNamesArr, parsedRowData);
         }
         when(sqlTransaction.queryForRow(ArgumentMatchers.eq("queryData"))).thenReturn(row);
+    }
+
+    /**
+     * Holds test fixtures and mocks for reload event tests.
+     */
+    private static class ReloadTestFixture {
+        Node targetNode;
+        List<TableReloadRequest> reloadRequests;
+        ProcessInfo processInfo;
+        List<TriggerRouter> triggerRouters;
+        Map<Integer, ExtractRequest> extractRequests;
+        IReloadGenerator reloadGenerator;
+        IOutgoingBatchService outgoingBatchService;
+        TriggerRouterService triggerRouterService;
     }
 }

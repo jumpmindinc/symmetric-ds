@@ -1052,7 +1052,6 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                     if (extractRequest != null && extractRequest.getStatus() != ExtractStatus.OK) {
                         sqlTemplate.update(getSql("updateExtractRequestStatus"), ExtractStatus.OK.name(), new Date(),
                                 currentBatch.getExtractRowCount(), currentBatch.getExtractMillis(), extractRequest.getRequestId());
-                        checkSendDeferredIndexes(extractRequest, null, targetNode);
                         checkSendDeferredForeignKeys(extractRequest.getLoadId(), targetNode);
                     }
                 }
@@ -2035,7 +2034,6 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                             processInfo, channel, isRestarted);
                     extractOutgoingBatch(processInfo, targetNode, multiBatchStagingWriter,
                             firstBatch, false, false, ExtractMode.FOR_SYM_CLIENT, new ClusterLockRefreshListener(clusterService));
-                    checkSendDeferredIndexes(request, childRequests, targetNode);
                 } else {
                     log.info(
                             "Batches already had an OK status for request {} to extract table {} for batches {} through {} for node {} on queue {}.  Not extracting.",
@@ -2189,31 +2187,6 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         }
     }
 
-    protected void checkSendDeferredIndexes(ExtractRequest request, List<ExtractRequest> childRequests, Node targetNode) {
-        if (!parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false) || !isDeferredCreateRequired(request)) {
-            return;
-        }
-        Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
-        if (trigger == null) {
-            logDeferredConstraintWarning(request);
-            return;
-        }
-        if (configurationService.getChannel(trigger.getReloadChannelId()).isFileSyncFlag()) {
-            return;
-        }
-        TriggerHistory history = findMatchingHistory(trigger, request.getTableName());
-        if (history == null) {
-            logDeferredConstraintWarning(request);
-            return;
-        }
-        log.info("Deferred create event (indexes only) for load {} table {} on channel {}",
-                request.getLoadId(), history.getSourceTableName(), trigger.getChannelId());
-        insertDeferredCreateData(history, trigger.getChannelId(), request.getLoadId(), targetNode.getNodeId(),
-                Constants.SEND_SCHEMA_EXCLUDE_FOREIGN_KEYS);
-        insertDeferredCreateDataForChildren(childRequests, history, trigger.getChannelId(),
-                Constants.SEND_SCHEMA_EXCLUDE_FOREIGN_KEYS);
-    }
-
     protected void checkSendDeferredForeignKeys(long loadId, Node targetNode) {
         if (!parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false) || sqlTemplateDirty
                 .queryForLong(getSql("countIncompleteExtractRequestsByLoadId"), loadId, engine.getNodeId()) > 0) {
@@ -2276,14 +2249,6 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             for (ExtractRequest childRequest : childRequests) {
                 insertDeferredCreateData(history, channelId, childRequest.getLoadId(), childRequest.getNodeId(), oldData);
             }
-        }
-    }
-
-    private void logDeferredConstraintWarning(ExtractRequest request) {
-        TableReloadRequest reloadRequest = dataService.getTableReloadRequest(request.getLoadId(), request.getTriggerId(), request.getRouterId());
-        if (reloadRequest != null) {
-            log.warn("Unable to send deferred constraints for trigger '{}' router '{}' in load {}",
-                    reloadRequest.getTriggerId(), reloadRequest.getRouterId(), reloadRequest.getLoadId());
         }
     }
 
