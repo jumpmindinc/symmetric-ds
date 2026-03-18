@@ -26,6 +26,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import java.io.File;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -43,6 +44,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.JdbcDatabasePlatformFactory;
@@ -71,6 +73,7 @@ import org.jumpmind.symmetric.service.impl.ClientExtensionService;
 import org.jumpmind.symmetric.service.impl.NodeService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.statistic.StatisticManager;
+import org.jumpmind.symmetric.util.ConfigImportHelper;
 import org.jumpmind.symmetric.util.LogSummaryAppenderUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SnapshotUtil;
@@ -513,6 +516,18 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         super.clearCaches();
         for (ICached cachedExtension : extensionService.getExtensionPointList(ICached.class)) {
             cachedExtension.flushCache();
+        }
+    }
+
+    @Override
+    protected boolean checkImportContainsCurrentGroup(URL fileUrl) {
+        try (ConfigImportHelper helper = new ConfigImportHelper(getTablePrefix())) {
+            String content = IOUtils.toString(fileUrl, Charset.defaultCharset());
+            helper.loadContent(content, false);
+            return helper.containsNodeGroup(getParameterService().getNodeGroupId());
+        } catch (Exception e) {
+            log.warn("Error checking node group in auto-configure script, assuming group is present", e);
+            return true;
         }
     }
 }

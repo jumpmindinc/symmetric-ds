@@ -1,0 +1,63 @@
+The transport manager controls how SymmetricDS nodes communicate with each other during synchronization.
+By default, SymmetricDS uses a hybrid transport that automatically selects the most efficient communication
+method based on whether the target node is running in the same JVM or on a remote server.
+
+The transport type is configured using the `transport.type` parameter in the engine properties file or in
+the <<PARAMETER>> table.
+
+[source, properties]
+----
+transport.type=hybrid
+----
+
+==== Transport Types
+
+The following values are supported for the `transport.type` parameter:
+
+hybrid:: The default transport type. The hybrid transport manager automatically routes communication between
+two underlying transports: an internal in-JVM transport and an HTTP transport. When the target node is running
+in the same JVM (for example, multiple engine instances in a single SymmetricDS server), it uses the internal
+transport for direct in-process communication, which avoids the overhead of HTTP serialization and network calls.
+When the target node is on a remote server, it falls back to HTTP transport. This makes hybrid the best choice
+for most deployments because it provides optimal performance without requiring any additional configuration.
+
+http:: Uses HTTP (or HTTPS) for all node-to-node communication, regardless of whether the nodes are co-located
+in the same JVM. This is useful when you want to guarantee that all communication goes through the HTTP layer,
+such as when testing HTTP-specific behavior or when a proxy, load balancer, or firewall rule depends on seeing
+all traffic as HTTP requests. In most cases, `hybrid` is preferred because it offers the same HTTP behavior
+for remote nodes while optimizing communication for co-located nodes.
+
+internal:: Uses only the internal in-JVM transport. This transport type is intended for scenarios where all
+communicating nodes are running within the same JVM. It bypasses HTTP entirely, passing data directly between
+engine instances in memory. If a target node is not in the same JVM, communication will not succeed.
+
+file:: Uses file-based transport. Instead of communicating directly between nodes, data is written to and
+read from the local file system. This transport type is used in conjunction with <<Offline Synchronization>>
+where batch files are manually moved between nodes.
+
+==== Choosing a Transport Type
+
+For most deployments, the default `hybrid` transport is recommended. It handles both co-located and remote
+node communication transparently without any special configuration.
+
+Consider using a different transport type in the following situations:
+
+* Use `http` when all communication must pass through the HTTP layer, for example, when traffic monitoring
+or proxy infrastructure requires it.
+* Use `internal` when all nodes are guaranteed to run in the same JVM and you want to avoid any HTTP overhead.
+* Use `file` when nodes are disconnected and batch files must be transported manually or through an external
+process.
+
+==== Custom HTTP Transport
+
+The HTTP transport manager implementation can be overridden by setting the `http.transport.manager.class`
+parameter to the fully qualified class name of a custom implementation. The custom class must extend
+`HttpTransportManager` and provide a constructor that accepts an `ISymmetricEngine` parameter.
+
+[source, properties]
+----
+http.transport.manager.class=com.example.MyHttpTransportManager
+----
+
+This applies to both the `http` and `hybrid` transport types, since the hybrid transport uses an HTTP
+transport manager internally for remote communication.

@@ -1114,7 +1114,8 @@ public class DataService extends AbstractService implements IDataService {
                                         .getActiveTriggerHistories(new Trigger(reloadRequest.getTriggerId(), null)));
                             }
                         }
-                        boolean sortByFk = true;
+                        boolean sortByFk = !(isFullLoad && parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false) &&
+                                reloadRequests != null && !reloadRequests.isEmpty() && reloadRequests.get(0).isCreateTable());
                         Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId = triggerRouterService
                                 .fillTriggerRoutersByHistIdAndSortHist(sourceNode.getNodeGroupId(),
                                         targetNode.getNodeGroupId(), targetNode.getExternalId(), triggerHistories, triggerRouters, sortByFk);
@@ -1179,6 +1180,8 @@ public class DataService extends AbstractService implements IDataService {
                                 transactional, transaction, reverse,
                                 triggerHistories, triggerRoutersByHistoryId,
                                 mapReloadRequests, isFullLoad, symNodeSecurityReloadChannel);
+                        insertDeferredIndexBatchesForReload(targetNode, loadId, createBy,
+                                triggerHistories, triggerRoutersByHistoryId, transaction, mapReloadRequests);
                         int fileSyncBatches = insertFileSyncBatchForReload(targetNode, loadId, createBy, transactional,
                                 transaction, mapReloadRequests, isFullLoad, processInfo);
                         if (reloadRequests != null && reloadRequests.size() > 0) {
@@ -1470,7 +1473,12 @@ public class DataService extends AbstractService implements IDataService {
             Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId, boolean transactional,
             ISqlTransaction transaction, Map<String, TableReloadRequest> reloadRequests) throws InterruptedException {
         int createEventsSent = 0;
+        boolean deferConstraints = parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false);
         if (reloadRequests != null && reloadRequests.size() > 0) {
+            if (deferConstraints) {
+                createEventsSent += insertDropForeignKeyEventsForReload(targetNode, loadId, createBy,
+                        triggerHistories, triggerRoutersByHistoryId, transaction, reloadRequests);
+            }
             for (TriggerHistory triggerHistory : triggerHistories) {
                 List<TriggerRouter> triggerRouters = triggerRoutersByHistoryId.get(triggerHistory
                         .getTriggerHistoryId());
@@ -1502,6 +1510,10 @@ public class DataService extends AbstractService implements IDataService {
             }
         } else {
             if (parameterService.is(ParameterConstants.INITIAL_LOAD_CREATE_SCHEMA_BEFORE_RELOAD)) {
+                if (deferConstraints) {
+                    createEventsSent += insertDropForeignKeyEventsForReload(targetNode, loadId, createBy,
+                            triggerHistories, triggerRoutersByHistoryId, transaction, reloadRequests);
+                }
                 for (TriggerHistory triggerHistory : triggerHistories) {
                     List<TriggerRouter> triggerRouters = triggerRoutersByHistoryId.get(triggerHistory
                             .getTriggerHistoryId());
@@ -1522,6 +1534,126 @@ public class DataService extends AbstractService implements IDataService {
             }
         }
         return createEventsSent;
+    }
+
+    private int insertDeferredIndexBatchesForReload(Node targetNode, long loadId, String createBy,
+            List<TriggerHistory> triggerHistories, Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId,
+            ISqlTransaction transaction, Map<String, TableReloadRequest> reloadRequests) throws InterruptedException {
+        if (!parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)) {
+            return 0;
+        }
+        int batchCount = 0;
+        if (reloadRequests != null && reloadRequests.size() > 0) {
+            batchCount = insertDeferredIndexesWithRequests(targetNode, loadId, createBy, triggerHistories,
+                    triggerRoutersByHistoryId, transaction, reloadRequests);
+        } else if (parameterService.is(ParameterConstants.INITIAL_LOAD_CREATE_SCHEMA_BEFORE_RELOAD)) {
+            batchCount = insertDeferredIndexesWithoutRequests(targetNode, loadId, createBy, triggerHistories,
+                    triggerRoutersByHistoryId, transaction);
+        }
+        if (batchCount > 0) {
+            log.info("Deferred index creation events sent for {} tables in load {} to node {}", batchCount, loadId,
+                    targetNode.getNodeId());
+        }
+        return batchCount;
+    }
+
+    private int insertDeferredIndexesWithRequests(Node targetNode, long loadId, String createBy,
+            List<TriggerHistory> triggerHistories, Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId,
+            ISqlTransaction transaction, Map<String, TableReloadRequest> reloadRequests) throws InterruptedException {
+        int batchCount = 0;
+        for (TriggerHistory triggerHistory : triggerHistories) {
+            List<TriggerRouter> triggerRouters = triggerRoutersByHistoryId.get(triggerHistory.getTriggerHistoryId());
+            TableReloadRequest currentRequest = reloadRequests.get(ParameterConstants.ALL + ParameterConstants.ALL);
+            boolean fullLoad = currentRequest != null;
+            for (TriggerRouter triggerRouter : triggerRouters) {
+                if (!fullLoad) {
+                    currentRequest = reloadRequests.get(triggerRouter.getTriggerId() + triggerRouter.getRouterId());
+                }
+                batchCount += insertDeferredIndexEventIfApplicable(transaction, targetNode, triggerHistory,
+                        triggerRouter, currentRequest, loadId, createBy);
+                checkInterrupted();
+            }
+        }
+        return batchCount;
+    }
+
+    private int insertDeferredIndexesWithoutRequests(Node targetNode, long loadId, String createBy, List<TriggerHistory> triggerHistories,
+            Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId, ISqlTransaction transaction) throws InterruptedException {
+        int batchCount = 0;
+        for (TriggerHistory triggerHistory : triggerHistories) {
+            List<TriggerRouter> triggerRouters = triggerRoutersByHistoryId.get(triggerHistory.getTriggerHistoryId());
+            for (TriggerRouter triggerRouter : triggerRouters) {
+                if (triggerRouter.getInitialLoadOrder() >= 0 && engine.getGroupletService().isTargetEnabled(triggerRouter, targetNode)) {
+                    batchCount += insertDeferredIndexEvent(transaction, targetNode, triggerHistory, triggerRouter, loadId, createBy);
+                }
+                checkInterrupted();
+            }
+        }
+        return batchCount;
+    }
+
+    private int insertDeferredIndexEventIfApplicable(ISqlTransaction transaction, Node targetNode, TriggerHistory triggerHistory,
+            TriggerRouter triggerRouter, TableReloadRequest currentRequest, long loadId, String createBy) {
+        if (triggerRouter.getInitialLoadOrder() > -1 && currentRequest != null && currentRequest.isCreateTable()
+                && engine.getGroupletService().isTargetEnabled(triggerRouter, targetNode)
+                && !triggerHistory.getSourceTableNameLowerCase().startsWith(symmetricDialect.getTablePrefix().toLowerCase() + "_")) {
+            return insertDeferredIndexEvent(transaction, targetNode, triggerHistory, triggerRouter, loadId, createBy);
+        }
+        return 0;
+    }
+
+    private int insertDeferredIndexEvent(ISqlTransaction transaction, Node targetNode, TriggerHistory triggerHistory,
+            TriggerRouter triggerRouter, long loadId, String createBy) {
+        String reloadChannelId = triggerRouter.getTrigger().getReloadChannelId();
+        if (engine.getConfigurationService().getChannel(reloadChannelId).isFileSyncFlag()) {
+            return 0;
+        }
+        insertCreateEvent(transaction, targetNode, triggerHistory, reloadChannelId, true, loadId, createBy, false, true,
+                false, Status.LS, null, null);
+        if (!parameterService.is(ParameterConstants.DATA_RELOAD_IS_BATCH_INSERT_TRANSACTIONAL)) {
+            transaction.commit();
+        }
+        return 1;
+    }
+
+    private int insertDropForeignKeyEventsForReload(Node targetNode, long loadId, String createBy, List<TriggerHistory> triggerHistories,
+            Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId, ISqlTransaction transaction,
+            Map<String, TableReloadRequest> reloadRequests) throws InterruptedException {
+        boolean hasReloadRequests = reloadRequests != null && !reloadRequests.isEmpty();
+        boolean transactional = parameterService.is(ParameterConstants.DATA_RELOAD_IS_BATCH_INSERT_TRANSACTIONAL);
+        int eventsSent = 0;
+        for (TriggerHistory triggerHistory : triggerHistories) {
+            List<TriggerRouter> triggerRouters = triggerRoutersByHistoryId.get(triggerHistory.getTriggerHistoryId());
+            for (TriggerRouter triggerRouter : triggerRouters) {
+                if (shouldSendDropFkEvent(triggerRouter, triggerHistory, targetNode, reloadRequests, hasReloadRequests)) {
+                    String channelId = hasReloadRequests ? triggerRouter.getTrigger().getReloadChannelId() : triggerRouter.getRouter().getRouterId();
+                    insertCreateEvent(transaction, targetNode, triggerHistory, channelId, true,
+                            loadId, createBy, false, true, false, Status.LS, null, null);
+                    eventsSent++;
+                    if (!transactional) {
+                        transaction.commit();
+                    }
+                }
+                checkInterrupted();
+            }
+        }
+        return eventsSent;
+    }
+
+    private boolean shouldSendDropFkEvent(TriggerRouter triggerRouter, TriggerHistory triggerHistory, Node targetNode,
+            Map<String, TableReloadRequest> reloadRequests, boolean hasReloadRequests) {
+        if (!engine.getGroupletService().isTargetEnabled(triggerRouter, targetNode)) {
+            return false;
+        }
+        if (hasReloadRequests) {
+            TableReloadRequest currentRequest = reloadRequests.get(ParameterConstants.ALL + ParameterConstants.ALL);
+            if (currentRequest == null) {
+                currentRequest = reloadRequests.get(triggerRouter.getTriggerId() + triggerRouter.getRouterId());
+            }
+            return triggerRouter.getInitialLoadOrder() > -1 && currentRequest != null && currentRequest.isCreateTable()
+                    && !triggerHistory.getSourceTableNameLowerCase().startsWith(symmetricDialect.getTablePrefix().toLowerCase() + "_");
+        }
+        return triggerRouter.getInitialLoadOrder() >= 0;
     }
 
     private int insertDeleteBatchesForReload(Node targetNode, long loadId, String createBy,
