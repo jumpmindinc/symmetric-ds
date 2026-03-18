@@ -135,8 +135,9 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                     }
                 }
             }
-            if (columnType != null && columnType.toLowerCase().startsWith("enum(")) {
-                String[] parsedEnums = columnType.substring(5, columnType.length() - 1).split(",");
+            if (columnType != null && (columnType.toLowerCase().startsWith("enum(") || columnType.toLowerCase().startsWith("set("))) {
+                int prefixLength = columnType.toLowerCase().startsWith("enum(") ? 5 : 4;
+                String[] parsedEnums = columnType.substring(prefixLength, columnType.length() - 1).split(",");
                 for (int i = 0; i < parsedEnums.length; i++) {
                     parsedEnums[i] = StringUtils.unwrap(parsedEnums[i], "'");
                 }
