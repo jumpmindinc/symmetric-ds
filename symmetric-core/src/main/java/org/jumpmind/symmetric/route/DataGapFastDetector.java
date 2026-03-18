@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.route;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -64,6 +65,7 @@ import org.slf4j.LoggerFactory;
  */
 public class DataGapFastDetector extends DataGapDetector implements ISqlRowMapper<Long> {
     private static final Logger log = LoggerFactory.getLogger(DataGapFastDetector.class);
+    private static final String EXPIRED_GAP_COLLISION_MSG = "Detected expired data gap collision during insert, clearing conflicts and retrying";
     protected IContextService contextService;
     protected IClusterService clusterService;
     protected List<DataGap> gaps;
@@ -346,17 +348,7 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                         log.info("There are {} data gap changes, which is within the max of {}, so switching to database",
                                 totalGapChanges, maxGapChanges);
                         useInMemoryGaps = false;
-                        try {
-                            dataService.insertDataGaps(transaction, gaps);
-                        } catch (UniqueKeyException ex) {
-                            log.warn("Detected expired data gap collision during insert, deleting conflicting gaps and retrying");
-                            transaction.rollback();
-                            transaction.close();
-                            transaction = sqlTemplate.startSqlTransaction();
-                            dataService.deleteAllDataGaps(transaction);
-                            dataService.deleteDataGaps(transaction, gaps);
-                            dataService.insertDataGaps(transaction, gaps);
-                        }
+                        transaction = insertDataGapsOrRetryOnExpiredCollision(sqlTemplate, transaction, gaps, true, null);
                     } else {
                         if (!useInMemoryGaps) {
                             log.info("There are {} data gap changes, which exceeds the max of {}, so switching to in-memory",
@@ -364,31 +356,11 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                             useInMemoryGaps = true;
                         }
                         DataGap newGap = new DataGap(gaps.get(0).getStartId(), gaps.get(gaps.size() - 1).getEndId());
-                        try {
-                            dataService.insertDataGap(transaction, newGap);
-                        } catch (UniqueKeyException ex) {
-                            log.warn("Detected expired data gap collision during insert, deleting conflicting gaps and retrying");
-                            transaction.rollback();
-                            transaction.close();
-                            transaction = sqlTemplate.startSqlTransaction();
-                            dataService.deleteAllDataGaps(transaction);
-                            dataService.deleteDataGap(transaction, newGap);
-                            dataService.insertDataGap(transaction, newGap);
-                        }
+                        transaction = insertDataGapOrRetryOnExpiredCollision(sqlTemplate, transaction, newGap);
                     }
                 } else {
                     dataService.deleteDataGaps(transaction, gapsDeleted);
-                    try {
-                        dataService.insertDataGaps(transaction, gapsAdded);
-                    } catch (UniqueKeyException ex) {
-                        log.warn("Detected expired data gap collision during insert, deleting conflicting gaps and retrying");
-                        transaction.rollback();
-                        transaction.close();
-                        transaction = sqlTemplate.startSqlTransaction();
-                        dataService.deleteDataGaps(transaction, gapsDeleted);
-                        dataService.deleteDataGaps(transaction, gapsAdded);
-                        dataService.insertDataGaps(transaction, gapsAdded);
-                    }
+                    transaction = insertDataGapsOrRetryOnExpiredCollision(sqlTemplate, transaction, gapsAdded, false, gapsDeleted);
                 }
                 dataService.expireDataGaps(transaction, gapsExpired);
                 transaction.commit();
@@ -408,6 +380,43 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                 }
             }
         }
+    }
+
+    private ISqlTransaction insertDataGapsOrRetryOnExpiredCollision(ISqlTemplate sqlTemplate, ISqlTransaction transaction,
+            Collection<DataGap> gapsToInsert, boolean replayDeleteAll, Collection<DataGap> replayDeletedGaps) {
+        try {
+            dataService.insertDataGaps(transaction, gapsToInsert);
+        } catch (UniqueKeyException ex) {
+            log.warn(EXPIRED_GAP_COLLISION_MSG);
+            transaction.rollback();
+            transaction.close();
+            transaction = sqlTemplate.startSqlTransaction();
+            if (replayDeleteAll) {
+                dataService.deleteAllDataGaps(transaction);
+            }
+            if (replayDeletedGaps != null && !replayDeletedGaps.isEmpty()) {
+                dataService.deleteDataGaps(transaction, replayDeletedGaps);
+            }
+            dataService.deleteDataGaps(transaction, gapsToInsert);
+            dataService.insertDataGaps(transaction, gapsToInsert);
+        }
+        return transaction;
+    }
+
+    private ISqlTransaction insertDataGapOrRetryOnExpiredCollision(ISqlTemplate sqlTemplate,
+            ISqlTransaction transaction, DataGap gapToInsert) {
+        try {
+            dataService.insertDataGap(transaction, gapToInsert);
+        } catch (UniqueKeyException ex) {
+            log.warn(EXPIRED_GAP_COLLISION_MSG);
+            transaction.rollback();
+            transaction.close();
+            transaction = sqlTemplate.startSqlTransaction();
+            dataService.deleteAllDataGaps(transaction);
+            dataService.deleteDataGap(transaction, gapToInsert);
+            dataService.insertDataGap(transaction, gapToInsert);
+        }
+        return transaction;
     }
 
     protected synchronized void queryDataIdMap() {

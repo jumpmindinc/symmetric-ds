@@ -762,7 +762,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testSaveDataGapsRetryOnExpiredCollision() throws Exception {
+    void testSaveDataGapsRetryOnExpiredCollision() {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(4, 50000004));
@@ -785,7 +785,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testSaveDataGapsBulkDatabaseRetryOnExpiredCollision() throws Exception {
+    void testSaveDataGapsBulkDatabaseRetryOnExpiredCollision() {
         detector.useInMemoryGaps = true;
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
@@ -808,7 +808,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testSaveDataGapsBulkInMemoryRetryOnExpiredCollision() throws Exception {
+    void testSaveDataGapsBulkInMemoryRetryOnExpiredCollision() {
         when(parameterService.getInt(ParameterConstants.ROUTING_MAX_GAP_CHANGES)).thenReturn(2);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
