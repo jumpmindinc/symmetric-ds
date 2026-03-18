@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.route;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -39,6 +40,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
+import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.AbstractSymmetricEngine;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ContextConstants;
@@ -755,6 +757,72 @@ public class DataGapDetectorTest {
         verify(dataService).findDataGaps();
         verify(dataService).deleteDataGaps(sqlTransaction, deleted);
         verify(dataService).insertDataGaps(sqlTransaction, inserted);
+        verify(dataService).expireDataGaps(sqlTransaction, new HashSet<DataGap>());
+        verifyNoMoreInteractions(dataService);
+    }
+
+    @Test
+    public void testSaveDataGapsRetryOnExpiredCollision() throws Exception {
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(3, 3));
+        dataGaps.add(new DataGap(4, 50000004));
+        List<Long> dataIds = new ArrayList<Long>();
+        dataIds.add(100L);
+        Set<DataGap> inserted = new HashSet<DataGap>();
+        inserted.add(new DataGap(4, 99));
+        inserted.add(new DataGap(101, 50000100));
+        doThrow(new UniqueKeyException("Duplicate entry")).doNothing()
+                .when(dataService).insertDataGaps(sqlTransaction, inserted);
+        runGapDetector(dataGaps, dataIds, true);
+        Set<DataGap> deleted = new HashSet<DataGap>();
+        deleted.add(new DataGap(4, 50000004));
+        verify(dataService).findDataGaps();
+        verify(dataService, times(2)).deleteDataGaps(sqlTransaction, deleted);
+        verify(dataService).deleteDataGaps(sqlTransaction, inserted);
+        verify(dataService, times(2)).insertDataGaps(sqlTransaction, inserted);
+        verify(dataService).expireDataGaps(sqlTransaction, new HashSet<DataGap>());
+        verifyNoMoreInteractions(dataService);
+    }
+
+    @Test
+    public void testSaveDataGapsBulkDatabaseRetryOnExpiredCollision() throws Exception {
+        detector.useInMemoryGaps = true;
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(3, 3));
+        dataGaps.add(new DataGap(4, 50000004));
+        List<Long> dataIds = new ArrayList<Long>();
+        dataIds.add(100L);
+        List<DataGap> allGaps = new ArrayList<DataGap>();
+        allGaps.add(new DataGap(3, 3));
+        allGaps.add(new DataGap(4, 99));
+        allGaps.add(new DataGap(101, 50000100));
+        doThrow(new UniqueKeyException("Duplicate entry")).doNothing()
+                .when(dataService).insertDataGaps(sqlTransaction, allGaps);
+        runGapDetector(dataGaps, dataIds, true);
+        verify(dataService).findDataGaps();
+        verify(dataService, times(2)).deleteAllDataGaps(sqlTransaction);
+        verify(dataService).deleteDataGaps(sqlTransaction, allGaps);
+        verify(dataService, times(2)).insertDataGaps(sqlTransaction, allGaps);
+        verify(dataService).expireDataGaps(sqlTransaction, new HashSet<DataGap>());
+        verifyNoMoreInteractions(dataService);
+    }
+
+    @Test
+    public void testSaveDataGapsBulkInMemoryRetryOnExpiredCollision() throws Exception {
+        when(parameterService.getInt(ParameterConstants.ROUTING_MAX_GAP_CHANGES)).thenReturn(2);
+        List<DataGap> dataGaps = new ArrayList<DataGap>();
+        dataGaps.add(new DataGap(3, 3));
+        dataGaps.add(new DataGap(4, 50000004));
+        List<Long> dataIds = new ArrayList<Long>();
+        dataIds.add(100L);
+        DataGap mergedGap = new DataGap(3, 50000100);
+        doThrow(new UniqueKeyException("Duplicate entry")).doNothing()
+                .when(dataService).insertDataGap(sqlTransaction, mergedGap);
+        runGapDetector(dataGaps, dataIds, true);
+        verify(dataService).findDataGaps();
+        verify(dataService, times(2)).deleteAllDataGaps(sqlTransaction);
+        verify(dataService).deleteDataGap(sqlTransaction, mergedGap);
+        verify(dataService, times(2)).insertDataGap(sqlTransaction, mergedGap);
         verify(dataService).expireDataGaps(sqlTransaction, new HashSet<DataGap>());
         verifyNoMoreInteractions(dataService);
     }

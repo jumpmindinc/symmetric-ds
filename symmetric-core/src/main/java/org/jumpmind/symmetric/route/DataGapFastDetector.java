@@ -36,6 +36,7 @@ import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ContextConstants;
@@ -345,7 +346,17 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                         log.info("There are {} data gap changes, which is within the max of {}, so switching to database",
                                 totalGapChanges, maxGapChanges);
                         useInMemoryGaps = false;
-                        dataService.insertDataGaps(transaction, gaps);
+                        try {
+                            dataService.insertDataGaps(transaction, gaps);
+                        } catch (UniqueKeyException ex) {
+                            log.warn("Detected expired data gap collision during insert, deleting conflicting gaps and retrying");
+                            transaction.rollback();
+                            transaction.close();
+                            transaction = sqlTemplate.startSqlTransaction();
+                            dataService.deleteAllDataGaps(transaction);
+                            dataService.deleteDataGaps(transaction, gaps);
+                            dataService.insertDataGaps(transaction, gaps);
+                        }
                     } else {
                         if (!useInMemoryGaps) {
                             log.info("There are {} data gap changes, which exceeds the max of {}, so switching to in-memory",
@@ -353,11 +364,31 @@ public class DataGapFastDetector extends DataGapDetector implements ISqlRowMappe
                             useInMemoryGaps = true;
                         }
                         DataGap newGap = new DataGap(gaps.get(0).getStartId(), gaps.get(gaps.size() - 1).getEndId());
-                        dataService.insertDataGap(transaction, newGap);
+                        try {
+                            dataService.insertDataGap(transaction, newGap);
+                        } catch (UniqueKeyException ex) {
+                            log.warn("Detected expired data gap collision during insert, deleting conflicting gaps and retrying");
+                            transaction.rollback();
+                            transaction.close();
+                            transaction = sqlTemplate.startSqlTransaction();
+                            dataService.deleteAllDataGaps(transaction);
+                            dataService.deleteDataGap(transaction, newGap);
+                            dataService.insertDataGap(transaction, newGap);
+                        }
                     }
                 } else {
                     dataService.deleteDataGaps(transaction, gapsDeleted);
-                    dataService.insertDataGaps(transaction, gapsAdded);
+                    try {
+                        dataService.insertDataGaps(transaction, gapsAdded);
+                    } catch (UniqueKeyException ex) {
+                        log.warn("Detected expired data gap collision during insert, deleting conflicting gaps and retrying");
+                        transaction.rollback();
+                        transaction.close();
+                        transaction = sqlTemplate.startSqlTransaction();
+                        dataService.deleteDataGaps(transaction, gapsDeleted);
+                        dataService.deleteDataGaps(transaction, gapsAdded);
+                        dataService.insertDataGaps(transaction, gapsAdded);
+                    }
                 }
                 dataService.expireDataGaps(transaction, gapsExpired);
                 transaction.commit();
