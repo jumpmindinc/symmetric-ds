@@ -178,7 +178,7 @@ public class InternalTransportManager extends AbstractTransportManager implement
                                     localNodeId, ProcessType.PULL_HANDLER_EXTRACT));
                     List<OutgoingBatch> batchList = new ArrayList<OutgoingBatch>();
                     try {
-                        batchList = engine.getDataExtractorService().extract(processInfo, local, transport);
+                        batchList = engine.getDataExtractorService().extract(processInfo, local, queue, transport);
                         addPendingBatchCounts(engine, localNodeId, headers);
                         processInfo.setStatus(ProcessStatus.OK);
                     } catch (RuntimeException ex) {

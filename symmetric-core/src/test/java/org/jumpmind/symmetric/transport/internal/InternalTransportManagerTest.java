@@ -593,7 +593,7 @@ public class InternalTransportManagerTest {
         CountDownLatch headersReady = new CountDownLatch(1);
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         manager.handlePull(targetEngine, localNode, suspendIgnoreChannels, null, headers, headersReady, os);
-        verify(dataExtractorService).extract(any(ProcessInfo.class), any(Node.class), any());
+        verify(dataExtractorService).extract(any(ProcessInfo.class), any(Node.class), eq("default"), any());
     }
 
     @Test
