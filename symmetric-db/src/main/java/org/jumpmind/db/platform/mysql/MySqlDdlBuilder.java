@@ -482,13 +482,15 @@ public class MySqlDdlBuilder extends AbstractDdlBuilder {
             sqlType = "DATETIME(" + column.getScale() + ")";
         }
         PlatformColumn pc = column.getPlatformColumns() == null ? null : column.getPlatformColumns().get(DatabaseNamesConstants.MYSQL);
-        if (pc != null && ("ENUM".equalsIgnoreCase(column.getJdbcTypeName()) || "ENUM".equalsIgnoreCase(pc.getType()))) {
+        if (pc != null && ("ENUM".equalsIgnoreCase(column.getJdbcTypeName()) || "ENUM".equalsIgnoreCase(pc.getType())
+                || "SET".equalsIgnoreCase(column.getJdbcTypeName()) || "SET".equalsIgnoreCase(pc.getType()))) {
             String[] enumValues = pc.getEnumValues();
             if (enumValues != null && enumValues.length > 0) {
-                // Redo the enum, specifying the values returned from the database in the enumValues field
+                // Redo the enum/set, specifying the values returned from the database in the enumValues field
                 // instead of the size of the column
+                String typeName = "SET".equalsIgnoreCase(column.getJdbcTypeName()) || "SET".equalsIgnoreCase(pc.getType()) ? "SET" : "ENUM";
                 StringBuilder tmpSqlType = new StringBuilder();
-                tmpSqlType.append("ENUM");
+                tmpSqlType.append(typeName);
                 tmpSqlType.append("(");
                 boolean appendComma = false;
                 for (String s : enumValues) {

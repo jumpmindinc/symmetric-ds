@@ -35,7 +35,7 @@ public class MySqlDdlTypesTest extends AbstractDdlTypesTest {
                 "integer", "smallint", "decimal", "numeric",
                 "float", "real", "double precision",
                 "date", "time", "datetime", "timestamp", // "year",
-                "char", "varchar(100)", "text", "enum('small','medium','large')", // "set('a','b','c')",
+                "char", "varchar(100)", "text", "enum('small','medium','large')", "set('a','b','c')",
                 "tinytext", "mediumtext",
                 "binary", "varbinary(100)", "blob", "tinyblob", "mediumblob",
                 "json"
