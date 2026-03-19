@@ -27,44 +27,37 @@ class MsSqlSymmetricDialectTest {
     private MsSqlSymmetricDialect dialect;
     private IParameterService parameterService;
     private IDatabasePlatform platform;
-    private ISqlTemplate sqlTemplate;
 
     @BeforeEach
     void setup() {
         parameterService = mock(ParameterService.class);
         platform = mock(IDatabasePlatform.class);
-        sqlTemplate = mock(ISqlTemplate.class);
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         IDdlBuilder ddlBuilder = mock(IDdlBuilder.class);
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
         when(platform.getDdlBuilder()).thenReturn(ddlBuilder);
         when(ddlBuilder.getDatabaseInfo()).thenReturn(new DatabaseInfo());
         when(sqlTemplate.queryForInt(MsSqlSymmetricDialect.SQL_NOCOUNT)).thenReturn(0);
         when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(parameterService.is(ParameterConstants.MSSQL_USE_VARCHAR_FOR_LOB_IN_SYNC)).thenReturn(false);
+        when(parameterService.getString(ParameterConstants.AUTO_CONFIGURE_EXTRA_TABLES)).thenReturn(null);
         dialect = new MsSqlSymmetricDialect(parameterService, platform);
     }
 
-    @Test
-    void testReadSymmetricSchemaFromXml_ntypesEnabled_setsFileSnapshotColumnsToNvarchar() {
-        when(parameterService.is(ParameterConstants.MSSQL_USE_NTYPES_FOR_SYNC)).thenReturn(true);
-        when(parameterService.is(eq(ParameterConstants.MSSQL_USE_VARCHAR_FOR_LOB_IN_SYNC))).thenReturn(false);
-        when(parameterService.getString(ParameterConstants.AUTO_CONFIGURE_EXTRA_TABLES)).thenReturn(null);
+    private Database readSchemaWithNtypes(boolean ntypesEnabled) {
+        when(parameterService.is(ParameterConstants.MSSQL_USE_NTYPES_FOR_SYNC)).thenReturn(ntypesEnabled);
         Database db = buildDatabaseWithSymTables();
         when(platform.readDatabaseFromXml(anyString(), eq(true))).thenReturn(db);
-        Database result = dialect.readSymmetricSchemaFromXml();
+        return dialect.readSymmetricSchemaFromXml();
+    }
+
+    @Test
+    void testReadSymmetricSchemaFromXml_ntypesEnabled_convertsColumnsToNtypes() {
+        Database result = readSchemaWithNtypes(true);
         Table fileSnapshot = result.findTable(
                 TableConstants.getTableName("sym", TableConstants.SYM_FILE_SNAPSHOT));
         assertEquals(TypeMap.NVARCHAR, fileSnapshot.getColumnWithName("file_name").getMappedType());
         assertEquals(TypeMap.NVARCHAR, fileSnapshot.getColumnWithName("relative_dir").getMappedType());
-    }
-
-    @Test
-    void testReadSymmetricSchemaFromXml_ntypesEnabled_setsSymDataColumnsToNtext() {
-        when(parameterService.is(ParameterConstants.MSSQL_USE_NTYPES_FOR_SYNC)).thenReturn(true);
-        when(parameterService.is(eq(ParameterConstants.MSSQL_USE_VARCHAR_FOR_LOB_IN_SYNC))).thenReturn(false);
-        when(parameterService.getString(ParameterConstants.AUTO_CONFIGURE_EXTRA_TABLES)).thenReturn(null);
-        Database db = buildDatabaseWithSymTables();
-        when(platform.readDatabaseFromXml(anyString(), eq(true))).thenReturn(db);
-        Database result = dialect.readSymmetricSchemaFromXml();
         Table symData = result.findTable(
                 TableConstants.getTableName("sym", TableConstants.SYM_DATA));
         assertEquals(TypeMap.LONGNVARCHAR, symData.getColumnWithName("row_data").getMappedType());
@@ -74,12 +67,7 @@ class MsSqlSymmetricDialectTest {
 
     @Test
     void testReadSymmetricSchemaFromXml_ntypesDisabled_leavesColumnsAsVarchar() {
-        when(parameterService.is(ParameterConstants.MSSQL_USE_NTYPES_FOR_SYNC)).thenReturn(false);
-        when(parameterService.is(eq(ParameterConstants.MSSQL_USE_VARCHAR_FOR_LOB_IN_SYNC))).thenReturn(false);
-        when(parameterService.getString(ParameterConstants.AUTO_CONFIGURE_EXTRA_TABLES)).thenReturn(null);
-        Database db = buildDatabaseWithSymTables();
-        when(platform.readDatabaseFromXml(anyString(), eq(true))).thenReturn(db);
-        Database result = dialect.readSymmetricSchemaFromXml();
+        Database result = readSchemaWithNtypes(false);
         Table fileSnapshot = result.findTable(
                 TableConstants.getTableName("sym", TableConstants.SYM_FILE_SNAPSHOT));
         assertEquals(TypeMap.VARCHAR, fileSnapshot.getColumnWithName("file_name").getMappedType());

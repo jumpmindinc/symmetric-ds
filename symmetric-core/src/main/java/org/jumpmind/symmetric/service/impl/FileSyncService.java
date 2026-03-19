@@ -582,11 +582,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
-    /**
-     * SYM-7437: Returns Types.NVARCHAR when mssql.use.ntypes.for.sync is enabled
-     * on MSSQL, otherwise Types.VARCHAR. This ensures file_name and relative_dir
-     * parameters are bound as NVARCHAR to preserve Unicode characters.
-     */
+    // SYM-7437: NVARCHAR when ntypes enabled, preserves Unicode file paths on Latin1 collation
     private int getFilePathJdbcType() {
         if (parameterService.is(ParameterConstants.MSSQL_USE_NTYPES_FOR_SYNC)) {
             return Types.NVARCHAR;
