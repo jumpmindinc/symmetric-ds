@@ -92,6 +92,13 @@ public class MsSqlSymmetricDialect extends AbstractSymmetricDialect implements I
             setColumnToNtext(symTable.getColumnWithName("row_data"));
             setColumnToNtext(symTable.getColumnWithName("old_data"));
             setColumnToNtext(symTable.getColumnWithName("pk_data"));
+            // SYM-7437: extend ntypes to sym_file_snapshot for Unicode file names
+            Table fileSnapshotTable = db.findTable(
+                    TableConstants.getTableName(getTablePrefix(), TableConstants.SYM_FILE_SNAPSHOT));
+            if (fileSnapshotTable != null) {
+                setColumnToNvarchar(fileSnapshotTable.getColumnWithName("file_name"));
+                setColumnToNvarchar(fileSnapshotTable.getColumnWithName("relative_dir"));
+            }
         }
         if (parameterService.is(ParameterConstants.MSSQL_USE_VARCHAR_FOR_LOB_IN_SYNC)) {
             for (Table table : db.getTables()) {
@@ -107,6 +114,10 @@ public class MsSqlSymmetricDialect extends AbstractSymmetricDialect implements I
 
     protected void setColumnToNtext(Column column) {
         column.setMappedType(TypeMap.LONGNVARCHAR);
+    }
+
+    protected void setColumnToNvarchar(Column column) {
+        column.setMappedType(TypeMap.NVARCHAR);
     }
 
     protected void setColumnToVarChar(Column column, boolean forceNtype) {
