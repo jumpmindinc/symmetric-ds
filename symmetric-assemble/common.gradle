@@ -287,21 +287,6 @@ subprojects { subproject ->
         finalizedBy jacocoTestReport
     }
 
-    def integrationTest = tasks.register("integrationTest", Test) {
-        minHeapSize = "128m"
-        maxHeapSize = "512m"
-        forkEvery=1
-        testClassesDirs = sourceSets.test.output.classesDirs
-        classpath = sourceSets.test.runtimeClasspath
-        if (System.getProperty("test.root") != null) systemProperty "test.root", System.getProperty("test.root")
-        if (System.getProperty("test.server") != null) systemProperty "test.server", System.getProperty("test.server")
-        if (System.getProperty("test.client") != null) systemProperty "test.client", System.getProperty("test.client")
-        if (System.getProperty("port.number") != null) systemProperty "port.number", System.getProperty("port.number")
-        useJUnitPlatform {
-            includeTags("integration")
-        }
-        finalizedBy jacocoTestReport
-    }
         
     jar {
         manifest {
@@ -340,23 +325,23 @@ subprojects { subproject ->
         jdomVersion = '2.0.6.1'
         jaxbVersion = '4.0.5'
         gsonVersion = '2.13.1'
-        jacksonVersion = '2.19.2'
+        jacksonVersion = '2.19.4'
         guavaVersion = '33.2.0-android'
         junitVersion = '5.13.3'
         spotBugsVersion = '4.8.5'
         log4jVersion = '2.23.1'
-        slf4jVersion = '2.0.13'
+        slf4jVersion = '2.0.17'
         mockitoVersion = '5.11.0'
         powerMockVersion = '2.0.9'
         mysqlVersion = '8.4.0'
         servletVersion = '4.0.1'
-        springVersion = '6.2.15'
-        springBootVersion = '3.5.9'
+        springVersion = '6.2.17'
+        springBootVersion = '3.5.12'
         jtdsVersion = '1.3.1'
         bouncyCastleVersion = '1.81'
         animalSnifferVersion = '1.23'
         jnaVersion = '5.14.0'
-        jettyVersion = '12.0.31'
+        jettyVersion = '12.0.33'
         websocketVersion = '2.2.0'
         env = System.getenv()
     }
