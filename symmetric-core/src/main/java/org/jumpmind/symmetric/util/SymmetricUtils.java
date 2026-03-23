@@ -29,6 +29,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -65,6 +66,7 @@ import bsh.Interpreter;
 
 final public class SymmetricUtils {
     private static final Logger log = LoggerFactory.getLogger(SymmetricUtils.class);
+    private static SecureRandom rand;
     protected static boolean isNoticeLogged;
 
     private SymmetricUtils() {
@@ -337,5 +339,30 @@ final public class SymmetricUtils {
                 connection.close();
             }
         }
+    }
+
+    public static String randomString(int maxLength) {
+        int length = getRand().nextInt(maxLength);
+        if (length == 0) {
+            length = 1;
+        }
+        StringBuilder str = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            str.append(randomChar());
+        }
+        return str.toString();
+    }
+
+    private static Character randomChar() {
+        int rnd = getRand().nextInt(52);
+        char base = (rnd < 26) ? 'A' : 'a';
+        return (char) (base + rnd % 26);
+    }
+
+    private static SecureRandom getRand() {
+        if (rand == null) {
+            rand = new SecureRandom();
+        }
+        return rand;
     }
 }
