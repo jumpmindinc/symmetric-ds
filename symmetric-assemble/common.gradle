@@ -287,21 +287,6 @@ subprojects { subproject ->
         finalizedBy jacocoTestReport
     }
 
-    def integrationTest = tasks.register("integrationTest", Test) {
-        minHeapSize = "128m"
-        maxHeapSize = "512m"
-        forkEvery=1
-        testClassesDirs = sourceSets.test.output.classesDirs
-        classpath = sourceSets.test.runtimeClasspath
-        if (System.getProperty("test.root") != null) systemProperty "test.root", System.getProperty("test.root")
-        if (System.getProperty("test.server") != null) systemProperty "test.server", System.getProperty("test.server")
-        if (System.getProperty("test.client") != null) systemProperty "test.client", System.getProperty("test.client")
-        if (System.getProperty("port.number") != null) systemProperty "port.number", System.getProperty("port.number")
-        useJUnitPlatform {
-            includeTags("integration")
-        }
-        finalizedBy jacocoTestReport
-    }
         
     jar {
         manifest {
