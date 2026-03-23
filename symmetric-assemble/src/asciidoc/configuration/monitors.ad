@@ -33,7 +33,7 @@ be compared to a threshold value.
 
 |dataGaps|Number of active data gaps that are being checked during routing for data to commit.|
 
-|dbPerformance|Total elapsed time in milliseconds to perform 5 inserts, 5 updates, 5 selects, and 5 deletes against a test table on the local database.|
+|dbPerformance|Total elapsed time in milliseconds to perform 5 inserts, 5 updates, 5 selects, and 5 deletes against a test table on the runtime database.|
 
 |offlineNodes|The number of nodes that are offline based on the last heartbeat time.  The console.report.as.offline.minutes parameter controls how many minutes before a node is considered offline.|
 
