@@ -65,7 +65,7 @@ public class MsSql2008DatabasePlatform extends MsSql2005DatabasePlatform {
         }
         return getSqlTemplateDirty().queryForLong(
                 "SELECT ISNULL(SUM(rows), -1) FROM " + catalogPrefix + "sys.partitions " +
-                "WHERE object_id = OBJECT_ID(?) AND index_id IN (0, 1)",
+                        "WHERE object_id = OBJECT_ID(?) AND index_id IN (0, 1)",
                 qualifiedName);
     }
 
