@@ -24,6 +24,7 @@ import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDdlBuilder;
 import org.jumpmind.db.platform.PermissionResult;
@@ -55,18 +56,17 @@ public class MsSql2008DatabasePlatform extends MsSql2005DatabasePlatform {
 
     @Override
     public long getEstimatedRowCount(Table table) {
-        String catalog = StringUtils.isNotBlank(table.getCatalog()) ? table.getCatalog() : "";
-        if (catalog.length() > 0) {
-            if (getDdlBuilder().isDelimitedIdentifierModeOn()) {
-                catalog = getDdlBuilder().getDatabaseInfo().getDelimiterToken() + catalog + getDdlBuilder().getDatabaseInfo().getDelimiterToken();
-            }
-            catalog = catalog + ".";
+        DatabaseInfo dbInfo = getDatabaseInfo();
+        String quote = getDdlBuilder().isDelimitedIdentifierModeOn() ? dbInfo.getDelimiterToken() : "";
+        String qualifiedName = table.getQualifiedTableName(quote, dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator());
+        String catalogPrefix = "";
+        if (StringUtils.isNotBlank(table.getCatalog())) {
+            catalogPrefix = (quote.length() > 0 ? quote + table.getCatalog() + quote : table.getCatalog()) + ".";
         }
-        return getSqlTemplateDirty().queryForLong("select sum(p.rows) from " + catalog + "sys.tables t inner join " +
-                catalog + "sys.partitions p on t.object_id = p.object_id and p.index_id IN (0, 1) inner join " + catalog
-                + "sys.schemas s on t.schema_id = s.schema_id " +
-                "where t.name = ? and s.name = ?",
-                table.getName(), table.getSchema());
+        return getSqlTemplateDirty().queryForLong(
+                "SELECT ISNULL(SUM(rows), -1) FROM " + catalogPrefix + "sys.partitions " +
+                "WHERE object_id = OBJECT_ID(?) AND index_id IN (0, 1)",
+                qualifiedName);
     }
 
     @Override
