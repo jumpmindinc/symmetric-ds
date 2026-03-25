@@ -47,8 +47,8 @@ import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
-import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
+import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -86,6 +86,9 @@ import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
+import org.jumpmind.symmetric.observability.metrics.EngineMetricsService;
+import org.jumpmind.symmetric.observability.metrics.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
@@ -213,6 +216,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected IFileSyncService fileSyncService;
     protected IContextService contextService;
     protected IUpdateService updateService;
+    protected IEngineMetricsService metricsService;
     protected ICacheManager cacheManager;
     protected Date lastRestartTime = null;
 
@@ -327,8 +331,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.clusterService = createClusterService();
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
+        this.metricsService = createMetricsService();
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
-                statisticManager);
+                statisticManager, metricsService);
         this.purgeService = new PurgeService(parameterService, symmetricDialect, clusterService, dataService, sequenceService,
                 statisticManager, extensionService, contextService);
         this.transformService = new TransformService(this, symmetricDialect);
@@ -386,6 +391,15 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             }
         } catch (Exception ex) {
             log.debug("Failed to load org.jumpmind.driver.Driver", ex);
+        }
+    }
+
+    protected IEngineMetricsService createMetricsService() {
+        try {
+            return new EngineMetricsService(this, MetricsManager.getGlobalInstance(), parameterService.is(ParameterConstants.OTEL_METRICS_ENABLED, true));
+        } catch (Exception ex) {
+            log.error("Failed to initialize EngineMetricsService!", ex);
+            return null;
         }
     }
 
@@ -1043,6 +1057,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (jobManager != null) {
             jobManager.destroy();
         }
+        if (metricsService != null) {
+            metricsService.shutdown();
+        }
     }
 
     @Override
@@ -1379,6 +1396,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     @Override
     public IConcurrentConnectionManager getConcurrentConnectionManager() {
         return concurrentConnectionManager;
+    }
+
+    @Override
+    public IEngineMetricsService getMetricsService() {
+        return metricsService;
     }
 
     @Override

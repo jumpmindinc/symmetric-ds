@@ -47,6 +47,7 @@ import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
+import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
 import org.jumpmind.symmetric.util.LogSummaryAppenderUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
@@ -98,6 +99,7 @@ public abstract class AbstractCommandLauncher {
         String allowServerNames = serverProperties.get(ServerConstants.HTTPS_VERIFIED_SERVERS, "all");
         boolean https2Enabled = serverProperties.is(ServerConstants.HTTPS2_ENABLE, false);
         TransportManagerFactory.initHttps(allowServerNames, allowSelfSignedCerts, https2Enabled);
+        MetricsManager.getGlobalInstance();
     }
 
     protected static void initFromServerProperties() {

@@ -11,6 +11,11 @@ apply from: symAssembleDir + '/common.gradle'
         api "org.springframework:spring-core:$springVersion"
         api "org.springframework:spring-beans:$springVersion"
         implementation "com.github.jsqlparser:jsqlparser:4.9"
+        api platform("io.opentelemetry:opentelemetry-bom:$openTelemetryVersion")
+        api "io.opentelemetry:opentelemetry-api"
+        implementation "io.opentelemetry:opentelemetry-sdk"
+        implementation "io.opentelemetry:opentelemetry-sdk-extension-autoconfigure"
+        testImplementation "io.opentelemetry:opentelemetry-sdk-testing"
         
         compileOnly ("org.jumpmind.symmetric.module:tps-parse:1.0.15") {
             exclude group: 'commons-lang', module: 'commons-lang'

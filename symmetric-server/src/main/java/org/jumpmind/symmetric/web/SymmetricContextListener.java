@@ -28,6 +28,7 @@ import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.SystemConstants;
+import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.context.support.WebApplicationContextUtils;
@@ -39,6 +40,7 @@ import jakarta.servlet.ServletContextListener;
 public class SymmetricContextListener implements ServletContextListener {
     private static final Logger log = LoggerFactory.getLogger(SymmetricContextListener.class);
 
+    @Override
     public void contextInitialized(ServletContextEvent sce) {
         Class<?> remoteStatusEndpoint = loadRemoteStatusEndpoint();
         if (remoteStatusEndpoint != null) {
@@ -83,6 +85,7 @@ public class SymmetricContextListener implements ServletContextListener {
                 }
             }
         }
+        MetricsManager.getGlobalInstance();
         engineHolder.start();
     }
 
@@ -98,6 +101,7 @@ public class SymmetricContextListener implements ServletContextListener {
         return null;
     }
 
+    @Override
     public void contextDestroyed(ServletContextEvent sce) {
         ServletContext ctx = sce.getServletContext();
         SymmetricEngineHolder engineHolder = (SymmetricEngineHolder) ctx
