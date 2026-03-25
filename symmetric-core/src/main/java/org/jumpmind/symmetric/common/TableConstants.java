@@ -95,6 +95,7 @@ public class TableConstants {
     public static final String SYM_COMPARE_REQUEST = "compare_request";
     public static final String SYM_COMPARE_STATUS = "compare_status";
     public static final String SYM_COMPARE_TABLE_STATUS = "compare_table_status";
+    public static final String SYM_ANALYTICS_REPORT = "analytics_report";
     protected static boolean hasConsoleSchema = TableConstants.class.getResourceAsStream("/console-schema.xml") != null;
     /**
      * Historical list of decommissioned SymmetricDS tables. Used to filter configuration files produced by older versions. See getRemovedConfigTables:
@@ -127,7 +128,7 @@ public class TableConstants {
         Set<String> tables = new HashSet<String>();
         addPrefixToTableNames(tables, tablePrefix, SYM_CONSOLE_EVENT, SYM_CONSOLE_USER, SYM_CONSOLE_USER_HIST, SYM_CONSOLE_USER_PREFERENCE,
                 SYM_CONSOLE_ROLE, SYM_CONSOLE_ROLE_PRIVILEGE, SYM_CONSOLE_TABLE_STATS, SYM_TABLE_GROUP, SYM_TABLE_GROUP_HIER,
-                SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS, SYM_COMPARE_TABLE_STATUS, SYM_MONITOR, SYM_MONITOR_EVENT, SYM_NOTIFICATION);
+                SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS, SYM_COMPARE_TABLE_STATUS, SYM_MONITOR, SYM_MONITOR_EVENT, SYM_NOTIFICATION, SYM_ANALYTICS_REPORT);
         return tables;
     }
 
