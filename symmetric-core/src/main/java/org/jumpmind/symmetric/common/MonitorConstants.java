@@ -64,6 +64,7 @@ public class MonitorConstants {
     public static final String INCOMPATIBLE_DATETIME = "incompatibleDatetime";
     public static final String POSTGRES_WAL = "postgresWal";
     public static final String JVM_OOM_MONITOR = "jvmOutOfMemoryMonitor";
+    public static final String DB_PERFORMANCE = "dbPerformance";
 
     public static Map<String, String> getMonitorTypesByVersion() {
         Map<String, String> map = new HashMap<String, String>();
@@ -83,6 +84,9 @@ public class MonitorConstants {
         }
         for (String name : new String[] { POSTGRES_WAL, JVM_OOM_MONITOR }) {
             map.put(name, "3.16.5");
+        }
+        for (String name : new String[] { DB_PERFORMANCE }) {
+            map.put(name, "3.18.0");
         }
         return map;
     }
