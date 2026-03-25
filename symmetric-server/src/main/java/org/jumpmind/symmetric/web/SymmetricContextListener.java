@@ -28,10 +28,10 @@ import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
+import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.context.support.WebApplicationContextUtils;
-
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
