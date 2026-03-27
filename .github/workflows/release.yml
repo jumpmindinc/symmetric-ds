@@ -21,7 +21,7 @@ jobs:
             contents: write
 
         steps:
-            - uses: runs-on/action@v2
+            - uses: runs-on/action@v2.1.0
             
             - name: Validate release version input
               shell: bash
@@ -43,19 +43,20 @@ jobs:
                 fi
                 
             - name: Checkout Source
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6.0.2
               with:
                   clean: true
             
             - name: Set up Java
-              uses: actions/setup-java@v4
+              uses: actions/setup-java@v5.2.0
+
               with:
                   java-version: 21
                   distribution: 'temurin'
                   cache: gradle
 
             - name: Setup Gradle
-              uses: gradle/actions/setup-gradle@v4
+              uses: gradle/actions/setup-gradle@v6.0.1
 
             - name: Build with Gradle
               run: |
@@ -106,7 +107,7 @@ jobs:
                 
             - name: Create Release in GitHub
               if: steps.check_tag_exists.outputs.should_tag
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@v2.6.1
               with:
                 tag_name: ${{ steps.create_tag.outputs.TAG }}
                 name: "Release ${{ steps.create_tag.outputs.TAG }}"

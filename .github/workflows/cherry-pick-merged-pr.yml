@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Checkout for commit lookup
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -53,7 +53,7 @@ jobs:
           fi
           
       - name: Match PR number from commit message
-        uses: actions-ecosystem/action-regex-match@v2
+        uses: actions-ecosystem/action-regex-match@v2.0.2
         id: pr-number
         with:
           text: ${{ steps.commit-info.outputs.commit_message }}
@@ -61,7 +61,7 @@ jobs:
 
       - name: Check if PR was created by bot
         if: steps.pr-number.outputs.group1 != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8.0.0
         with:
           script: |
             const pr = await github.rest.pulls.get({
@@ -76,7 +76,7 @@ jobs:
             }
 
       - name: Title regex match
-        uses: actions-ecosystem/action-regex-match@v2
+        uses: actions-ecosystem/action-regex-match@v2.0.2
         id: title-pattern
         with:
           text: ${{ steps.commit-info.outputs.commit_message }}
@@ -179,7 +179,7 @@ jobs:
     
     steps:
       - name: Create App Token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3.0.0
         id: app-token
         with:
           owner: jumpmindinc
@@ -187,7 +187,7 @@ jobs:
           private-key: ${{ env.GITHUB_BOT_KEY }}
 
       - name: Checkout Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: '0'
@@ -216,7 +216,7 @@ jobs:
 
       - name: Open PR
         id: open-pr
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8.0.0
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
