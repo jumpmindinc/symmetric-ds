@@ -11,10 +11,10 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64   
     steps:
-      - uses: runs-on/action@v2
+      - uses: runs-on/action@v2.1.0
       
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           clean: true
           fetch-depth: 2
