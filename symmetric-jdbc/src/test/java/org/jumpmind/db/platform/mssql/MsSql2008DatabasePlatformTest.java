@@ -33,11 +33,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-/**
- * Unit tests for {@link MsSql2008DatabasePlatform#getEstimatedRowCount(Table)}
- */
-@DisplayName("MsSql2008DatabasePlatform")
 class MsSql2008DatabasePlatformTest {
+    private static final String CATALOG_NAME = "dbCatalog";
+    private static final String SCHEMA_NAME = "dbSchema";
+    private static final String TABLE_NAME = "dbTable";
     private MsSql2008DatabasePlatform platform;
     private ISqlTemplate sqlTemplateDirty;
     private MsSql2008DdlBuilder ddlBuilder;
@@ -56,25 +55,25 @@ class MsSql2008DatabasePlatformTest {
     @Test
     @DisplayName("getEstimatedRowCount with catalog, schema, and default delimited mode quotes all identifiers")
     void testEstimatedRowCountWithCatalogAndSchema() {
-        Table table = new Table("Pack");
-        table.setCatalog("AutoCribNet");
-        table.setSchema("11498");
+        Table table = new Table(TABLE_NAME);
+        table.setCatalog(CATALOG_NAME);
+        table.setSchema(SCHEMA_NAME);
         when(sqlTemplateDirty.queryForLong(anyString(), anyString())).thenReturn(42L);
         long result = platform.getEstimatedRowCount(table);
         assertEquals(42L, result);
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> paramCaptor = ArgumentCaptor.forClass(String.class);
         verify(sqlTemplateDirty).queryForLong(sqlCaptor.capture(), paramCaptor.capture());
-        assertEquals("SELECT ISNULL(SUM(rows), -1) FROM \"AutoCribNet\".sys.partitions "
-                + "WHERE object_id = OBJECT_ID(?) AND index_id IN (0, 1)", sqlCaptor.getValue());
-        assertEquals("\"AutoCribNet\".\"11498\".\"Pack\"", paramCaptor.getValue());
+        assertEquals("SELECT ISNULL(SUM(rows), -1) FROM \"" + CATALOG_NAME + "\".sys.partitions " // Catalog is significant for the sys.partitions view
+                + "WHERE object_id = OBJECT_ID(?) AND index_id IN (0,1)", sqlCaptor.getValue());
+        assertEquals("\"" + CATALOG_NAME + "\".\"" + SCHEMA_NAME + "\".\"" + TABLE_NAME + "\"", paramCaptor.getValue());
     }
 
     @Test
     @DisplayName("getEstimatedRowCount without catalog omits catalog prefix from sys.partitions")
     void testEstimatedRowCountWithoutCatalog() {
-        Table table = new Table("Users");
-        table.setSchema("dbo");
+        Table table = new Table(TABLE_NAME);
+        table.setSchema(SCHEMA_NAME);
         when(sqlTemplateDirty.queryForLong(anyString(), anyString())).thenReturn(100L);
         long result = platform.getEstimatedRowCount(table);
         assertEquals(100L, result);
@@ -82,14 +81,14 @@ class MsSql2008DatabasePlatformTest {
         ArgumentCaptor<String> paramCaptor = ArgumentCaptor.forClass(String.class);
         verify(sqlTemplateDirty).queryForLong(sqlCaptor.capture(), paramCaptor.capture());
         assertEquals("SELECT ISNULL(SUM(rows), -1) FROM sys.partitions "
-                + "WHERE object_id = OBJECT_ID(?) AND index_id IN (0, 1)", sqlCaptor.getValue());
-        assertEquals("\"dbo\".\"Users\"", paramCaptor.getValue());
+                + "WHERE object_id = OBJECT_ID(?) AND index_id IN (0,1)", sqlCaptor.getValue());
+        assertEquals("\"" + SCHEMA_NAME + "\".\"" + TABLE_NAME + "\"", paramCaptor.getValue());
     }
 
     @Test
     @DisplayName("getEstimatedRowCount without catalog or schema uses just quoted table name")
     void testEstimatedRowCountTableOnly() {
-        Table table = new Table("Items");
+        Table table = new Table(TABLE_NAME);
         when(sqlTemplateDirty.queryForLong(anyString(), anyString())).thenReturn(0L);
         long result = platform.getEstimatedRowCount(table);
         assertEquals(0L, result);
@@ -97,16 +96,16 @@ class MsSql2008DatabasePlatformTest {
         ArgumentCaptor<String> paramCaptor = ArgumentCaptor.forClass(String.class);
         verify(sqlTemplateDirty).queryForLong(sqlCaptor.capture(), paramCaptor.capture());
         assertEquals("SELECT ISNULL(SUM(rows), -1) FROM sys.partitions "
-                + "WHERE object_id = OBJECT_ID(?) AND index_id IN (0, 1)", sqlCaptor.getValue());
-        assertEquals("\"Items\"", paramCaptor.getValue());
+                + "WHERE object_id = OBJECT_ID(?) AND index_id IN (0,1)", sqlCaptor.getValue());
+        assertEquals("\"" + TABLE_NAME + "\"", paramCaptor.getValue());
     }
 
     @Test
     @DisplayName("getEstimatedRowCount with delimited mode off produces unquoted names")
     void testEstimatedRowCountUnquoted() {
-        Table table = new Table("Pack");
-        table.setCatalog("AutoCribNet");
-        table.setSchema("11498");
+        Table table = new Table(TABLE_NAME);
+        table.setCatalog(CATALOG_NAME);
+        table.setSchema(SCHEMA_NAME);
         ddlBuilder.setDelimitedIdentifierModeOn(false);
         when(sqlTemplateDirty.queryForLong(anyString(), anyString())).thenReturn(7L);
         long result = platform.getEstimatedRowCount(table);
@@ -114,15 +113,15 @@ class MsSql2008DatabasePlatformTest {
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> paramCaptor = ArgumentCaptor.forClass(String.class);
         verify(sqlTemplateDirty).queryForLong(sqlCaptor.capture(), paramCaptor.capture());
-        assertEquals("SELECT ISNULL(SUM(rows), -1) FROM AutoCribNet.sys.partitions "
-                + "WHERE object_id = OBJECT_ID(?) AND index_id IN (0, 1)", sqlCaptor.getValue());
-        assertEquals("AutoCribNet.11498.Pack", paramCaptor.getValue());
+        assertEquals("SELECT ISNULL(SUM(rows), -1) FROM " + CATALOG_NAME + ".sys.partitions "
+                + "WHERE object_id = OBJECT_ID(?) AND index_id IN (0,1)", sqlCaptor.getValue());
+        assertEquals(CATALOG_NAME + "." + SCHEMA_NAME + "." + TABLE_NAME, paramCaptor.getValue());
     }
 
     @Test
     @DisplayName("getEstimatedRowCount returns -1 when table not found")
     void testEstimatedRowCountTableNotFound() {
-        Table table = new Table("NoSuchTable");
+        Table table = new Table(TABLE_NAME + "_non_existant");
         when(sqlTemplateDirty.queryForLong(anyString(), anyString())).thenReturn(-1L);
         long result = platform.getEstimatedRowCount(table);
         assertEquals(-1L, result);
