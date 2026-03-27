@@ -20,13 +20,7 @@ jobs:
     name: Build and Test
     runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64
     steps:
-<<<<<<< HEAD
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-=======
       - uses: actions/checkout@v6.0.2
->>>>>>> 0ea7e93f3 (SYM-7452: update gh actions. (#665))
 
       - name: Setup JDK
         uses: actions/setup-java@v5.2.0
