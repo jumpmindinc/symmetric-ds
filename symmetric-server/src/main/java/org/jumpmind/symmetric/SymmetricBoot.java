@@ -36,6 +36,7 @@ import org.jumpmind.symmetric.web.HttpMethodFilter;
 import org.jumpmind.symmetric.web.SymmetricContextListener;
 import org.jumpmind.symmetric.web.SymmetricServlet;
 import org.jumpmind.symmetric.web.WebConstants;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.Banner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -45,6 +46,7 @@ import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 
 import io.micrometer.common.util.StringUtils;
 import jakarta.servlet.ServletContext;
@@ -52,6 +54,9 @@ import jakarta.servlet.ServletException;
 
 @SpringBootApplication(scanBasePackages = { "org.jumpmind.symmetric", "com.jumpmind.symmetric" })
 public class SymmetricBoot extends SpringBootServletInitializer {
+    @Autowired
+    private Environment env;
+
     @Bean
     ServletContextInitializer servletContextInitializer() {
         return new ServletContextInitializer() {
@@ -59,6 +64,9 @@ public class SymmetricBoot extends SpringBootServletInitializer {
             public void onStartup(ServletContext servletContext) throws ServletException {
                 servletContext.setInitParameter(WebConstants.INIT_PARAM_AUTO_START, Boolean.toString(true));
                 String singlePropertiesFile = System.getProperty(ServerConstants.SERVER_SINGLE_PROPERTIES_FILE);
+                if (StringUtils.isBlank(singlePropertiesFile)) {
+                    singlePropertiesFile = env.getProperty("server.servlet.context-parameters." + WebConstants.INIT_SINGLE_SERVER_PROPERTIES_FILE);
+                }
                 if (StringUtils.isNotBlank(singlePropertiesFile)) {
                     servletContext.setInitParameter(WebConstants.INIT_SINGLE_SERVER_PROPERTIES_FILE, singlePropertiesFile);
                     servletContext.setInitParameter(WebConstants.INIT_PARAM_MULTI_SERVER_MODE, Boolean.toString(false));
