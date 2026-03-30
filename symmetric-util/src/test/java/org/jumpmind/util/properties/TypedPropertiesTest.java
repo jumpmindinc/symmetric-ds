@@ -8,9 +8,9 @@ import java.util.Properties;
 import org.jumpmind.properties.TypedProperties;
 import org.junit.jupiter.api.Test;
 
-public class TypedPropertiesTest {
+class TypedPropertiesTest {
     @Test
-    public void testMerge() {
+    void testMerge() {
         TypedProperties target = new TypedProperties();
         target.setProperty("db.url", "original-url");
         target.setProperty("db.user", "original-user");
@@ -25,7 +25,7 @@ public class TypedPropertiesTest {
     }
 
     @Test
-    public void testMergeIgnoresKeyNotInTarget() {
+    void testMergeIgnoresKeyNotInTarget() {
         TypedProperties target = new TypedProperties();
         target.setProperty("db.url", "original");
         Properties source = new Properties();
@@ -36,7 +36,7 @@ public class TypedPropertiesTest {
     }
 
     @Test
-    public void testPutAll() {
+    void testPutAll() {
         TypedProperties target = new TypedProperties();
         target.setProperty("db.url", "original-url");
         target.setProperty("db.user", "original-user");

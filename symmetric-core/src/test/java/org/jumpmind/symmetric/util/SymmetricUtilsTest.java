@@ -3,7 +3,6 @@ package org.jumpmind.symmetric.util;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -24,7 +23,7 @@ import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Node;
 import org.junit.jupiter.api.Test;
 
-public class SymmetricUtilsTest {
+class SymmetricUtilsTest {
     // --- quote ---
     @Test
     void testQuoteWithDelimiter() {
