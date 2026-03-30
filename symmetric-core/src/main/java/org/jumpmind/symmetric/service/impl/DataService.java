@@ -106,9 +106,9 @@ import org.jumpmind.symmetric.model.TableReloadRequestKey;
 import org.jumpmind.symmetric.model.TableReloadStatus;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerHistory;
-import org.jumpmind.symmetric.model.TriggerReBuildReason;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.service.ClusterConstants;
+import org.jumpmind.symmetric.util.TriggerUtils;
 import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IFileSyncService;
@@ -3743,7 +3743,7 @@ public class DataService extends AbstractService implements IDataService {
         private Collection<TriggerHistory> allTriggerHistories;
         private Map<Integer, TriggerHistory> remappedTriggerHistIds = new HashMap<Integer, TriggerHistory>();
         private HashMap<String, TriggerHistory> mismatchedTableName;
-        private HashSet<Integer> missingConfigTriggerHist;
+        private HashSet<Integer> missingConfigTriggerHist = new HashSet<>();
         private boolean lookupTriggerHist = true;
 
         public DataMapper() {
@@ -3801,61 +3801,51 @@ public class DataService extends AbstractService implements IDataService {
         }
 
         private TriggerHistory findOrCreateTriggerHistory(String tableName, int triggerHistId, Data data, boolean isExistingTriggerHist) {
-            TriggerHistory triggerHistory = null;
-            Trigger trigger = null;
-            Table table = null;
-            long dataId = data.getDataId();
-            triggerHistory = remappedTriggerHistIds.get(triggerHistId);
+            TriggerHistory triggerHistory = remappedTriggerHistIds.get(triggerHistId);
             if (triggerHistory != null) {
                 return triggerHistory;
             }
             if (triggerRouters == null) {
                 triggerRouters = engine.getTriggerRouterService().getAllTriggerRoutersForCurrentNode(engine.getNodeService().findIdentity().getNodeGroupId());
             }
+            Trigger trigger = null;
+            Table table = null;
             for (TriggerRouter triggerRouter : triggerRouters) {
                 if (triggerRouter.isEnabled() && triggerRouter.getTrigger().getSourceTableName().equalsIgnoreCase(tableName)) {
                     trigger = triggerRouter.getTrigger();
-                    table = platform.getTableFromCache(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(), tableName, false);
+                    if (trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded()) {
+                        ensureHistoriesLoaded();
+                    }
+                    table = TriggerUtils.resolveTableForTrigger(trigger, tableName, activeTriggerHistories, platform);
                     break;
                 }
             }
             if (table != null && trigger != null) {
-                if (activeTriggerHistories == null) {
-                    activeTriggerHistories = engine.getTriggerRouterService().getActiveTriggerHistories();
-                    allTriggerHistories = engine.getTriggerRouterService().getHistoryRecords().values();
-                }
-                triggerHistory = findMatchingTriggerHistory(trigger, data, tableName);
-                if (triggerHistory == null) {
-                    triggerHistory = new TriggerHistory(table, trigger, engine.getSymmetricDialect().getTriggerTemplate());
-                    triggerHistory.setTriggerHistoryId(isExistingTriggerHist ? 0 : triggerHistId);
-                    triggerHistory.setLastTriggerBuildReason(TriggerReBuildReason.TRIGGER_HIST_MISSING);
-                    List<String> triggerNamesGeneratedThisSession = new ArrayList<String>();
-                    triggerHistory.setNameForInsertTrigger(engine.getTriggerRouterService().getTriggerName(DataEventType.INSERT,
-                            symmetricDialect.getMaxTriggerNameLength(), trigger, table, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
-                    triggerHistory.setNameForUpdateTrigger(engine.getTriggerRouterService().getTriggerName(DataEventType.UPDATE,
-                            symmetricDialect.getMaxTriggerNameLength(), trigger, table, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
-                    triggerHistory.setNameForDeleteTrigger(engine.getTriggerRouterService().getTriggerName(DataEventType.DELETE,
-                            symmetricDialect.getMaxTriggerNameLength(), trigger, table, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
-                    log.warn("Could not find trigger history {} for table {} for data_id {}.  Generating a new trigger history row.",
-                            triggerHistId, tableName, dataId);
-                    engine.getTriggerRouterService().insert(triggerHistory);
-                    activeTriggerHistories.add(triggerHistory);
-                    allTriggerHistories.add(triggerHistory);
-                } else {
-                    remappedTriggerHistIds.put(triggerHistId, triggerHistory);
-                    log.warn("Could not find trigger history {} for table {} for data_id {}.  Using trigger hist {} instead.",
-                            triggerHistId, tableName, dataId, triggerHistory.getTriggerHistoryId());
-                }
+                return reconcileTriggerHistory(trigger, table, triggerHistId, data, tableName, isExistingTriggerHist);
+            }
+            return TriggerUtils.buildStubTriggerHistory(triggerHistId, tableName, data.getDataId(), missingConfigTriggerHist);
+        }
+
+        private void ensureHistoriesLoaded() {
+            if (activeTriggerHistories == null) {
+                activeTriggerHistories = engine.getTriggerRouterService().getActiveTriggerHistories();
+                allTriggerHistories = engine.getTriggerRouterService().getHistoryRecords().values();
+            }
+        }
+
+        private TriggerHistory reconcileTriggerHistory(Trigger trigger, Table table, int triggerHistId, Data data, String tableName,
+                boolean isExistingTriggerHist) {
+            ensureHistoriesLoaded();
+            TriggerHistory triggerHistory = findMatchingTriggerHistory(trigger, data, tableName);
+            if (triggerHistory == null) {
+                triggerHistory = TriggerUtils.createNewTriggerHistory(trigger, table, triggerHistId, isExistingTriggerHist, data.getDataId(),
+                        activeTriggerHistories, engine);
+                activeTriggerHistories.add(triggerHistory);
+                allTriggerHistories.add(triggerHistory);
             } else {
-                if (missingConfigTriggerHist == null) {
-                    missingConfigTriggerHist = new HashSet<Integer>();
-                }
-                if (missingConfigTriggerHist.add(triggerHistId)) {
-                    log.warn("Could not find trigger history {} for table {} for data_id {}.  Table is not configured to sync, so ignoring it.",
-                            triggerHistId, tableName, dataId);
-                }
-                triggerHistory = new TriggerHistory(tableName, "", "");
-                triggerHistory.setTriggerHistoryId(triggerHistId);
+                remappedTriggerHistIds.put(triggerHistId, triggerHistory);
+                log.warn("Could not find trigger history {} for table {} for data_id {}.  Using trigger hist {} instead.",
+                        triggerHistId, tableName, data.getDataId(), triggerHistory.getTriggerHistoryId());
             }
             return triggerHistory;
         }
