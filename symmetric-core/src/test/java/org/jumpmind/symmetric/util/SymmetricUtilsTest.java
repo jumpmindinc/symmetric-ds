@@ -25,9 +25,7 @@ import org.jumpmind.symmetric.model.Node;
 import org.junit.jupiter.api.Test;
 
 public class SymmetricUtilsTest {
-
     // --- quote ---
-
     @Test
     void testQuoteWithDelimiter() {
         ISymmetricDialect dialect = mock(ISymmetricDialect.class);
@@ -36,7 +34,6 @@ public class SymmetricUtilsTest {
         dbInfo.setDelimiterToken("\"");
         when(dialect.getPlatform()).thenReturn(platform);
         when(platform.getDatabaseInfo()).thenReturn(dbInfo);
-
         assertEquals("\"myTable\"", SymmetricUtils.quote(dialect, "myTable"));
     }
 
@@ -48,10 +45,8 @@ public class SymmetricUtilsTest {
         dbInfo.setDelimiterToken("");
         when(dialect.getPlatform()).thenReturn(platform);
         when(platform.getDatabaseInfo()).thenReturn(dbInfo);
-
         assertEquals("myTable", SymmetricUtils.quote(dialect, "myTable"));
     }
-
     // --- replaceNodeVariables ---
 
     @Test
@@ -60,15 +55,12 @@ public class SymmetricUtilsTest {
         source.setNodeId("src-001");
         source.setExternalId("ext-src");
         source.setNodeGroupId("group-src");
-
         Node target = new Node();
         target.setNodeId("tgt-001");
         target.setExternalId("ext-tgt");
         target.setNodeGroupId("group-tgt");
-
         String result = SymmetricUtils.replaceNodeVariables(source, target,
                 "$(sourceNodeId)/$(targetNodeId)/$(sourceNodeGroupId)/$(targetNodeGroupId)");
-
         assertEquals("src-001/group-tgt/group-src/group-tgt", result);
     }
 
@@ -78,10 +70,8 @@ public class SymmetricUtilsTest {
         target.setNodeId("tgt-001");
         target.setExternalId("ext-tgt");
         target.setNodeGroupId("group-tgt");
-
         String result = SymmetricUtils.replaceNodeVariables(null, target,
                 "$(targetExternalId)");
-
         assertEquals("ext-tgt", result);
     }
 
@@ -91,10 +81,8 @@ public class SymmetricUtilsTest {
         source.setNodeId("src-001");
         source.setExternalId("ext-src");
         source.setNodeGroupId("group-src");
-
         String result = SymmetricUtils.replaceNodeVariables(source, null,
                 "$(sourceNodeId)/$(sourceExternalId)");
-
         assertEquals("src-001/ext-src", result);
     }
 
@@ -103,7 +91,6 @@ public class SymmetricUtilsTest {
         String input = "no variables here";
         assertEquals(input, SymmetricUtils.replaceNodeVariables(null, null, input));
     }
-
     // --- replaceCatalogSchemaVariables ---
 
     @Test
@@ -137,7 +124,6 @@ public class SymmetricUtilsTest {
                 null, null, null, null, input);
         assertEquals(input, result);
     }
-
     // --- substituteScripts ---
 
     @Test
@@ -165,7 +151,6 @@ public class SymmetricUtilsTest {
         String input = "only`one";
         assertEquals(input, SymmetricUtils.substituteScripts(input, null));
     }
-
     // --- getDeploymentSubType ---
 
     @Test
@@ -215,7 +200,6 @@ public class SymmetricUtilsTest {
         assertEquals(Constants.DEPLOYMENT_SUB_TYPE_TIME_BASED,
                 SymmetricUtils.getDeploymentSubType(props));
     }
-
     // --- filterTransactions ---
 
     @Test
@@ -223,7 +207,6 @@ public class SymmetricUtilsTest {
         Transaction t = new Transaction("1", "user1", null, new Date(), "");
         Map<String, Transaction> txMap = new HashMap<>();
         List<Transaction> filtered = new ArrayList<>();
-
         // isBlocking=false, blockingTransaction=null → exits early
         boolean result = SymmetricUtils.filterTransactions(t, txMap, filtered, "user1", false, false);
         assertFalse(result);
@@ -235,7 +218,6 @@ public class SymmetricUtilsTest {
         Transaction t = new Transaction("1", "user1", null, new Date(), "");
         Map<String, Transaction> txMap = new HashMap<>();
         List<Transaction> filtered = new ArrayList<>();
-
         boolean result = SymmetricUtils.filterTransactions(t, txMap, filtered, "user1", false, true);
         assertTrue(result);
         assertTrue(filtered.contains(t));
@@ -246,7 +228,6 @@ public class SymmetricUtilsTest {
         Transaction t = new Transaction("1", "other", null, new Date(), "");
         Map<String, Transaction> txMap = new HashMap<>();
         List<Transaction> filtered = new ArrayList<>();
-
         boolean result = SymmetricUtils.filterTransactions(t, txMap, filtered, "user1", true, true);
         assertTrue(result);
         assertTrue(filtered.contains(t));
@@ -260,7 +241,6 @@ public class SymmetricUtilsTest {
         txMap.put("t1", t1);
         txMap.put("t2", t2);
         List<Transaction> filtered = new ArrayList<>();
-
         boolean result = SymmetricUtils.filterTransactions(t2, txMap, filtered, "user1", false, false);
         assertTrue(result);
         assertTrue(filtered.contains(t1));
@@ -273,7 +253,6 @@ public class SymmetricUtilsTest {
         Map<String, Transaction> txMap = new HashMap<>();
         List<Transaction> filtered = new ArrayList<>();
         filtered.add(t);
-
         boolean result = SymmetricUtils.filterTransactions(t, txMap, filtered, "user1", false, true);
         assertTrue(result);
         assertEquals(1, filtered.size());
@@ -284,7 +263,6 @@ public class SymmetricUtilsTest {
         Transaction t = new Transaction("1", "user1", null, new Date(), "");
         Map<String, Transaction> txMap = new HashMap<>();
         List<Transaction> filtered = new ArrayList<>();
-
         boolean result = SymmetricUtils.filterTransactions(t, txMap, filtered, "user1", false, true, 501);
         assertFalse(result);
         assertTrue(filtered.isEmpty());
@@ -295,12 +273,10 @@ public class SymmetricUtilsTest {
         Transaction t = new Transaction("1", "other", null, new Date(), "");
         Map<String, Transaction> txMap = new HashMap<>();
         List<Transaction> filtered = new ArrayList<>();
-
         boolean result = SymmetricUtils.filterTransactions(t, txMap, filtered, "user1", false, true);
         assertFalse(result);
         assertTrue(filtered.isEmpty());
     }
-
     // --- randomString ---
 
     @Test

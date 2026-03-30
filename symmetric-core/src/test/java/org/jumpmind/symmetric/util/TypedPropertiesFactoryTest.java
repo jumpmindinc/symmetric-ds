@@ -9,7 +9,6 @@ import org.jumpmind.properties.TypedProperties;
 import org.junit.jupiter.api.Test;
 
 public class TypedPropertiesFactoryTest {
-
     @Test
     void testMergeAndOverrideWithEnvironmentVariablesAddVariable() {
         Map<String, String> envVariables = Map.of("SYM_DB_PASSWORD", "password");
