@@ -21,9 +21,12 @@
 package org.jumpmind.symmetric.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -31,6 +34,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -95,6 +99,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentMatchers;
 
 public class DataServiceTest {
+    private static final String MAPPER_TABLE = "test_table";
+    private static final String MAPPER_TRIGGER_ID = "group.dbo.test_table";
+    private static final int MAPPER_HIST_ID = 500;
     ISqlTemplate sqlTemplate;
     ISqlTransaction sqlTransaction;
     IDataService dataService;
@@ -667,6 +674,219 @@ public class DataServiceTest {
         verify(sqlTransaction, times(1)).queryForObject("queryData", String.class);
         verify(sqlTransaction, times(0)).queryForObject("queryPk", String.class);
         assertEquals(0, recapturedCount);
+    }
+
+    private Row buildMapperRow(String tableName, int triggerHistId) {
+        Row row = new Row(14);
+        row.put("ROW_DATA", null);
+        row.put("PK_DATA", null);
+        row.put("OLD_DATA", null);
+        row.put("CHANNEL_ID", "default");
+        row.put("TRANSACTION_ID", null);
+        row.put("TABLE_NAME", tableName);
+        row.put("EVENT_TYPE", "D");
+        row.put("SOURCE_NODE_ID", null);
+        row.put("EXTERNAL_DATA", null);
+        row.put("NODE_LIST", null);
+        row.put("DATA_ID", 1L);
+        row.put("CREATE_TIME", null);
+        row.put("TRIGGER_HIST_ID", triggerHistId);
+        row.put("IS_PREROUTED", false);
+        return row;
+    }
+
+    private ITriggerRouterService setUpTriggerRouterServiceForMapperFallback() {
+        ITriggerRouterService triggerRouterService = mock(ITriggerRouterService.class);
+        INodeService nodeService = mock(INodeService.class);
+        when(engine.getTriggerRouterService()).thenReturn(triggerRouterService);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        Node identity = new Node();
+        identity.setNodeGroupId("server");
+        when(nodeService.findIdentity()).thenReturn(identity);
+        when(triggerRouterService.getTriggerHistory(MAPPER_HIST_ID)).thenReturn(null);
+        return triggerRouterService;
+    }
+
+    private Trigger buildMapperTrigger(String catalogName, String schemaName) {
+        Trigger trigger = new Trigger();
+        trigger.setTriggerId(MAPPER_TRIGGER_ID);
+        trigger.setSourceTableName(MAPPER_TABLE);
+        trigger.setSourceCatalogName(catalogName);
+        trigger.setSourceSchemaName(schemaName);
+        return trigger;
+    }
+
+    private TriggerHistory buildMapperTriggerHistory(String catalogName, String schemaName) {
+        TriggerHistory history = new TriggerHistory();
+        history.setTriggerHistoryId(MAPPER_HIST_ID);
+        history.setTriggerId(MAPPER_TRIGGER_ID);
+        history.setSourceTableName(MAPPER_TABLE);
+        history.setSourceCatalogName(catalogName);
+        history.setSourceSchemaName(schemaName);
+        return history;
+    }
+
+    private void setUpHistoryReturnValues(ITriggerRouterService triggerRouterService, TriggerHistory history) {
+        when(triggerRouterService.getActiveTriggerHistories()).thenReturn(Collections.singletonList(history));
+        Map<Long, TriggerHistory> histMap = new HashMap<Long, TriggerHistory>();
+        histMap.put((long) MAPPER_HIST_ID, history);
+        when(triggerRouterService.getHistoryRecords()).thenReturn(histMap);
+    }
+
+    @Test
+    void testFindOrCreateTriggerHistory_triggerHistFoundInCache_noFallback() {
+        ITriggerRouterService triggerRouterService = mock(ITriggerRouterService.class);
+        when(engine.getTriggerRouterService()).thenReturn(triggerRouterService);
+        TriggerHistory cachedHistory = buildMapperTriggerHistory("catalog_1", "dbo");
+        when(triggerRouterService.getTriggerHistory(MAPPER_HIST_ID)).thenReturn(cachedHistory);
+        DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
+        Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
+        assertSame(cachedHistory, data.getTriggerHistory());
+        verify(triggerRouterService, never()).getAllTriggerRoutersForCurrentNode(ArgumentMatchers.any());
+    }
+
+    @Test
+    void testFindOrCreateTriggerHistory_nonWildcardCatalogAndSchema() {
+        String catalog = "catalog_1";
+        String schema = "dbo";
+        ITriggerRouterService triggerRouterService = setUpTriggerRouterServiceForMapperFallback();
+        Trigger trigger = buildMapperTrigger(catalog, schema);
+        TriggerRouter tr = mock(TriggerRouter.class);
+        when(tr.isEnabled()).thenReturn(true);
+        when(tr.getTrigger()).thenReturn(trigger);
+        when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
+        TriggerHistory history = buildMapperTriggerHistory(catalog, schema);
+        setUpHistoryReturnValues(triggerRouterService, history);
+        when(platform.getTableFromCache(catalog, schema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
+        Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
+        assertSame(history, data.getTriggerHistory());
+        verify(platform).getTableFromCache(catalog, schema, MAPPER_TABLE, false);
+    }
+
+    @Test
+    void testFindOrCreateTriggerHistory_wildcardCatalog_resolvesFromActiveTriggerHistories() {
+        String wildcardCatalog = "catalog_*";
+        String resolvedCatalog = "catalog_1";
+        String schema = "dbo";
+        ITriggerRouterService triggerRouterService = setUpTriggerRouterServiceForMapperFallback();
+        Trigger trigger = buildMapperTrigger(wildcardCatalog, schema);
+        TriggerRouter tr = mock(TriggerRouter.class);
+        when(tr.isEnabled()).thenReturn(true);
+        when(tr.getTrigger()).thenReturn(trigger);
+        when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
+        TriggerHistory history = buildMapperTriggerHistory(resolvedCatalog, schema);
+        setUpHistoryReturnValues(triggerRouterService, history);
+        when(platform.getTableFromCache(resolvedCatalog, schema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
+        Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
+        assertSame(history, data.getTriggerHistory());
+        verify(platform).getTableFromCache(resolvedCatalog, schema, MAPPER_TABLE, false);
+        verify(platform, never()).getTableFromCache(ArgumentMatchers.eq(wildcardCatalog), ArgumentMatchers.any(),
+                ArgumentMatchers.any(), ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void testFindOrCreateTriggerHistory_wildcardSchema_resolvesFromActiveTriggerHistories() {
+        String catalog = "catalog_1";
+        String wildcardSchema = "schema_*";
+        String resolvedSchema = "schema_1";
+        ITriggerRouterService triggerRouterService = setUpTriggerRouterServiceForMapperFallback();
+        Trigger trigger = buildMapperTrigger(catalog, wildcardSchema);
+        TriggerRouter tr = mock(TriggerRouter.class);
+        when(tr.isEnabled()).thenReturn(true);
+        when(tr.getTrigger()).thenReturn(trigger);
+        when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
+        TriggerHistory history = buildMapperTriggerHistory(catalog, resolvedSchema);
+        setUpHistoryReturnValues(triggerRouterService, history);
+        when(platform.getTableFromCache(catalog, resolvedSchema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
+        Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
+        assertSame(history, data.getTriggerHistory());
+        verify(platform).getTableFromCache(catalog, resolvedSchema, MAPPER_TABLE, false);
+        verify(platform, never()).getTableFromCache(ArgumentMatchers.any(), ArgumentMatchers.eq(wildcardSchema),
+                ArgumentMatchers.any(), ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void testFindOrCreateTriggerHistory_wildcardCatalogAndSchema_resolvesFromActiveTriggerHistories() {
+        String wildcardCatalog = "catalog_*";
+        String wildcardSchema = "schema_*";
+        String resolvedCatalog = "catalog_1";
+        String resolvedSchema = "schema_1";
+        ITriggerRouterService triggerRouterService = setUpTriggerRouterServiceForMapperFallback();
+        Trigger trigger = buildMapperTrigger(wildcardCatalog, wildcardSchema);
+        TriggerRouter tr = mock(TriggerRouter.class);
+        when(tr.isEnabled()).thenReturn(true);
+        when(tr.getTrigger()).thenReturn(trigger);
+        when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
+        TriggerHistory history = buildMapperTriggerHistory(resolvedCatalog, resolvedSchema);
+        setUpHistoryReturnValues(triggerRouterService, history);
+        when(platform.getTableFromCache(resolvedCatalog, resolvedSchema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
+        Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
+        assertSame(history, data.getTriggerHistory());
+        verify(platform).getTableFromCache(resolvedCatalog, resolvedSchema, MAPPER_TABLE, false);
+    }
+
+    @Test
+    void testFindOrCreateTriggerHistory_wildcardCatalog_noResolvedHistory_onlyNullsCatalog() {
+        // When catalog is wildcarded but schema is not, and no resolved history exists,
+        // only catalogName should become null — schemaName keeps its concrete trigger value.
+        String wildcardCatalog = "catalog_*";
+        String schema = "dbo";
+        ITriggerRouterService triggerRouterService = setUpTriggerRouterServiceForMapperFallback();
+        Trigger trigger = buildMapperTrigger(wildcardCatalog, schema);
+        TriggerRouter tr = mock(TriggerRouter.class);
+        when(tr.isEnabled()).thenReturn(true);
+        when(tr.getTrigger()).thenReturn(trigger);
+        when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
+        when(triggerRouterService.getActiveTriggerHistories()).thenReturn(Collections.emptyList());
+        when(triggerRouterService.getHistoryRecords()).thenReturn(new HashMap<Long, TriggerHistory>());
+        when(platform.getTableFromCache(null, schema, MAPPER_TABLE, false)).thenReturn(null);
+        DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
+        Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
+        assertNotNull(data.getTriggerHistory());
+        assertEquals(MAPPER_HIST_ID, data.getTriggerHistory().getTriggerHistoryId());
+        verify(platform).getTableFromCache(null, schema, MAPPER_TABLE, false);
+        verify(platform, never()).getTableFromCache(ArgumentMatchers.eq(wildcardCatalog), ArgumentMatchers.any(),
+                ArgumentMatchers.any(), ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    void testFindOrCreateTriggerHistory_wildcardCatalogOnly_resolvesOnlyCatalogFromHistory() {
+        // When only catalog is wildcarded, the resolved history supplies the catalog but the
+        // non-wildcarded schema comes unchanged from the trigger definition.
+        String wildcardCatalog = "catalog_*";
+        String resolvedCatalog = "catalog_1";
+        String schema = "dbo";
+        ITriggerRouterService triggerRouterService = setUpTriggerRouterServiceForMapperFallback();
+        Trigger trigger = buildMapperTrigger(wildcardCatalog, schema);
+        TriggerRouter tr = mock(TriggerRouter.class);
+        when(tr.isEnabled()).thenReturn(true);
+        when(tr.getTrigger()).thenReturn(trigger);
+        when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
+        // History has a different schema value — it should be ignored since schema is not wildcarded.
+        TriggerHistory history = buildMapperTriggerHistory(resolvedCatalog, "other_schema");
+        setUpHistoryReturnValues(triggerRouterService, history);
+        when(platform.getTableFromCache(resolvedCatalog, schema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
+        Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
+        assertSame(history, data.getTriggerHistory());
+        // catalog resolved from history; schema kept from trigger (not from history)
+        verify(platform).getTableFromCache(resolvedCatalog, schema, MAPPER_TABLE, false);
+    }
+
+    @Test
+    void testFindOrCreateTriggerHistory_noMatchingTriggerRouter_returnsStubTriggerHistory() {
+        ITriggerRouterService triggerRouterService = setUpTriggerRouterServiceForMapperFallback();
+        when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.emptyList());
+        DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
+        Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
+        assertNotNull(data.getTriggerHistory());
+        assertEquals(MAPPER_HIST_ID, data.getTriggerHistory().getTriggerHistoryId());
+        verify(platform, never()).getTableFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(),
+                ArgumentMatchers.any(), ArgumentMatchers.anyBoolean());
     }
 
     @SuppressWarnings("unchecked")
