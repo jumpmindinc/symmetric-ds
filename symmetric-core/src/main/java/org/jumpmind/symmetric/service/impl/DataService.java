@@ -3678,7 +3678,26 @@ public class DataService extends AbstractService implements IDataService {
             for (TriggerRouter triggerRouter : triggerRouters) {
                 if (triggerRouter.isEnabled() && triggerRouter.getTrigger().getSourceTableName().equalsIgnoreCase(tableName)) {
                     trigger = triggerRouter.getTrigger();
-                    table = platform.getTableFromCache(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(), tableName, false);
+                    String catalogName = trigger.getSourceCatalogName();
+                    String schemaName = trigger.getSourceSchemaName();
+                    if (trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded()) {
+                        if (activeTriggerHistories == null) {
+                            activeTriggerHistories = engine.getTriggerRouterService().getActiveTriggerHistories();
+                            allTriggerHistories = engine.getTriggerRouterService().getHistoryRecords().values();
+                        }
+                        final String triggerId = trigger.getTriggerId();
+                        TriggerHistory resolvedHist = activeTriggerHistories.stream()
+                                .filter(h -> triggerId.equals(h.getTriggerId())
+                                        && tableName.equalsIgnoreCase(h.getSourceTableName()))
+                                .findFirst().orElse(null);
+                        if (trigger.isSourceCatalogNameWildCarded()) {
+                            catalogName = resolvedHist != null ? resolvedHist.getSourceCatalogName() : null;
+                        }
+                        if (trigger.isSourceSchemaNameWildCarded()) {
+                            schemaName = resolvedHist != null ? resolvedHist.getSourceSchemaName() : null;
+                        }
+                    }
+                    table = platform.getTableFromCache(catalogName, schemaName, tableName, false);
                     break;
                 }
             }
