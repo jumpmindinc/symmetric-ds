@@ -75,7 +75,7 @@ public final class TriggerUtils {
         TriggerHistory triggerHistory = new TriggerHistory(table, trigger, engine.getSymmetricDialect().getTriggerTemplate());
         triggerHistory.setTriggerHistoryId(isExistingTriggerHist ? 0 : triggerHistId);
         triggerHistory.setLastTriggerBuildReason(TriggerReBuildReason.TRIGGER_HIST_MISSING);
-        List<String> triggerNamesGeneratedThisSession = new ArrayList<String>();
+        List<String> triggerNamesGeneratedThisSession = new ArrayList<>();
         triggerHistory.setNameForInsertTrigger(engine.getTriggerRouterService().getTriggerName(DataEventType.INSERT,
                 engine.getSymmetricDialect().getMaxTriggerNameLength(), trigger, table, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
         triggerHistory.setNameForUpdateTrigger(engine.getTriggerRouterService().getTriggerName(DataEventType.UPDATE,

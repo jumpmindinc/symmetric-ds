@@ -3606,7 +3606,7 @@ public class DataService extends AbstractService implements IDataService {
         private Collection<TriggerHistory> allTriggerHistories;
         private Map<Integer, TriggerHistory> remappedTriggerHistIds = new HashMap<Integer, TriggerHistory>();
         private HashMap<String, TriggerHistory> mismatchedTableName;
-        private HashSet<Integer> missingConfigTriggerHist = new HashSet<Integer>();
+        private HashSet<Integer> missingConfigTriggerHist = new HashSet<>();
         private boolean lookupTriggerHist = true;
 
         public DataMapper() {
