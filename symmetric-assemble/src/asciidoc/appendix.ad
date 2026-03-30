@@ -40,6 +40,8 @@ The following table shows the source of parameters and the hierarchy of preceden
 |Java System Properties        |N   |Any SymmetricDS property can be passed in as a -D property to the runtime. It will take precedence over any properties file property.
 |Parameter table               |N   |A table which contains SymmetricDS parameters. Parameters can be targeted at a specific node group and even at a specific external id. These settings will take precedence over all of the above.
 |IParameterFilter              |N   |An extension point which allows parameters to be sourced from another location or customized. These settings will take precedence over all of the above.
+|Environmental variables       |N   |The operating system's envrionmental variables with the "SYM_" prefix. These settings will take precedence over all of the above.
+
 |===
 
 === Startup Parameters

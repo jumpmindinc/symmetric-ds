@@ -15,7 +15,14 @@ other properties found in
 can be overridden for a specific engine in an engine's properties file.
 If the properties are changed in
 `conf/symmetric.properties`
-they will take effect across all engines deployed to the server. 
+they will take effect across all engines deployed to the server.
+
+The following properties can also be configured via the environmental variables of a system.
+Environmental variables override properties found in `conf/symmetric.properties` and an engine's properties file across all engines.
+Using environmental variables for properties is not recommended for multi-homed nodes since environmental variables could override engine specific properties.
+
+
+ 
 
 NOTE: You can use the variable `$(hostName)` to represent the host name of the machine when defining these properties
 (for example, external.id=`$(hostName)`).  You can also access external id, engine name, node group id, sync URL, and registration URL in this manner.  
