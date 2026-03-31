@@ -141,6 +141,8 @@ See <<File Synchronization>> and <<Pull Threads>> for more details.
 
 The Initial Load Extract Job processes <<EXTRACT_REQUEST>>s.  See <<Initial Load Extract In Background>> for more details.
 
+ifdef::pro[]
+
 ==== Compare Job
 
 The Compare Job processes <<COMPARE_REQUEST>>s.  If it finds uncompleted requests, it will keep the job running
@@ -148,3 +150,9 @@ The Compare Job processes <<COMPARE_REQUEST>>s.  If it finds uncompleted request
 instead waiting for the next scheduled job interval.
 It uses a number of threads from a pool on each server (compare.thread.per.server.count) to service requests in parallel.
 Each request uses multiple threads, but less than the entire pool size by default (compare.queue.per.request.count).
+
+==== Refresh Analytics Job
+
+The Refresh Analytics Job is responsible for analyzing raw metrics and generating report data. It records reports to the <<ANALYTICS_REPORT>> table. Reports are displayed under the Analytics tab.
+
+endif::pro[]
