@@ -1,18 +1,21 @@
 <a href="https://sourceforge.net/projects/symmetricds/files/latest/download" rel="nofollow"><img alt="Download SymmetricDS" src="https://img.shields.io/sourceforge/dt/symmetricds.svg"></a> [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 # SymmetricDS
-SymmetricDS is database replication and file synchronization software that is platform independent, web enabled, and database agnostic. It is designed to make bi-directional data replication fast, easy, and resilient. It scales to a large number of nodes and works in near real-time across WAN and LAN networks. 
+SymmetricDS is a Java-based database replication and file synchronization software that is platform-independent, web-enabled, and database-agnostic. It is designed to synchronize data across distributed, heterogeneous database environments asynchronously.
+SymmetricDS is built to manage real-world constraints such as conflict resolution, low-bandwidth wide-area networks, intermittent connectivity, and firewalls. SymmetricDS can scale horizontally to handle enterprise-level volumes of data and a large number of nodes, even in bi-directional data replication scenarios.
+While the open-source edition provides the robust foundation, the SymmetricDS PRO extends it with capabilities that address enterprise operational, performance, security and compliance demands.
+
 
 <a href="https://sourceforge.net/projects/symmetricds/files/latest/download" rel="nofollow"><img alt="Download SymmetricDS" src="https://a.fsdn.com/con/app/sf-download-button"></a>
 
 ---
 
-[Website](https://www.symmetricds.org) | [Documentation](https://www.symmetricds.org/docs/overview) | [Forum](https://sourceforge.net/p/symmetricds/discussion) | [Chat Room](https://gitter.im/symmetricds/Lobby) | [Issue Tracker](https://jumpmind.atlassian.net/browse/SYM) | [Docker Hub](https://hub.docker.com/r/jumpmind/symmetricds)
+[Website](https://www.symmetricds.org) | [Documentation](https://www.symmetricds.org/docs/overview) | [Forum](https://sourceforge.net/p/symmetricds/discussion) | [Discord Chat Server](https://discord.gg/r6EN9v3P2j) | [Issue Tracker](https://jumpmind.atlassian.net/browse/SYM) | [Docker Hub](https://hub.docker.com/r/jumpmind/symmetricds)
 
 ---
 
 ## Developers
-Read the [Developer Overview](https://www.symmetricds.org/developer/overview) to get started.  You will need Java JDK 8 or later and Eclipse IDE.  To setup a development environment run the following commands:
+Read the [Developer Overview](https://www.symmetricds.org/developer/overview) to get started.  You will need Java JDK 17 or later and Eclipse IDE.  To setup a development environment run the following commands:
 
 ```
 cd symmetric-assemble
