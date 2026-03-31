@@ -39,7 +39,7 @@ import org.jumpmind.symmetric.io.DbCompare;
 import org.jumpmind.symmetric.io.DbCompareConfig;
 import org.jumpmind.symmetric.io.DbCompareReport;
 import org.jumpmind.symmetric.io.DbCompareReport.TableReport;
-import org.jumpmind.symmetric.util.SymmetricUtils;
+import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 
 public class DbCompareCommand extends AbstractCommandLauncher {
     private Properties configProperties;
@@ -251,7 +251,7 @@ public class DbCompareCommand extends AbstractCommandLauncher {
                 Properties props = new Properties();
                 try (FileInputStream in = new FileInputStream(configPropertiesFile)) {
                     props.load(in);
-                    SymmetricUtils.replaceSystemAndEnvironmentVariables(props);
+                    TypedPropertiesFactory.replaceSystemAndEnvironmentVariables(props);
                     configProperties = props;
                     return configProperties;
                 } catch (Exception ex) {

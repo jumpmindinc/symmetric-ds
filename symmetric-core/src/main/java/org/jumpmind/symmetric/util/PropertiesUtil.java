@@ -58,7 +58,7 @@ public class PropertiesUtil {
             Properties properties = new Properties();
             try (FileInputStream is = new FileInputStream(file)) {
                 properties.load(is);
-                SymmetricUtils.replaceSystemAndEnvironmentVariables(properties);
+                TypedPropertiesFactory.replaceSystemAndEnvironmentVariables(properties);
                 if (isEmptyReplacementValues) {
                     replacementValues.clear();
                     replacementValues.put("nodeGroupId", SymmetricUtils.substituteScripts(

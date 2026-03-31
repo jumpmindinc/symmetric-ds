@@ -23,8 +23,6 @@ package org.jumpmind.symmetric;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.security.Provider;
@@ -51,6 +49,7 @@ import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
 import org.jumpmind.symmetric.util.LogSummaryAppenderUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
+import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,24 +104,19 @@ public abstract class AbstractCommandLauncher {
     protected static void initFromServerProperties() {
         if (!serverPropertiesInitialized) {
             File serverPropertiesFile = new File(DEFAULT_SERVER_PROPERTIES);
-            TypedProperties serverProperties = new TypedProperties();
-            if (serverPropertiesFile.exists() && serverPropertiesFile.isFile()) {
-                try (FileInputStream fis = new FileInputStream(serverPropertiesFile)) {
-                    serverProperties.load(fis);
-                    /* System properties always override */
-                    serverProperties.merge(System.getProperties());
-                    /*
-                     * Put server properties back into System properties so they are available to the parameter service
-                     */
-                    System.getProperties().putAll(serverProperties);
-                } catch (IOException ex) {
-                    log.error("Failed to load " + DEFAULT_SERVER_PROPERTIES, ex);
-                }
-            } else if (!serverPropertiesFile.exists()) {
+            if (!serverPropertiesFile.exists()) {
                 log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". File does not exist.");
-            } else if (!serverPropertiesFile.isFile()) {
-                log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". Object is not a file.");
+                return;
             }
+            if (!serverPropertiesFile.isFile()) {
+                log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". Object is not a file.");
+                return;
+            }
+            TypedProperties serverProperties = new TypedProperties(serverPropertiesFile);
+            TypedProperties jvmProperties = new TypedProperties(System.getProperties());
+            serverProperties.merge(jvmProperties);
+            TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(serverProperties, false);
+            System.getProperties().putAll(serverProperties);
             serverPropertiesInitialized = true;
         }
     }

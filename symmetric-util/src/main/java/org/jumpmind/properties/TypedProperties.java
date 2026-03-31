@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.util.Properties;
 import java.util.Set;
 
@@ -85,9 +86,17 @@ public class TypedProperties extends Properties {
         putAll(properties);
     }
 
+    public TypedProperties(URL url) {
+        try (InputStream fis = url.openStream()) {
+            load(fis);
+        } catch (IOException ex) {
+            throw new IoException(ex);
+        }
+    }
+
     public final void putAll(Properties properties) {
         for (Object key : properties.keySet()) {
-            put((String) key, properties.getProperty((String) key));
+            put(key, properties.getProperty((String) key));
         }
     }
 
@@ -168,6 +177,9 @@ public class TypedProperties extends Properties {
         return retValue;
     }
 
+    /**
+     * Modifies TypedProperties object to override only existing property values with specified properties.
+     */
     public void merge(Properties properties) {
         Set<Object> keys = properties.keySet();
         for (Object key : keys) {
