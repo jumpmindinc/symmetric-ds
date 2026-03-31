@@ -2,8 +2,8 @@
 
 # SymmetricDS
 SymmetricDS is a Java-based platform for database replication and file synchronization that is platform-independent, web-enabled, and database-agnostic. It is designed to synchronize data across distributed, heterogeneous database environments asynchronously.
-SymmetricDS is built to manage real-world constraints such as conflict resolution, low-bandwidth wide-area networks, intermittent connectivity, and firewalls. SymmetricDS can scale horizontally to handle enterprise-level volumes of data and a large number of nodes, even in bi-directional data replication scenarios.
-While the open-source edition provides the robust foundation, the SymmetricDS PRO extends it with capabilities that address enterprise operational, performance, security and compliance demands.
+It handles real-world challenges like conflict resolution, bandwidth constraints, intermittent connectivity, and firewalls — making it reliable for distributed, heterogeneous environments. The platform scales horizontally to handle massive data volumes and hundreds of nodes, even with bi-directional replication.
+While the open-source edition provides the robust foundation, the SymmetricDS PRO edition extends it with capabilities that address enterprise operational, performance, security and compliance demands.
 
 
 <a href="https://sourceforge.net/projects/symmetricds/files/latest/download" rel="nofollow"><img alt="Download SymmetricDS" src="https://a.fsdn.com/con/app/sf-download-button"></a>
