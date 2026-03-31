@@ -20,17 +20,26 @@
  */
 package org.jumpmind.symmetric.util;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import org.jumpmind.exception.IoException;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.util.AppUtils;
+import org.jumpmind.util.CollectionUtils;
+import org.jumpmind.util.FormatUtils;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -42,12 +51,92 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
     public TypedPropertiesFactory() {
     }
 
+    @Override
     public void init(File propertiesFile, Properties properties) {
         this.propertiesFile = propertiesFile;
         this.properties = properties;
     }
 
+    @Override
     public TypedProperties reload() {
+        TypedProperties fileProperties = loadPropertiesFromConfigLocations();
+        mergeAndOverrideWithEnvironmentVariables(fileProperties, true);
+        return fileProperties;
+    }
+
+    public static void mergeAndOverrideWithEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties) {
+        mergeAndOverrideWithEnvironmentVariables(fileProperties, addMissingProperties, System.getenv());
+    }
+
+    public static void mergeAndOverrideWithEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties,
+            Map<String, String> envVariables) {
+        Properties systemProperties = getPropertiesFromEnvVariables(envVariables);
+        TypedProperties envProperties = new TypedProperties(systemProperties);
+        if (fileProperties.isEmpty() && envProperties.isEmpty()) {
+            throw new RuntimeException("Property files were not found");
+        }
+        if (addMissingProperties) {
+            fileProperties.putAll(envProperties);
+        } else {
+            fileProperties.merge(envProperties);
+        }
+        replaceSystemAndEnvironmentVariables(fileProperties);
+    }
+
+    public static final void replaceSystemAndEnvironmentVariables(Properties properties) {
+        Set<Object> keys = new HashSet<Object>(properties.keySet());
+        Map<String, String> env = System.getenv();
+        Map<String, String> systemProperties = CollectionUtils.toMap(System.getProperties());
+        for (Object object : keys) {
+            String value = properties.getProperty((String) object);
+            if (isNotBlank(value)) {
+                value = FormatUtils.replaceTokens(value, env, true);
+                value = FormatUtils.replaceTokens(value, systemProperties, true);
+                if (value.contains("hostName")) {
+                    value = FormatUtils.replace("hostName", AppUtils.getHostName(), value);
+                }
+                if (value.contains("portNumber")) {
+                    value = FormatUtils.replace("portNumber", AppUtils.getPortNumber(), value);
+                }
+                if (value.contains("protocol")) {
+                    value = FormatUtils.replace("protocol", AppUtils.getProtocol(), value);
+                }
+                if (value.contains("ipAddress")) {
+                    value = FormatUtils.replace("ipAddress", AppUtils.getIpAddress(), value);
+                }
+                if (value.contains("engineName")) {
+                    value = FormatUtils.replace("engineName", properties.getProperty(ParameterConstants.ENGINE_NAME, ""), value);
+                }
+                if (value.contains("nodeGroupId")) {
+                    value = FormatUtils.replace("nodeGroupId", properties.getProperty(ParameterConstants.NODE_GROUP_ID, ""), value);
+                }
+                if (value.contains("externalId")) {
+                    value = FormatUtils.replace("externalId", properties.getProperty(ParameterConstants.EXTERNAL_ID, ""), value);
+                }
+                if (value.contains("syncUrl")) {
+                    value = FormatUtils.replace("syncUrl", properties.getProperty(ParameterConstants.SYNC_URL, ""), value);
+                }
+                if (value.contains("registrationUrl")) {
+                    value = FormatUtils.replace("registrationUrl", properties.getProperty(ParameterConstants.REGISTRATION_URL, ""), value);
+                }
+                properties.put(object, value);
+            }
+        }
+    }
+
+    private static Properties getPropertiesFromEnvVariables(Map<String, String> env) {
+        Properties properties = new Properties();
+        for (Map.Entry<String, String> entry : env.entrySet()) {
+            String envKey = entry.getKey().toUpperCase();
+            if (envKey.startsWith("SYM_")) {
+                String propKey = envKey.substring(4).toLowerCase().replace('_', '.');
+                properties.setProperty(propKey, entry.getValue());
+            }
+        }
+        return properties;
+    }
+
+    private TypedProperties loadPropertiesFromConfigLocations() {
         PropertiesFactoryBean factoryBean = new PropertiesFactoryBean();
         factoryBean.setIgnoreResourceNotFound(true);
         factoryBean.setLocalOverride(true);
@@ -56,8 +145,9 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
         factoryBean.setLocations(buildLocations(propertiesFile));
         try {
             TypedProperties properties = new TypedProperties(factoryBean.getObject());
-            SymmetricUtils.replaceSystemAndEnvironmentVariables(properties);
             return properties;
+        } catch (FileNotFoundException e) {
+            return new TypedProperties();
         } catch (IOException e) {
             throw new IoException(e);
         }

@@ -20,14 +20,13 @@
  */
 package org.jumpmind.symmetric.web;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.SystemConstants;
+import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.context.support.WebApplicationContextUtils;
@@ -39,6 +38,7 @@ import jakarta.servlet.ServletContextListener;
 public class SymmetricContextListener implements ServletContextListener {
     private static final Logger log = LoggerFactory.getLogger(SymmetricContextListener.class);
 
+    @Override
     public void contextInitialized(ServletContextEvent sce) {
         Class<?> remoteStatusEndpoint = loadRemoteStatusEndpoint();
         if (remoteStatusEndpoint != null) {
@@ -72,16 +72,7 @@ public class SymmetricContextListener implements ServletContextListener {
             engineHolder.setSpringContext(WebApplicationContextUtils.getWebApplicationContext(sce.getServletContext()));
         }
         if (!"true".equals(System.getProperty(SystemConstants.SYSPROP_LAUNCHER))) {
-            URL serverPropertiesURL = getClass().getClassLoader().getResource("/symmetric-server.properties");
-            if (serverPropertiesURL != null) {
-                try (InputStream fis = serverPropertiesURL.openStream()) {
-                    TypedProperties serverProperties = new TypedProperties();
-                    serverProperties.load(fis);
-                    serverProperties.merge(System.getProperties());
-                    System.getProperties().putAll(serverProperties);
-                } catch (IOException ex) {
-                }
-            }
+            injectServerPropertiesIntoSystem("/symmetric-server.properties");
         }
         engineHolder.start();
     }
@@ -98,6 +89,7 @@ public class SymmetricContextListener implements ServletContextListener {
         return null;
     }
 
+    @Override
     public void contextDestroyed(ServletContextEvent sce) {
         ServletContext ctx = sce.getServletContext();
         SymmetricEngineHolder engineHolder = (SymmetricEngineHolder) ctx
@@ -106,5 +98,18 @@ public class SymmetricContextListener implements ServletContextListener {
             engineHolder.stop();
             ctx.removeAttribute(WebConstants.ATTR_ENGINE_HOLDER);
         }
+    }
+
+    private void injectServerPropertiesIntoSystem(String resourcePath) {
+        URL serverPropertiesURL = getClass().getClassLoader().getResource(resourcePath);
+        if (serverPropertiesURL == null) {
+            log.debug("Resource path {} not found", resourcePath);
+            return;
+        }
+        TypedProperties serverProperties = new TypedProperties(serverPropertiesURL);
+        TypedProperties jvmProperties = new TypedProperties(System.getProperties());
+        serverProperties.merge(jvmProperties);
+        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(serverProperties, false);
+        System.getProperties().putAll(serverProperties);
     }
 }

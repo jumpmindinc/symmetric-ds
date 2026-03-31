@@ -33,6 +33,7 @@ import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.util.SymmetricUtils;
+import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,7 +154,7 @@ abstract public class AbstractParameterService {
         if (parameters == null || (cacheTimeoutInMs > 0 && lastTimeParameterWereCached < timeoutTime)) {
             try {
                 parameters = rereadApplicationParameters();
-                SymmetricUtils.replaceSystemAndEnvironmentVariables(parameters);
+                TypedPropertiesFactory.replaceSystemAndEnvironmentVariables(parameters);
                 lastTimeParameterWereCached = System.currentTimeMillis();
                 cacheTimeoutInMs = getInt(ParameterConstants.PARAMETER_REFRESH_PERIOD_IN_MS);
             } catch (SqlException ex) {
