@@ -293,8 +293,7 @@ public abstract class AbstractCommandLauncher {
             if (testConnection) {
                 testConnection();
             }
-            ITypedPropertiesFactory factory = PropertiesUtil.createTypedPropertiesFactory(propertiesFile, null);
-            TypedProperties properties = factory.reload(propertiesFile);
+            TypedProperties properties = getTypedProperties();
             if (properties.is(ParameterConstants.NODE_LOAD_ONLY, false)) {
                 if (!symmetricPlatform) {
                     TypedProperties copiedProperties = new TypedProperties();
