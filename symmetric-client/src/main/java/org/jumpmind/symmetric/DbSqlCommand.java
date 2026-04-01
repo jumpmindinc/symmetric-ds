@@ -137,7 +137,7 @@ public class DbSqlCommand extends AbstractCommandLauncher {
                 ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties);
                 return securityService.decrypt(value.substring(SecurityConstants.PREFIX_ENC.length()));
             } catch (Exception e) {
-                throw new RuntimeException("Failed to decrypt a database credential in " + propertiesFile + ". Please re-encrypt the value.", e);
+                throw new IllegalStateException("Failed to decrypt a database credential in " + propertiesFile + ". Please re-encrypt the value.", e);
             }
         }
         return value;

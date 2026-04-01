@@ -109,7 +109,7 @@ class DbSqlCommandTest {
         Options options = new Options();
         command.buildOptions(options);
         CommandLine line = new DefaultParser().parse(options, new String[] { "--sql", "SELECT 1" });
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> command.executeWithOptions(line));
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> command.executeWithOptions(line));
         assertTrue(ex.getMessage().contains("Failed to decrypt a database credential in"));
         assertTrue(ex.getMessage().contains(propsFile.getAbsolutePath()));
     }
