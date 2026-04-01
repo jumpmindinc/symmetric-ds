@@ -65,7 +65,7 @@ class DbSqlCommandTest {
 
     @Test
     void executeSqlOption_runsQueryAndOutputsResult() {
-        new DbSqlCommand().execute(new String[]{
+        new DbSqlCommand().execute(new String[] {
                 "--properties", propertiesFile.getAbsolutePath(),
                 "--sql", "SELECT 1"
         });
@@ -80,7 +80,7 @@ class DbSqlCommandTest {
             pw.println("SELECT 1;");
             pw.println("SELECT 2;");
         }
-        new DbSqlCommand().execute(new String[]{
+        new DbSqlCommand().execute(new String[] {
                 "--properties", propertiesFile.getAbsolutePath(),
                 "--sqlfile", sqlFile.getAbsolutePath()
         });
@@ -91,7 +91,7 @@ class DbSqlCommandTest {
 
     @Test
     void executeSqlFileOption_missingFile_printsErrorToStderr() {
-        new DbSqlCommand().execute(new String[]{
+        new DbSqlCommand().execute(new String[] {
                 "--properties", propertiesFile.getAbsolutePath(),
                 "--sqlfile", "/nonexistent/path/missing.sql"
         });
