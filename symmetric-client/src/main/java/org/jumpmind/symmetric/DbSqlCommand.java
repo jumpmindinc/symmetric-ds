@@ -26,8 +26,14 @@ import java.io.FileReader;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
-import org.apache.commons.dbcp2.BasicDataSource;
 import org.h2.tools.Shell;
+import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.properties.TypedProperties;
+import org.jumpmind.security.ISecurityService;
+import org.jumpmind.security.SecurityConstants;
+import org.jumpmind.security.SecurityServiceFactory;
+import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
+import org.jumpmind.symmetric.common.ParameterConstants;
 
 public class DbSqlCommand extends AbstractCommandLauncher {
     private static final String OPTION_SQL = "sql";
@@ -72,11 +78,18 @@ public class DbSqlCommand extends AbstractCommandLauncher {
 
     @Override
     protected boolean executeWithOptions(CommandLine line) throws Exception {
-        BasicDataSource basicDataSource = getDatabasePlatform(false, line.hasOption(OPTION_USE_SYM_DB)).getDataSource();
-        String url = basicDataSource.getUrl();
-        String user = basicDataSource.getUserName();
-        String password = basicDataSource.getPassword();
-        String driver = basicDataSource.getDriverClassName();
+        TypedProperties properties = getTypedProperties();
+        if (properties.is(ParameterConstants.NODE_LOAD_ONLY, false) && !line.hasOption(OPTION_USE_SYM_DB)) {
+            TypedProperties copiedProperties = new TypedProperties();
+            String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
+            copyProperties(properties, copiedProperties, prefix, BasicDataSourcePropertyConstants.ALL_PROPS);
+            copyProperties(properties, copiedProperties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
+            properties = copiedProperties;
+        }
+        String url = properties.get(BasicDataSourcePropertyConstants.DB_POOL_URL);
+        String user = decryptIfEncrypted(properties, properties.get(BasicDataSourcePropertyConstants.DB_POOL_USER, ""));
+        String password = decryptIfEncrypted(properties, properties.get(BasicDataSourcePropertyConstants.DB_POOL_PASSWORD, ""));
+        String driver = properties.get(BasicDataSourcePropertyConstants.DB_POOL_DRIVER);
         Shell shell = new Shell();
         if (line.hasOption(OPTION_SQL)) {
             String sql = line.getOptionValue(OPTION_SQL);
@@ -116,5 +129,17 @@ public class DbSqlCommand extends AbstractCommandLauncher {
             shell.runTool("-url", url, "-user", user, "-password", password, "-driver", driver);
         }
         return true;
+    }
+
+    private String decryptIfEncrypted(TypedProperties properties, String value) {
+        if (value != null && value.startsWith(SecurityConstants.PREFIX_ENC)) {
+            try {
+                ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties);
+                return securityService.decrypt(value.substring(SecurityConstants.PREFIX_ENC.length()));
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to decrypt a database credential in " + propertiesFile + ". Please re-encrypt the value.", e);
+            }
+        }
+        return value;
     }
 }

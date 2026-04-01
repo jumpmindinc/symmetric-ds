@@ -309,7 +309,7 @@ public abstract class AbstractCommandLauncher {
         return platform;
     }
 
-    private void copyProperties(TypedProperties sourceProperties, TypedProperties targetProperties,
+    protected void copyProperties(TypedProperties sourceProperties, TypedProperties targetProperties,
             String prefix, String[] parameterNames) {
         for (String name : parameterNames) {
             targetProperties.put(name, sourceProperties.get(prefix + name));

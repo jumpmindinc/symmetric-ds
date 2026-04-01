@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
@@ -27,6 +28,9 @@ import java.io.File;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Options;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -87,6 +91,27 @@ class DbSqlCommandTest {
         String output = capturedOut.toString();
         assertTrue(output.contains("SELECT 1"));
         assertTrue(output.contains("SELECT 2"));
+    }
+
+    @Test
+    void executeWithOptions_invalidEncryptedPassword_throwsRuntimeException() throws Exception {
+        File propsFile = File.createTempFile("test-engine-enc", ".properties");
+        propsFile.deleteOnExit();
+        try (PrintWriter pw = new PrintWriter(propsFile)) {
+            pw.println("engine.name=test");
+            pw.println("db.driver=org.h2.Driver");
+            pw.println("db.url=jdbc:h2:mem:dbsqltest2;DB_CLOSE_DELAY=-1");
+            pw.println("db.user=sa");
+            pw.println("db.password=enc:invalidencryptedvalue");
+        }
+        DbSqlCommand command = new DbSqlCommand();
+        command.propertiesFile = propsFile;
+        Options options = new Options();
+        command.buildOptions(options);
+        CommandLine line = new DefaultParser().parse(options, new String[] { "--sql", "SELECT 1" });
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> command.executeWithOptions(line));
+        assertTrue(ex.getMessage().contains("Failed to decrypt a database credential in"));
+        assertTrue(ex.getMessage().contains(propsFile.getAbsolutePath()));
     }
 
     @Test
