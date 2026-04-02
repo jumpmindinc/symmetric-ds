@@ -52,7 +52,7 @@ import org.jumpmind.db.platform.generic.GenericJdbcDatabasePlatform;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.LogSqlBuilder;
 import org.jumpmind.db.sql.SqlTemplateSettings;
-import org.jumpmind.db.util.BasicDataSourceFactory;
+import org.jumpmind.db.util.DataSourceFactory;
 import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.extension.IProgressListener;
 import org.jumpmind.properties.TypedProperties;
@@ -274,7 +274,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
 
     public static BasicDataSource createBasicDataSource(File propsFile) {
         TypedProperties properties = PropertiesUtil.createTypedPropertiesFactory(propsFile, null).reload();
-        return BasicDataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
+        return (BasicDataSource) DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
     }
 
     @Override
@@ -315,9 +315,8 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
 
     @Override
     protected IDatabasePlatform createDatabasePlatform(TypedProperties properties) {
-        IDatabasePlatform platform = createDatabasePlatform(springContext, properties, dataSource,
+        return createDatabasePlatform(springContext, properties, dataSource,
                 Boolean.parseBoolean(System.getProperty(SystemConstants.SYSPROP_WAIT_FOR_DATABASE, "true")));
-        return platform;
     }
 
     public static IDatabasePlatform createDatabasePlatform(ApplicationContext springContext, TypedProperties properties,
@@ -355,7 +354,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             }
             String dbUrl = properties.get(DataSourceProperties.DB_POOL_URL);
             if (dataSource == null && JdbcDatabasePlatformFactory.isJdbcUrl(dbUrl)) {
-                dataSource = BasicDataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
+                dataSource = DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
             }
         }
         if (waitOnAvailableDatabase && dataSource != null) {
