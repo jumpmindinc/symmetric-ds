@@ -10,11 +10,7 @@ While the open-source edition provides the robust foundation, the SymmetricDS PR
 
 ---
 
-<<<<<<< HEAD
-[Website](https://www.symmetricds.org) | [Documentation](https://www.symmetricds.org/docs/overview) | [Forum](https://sourceforge.net/p/symmetricds/discussion) | [Chat Room](https://gitter.im/symmetricds/Lobby) | [Issue Tracker](https://www.symmetricds.org/issues) | [Docker Hub](https://hub.docker.com/r/jumpmind/symmetricds)
-=======
 [Website](https://www.symmetricds.org) | [Documentation](https://www.symmetricds.org/docs/overview) | [Forum](https://sourceforge.net/p/symmetricds/discussion) | [Discord Chat Server](https://discord.gg/r6EN9v3P2j) | [Issue Tracker](https://jumpmind.atlassian.net/browse/SYM) | [Docker Hub](https://hub.docker.com/r/jumpmind/symmetricds)
->>>>>>> 8497590c6 (SYM-7420: Updated summary, JDK version and Discord link in README.md (#679))
 
 ---
 
