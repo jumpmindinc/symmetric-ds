@@ -21,33 +21,32 @@
 package org.jumpmind.db.util;
 
 /**
- * Constants that represent parameters that can be retrieved or saved via the {@link IParameterService}
+ * @deprecated Use {@link DataSourceProperties} instead.
  */
+@Deprecated(forRemoval = true)
 final public class BasicDataSourcePropertyConstants {
+    /* Unused -- will be removed with the class. */
     public static final String ALL = "ALL";
 
     private BasicDataSourcePropertyConstants() {
     }
 
-    public final static String DB_POOL_URL = "db.url";
-    public final static String DB_POOL_DRIVER = "db.driver";
-    public final static String DB_POOL_USER = "db.user";
-    public final static String DB_POOL_PASSWORD = "db.password";
-    public final static String DB_POOL_INITIAL_SIZE = "db.pool.initial.size";
-    public final static String DB_POOL_MAX_ACTIVE = "db.pool.max.active";
-    public final static String DB_POOL_MAX_IDLE = "db.pool.max.idle";
-    public final static String DB_POOL_MIN_IDLE = "db.pool.min.idle";
-    public final static String DB_POOL_MAX_WAIT = "db.pool.max.wait.millis";
-    public final static String DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS = "db.pool.min.evictable.idle.millis";
-    public final static String DB_POOL_VALIDATION_QUERY = "db.validation.query";
-    public final static String DB_POOL_TEST_ON_BORROW = "db.test.on.borrow";
-    public final static String DB_POOL_TEST_ON_RETURN = "db.test.on.return";
-    public final static String DB_POOL_TEST_WHILE_IDLE = "db.test.while.idle";
-    public final static String DB_POOL_INIT_SQL = "db.init.sql";
-    public final static String DB_POOL_CONNECTION_PROPERTIES = "db.connection.properties";
-    public static final String DB_DELIMITED_IDENTIFIER_MODE = "db.delimited.identifier.mode";
-    public final static String[] ALL_PROPS = new String[] { DB_POOL_URL, DB_POOL_DRIVER, DB_POOL_USER, DB_POOL_PASSWORD, DB_POOL_INITIAL_SIZE,
-            DB_POOL_MAX_ACTIVE, DB_POOL_MAX_IDLE, DB_POOL_MIN_IDLE, DB_POOL_MAX_WAIT, DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS,
-            DB_POOL_VALIDATION_QUERY, DB_POOL_TEST_ON_BORROW, DB_POOL_TEST_ON_RETURN, DB_POOL_TEST_WHILE_IDLE, DB_POOL_INIT_SQL,
-            DB_POOL_CONNECTION_PROPERTIES, DB_DELIMITED_IDENTIFIER_MODE };
+    public final static String DB_POOL_URL = DataSourceProperties.DB_POOL_URL;
+    public final static String DB_POOL_DRIVER = DataSourceProperties.DB_POOL_DRIVER;
+    public final static String DB_POOL_USER = DataSourceProperties.DB_POOL_USER;
+    public final static String DB_POOL_PASSWORD = DataSourceProperties.DB_POOL_PASSWORD;
+    public final static String DB_POOL_INITIAL_SIZE = DataSourceProperties.DB_POOL_INITIAL_SIZE;
+    public final static String DB_POOL_MAX_ACTIVE = DataSourceProperties.DB_POOL_MAX_ACTIVE;
+    public final static String DB_POOL_MAX_IDLE = DataSourceProperties.DB_POOL_MAX_IDLE;
+    public final static String DB_POOL_MIN_IDLE = DataSourceProperties.DB_POOL_MIN_IDLE;
+    public final static String DB_POOL_MAX_WAIT = DataSourceProperties.DB_POOL_MAX_WAIT;
+    public final static String DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS = DataSourceProperties.DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS;
+    public final static String DB_POOL_VALIDATION_QUERY = DataSourceProperties.DB_POOL_VALIDATION_QUERY;
+    public final static String DB_POOL_TEST_ON_BORROW = DataSourceProperties.DB_POOL_TEST_ON_BORROW;
+    public final static String DB_POOL_TEST_ON_RETURN = DataSourceProperties.DB_POOL_TEST_ON_RETURN;
+    public final static String DB_POOL_TEST_WHILE_IDLE = DataSourceProperties.DB_POOL_TEST_WHILE_IDLE;
+    public final static String DB_POOL_INIT_SQL = DataSourceProperties.DB_POOL_INIT_SQL;
+    public final static String DB_POOL_CONNECTION_PROPERTIES = DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES;
+    public static final String DB_DELIMITED_IDENTIFIER_MODE = DataSourceProperties.DB_DELIMITED_IDENTIFIER_MODE;
+    public final static String[] ALL_PROPS = DataSourceProperties.ALL_PROPS;
 }
