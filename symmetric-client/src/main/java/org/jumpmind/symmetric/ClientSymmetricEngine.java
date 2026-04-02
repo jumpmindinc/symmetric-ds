@@ -53,7 +53,7 @@ import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.LogSqlBuilder;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.db.util.BasicDataSourceFactory;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.extension.IProgressListener;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.SecurityServiceFactory;
@@ -288,7 +288,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             TypedProperties properties = new TypedProperties();
             String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
             boolean targetDelimitedIdentifierMode = parameterService.is(ParameterConstants.TARGET_DB_DELIMITED_IDENTIFIER_MODE, true);
-            copyProperties(properties, prefix, BasicDataSourcePropertyConstants.ALL_PROPS);
+            copyProperties(properties, prefix, DataSourceProperties.ALL_PROPS);
             copyProperties(properties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_KAFKA_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_GOOGLE_BIG_QUERY_PARAMS);
@@ -353,7 +353,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
                 log.info("Using datasource from spring.  The spring bean name is {}", springBeanName);
                 dataSource = (DataSource) springContext.getBean(springBeanName);
             }
-            String dbUrl = properties.get(BasicDataSourcePropertyConstants.DB_POOL_URL);
+            String dbUrl = properties.get(DataSourceProperties.DB_POOL_URL);
             if (dataSource == null && JdbcDatabasePlatformFactory.isJdbcUrl(dbUrl)) {
                 dataSource = BasicDataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
             }

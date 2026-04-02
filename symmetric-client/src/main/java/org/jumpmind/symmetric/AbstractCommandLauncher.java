@@ -41,7 +41,7 @@ import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -299,7 +299,7 @@ public abstract class AbstractCommandLauncher {
                 if (!symmetricPlatform) {
                     TypedProperties copiedProperties = new TypedProperties();
                     String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
-                    copyProperties(properties, copiedProperties, prefix, BasicDataSourcePropertyConstants.ALL_PROPS);
+                    copyProperties(properties, copiedProperties, prefix, DataSourceProperties.ALL_PROPS);
                     copyProperties(properties, copiedProperties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
                     properties = copiedProperties;
                 }
