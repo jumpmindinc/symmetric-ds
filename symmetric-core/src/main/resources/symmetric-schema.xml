@@ -42,7 +42,7 @@
         <column name="batch_algorithm" type="VARCHAR" size="50" required="true" default="default" description="The algorithm to use when batching data on this channel.  Possible values are: 'default', 'transactional', and 'nontransactional'"/>
         <column name="data_loader_type" type="VARCHAR" size="50" required="true" default="default" description="Identify the type of data loader this channel should use.  Allows for the default dataloader to be swapped out via configuration for more efficient platform specific data loaders."/>
         <column name="description" type="VARCHAR" size="255" description="Description on the type of data carried in this channel."/>
-        <column name="queue" type="VARCHAR" size="25" default="default" required="true" description="User provided queue name for channel to operate on.  Creates multi-threaded channels.  Defaults to 'default' thread"/>
+        <column name="queue" type="VARCHAR" size="128" default="default" required="true" description="User provided queue name for channel to operate on.  Creates multi-threaded channels.  Defaults to 'default' thread"/>
         <column name="max_network_kbps" type="DECIMAL" size="10,3" default="0.000" required="true" description="The maximum network transfer rate in kilobytes per second.  Zero or negative means unlimited.  Channels running in serial or parallel can have an effect on how much bandwidth can be used and when a channel will be processed.  This is currently only implemented when staging is enabled."/>
         <column name="data_event_action" type="CHAR" size="1" required="false" description="For a node group link with a data event action of B (both), select how to send changes to the target node group. (P = Push, W = Wait for Pull)" />
         <column name="create_time" type="TIMESTAMP" description="Timestamp when this entry was created." />
@@ -437,7 +437,7 @@
 
     <table name="node_communication" description="This table is used to coordinate communication with other nodes.">
         <column name="node_id" type="VARCHAR" size="50" required="true" primaryKey="true" description="Unique identifier for a node." />
-        <column name="queue" type="VARCHAR" size="25" required="true" default="default" primaryKey="true" description="The queue name to use in relation to the channel." />
+        <column name="queue" type="VARCHAR" size="128" required="true" default="default" primaryKey="true" description="The queue name to use in relation to the channel." />
         <column name="communication_type" type="VARCHAR" size="10"  required="true" primaryKey="true" description="The type of communication that is taking place with this node.  Valid values are: PULL, PUSH"/>
         <column name="lock_time" type="TIMESTAMP" description="The timestamp when this node was locked" />
         <column name="locking_server_id" type="VARCHAR" size="255" description="The name of the server that currently has a pull lock for the node.  This is typically a host name, but it can be overridden using the -Druntime.symmetric.cluster.server.id=name System property."/>
