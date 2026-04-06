@@ -582,9 +582,18 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
+    // SYM-7437: NVARCHAR when ntypes enabled, preserves Unicode file paths on Latin1 collation
+    private int getFilePathJdbcType() {
+        if (parameterService.is(ParameterConstants.MSSQL_USE_NTYPES_FOR_SYNC)) {
+            return Types.NVARCHAR;
+        }
+        return Types.VARCHAR;
+    }
+
     public void save(ISqlTransaction sqlTransaction, FileSnapshot snapshot) {
         snapshot.setLastUpdateTime(new Date());
-        if (0 >= executeUpdate(sqlTransaction, snapshot)) {
+        int filePathType = getFilePathJdbcType();
+        if (0 >= executeUpdate(sqlTransaction, snapshot, filePathType)) {
             snapshot.setCreateTime(snapshot.getLastUpdateTime());
             sqlTransaction.prepareAndExecute(
                     getSql("insertFileSnapshotSql"),
@@ -597,18 +606,18 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                             snapshot.getRelativeDir(), snapshot.getFileName(), snapshot.getExternalFileData() }, new int[] {
                                     Types.VARCHAR, Types.NUMERIC, Types.NUMERIC, Types.NUMERIC,
                                     Types.TIMESTAMP, Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
-                                    Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR });
+                                    Types.VARCHAR, filePathType, filePathType, Types.VARCHAR });
         }
         // now that we have captured an update, delete the row for cleanup
         if (snapshot.getLastEventType() == LastEventType.DELETE) {
             sqlTransaction.prepareAndExecute(getSql("deleteFileSnapshotSql"), new Object[] {
                     snapshot.getTriggerId(), snapshot.getRouterId(), snapshot.getRelativeDir(),
                     snapshot.getFileName() }, new int[] { Types.VARCHAR, Types.VARCHAR,
-                            Types.VARCHAR, Types.VARCHAR });
+                            filePathType, filePathType });
         }
     }
 
-    private int executeUpdate(ISqlTransaction sqlTransaction, FileSnapshot snapshot) {
+    private int executeUpdate(ISqlTransaction sqlTransaction, FileSnapshot snapshot, int filePathType) {
         if (snapshot.getLastEventType().equals(LastEventType.CREATE)) {
             return 0;
         }
@@ -621,7 +630,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                         snapshot.getTriggerId(), snapshot.getRouterId(), snapshot.getRelativeDir(),
                         snapshot.getFileName() }, new int[] { Types.VARCHAR, Types.NUMERIC,
                                 Types.NUMERIC, Types.NUMERIC, Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
-                                Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR });
+                                Types.VARCHAR, Types.VARCHAR, filePathType, filePathType });
     }
 
     @Override

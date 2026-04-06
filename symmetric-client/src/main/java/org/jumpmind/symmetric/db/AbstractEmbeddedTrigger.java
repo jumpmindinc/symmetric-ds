@@ -292,7 +292,7 @@ abstract public class AbstractEmbeddedTrigger {
                 ResultSetMetaData metaData = rs.getMetaData();
                 int columnCount = metaData.getColumnCount();
                 for (int i = 1; i <= columnCount; i++) {
-                    templates.put(metaData.getColumnName(i), rs.getString(i));
+                    templates.put(metaData.getColumnName(i).toUpperCase(), rs.getString(i));
                 }
                 return templates;
             } else {
