@@ -61,8 +61,6 @@ class DataSourceUtilsTest {
         assertDoesNotThrow(() -> DataSourceUtils.closeQuietly(ds));
     }
 
-    // --- helpers ---
-
     private static class CloseableDataSource extends StubDataSource implements AutoCloseable {
         private final Runnable onClose;
 
