@@ -26,7 +26,7 @@ import org.apache.commons.io.FileUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.JdbcDatabasePlatformFactory;
 import org.jumpmind.db.sql.SqlTemplateSettings;
-import org.jumpmind.db.util.BasicDataSourceFactory;
+import org.jumpmind.db.util.DataSourceFactory;
 import org.jumpmind.properties.EnvironmentSpecificProperties;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.slf4j.Logger;
@@ -50,7 +50,7 @@ abstract public class DbTestUtils {
         f.mkdir();
         EnvironmentSpecificProperties properties = getEnvironmentSpecificProperties(name);
         return JdbcDatabasePlatformFactory.getInstance().create(
-                BasicDataSourceFactory.create(properties, SecurityServiceFactory.create()),
+                DataSourceFactory.create(properties, SecurityServiceFactory.create()),
                 new SqlTemplateSettings(), true, false);
     }
 }
