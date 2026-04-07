@@ -20,6 +20,9 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -79,6 +82,13 @@ abstract class AbstractMetricsService implements IMetricsService {
 
     public SymDoubleGauge getGauge(String metricId) {
         return gauges.get(metricId);
+    }
+
+    @Override
+    public Collection<AbstractQueuedMetric> getAllMetrics() {
+        List<AbstractQueuedMetric> all = new ArrayList<>(upDownCounters.values());
+        all.addAll(gauges.values());
+        return all;
     }
 
     @Override

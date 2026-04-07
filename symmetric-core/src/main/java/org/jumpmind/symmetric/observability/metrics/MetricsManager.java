@@ -20,6 +20,8 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -27,6 +29,7 @@ import java.util.function.Supplier;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.observability.stats.MetricAggregator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +53,7 @@ public class MetricsManager {
     private HostMetricsService hostMetricsService;
     private Meter otelMeter;
     private final List<IEngineMetricsService> engineMetricsServices = new CopyOnWriteArrayList<>();
+    private MetricAggregator aggregator;
 
     private MetricsManager() {
         this.isOtelPublishingEnabled = isSystemPropetryOtelPublishingEnabled();
@@ -163,11 +167,34 @@ public class MetricsManager {
         engineMetricsServices.remove(engineMetricsService);
     }
 
-    protected List<IEngineMetricsService> getEngineMetricsServices() {
+    public List<IEngineMetricsService> getEngineMetricsServices() {
         return Collections.unmodifiableList(engineMetricsServices);
     }
 
+    public synchronized void startAggregation() {
+        if (aggregator == null) {
+            aggregator = new MetricAggregator(this, resolveHostname());
+        }
+        aggregator.start();
+    }
+
+    public MetricAggregator getAggregator() {
+        return aggregator;
+    }
+
+    private static String resolveHostname() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            return "unknown";
+        }
+    }
+
     public void shutdown() {
+        if (aggregator != null) {
+            aggregator.stop();
+            aggregator = null;
+        }
         if (isOtelSdkInternal && openTelemetry instanceof OpenTelemetrySdk sdk) {
             sdk.shutdown();
             log.info("MetricsManager and OpenTelemetry SDK are shut down");

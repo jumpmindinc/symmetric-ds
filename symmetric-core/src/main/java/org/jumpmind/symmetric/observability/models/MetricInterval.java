@@ -18,19 +18,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.metrics;
+package org.jumpmind.symmetric.observability.models;
 
-import java.util.Collection;
-
-public interface IEngineMetricsService extends IMetricsService {
-
-    String getEngineName();
-
-    boolean isOtelPublishingEnabled();
-
-    UpDownCounter getOrCreateUpDownCounter(String metricId, String description, String unitOfMeasurement);
-
-    SymDoubleGauge getOrCreateGauge(String metricId, String description, String unitOfMeasurement);
-
-    Collection<AbstractQueuedMetric> getAllMetrics();
+/**
+ * Immutable snapshot of aggregated statistics for one closed 5-minute window of a single metric.
+ */
+public record MetricInterval(
+        long intervalStart,
+        long intervalEnd,
+        double avg,
+        double min,
+        double max,
+        double stdDev,
+        int observationCount) {
 }

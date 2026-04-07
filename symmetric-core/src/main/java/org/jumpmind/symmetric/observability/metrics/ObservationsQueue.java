@@ -1,7 +1,9 @@
 package org.jumpmind.symmetric.observability.metrics;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -173,5 +175,38 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T>
         T item = queue.remove();
         approximateSize.decrementAndGet();
         return item;
+    }
+
+    /**
+     * Returns all observations whose timestamp falls within [start, end] without removing them from the queue.
+     */
+    @SuppressWarnings("unchecked")
+    public T[] peekBetween(long start, long end) {
+        List<T> result = new ArrayList<>();
+        for (T item : queue) {
+            long ts = item.getTimestamp();
+            if (ts >= start && ts <= end) {
+                result.add(item);
+            }
+        }
+        return (T[]) result.toArray(new ISymObservation[0]);
+    }
+
+    /**
+     * Removes and returns all observations whose timestamp falls within [start, end].
+     */
+    @SuppressWarnings("unchecked")
+    public T[] removeAllBetween(long start, long end) {
+        List<T> result = new ArrayList<>();
+        Iterator<T> it = iterator();
+        while (it.hasNext()) {
+            T item = it.next();
+            long ts = item.getTimestamp();
+            if (ts >= start && ts <= end) {
+                it.remove();
+                result.add(item);
+            }
+        }
+        return (T[]) result.toArray(new ISymObservation[0]);
     }
 }
