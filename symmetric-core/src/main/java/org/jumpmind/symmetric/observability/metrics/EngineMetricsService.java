@@ -20,78 +20,26 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.jumpmind.symmetric.ISymmetricEngine;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.metrics.DoubleGauge;
-import io.opentelemetry.api.metrics.LongUpDownCounter;
 
 /**
  * This class collects observations for registered metrics (counters, gauges, histograms). It is intended for engine/node-specific metrics.
  */
-public class EngineMetricsService implements IEngineMetricsService {
+public class EngineMetricsService extends AbstractMetricsService implements IEngineMetricsService {
     private final ISymmetricEngine engine;
-    private final MetricsManager metricsManager;
-    private final Attributes engineAttributes;
-    private final Map<String, UpDownCounter> upDownCounters = new ConcurrentHashMap<>();
-    private final Map<String, SymDoubleGauge> gauges = new ConcurrentHashMap<>();
-    private boolean isOtelPublishingEnabled;
 
     public EngineMetricsService(ISymmetricEngine engine, MetricsManager metricsManager, boolean isOtelPublishingEnabled) {
+        super(metricsManager, Attributes.of(AttributeKey.stringKey("engine.name"), engine.getEngineName()), isOtelPublishingEnabled);
         this.engine = engine;
-        this.metricsManager = metricsManager;
-        this.isOtelPublishingEnabled = isOtelPublishingEnabled;
-        this.engineAttributes = Attributes.of(AttributeKey.stringKey("engine.name"), engine.getEngineName());
         metricsManager.register(this);
     }
 
     @Override
     public String getEngineName() {
         return engine.getEngineName();
-    }
-
-    @Override
-    public boolean isOtelPublishingEnabled() {
-        return isOtelPublishingEnabled;
-    }
-
-    @Override
-    public UpDownCounter getOrCreateUpDownCounter(String metricId, String description, String unitOfMeasurement) {
-        return upDownCounters.computeIfAbsent(metricId,
-                k -> createUpDownCounterInternal(k, description, unitOfMeasurement));
-    }
-
-    private UpDownCounter createUpDownCounterInternal(String metricId, String description, String unitOfMeasurement) {
-        LongUpDownCounter otelCounter = null;
-        if (isOtelPublishingEnabled) {
-            otelCounter = metricsManager.createUpDownCounter(metricId, description, unitOfMeasurement);
-        }
-        return new UpDownCounter(metricId, otelCounter, engineAttributes);
-    }
-
-    public UpDownCounter getUpDownCounter(String metricId) {
-        return upDownCounters.get(metricId);
-    }
-
-    @Override
-    public SymDoubleGauge getOrCreateGauge(String metricId, String description, String unitOfMeasurement) {
-        return gauges.computeIfAbsent(metricId, k -> createGaugeInternal(k, description, unitOfMeasurement));
-    }
-
-    private SymDoubleGauge createGaugeInternal(String metricId, String description, String unitOfMeasurement) {
-        DoubleGauge otelGauge = null;
-        if (isOtelPublishingEnabled) {
-            otelGauge = metricsManager.createGauge(metricId, description, unitOfMeasurement);
-        }
-        return new SymDoubleGauge(metricId, otelGauge, engineAttributes);
-    }
-
-    public SymDoubleGauge getGauge(String metricId) {
-        return gauges.get(metricId);
     }
 
     @Override

@@ -103,7 +103,7 @@ public class MetricsManager {
         }
         try {
             if (hostMetricsService == null) {
-                hostMetricsService = new HostMetricsService(this);
+                hostMetricsService = new HostMetricsService(this, this.isOtelPublishingEnabled);
             }
         } catch (Exception ex) {
             log.error("Failed to initialize Host metrics service!", ex);
