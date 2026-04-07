@@ -1150,11 +1150,13 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             ResultSet fkData = null;
             try {
                 fkData = metaData.getExportedKeys(getTableNamePatternForConstraints(tableName));
-                while (fkData.next()) {
-                    Map<String, Object> values = readMetaData(fkData, getColumnsForExportedFK());
-                    String pkTableName = (String) values.get(getName("PKTABLE_NAME"));
-                    if (isBlank(pkTableName) || pkTableName.equalsIgnoreCase(tableName)) {
-                        readExportedKey(metaData, values, fks);
+                if (fkData != null) {
+                    while (fkData.next()) {
+                        Map<String, Object> values = readMetaData(fkData, getColumnsForExportedFK());
+                        String pkTableName = (String) values.get(getName("PKTABLE_NAME"));
+                        if (isBlank(pkTableName) || pkTableName.equalsIgnoreCase(tableName)) {
+                            readExportedKey(metaData, values, fks);
+                        }
                     }
                 }
             } finally {
