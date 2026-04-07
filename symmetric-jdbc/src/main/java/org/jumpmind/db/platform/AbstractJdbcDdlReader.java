@@ -123,7 +123,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     /*
      * Contains default column sizes (minimum sizes that a JDBC-compliant db must support).
      */
-    private HashMap<Integer, String> defaultSizes = new HashMap<Integer, String>();
+    private HashMap<Integer, String> defaultSizes = new HashMap<>();
     /* The default database catalog to read. */
     private String defaultCatalogPattern = "%";
     /* The default database schema(s) to read. */
