@@ -89,6 +89,7 @@ public class Table implements Serializable, Cloneable, Comparable<Table> {
     private ArrayList<ForeignKey> foreignKeys = new ArrayList<ForeignKey>();
     /** The indices applied to this table. */
     private ArrayList<IIndex> indices = new ArrayList<IIndex>();
+    private ArrayList<ForeignKey> exportedForeignKeys = new ArrayList<ForeignKey>();
     private String primaryKeyConstraintName;
     private String fullyQualifiedTableName;
     private String fullyQualifiedTableNameLowerCase;
@@ -517,6 +518,95 @@ public class Table implements Serializable, Cloneable, Comparable<Table> {
      */
     public void removeForeignKey(int idx) {
         foreignKeys.remove(idx);
+    }
+
+    /**
+     * Returns the number of exported foreign keys.
+     * 
+     * @return The number of exported foreign keys
+     */
+    public int getExportedForeignKeyCount() {
+        return exportedForeignKeys.size();
+    }
+
+    /**
+     * Returns the exported foreign key at the given position.
+     * 
+     * @param idx
+     *            The exported foreign key index
+     * @return The exported foreign key
+     */
+    public ForeignKey getExportedForeignKey(int idx) {
+        return exportedForeignKeys.get(idx);
+    }
+
+    /**
+     * Returns the exported foreign keys of this table.
+     * 
+     * @return The exported foreign keys
+     */
+    public ForeignKey[] getExportedForeignKeys() {
+        return exportedForeignKeys.toArray(new ForeignKey[exportedForeignKeys.size()]);
+    }
+
+    /**
+     * Adds the given exported foreign key.
+     * 
+     * @param foreignKey
+     *            The exported foreign key
+     */
+    public void addExportedForeignKey(ForeignKey foreignKey) {
+        if (foreignKey != null) {
+            exportedForeignKeys.add(foreignKey);
+        }
+    }
+
+    /**
+     * Adds the given exported foreign key at the specified position.
+     * 
+     * @param idx
+     *            The index to add the exported foreign key at
+     * @param foreignKey
+     *            The exported foreign key
+     */
+    public void addExportedForeignKey(int idx, ForeignKey foreignKey) {
+        if (foreignKey != null) {
+            exportedForeignKeys.add(idx, foreignKey);
+        }
+    }
+
+    /**
+     * Adds the given exported foreign keys.
+     * 
+     * @param foreignKeys
+     *            The exported foreign keys
+     */
+    public void addExportedForeignKeys(Collection<ForeignKey> foreignKeys) {
+        for (Iterator<ForeignKey> it = foreignKeys.iterator(); it.hasNext();) {
+            addExportedForeignKey(it.next());
+        }
+    }
+
+    /**
+     * Removes the given exported foreign key.
+     * 
+     * @param foreignKey
+     *            The exported foreign key to remove
+     */
+    public void removeExportedForeignKey(ForeignKey foreignKey) {
+        if (foreignKey != null) {
+            exportedForeignKeys.remove(foreignKey);
+        }
+    }
+
+    /**
+     * Removes the indicated exported foreign key.
+     * 
+     * @param idx
+     *            The index of the exported foreign key to remove
+     */
+    public void removeExportedForeignKey(int idx) {
+        exportedForeignKeys.remove(idx);
     }
 
     /**
