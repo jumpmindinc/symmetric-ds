@@ -105,17 +105,17 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     /* The Log to which logging calls will be made. */
     protected Logger log = LoggerFactory.getLogger(getClass());
     /* The descriptors for the relevant columns in the table meta data. */
-    private final List<MetaDataColumnDescriptor> _columnsForTable;
+    private final List<MetaDataColumnDescriptor> columnsForTable;
     /* The descriptors for the relevant columns in the table column meta data. */
-    private final List<MetaDataColumnDescriptor> _columnsForColumn;
+    private final List<MetaDataColumnDescriptor> columnsForColumn;
     /* The descriptors for the relevant columns in the primary key meta data. */
-    private final List<MetaDataColumnDescriptor> _columnsForPK;
+    private final List<MetaDataColumnDescriptor> columnsForPK;
     /* The descriptors for the relevant columns in the foreign key meta data. */
-    private final List<MetaDataColumnDescriptor> _columnsForFK;
+    private final List<MetaDataColumnDescriptor> columnsForFK;
     /* The descriptors for the relevant columns in the exported foreign key meta data. */
-    private final List<MetaDataColumnDescriptor> _columnsForExportedFK;
+    private final List<MetaDataColumnDescriptor> columnsForExportedFK;
     /* The descriptors for the relevant columns in the index meta data. */
-    private final List<MetaDataColumnDescriptor> _columnsForIndex;
+    private final List<MetaDataColumnDescriptor> columnsForIndex;
     /* The platform that this model reader belongs to. */
     protected IDatabasePlatform platform;
     /* The cache containing definitions of database objects. */
@@ -123,39 +123,39 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     /*
      * Contains default column sizes (minimum sizes that a JDBC-compliant db must support).
      */
-    private HashMap<Integer, String> _defaultSizes = new HashMap<Integer, String>();
+    private HashMap<Integer, String> defaultSizes = new HashMap<Integer, String>();
     /* The default database catalog to read. */
-    private String _defaultCatalogPattern = "%";
+    private String defaultCatalogPattern = "%";
     /* The default database schema(s) to read. */
-    private String _defaultSchemaPattern = "%";
+    private String defaultSchemaPattern = "%";
     /* The default pattern for reading all tables. */
-    private String _defaultTablePattern = "%";
+    private String defaultTablePattern = "%";
     /* The default pattern for reading all columns. */
-    private String _defaultColumnPattern;
+    private String defaultColumnPattern;
     /* The table types to recognize per default. */
-    private String[] _defaultTableTypes = { "TABLE" };
+    private String[] defaultTableTypes = { "TABLE" };
 
     public AbstractJdbcDdlReader(IDatabasePlatform platform) {
         this.platform = platform;
-        _defaultSizes.put(Integer.valueOf(Types.CHAR), "254");
-        _defaultSizes.put(Integer.valueOf(Types.VARCHAR), "254");
-        _defaultSizes.put(Integer.valueOf(Types.LONGVARCHAR), "254");
-        _defaultSizes.put(Integer.valueOf(Types.BINARY), "254");
-        _defaultSizes.put(Integer.valueOf(Types.VARBINARY), "254");
-        _defaultSizes.put(Integer.valueOf(Types.LONGVARBINARY), "254");
-        _defaultSizes.put(Integer.valueOf(Types.INTEGER), "32");
-        _defaultSizes.put(Integer.valueOf(Types.BIGINT), "64");
-        _defaultSizes.put(Integer.valueOf(Types.REAL), "7,0");
-        _defaultSizes.put(Integer.valueOf(Types.FLOAT), "15,0");
-        _defaultSizes.put(Integer.valueOf(Types.DOUBLE), "15,0");
-        _defaultSizes.put(Integer.valueOf(Types.DECIMAL), "15,15");
-        _defaultSizes.put(Integer.valueOf(Types.NUMERIC), "15,15");
-        _columnsForTable = initColumnsForTable();
-        _columnsForColumn = initColumnsForColumn();
-        _columnsForPK = initColumnsForPK();
-        _columnsForFK = initColumnsForFK();
-        _columnsForExportedFK = initColumnsForExportedFK();
-        _columnsForIndex = initColumnsForIndex();
+        defaultSizes.put(Integer.valueOf(Types.CHAR), "254");
+        defaultSizes.put(Integer.valueOf(Types.VARCHAR), "254");
+        defaultSizes.put(Integer.valueOf(Types.LONGVARCHAR), "254");
+        defaultSizes.put(Integer.valueOf(Types.BINARY), "254");
+        defaultSizes.put(Integer.valueOf(Types.VARBINARY), "254");
+        defaultSizes.put(Integer.valueOf(Types.LONGVARBINARY), "254");
+        defaultSizes.put(Integer.valueOf(Types.INTEGER), "32");
+        defaultSizes.put(Integer.valueOf(Types.BIGINT), "64");
+        defaultSizes.put(Integer.valueOf(Types.REAL), "7,0");
+        defaultSizes.put(Integer.valueOf(Types.FLOAT), "15,0");
+        defaultSizes.put(Integer.valueOf(Types.DOUBLE), "15,0");
+        defaultSizes.put(Integer.valueOf(Types.DECIMAL), "15,15");
+        defaultSizes.put(Integer.valueOf(Types.NUMERIC), "15,15");
+        columnsForTable = initColumnsForTable();
+        columnsForColumn = initColumnsForColumn();
+        columnsForPK = initColumnsForPK();
+        columnsForFK = initColumnsForFK();
+        columnsForExportedFK = initColumnsForExportedFK();
+        columnsForIndex = initColumnsForIndex();
     }
 
     @Override
@@ -211,7 +211,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The descriptors for the result set columns
      */
     protected List<MetaDataColumnDescriptor> initColumnsForTable() {
-        List<MetaDataColumnDescriptor> result = new ArrayList<MetaDataColumnDescriptor>();
+        List<MetaDataColumnDescriptor> result = new ArrayList<>();
         result.add(new MetaDataColumnDescriptor(getName("TABLE_NAME"), Types.VARCHAR));
         result.add(new MetaDataColumnDescriptor(getName("TABLE_TYPE"), Types.VARCHAR, "UNKNOWN"));
         result.add(new MetaDataColumnDescriptor(getResultSetCatalogName(), Types.VARCHAR));
@@ -227,7 +227,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The map column name -> descriptor for the result set columns
      */
     protected List<MetaDataColumnDescriptor> initColumnsForColumn() {
-        List<MetaDataColumnDescriptor> result = new ArrayList<MetaDataColumnDescriptor>();
+        List<MetaDataColumnDescriptor> result = new ArrayList<>();
         // As suggested by Alexandre Borgoltz, we're reading the COLUMN_DEF
         // first because Oracle
         // has problems otherwise (it seemingly requires a LONG column to be the
@@ -259,7 +259,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The map column name -> descriptor for the result set columns
      */
     protected List<MetaDataColumnDescriptor> initColumnsForPK() {
-        List<MetaDataColumnDescriptor> result = new ArrayList<MetaDataColumnDescriptor>();
+        List<MetaDataColumnDescriptor> result = new ArrayList<>();
         result.add(new MetaDataColumnDescriptor(getName("COLUMN_NAME"), Types.VARCHAR));
         // we're also reading the table name so that a model reader impl can
         // filter manually
@@ -277,7 +277,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The map column name -> descriptor for the result set columns
      */
     protected List<MetaDataColumnDescriptor> initColumnsForFK() {
-        List<MetaDataColumnDescriptor> result = new ArrayList<MetaDataColumnDescriptor>();
+        List<MetaDataColumnDescriptor> result = new ArrayList<>();
         result.add(new MetaDataColumnDescriptor(getName("PKTABLE_NAME"), Types.VARCHAR));
         // we're also reading the table name so that a model reader impl can
         // filter manually
@@ -293,7 +293,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     }
 
     protected List<MetaDataColumnDescriptor> initColumnsForExportedFK() {
-        List<MetaDataColumnDescriptor> result = new ArrayList<MetaDataColumnDescriptor>();
+        List<MetaDataColumnDescriptor> result = new ArrayList<>();
         result.add(new MetaDataColumnDescriptor(getName("PKTABLE_CAT"), Types.VARCHAR));
         result.add(new MetaDataColumnDescriptor(getName("PKTABLE_SCHEM"), Types.VARCHAR));
         result.add(new MetaDataColumnDescriptor(getName("PKTABLE_NAME"), Types.VARCHAR));
@@ -318,7 +318,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The map column name -> descriptor for the result set columns
      */
     protected List<MetaDataColumnDescriptor> initColumnsForIndex() {
-        List<MetaDataColumnDescriptor> result = new ArrayList<MetaDataColumnDescriptor>();
+        List<MetaDataColumnDescriptor> result = new ArrayList<>();
         result.add(new MetaDataColumnDescriptor(getName("INDEX_NAME"), Types.VARCHAR));
         // we're also reading the table name so that a model reader impl can
         // filter manually
@@ -341,7 +341,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The default catalog(s)
      */
     public String getDefaultCatalogPattern() {
-        return _defaultCatalogPattern;
+        return defaultCatalogPattern;
     }
 
     /*
@@ -350,7 +350,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @param catalogPattern The catalog(s)
      */
     public void setDefaultCatalogPattern(String catalogPattern) {
-        _defaultCatalogPattern = catalogPattern;
+        defaultCatalogPattern = catalogPattern;
     }
 
     /*
@@ -359,7 +359,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The default schema(s)
      */
     public String getDefaultSchemaPattern() {
-        return _defaultSchemaPattern;
+        return defaultSchemaPattern;
     }
 
     /*
@@ -368,7 +368,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @param schemaPattern The schema(s)
      */
     public void setDefaultSchemaPattern(String schemaPattern) {
-        _defaultSchemaPattern = schemaPattern;
+        defaultSchemaPattern = schemaPattern;
     }
 
     /*
@@ -377,7 +377,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The table pattern
      */
     public String getDefaultTablePattern() {
-        return _defaultTablePattern;
+        return defaultTablePattern;
     }
 
     /*
@@ -386,7 +386,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @param tablePattern The table pattern
      */
     public void setDefaultTablePattern(String tablePattern) {
-        _defaultTablePattern = tablePattern;
+        defaultTablePattern = tablePattern;
     }
 
     /*
@@ -395,7 +395,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The column pattern
      */
     public String getDefaultColumnPattern() {
-        return _defaultColumnPattern;
+        return defaultColumnPattern;
     }
 
     /*
@@ -404,7 +404,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @param columnPattern The column pattern
      */
     public void setDefaultColumnPattern(String columnPattern) {
-        _defaultColumnPattern = columnPattern;
+        defaultColumnPattern = columnPattern;
     }
 
     /*
@@ -413,7 +413,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The default table types
      */
     public String[] getDefaultTableTypes() {
-        return _defaultTableTypes;
+        return defaultTableTypes;
     }
 
     /*
@@ -423,7 +423,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @param types The table types
      */
     public void setDefaultTableTypes(String[] types) {
-        _defaultTableTypes = types;
+        defaultTableTypes = types;
     }
 
     /*
@@ -432,7 +432,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The column descriptors
      */
     protected List<MetaDataColumnDescriptor> getColumnsForTable() {
-        return _columnsForTable;
+        return columnsForTable;
     }
 
     /*
@@ -441,7 +441,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The column descriptors
      */
     protected List<MetaDataColumnDescriptor> getColumnsForColumn() {
-        return _columnsForColumn;
+        return columnsForColumn;
     }
 
     /*
@@ -450,7 +450,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The column descriptors
      */
     protected List<MetaDataColumnDescriptor> getColumnsForPK() {
-        return _columnsForPK;
+        return columnsForPK;
     }
 
     /*
@@ -459,7 +459,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The column descriptors
      */
     protected List<MetaDataColumnDescriptor> getColumnsForFK() {
-        return _columnsForFK;
+        return columnsForFK;
     }
 
     /*
@@ -468,7 +468,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The column descriptors
      */
     protected List<MetaDataColumnDescriptor> getColumnsForExportedFK() {
-        return _columnsForExportedFK;
+        return columnsForExportedFK;
     }
 
     /*
@@ -477,7 +477,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The column descriptors
      */
     protected List<MetaDataColumnDescriptor> getColumnsForIndex() {
-        return _columnsForIndex;
+        return columnsForIndex;
     }
 
     /*
@@ -748,7 +748,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 if (table.getColumnCount() > 0) {
                     table.addForeignKeys(readForeignKeys(connection, metaData, tableName));
                     table.addIndices(readIndices(connection, metaData, tableName));
-                    table.addExportedForeignKeys(readExportedForeignKeys(connection, metaData, tableName));
+                    table.addExportedForeignKeys(readExportedForeignKeys(metaData, tableName));
                     Collection<String> primaryKeys = readPrimaryKeyNames(metaData, tableName);
                     int primaryKeySequence = 1;
                     for (Iterator<String> it = primaryKeys.iterator(); it.hasNext();) {
@@ -1021,7 +1021,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             log.warn("", ex);
         }
         if (columnSize == null) {
-            columnSize = _defaultSizes.get(Integer.valueOf(column.getMappedTypeCode()));
+            columnSize = defaultSizes.get(Integer.valueOf(column.getMappedTypeCode()));
         }
         // we're setting the size after the precision and radix in case
         // the database prefers to return them in the size value
@@ -1143,9 +1143,8 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         return fks.values();
     }
 
-    protected Collection<ForeignKey> readExportedForeignKeys(Connection connection,
-            DatabaseMetaDataWrapper metaData, String tableName) throws SQLException {
-        Map<String, ForeignKey> fks = new LinkedHashMap<String, ForeignKey>();
+    protected Collection<ForeignKey> readExportedForeignKeys(DatabaseMetaDataWrapper metaData, String tableName) throws SQLException {
+        Map<String, ForeignKey> fks = new LinkedHashMap<>();
         if (getPlatformInfo().isForeignKeysSupported()) {
             ResultSet fkData = null;
             try {

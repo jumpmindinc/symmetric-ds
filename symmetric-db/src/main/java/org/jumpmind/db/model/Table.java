@@ -84,12 +84,12 @@ public class Table implements Serializable, Cloneable, Comparable<Table> {
     private String type = null;
     private boolean isAccessControlled;
     /** The columns in this table. */
-    private ArrayList<Column> columns = new ArrayList<Column>();
+    private ArrayList<Column> columns = new ArrayList<>();
     /** The foreign keys associated to this table. */
-    private ArrayList<ForeignKey> foreignKeys = new ArrayList<ForeignKey>();
+    private ArrayList<ForeignKey> foreignKeys = new ArrayList<>();
     /** The indices applied to this table. */
-    private ArrayList<IIndex> indices = new ArrayList<IIndex>();
-    private ArrayList<ForeignKey> exportedForeignKeys = new ArrayList<ForeignKey>();
+    private ArrayList<IIndex> indices = new ArrayList<>();
+    private ArrayList<ForeignKey> exportedForeignKeys = new ArrayList<>();
     private String primaryKeyConstraintName;
     private String fullyQualifiedTableName;
     private String fullyQualifiedTableNameLowerCase;
@@ -99,7 +99,7 @@ public class Table implements Serializable, Cloneable, Comparable<Table> {
     private boolean madeAllColumnsPrimaryKey;
     /** This table has changes logged by the transaction log. */
     private boolean logging = true;
-    private ArrayList<Trigger> triggers = new ArrayList<Trigger>();
+    private ArrayList<Trigger> triggers = new ArrayList<>();
 
     public Table() {
     }
