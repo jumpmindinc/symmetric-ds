@@ -27,6 +27,10 @@ import java.util.Map;
 import java.util.Set;
 
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.observability.metrics.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.metrics.SymDoubleGauge;
+import org.jumpmind.symmetric.observability.metrics.SymMetricConstants;
+import org.jumpmind.symmetric.observability.metrics.UpDownCounter;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.slf4j.Logger;
@@ -42,10 +46,40 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     protected Map<String, Map<String, NodeConnectionStatistics>> nodeConnectionStatistics = new HashMap<String, Map<String, NodeConnectionStatistics>>();
     protected Set<String> whiteList = new HashSet<String>();
     protected Map<String, Long> transportErrorTimeByNode = new HashMap<String, Long>();
+    private UpDownCounter connectionsCounter;
+    private SymDoubleGauge utilizationGauge;
 
     public ConcurrentConnectionManager(IParameterService parameterService,
-            IStatisticManager statisticManager) {
+            IStatisticManager statisticManager, IEngineMetricsService metricsService) {
         this.parameterService = parameterService;
+        registerMetrics(metricsService);
+    }
+
+    private void registerMetrics(IEngineMetricsService metricsService) {
+        if (metricsService != null) {
+            connectionsCounter = metricsService.getOrCreateUpDownCounter(SymMetricConstants.METRIC_CONNECTIONS_RESERVATIONS_ID,
+                    SymMetricConstants.METRIC_CONNECTIONS_RESERVATIONS_DESC, SymMetricConstants.METRIC_CONNECTIONS_RESERVATIONS_UNIT);
+            utilizationGauge = metricsService.getOrCreateGauge(SymMetricConstants.METRIC_CONNECTIONS_UTILIZATION_ID,
+                    SymMetricConstants.METRIC_CONNECTIONS_UTILIZATION_DESC, SymMetricConstants.METRIC_CONNECTIONS_UTILIZATION_UNIT);
+        }
+    }
+
+    private void updateUtilizationGauge() {
+        if (utilizationGauge != null) {
+            utilizationGauge.setValue(calculateReservationPercentage());
+        }
+    }
+
+    private synchronized double calculateReservationPercentage() {
+        int maxPoolSize = parameterService.getInt(ParameterConstants.CONCURRENT_WORKERS);
+        if (maxPoolSize <= 0) {
+            return 0.0;
+        }
+        int totalReservations = 0;
+        for (Map<String, Reservation> poolReservations : activeReservationsByNodeByPool.values()) {
+            totalReservations += poolReservations.size();
+        }
+        return (totalReservations * 100.0) / maxPoolSize;
     }
 
     protected void logTooBusyRejection(String nodeId, String poolId) {
@@ -81,6 +115,10 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         Reservation reservation = reservations.remove(reservationId);
         if (reservation != null) {
             logConnectedTimePeriod(reservationId, reservation.createTime, System.currentTimeMillis(), poolId);
+            if (connectionsCounter != null) {
+                connectionsCounter.decrement();
+            }
+            updateUtilizationGauge();
             return true;
         } else {
             return false;
@@ -92,8 +130,11 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         Map<String, Reservation> reservations = getReservationMap(poolId);
         Reservation reservation = reservations.remove(nodeId);
         if (reservation != null) {
-            logConnectedTimePeriod(nodeId, reservation.createTime, System.currentTimeMillis(),
-                    poolId);
+            logConnectedTimePeriod(nodeId, reservation.createTime, System.currentTimeMillis(), poolId);
+            if (connectionsCounter != null) {
+                connectionsCounter.decrement();
+            }
+            updateUtilizationGauge();
             return true;
         } else {
             return false;
@@ -146,6 +187,10 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
                 }
                 reservations.put(reservationId, new Reservation(reservationId, reservationExpiration, reservationRequest));
                 transportErrorTimeByNode.remove(nodeId);
+                if (connectionsCounter != null) {
+                    connectionsCounter.increment();
+                }
+                updateUtilizationGauge();
                 return ReservationStatus.ACCEPTED;
             } else {
                 String message = "Node '{}' Channel '{}' requested a {} connection, but was rejected because it already has one";
@@ -197,6 +242,10 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
                 Reservation reservation = reservations.get(key);
                 if (reservation.timeToLiveInMs < currentTime) {
                     reservations.remove(key);
+                    if (connectionsCounter != null) {
+                        connectionsCounter.decrement();
+                    }
+                    updateUtilizationGauge();
                 }
             }
         }

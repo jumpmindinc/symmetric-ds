@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:downloads.jumpmind.com)",
+      "WebFetch(domain:symmetricds.org)"
+    ]
+  }
+}

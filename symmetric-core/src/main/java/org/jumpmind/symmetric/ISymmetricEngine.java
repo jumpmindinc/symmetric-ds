@@ -50,6 +50,7 @@ import org.jumpmind.symmetric.service.IGroupletService;
 import org.jumpmind.symmetric.service.IIncomingBatchService;
 import org.jumpmind.symmetric.service.IInitialLoadService;
 import org.jumpmind.symmetric.service.ILoadFilterService;
+import org.jumpmind.symmetric.observability.metrics.IEngineMetricsService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IOfflinePullService;
@@ -287,6 +288,8 @@ public interface ISymmetricEngine {
     public String getDeploymentSubType();
 
     public IConcurrentConnectionManager getConcurrentConnectionManager();
+
+    public IEngineMetricsService getMetricsService();
 
     public ITransformService getTransformService();
 

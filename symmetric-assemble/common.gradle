@@ -343,6 +343,7 @@ subprojects { subproject ->
         jnaVersion = '5.14.0'
         jettyVersion = '12.0.33'
         websocketVersion = '2.2.0'
+        openTelemetryVersion = '1.60.1'
         env = System.getenv()
     }
 
