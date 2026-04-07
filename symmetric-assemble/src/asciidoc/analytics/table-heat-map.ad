@@ -1,0 +1,20 @@
+=== Table Heat Map
+
+The Table Heat Map screen shows replication activity across all tracked tables over a rolling time window.
+Each cell in the heat map represents the total number of rows synchronized for a table during a 24-hour period.
+The color of each cell indicates the activity level relative to other cells: cooler colors represent lower activity and warmer colors represent higher activity.
+Cells with no data are shown in a neutral color.
+Hovering over a cell displays the exact row count for that day.
+
+image::images/analytics/analytics-table-heat-map.png[]
+
+The summary cards at the top of the report show the total number of tables being tracked, the total rows synchronized during the selected period, the busiest table, and the day with the highest overall activity.
+
+Use the *Time Range* filter to switch between the last 8, 15, or 30 days.
+Use the *Tables* filter to limit the heat map to the top 20, 50, or 100 tables by row count.
+Options are shown only when enough data is available to support them.
+Check *Show system tables* to include SymmetricDS's internal tables in the report.
+
+The info bar below the filters shows when the report data was last refreshed and how often the *Refresh Analytics* job is scheduled to run.
+Use the *Run Now* button to trigger the job immediately.
+The *Data retained for* link shows how many days of data are kept and opens a dialog to edit the `purge.stats.retention.minutes` parameter.

@@ -1,0 +1,6 @@
+
+== Analytics
+
+The Analytics tab provides visibility into the replication activity of the current node. Reports are prepared by the *Refresh Analytics* job, which runs every 6 hours by default.
+
+include::analytics/table-heat-map.ad[]
