@@ -35,11 +35,19 @@ public class SymDoubleGauge extends AbstractGauge {
         this.otelGauge = otelGauge;
     }
 
-    public void set(double newValue) {
-        value = newValue;
-        lastModified = System.currentTimeMillis();
+    @Override
+    public void setValue(double newValue) {
+        super.setValue(newValue);
         if (otelGauge != null) {
             otelGauge.set(newValue, attributes);
+        }
+    }
+
+    @Override
+    public void add(double delta) {
+        super.add(delta);
+        if (otelGauge != null) {
+            otelGauge.set(getValue(), attributes);
         }
     }
 }

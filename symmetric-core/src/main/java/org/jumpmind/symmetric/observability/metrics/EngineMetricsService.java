@@ -31,7 +31,7 @@ import io.opentelemetry.api.metrics.DoubleGauge;
 import io.opentelemetry.api.metrics.LongUpDownCounter;
 
 /**
- * This class is intended for collecting a small number of in-memory metrics, which are specific to a SymmetricDS engine (single node, endpoint).
+ * This class collects observations for registered metrics (counters, gauges, histograms). It is intended for engine/node-specific metrics.
  */
 public class EngineMetricsService implements IEngineMetricsService {
     private final ISymmetricEngine engine;

@@ -20,17 +20,39 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import java.util.concurrent.atomic.DoubleAdder;
+
+import org.jumpmind.symmetric.observability.models.ObservationDouble;
+
 import io.opentelemetry.api.common.Attributes;
 
-public abstract class AbstractGauge extends AbstractSymMetric {
+public abstract class AbstractGauge extends AbstractQueuedMetric {
 
-    protected volatile double value;
+    protected final DoubleAdder currentValue = new DoubleAdder();
 
     AbstractGauge(String metricId, Attributes attributes) {
         super(metricId, attributes);
     }
 
     public double getValue() {
-        return value;
+        return this.currentValue.sum();
+    }
+
+    /**
+     * Sets new value in an atomic operation and records time of change in a new observation
+     */
+    public void setValue(double newValue) {
+        this.currentValue.reset();
+        this.currentValue.add(newValue - this.currentValue.sum());
+        addObservation(new ObservationDouble(this.currentValue.sum(), this.lastModified = System.currentTimeMillis()));
+    }
+
+    /**
+     * Adds to the current value in an atomic operation and records time of change in a new observation
+     */
+    public void add(double delta) {
+        this.currentValue.add(delta);
+        // Update current value via atomic operation and record observation:
+        addObservation(new ObservationDouble(this.currentValue.sum(), this.lastModified = System.currentTimeMillis()));
     }
 }

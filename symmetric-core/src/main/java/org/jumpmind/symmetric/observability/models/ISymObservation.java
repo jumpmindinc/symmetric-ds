@@ -18,27 +18,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.metrics;
+package org.jumpmind.symmetric.observability.models;
 
-import io.opentelemetry.api.common.Attributes;
-
-public abstract class AbstractSymMetric implements ISymMetric {
-    private final String metricId;
-    protected final Attributes attributes;
-    protected volatile long lastModified;
-
-    AbstractSymMetric(String metricId, Attributes attributes) {
-        this.metricId = metricId;
-        this.attributes = attributes;
-    }
-
-    @Override
-    public String getMetricId() {
-        return metricId;
-    }
-
-    @Override
-    public long getLastModified() {
-        return lastModified;
-    }
+public interface ISymObservation {
+    long getTimestamp();
 }

@@ -28,8 +28,8 @@ import java.util.Set;
 
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.observability.metrics.IEngineMetricsService;
-import org.jumpmind.symmetric.observability.metrics.SymMetricConstants;
 import org.jumpmind.symmetric.observability.metrics.SymDoubleGauge;
+import org.jumpmind.symmetric.observability.metrics.SymMetricConstants;
 import org.jumpmind.symmetric.observability.metrics.UpDownCounter;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
@@ -66,7 +66,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
 
     private void updateUtilizationGauge() {
         if (utilizationGauge != null) {
-            utilizationGauge.set(calculateReservationPercentage());
+            utilizationGauge.setValue(calculateReservationPercentage());
         }
     }
 

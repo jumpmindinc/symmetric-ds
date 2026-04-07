@@ -24,40 +24,30 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.LongUpDownCounter;
 
 /**
- * Wraps a {@link LongUpDownCounter} with a fixed set of engine attributes so callers do not need to supply attributes on every call.
+ * Wraps a {@link LongUpDownCounter} and a queue of ObservationLong with a fixed set of attributes (specific to one node, host, etc.).
  */
 public class UpDownCounter extends AbstractCounter {
-    private final LongUpDownCounter otelCounter;
+    protected final LongUpDownCounter otelCounter;
+
 
     UpDownCounter(String metricId, LongUpDownCounter otelCounter, Attributes attributes) {
         super(metricId, attributes);
         this.otelCounter = otelCounter;
     }
 
+
+    @Override
     public void add(long delta) {
-        if (delta == 0) {
-            return;
-        }
-        value.addAndGet(delta);
-        lastModified = System.currentTimeMillis();
+        super.add(delta);
         if (this.otelCounter != null) {
             otelCounter.add(delta, attributes);
         }
     }
 
-    public void increment() {
-        add(1);
-    }
-
-    public void increment(long delta) {
-        add(delta);
-    }
-
+    /**
+     * Decrements the current value in an atomic operation and records time of change in a new observation
+     */
     public void decrement() {
         add(-1);
-    }
-
-    public void decrement(long delta) {
-        add(-delta);
     }
 }

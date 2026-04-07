@@ -20,6 +20,8 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import org.jumpmind.symmetric.observability.models.ObservationLong;
+
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.LongCounter;
 
@@ -28,32 +30,22 @@ import io.opentelemetry.api.metrics.LongCounter;
  * {@link IllegalArgumentException}.
  */
 public class IncreasingCounter extends AbstractCounter {
-    private final LongCounter counter;
+    protected final LongCounter otelCounter;
+    protected ObservationsQueue<ObservationLong> observations = new ObservationsQueue<ObservationLong>();
 
     IncreasingCounter(String metricId, LongCounter counter, Attributes attributes) {
         super(metricId, attributes);
-        this.counter = counter;
+        this.otelCounter = counter;
     }
 
+    @Override
     public void add(long delta) {
-        if (delta == 0) {
-            return;
-        }
         if (delta < 0) {
             throw new IllegalArgumentException("IncreasingCounter does not accept negative deltas: " + delta);
         }
-        value.addAndGet(delta);
-        lastModified = System.currentTimeMillis();
-        if (counter != null) {
-            counter.add(delta, attributes);
+        super.add(delta);
+        if (this.otelCounter != null) {
+            otelCounter.add(delta, attributes);
         }
-    }
-
-    public void increment() {
-        add(1);
-    }
-
-    public void increment(long delta) {
-        add(delta);
     }
 }

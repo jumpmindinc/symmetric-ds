@@ -22,18 +22,42 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.jumpmind.symmetric.observability.models.ObservationLong;
+
 import io.opentelemetry.api.common.Attributes;
 
-public abstract class AbstractCounter extends AbstractSymMetric {
-
-    protected final AtomicLong value;
+/**
+ * Tracks a current value of long type.
+ */
+public abstract class AbstractCounter extends AbstractQueuedMetric {
+    protected final AtomicLong currentValue = new AtomicLong(0);
 
     AbstractCounter(String metricId, Attributes attributes) {
         super(metricId, attributes);
-        this.value = new AtomicLong(0);
     }
 
+    /**
+     * Returns the current value of the counter (can change quickly in a highly concurrent environment)
+     */
     public long getValue() {
-        return value.get();
+        return currentValue.get();
+    }
+
+    /**
+     * Adds to the current value in an atomic operation and records time of change in a new observation
+     */
+    public void add(long delta) {
+        if (delta == 0) {
+            return;
+        }
+        // Update current value via atomic operation and record observation:
+        addObservation(new ObservationLong(this.currentValue.addAndGet(delta), this.lastModified = System.currentTimeMillis()));
+    }
+
+    /**
+     * Increments the current value in an atomic operation and records time of change in a new observation
+     */
+    public void increment() {
+        add(1);
     }
 }
