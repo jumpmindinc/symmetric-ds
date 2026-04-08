@@ -1180,8 +1180,8 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         ForeignKey fk = knownFks.computeIfAbsent(fkName,
                 key -> createForeignKey(fkName, values,
                         (String) values.get(getName("PKTABLE_NAME")),
-                        (String) values.getOrDefault(getName("PKTABLE_CAT"), values.get(getName("fktable_cat"))),
-                        (String) values.getOrDefault(getName("PKTABLE_SCHEM"), values.get(getName("fktable_schem")))));
+                        (String) values.getOrDefault(getName("PKTABLE_CAT"), values.get(getName("pktable_cat"))),
+                        (String) values.getOrDefault(getName("PKTABLE_SCHEM"), values.get(getName("pktable_schem")))));
         Reference ref = new Reference();
         ref.setForeignColumnName((String) values.get(getName("PKCOLUMN_NAME")));
         ref.setLocalColumnName((String) values.get(getName("FKCOLUMN_NAME")));
