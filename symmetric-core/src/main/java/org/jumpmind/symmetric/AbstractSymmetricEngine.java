@@ -89,6 +89,7 @@ import org.jumpmind.symmetric.model.RemoteNodeStatuses;
 import org.jumpmind.symmetric.observability.metrics.EngineMetricsService;
 import org.jumpmind.symmetric.observability.metrics.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.metrics.MetricsManager;
+import org.jumpmind.symmetric.observability.stats.EngineMetricIntervalsCollector;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
@@ -217,6 +218,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected IContextService contextService;
     protected IUpdateService updateService;
     protected IEngineMetricsService metricsService;
+    protected EngineMetricIntervalsCollector metricIntervalsCollector;
     protected ICacheManager cacheManager;
     protected Date lastRestartTime = null;
 
@@ -399,6 +401,17 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             return new EngineMetricsService(this, MetricsManager.getGlobalInstance(), parameterService.is(ParameterConstants.OTEL_METRICS_ENABLED, true));
         } catch (Exception ex) {
             log.error("Failed to initialize EngineMetricsService!", ex);
+            return null;
+        }
+    }
+
+    protected EngineMetricIntervalsCollector createMetricIntervalsCollector() {
+        try {
+            EngineMetricIntervalsCollector c = new EngineMetricIntervalsCollector(this);
+            c.setupTables();
+            return c;
+        } catch (Exception ex) {
+            log.error("Failed to initialize EngineMetricIntervalsCollector!", ex);
             return null;
         }
     }
@@ -736,6 +749,12 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                     }
                     lastRestartTime = new Date();
                     statisticManager.incrementRestart();
+                    metricIntervalsCollector = createMetricIntervalsCollector();
+                    MetricsManager mgr = MetricsManager.getGlobalInstance();
+                    mgr.startAggregation();
+                    if (mgr.getAggregator() != null) {
+                        mgr.getAggregator().setCollector(metricIntervalsCollector);
+                    }
                     started = true;
                     for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
                         ext.started(this);
@@ -1060,6 +1079,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (metricsService != null) {
             metricsService.shutdown();
         }
+        metricIntervalsCollector = null;
     }
 
     @Override

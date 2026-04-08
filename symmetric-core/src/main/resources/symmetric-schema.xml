@@ -1017,4 +1017,22 @@
         </foreign-key>
     </table>
 
+    <table name="metric_key" description="Dimension table that maps a compact surrogate key to a metric time-series identity (hostname, engine name, metric ID).">
+        <column name="metric_attr_id" type="BIGINT" required="true" primaryKey="true" description="Surrogate identifier for a unique metric key." />
+        <column name="hostname" type="VARCHAR" size="255" required="true" description="Hostname of the SymmetricDS node that produced the metric." />
+        <column name="engine_name" type="VARCHAR" size="255" required="true" description="Name of the engine that produced the metric." />
+        <column name="metric_id" type="VARCHAR" size="255" required="true" description="Identifier of the metric instrument." />
+    </table>
+
+    <table name="metric_interval" description="Fact table storing one aggregated 5-minute window per metric key. Statistics are time-weighted using a step-function model.">
+        <column name="metric_attr_id" type="BIGINT" required="true" primaryKey="true" description="Foreign key to metric_key." />
+        <column name="interval_start" type="BIGINT" required="true" primaryKey="true" description="Start of the 5-minute window in epoch milliseconds." />
+        <column name="interval_end" type="BIGINT" required="true" description="End of the 5-minute window in epoch milliseconds." />
+        <column name="avg_value" type="DOUBLE" required="true" description="Time-weighted average value over the interval." />
+        <column name="min_value" type="DOUBLE" required="true" description="Minimum observed value during the interval." />
+        <column name="max_value" type="DOUBLE" required="true" description="Maximum observed value during the interval." />
+        <column name="std_dev" type="DOUBLE" required="true" description="Time-weighted standard deviation of the value during the interval." />
+        <column name="observation_count" type="INTEGER" required="true" description="Number of discrete observations recorded in the interval." />
+    </table>
+
 </database>

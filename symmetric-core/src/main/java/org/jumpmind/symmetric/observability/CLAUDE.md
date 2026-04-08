@@ -101,6 +101,8 @@ std dev), `min`, `max`, `count`, plus `lastValue`/`lastTimestamp` for carry-forw
 ### MetricAggregator
 
 Runs on a single daemon thread (`"metrics-aggregator"`). Lifecycle: `start()` / `stop()`.
+An optional `EngineMetricIntervalsCollector` can be attached via `setCollector()`; it receives
+the list of newly completed intervals at the end of each processing cycle.
 
 Processing cycle (every 30 s):
 1. For each registered `IEngineMetricsService`, call `getAllMetrics()`.
@@ -111,6 +113,21 @@ Processing cycle (every 30 s):
 5. After processing all observations, close any accumulators whose window has expired.
 6. Completed `MetricInterval` records are prepended to a per-key `ArrayDeque` capped at 12
    entries (1 hour of history).
+
+### EngineMetricIntervalsCollector
+
+Persists completed intervals to two database tables. Initialized by `AbstractSymmetricEngine`
+after `setup()` completes (so the main SYM tables already exist) and wired into the aggregator
+before `started = true`.
+
+| Table | Purpose |
+|-------|---------|
+| `{prefix}_metric_key` | Dimension table: maps a compact `BIGINT` surrogate key (`metric_attr_id`) to `(hostname, engine_name, metric_id)`. One row per unique `MetricKey`. |
+| `{prefix}_metric_interval` | Fact table: one row per completed 5-minute window. PK is `(metric_attr_id, interval_start)`. Stores `avg_value`, `min_value`, `max_value`, `std_dev`, `observation_count`. |
+
+The surrogate ID is generated in-process using an `AtomicLong` seeded from `MAX(metric_attr_id)`
+at startup — no external sequence service needed. Attribute rows are cached in memory after the
+first insert so subsequent cycles only pay the cost of interval rows.
 
 On `stop()`: sets `running = false` and interrupts the thread. The thread restores the interrupt
 flag and breaks out of the loop, then performs one final `processAll()` to drain any buffered

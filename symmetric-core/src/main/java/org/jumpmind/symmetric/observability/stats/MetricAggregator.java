@@ -20,7 +20,9 @@
  */
 package org.jumpmind.symmetric.observability.stats;
 
+import java.util.AbstractMap;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +59,7 @@ public class MetricAggregator {
 
     private volatile boolean running;
     private volatile Thread thread;
+    private volatile EngineMetricIntervalsCollector collector;
 
     public MetricAggregator(MetricsManager metricsManager, String hostname) {
         this.metricsManager = metricsManager;
@@ -79,6 +82,10 @@ public class MetricAggregator {
         }
     }
 
+    public void setCollector(EngineMetricIntervalsCollector collector) {
+        this.collector = collector;
+    }
+
     private void run() {
         while (running && !Thread.currentThread().isInterrupted()) {
             try {
@@ -97,19 +104,23 @@ public class MetricAggregator {
 
     void processAll() {
         long nowMs = System.currentTimeMillis();
+        List<Map.Entry<MetricKey, MetricInterval>> newlyCompleted = new ArrayList<>();
         for (IEngineMetricsService svc : metricsManager.getEngineMetricsServices()) {
             for (AbstractQueuedMetric metric : svc.getAllMetrics()) {
                 MetricKey key = new MetricKey(hostname, svc.getEngineName(), metric.getMetricId());
                 ISymObservation[] obs = metric.removeAllObservations();
                 if (obs.length > 0) {
-                    processObservations(key, obs);
+                    processObservations(key, obs, newlyCompleted);
                 }
             }
         }
-        closeExpiredAccumulators(nowMs);
+        closeExpiredAccumulators(nowMs, newlyCompleted);
+        if (collector != null && !newlyCompleted.isEmpty()) {
+            collector.save(newlyCompleted);
+        }
     }
 
-    private void processObservations(MetricKey key, ISymObservation[] obs) {
+    private void processObservations(MetricKey key, ISymObservation[] obs, List<Map.Entry<MetricKey, MetricInterval>> newlyCompleted) {
         for (ISymObservation o : obs) {
             double value = doubleValueOf(o);
             long ts = o.getTimestamp();
@@ -122,14 +133,14 @@ public class MetricAggregator {
                 openAccumulators.put(key, acc);
             } else if (ts >= acc.intervalEnd) {
                 acc.closeAt(acc.intervalEnd);
-                save(key, acc.toMetricInterval());
+                save(key, acc.toMetricInterval(), newlyCompleted);
 
                 double carryForward = acc.getLastValue();
                 long nextStart = acc.intervalEnd;
                 while (nextStart + MetricIntervalAccumulator.INTERVAL_DURATION_MS <= bucketStart) {
                     MetricIntervalAccumulator empty = new MetricIntervalAccumulator(nextStart, carryForward);
                     empty.closeAt(nextStart + MetricIntervalAccumulator.INTERVAL_DURATION_MS);
-                    save(key, empty.toMetricInterval());
+                    save(key, empty.toMetricInterval(), newlyCompleted);
                     nextStart += MetricIntervalAccumulator.INTERVAL_DURATION_MS;
                 }
 
@@ -141,25 +152,26 @@ public class MetricAggregator {
         }
     }
 
-    private void closeExpiredAccumulators(long nowMs) {
+    private void closeExpiredAccumulators(long nowMs, List<Map.Entry<MetricKey, MetricInterval>> newlyCompleted) {
         Iterator<Map.Entry<MetricKey, MetricIntervalAccumulator>> it = openAccumulators.entrySet().iterator();
         while (it.hasNext()) {
             Map.Entry<MetricKey, MetricIntervalAccumulator> entry = it.next();
             MetricIntervalAccumulator acc = entry.getValue();
             if (acc.intervalEnd <= nowMs) {
                 acc.closeAt(acc.intervalEnd);
-                save(entry.getKey(), acc.toMetricInterval());
+                save(entry.getKey(), acc.toMetricInterval(), newlyCompleted);
                 it.remove();
             }
         }
     }
 
-    private void save(MetricKey key, MetricInterval interval) {
+    private void save(MetricKey key, MetricInterval interval, List<Map.Entry<MetricKey, MetricInterval>> newlyCompleted) {
         ArrayDeque<MetricInterval> deque = completedIntervals.computeIfAbsent(key, k -> new ArrayDeque<>());
         deque.addFirst(interval);
         while (deque.size() > MAX_HISTORY_INTERVALS) {
             deque.removeLast();
         }
+        newlyCompleted.add(new AbstractMap.SimpleImmutableEntry<>(key, interval));
     }
 
     public List<MetricInterval> getCompletedIntervals(MetricKey key) {
