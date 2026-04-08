@@ -1180,8 +1180,8 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         ForeignKey fk = knownFks.computeIfAbsent(fkName,
                 key -> createForeignKey(fkName, values,
                         (String) values.get(getName("PKTABLE_NAME")),
-                        (String) values.get(getName("PKTABLE_CAT")),
-                        (String) values.get(getName("PKTABLE_SCHEM"))));
+                        (String) values.getOrDefault(getName("PKTABLE_CAT"), values.get(getName("fktable_cat"))),
+                        (String) values.getOrDefault(getName("PKTABLE_SCHEM"), values.get(getName("fktable_schem")))));
         Reference ref = new Reference();
         ref.setForeignColumnName((String) values.get(getName("PKCOLUMN_NAME")));
         ref.setLocalColumnName((String) values.get(getName("FKCOLUMN_NAME")));
@@ -1263,8 +1263,8 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         ForeignKey fk = knownFks.computeIfAbsent(fkName,
                 key -> createForeignKey(fkName, values,
                         (String) values.get(getName("FKTABLE_NAME")),
-                        (String) values.get(getName("FKTABLE_CAT")),
-                        (String) values.get(getName("FKTABLE_SCHEM"))));
+                        (String) values.getOrDefault(getName("FKTABLE_CAT"), values.get(getName("fktable_cat"))),
+                        (String) values.getOrDefault(getName("FKTABLE_SCHEM"), values.get(getName("fktable_schem")))));
         Reference ref = new Reference();
         ref.setForeignColumnName((String) values.get(getName("FKCOLUMN_NAME")));
         ref.setLocalColumnName((String) values.get(getName("PKCOLUMN_NAME")));
