@@ -26,4 +26,4 @@ VOLUME /opt/symmetric-ds/security
 EXPOSE 31415
 EXPOSE 31417
 
-CMD /opt/symmetric-ds/bin/sym_service start && tail -F /opt/symmetric-ds/logs/symmetric.log
+CMD /opt/symmetric-ds/bin/sym --container

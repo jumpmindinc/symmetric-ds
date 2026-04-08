@@ -67,6 +67,7 @@ public abstract class AbstractCommandLauncher {
     protected static final String OPTION_KEYSTORE_TYPE = "storetype";
     protected static final String OPTION_JCE_PROVIDER = "providerClass";
     protected static final String COMMON_MESSAGE_KEY_PREFIX = "Common.Option.";
+    protected static final String OPTION_CONTAINER_MODE = "container";
     protected String app;
     protected String argSyntax;
     protected String messageKeyPrefix;
@@ -74,6 +75,7 @@ public abstract class AbstractCommandLauncher {
     protected ISymmetricEngine engine;
     protected IDatabasePlatform platform;
     private static boolean serverPropertiesInitialized = false;
+    private boolean isContainerEnabled = false;
     static {
         System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
         String symHome = AppUtils.getSymHome();
@@ -322,6 +324,7 @@ public abstract class AbstractCommandLauncher {
         addCommonOption(options, null, OPTION_DEBUG, false);
         addCommonOption(options, null, OPTION_NO_LOG_CONSOLE, false);
         addCommonOption(options, null, OPTION_NO_LOG_FILE, false);
+        addCommonOption(options, null, OPTION_CONTAINER_MODE, false);
     }
 
     protected void buildCryptoOptions(Options options) {
@@ -344,6 +347,14 @@ public abstract class AbstractCommandLauncher {
 
     protected void addCommonOption(Options options, String opt, boolean hasArg) {
         options.addOption(opt, null, hasArg, Message.get(COMMON_MESSAGE_KEY_PREFIX + opt));
+    }
+
+    protected void setIsContainerized(boolean containerized) {
+        isContainerEnabled = containerized;
+    }
+
+    protected boolean isContainerized() {
+        return isContainerEnabled;
     }
 
     protected abstract boolean executeWithOptions(CommandLine line) throws Exception;
