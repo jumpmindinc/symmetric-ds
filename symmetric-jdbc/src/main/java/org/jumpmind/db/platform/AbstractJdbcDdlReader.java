@@ -1177,16 +1177,11 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     protected void readForeignKey(DatabaseMetaDataWrapper metaData, Map<String, Object> values,
             Map<String, ForeignKey> knownFks) throws SQLException {
         String fkName = (String) values.get(getName("FK_NAME"));
-        ForeignKey fk = knownFks.get(fkName);
-        if (fk == null) {
-            fk = new ForeignKey(fkName);
-            fk.setForeignTableName((String) values.get(getName("PKTABLE_NAME")));
-            fk.setForeignTableCatalog((String) values.get(getName("PKTABLE_CAT")));
-            fk.setForeignTableSchema((String) values.get(getName("PKTABLE_SCHEM")));
-            readForeignKeyUpdateRule(values, fk);
-            readForeignKeyDeleteRule(values, fk);
-            knownFks.put(fkName, fk);
-        }
+        ForeignKey fk = knownFks.computeIfAbsent(fkName,
+                key -> createForeignKey(fkName, values,
+                        (String) values.get(getName("PKTABLE_NAME")),
+                        (String) values.get(getName("PKTABLE_CAT")),
+                        (String) values.get(getName("PKTABLE_SCHEM"))));
         Reference ref = new Reference();
         ref.setForeignColumnName((String) values.get(getName("PKCOLUMN_NAME")));
         ref.setLocalColumnName((String) values.get(getName("FKCOLUMN_NAME")));
@@ -1194,6 +1189,17 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             ref.setSequenceValue(((Short) values.get(getName("KEY_SEQ"))).intValue());
         }
         fk.addReference(ref);
+    }
+
+    private ForeignKey createForeignKey(String fkName, Map<String, Object> values,
+            String tableName, String catalog, String schema) {
+        ForeignKey fk = new ForeignKey(fkName);
+        fk.setForeignTableName(tableName);
+        fk.setForeignTableCatalog(catalog);
+        fk.setForeignTableSchema(schema);
+        readForeignKeyUpdateRule(values, fk);
+        readForeignKeyDeleteRule(values, fk);
+        return fk;
     }
 
     protected void readForeignKeyUpdateRule(Map<String, Object> values, ForeignKey fk) {
@@ -1254,22 +1260,11 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     protected void readExportedKey(DatabaseMetaDataWrapper metaData, Map<String, Object> values,
             Map<String, ForeignKey> knownFks) throws SQLException {
         String fkName = (String) values.get(getName("FK_NAME"));
-        ForeignKey fk = knownFks.get(fkName);
-        if (fk == null) {
-            fk = new ForeignKey(fkName);
-            fk.setForeignTableName((String) values.get(getName("FKTABLE_NAME")));
-            try {
-                fk.setForeignTableCatalog((String) values.getOrDefault(getName("FKTABLE_CAT"), values.get(getName("fktable_cat"))));
-            } catch (Exception e) {
-            }
-            try {
-                fk.setForeignTableSchema((String) values.getOrDefault(getName("FKTABLE_SCHEM"), values.get(getName("fktable_schem"))));
-            } catch (Exception e) {
-            }
-            readForeignKeyUpdateRule(values, fk);
-            readForeignKeyDeleteRule(values, fk);
-            knownFks.put(fkName, fk);
-        }
+        ForeignKey fk = knownFks.computeIfAbsent(fkName,
+                key -> createForeignKey(fkName, values,
+                        (String) values.get(getName("FKTABLE_NAME")),
+                        (String) values.get(getName("FKTABLE_CAT")),
+                        (String) values.get(getName("FKTABLE_SCHEM"))));
         Reference ref = new Reference();
         ref.setForeignColumnName((String) values.get(getName("FKCOLUMN_NAME")));
         ref.setLocalColumnName((String) values.get(getName("PKCOLUMN_NAME")));
