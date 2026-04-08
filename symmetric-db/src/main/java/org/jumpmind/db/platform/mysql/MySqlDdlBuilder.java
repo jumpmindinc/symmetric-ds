@@ -285,6 +285,25 @@ public class MySqlDdlBuilder extends AbstractDdlBuilder {
         return true;
     }
 
+    @Override
+    protected void writeEmbeddedPrimaryKeysStmt(Table table, StringBuilder ddl) {
+        super.writeEmbeddedPrimaryKeysStmt(table, ddl);
+        Column[] primaryKeyColumns = table.getPrimaryKeyColumnsInIndexOrder();
+        if (primaryKeyColumns.length > 1) {
+            for (int i = 1; i < primaryKeyColumns.length; i++) {
+                Column col = primaryKeyColumns[i];
+                if (col.isAutoIncrement()) {
+                    printStartOfEmbeddedStatement(ddl);
+                    ddl.append("KEY ");
+                    printIdentifier(getColumnName(col), ddl);
+                    ddl.append(" (");
+                    printIdentifier(getColumnName(col), ddl);
+                    ddl.append(")");
+                }
+            }
+        }
+    }
+
     /*
      * Normally mysql will return the LAST_INSERT_ID as the column name for the inserted id. Since ddlutils expects the real column name of the field that is
      * autoincrementing, the column has an alias of that column name.
