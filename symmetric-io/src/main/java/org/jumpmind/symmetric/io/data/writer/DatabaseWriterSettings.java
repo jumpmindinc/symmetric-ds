@@ -70,6 +70,7 @@ public class DatabaseWriterSettings {
     protected boolean createTableIncludeApplicationTriggers = false;
     protected boolean keepBulkStagingFiles = false;
     protected IDdlExecutionCallback ddlExecutionCallback;
+    protected boolean forceBulkWriteWithOnDeleteCascade = false;
 
     public void setAlterDatabaseInterceptors(IAlterDatabaseInterceptor[] alterDatabaseInterceptors) {
         this.alterDatabaseInterceptors = alterDatabaseInterceptors;
@@ -420,5 +421,13 @@ public class DatabaseWriterSettings {
 
     public void setDdlExecutionCallback(IDdlExecutionCallback ddlExecutionCallback) {
         this.ddlExecutionCallback = ddlExecutionCallback;
+    }
+
+    public boolean isForceBulkWriteWithOnDeleteCascade() {
+        return forceBulkWriteWithOnDeleteCascade;
+    }
+
+    public void setForceBulkWriteWithOnDeleteCascade(boolean forceBulkWriteWithOnDeleteCascade) {
+        this.forceBulkWriteWithOnDeleteCascade = forceBulkWriteWithOnDeleteCascade;
     }
 }
