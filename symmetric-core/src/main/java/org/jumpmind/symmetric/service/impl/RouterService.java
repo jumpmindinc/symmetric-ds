@@ -1156,7 +1156,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     invalidRouterType.put(router.getRouterId(), counterStat);
                 }
                 counterStat.incrementCount();
-            } else if (dataRouter.isDmlOnly() && !dataMetaData.getData().getDataEventType().isDml()) {
+            } else if (dataRouter.isDmlOnly() && !dataMetaData.getData().getDataEventType().isDml() && dataMetaData.getData()
+                    .getDataEventType() != DataEventType.RELOAD) {
                 dataRouter = null;
             }
         }
