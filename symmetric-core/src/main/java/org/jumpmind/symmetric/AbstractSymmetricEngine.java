@@ -1028,7 +1028,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public synchronized void destroy() {
-        log.info("recieved shutdown request");
+        log.info("received shutdown request");
         removeMeFromMap(registeredEnginesByName);
         removeMeFromMap(registeredEnginesByUrl);
         if (parameterService != null) {

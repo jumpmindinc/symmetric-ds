@@ -99,7 +99,7 @@ public class SymmetricLauncher extends AbstractCommandLauncher {
         String webDir = SymmetricWebServer.DEFAULT_WEBAPP_DIR;
         int maxIdleTime = SymmetricWebServer.DEFAULT_MAX_IDLE_TIME;
         configureCrypto(line);
-        setIsContainerized(line.hasOption(OPTION_CONTAINER_MODE));
+        setContainerized(line.hasOption(OPTION_CONTAINER_MODE));
         if (isContainerized()) {
             log.info("Container mode enabled");
         }

@@ -349,7 +349,7 @@ public abstract class AbstractCommandLauncher {
         options.addOption(opt, null, hasArg, Message.get(COMMON_MESSAGE_KEY_PREFIX + opt));
     }
 
-    protected void setIsContainerized(boolean containerized) {
+    protected void setContainerized(boolean containerized) {
         isContainerEnabled = containerized;
     }
 
