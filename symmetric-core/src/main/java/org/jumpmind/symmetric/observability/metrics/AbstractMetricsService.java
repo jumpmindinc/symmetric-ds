@@ -21,20 +21,22 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.DoubleGauge;
 import io.opentelemetry.api.metrics.LongUpDownCounter;
 
 /**
- * Base class providing common metric collection functionality (counters, gauges) backed by OpenTelemetry.
- * Subclasses supply the attributes that identify the metric's scope (e.g. engine name, host).
+ * Base class which owns multiple metrics (counters, gauges). Subclasses supply the attributes that identify the metric's scope (e.g. engine name, host).
  */
 abstract class AbstractMetricsService implements IMetricsService {
+    protected final Logger log = LoggerFactory.getLogger(this.getClass());
     protected final MetricsManager metricsManager;
     protected final Attributes attributes;
     private final Map<String, UpDownCounter> upDownCounters = new ConcurrentHashMap<>();
@@ -53,7 +55,7 @@ abstract class AbstractMetricsService implements IMetricsService {
 
     public UpDownCounter getOrCreateUpDownCounter(String metricId, String description, String unitOfMeasurement) {
         return upDownCounters.computeIfAbsent(metricId,
-                k -> createUpDownCounterInternal(k, description, unitOfMeasurement));
+                id -> createUpDownCounterInternal(id, description, unitOfMeasurement));
     }
 
     private UpDownCounter createUpDownCounterInternal(String metricId, String description, String unitOfMeasurement) {
@@ -84,8 +86,7 @@ abstract class AbstractMetricsService implements IMetricsService {
         return gauges.get(metricId);
     }
 
-    @Override
-    public Collection<AbstractQueuedMetric> getAllMetrics() {
+    public List<AbstractQueuedMetric> getAllMetrics() {
         List<AbstractQueuedMetric> all = new ArrayList<>(upDownCounters.values());
         all.addAll(gauges.values());
         return all;
@@ -93,5 +94,7 @@ abstract class AbstractMetricsService implements IMetricsService {
 
     @Override
     public void shutdown() {
+        upDownCounters.clear();
+        gauges.clear();
     }
 }

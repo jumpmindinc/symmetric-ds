@@ -30,12 +30,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.jumpmind.symmetric.observability.metrics.AbstractQueuedMetric;
 import org.jumpmind.symmetric.observability.metrics.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.metrics.ISymObservation;
 import org.jumpmind.symmetric.observability.metrics.MetricsManager;
-import org.jumpmind.symmetric.observability.models.ISymObservation;
 import org.jumpmind.symmetric.observability.models.MetricInterval;
 import org.jumpmind.symmetric.observability.models.MetricKey;
-import org.jumpmind.symmetric.observability.models.ObservationDouble;
-import org.jumpmind.symmetric.observability.models.ObservationLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,7 +120,7 @@ public class MetricAggregator {
 
     private void processObservations(MetricKey key, ISymObservation[] obs, List<Map.Entry<MetricKey, MetricInterval>> newlyCompleted) {
         for (ISymObservation o : obs) {
-            double value = doubleValueOf(o);
+            double value = o.getValueAsDouble();
             long ts = o.getTimestamp();
             long bucketStart = (ts / MetricIntervalAccumulator.INTERVAL_DURATION_MS) * MetricIntervalAccumulator.INTERVAL_DURATION_MS;
 
@@ -179,11 +177,13 @@ public class MetricAggregator {
         return deque == null ? List.of() : List.copyOf(deque);
     }
 
-    private static double doubleValueOf(ISymObservation obs) {
-        return switch (obs) {
-            case ObservationLong ol -> (double) ol.value();
-            case ObservationDouble od -> od.value();
-            default -> throw new IllegalArgumentException("Unknown observation type: " + obs.getClass());
-        };
-    }
+    // private static double doubleValueOf(ISymObservation obs) {
+    // if(obs instanceof ObservationLong ) {
+    // return (double) ol.value();
+    // }
+    // else
+    // if(obs instanceof ObservationDouble ) { od -> od.value();
+    // default -> throw new IllegalArgumentException("Unknown observation type: " + obs.getClass());
+    // };
+    // }
 }

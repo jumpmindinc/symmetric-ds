@@ -20,9 +20,6 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.opentelemetry.api.common.Attributes;
 
 /**
@@ -30,7 +27,6 @@ import io.opentelemetry.api.common.Attributes;
  */
 class HostMetricsService extends AbstractMetricsService {
 
-    private static final Logger log = LoggerFactory.getLogger(HostMetricsService.class);
 
     HostMetricsService(MetricsManager metricsManager, boolean isOtelPublishingEnabled) {
         super(metricsManager, Attributes.empty(), isOtelPublishingEnabled);

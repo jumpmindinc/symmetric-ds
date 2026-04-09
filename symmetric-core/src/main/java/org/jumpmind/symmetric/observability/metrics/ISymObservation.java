@@ -18,8 +18,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.models;
+package org.jumpmind.symmetric.observability.metrics;
 
 public interface ISymObservation {
+    double getValueAsDouble();
     long getTimestamp();
 }

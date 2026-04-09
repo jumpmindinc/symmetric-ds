@@ -45,5 +45,6 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     @Override
     public void shutdown() {
         metricsManager.unregister(this);
+        log.info("Host metrics service shut down");
     }
 }

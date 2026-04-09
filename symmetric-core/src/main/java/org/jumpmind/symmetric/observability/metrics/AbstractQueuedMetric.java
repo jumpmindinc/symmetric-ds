@@ -20,7 +20,6 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import org.jumpmind.symmetric.observability.models.ISymObservation;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
 
 import io.opentelemetry.api.common.Attributes;

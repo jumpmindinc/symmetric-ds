@@ -8,8 +8,6 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.jumpmind.symmetric.observability.models.ISymObservation;
-
 public class ObservationsQueue<T extends ISymObservation> implements Queue<T>
 {
     public final static int MAX_QUEUE_SIZE = 10000000;
