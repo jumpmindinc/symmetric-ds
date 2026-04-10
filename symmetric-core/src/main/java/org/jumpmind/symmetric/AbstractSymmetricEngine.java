@@ -47,8 +47,8 @@ import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
-import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
+import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -1028,6 +1028,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public synchronized void destroy() {
+        log.info("received shutdown request");
         removeMeFromMap(registeredEnginesByName);
         removeMeFromMap(registeredEnginesByUrl);
         if (parameterService != null) {
