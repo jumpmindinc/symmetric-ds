@@ -3,4 +3,9 @@
 
 The Analytics tab provides visibility into the replication activity of the current node. Reports are prepared by the *Refresh Analytics* job, which runs every 6 hours by default.
 
+Each report screen contains an info bar that shows when the report data was last refreshed and how often the *Refresh Analytics* job is scheduled to run.
+Use the *Run Now* button to trigger the job immediately.
+The *Data retained for* link shows how many days of data are kept and opens a dialog to edit the `purge.stats.retention.minutes` parameter.
+
 include::analytics/table-heat-map.ad[]
+include::analytics/cluster-traffic-heat-map.ad[]
