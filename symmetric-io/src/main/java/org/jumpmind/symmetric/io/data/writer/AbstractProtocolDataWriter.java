@@ -68,13 +68,16 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
         this.sendRowCaptureTime = sendRowCaptureTime;
     }
 
+    @Override
     public void open(DataContext context) {
         this.context = context;
     }
 
+    @Override
     public void close() {
     }
 
+    @Override
     public void start(Batch batch) {
         this.statistics.put(batch, new Statistics());
         this.batch = batch;
@@ -120,6 +123,7 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
         }
     }
 
+    @Override
     public boolean start(Table table) {
         printBatchIfNeeded();
         if (!batch.isIgnored()) {
@@ -146,6 +150,7 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
         }
     }
 
+    @Override
     public void write(CsvData data) {
         if (!batch.isIgnored()) {
             if (noBinaryOldData != data.isNoBinaryOldData() && !backwardsCompatible) {
@@ -159,7 +164,7 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
                     printTime(data);
                     println(CsvConstants.INSERT, data.getCsvData(CsvData.ROW_DATA));
                     statistics.get(batch).increment(DataWriterStatisticConstants.INSERTCOUNT);
-                    statistics.get(batch).incrementTableStats(this.table.getNameLowerCase(), DataEventType.INSERT.getCode(), 1);
+                    statistics.get(batch).incrementTableStats(this.table.getName(), DataEventType.INSERT.getCode(), 1);
                     break;
                 case UPDATE:
                     printTime(data);
@@ -172,7 +177,7 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
                     println(CsvConstants.UPDATE, data.getCsvData(CsvData.ROW_DATA),
                             data.getCsvData(CsvData.PK_DATA));
                     statistics.get(batch).increment(DataWriterStatisticConstants.UPDATECOUNT);
-                    statistics.get(batch).incrementTableStats(this.table.getNameLowerCase(), DataEventType.UPDATE.getCode(), 1);
+                    statistics.get(batch).incrementTableStats(this.table.getName(), DataEventType.UPDATE.getCode(), 1);
                     break;
                 case DELETE:
                     printTime(data);
@@ -184,7 +189,7 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
                     }
                     println(CsvConstants.DELETE, data.getCsvData(CsvData.PK_DATA));
                     statistics.get(batch).increment(DataWriterStatisticConstants.DELETECOUNT);
-                    statistics.get(batch).incrementTableStats(this.table.getNameLowerCase(), DataEventType.DELETE.getCode(), 1);
+                    statistics.get(batch).incrementTableStats(this.table.getName(), DataEventType.DELETE.getCode(), 1);
                     break;
                 case CREATE:
                     println(CsvConstants.CREATE, data.getCsvData(CsvData.ROW_DATA));
@@ -217,9 +222,11 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
         }
     }
 
+    @Override
     public void end(Table table) {
     }
 
+    @Override
     final public void end(Batch batch, boolean inError) {
         printBatchIfNeeded();
         if (batch.isIgnored() && !backwardsCompatible) {
@@ -285,6 +292,7 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
         return delimiter;
     }
 
+    @Override
     public Map<Batch, Statistics> getStatistics() {
         return statistics;
     }
