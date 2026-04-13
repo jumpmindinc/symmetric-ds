@@ -43,6 +43,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.jumpmind.db.util.DataSourceUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -272,9 +273,14 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         super.stop();
     }
 
-    public static BasicDataSource createBasicDataSource(File propsFile) {
+    public static DataSource createDataSource(File propsFile) {
         TypedProperties properties = PropertiesUtil.createTypedPropertiesFactory(propsFile, null).reload();
-        return (BasicDataSource) DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
+        return DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
+    }
+
+    @Deprecated
+    public static BasicDataSource createBasicDataSource(File propsFile) {
+        return (BasicDataSource) createDataSource(propsFile);
     }
 
     @Override
@@ -480,12 +486,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         if (platform != null) {
             platform.shutdown();
         }
-        if (dataSource != null && dataSource instanceof BasicDataSource) {
-            try {
-                ((BasicDataSource) dataSource).close();
-            } catch (SQLException e) {
-            }
-        }
+        DataSourceUtils.closeQuietly(dataSource);
     }
 
     @Override
