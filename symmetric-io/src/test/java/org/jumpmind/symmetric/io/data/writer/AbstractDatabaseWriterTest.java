@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.io.data.writer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -199,7 +200,7 @@ public class AbstractDatabaseWriterTest {
     }
 
     @Test
-    public void testHasFilterThatHandlesMissingTable_BshProxyNullReturn() {
+    void testHasFilterThatHandlesMissingTable_BshProxyNullReturn() {
         // Simulate a BeanShell script-based filter (JDK dynamic proxy) that does not implement
         // handlesMissingTable(). The proxy returns null, which Java cannot auto-unbox to boolean,
         // throwing a NullPointerException — the scenario the fix in hasFilterThatHandlesMissingTable() guards against.
@@ -211,7 +212,7 @@ public class AbstractDatabaseWriterTest {
         StubAbstractDatabaseWriter writer = new StubAbstractDatabaseWriter();
         writer.getWriterSettings().setDatabaseWriterFilters(Arrays.asList(proxyFilter));
         writer.start(sourceTable, null);
-        assertTrue(writer.getTargetTable() == null);
+        assertNull(writer.getTargetTable());
     }
 
     /***
