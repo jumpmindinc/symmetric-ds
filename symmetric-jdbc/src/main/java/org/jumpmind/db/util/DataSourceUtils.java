@@ -25,14 +25,12 @@ import javax.sql.DataSource;
 import org.slf4j.LoggerFactory;
 
 public final class DataSourceUtils {
-
     private DataSourceUtils() {
     }
 
     /**
-     * Closes a {@link DataSource} if it implements {@link AutoCloseable}.
-     * Safe to call with {@code null}. Does nothing for DataSources that do not
-     * implement {@link AutoCloseable} (e.g. JNDI / container-managed sources).
+     * Closes a {@link DataSource} if it implements {@link AutoCloseable}. Safe to call with {@code null}. Does nothing for DataSources that do not implement
+     * {@link AutoCloseable} (e.g. JNDI / container-managed sources).
      */
     public static void closeQuietly(DataSource ds) {
         if (ds instanceof AutoCloseable) {

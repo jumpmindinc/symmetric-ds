@@ -35,7 +35,6 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 
 class DataSourceUtilsTest {
-
     @Test
     void closeQuietlyDoesNothingForNull() {
         assertDoesNotThrow(() -> DataSourceUtils.closeQuietly(null));
