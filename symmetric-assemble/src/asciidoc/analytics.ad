@@ -8,4 +8,5 @@ Use the *Run Now* button to trigger the job immediately.
 The *Data retained for* link shows how many days of data are kept and opens a dialog to edit the `purge.stats.retention.minutes` parameter.
 
 include::analytics/table-heat-map.ad[]
+include::analytics/table-status-report.ad[]
 include::analytics/cluster-traffic-heat-map.ad[]
