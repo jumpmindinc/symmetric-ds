@@ -31,6 +31,7 @@ public final class DataSourceProperties {
     public final static String DB_POOL_DRIVER = "db.driver";
     public final static String DB_POOL_USER = "db.user";
     public final static String DB_POOL_PASSWORD = "db.password";
+    public final static String DB_POOL_HIKARI_ENABLE = "db.pool.hikari.enable";
     public final static String DB_POOL_INITIAL_SIZE = "db.pool.initial.size";
     public final static String DB_POOL_MAX_ACTIVE = "db.pool.max.active";
     public final static String DB_POOL_MAX_IDLE = "db.pool.max.idle";
