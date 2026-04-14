@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import org.apache.commons.dbcp2.BasicDataSource;
+
 import javax.sql.DataSource;
 
 import org.jumpmind.properties.TypedProperties;
@@ -64,6 +66,21 @@ class DataSourceFactoryTest {
         properties.setProperty(DataSourceProperties.DB_POOL_DRIVER, "com.example.NonExistentDriver");
         properties.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:nonexistent://localhost/test");
         assertThrows(IllegalStateException.class, () -> DataSourceFactory.create(properties));
+    }
+
+    @Test
+    public void createWithHikariDisabled_ReturnsDbcp2DataSource() {
+        TypedProperties properties = buildH2Properties();
+        properties.setProperty(DataSourceProperties.DB_POOL_HIKARI_ENABLE, "false");
+        DataSource ds = DataSourceFactory.create(properties);
+        assertInstanceOf(BasicDataSource.class, ds);
+    }
+
+    @Test
+    public void createWithHikariEnabled() {
+        TypedProperties properties = buildH2Properties();
+        properties.setProperty(DataSourceProperties.DB_POOL_HIKARI_ENABLE, "true");
+        assertThrows(UnsupportedOperationException.class, () -> DataSourceFactory.create(properties));
     }
 
     @Test
