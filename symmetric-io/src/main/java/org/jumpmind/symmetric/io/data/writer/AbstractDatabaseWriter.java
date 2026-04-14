@@ -582,8 +582,16 @@ abstract public class AbstractDatabaseWriter implements IDataWriter {
     protected boolean hasFilterThatHandlesMissingTable(Table table) {
         if (writerSettings.getDatabaseWriterFilters() != null) {
             for (IDatabaseWriterFilter filter : writerSettings.getDatabaseWriterFilters()) {
-                if (filter.handlesMissingTable(context, table)) {
-                    return true;
+                try {
+                    if (filter.handlesMissingTable(context, table)) {
+                        return true;
+                    }
+                } catch (NullPointerException ex) {
+                    /*
+                     * Script-based filters (e.g. BeanShell) that do not implement handlesMissingTable() will cause the JDK proxy's InvocationHandler to return
+                     * null, which the JVM then fails to auto-unbox to boolean. Treat this as false — the filter does not handle missing tables.
+                     */
+                    log.debug("Filter {} returned null from handlesMissingTable(), treating as false", filter.getClass().getName());
                 }
             }
         }
