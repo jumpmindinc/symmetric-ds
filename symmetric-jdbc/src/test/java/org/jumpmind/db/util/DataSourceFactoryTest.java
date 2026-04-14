@@ -35,7 +35,7 @@ import com.zaxxer.hikari.HikariDataSource;
 
 class DataSourceFactoryTest {
     @Test
-    public void createReturnsDataSource() {
+    void createReturnsDataSource() {
         TypedProperties properties = buildH2Properties();
         DataSource ds = DataSourceFactory.create(properties);
         assertNotNull(ds);
@@ -43,14 +43,14 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createReturnsResettableBasicDataSource() {
+    void createReturnsResettableBasicDataSource() {
         TypedProperties properties = buildH2Properties();
         DataSource ds = DataSourceFactory.create(properties);
         assertInstanceOf(ResettableBasicDataSource.class, ds);
     }
 
     @Test
-    public void createAppliesPoolProperties() {
+    void createAppliesPoolProperties() {
         TypedProperties properties = buildH2Properties();
         properties.setProperty(DataSourceProperties.DB_POOL_INITIAL_SIZE, "3");
         properties.setProperty(DataSourceProperties.DB_POOL_MAX_ACTIVE, "15");
@@ -62,7 +62,7 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createThrowsOnMissingDriver() {
+    void createThrowsOnMissingDriver() {
         TypedProperties properties = new TypedProperties();
         properties.setProperty(DataSourceProperties.DB_POOL_DRIVER, "com.example.NonExistentDriver");
         properties.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:nonexistent://localhost/test");
@@ -70,7 +70,7 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createWithHikariDisabled_ReturnsDbcp2DataSource() {
+    void createWithHikariDisabled_ReturnsDbcp2DataSource() {
         TypedProperties properties = buildH2Properties();
         properties.setProperty(DataSourceProperties.DB_POOL_HIKARI_ENABLE, "false");
         DataSource ds = DataSourceFactory.create(properties);
@@ -78,7 +78,7 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createWithHikariEnabled() {
+    void createWithHikariEnabled() {
         TypedProperties properties = buildH2Properties();
         properties.setProperty(DataSourceProperties.DB_POOL_HIKARI_ENABLE, "true");
         DataSource ds = DataSourceFactory.create(properties);
@@ -86,7 +86,7 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createThrowsOnNonDriverClass() {
+    void createThrowsOnNonDriverClass() {
         TypedProperties properties = new TypedProperties();
         properties.setProperty(DataSourceProperties.DB_POOL_DRIVER, "java.lang.String");
         properties.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:h2:mem:test");
