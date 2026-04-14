@@ -20,17 +20,20 @@
  */
 package org.jumpmind.db.util;
 
+import java.util.function.LongConsumer;
+
 import javax.sql.DataSource;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
 
 /**
- * Convenience interface for building a {@link DataSource}.
+ * Convenience class for building a {@link DataSource}.
  */
-interface DataSourceBuilder {
+abstract class DataSourceBuilder {
     /**
      * Return a newly built {@link DataSource} instance.
-     * 
+     *
      * @param properties
      *            the data source properties
      * @param driverClassName
@@ -41,5 +44,15 @@ interface DataSourceBuilder {
      *            the password
      * @return the built data source
      */
-    DataSource build(TypedProperties properties, String driverClassName, String user, String password);
+    abstract DataSource build(TypedProperties properties, String driverClassName, String user, String password);
+
+    /**
+     * Reads a long value from properties and passes it to the setter only if the property is explicitly set.
+     */
+    protected void applyLong(TypedProperties properties, String key, LongConsumer setter) {
+        String value = properties.get(key, null);
+        if (StringUtils.isNotBlank(value)) {
+            setter.accept(Long.parseLong(value.trim()));
+        }
+    }
 }

@@ -25,12 +25,13 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.apache.commons.dbcp2.BasicDataSource;
-
 import javax.sql.DataSource;
 
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.jumpmind.properties.TypedProperties;
 import org.junit.jupiter.api.Test;
+
+import com.zaxxer.hikari.HikariDataSource;
 
 class DataSourceFactoryTest {
     @Test
@@ -80,7 +81,8 @@ class DataSourceFactoryTest {
     public void createWithHikariEnabled() {
         TypedProperties properties = buildH2Properties();
         properties.setProperty(DataSourceProperties.DB_POOL_HIKARI_ENABLE, "true");
-        assertThrows(UnsupportedOperationException.class, () -> DataSourceFactory.create(properties));
+        DataSource ds = DataSourceFactory.create(properties);
+        assertInstanceOf(HikariDataSource.class, ds);
     }
 
     @Test

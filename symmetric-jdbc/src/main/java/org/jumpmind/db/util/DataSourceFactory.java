@@ -104,6 +104,8 @@ public class DataSourceFactory {
         DataSourceBuilder builder = properties.is(DataSourceProperties.DB_POOL_HIKARI_ENABLE, false)
                 ? new HikariBuilder()
                 : new Dbcp2Builder();
-        return builder.build(properties, driverClassName, user, password);
+        DataSource dataSource = builder.build(properties, driverClassName, user, password);
+        LoggerFactory.getLogger(DataSourceFactory.class).info("Using {} connection pool", dataSource.getClass().getSimpleName());
+        return dataSource;
     }
 }

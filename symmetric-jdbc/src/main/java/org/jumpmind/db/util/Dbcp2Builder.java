@@ -30,7 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
 import org.slf4j.LoggerFactory;
 
-class Dbcp2Builder implements DataSourceBuilder {
+class Dbcp2Builder extends DataSourceBuilder {
     @Override
     public DataSource build(TypedProperties properties, String driverClassName, String user, String password) {
         ResettableBasicDataSource dataSource = new ResettableBasicDataSource();

@@ -22,12 +22,79 @@ package org.jumpmind.db.util;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-class HikariBuilder implements DataSourceBuilder {
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
+class HikariBuilder extends DataSourceBuilder {
+    private static final Logger log = LoggerFactory.getLogger(HikariBuilder.class);
+
     @Override
     public DataSource build(TypedProperties properties, String driverClassName, String user, String password) {
-        throw new UnsupportedOperationException(
-                "HikariCP DataSource creation is not yet implemented. Full support coming in a future release.");
+        log.warn("The following properties are not supported by HikariCP and will be ignored: {}, {}, {}, {}, {}, {}",
+                DataSourceProperties.DB_POOL_INITIAL_SIZE,
+                DataSourceProperties.DB_POOL_MAX_IDLE,
+                DataSourceProperties.DB_POOL_TEST_ON_BORROW,
+                DataSourceProperties.DB_POOL_TEST_ON_RETURN,
+                DataSourceProperties.DB_POOL_TEST_WHILE_IDLE,
+                DataSourceProperties.DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS);
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(properties.get(DataSourceProperties.DB_POOL_URL, null));
+        config.setDriverClassName(driverClassName);
+        if (StringUtils.isNotEmpty(user)) {
+            config.setUsername(user);
+        }
+        if (StringUtils.isNotEmpty(password)) {
+            config.setPassword(password);
+        }
+        config.setMaximumPoolSize(properties.getInt(DataSourceProperties.DB_POOL_MAX_ACTIVE, 10));
+        int minIdle = properties.getInt(DataSourceProperties.DB_POOL_MIN_IDLE, 0);
+        if (minIdle > 0) {
+            config.setMinimumIdle(minIdle);
+        }
+        config.setConnectionTimeout(properties.getInt(DataSourceProperties.DB_POOL_MAX_WAIT, 30000));
+        String validationQuery = properties.get(DataSourceProperties.DB_POOL_VALIDATION_QUERY, null);
+        if (StringUtils.isNotBlank(validationQuery)) {
+            config.setConnectionTestQuery(validationQuery);
+        }
+        applyInitSql(config, properties.get(DataSourceProperties.DB_POOL_INIT_SQL, null));
+        applyConnectionProperties(config, properties.get(DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES, null));
+        applyLong(properties, DataSourceProperties.DB_POOL_MAX_LIFETIME, config::setMaxLifetime);
+        applyLong(properties, DataSourceProperties.DB_POOL_IDLE_TIMEOUT, config::setIdleTimeout);
+        applyLong(properties, DataSourceProperties.DB_POOL_KEEPALIVE_TIME, config::setKeepaliveTime);
+        applyLong(properties, DataSourceProperties.DB_POOL_LEAK_DETECTION_THRESHOLD, config::setLeakDetectionThreshold);
+        return new HikariDataSource(config);
+    }
+
+    private void applyInitSql(HikariConfig config, String initSql) {
+        if (StringUtils.isBlank(initSql)) {
+            return;
+        }
+        initSql = initSql.replaceAll(";;", "!!");
+        String[] statements = initSql.split(";");
+        if (statements.length > 1) {
+            log.warn("{} contains multiple SQL statements; HikariCP only supports a single connectionInitSql — using the first statement only",
+                    DataSourceProperties.DB_POOL_INIT_SQL);
+        }
+        config.setConnectionInitSql(statements[0].replaceAll("!!", ";").trim());
+    }
+
+    private void applyConnectionProperties(HikariConfig config, String connectionProperties) {
+        if (StringUtils.isBlank(connectionProperties)) {
+            return;
+        }
+        String[] tokens = connectionProperties.split(";");
+        for (String token : tokens) {
+            String[] keyValue = token.replaceAll("==", "!!").split("=");
+            if (keyValue != null && keyValue.length > 1) {
+                keyValue[1] = keyValue[1].replaceAll("!!", "=");
+                log.info("Setting HikariCP data source property {} to {}", keyValue[0], keyValue[1]);
+                config.addDataSourceProperty(keyValue[0], keyValue[1]);
+            }
+        }
     }
 }
