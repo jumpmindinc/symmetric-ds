@@ -27,7 +27,7 @@ import java.io.FileReader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.h2.tools.Shell;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityConstants;
@@ -82,14 +82,14 @@ public class DbSqlCommand extends AbstractCommandLauncher {
         if (properties.is(ParameterConstants.NODE_LOAD_ONLY, false) && !line.hasOption(OPTION_USE_SYM_DB)) {
             TypedProperties copiedProperties = new TypedProperties();
             String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
-            copyProperties(properties, copiedProperties, prefix, BasicDataSourcePropertyConstants.ALL_PROPS);
+            copyProperties(properties, copiedProperties, prefix, DataSourceProperties.ALL_PROPS);
             copyProperties(properties, copiedProperties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
             properties = copiedProperties;
         }
-        String url = properties.get(BasicDataSourcePropertyConstants.DB_POOL_URL);
-        String user = decryptIfEncrypted(properties, properties.get(BasicDataSourcePropertyConstants.DB_POOL_USER, ""));
-        String password = decryptIfEncrypted(properties, properties.get(BasicDataSourcePropertyConstants.DB_POOL_PASSWORD, ""));
-        String driver = properties.get(BasicDataSourcePropertyConstants.DB_POOL_DRIVER);
+        String url = properties.get(DataSourceProperties.DB_POOL_URL);
+        String user = decryptIfEncrypted(properties, properties.get(DataSourceProperties.DB_POOL_USER, ""));
+        String password = decryptIfEncrypted(properties, properties.get(DataSourceProperties.DB_POOL_PASSWORD, ""));
+        String driver = properties.get(DataSourceProperties.DB_POOL_DRIVER);
         Shell shell = new Shell();
         if (line.hasOption(OPTION_SQL)) {
             String sql = line.getOptionValue(OPTION_SQL);

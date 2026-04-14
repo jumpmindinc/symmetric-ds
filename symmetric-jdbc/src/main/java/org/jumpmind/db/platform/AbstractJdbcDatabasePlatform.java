@@ -21,14 +21,13 @@
 package org.jumpmind.db.platform;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.dbcp2.BasicDataSource;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.SqlTemplateSettings;
+import org.jumpmind.db.util.DataSourceUtils;
 
 abstract public class AbstractJdbcDatabasePlatform extends AbstractDatabasePlatform {
     protected DataSource dataSource;
@@ -74,14 +73,7 @@ abstract public class AbstractJdbcDatabasePlatform extends AbstractDatabasePlatf
     }
 
     public void resetDataSource() {
-        if (dataSource instanceof BasicDataSource) {
-            BasicDataSource dbcp = (BasicDataSource) dataSource;
-            try {
-                dbcp.close();
-            } catch (SQLException e) {
-                throw sqlTemplate.translate(e);
-            }
-        }
+        DataSourceUtils.closeQuietly(dataSource);
     }
 
     @Override
