@@ -1,0 +1,26 @@
+
+=== Table Status Report
+
+The Table Status Report screen shows the insert, update, and delete activity for a single table over a rolling time window.
+Use the table selector at the top of the screen to choose which table to view.
+The list is populated from the tables present in the Table Heat Map report data and is sorted alphabetically.
+Clicking a table name in the Table Heat Map navigates directly to the Table Status Report for that table.
+
+image::images/analytics/analytics-table-status-report.png[]
+
+If the selected table accounts for significantly more activity than the average table in the report, a *HIGH ACTIVITY* badge appears next to the table name.
+
+The summary cards at the top of the report show the total rows synchronized during the selected period and what share of all table activity that represents, the daily average row count, the peak day, the quietest day, and the dominant event type with the percentage of operations it represents.
+
+The *Event Type Breakdown* panel shows a donut chart of the insert, update, and delete distribution across the selected period.
+The center of the chart shows the total row count.
+The legend shows the row count and percentage for each event type.
+
+The *Daily Activity* panel shows a stacked bar chart of insert, update, and delete row counts per day across the selected period.
+
+The *Daily Breakdown* table lists the insert, update, delete, and total row counts for each day in the selected period, along with the table's share of all table activity for that day.
+When the 30-day time range is selected, the table switches to a *Weekly Breakdown* that groups days into Sunday-to-Saturday weeks and adds an average-per-day column.
+Partial weeks at the start or end of the period are labeled as such.
+
+Use the *Time Range* filter to switch between the last 8, 15, or 30 days.
+Options are shown only when enough data is available to support them.
