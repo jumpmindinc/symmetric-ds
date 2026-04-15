@@ -20,6 +20,7 @@
  */
 package org.jumpmind.db.util;
 
+import java.util.function.LongConsumer;
 import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
@@ -63,7 +64,11 @@ class HikariBuilder extends DataSourceBuilder {
             config.setConnectionTestQuery(validationQuery);
         }
         applyInitSql(config, properties.get(DataSourceProperties.DB_POOL_INIT_SQL, null));
-        applyConnectionProperties(config, properties.get(DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES, null));
+        parseConnectionProperties(properties.get(DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES, null))
+                .forEach((key, value) -> {
+                    log.info("Setting HikariCP data source property {} to {}", key, value);
+                    config.addDataSourceProperty(key, value);
+                });
         applyLong(properties, DataSourceProperties.DB_POOL_MAX_LIFETIME, config::setMaxLifetime);
         applyLong(properties, DataSourceProperties.DB_POOL_IDLE_TIMEOUT, config::setIdleTimeout);
         applyLong(properties, DataSourceProperties.DB_POOL_KEEPALIVE_TIME, config::setKeepaliveTime);
@@ -72,30 +77,24 @@ class HikariBuilder extends DataSourceBuilder {
     }
 
     private void applyInitSql(HikariConfig config, String initSql) {
-        if (StringUtils.isBlank(initSql)) {
+        String[] statements = splitInitSql(initSql);
+        if (statements.length == 0) {
             return;
         }
-        initSql = initSql.replaceAll(";;", "!!");
-        String[] statements = initSql.split(";");
         if (statements.length > 1) {
             log.warn("{} contains multiple SQL statements; HikariCP only supports a single connectionInitSql — using the first statement only",
                     DataSourceProperties.DB_POOL_INIT_SQL);
         }
-        config.setConnectionInitSql(statements[0].replaceAll("!!", ";").trim());
+        config.setConnectionInitSql(statements[0]);
     }
 
-    private void applyConnectionProperties(HikariConfig config, String connectionProperties) {
-        if (StringUtils.isBlank(connectionProperties)) {
-            return;
-        }
-        String[] tokens = connectionProperties.split(";");
-        for (String token : tokens) {
-            String[] keyValue = token.replaceAll("==", "!!").split("=");
-            if (keyValue != null && keyValue.length > 1) {
-                keyValue[1] = keyValue[1].replaceAll("!!", "=");
-                log.info("Setting HikariCP data source property {} to {}", keyValue[0], keyValue[1]);
-                config.addDataSourceProperty(keyValue[0], keyValue[1]);
-            }
+    /**
+     * Reads a long value from properties and passes it to the setter only if the property is explicitly set.
+     */
+    private void applyLong(TypedProperties properties, String key, LongConsumer setter) {
+        String value = properties.get(key, null);
+        if (StringUtils.isNotBlank(value)) {
+            setter.accept(Long.parseLong(value.trim()));
         }
     }
 }

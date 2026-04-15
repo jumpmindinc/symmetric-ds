@@ -21,8 +21,7 @@
 package org.jumpmind.db.util;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import javax.sql.DataSource;
 
@@ -64,35 +63,21 @@ class Dbcp2Builder extends DataSourceBuilder {
                 DataSourceProperties.DB_POOL_TEST_ON_RETURN, false));
         dataSource.setTestWhileIdle(properties.is(
                 DataSourceProperties.DB_POOL_TEST_WHILE_IDLE, false));
-        String connectionProperties = properties.get(
-                DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES, null);
-        if (StringUtils.isNotBlank(connectionProperties)) {
-            String[] tokens = connectionProperties.split(";");
-            for (String property : tokens) {
-                String[] keyValue = property.replaceAll("==", "!!").split("=");
-                if (keyValue != null && keyValue.length > 1) {
-                    keyValue[1] = keyValue[1].replaceAll("!!", "=");
+        parseConnectionProperties(properties.get(DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES, null))
+                .forEach((key, value) -> {
                     LoggerFactory.getLogger(Dbcp2Builder.class).info(
-                            "Setting database connection property {} to {}", keyValue[0], keyValue[1]);
-                    dataSource.addConnectionProperty(keyValue[0], keyValue[1]);
-                }
-            }
-        }
+                            "Setting database connection property {} to {}", key, value);
+                    dataSource.addConnectionProperty(key, value);
+                });
         for (String key : DataSourceFactory.requiredConnectionProperties.keySet()) {
             String value = DataSourceFactory.requiredConnectionProperties.get(key);
             LoggerFactory.getLogger(Dbcp2Builder.class).info(
                     "Setting required database connection property {}={}", key, value);
             dataSource.addConnectionProperty(key, value);
         }
-        String initSql = properties.get(DataSourceProperties.DB_POOL_INIT_SQL, null);
-        if (StringUtils.isNotBlank(initSql)) {
-            List<String> initSqlList = new ArrayList<String>(1);
-            initSql = initSql.replaceAll(";;", "!!");
-            for (String i : initSql.split(";")) {
-                i = i.replaceAll("!!", ";");
-                initSqlList.add(i);
-            }
-            dataSource.setConnectionInitSqls(initSqlList);
+        String[] initSqlStatements = splitInitSql(properties.get(DataSourceProperties.DB_POOL_INIT_SQL, null));
+        if (initSqlStatements.length > 0) {
+            dataSource.setConnectionInitSqls(Arrays.asList(initSqlStatements));
         }
         return dataSource;
     }

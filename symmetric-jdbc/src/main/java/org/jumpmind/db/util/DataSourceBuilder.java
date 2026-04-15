@@ -20,6 +20,8 @@
  */
 package org.jumpmind.db.util;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.LongConsumer;
 
 import javax.sql.DataSource;
@@ -54,12 +56,44 @@ abstract class DataSourceBuilder {
     abstract DataSource build(TypedProperties properties, String driverClassName, String user, String password);
 
     /**
-     * Reads a long value from properties and passes it to the setter only if the property is explicitly set.
+     * Parses a {@code db.connection.properties} value into an ordered map of key-value pairs.
+     * <p>
+     * Properties are delimited by {@code ;}. A literal equals sign inside a value must be escaped as {@code ==}.
+     *
+     * @param connectionProperties
+     *            the raw property value, may be blank or null
+     * @return parsed key-value pairs in encounter order, or an empty map if the input is blank
      */
-    protected void applyLong(TypedProperties properties, String key, LongConsumer setter) {
-        String value = properties.get(key, null);
-        if (StringUtils.isNotBlank(value)) {
-            setter.accept(Long.parseLong(value.trim()));
+    protected Map<String, String> parseConnectionProperties(String connectionProperties) {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (StringUtils.isBlank(connectionProperties)) {
+            return result;
         }
+        for (String token : connectionProperties.split(";")) {
+            String[] keyValue = token.replaceAll("==", "!!").split("=");
+            if (keyValue != null && keyValue.length > 1) {
+                result.put(keyValue[0], keyValue[1].replaceAll("!!", "="));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Splits a {@code db.init.sql} value into individual SQL statements. Statements are delimited by {@code ;}. A literal semicolon inside a statement must be
+     * escaped as {@code ;;}.
+     *
+     * @param initSql
+     *            the raw property value, may be blank or null
+     * @return trimmed statements, or an empty array if the input is blank
+     */
+    protected String[] splitInitSql(String initSql) {
+        if (StringUtils.isBlank(initSql)) {
+            return new String[0];
+        }
+        String[] statements = initSql.replaceAll(";;", "!!").split(";");
+        for (int i = 0; i < statements.length; i++) {
+            statements[i] = statements[i].replaceAll("!!", ";").trim();
+        }
+        return statements;
     }
 }
