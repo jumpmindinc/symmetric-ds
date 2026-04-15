@@ -27,9 +27,11 @@ import javax.sql.DataSource;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class Dbcp2Builder extends DataSourceBuilder {
+    private static final Logger log = LoggerFactory.getLogger(Dbcp2Builder.class);
     static final String TYPE = "dbcp2";
 
     @Override
@@ -65,14 +67,12 @@ class Dbcp2Builder extends DataSourceBuilder {
                 DataSourceProperties.DB_POOL_TEST_WHILE_IDLE, false));
         parseConnectionProperties(properties.get(DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES, null))
                 .forEach((key, value) -> {
-                    LoggerFactory.getLogger(Dbcp2Builder.class).info(
-                            "Setting database connection property {} to {}", key, value);
+                    log.info("Setting database connection property {} to {}", key, value);
                     dataSource.addConnectionProperty(key, value);
                 });
         for (String key : DataSourceFactory.requiredConnectionProperties.keySet()) {
             String value = DataSourceFactory.requiredConnectionProperties.get(key);
-            LoggerFactory.getLogger(Dbcp2Builder.class).info(
-                    "Setting required database connection property {}={}", key, value);
+            log.info("Setting required database connection property {}={}", key, value);
             dataSource.addConnectionProperty(key, value);
         }
         String[] initSqlStatements = splitInitSql(properties.get(DataSourceProperties.DB_POOL_INIT_SQL, null));
