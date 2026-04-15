@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
 
 class DataSourceFactoryTest {
     @Test
-    public void createReturnsDataSource() {
+    public void createsDataSource() {
         TypedProperties properties = buildH2Properties();
         DataSource ds = DataSourceFactory.create(properties);
         assertNotNull(ds);
@@ -42,7 +42,7 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createReturnsResettableBasicDataSource() {
+    public void createWithDefault() {
         TypedProperties properties = buildH2Properties();
         DataSource ds = DataSourceFactory.create(properties);
         assertInstanceOf(ResettableBasicDataSource.class, ds);
@@ -69,17 +69,17 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createWithHikariDisabled_ReturnsDbcp2DataSource() {
+    public void createWithDbcp2() {
         TypedProperties properties = buildH2Properties();
-        properties.setProperty(DataSourceProperties.DB_POOL_HIKARI_ENABLE, "false");
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, "dbcp2");
         DataSource ds = DataSourceFactory.create(properties);
         assertInstanceOf(BasicDataSource.class, ds);
     }
 
     @Test
-    public void createWithHikariEnabled() {
+    public void createWithHikari() {
         TypedProperties properties = buildH2Properties();
-        properties.setProperty(DataSourceProperties.DB_POOL_HIKARI_ENABLE, "true");
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, "hikari");
         assertThrows(UnsupportedOperationException.class, () -> DataSourceFactory.create(properties));
     }
 
