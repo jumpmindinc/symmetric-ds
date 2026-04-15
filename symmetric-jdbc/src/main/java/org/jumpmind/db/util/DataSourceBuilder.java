@@ -55,9 +55,8 @@ abstract class DataSourceBuilder {
     abstract DataSource build(TypedProperties properties, String driverClassName, String user, String password);
 
     /**
-     * Parses a {@code db.connection.properties} value into an ordered map of key-value pairs.
-     * <p>
-     * Properties are delimited by {@code ;}. A literal equals sign inside a value must be escaped as {@code ==}.
+     * Parses a {@code db.connection.properties} value into an ordered map of key-value pairs. Properties are delimited by {@code ;}. A literal equals sign
+     * inside a value must be escaped as {@code ==}.
      *
      * @param connectionProperties
      *            the raw property value, may be blank or null
