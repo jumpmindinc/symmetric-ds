@@ -43,7 +43,7 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    void createReturnsResettableBasicDataSource() {
+	void createWithDefault() {
         TypedProperties properties = buildH2Properties();
         DataSource ds = DataSourceFactory.create(properties);
         assertInstanceOf(ResettableBasicDataSource.class, ds);
@@ -70,19 +70,18 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    void createWithHikariDisabled_ReturnsDbcp2DataSource() {
+    void createWithDbcp2() {
         TypedProperties properties = buildH2Properties();
-        properties.setProperty(DataSourceProperties.DB_POOL_HIKARI_ENABLE, "false");
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, Dbcp2Builder.TYPE);
         DataSource ds = DataSourceFactory.create(properties);
         assertInstanceOf(BasicDataSource.class, ds);
     }
 
     @Test
-    void createWithHikariEnabled() {
+    void createWithHikari() {
         TypedProperties properties = buildH2Properties();
-        properties.setProperty(DataSourceProperties.DB_POOL_HIKARI_ENABLE, "true");
-        DataSource ds = DataSourceFactory.create(properties);
-        assertInstanceOf(HikariDataSource.class, ds);
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, HikariBuilder.TYPE);
+        assertThrows(UnsupportedOperationException.class, () -> DataSourceFactory.create(properties));
     }
 
     @Test

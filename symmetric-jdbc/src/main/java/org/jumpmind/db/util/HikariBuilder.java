@@ -32,6 +32,7 @@ import com.zaxxer.hikari.HikariDataSource;
 
 class HikariBuilder extends DataSourceBuilder {
     private static final Logger log = LoggerFactory.getLogger(HikariBuilder.class);
+    static final String TYPE = "hikari";
 
     @Override
     public DataSource build(TypedProperties properties, String driverClassName, String user, String password) {
