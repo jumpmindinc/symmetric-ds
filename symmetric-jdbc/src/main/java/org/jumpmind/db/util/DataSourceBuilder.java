@@ -26,6 +26,13 @@ import org.jumpmind.properties.TypedProperties;
 
 /**
  * Convenience interface for building a {@link DataSource}.
+ * 
+ * The following pooling {@link DataSource} implementations are supported by this builder.
+ * <ul>
+ * <li>Apache DBCP2 ({@code org.apache.commons.dbcp2.BasicDataSource})</li>
+ * <li>Hikari ({@code com.zaxxer.hikari.HikariDataSource})</li>
+ * </ul>
+ * <p>
  */
 interface DataSourceBuilder {
     /**

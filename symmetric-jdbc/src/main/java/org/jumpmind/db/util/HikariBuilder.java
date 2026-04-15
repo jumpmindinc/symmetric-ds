@@ -25,6 +25,8 @@ import javax.sql.DataSource;
 import org.jumpmind.properties.TypedProperties;
 
 class HikariBuilder implements DataSourceBuilder {
+    static final String TYPE = "hikari";
+
     @Override
     public DataSource build(TypedProperties properties, String driverClassName, String user, String password) {
         throw new UnsupportedOperationException(

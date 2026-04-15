@@ -31,6 +31,8 @@ import org.jumpmind.properties.TypedProperties;
 import org.slf4j.LoggerFactory;
 
 class Dbcp2Builder implements DataSourceBuilder {
+    static final String TYPE = "dbcp2";
+
     @Override
     public DataSource build(TypedProperties properties, String driverClassName, String user, String password) {
         ResettableBasicDataSource dataSource = new ResettableBasicDataSource();

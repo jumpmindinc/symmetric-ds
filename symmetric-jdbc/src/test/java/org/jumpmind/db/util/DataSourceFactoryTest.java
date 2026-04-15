@@ -71,7 +71,7 @@ class DataSourceFactoryTest {
     @Test
     public void createWithDbcp2() {
         TypedProperties properties = buildH2Properties();
-        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, "dbcp2");
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, Dbcp2Builder.TYPE);
         DataSource ds = DataSourceFactory.create(properties);
         assertInstanceOf(BasicDataSource.class, ds);
     }
@@ -79,7 +79,7 @@ class DataSourceFactoryTest {
     @Test
     public void createWithHikari() {
         TypedProperties properties = buildH2Properties();
-        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, "hikari");
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, HikariBuilder.TYPE);
         assertThrows(UnsupportedOperationException.class, () -> DataSourceFactory.create(properties));
     }
 

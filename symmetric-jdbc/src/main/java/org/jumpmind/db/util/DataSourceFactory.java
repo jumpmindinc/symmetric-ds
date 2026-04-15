@@ -101,7 +101,7 @@ public class DataSourceFactory {
                         + DataSourceProperties.DB_POOL_PASSWORD + " property.   Please re-encrypt your password", ex);
             }
         }
-        DataSourceBuilder builder = "hikari".equalsIgnoreCase(properties.get(DataSourceProperties.DB_POOL_TYPE, "dbcp2"))
+        DataSourceBuilder builder = HikariBuilder.TYPE.equalsIgnoreCase(properties.get(DataSourceProperties.DB_POOL_TYPE, Dbcp2Builder.TYPE))
                 ? new HikariBuilder()
                 : new Dbcp2Builder();
         return builder.build(properties, driverClassName, user, password);
