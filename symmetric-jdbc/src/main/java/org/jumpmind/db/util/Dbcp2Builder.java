@@ -58,7 +58,7 @@ class Dbcp2Builder extends DataSourceBuilder {
         dataSource.setMinEvictableIdle(Duration.ofMillis(
                 properties.getInt(DataSourceProperties.DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS,
                         DataSourceProperties.DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS_DEFAULT)));
-        dataSource.setDurationBetweenEvictionRuns(Duration.ofMillis(120_000));
+        dataSource.setDurationBetweenEvictionRuns(Duration.ofMillis(120000));
         dataSource.setNumTestsPerEvictionRun(10);
         dataSource.setValidationQuery(properties.get(
                 DataSourceProperties.DB_POOL_VALIDATION_QUERY, null));
