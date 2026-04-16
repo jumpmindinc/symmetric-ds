@@ -35,6 +35,7 @@ apply from: symAssembleDir + '/common.gradle'
             exclude group: 'asm'
         }
 
+        compileOnly "com.zaxxer:HikariCP:$hikariVersion"
         compileOnly "org.codehaus.mojo:animal-sniffer-annotations:$animalSnifferVersion"
 
         testImplementation project(path: ':symmetric-util', configuration: 'testArtifacts')
