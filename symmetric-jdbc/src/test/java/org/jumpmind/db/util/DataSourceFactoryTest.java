@@ -27,12 +27,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.jumpmind.properties.TypedProperties;
 import org.junit.jupiter.api.Test;
 
+import com.zaxxer.hikari.HikariDataSource;
+
 class DataSourceFactoryTest {
     @Test
-    public void createReturnsDataSource() {
+    void createReturnsDataSource() {
         TypedProperties properties = buildH2Properties();
         DataSource ds = DataSourceFactory.create(properties);
         assertNotNull(ds);
@@ -40,14 +43,14 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createReturnsResettableBasicDataSource() {
+    void createWithDefault() {
         TypedProperties properties = buildH2Properties();
         DataSource ds = DataSourceFactory.create(properties);
         assertInstanceOf(ResettableBasicDataSource.class, ds);
     }
 
     @Test
-    public void createAppliesPoolProperties() {
+    void createAppliesPoolProperties() {
         TypedProperties properties = buildH2Properties();
         properties.setProperty(DataSourceProperties.DB_POOL_INITIAL_SIZE, "3");
         properties.setProperty(DataSourceProperties.DB_POOL_MAX_ACTIVE, "15");
@@ -59,7 +62,7 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createThrowsOnMissingDriver() {
+    void createThrowsOnMissingDriver() {
         TypedProperties properties = new TypedProperties();
         properties.setProperty(DataSourceProperties.DB_POOL_DRIVER, "com.example.NonExistentDriver");
         properties.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:nonexistent://localhost/test");
@@ -67,7 +70,23 @@ class DataSourceFactoryTest {
     }
 
     @Test
-    public void createThrowsOnNonDriverClass() {
+    void createWithDbcp2() {
+        TypedProperties properties = buildH2Properties();
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, Dbcp2Builder.TYPE);
+        DataSource ds = DataSourceFactory.create(properties);
+        assertInstanceOf(BasicDataSource.class, ds);
+    }
+
+    @Test
+    void createWithHikari() {
+        TypedProperties properties = buildH2Properties();
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, HikariBuilder.TYPE);
+        DataSource ds = DataSourceFactory.create(properties);
+        assertInstanceOf(HikariDataSource.class, ds);
+    }
+
+    @Test
+    void createThrowsOnNonDriverClass() {
         TypedProperties properties = new TypedProperties();
         properties.setProperty(DataSourceProperties.DB_POOL_DRIVER, "java.lang.String");
         properties.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:h2:mem:test");

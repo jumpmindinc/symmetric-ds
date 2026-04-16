@@ -22,16 +22,12 @@ package org.jumpmind.db.util;
 
 import java.sql.Driver;
 import java.sql.DriverManager;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.sql.DataSource;
 
-import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityConstants;
@@ -75,22 +71,19 @@ public class DataSourceFactory {
     public static DataSource create(TypedProperties properties, ISecurityService securityService) {
         properties = properties.copy();
         properties.putAll(System.getProperties());
-        ResettableBasicDataSource dataSource = new ResettableBasicDataSource();
-        dataSource.setDriverClassName(properties.get(
-                DataSourceProperties.DB_POOL_DRIVER, null));
+        String driverClassName = properties.get(DataSourceProperties.DB_POOL_DRIVER, null);
         try {
-            prepareDriver(dataSource.getDriverClassName());
+            prepareDriver(driverClassName);
         } catch (Exception e) {
             if (e instanceof ClassNotFoundException) {
-                throw new IllegalStateException("Missing JDBC driver for '" + dataSource.getDriverClassName()
+                throw new IllegalStateException("Missing JDBC driver for '" + driverClassName
                         + "'.  Either provide the JAR or use 'symadmin module convert' command to find and install missing driver.", e);
             }
             if (e instanceof NotJdbcDriverException) {
                 throw (NotJdbcDriverException) e;
             }
-            throw new IllegalStateException("Had trouble registering the JDBC driver: " + dataSource.getDriverClassName(), e);
+            throw new IllegalStateException("Had trouble registering the JDBC driver: " + driverClassName, e);
         }
-        dataSource.setUrl(properties.get(DataSourceProperties.DB_POOL_URL, null));
         String user = properties.get(DataSourceProperties.DB_POOL_USER, "");
         if (user != null && user.startsWith(SecurityConstants.PREFIX_ENC)) {
             try {
@@ -100,74 +93,20 @@ public class DataSourceFactory {
                         + DataSourceProperties.DB_POOL_USER + " property.   Please re-encrypt your user", ex);
             }
         }
-        if (!StringUtils.isEmpty(user)) {
-            dataSource.setUsername(user);
-        }
         String password = properties.get(DataSourceProperties.DB_POOL_PASSWORD, "");
         if (password != null && password.startsWith(SecurityConstants.PREFIX_ENC)) {
             try {
-                password = securityService.decrypt(password.substring(SecurityConstants.PREFIX_ENC
-                        .length()));
+                password = securityService.decrypt(password.substring(SecurityConstants.PREFIX_ENC.length()));
             } catch (Exception ex) {
                 throw new IllegalStateException("Failed to decrypt the database password from your engine properties file stored under the "
                         + DataSourceProperties.DB_POOL_PASSWORD + " property.   Please re-encrypt your password", ex);
             }
         }
-        if (!StringUtils.isEmpty(password)) {
-            dataSource.setPassword(password);
-        }
-        dataSource.setInitialSize(properties.getInt(
-                DataSourceProperties.DB_POOL_INITIAL_SIZE, 2));
-        dataSource.setMaxTotal(properties.getInt(
-                DataSourceProperties.DB_POOL_MAX_ACTIVE, 10));
-        dataSource.setMaxWait(
-                Duration.ofMillis(properties.getInt(DataSourceProperties.DB_POOL_MAX_WAIT, 5000)));
-        dataSource.setMaxIdle(properties.getInt(DataSourceProperties.DB_POOL_MAX_IDLE,
-                8));
-        dataSource.setMinIdle(properties.getInt(DataSourceProperties.DB_POOL_MIN_IDLE,
-                0));
-        dataSource.setMinEvictableIdle(Duration.ofMillis(
-                properties.getInt(DataSourceProperties.DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS, 60000)));
-        dataSource.setDurationBetweenEvictionRuns(Duration.ofMillis(120000));
-        dataSource.setNumTestsPerEvictionRun(10);
-        dataSource.setValidationQuery(properties.get(
-                DataSourceProperties.DB_POOL_VALIDATION_QUERY, null));
-        dataSource.setTestOnBorrow(properties.is(
-                DataSourceProperties.DB_POOL_TEST_ON_BORROW, true));
-        dataSource.setTestOnReturn(properties.is(
-                DataSourceProperties.DB_POOL_TEST_ON_RETURN, false));
-        dataSource.setTestWhileIdle(properties.is(
-                DataSourceProperties.DB_POOL_TEST_WHILE_IDLE, false));
-        String connectionProperties = properties.get(
-                DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES, null);
-        if (StringUtils.isNotBlank(connectionProperties)) {
-            String[] tokens = connectionProperties.split(";");
-            for (String property : tokens) {
-                String[] keyValue = property.replaceAll("==", "!!").split("=");
-                if (keyValue != null && keyValue.length > 1) {
-                    keyValue[1] = keyValue[1].replaceAll("!!", "=");
-                    LoggerFactory.getLogger(DataSourceFactory.class).info(
-                            "Setting database connection property {} to {}", keyValue[0], keyValue[1]);
-                    dataSource.addConnectionProperty(keyValue[0], keyValue[1]);
-                }
-            }
-        }
-        for (String key : requiredConnectionProperties.keySet()) {
-            String value = requiredConnectionProperties.get(key);
-            LoggerFactory.getLogger(DataSourceFactory.class).info(
-                    "Setting required database connection property {}={}", key, value);
-            dataSource.addConnectionProperty(key, value);
-        }
-        String initSql = properties.get(DataSourceProperties.DB_POOL_INIT_SQL, null);
-        if (StringUtils.isNotBlank(initSql)) {
-            List<String> initSqlList = new ArrayList<String>(1);
-            initSql = initSql.replaceAll(";;", "!!");
-            for (String i : initSql.split(";")) {
-                i = i.replaceAll("!!", ";");
-                initSqlList.add(i);
-            }
-            dataSource.setConnectionInitSqls(initSqlList);
-        }
+        DataSourceBuilder builder = HikariBuilder.TYPE.equalsIgnoreCase(properties.get(DataSourceProperties.DB_POOL_TYPE, Dbcp2Builder.TYPE))
+                ? new HikariBuilder()
+                : new Dbcp2Builder();
+        DataSource dataSource = builder.build(properties, driverClassName, user, password);
+        LoggerFactory.getLogger(DataSourceFactory.class).info("Using {} connection pool.", dataSource.getClass().getSimpleName());
         return dataSource;
     }
 }
