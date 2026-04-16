@@ -37,13 +37,6 @@ class HikariBuilder extends DataSourceBuilder {
 
     @Override
     public DataSource build(TypedProperties properties, String driverClassName, String user, String password) {
-        log.warn("The following properties are not supported by HikariCP and will be ignored: {}, {}, {}, {}, {}, {}",
-                DataSourceProperties.DB_POOL_INITIAL_SIZE,
-                DataSourceProperties.DB_POOL_MAX_IDLE,
-                DataSourceProperties.DB_POOL_TEST_ON_BORROW,
-                DataSourceProperties.DB_POOL_TEST_ON_RETURN,
-                DataSourceProperties.DB_POOL_TEST_WHILE_IDLE,
-                DataSourceProperties.DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS);
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(properties.get(DataSourceProperties.DB_POOL_URL, null));
         config.setDriverClassName(driverClassName);
