@@ -33,6 +33,7 @@ import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
+import org.slf4j.LoggerFactory;
 
 public class DataSourceFactory {
     protected static Map<String, String> requiredConnectionProperties = new HashMap<String, String>();
@@ -104,6 +105,8 @@ public class DataSourceFactory {
         DataSourceBuilder builder = HikariBuilder.TYPE.equalsIgnoreCase(properties.get(DataSourceProperties.DB_POOL_TYPE, Dbcp2Builder.TYPE))
                 ? new HikariBuilder()
                 : new Dbcp2Builder();
-        return builder.build(properties, driverClassName, user, password);
+        DataSource dataSource = builder.build(properties, driverClassName, user, password);
+        LoggerFactory.getLogger(DataSourceFactory.class).info("Using {} connection pool.", dataSource.getClass().getSimpleName());
+        return dataSource;
     }
 }
