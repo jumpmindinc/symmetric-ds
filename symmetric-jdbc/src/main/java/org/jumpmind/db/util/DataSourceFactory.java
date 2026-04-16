@@ -102,9 +102,10 @@ public class DataSourceFactory {
                         + DataSourceProperties.DB_POOL_PASSWORD + " property.   Please re-encrypt your password", ex);
             }
         }
-        DataSourceBuilder builder = HikariBuilder.TYPE.equalsIgnoreCase(properties.get(DataSourceProperties.DB_POOL_TYPE, Dbcp2Builder.TYPE))
-                ? new HikariBuilder()
-                : new Dbcp2Builder();
+        DataSourceBuilder builder = HikariBuilder.TYPE.equalsIgnoreCase(properties.get(DataSourceProperties.DB_POOL_TYPE,
+                DataSourceProperties.DB_POOL_TYPE_DEFAULT))
+                        ? new HikariBuilder()
+                        : new Dbcp2Builder();
         DataSource dataSource = builder.build(properties, driverClassName, user, password);
         LoggerFactory.getLogger(DataSourceFactory.class).info("Using {} connection pool.", dataSource.getClass().getSimpleName());
         return dataSource;
