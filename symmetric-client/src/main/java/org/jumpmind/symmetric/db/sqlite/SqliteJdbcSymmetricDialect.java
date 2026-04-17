@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.db.sqlite;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import org.apache.commons.dbcp2.DelegatingConnection;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.IConnectionCallback;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -43,8 +42,7 @@ public class SqliteJdbcSymmetricDialect extends SqliteSymmetricDialect {
         trans.executeCallback(new IConnectionCallback<Object>() {
             @Override
             public Object execute(Connection con) throws SQLException {
-                @SuppressWarnings("rawtypes")
-                SQLiteConnection unwrapped = ((SQLiteConnection) ((DelegatingConnection) con).getInnermostDelegate());
+                SQLiteConnection unwrapped = con.unwrap(SQLiteConnection.class);
                 Function.create(unwrapped, name, new Function() {
                     @Override
                     protected void xFunc() throws SQLException {

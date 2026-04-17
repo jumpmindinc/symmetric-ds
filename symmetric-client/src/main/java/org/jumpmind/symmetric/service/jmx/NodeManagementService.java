@@ -32,9 +32,9 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
-import com.zaxxer.hikari.HikariDataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.util.IPooledDataSource;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -263,24 +263,14 @@ public class NodeManagementService implements IBuiltInExtensionPoint, ISymmetric
 
     @ManagedAttribute(description = "Show the number of active connections in the pool")
     public int getDatabaseConnectionsActive() {
-        DataSource dataSource = engine.getDataSource();
-        if (dataSource instanceof BasicDataSource) {
-            return ((BasicDataSource) dataSource).getNumActive();
-        } else if (dataSource instanceof HikariDataSource) {
-            return ((HikariDataSource) dataSource).getHikariPoolMXBean().getActiveConnections();
-        }
-        return -1;
+        IPooledDataSource pooled = IPooledDataSource.of(engine.getDataSource());
+        return pooled != null ? pooled.getNumActive() : -1;
     }
 
     @ManagedAttribute(description = "Show the max number of total connections in the pool")
     public int getDatabaseConnectionsMax() {
-        DataSource dataSource = engine.getDataSource();
-        if (dataSource instanceof BasicDataSource) {
-            return ((BasicDataSource) dataSource).getMaxTotal();
-        } else if (dataSource instanceof HikariDataSource) {
-            return ((HikariDataSource) dataSource).getMaximumPoolSize();
-        }
-        return -1;
+        IPooledDataSource pooled = IPooledDataSource.of(engine.getDataSource());
+        return pooled != null ? pooled.getMaxTotal() : -1;
     }
 
     @ManagedOperation(description = "Check to see if the external id is registered")
