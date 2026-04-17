@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.apache.commons.dbcp2.BasicDataSource;
+import org.jumpmind.db.util.ResettableBasicDataSource;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ class NodeManagementServiceTest {
 
     @Test
     void getDatabaseConnectionsActiveReturnsDbcp2ActiveCount() {
-        BasicDataSource ds = mock(BasicDataSource.class);
+        ResettableBasicDataSource ds = mock(ResettableBasicDataSource.class);
         when(ds.getNumActive()).thenReturn(3);
         when(engine.getDataSource()).thenReturn(ds);
         assertEquals(3, service.getDatabaseConnectionsActive());
@@ -69,7 +69,7 @@ class NodeManagementServiceTest {
 
     @Test
     void getDatabaseConnectionsMaxReturnsDbcp2MaxTotal() {
-        BasicDataSource ds = mock(BasicDataSource.class);
+        ResettableBasicDataSource ds = mock(ResettableBasicDataSource.class);
         when(ds.getMaxTotal()).thenReturn(10);
         when(engine.getDataSource()).thenReturn(ds);
         assertEquals(10, service.getDatabaseConnectionsMax());

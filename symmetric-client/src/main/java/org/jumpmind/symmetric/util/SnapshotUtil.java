@@ -57,7 +57,7 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.sql.DataSource;
 
-import org.apache.commons.dbcp2.BasicDataSource;
+import org.jumpmind.db.util.IPooledDataSource;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -621,12 +621,11 @@ public class SnapshotUtil {
         try {
             Properties runtimeProperties = new Properties();
             DataSource dataSource = engine.getDatabasePlatform().getDataSource();
-            if (dataSource instanceof BasicDataSource) {
-                @SuppressWarnings("resource")
-                BasicDataSource dbcp = (BasicDataSource) dataSource;
-                runtimeProperties.setProperty("connections.idle", String.valueOf(dbcp.getNumIdle()));
-                runtimeProperties.setProperty("connections.used", String.valueOf(dbcp.getNumActive()));
-                runtimeProperties.setProperty("connections.max", String.valueOf(dbcp.getMaxTotal()));
+            IPooledDataSource pooledDataSource = IPooledDataSource.of(dataSource);
+            if (pooledDataSource != null) {
+                runtimeProperties.setProperty("connections.idle", String.valueOf(pooledDataSource.getNumIdle()));
+                runtimeProperties.setProperty("connections.used", String.valueOf(pooledDataSource.getNumActive()));
+                runtimeProperties.setProperty("connections.max", String.valueOf(pooledDataSource.getMaxTotal()));
             }
             Runtime rt = Runtime.getRuntime();
             DecimalFormat df = new DecimalFormat("#,###");
