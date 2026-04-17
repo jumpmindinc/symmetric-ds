@@ -1,0 +1,37 @@
+
+=== Capture Health
+
+The Capture Health screen shows whether changes were actively being captured for each configured table, month by month, over a rolling 13-month window.
+Each row in the grid represents a table and each cell represents one calendar month.
+The color of each cell indicates whether capture was active, whether the configuration changed, or whether a gap in coverage was detected.
+
+image::images/analytics/analytics-capture-health.png[]
+
+The color legend is displayed below the column headers.
+*Active* (green) means capture was continuously active with no configuration changes or gaps during the month.
+*Active (reconfigured)* (yellow) means the configuration changed one or more times during the month; the cell displays the single-letter reason code for the change, or "..." if there were multiple changes in the same month.
+Clicking a yellow cell opens a dialog that lists each rebuild event and its reason.
+*Partial — gap detected* (orange) means that capture was inactive for part of the month and some changes may not have been captured.
+Clicking an orange cell opens a dialog showing the exact gap periods.
+*No capture* (red) means that capture was inactive for the entire month.
+*Not configured* (gray) means that capture had not yet been configured at that point in time.
+For tables shown with a *No History* status, the configuration is in place but no capture history has been recorded yet; clicking any gray cell opens a dialog indicating when the configuration was created.
+
+The summary cards at the top of the report show the total number of configured tables, the number currently capturing changes, the number not capturing, and the number with a capture gap detected in the current window.
+Tables with issues are listed in a warning callout below the cards.
+The grid is divided into three sections: *Not Capturing* (tables with a capture error or no history), *Gaps Detected*, and *Active — No Gaps Detected*.
+Within each section, tables are ordered with the most recently configured first.
+The *Capture Began* column shows the month and year that capture was first active, and the *Status* badge indicates the current capture state.
+The *Reconfigs* column shows the total number of capture rebuilds over the 13-month window, and the *Gap Days* column shows the total number of days with no capture.
+
+Use the *Schema* and *Catalog* filters to focus on a specific part of the schema hierarchy.
+When both are available, selecting *All Catalogs* populates the Schema filter with schemas from every catalog; selecting a specific catalog limits the Schema filter to schemas within that catalog.
+Use the *Channel* filter to show tables belonging to a specific channel.
+Use the *Show* filter to restrict the grid to tables that are not currently capturing or to tables that are active.
+Use the *Limit* filter to cap the number of rows shown.
+Check *Show system tables* to include SymmetricDS internal tables in the report.
+System tables are only shown when the SymmetricDS runtime tables are located in the same database as the application tables being replicated; if a separate runtime database is used, the checkbox is disabled.
+
+Capture history is read from the `sym_trigger_hist` table.
+The `purge.trigger.hist.retention.minutes` parameter controls how far back history is retained; the default value retains one year of history, which matches the 13-month window displayed by this report.
+The retention duration is shown in the toolbar and can be edited from the *Data retained for* link.

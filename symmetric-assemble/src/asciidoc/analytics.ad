@@ -9,4 +9,5 @@ The *Data retained for* link shows how many days of data are kept and opens a di
 
 include::analytics/table-heat-map.ad[]
 include::analytics/table-status-report.ad[]
+include::analytics/capture-health.ad[]
 include::analytics/cluster-traffic-heat-map.ad[]

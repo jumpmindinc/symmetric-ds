@@ -41,7 +41,8 @@ public class PurgeServiceSqlMap extends AbstractSqlMap {
         
         putSql("deleteRegistrationRequestSql", "delete from $(registration_request) where status in (?,?,?) and last_update_time < ?");
         
-        putSql("deleteInactiveTriggerHistSql", "delete from $(trigger_hist) where inactive_time < ?");
+        // Keep rows with a build reason of N (new) in order to keep a record of when capture began for each table
+        putSql("deleteInactiveTriggerHistSql", "delete from $(trigger_hist) where last_trigger_build_reason != 'N' and inactive_time < ?");
 
         putSql("minOutgoingBatchId", "select min(batch_id) from $(outgoing_batch)");
 
