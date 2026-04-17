@@ -571,8 +571,10 @@ public class PurgeService extends AbstractService implements IPurgeService {
                     fastFormat.format(minDataCreateTime), fastFormat.format(retentionCutoffDate));
             retentionCutoffDate = minDataCreateTime;
         }
-        log.info("Purging trigger histories that are inactive, older than {}, and don't have a build reason of N",
-                fastFormat.format(retentionCutoffDate));
+        if (log.isInfoEnabled()) {
+            log.info("Purging trigger histories that are inactive, older than {}, and don't have a build reason of N",
+                    fastFormat.format(retentionCutoffDate));
+        }
         long count = sqlTemplate.update(getSql("deleteInactiveTriggerHistSql"), retentionCutoffDate);
         if (count > 0) {
             log.info("Purged {} trigger histories", count);
