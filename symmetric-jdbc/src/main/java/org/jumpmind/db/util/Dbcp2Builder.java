@@ -46,25 +46,28 @@ class Dbcp2Builder extends DataSourceBuilder {
             dataSource.setPassword(password);
         }
         dataSource.setInitialSize(properties.getInt(
-                DataSourceProperties.DB_POOL_INITIAL_SIZE, 2));
+                DataSourceProperties.DB_POOL_INITIAL_SIZE, DataSourceProperties.DB_POOL_INITIAL_SIZE_DEFAULT));
         dataSource.setMaxTotal(properties.getInt(
-                DataSourceProperties.DB_POOL_MAX_ACTIVE, 10));
-        dataSource.setMaxWait(
-                Duration.ofMillis(properties.getInt(DataSourceProperties.DB_POOL_MAX_WAIT, 5000)));
-        dataSource.setMaxIdle(properties.getInt(DataSourceProperties.DB_POOL_MAX_IDLE, 8));
-        dataSource.setMinIdle(properties.getInt(DataSourceProperties.DB_POOL_MIN_IDLE, 0));
+                DataSourceProperties.DB_POOL_MAX_ACTIVE, DataSourceProperties.DB_POOL_MAX_ACTIVE_DEFAULT));
+        dataSource.setMaxWait(Duration.ofMillis(
+                properties.getInt(DataSourceProperties.DB_POOL_MAX_WAIT, DataSourceProperties.DB_POOL_MAX_WAIT_DBCP2_DEFAULT)));
+        dataSource.setMaxIdle(properties.getInt(
+                DataSourceProperties.DB_POOL_MAX_IDLE, DataSourceProperties.DB_POOL_MAX_IDLE_DEFAULT));
+        dataSource.setMinIdle(properties.getInt(
+                DataSourceProperties.DB_POOL_MIN_IDLE, DataSourceProperties.DB_POOL_MIN_IDLE_DEFAULT));
         dataSource.setMinEvictableIdle(Duration.ofMillis(
-                properties.getInt(DataSourceProperties.DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS, 60000)));
+                properties.getInt(DataSourceProperties.DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS,
+                        DataSourceProperties.DB_POOL_MIN_EVICTABLE_IDLE_TIME_MILLIS_DEFAULT)));
         dataSource.setDurationBetweenEvictionRuns(Duration.ofMillis(120000));
         dataSource.setNumTestsPerEvictionRun(10);
         dataSource.setValidationQuery(properties.get(
                 DataSourceProperties.DB_POOL_VALIDATION_QUERY, null));
         dataSource.setTestOnBorrow(properties.is(
-                DataSourceProperties.DB_POOL_TEST_ON_BORROW, true));
+                DataSourceProperties.DB_POOL_TEST_ON_BORROW, DataSourceProperties.DB_POOL_TEST_ON_BORROW_DEFAULT));
         dataSource.setTestOnReturn(properties.is(
-                DataSourceProperties.DB_POOL_TEST_ON_RETURN, false));
+                DataSourceProperties.DB_POOL_TEST_ON_RETURN, DataSourceProperties.DB_POOL_TEST_ON_RETURN_DEFAULT));
         dataSource.setTestWhileIdle(properties.is(
-                DataSourceProperties.DB_POOL_TEST_WHILE_IDLE, false));
+                DataSourceProperties.DB_POOL_TEST_WHILE_IDLE, DataSourceProperties.DB_POOL_TEST_WHILE_IDLE_DEFAULT));
         parseConnectionProperties(properties.get(DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES, null))
                 .forEach((key, value) -> {
                     log.info("Setting database connection property {} to {}", key, value);
