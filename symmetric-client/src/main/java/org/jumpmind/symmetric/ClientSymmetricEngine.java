@@ -29,7 +29,6 @@ import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -278,7 +277,10 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         return DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
     }
 
-    @Deprecated
+    /**
+     * @deprecated Use {@link #createDataSource()} that returns a {@link javax.sql.DataSource}.
+     */
+    @Deprecated(forRemoval = true)
     public static BasicDataSource createBasicDataSource(File propsFile) {
         return (BasicDataSource) createDataSource(propsFile);
     }

@@ -33,9 +33,9 @@ public final class DataSourceUtils {
      * {@link AutoCloseable} (e.g. JNDI / container-managed sources).
      */
     public static void closeQuietly(DataSource ds) {
-        if (ds instanceof AutoCloseable) {
+        if (ds instanceof AutoCloseable autoCloseable) {
             try {
-                ((AutoCloseable) ds).close();
+                autoCloseable.close();
             } catch (Exception e) {
                 LoggerFactory.getLogger(DataSourceUtils.class)
                         .debug("Failed to close data source", e);

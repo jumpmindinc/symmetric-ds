@@ -186,7 +186,7 @@ public final class DataSourceProperties {
     // -------------------------------------------------------------------------
     // All property keys
     // -------------------------------------------------------------------------
-    public final static String[] ALL_PROPS = new String[] {
+    public static final String[] ALL_PROPS = new String[] {
             // Shared
             DB_POOL_URL,
             DB_POOL_DRIVER,

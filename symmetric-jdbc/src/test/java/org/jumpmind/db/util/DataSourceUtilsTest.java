@@ -41,7 +41,7 @@ class DataSourceUtilsTest {
     }
 
     @Test
-    void closeQuietlyClosesAutoCloseableDataSource() throws Exception {
+    void closeQuietlyClosesAutoCloseableDataSource() {
         AtomicBoolean closed = new AtomicBoolean(false);
         DataSource ds = new CloseableDataSource(() -> closed.set(true));
         DataSourceUtils.closeQuietly(ds);

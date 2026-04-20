@@ -118,18 +118,18 @@ class SqliteJdbcSymmetricDialectTest {
     @Test
     void testDisableSyncTriggersWithFunctionOverrideCallsExecuteCallback() {
         when(parameterService.getString(ParameterConstants.SQLITE_TRIGGER_FUNCTION_TO_USE)).thenReturn("sym_fn");
-        SqliteJdbcSymmetricDialect dialect = new SqliteJdbcSymmetricDialect(parameterService, platform);
+        SqliteJdbcSymmetricDialect sqliteDialect = new SqliteJdbcSymmetricDialect(parameterService, platform);
         JdbcSqlTransaction transaction = mock(JdbcSqlTransaction.class);
-        dialect.disableSyncTriggers(transaction, "node1");
+        sqliteDialect.disableSyncTriggers(transaction, "node1");
         verify(transaction).executeCallback(any());
     }
 
     @Test
     void testEnableSyncTriggersWithFunctionOverrideCallsExecuteCallback() {
         when(parameterService.getString(ParameterConstants.SQLITE_TRIGGER_FUNCTION_TO_USE)).thenReturn("sym_fn");
-        SqliteJdbcSymmetricDialect dialect = new SqliteJdbcSymmetricDialect(parameterService, platform);
+        SqliteJdbcSymmetricDialect sqliteDialect = new SqliteJdbcSymmetricDialect(parameterService, platform);
         JdbcSqlTransaction transaction = mock(JdbcSqlTransaction.class);
-        dialect.enableSyncTriggers(transaction);
+        sqliteDialect.enableSyncTriggers(transaction);
         verify(transaction).executeCallback(any());
     }
 }

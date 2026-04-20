@@ -41,11 +41,10 @@ public interface IPooledDataSource {
      * Returns an {@link IPooledDataSource} view of the given {@link DataSource}, or {@code null} if the pool implementation is not recognized.
      */
     static IPooledDataSource of(DataSource ds) {
-        if (ds instanceof IPooledDataSource) {
-            return (IPooledDataSource) ds;
+        if (ds instanceof IPooledDataSource pooledDataSource) {
+            return pooledDataSource;
         }
-        if (ds instanceof HikariDataSource) {
-            HikariDataSource hikari = (HikariDataSource) ds;
+        if (ds instanceof HikariDataSource hikari) {
             return new IPooledDataSource() {
                 @Override
                 public int getNumActive() {

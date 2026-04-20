@@ -36,7 +36,10 @@ import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.slf4j.LoggerFactory;
 
 public class DataSourceFactory {
-    protected static Map<String, String> requiredConnectionProperties = new HashMap<String, String>();
+    protected static Map<String, String> requiredConnectionProperties = new HashMap<>();
+
+    private DataSourceFactory() {
+    }
 
     public static void prepareDriver(String clazzName) throws Exception {
         Class<?> clazz = Class.forName(clazzName);
@@ -47,7 +50,7 @@ public class DataSourceFactory {
         synchronized (DriverManager.class) {
             Enumeration<Driver> drivers = DriverManager.getDrivers();
             while (drivers.hasMoreElements()) {
-                Driver driver2 = (Driver) drivers.nextElement();
+                Driver driver2 = drivers.nextElement();
                 /*
                  * MySQL and Maria DB drivers cannot co-exist because they use the same JDBC URL.
                  */

@@ -68,9 +68,9 @@ abstract class DataSourceBuilder {
             return result;
         }
         for (String token : connectionProperties.split(";")) {
-            String[] keyValue = token.replaceAll("==", "!!").split("=");
+            String[] keyValue = token.replace("==", "!!").split("=");
             if (keyValue != null && keyValue.length > 1) {
-                result.put(keyValue[0], keyValue[1].replaceAll("!!", "="));
+                result.put(keyValue[0], keyValue[1].replace("!!", "="));
             }
         }
         return result;
@@ -88,9 +88,9 @@ abstract class DataSourceBuilder {
         if (StringUtils.isBlank(initSql)) {
             return new String[0];
         }
-        String[] statements = initSql.replaceAll(";;", "!!").split(";");
+        String[] statements = initSql.replace(";;", "!!").split(";");
         for (int i = 0; i < statements.length; i++) {
-            statements[i] = statements[i].replaceAll("!!", ";").trim();
+            statements[i] = statements[i].replace("!!", ";").trim();
         }
         return statements;
     }
