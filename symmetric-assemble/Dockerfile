@@ -1,4 +1,5 @@
-FROM eclipse-temurin:17-alpine
+# Alpine Linux with Java 21 JDK
+FROM eclipse-temurin:21-jdk-alpine
 
 # Input the server zip file used to install SymmetricDS
 # This file must be in the Docker context (i.e. working directory)
@@ -26,4 +27,5 @@ VOLUME /opt/symmetric-ds/security
 EXPOSE 31415
 EXPOSE 31417
 
-CMD /opt/symmetric-ds/bin/sym_service start && tail -F /opt/symmetric-ds/logs/symmetric.log
+# Ensure Java virtual machine running SymmetricDS is PID 1:
+ENTRYPOINT ["/bin/sh","-c","/opt/symmetric-ds/bin/sym","--container"]

@@ -68,4 +68,40 @@ class AbstractJdbcDdlReaderTest {
         ddlReader.readExportedKey(null, metadataMap, fkMap);
         assertEquals(1, fkMap.size());
     }
+
+    @Test
+    void testReadForeignKey() throws SQLException {
+        AbstractJdbcDdlReader ddlReader = mock(AbstractJdbcDdlReader.class, Answers.CALLS_REAL_METHODS);
+        Map<String, Object> metadataMap = new HashMap<String, Object>();
+        metadataMap.put("FK_NAME", "test_fk");
+        metadataMap.put("PKTABLE_NAME", "test_table");
+        metadataMap.put("pktable_cat", "test_catalog_lowercase");
+        metadataMap.put("pktable_schem", "test_schema_lowercase");
+        metadataMap.put("PKCOLUMN_NAME", "foreign_col");
+        metadataMap.put("FKCOLUMN_NAME", "local_col");
+        metadataMap.put("KEY_SEQ", (short) 123);
+        Map<String, ForeignKey> fkMap = new HashMap<String, ForeignKey>();
+        ddlReader.readForeignKey(null, metadataMap, fkMap);
+        assertEquals(1, fkMap.size());
+        ForeignKey fk = fkMap.get("test_fk");
+        assertEquals("test_fk", fk.getName());
+        assertEquals("test_table", fk.getForeignTableName());
+        assertEquals("test_catalog_lowercase", fk.getForeignTableCatalog());
+        assertEquals("test_schema_lowercase", fk.getForeignTableSchema());
+        assertEquals(1, fk.getReferenceCount());
+        Reference reference = fk.getFirstReference();
+        assertEquals("foreign_col", reference.getForeignColumnName());
+        assertEquals("local_col", reference.getLocalColumnName());
+        assertEquals(123, reference.getSequenceValue());
+        metadataMap.put("PKTABLE_CAT", "TEST_CATALOG_UPPERCASE");
+        metadataMap.put("PKTABLE_SCHEM", "TEST_SCHEMA_UPPERCASE");
+        fkMap.clear();
+        ddlReader.readForeignKey(null, metadataMap, fkMap);
+        assertEquals(1, fkMap.size());
+        fk = fkMap.get("test_fk");
+        assertEquals("TEST_CATALOG_UPPERCASE", fk.getForeignTableCatalog());
+        assertEquals("TEST_SCHEMA_UPPERCASE", fk.getForeignTableSchema());
+        ddlReader.readForeignKey(null, metadataMap, fkMap);
+        assertEquals(1, fkMap.size());
+    }
 }

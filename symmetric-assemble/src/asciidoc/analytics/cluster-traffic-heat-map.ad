@@ -1,0 +1,25 @@
+
+=== Cluster Traffic Heat Map
+
+The Cluster Traffic Heat Map screen shows how replication traffic is distributed across the hosts in a cluster over a rolling time window.
+Each row in the heat map represents a host, and each cell shows the traffic volume for that host on a given day.
+The color of each cell indicates the host's traffic level relative to the cluster average for that day: cooler colors indicate the host is handling less than its share of traffic, and warmer colors indicate it is handling more.
+Hovering over a cell displays the exact value for that day.
+
+image::images/analytics/analytics-cluster-traffic-heat-map.png[]
+
+A cluster with balanced traffic shows consistent coloring across all rows.
+When one host is consistently warmer than the others, the info callout at the top of the report will highlight the imbalance and identify the hosts at the extremes.
+
+The summary cards at the top of the report show the total number of hosts in the cluster with their online status, the total traffic volume during the selected period, the busiest host and its share of cluster traffic, and the ideal share per host.
+
+Use the *Time Range* filter to switch between the last 8, 15, or 30 days.
+Use the *Metric* filter to focus on a single replication stage: Routed, Extracted, Sent, or Loaded.
+Selecting *All* combines all stages.
+Use the *Channel* filter to focus on a specific channel; the list is populated from the channels present in the data.
+Use the *Count* toggle to switch between Bytes and Rows.
+Note that Routed traffic does not have a byte count, so selecting Routed with Bytes selected will automatically switch to Rows.
+
+The heat map grid includes a *Status* column indicating whether each host is currently online or offline, and a *Last Heartbeat* column showing how much time had elapsed since the host's last heartbeat at the time the report was generated.
+The `console.report.as.offline.minutes` parameter determines whether a host appears as offline. By default, a host is considered offline if it hasn't sent a heartbeat in 24 hours.
+Online/offline status is determined from the report generation time, not the time the screen is viewed, so the status reflects the state of the cluster when the data was collected.
