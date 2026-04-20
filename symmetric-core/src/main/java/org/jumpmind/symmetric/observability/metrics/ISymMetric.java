@@ -21,8 +21,19 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 public interface ISymMetric {
-
     String getMetricId();
 
     long getLastModified();
+
+    /**
+     * Drains all completed intervals from this metric's queue into permanent storage (database).
+     */
+    void saveCompletedIntervals();
+
+    /**
+     * Closes this metric, preventing any further observations from being recorded. Also unregisters the associated OTel callback if one is present.
+     */
+    void close();
+
+    boolean isClosed();
 }

@@ -20,76 +20,125 @@
  */
 package org.jumpmind.symmetric.observability.stats;
 
-import org.jumpmind.symmetric.observability.models.MetricInterval;
+import org.jumpmind.symmetric.observability.metrics.ISymObservation;
+import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 
 /**
- * Mutable accumulator for time-weighted statistics over a single 5-minute window.
- * Each observation contributes to the weighted sum based on how long its value was held
- * before the next observation arrived (step-function model).
+ * Mutable accumulator for time-weighted statistics over a single window (a.k.a. interval). Each observation contributes to the weighted sum based on how long
+ * its value was held before the next observation arrived (step-function model).
  */
-class MetricIntervalAccumulator {
-    static final long INTERVAL_DURATION_MS = 5 * 60_000L;
-
-    final long intervalStart;
-    final long intervalEnd;
-
+public class MetricIntervalAccumulator {
+    public static final long INTERVAL_DURATION_MS = 5 * 60_000L;
+    public static final long INTERVAL_TIME_UNKNOWN = 0;
+    public static final double INTERVAL_VALUE_DEFAULT = 0.0;
+    public final long intervalStart;
+    public final long intervalEnd;
     private double weightedSum;
     private double weightedSumOfSquares;
     private long totalWeightMs;
     private double min = Double.MAX_VALUE;
     private double max = -Double.MAX_VALUE;
     private int count;
-
+    private double valueSum;
     private double lastValue;
     private long lastTimestamp;
 
-    MetricIntervalAccumulator(long intervalStart, double carryForwardValue) {
+    public MetricIntervalAccumulator(long intervalStart, double carryForwardValue) {
         this.intervalStart = intervalStart;
         this.intervalEnd = intervalStart + INTERVAL_DURATION_MS;
         this.lastValue = carryForwardValue;
         this.lastTimestamp = intervalStart;
     }
 
+    public MetricIntervalAccumulator(long intervalStart) {
+        this(intervalStart, MetricIntervalAccumulator.INTERVAL_VALUE_DEFAULT);
+    }
+
+    public MetricIntervalAccumulator() {
+        this(calculateIntervalStart(System.currentTimeMillis()), MetricIntervalAccumulator.INTERVAL_VALUE_DEFAULT);
+    }
+
+    public static long calculateIntervalStart(long epochTimestamp) {
+        return (epochTimestamp / MetricIntervalAccumulator.INTERVAL_DURATION_MS) * MetricIntervalAccumulator.INTERVAL_DURATION_MS;
+    }
+
+    public boolean isInScope(long epochTimestamp) {
+        return epochTimestamp >= this.intervalStart || epochTimestamp < this.intervalEnd;
+    }
+
+    public boolean isInScope(ISymObservation observation) {
+        return isInScope(observation.getTimestamp());
+    }
+
+    public void addObservation(ISymObservation observation) {
+        addObservation(observation.getValueAsDouble(), observation.getTimestamp());
+    }
+
     /**
      * Records an observation. The previous value is credited for the duration since the last timestamp.
      */
-    void addObservation(double value, long timestamp) {
-        long delta = timestamp - lastTimestamp;
+    public void addObservation(double value, long epochTimestamp) {
+        long delta = epochTimestamp - lastTimestamp;
         if (delta > 0) {
             weightedSum += lastValue * delta;
             weightedSumOfSquares += lastValue * lastValue * delta;
             totalWeightMs += delta;
         }
-        if (value < min) min = value;
-        if (value > max) max = value;
+        if (value < min)
+            min = value;
+        if (value > max)
+            max = value;
         count++;
+        valueSum += value;
         lastValue = value;
-        lastTimestamp = timestamp;
+        lastTimestamp = epochTimestamp;
     }
 
     /**
-     * Closes the window at {@code endTimestamp}, crediting the last known value for any remaining time.
+     * Closes the accumulation window at {@code endTimestamp}, crediting the last known value for any remaining time.
      */
-    void closeAt(long endTimestamp) {
-        long delta = endTimestamp - lastTimestamp;
+    public long closeAtObservation(long epochTimestamp) {
+        if (epochTimestamp > this.intervalEnd)
+            throw new IllegalArgumentException(String.format("Observation occurs after this internal ends! timestamp=%d, end=%d", epochTimestamp,
+                    this.intervalEnd));
+        long delta = epochTimestamp - lastTimestamp;
         if (delta > 0) {
-            weightedSum += lastValue * delta;
-            weightedSumOfSquares += lastValue * lastValue * delta;
             totalWeightMs += delta;
-            lastTimestamp = endTimestamp;
+            lastTimestamp = epochTimestamp;
+            if (lastValue != INTERVAL_VALUE_DEFAULT) {
+                weightedSum += lastValue * delta;
+                weightedSumOfSquares += lastValue * lastValue * delta;
+            }
         }
+        return lastTimestamp;
     }
 
-    double getLastValue() {
+    /**
+     * Closes the accumulation window at the end of the interval, crediting the last known value (if any) for any remaining time.
+     */
+    public long close() {
+        long delta = this.intervalEnd - lastTimestamp;
+        if (delta > 0) {
+            totalWeightMs += delta;
+            if (lastValue != INTERVAL_VALUE_DEFAULT) {
+                weightedSum += lastValue * delta;
+                weightedSumOfSquares += lastValue * lastValue * delta;
+            }
+        }
+        return lastTimestamp;
+    }
+
+    public double getLastValue() {
         return lastValue;
     }
 
-    MetricInterval toMetricInterval() {
+    public MetricIntervalStats toMetricIntervalStats() {
         double avg = totalWeightMs > 0 ? weightedSum / totalWeightMs : lastValue;
         double variance = totalWeightMs > 0 ? (weightedSumOfSquares / totalWeightMs) - (avg * avg) : 0.0;
         double stdDev = Math.sqrt(Math.max(0.0, variance));
         double effectiveMin = count > 0 ? min : lastValue;
         double effectiveMax = count > 0 ? max : lastValue;
-        return new MetricInterval(intervalStart, intervalEnd, avg, effectiveMin, effectiveMax, stdDev, count);
+        double mean = count > 0 ? valueSum / count : lastValue;
+        return new MetricIntervalStats(intervalStart, intervalEnd, avg, effectiveMin, effectiveMax, stdDev, count, mean, false);
     }
 }

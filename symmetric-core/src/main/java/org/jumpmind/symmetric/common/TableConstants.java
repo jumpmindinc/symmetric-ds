@@ -98,6 +98,7 @@ public class TableConstants {
     public static final String SYM_ANALYTICS_REPORT = "analytics_report";
     public static final String SYM_METRIC_KEY = "metric_key";
     public static final String SYM_METRIC_INTERVAL = "metric_interval";
+    public static final String SYM_METRIC_SERIES = "metric_series";
     protected static boolean hasConsoleSchema = TableConstants.class.getResourceAsStream("/console-schema.xml") != null;
     /**
      * Historical list of decommissioned SymmetricDS tables. Used to filter configuration files produced by older versions. See getRemovedConfigTables:
@@ -117,7 +118,7 @@ public class TableConstants {
                 SYM_NODE_HOST_JOB_STATS, SYM_NODE_HOST_STATS, SYM_NODE_IDENTITY, SYM_NODE_SECURITY, SYM_OUTGOING_BATCH, SYM_PARAMETER,
                 SYM_REGISTRATION_REDIRECT, SYM_REGISTRATION_REQUEST, SYM_ROUTER, SYM_SEQUENCE, SYM_TABLE_RELOAD_REQUEST, SYM_TABLE_RELOAD_STATUS,
                 SYM_TRANSFORM_TABLE, SYM_TRANSFORM_COLUMN, SYM_TRIGGER, SYM_TRIGGER_HIST, SYM_TRIGGER_ROUTER, SYM_TRIGGER_ROUTER_GROUPLET, SYM_OUTGOING_ERROR,
-                SYM_METRIC_KEY, SYM_METRIC_INTERVAL);
+                SYM_METRIC_KEY, SYM_METRIC_INTERVAL, SYM_METRIC_SERIES);
         if (hasConsoleSchema) {
             tables.addAll(getTablesForConsole(tablePrefix));
         }

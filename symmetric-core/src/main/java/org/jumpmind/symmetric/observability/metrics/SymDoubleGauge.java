@@ -21,33 +21,33 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.metrics.DoubleGauge;
+import io.opentelemetry.api.metrics.ObservableDoubleGauge;
 
 /**
- * Wraps a {@link DoubleGauge} with a fixed set of engine attributes so callers do not need to supply attributes on every call.
+ * Tracks a double value. The OTel SDK reads the current value via a callback (registered in {@link AbstractMetricsService}) rather than receiving a push on
+ * every {@link #setValue} or {@link #add} call, so no OTel work happens on the instrumented thread. The {@link ObservableDoubleGauge} handle is held here so it
+ * can be closed (unregistering the callback) during service shutdown.
  */
-public class SymDoubleGauge extends AbstractGauge {
+public class SymDoubleGauge extends AbstractGaugeMetric {
+    private ObservableDoubleGauge otelHandle;
 
-    private final DoubleGauge otelGauge;
-
-    SymDoubleGauge(String metricId, DoubleGauge otelGauge, Attributes attributes) {
+    SymDoubleGauge(String metricId, Attributes attributes) {
         super(metricId, attributes);
-        this.otelGauge = otelGauge;
+    }
+
+    void setOtelHandle(ObservableDoubleGauge handle) {
+        this.otelHandle = handle;
     }
 
     @Override
-    public void setValue(double newValue) {
-        super.setValue(newValue);
-        if (otelGauge != null) {
-            otelGauge.set(newValue, attributes);
+    public void close() {
+        if (otelHandle != null) {
+            try {
+                otelHandle.close();
+            } catch (Exception e) {
+                log.warn("Failed to close OTel handle for {}", getMetricId(), e);
+            }
         }
-    }
-
-    @Override
-    public void add(double delta) {
-        super.add(delta);
-        if (otelGauge != null) {
-            otelGauge.set(getValue(), attributes);
-        }
+        super.close();
     }
 }

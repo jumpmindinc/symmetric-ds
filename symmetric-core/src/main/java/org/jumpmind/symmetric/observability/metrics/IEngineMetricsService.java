@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.observability.metrics;
 import java.util.Collection;
 
 public interface IEngineMetricsService extends IMetricsService {
-
     String getEngineName();
 
     boolean isOtelPublishingEnabled();
@@ -33,4 +32,9 @@ public interface IEngineMetricsService extends IMetricsService {
     SymDoubleGauge getOrCreateGauge(String metricId, String description, String unitOfMeasurement);
 
     Collection<AbstractQueuedMetric> getAllMetrics();
+
+    /**
+     * Drains all completed intervals from this metric's queue into permanent storage (database).
+     */
+    public void saveCompletedIntervalStats();
 }

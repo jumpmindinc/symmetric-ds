@@ -20,39 +20,44 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.atomic.AtomicLong;
 
-import org.jumpmind.symmetric.observability.models.ObservationDouble;
+import org.jumpmind.symmetric.observability.models.ObservationLong;
 
 import io.opentelemetry.api.common.Attributes;
 
-public abstract class AbstractGauge extends AbstractQueuedMetric {
+/**
+ * Tracks a current value of long type.
+ */
+public abstract class AbstractCounterMetric extends AbstractQueuedMetric {
+    protected final AtomicLong currentValue = new AtomicLong(0);
 
-    protected final DoubleAdder currentValue = new DoubleAdder();
-
-    AbstractGauge(String metricId, Attributes attributes) {
+    AbstractCounterMetric(String metricId, Attributes attributes) {
         super(metricId, attributes);
     }
 
-    public double getValue() {
-        return this.currentValue.sum();
-    }
-
     /**
-     * Sets new value in an atomic operation and records time of change in a new observation
+     * Returns the current value of the counter (can change quickly in a highly concurrent environment)
      */
-    public void setValue(double newValue) {
-        this.currentValue.reset();
-        this.currentValue.add(newValue - this.currentValue.sum());
-        addObservation(new ObservationDouble(this.currentValue.sum(), this.lastModified = System.currentTimeMillis()));
+    public long getValue() {
+        return currentValue.get();
     }
 
     /**
      * Adds to the current value in an atomic operation and records time of change in a new observation
      */
-    public void add(double delta) {
-        this.currentValue.add(delta);
+    public void add(long delta) {
+        if (delta == 0) {
+            return;
+        }
         // Update current value via atomic operation and record observation:
-        addObservation(new ObservationDouble(this.currentValue.sum(), this.lastModified = System.currentTimeMillis()));
+        addObservation(new ObservationLong(this.currentValue.addAndGet(delta), this.lastModified = System.currentTimeMillis()));
+    }
+
+    /**
+     * Increments the current value in an atomic operation and records time of change in a new observation
+     */
+    public void increment() {
+        add(1);
     }
 }

@@ -18,10 +18,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.metrics;
+package org.jumpmind.symmetric.observability.models;
 
-public interface IMetricsService {
-    void saveCompletedIntervalStats();
-
-    void shutdown();
+/**
+ * Links a completed {@link MetricIntervalStats} window to the {@link MetricKey} that identifies the metric series it belongs to.
+ */
+public record MetricIntervalStatsRecord(MetricKey key, MetricIntervalStats stats) {
 }

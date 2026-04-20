@@ -23,19 +23,31 @@ package org.jumpmind.symmetric.observability.metrics;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
 
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.metrics.LongCounter;
+import io.opentelemetry.api.metrics.ObservableLongCounter;
 
 /**
- * Wraps a {@link LongCounter} with a fixed set of engine attributes. Only positive deltas are accepted; negative values are rejected with an
- * {@link IllegalArgumentException}.
+ * Monotonically increasing counter. Rejects negative deltas with {@link IllegalArgumentException}. The OTel SDK pulls the cumulative total via callback; call
+ * {@link #close()} on shutdown to unregister it.
  */
-public class IncreasingCounter extends AbstractCounter {
-    protected final LongCounter otelCounter;
+public class IncreasingCounter extends AbstractCounterMetric {
+    protected final ObservableLongCounter otelCounter;
     protected ObservationsQueue<ObservationLong> observations = new ObservationsQueue<ObservationLong>();
 
-    IncreasingCounter(String metricId, LongCounter counter, Attributes attributes) {
+    IncreasingCounter(String metricId, ObservableLongCounter otelCounter, Attributes attributes) {
         super(metricId, attributes);
-        this.otelCounter = counter;
+        this.otelCounter = otelCounter;
+    }
+
+    @Override
+    public void close() {
+        if (otelCounter != null) {
+            try {
+                otelCounter.close();
+            } catch (Exception e) {
+                log.warn("Failed to close OTel counter for {}", getMetricId(), e);
+            }
+        }
+        super.close();
     }
 
     @Override
@@ -44,8 +56,5 @@ public class IncreasingCounter extends AbstractCounter {
             throw new IllegalArgumentException("IncreasingCounter does not accept negative deltas: " + delta);
         }
         super.add(delta);
-        if (this.otelCounter != null) {
-            otelCounter.add(delta, attributes);
-        }
     }
 }

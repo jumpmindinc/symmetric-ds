@@ -26,11 +26,14 @@ import io.opentelemetry.api.common.Attributes;
  * This class is intended for collecting a small number of in-memory metrics, which are not engine-specific, but rather describe the host (server) as a whole.
  */
 class HostMetricsService extends AbstractMetricsService {
-
-
     HostMetricsService(MetricsManager metricsManager, boolean isOtelPublishingEnabled) {
         super(metricsManager, Attributes.empty(), isOtelPublishingEnabled);
         log.debug("Started Host metrics service");
+    }
+
+    @Override
+    public void saveCompletedIntervalStats() {
+        // Host-level metrics are in-memory only; no engine database to persist to.
     }
 
     @Override

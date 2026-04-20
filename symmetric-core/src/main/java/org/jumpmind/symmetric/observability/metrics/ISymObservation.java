@@ -22,5 +22,6 @@ package org.jumpmind.symmetric.observability.metrics;
 
 public interface ISymObservation {
     double getValueAsDouble();
+
     long getTimestamp();
 }

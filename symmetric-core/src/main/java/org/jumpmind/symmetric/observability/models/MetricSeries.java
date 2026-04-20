@@ -18,10 +18,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.metrics;
+package org.jumpmind.symmetric.observability.models;
 
-public interface IMetricsService {
-    void saveCompletedIntervalStats();
-
-    void shutdown();
+/**
+ * Represents a row from the {@code metric_key} table: a compact surrogate ID paired with the {@link MetricKey} identity (hostname, engine name, metric ID) it
+ * maps to.
+ *
+ * <p>
+ * {@code metricAttrId} is the {@code BIGINT} primary key used in {@code metric_interval} rows to avoid repeating the string-valued identity on every interval
+ * record.
+ */
+public record MetricSeries(long metricAttrId, MetricKey key) {
 }

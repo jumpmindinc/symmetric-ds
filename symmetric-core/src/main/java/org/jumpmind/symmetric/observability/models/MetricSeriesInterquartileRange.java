@@ -18,10 +18,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.metrics;
+package org.jumpmind.symmetric.observability.models;
 
-public interface IMetricsService {
-    void saveCompletedIntervalStats();
-
-    void shutdown();
+/**
+ * Immutable snapshot of quartile statistics and Tukey fences computed over a window of {@link MetricInterval} values.
+ *
+ * <ul>
+ * <li>{@code q1} — first quartile (25th percentile)</li>
+ * <li>{@code q2} — second quartile / median (50th percentile)</li>
+ * <li>{@code iqr} — interquartile range: Q3 − Q1</li>
+ * <li>{@code lowerFence} — Q1 − k × IQR (Tukey inner lower fence)</li>
+ * <li>{@code upperFence} — Q3 + k × IQR (Tukey inner upper fence)</li>
+ * </ul>
+ *
+ * <p>
+ * Q3 is not stored directly; it can be recovered as {@code q1 + iqr}.
+ */
+public record MetricSeriesInterquartileRange(
+        double q1,
+        double q2,
+        double iqr,
+        double lowerOutlierFence,
+        double upperOutlierFence) {
 }

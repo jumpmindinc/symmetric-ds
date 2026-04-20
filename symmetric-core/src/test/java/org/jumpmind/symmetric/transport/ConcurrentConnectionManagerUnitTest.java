@@ -42,7 +42,8 @@ public class ConcurrentConnectionManagerUnitTest {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
         when(engine.getEngineName()).thenReturn("test-engine");
         IParameterService parameterService = mock(IParameterService.class);
-        ConcurrentConnectionManager mgr = new ConcurrentConnectionManager(parameterService, new MockStatisticManager(), new EngineMetricsService(engine, TestMetricsManagerFactory.create(), false));
+        ConcurrentConnectionManager mgr = new ConcurrentConnectionManager(parameterService, new MockStatisticManager(), new EngineMetricsService(engine,
+                TestMetricsManagerFactory.create(), false));
         Map<String, Reservation> reservations = new HashMap<String, Reservation>();
         String nodeId = "1";
         Reservation current = new ConcurrentConnectionManager.Reservation(nodeId, System.currentTimeMillis() + 10000, ReservationType.HARD);

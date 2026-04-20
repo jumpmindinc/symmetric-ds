@@ -21,31 +21,38 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.metrics.LongUpDownCounter;
+import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 
 /**
- * Wraps a {@link LongUpDownCounter} and a queue of ObservationLong with a fixed set of attributes (specific to one node, host, etc.).
+ * Tracks a long value that can increase or decrease. Accepts positive and negative deltas. The OTel SDK reads the current value via a callback (registered in
+ * {@link AbstractMetricsService}) rather than receiving a push on every {@link #add} call, so no OTel work happens on the instrumented thread. The
+ * {@link ObservableLongUpDownCounter} handle is held here so it can be closed (unregistering the callback) during service shutdown.
  */
-public class UpDownCounter extends AbstractCounter {
-    protected final LongUpDownCounter otelCounter;
+public class UpDownCounter extends AbstractCounterMetric {
+    private ObservableLongUpDownCounter otelHandle;
 
-
-    UpDownCounter(String metricId, LongUpDownCounter otelCounter, Attributes attributes) {
+    UpDownCounter(String metricId, Attributes attributes) {
         super(metricId, attributes);
-        this.otelCounter = otelCounter;
     }
 
+    void setOtelHandle(ObservableLongUpDownCounter handle) {
+        this.otelHandle = handle;
+    }
 
     @Override
-    public void add(long delta) {
-        super.add(delta);
-        if (this.otelCounter != null) {
-            otelCounter.add(delta, attributes);
+    public void close() {
+        if (otelHandle != null) {
+            try {
+                otelHandle.close();
+            } catch (Exception e) {
+                log.warn("Failed to close OTel handle for {}", getMetricId(), e);
+            }
         }
+        super.close();
     }
 
     /**
-     * Decrements the current value in an atomic operation and records time of change in a new observation
+     * Decrements the current value in an atomic operation and records time of change in a new observation.
      */
     public void decrement() {
         add(-1);

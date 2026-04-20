@@ -20,8 +20,20 @@
  */
 package org.jumpmind.symmetric.observability.models;
 
+import org.jumpmind.symmetric.observability.repository.SurrogateLongKeyBuffer;
+
 /**
  * Uniquely identifies a metric time-series by host, engine, and metric name.
  */
-public record MetricKey(String hostname, String engineName, String metricId) {
+public record MetricKey(long key, String hostname, String engineName, String metricId) {
+    public boolean isSurrogateKeyMissing() {
+        return (key == SurrogateLongKeyBuffer.SURROGATE_KEY_UNASSIGNED);
+    }
+
+    public boolean equalsIgnoreKey(MetricKey other) {
+        return other != null && (this == other)
+                || ((hostname != null) && (hostname.equalsIgnoreCase(other.hostname))
+                        && (engineName != null) && (engineName.equalsIgnoreCase(other.engineName))
+                        && (metricId != null) && (metricId.equalsIgnoreCase(other.metricId)));
+    }
 }

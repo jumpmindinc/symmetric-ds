@@ -1,27 +1,30 @@
-package org.jumpmind.symmetric.observability.metrics;
+package org.jumpmind.symmetric.observability.stats;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
+import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
+
+public class MetricIntervalStatsQueue implements Queue<MetricIntervalStats> {
     public final static int MAX_QUEUE_SIZE = 10000000;
     protected static final long serialVersionUID = 1L;
     protected final AtomicInteger approximateSize = new AtomicInteger(0);
-    protected ConcurrentLinkedQueue<T> queue = new ConcurrentLinkedQueue<T>();
+    protected volatile ConcurrentLinkedQueue<MetricIntervalStats> queue = new ConcurrentLinkedQueue<>();
 
-    public ObservationsQueue() {
+    public MetricIntervalStatsQueue() {
         super();
     }
 
     @Override
-    public boolean addAll(Collection<? extends T> c) {
+    public boolean addAll(Collection<? extends MetricIntervalStats> c) {
         boolean changed = false;
-        for (T item : c) {
+        for (MetricIntervalStats item : c) {
             if (offer(item)) {
                 changed = true;
             }
@@ -55,16 +58,16 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
     }
 
     @Override
-    public Iterator<T> iterator() {
-        Iterator<T> delegate = queue.iterator();
-        return new Iterator<T>() {
+    public Iterator<MetricIntervalStats> iterator() {
+        Iterator<MetricIntervalStats> delegate = queue.iterator();
+        return new Iterator<MetricIntervalStats>() {
             @Override
             public boolean hasNext() {
                 return delegate.hasNext();
             }
 
             @Override
-            public T next() {
+            public MetricIntervalStats next() {
                 return delegate.next();
             }
 
@@ -98,10 +101,10 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        Iterator<T> it = queue.iterator();
+        Iterator<MetricIntervalStats> it = queue.iterator();
         boolean changed = false;
         while (it.hasNext()) {
-            T item = it.next();
+            MetricIntervalStats item = it.next();
             if (!c.contains(item)) {
                 it.remove();
                 approximateSize.decrementAndGet();
@@ -127,19 +130,19 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
     }
 
     @Override
-    public boolean add(T arg0) {
+    public boolean add(MetricIntervalStats arg0) {
         return offer(arg0);
     }
 
     @Override
-    public T element() {
+    public MetricIntervalStats element() {
         return queue.element();
     }
 
     @Override
-    public boolean offer(T arg0) {
+    public boolean offer(MetricIntervalStats arg0) {
         while (approximateSize.get() >= MAX_QUEUE_SIZE) {
-            T removed = queue.poll();
+            MetricIntervalStats removed = queue.poll();
             if (removed != null) {
                 approximateSize.decrementAndGet();
             } else {
@@ -154,13 +157,13 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
     }
 
     @Override
-    public T peek() {
+    public MetricIntervalStats peek() {
         return queue.peek();
     }
 
     @Override
-    public T poll() {
-        T item = queue.poll();
+    public MetricIntervalStats poll() {
+        MetricIntervalStats item = queue.poll();
         if (item != null) {
             approximateSize.decrementAndGet();
         }
@@ -168,42 +171,60 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
     }
 
     @Override
-    public T remove() {
-        T item = queue.remove();
+    public MetricIntervalStats remove() {
+        MetricIntervalStats item = queue.remove();
         approximateSize.decrementAndGet();
         return item;
     }
 
     /**
-     * Returns all observations whose timestamp falls within [start, end] without removing them from the queue.
+     * Returns all intervals whose start epoch falls within [start, end] without removing them from the queue.
      */
-    @SuppressWarnings("unchecked")
-    public T[] peekBetween(long start, long end) {
-        List<T> result = new ArrayList<>();
-        for (T item : queue) {
-            long ts = item.getTimestamp();
+    public MetricIntervalStats[] peekBetween(long start, long end) {
+        List<MetricIntervalStats> result = new ArrayList<>();
+        for (MetricIntervalStats item : queue) {
+            long ts = item.getStartEpoch();
             if (ts >= start && ts <= end) {
                 result.add(item);
             }
         }
-        return (T[]) result.toArray(new ISymObservation[0]);
+        return result.toArray(new MetricIntervalStats[0]);
     }
 
     /**
-     * Removes and returns all observations whose timestamp falls within [start, end].
+     * Removes and returns all intervals whose start epoch falls within [start, end].
      */
-    @SuppressWarnings("unchecked")
-    public T[] removeAllBetween(long start, long end) {
-        List<T> result = new ArrayList<>();
-        Iterator<T> it = iterator();
+    public MetricIntervalStats[] removeAllBetween(long start, long end) {
+        List<MetricIntervalStats> result = new ArrayList<>();
+        Iterator<MetricIntervalStats> it = iterator();
         while (it.hasNext()) {
-            T item = it.next();
-            long ts = item.getTimestamp();
+            MetricIntervalStats item = it.next();
+            long ts = item.getStartEpoch();
             if (ts >= start && ts <= end) {
                 it.remove();
                 result.add(item);
             }
         }
-        return (T[]) result.toArray(new ISymObservation[0]);
+        return result.toArray(new MetricIntervalStats[0]);
+    }
+
+    /**
+     * Atomically detaches the current queue and returns all of its contents. Swaps the live queue reference for a fresh empty one and resets the size counter
+     * in a single {@code getAndSet}, so callers that concurrently call {@link #offer} are immediately directed to the new queue with zero contention. Draining
+     * the detached snapshot requires no per-element atomic operations.
+     */
+    public List<MetricIntervalStats> exportAll() {
+        ConcurrentLinkedQueue<MetricIntervalStats> snapshot = queue;
+        queue = new ConcurrentLinkedQueue<>();
+        int capacity = approximateSize.getAndSet(0);
+        if (capacity == 0 && snapshot.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<MetricIntervalStats> result = new ArrayList<>(Math.max(capacity, 16));
+        MetricIntervalStats item;
+        while ((item = snapshot.poll()) != null) {
+            result.add(item);
+        }
+        return result;
     }
 }

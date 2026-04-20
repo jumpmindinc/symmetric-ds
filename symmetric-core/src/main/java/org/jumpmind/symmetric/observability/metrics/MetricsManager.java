@@ -25,25 +25,31 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.DoubleSupplier;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.common.ParameterConstants;
-import org.jumpmind.symmetric.observability.stats.MetricAggregator;
+import org.jumpmind.symmetric.observability.stats.IPrimaryMetricAggregator;
+import org.jumpmind.symmetric.observability.stats.PrimaryMetricAggregator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
-import io.opentelemetry.api.metrics.DoubleGauge;
+import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.DoubleHistogram;
-import io.opentelemetry.api.metrics.LongCounter;
-import io.opentelemetry.api.metrics.LongUpDownCounter;
 import io.opentelemetry.api.metrics.Meter;
 import io.opentelemetry.api.metrics.ObservableDoubleGauge;
+import io.opentelemetry.api.metrics.ObservableLongCounter;
+import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 
+/**
+ * The singular and central point of managin both embedded and OpenTelemetry metrics.
+ */
 public class MetricsManager {
     private static final Logger log = LoggerFactory.getLogger(MetricsManager.class);
     private static volatile MetricsManager globalInstance;
@@ -53,7 +59,7 @@ public class MetricsManager {
     private HostMetricsService hostMetricsService;
     private Meter otelMeter;
     private final List<IEngineMetricsService> engineMetricsServices = new CopyOnWriteArrayList<>();
-    private MetricAggregator aggregator;
+    private IPrimaryMetricAggregator aggregator; // Runs on a dedicated thread, to avoid impacting instrumented code.
 
     private MetricsManager() {
         this.isOtelPublishingEnabled = isSystemPropetryOtelPublishingEnabled();
@@ -123,13 +129,22 @@ public class MetricsManager {
         return this.otelMeter;
     }
 
-    public DoubleGauge createGauge(String metricId, String description, String unitOfMeasurement) {
+    /**
+     * Registers a callback-based observable gauge. The OTel SDK pulls the current value from {@code valueSupplier} on each export cycle rather than blocking
+     * the instrumented thread. The returned handle is {@link AutoCloseable}; close it to unregister the callback.
+     */
+    public ObservableDoubleGauge createGauge(String metricId, String description, String unitOfMeasurement,
+            DoubleSupplier valueSupplier, Attributes attributes) {
         return otelMeter.gaugeBuilder(metricId)
                 .setDescription(description)
                 .setUnit(unitOfMeasurement)
-                .build();
+                .buildWithCallback(measurement -> measurement.record(valueSupplier.getAsDouble(), attributes));
     }
 
+    /**
+     * Registers a callback-based observable gauge with a {@link Supplier}{@code <Double>} for callers that already hold a boxed-double supplier reference. The
+     * returned handle is {@link AutoCloseable}; close it to unregister the callback.
+     */
     public ObservableDoubleGauge createObservableGauge(String metricId, String description, String unitOfMeasurement,
             Supplier<Double> valueSupplier) {
         return otelMeter.gaugeBuilder(metricId)
@@ -138,18 +153,28 @@ public class MetricsManager {
                 .buildWithCallback(measurement -> measurement.record(valueSupplier.get()));
     }
 
-    public LongCounter createIncreasingCounter(String metricId, String description, String unitOfMeasurement) {
+    /**
+     * Registers a callback-based observable monotonic counter. The OTel SDK reads the cumulative total from {@code valueSupplier} on each export cycle. The
+     * returned handle is {@link AutoCloseable}; close it to unregister the callback.
+     */
+    public ObservableLongCounter createIncreasingCounter(String metricId, String description, String unitOfMeasurement,
+            LongSupplier valueSupplier, Attributes attributes) {
         return otelMeter.counterBuilder(metricId)
-                .setUnit(unitOfMeasurement)
                 .setDescription(description)
-                .build();
+                .setUnit(unitOfMeasurement)
+                .buildWithCallback(measurement -> measurement.record(valueSupplier.getAsLong(), attributes));
     }
 
-    public LongUpDownCounter createUpDownCounter(String metricId, String description, String unitOfMeasurement) {
+    /**
+     * Registers a callback-based observable up-down counter. The OTel SDK reads the current value from {@code valueSupplier} on each export cycle rather than
+     * blocking the instrumented thread. The returned handle is {@link AutoCloseable}; close it to unregister the callback.
+     */
+    public ObservableLongUpDownCounter createUpDownCounter(String metricId, String description, String unitOfMeasurement,
+            LongSupplier valueSupplier, Attributes attributes) {
         return otelMeter.upDownCounterBuilder(metricId)
-                .setUnit(unitOfMeasurement)
                 .setDescription(description)
-                .build();
+                .setUnit(unitOfMeasurement)
+                .buildWithCallback(measurement -> measurement.record(valueSupplier.getAsLong(), attributes));
     }
 
     public DoubleHistogram createHistogram(String metricId, String description, String unitOfMeasurement) {
@@ -173,12 +198,12 @@ public class MetricsManager {
 
     public synchronized void startAggregation() {
         if (aggregator == null) {
-            aggregator = new MetricAggregator(this, resolveHostname());
+            aggregator = new PrimaryMetricAggregator(this, resolveHostname());
         }
         aggregator.start();
     }
 
-    public MetricAggregator getAggregator() {
+    public IPrimaryMetricAggregator getAggregator() {
         return aggregator;
     }
 
@@ -190,10 +215,17 @@ public class MetricsManager {
         }
     }
 
+    /**
+     * Stops the aggregator (which shuts down all registered engine services and closes their OTel handles), then shuts down the host metrics service, and
+     * finally tears down the OTel SDK if it was auto-initialized by this manager.
+     */
     public void shutdown() {
         if (aggregator != null) {
             aggregator.stop();
             aggregator = null;
+        }
+        if (hostMetricsService != null) {
+            hostMetricsService.shutdown();
         }
         if (isOtelSdkInternal && openTelemetry instanceof OpenTelemetrySdk sdk) {
             sdk.shutdown();

@@ -23,8 +23,8 @@ package org.jumpmind.symmetric.observability.metrics;
 import io.opentelemetry.api.OpenTelemetry;
 
 /**
- * Test helper that creates a MetricsManager using the noop OpenTelemetry implementation,
- * avoiding the global autoconfigure initialization that fails in unit test environments.
+ * Test helper that creates a MetricsManager using the noop OpenTelemetry implementation, avoiding the global autoconfigure initialization that fails in unit
+ * test environments.
  */
 public class TestMetricsManagerFactory {
     public static MetricsManager create() {

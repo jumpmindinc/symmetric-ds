@@ -18,10 +18,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.metrics;
+package org.jumpmind.symmetric.observability.stats;
 
-public interface IMetricsService {
-    void saveCompletedIntervalStats();
+import java.util.List;
 
-    void shutdown();
+import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
+import org.jumpmind.symmetric.observability.models.MetricKey;
+
+/**
+ * Contract for a background component that drains metric observation queues, aggregates them into {@link MetricIntervalStats} windows — primary aggregation.
+ * This is in contrast to secondary aggregation which changes scale from smaller (primary) time intervals into larger ones.
+ */
+public interface IPrimaryMetricAggregator {
+    /** Starts the aggregation background thread. */
+    void start();
+
+    /** Signals the background thread to stop and waits for a final drain. */
+    void stop();
 }

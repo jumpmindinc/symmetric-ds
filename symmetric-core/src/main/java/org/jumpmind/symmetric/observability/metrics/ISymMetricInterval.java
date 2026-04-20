@@ -18,17 +18,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.models;
+package org.jumpmind.symmetric.observability.metrics;
 
-/**
- * Immutable snapshot of aggregated statistics for one closed 5-minute window of a single metric.
- */
-public record MetricInterval(
-        long intervalStart,
-        long intervalEnd,
-        double avg,
-        double min,
-        double max,
-        double stdDev,
-        int observationCount) {
+import java.sql.Date;
+
+public interface ISymMetricInterval {
+    long getStartEpoch();
+
+    long getEndEpoch();
+
+    double getAvg();
+
+    double getMin();
+
+    double max();
+
+    double getStdDeviation();
+
+    long getObservationCount();
+
+    double mean();
+
+    boolean isOutlier();
+
+    Date getStartTimeUtc();
 }

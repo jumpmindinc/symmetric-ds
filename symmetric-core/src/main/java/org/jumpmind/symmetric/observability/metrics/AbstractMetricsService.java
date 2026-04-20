@@ -25,12 +25,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.metrics.DoubleGauge;
-import io.opentelemetry.api.metrics.LongUpDownCounter;
 
 /**
  * Base class which owns multiple metrics (counters, gauges). Subclasses supply the attributes that identify the metric's scope (e.g. engine name, host).
@@ -38,10 +37,12 @@ import io.opentelemetry.api.metrics.LongUpDownCounter;
 abstract class AbstractMetricsService implements IMetricsService {
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     protected final MetricsManager metricsManager;
+    protected static final String hostname = AppUtils.getHostName();
     protected final Attributes attributes;
     private final Map<String, UpDownCounter> upDownCounters = new ConcurrentHashMap<>();
     private final Map<String, SymDoubleGauge> gauges = new ConcurrentHashMap<>();
     private final boolean isOtelPublishingEnabled;
+    private final List<AutoCloseable> otelHandles = new ArrayList<>();
 
     protected AbstractMetricsService(MetricsManager metricsManager, Attributes attributes, boolean isOtelPublishingEnabled) {
         this.metricsManager = metricsManager;
@@ -59,11 +60,12 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     private UpDownCounter createUpDownCounterInternal(String metricId, String description, String unitOfMeasurement) {
-        LongUpDownCounter otelCounter = null;
+        UpDownCounter counter = new UpDownCounter(metricId, attributes);
         if (isOtelPublishingEnabled) {
-            otelCounter = metricsManager.createUpDownCounter(metricId, description, unitOfMeasurement);
+            otelHandles.add(metricsManager.createUpDownCounter(
+                    metricId, description, unitOfMeasurement, counter::getValue, attributes));
         }
-        return new UpDownCounter(metricId, otelCounter, attributes);
+        return counter;
     }
 
     public UpDownCounter getUpDownCounter(String metricId) {
@@ -75,11 +77,12 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     private SymDoubleGauge createGaugeInternal(String metricId, String description, String unitOfMeasurement) {
-        DoubleGauge otelGauge = null;
+        SymDoubleGauge gauge = new SymDoubleGauge(metricId, attributes);
         if (isOtelPublishingEnabled) {
-            otelGauge = metricsManager.createGauge(metricId, description, unitOfMeasurement);
+            otelHandles.add(metricsManager.createGauge(
+                    metricId, description, unitOfMeasurement, gauge::getValue, attributes));
         }
-        return new SymDoubleGauge(metricId, otelGauge, attributes);
+        return gauge;
     }
 
     public SymDoubleGauge getGauge(String metricId) {
@@ -94,6 +97,14 @@ abstract class AbstractMetricsService implements IMetricsService {
 
     @Override
     public void shutdown() {
+        for (AutoCloseable handle : otelHandles) {
+            try {
+                handle.close();
+            } catch (Exception e) {
+                log.warn("Failed to close OTel instrument handle", e);
+            }
+        }
+        otelHandles.clear();
         upDownCounters.clear();
         gauges.clear();
     }
