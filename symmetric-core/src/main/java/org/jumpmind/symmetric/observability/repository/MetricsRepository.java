@@ -167,11 +167,11 @@ public class MetricsRepository {
         if (surrogateKeys.isAvailable() && !METRIC_SHARED_ENGINE.equals(engineName)) {
             metricKeyRec = assignSurrogateKeyAndSaveMetricKeyToDatabase(hostname, engineName, metricId);
         } else {
-            metricKeyRec = generateSurrogateKeyAndSaveMetricKeyToDatabase(hostname, engineName, metricId);            
-            if(!METRIC_SHARED_ENGINE.equals(engineName)){
-                long nextAvailableValue = metricKeyRec.key()+1; 
+            metricKeyRec = generateSurrogateKeyAndSaveMetricKeyToDatabase(hostname, engineName, metricId);
+            if (!METRIC_SHARED_ENGINE.equals(engineName)) {
+                long nextAvailableValue = metricKeyRec.key() + 1;
                 long bufferStart = SurrogateLongKeyBuffer.roundDownToBufferStart(nextAvailableValue);
-                surrogateKeys.moveTo(bufferStart, nextAvailableValue );
+                surrogateKeys.moveTo(bufferStart, nextAvailableValue);
             }
         }
         log.debug("Cache miss. Inserted new metric key record {}", metricKeyRec);
@@ -221,7 +221,7 @@ public class MetricsRepository {
             }
         }
         MetricKey metricKeyRec = loadMetricKeyFromDatabase(metricId, engineName, hostname);
-            if(!METRIC_SHARED_ENGINE.equals(engineName)) {
+        if (!METRIC_SHARED_ENGINE.equals(engineName)) {
             synchronized (surrogateKeys) {
                 surrogateKeys.moveTo(metricKeyRec.key(), metricKeyRec.key() + 1);
             }
@@ -386,7 +386,7 @@ public class MetricsRepository {
     }
 
     /**
-     *  Initializes (or advances) surrogate keys buffer to be either higher than all keys or encompass the last key.
+     * Initializes (or advances) surrogate keys buffer to be either higher than all keys or encompass the last key.
      */
     private void populateSurrogateKeyBuffer(List<MetricKey> metricKeys) {
         long nextAvailableValue = 0;
@@ -394,15 +394,15 @@ public class MetricsRepository {
         synchronized (surrogateKeys) {
             for (MetricKey key : metricKeys) {
                 if (nextAvailableValue < key.key()) {
-                    if(METRIC_SHARED_ENGINE.equals(key.engineName()) ){
-                        nextAvailableValue = SurrogateLongKeyBuffer.roundUpToNextBufferStart(key.key());                        
+                    if (METRIC_SHARED_ENGINE.equals(key.engineName())) {
+                        nextAvailableValue = SurrogateLongKeyBuffer.roundUpToNextBufferStart(key.key());
                     } else {
-                        nextAvailableValue = key.key()+1;
+                        nextAvailableValue = key.key() + 1;
                     }
                 }
             }
             bufferStart = SurrogateLongKeyBuffer.roundDownToBufferStart(nextAvailableValue);
-            surrogateKeys.moveTo(bufferStart, nextAvailableValue );
+            surrogateKeys.moveTo(bufferStart, nextAvailableValue);
         }
         log.info("Processed {} keys. Computed max surrogate key span: start={}, next.value={}", metricKeys.size(), bufferStart, nextAvailableValue);
     }

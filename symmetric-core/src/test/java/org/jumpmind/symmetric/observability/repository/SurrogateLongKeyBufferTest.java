@@ -28,21 +28,19 @@ import static org.jumpmind.symmetric.observability.repository.SurrogateLongKeyBu
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SurrogateLongKeyBufferTest {
-
     // -----------------------------------------------------------------------
     // roundDownToBufferStart — rounds value down to the nearest SPAN boundary
     // -----------------------------------------------------------------------
-
     @ParameterizedTest(name = "roundDown({0}) == {1}")
     @CsvSource({
-        "0,   0",   // already on a boundary
-        "1,   0",   // first slot inside span 0
-        "9,   0",   // last slot inside span 0
-        "10,  10",  // exactly on next boundary
-        "15,  10",  // mid-span
-        "19,  10",  // last slot inside span 10
-        "20,  20",  // exactly on span 20 boundary
-        "100, 100"  // larger multiple
+            "0,   0", // already on a boundary
+            "1,   0", // first slot inside span 0
+            "9,   0", // last slot inside span 0
+            "10,  10", // exactly on next boundary
+            "15,  10", // mid-span
+            "19,  10", // last slot inside span 10
+            "20,  20", // exactly on span 20 boundary
+            "100, 100" // larger multiple
     })
     void roundDown_parametrized(long input, long expected) {
         assertEquals(expected, SurrogateLongKeyBuffer.roundDownToBufferStart(input));
@@ -69,21 +67,20 @@ class SurrogateLongKeyBufferTest {
         assertEquals(SURROGATE_KEY_BUFFER_SIZE,
                 SurrogateLongKeyBuffer.roundDownToBufferStart(SURROGATE_KEY_BUFFER_SIZE + 1));
     }
-
     // -----------------------------------------------------------------------
     // roundUpToNextBufferStart — returns distance from value to the next
-    //   SPAN boundary (result is in [1, SPAN_SIZE])
+    // SPAN boundary (result is in [1, SPAN_SIZE])
     // -----------------------------------------------------------------------
 
     @ParameterizedTest(name = "roundUp({0}) == {1}")
     @CsvSource({
-        "0,  10",   // on boundary → full span away
-        "1,   9",
-        "5,   5",   // mid-span
-        "9,   1",   // one step from next boundary
-        "10, 10",   // on boundary again → full span away
-        "11,  9",
-        "20, 10"    // another boundary
+            "0,  10", // on boundary → full span away
+            "1,   9",
+            "5,   5", // mid-span
+            "9,   1", // one step from next boundary
+            "10, 10", // on boundary again → full span away
+            "11,  9",
+            "20, 10" // another boundary
     })
     void roundUp_parametrized(long input, long expected) {
         assertEquals(expected, SurrogateLongKeyBuffer.roundUpToNextBufferStart(input));
@@ -110,21 +107,20 @@ class SurrogateLongKeyBufferTest {
         assertEquals(SURROGATE_KEY_BUFFER_SIZE - 1,
                 SurrogateLongKeyBuffer.roundUpToNextBufferStart(SURROGATE_KEY_BUFFER_SIZE + 1));
     }
-
     // -----------------------------------------------------------------------
     // Combined: roundDown(value + roundUp(value)) == next buffer boundary
     // -----------------------------------------------------------------------
 
     @ParameterizedTest(name = "roundDown(value={0} + roundUp(value)) == {1}")
     @CsvSource({
-        "0,  10",   // on boundary → next boundary is SPAN away
-        "1,  10",
-        "5,  10",   // mid-span
-        "9,  10",   // one step from boundary
-        "10, 20",   // on next boundary → jumps to the one after
-        "15, 20",
-        "19, 20",
-        "20, 30"
+            "0,  10", // on boundary → next boundary is SPAN away
+            "1,  10",
+            "5,  10", // mid-span
+            "9,  10", // one step from boundary
+            "10, 20", // on next boundary → jumps to the one after
+            "15, 20",
+            "19, 20",
+            "20, 30"
     })
     void roundDown_of_valuePlusRoundUp_equalsNextBoundary(long value, long expectedNextBoundary) {
         long offset = SurrogateLongKeyBuffer.roundUpToNextBufferStart(value);

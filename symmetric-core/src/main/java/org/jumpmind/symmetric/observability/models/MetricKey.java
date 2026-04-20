@@ -31,9 +31,9 @@ public record MetricKey(long key, String hostname, String engineName, String met
     }
 
     public boolean equalsIgnoreKey(MetricKey other) {
-        return other != null && (this == other)
+        return other != null && ((this == other)
                 || ((hostname != null) && (hostname.equalsIgnoreCase(other.hostname))
                         && (engineName != null) && (engineName.equalsIgnoreCase(other.engineName))
-                        && (metricId != null) && (metricId.equalsIgnoreCase(other.metricId)));
+                        && (metricId != null) && (metricId.equalsIgnoreCase(other.metricId))));
     }
 }

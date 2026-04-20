@@ -50,13 +50,12 @@ public class SurrogateLongKeyBuffer {
     }
 
     public static long roundDownToBufferStart(long value) {
-        return SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE * ( value / SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE);
+        return SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE * (value / SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE);
     }
 
     public static long roundUpToNextBufferStart(long value) {
         return SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE - value % SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
     }
-
 
     public long size() {
         return this.end + 1 - this.nextKey.get();
