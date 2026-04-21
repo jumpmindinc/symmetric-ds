@@ -1025,6 +1025,11 @@
         <column name="fact_type" type="VARCHAR" size="10" required="true" description="Statistics precision type: FLOAT64 (gauges) or INT64 (counters)." />
         <column name="create_time" type="TIMESTAMP" required="true"  description="Timestamp when this entry was created." />
         <column name="last_update_time" type="TIMESTAMP" required="true"  description="Timestamp when this entry was last updated." />
+        <index name="idx_metric_key_lookup">
+            <index-column name="engine_name" />
+            <index-column name="metric_id" />
+            <index-column name="hostname" />
+        </index>
     </table>
 
     <table name="metric_stats_float64" description="Fact table storing one aggregated 5-minute window per metric key. Statistics are time-weighted using a step-function model.">
