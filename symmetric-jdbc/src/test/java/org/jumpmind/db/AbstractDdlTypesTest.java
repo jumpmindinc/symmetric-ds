@@ -26,7 +26,7 @@ import static org.junit.Assume.assumeTrue;
 
 import java.io.StringReader;
 
-import org.apache.logging.log4j.Level;
+import ch.qos.logback.classic.Level;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.PlatformColumn;

@@ -24,7 +24,6 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import java.io.File;
 import java.io.PrintWriter;
-import java.net.MalformedURLException;
 import java.security.Provider;
 import java.security.Security;
 import java.sql.Connection;
@@ -189,7 +188,7 @@ public abstract class AbstractCommandLauncher {
         writer.flush();
     }
 
-    protected void configureLogging(CommandLine line) throws MalformedURLException {
+    protected void configureLogging(CommandLine line) {
         String overrideLogFileName = null;
         if (line.hasOption(OPTION_PROPERTIES_FILE)) {
             File file = new File(line.getOptionValue(OPTION_PROPERTIES_FILE));
