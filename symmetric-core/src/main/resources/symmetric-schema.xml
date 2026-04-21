@@ -1017,22 +1017,22 @@
         </foreign-key>
     </table>
 
-    <table name="metric_key" description="Dimension table that maps a compact surrogate key to a metric time-series identity (hostname, engine name, metric ID).">
+    <table name="metric_key" description="Metric header - a dimension table that maps a compact surrogate key to a metric time-series identity (metric ID, hostname, engine name).">
         <column name="metric_key" type="BIGINT" required="true" primaryKey="true" description="Surrogate identifier for a unique metric key." />
-        <column name="hostname" type="VARCHAR" size="255" required="true" description="Hostname of the SymmetricDS node that produced the metric." />
         <column name="engine_name" type="VARCHAR" size="255" required="true" description="Name of the engine that produced the metric." />
         <column name="metric_id" type="VARCHAR" size="255" required="true" description="Identifier of the metric instrument." />
         <column name="fact_type" type="VARCHAR" size="10" required="true" description="Statistics precision type: FLOAT64 (gauges) or INT64 (counters)." />
+        <column name="hostname" type="VARCHAR" size="255" required="true" description="Hostname of the SymmetricDS node that produced the metric." />
         <column name="create_time" type="TIMESTAMP" required="true"  description="Timestamp when this entry was created." />
         <column name="last_update_time" type="TIMESTAMP" required="true"  description="Timestamp when this entry was last updated." />
         <index name="idx_metric_key_lookup">
-            <index-column name="engine_name" />
             <index-column name="metric_id" />
+            <index-column name="engine_name" />
             <index-column name="hostname" />
         </index>
     </table>
 
-    <table name="metric_stats_float64" description="Fact table storing one aggregated 5-minute window per metric key. Statistics are time-weighted using a step-function model.">
+    <table name="metric_stats_float64" description="Fact table for floating-point observations aggregated across a time window (per metric). Statistics are time-weighted using a step-function model.">
         <column name="metric_key" type="BIGINT" required="true" primaryKey="true" description="Foreign key to metric_key." />
         <column name="interval_start" type="BIGINT" required="true" primaryKey="true" description="Start of the 5-minute window in epoch milliseconds." />
         <column name="end_time" type="TIMESTAMP" required="true" description="End of the 5-minute window as a timestamp with time zone." />
@@ -1045,7 +1045,7 @@
         <column name="duration_seconds" type="INTEGER" required="true" description="Duration of the interval in seconds (interval_end - interval_start converted from milliseconds)." />
     </table>
 
-    <table name="metric_stats_int64" description="Fact table storing one aggregated 5-minute window per metric key. Statistics are time-weighted using a step-function model. Integer variant: min, max, avg, mean are BIGINT.">
+    <table name="metric_stats_int64" description="Fact table for integer observations aggregated across a time window (per metric). Statistics are time-weighted using a step-function model. Integer variant: min, max, avg, mean are BIGINT.">
         <column name="metric_key" type="BIGINT" required="true" primaryKey="true" description="Foreign key to metric_key." />
         <column name="interval_start" type="BIGINT" required="true" primaryKey="true" description="Start of the 5-minute window in epoch milliseconds." />
         <column name="end_time" type="TIMESTAMP" required="true" description="End of the 5-minute window as a timestamp with time zone." />
