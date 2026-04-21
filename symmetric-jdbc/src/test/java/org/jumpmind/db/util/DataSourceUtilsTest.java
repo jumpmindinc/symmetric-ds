@@ -22,6 +22,10 @@ package org.jumpmind.db.util;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -33,6 +37,9 @@ import java.util.logging.Logger;
 import javax.sql.DataSource;
 
 import org.junit.jupiter.api.Test;
+
+import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariPoolMXBean;
 
 class DataSourceUtilsTest {
     @Test
@@ -58,6 +65,43 @@ class DataSourceUtilsTest {
     void closeQuietlySwallowsExceptionFromClose() {
         DataSource ds = new ThrowingCloseableDataSource();
         assertDoesNotThrow(() -> DataSourceUtils.closeQuietly(ds));
+    }
+
+    @Test
+    void resetQuietlyDoesNothingForNull() {
+        assertDoesNotThrow(() -> DataSourceUtils.resetQuietly(null));
+    }
+
+    @Test
+    void resetQuietlyEvictsConnectionsOnHikariDataSource() {
+        HikariPoolMXBean mxBean = mock(HikariPoolMXBean.class);
+        HikariDataSource hikari = mock(HikariDataSource.class);
+        when(hikari.getHikariPoolMXBean()).thenReturn(mxBean);
+        DataSourceUtils.resetQuietly(hikari);
+        verify(mxBean).softEvictConnections();
+        verify(hikari, never()).close();
+    }
+
+    @Test
+    void resetQuietlyToleratesNullMxBeanOnHikariDataSource() {
+        HikariDataSource hikari = mock(HikariDataSource.class);
+        when(hikari.getHikariPoolMXBean()).thenReturn(null);
+        assertDoesNotThrow(() -> DataSourceUtils.resetQuietly(hikari));
+        verify(hikari, never()).close();
+    }
+
+    @Test
+    void resetQuietlyClosesNonHikariAutoCloseableDataSource() {
+        AtomicBoolean closed = new AtomicBoolean(false);
+        DataSource ds = new CloseableDataSource(() -> closed.set(true));
+        DataSourceUtils.resetQuietly(ds);
+        assertTrue(closed.get(), "close() should have been called");
+    }
+
+    @Test
+    void resetQuietlyDoesNothingForNonCloseableDataSource() {
+        DataSource ds = new NonCloseableDataSource();
+        assertDoesNotThrow(() -> DataSourceUtils.resetQuietly(ds));
     }
 
     private static class CloseableDataSource extends StubDataSource implements AutoCloseable {
