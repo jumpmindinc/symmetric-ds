@@ -52,6 +52,8 @@ import ch.qos.logback.core.util.FileSize;
 public class LogbackHelper {
     private static final Logger log = LoggerFactory.getLogger(LogbackHelper.class);
     private static final String DEFAULT_LOG_PATTERN = "%d %p [%X{engineName}] [%c{0}] [%t] %m%n";
+    private static final String CONSOLE_LOG_PATTERN = "%d %p [%X{engineName}] [%c{0}] [%t] %m%ex%n";
+    private static final String VERBOSE_CONSOLE_LOG_PATTERN = "%d %-5p [%X{engineName}] [%c{0}] [%t] %m%ex%n";
     private static final String APPENDER_CONSOLE = "CONSOLE";
     private static final String APPENDER_CONSOLE_ERR = "CONSOLE_ERR";
     private static final String APPENDER_ROLLING = "ROLLING";
@@ -88,22 +90,20 @@ public class LogbackHelper {
     public void registerConsoleAppender() {
         removeAppender(APPENDER_CONSOLE);
         removeAppender(APPENDER_CONSOLE_ERR);
-        String pattern = "%d %p [%X{engineName}] [%c{0}] [%t] %m%ex%n";
-        addAppender(buildConsoleAppender(APPENDER_CONSOLE, "System.out", pattern,
+        addAppender(buildConsoleAppender(APPENDER_CONSOLE, "System.out", CONSOLE_LOG_PATTERN,
                 buildLevelFilter(Level.WARN, FilterReply.DENY, FilterReply.NEUTRAL),
                 buildLevelFilter(Level.ERROR, FilterReply.DENY, FilterReply.ACCEPT)));
-        addAppender(buildConsoleAppender(APPENDER_CONSOLE_ERR, "System.err", pattern,
+        addAppender(buildConsoleAppender(APPENDER_CONSOLE_ERR, "System.err", CONSOLE_LOG_PATTERN,
                 buildThresholdFilter(Level.WARN.toString())));
     }
 
     public void registerVerboseConsoleAppender() {
         removeAppender(APPENDER_CONSOLE);
         removeAppender(APPENDER_CONSOLE_ERR);
-        String pattern = "%d %-5p [%X{engineName}] [%c{0}] [%t] %m%ex%n";
-        addAppender(buildConsoleAppender(APPENDER_CONSOLE, "System.out", pattern,
+        addAppender(buildConsoleAppender(APPENDER_CONSOLE, "System.out", VERBOSE_CONSOLE_LOG_PATTERN,
                 buildLevelFilter(Level.WARN, FilterReply.DENY, FilterReply.NEUTRAL),
                 buildLevelFilter(Level.ERROR, FilterReply.DENY, FilterReply.ACCEPT)));
-        addAppender(buildConsoleAppender(APPENDER_CONSOLE_ERR, "System.err", pattern,
+        addAppender(buildConsoleAppender(APPENDER_CONSOLE_ERR, "System.err", VERBOSE_CONSOLE_LOG_PATTERN,
                 buildThresholdFilter(Level.WARN.toString())));
     }
 
