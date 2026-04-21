@@ -71,6 +71,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
         int exportedMetrics = 0;
         for (AbstractQueuedMetric metric : getAllMetrics()) {
             try {
+                metric.closeCompletedIntervals();
                 MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType());
                 for (ISymIntervalStats interval : metric.exportCompletedIntervals(key)) {
                     newlyCompleted.add(new MetricIntervalStatsRecord(key, interval));

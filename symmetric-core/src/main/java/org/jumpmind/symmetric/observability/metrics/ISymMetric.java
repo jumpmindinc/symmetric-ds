@@ -30,7 +30,7 @@ public interface ISymMetric {
     /**
      * Drains all completed intervals from this metric's queue into permanent storage (database).
      */
-    void saveCompletedIntervals();
+    void closeCompletedIntervals();
 
     /**
      * Closes this metric, preventing any further observations from being recorded. Also unregisters the associated OTel callback if one is present.

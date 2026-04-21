@@ -180,7 +180,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
      * Closes any accumulator whose window has expired, moving it into the completed-intervals queue so it is ready for the service layer to export and persist.
      */
     @Override
-    public void saveCompletedIntervals() {
+    public void closeCompletedIntervals() {
         closeExpiredAccumulatorIfNeeded(System.currentTimeMillis());
     }
 

@@ -86,6 +86,7 @@ public class MetricsRepository extends AbstractService {
             } else {
                 log.warn("Found no metric keys in database! hostname={}, engine_name={}", hostname, engineName);
             }
+            cacheLoaded = true;
         }
     }
 
