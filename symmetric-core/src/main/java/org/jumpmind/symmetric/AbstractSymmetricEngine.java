@@ -332,6 +332,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
         this.metricsService = createMetricsService();
+        this.metricsService.initRepository();
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
                 statisticManager, metricsService);
         this.purgeService = new PurgeService(parameterService, symmetricDialect, clusterService, dataService, sequenceService,
@@ -396,7 +397,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     protected IEngineMetricsService createMetricsService() {
         try {
-            return new EngineMetricsService(this, MetricsManager.getGlobalInstance(), parameterService.is(ParameterConstants.OTEL_METRICS_ENABLED, true));
+            return new EngineMetricsService(this, MetricsManager.getGlobalInstance(), parameterService.is(ParameterConstants.OTEL_METRICS_ENABLED, false));
         } catch (Exception ex) {
             log.error("Failed to initialize EngineMetricsService!", ex);
             return null;
