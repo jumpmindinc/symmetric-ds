@@ -24,6 +24,8 @@ import javax.sql.DataSource;
 
 import org.slf4j.LoggerFactory;
 
+import com.zaxxer.hikari.HikariDataSource;
+
 public final class DataSourceUtils {
     private DataSourceUtils() {
     }
@@ -41,5 +43,20 @@ public final class DataSourceUtils {
                         .debug("Failed to close data source", e);
             }
         }
+    }
+
+    /**
+     * Resets a {@link DataSource} so that subsequent borrows receive fresh connections. For {@link HikariDataSource}, which cannot be reopened after a
+     * permanent close, idle connections are evicted instead so the pool remains usable. For all other pool types, this delegates to {@link #closeQuietly}
+     * which closes the pool and allows implementations like {@code ResettableBasicDataSource} to reopen it on the next borrow.
+     */
+    public static void resetQuietly(DataSource ds) {
+        if (ds instanceof HikariDataSource hikari) {
+            if (hikari.getHikariPoolMXBean() != null) {
+                hikari.getHikariPoolMXBean().softEvictConnections();
+            }
+            return;
+        }
+        closeQuietly(ds);
     }
 }

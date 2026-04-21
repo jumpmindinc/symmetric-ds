@@ -73,7 +73,7 @@ abstract public class AbstractJdbcDatabasePlatform extends AbstractDatabasePlatf
     }
 
     public void resetDataSource() {
-        DataSourceUtils.closeQuietly(dataSource);
+        DataSourceUtils.resetQuietly(dataSource);
     }
 
     @Override

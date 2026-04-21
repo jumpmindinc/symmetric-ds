@@ -47,10 +47,7 @@ class HikariBuilder extends DataSourceBuilder {
             config.setPassword(password);
         }
         config.setMaximumPoolSize(properties.getInt(DataSourceProperties.DB_POOL_MAX_ACTIVE, DataSourceProperties.DB_POOL_MAX_ACTIVE_DEFAULT));
-        int minIdle = properties.getInt(DataSourceProperties.DB_POOL_MIN_IDLE, DataSourceProperties.DB_POOL_MIN_IDLE_DEFAULT);
-        if (minIdle > 0) {
-            config.setMinimumIdle(minIdle);
-        }
+        config.setMinimumIdle(properties.getInt(DataSourceProperties.DB_POOL_MIN_IDLE, DataSourceProperties.DB_POOL_MIN_IDLE_DEFAULT));
         config.setConnectionTimeout(properties.getInt(DataSourceProperties.DB_POOL_MAX_WAIT, DataSourceProperties.DB_POOL_MAX_WAIT_HIKARI_DEFAULT));
         String validationQuery = properties.get(DataSourceProperties.DB_POOL_VALIDATION_QUERY, null);
         if (StringUtils.isNotBlank(validationQuery)) {
