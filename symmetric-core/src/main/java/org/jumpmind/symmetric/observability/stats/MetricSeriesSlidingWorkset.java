@@ -21,11 +21,11 @@
 package org.jumpmind.symmetric.observability.stats;
 
 import java.util.ArrayDeque;
-import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
+import org.jumpmind.symmetric.observability.metrics.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricSeriesInterquartileRange;
 
 /**
- * Maintains a sliding workset of {@link MetricIntervalStats} records, computes the interquartile range (IQR) of their {@code mean} values, and detects outliers
+ * Maintains a sliding workset of {@link ISymIntervalStats} records, computes the interquartile range (IQR) of their {@code mean} values, and detects outliers
  * using Tukey's fences. Addition of new outliers into the main workset is delayed until the internal outliers buffer is full.
  * <p>
  * See also: https://en.wikipedia.org/wiki/Interquartile_range
@@ -43,18 +43,18 @@ public class MetricSeriesSlidingWorkset {
     static public final double INNER_FENCE_MULTIPLIER = 1.5;
     static public final double OUTER_FENCE_MULTIPLIER = 3.0;
     /** Oldest entry at the head, newest at the tail. */
-    private final ArrayDeque<MetricIntervalStats> intervals = new ArrayDeque<>(IQR_INTERVALS_MAX);
-    private final ArrayDeque<MetricIntervalStats> outliers = new ArrayDeque<>(IQR_OUTLIERS_MAX);
+    private final ArrayDeque<ISymIntervalStats> intervals = new ArrayDeque<>(IQR_INTERVALS_MAX);
+    private final ArrayDeque<ISymIntervalStats> outliers = new ArrayDeque<>(IQR_OUTLIERS_MAX);
 
     /**
      * Adds an interval directly to the workset, bypassing outlier detection. Intended for pre-warming from historical database rows loaded at startup.
      */
-    public void seed(MetricIntervalStats interval) {
+    public void seed(ISymIntervalStats interval) {
         addToWorkset(interval);
     }
 
     /** Evicts the oldest entry if the workset is full, then appends interval. */
-    private void addToWorkset(MetricIntervalStats interval) {
+    private void addToWorkset(ISymIntervalStats interval) {
         if (intervals.size() >= IQR_INTERVALS_MAX) {
             intervals.removeFirst();
         }
@@ -62,8 +62,8 @@ public class MetricSeriesSlidingWorkset {
     }
 
     /** Adds to the outliers collection. If the outliers buffer is full, then moves all to the current workset. */
-    private void addToOutliers(MetricIntervalStats interval) {
-        MetricIntervalStats markedInterval = interval;
+    private void addToOutliers(ISymIntervalStats interval) {
+        ISymIntervalStats markedInterval = interval;
         if (!interval.isOutlier()) {
             markedInterval = interval.cloneOutlier(true);
         }
@@ -73,7 +73,7 @@ public class MetricSeriesSlidingWorkset {
         }
     }
 
-    private MetricIntervalStats markAsOutlier(MetricIntervalStats interval) {
+    private ISymIntervalStats markAsOutlier(ISymIntervalStats interval) {
         if (interval.isOutlier())
             return interval;
         return interval.cloneOutlier(true);
@@ -87,7 +87,7 @@ public class MetricSeriesSlidingWorkset {
     /**
      * Evaluates whether interval is an outlier relative to the current workset by checking its min, avg and max values against outer fences.
      */
-    public boolean detectOutlier(MetricIntervalStats interval) {
+    public boolean detectOutlier(ISymIntervalStats interval) {
         if (!hasEnoughData())
             return false;
         MetricSeriesInterquartileRange meansIqr = computePercentiles(sortedMeans());
@@ -97,7 +97,7 @@ public class MetricSeriesSlidingWorkset {
         if (interval.max() < maxIqr.lowerOutlierFence() || interval.max() > maxIqr.upperOutlierFence())
             return true;
         MetricSeriesInterquartileRange minsIqr = computePercentiles(sortedMins());
-        if (interval.min() < minsIqr.lowerOutlierFence() || interval.min() > minsIqr.upperOutlierFence())
+        if (interval.getMin() < minsIqr.lowerOutlierFence() || interval.getMin() > minsIqr.upperOutlierFence())
             return true;
         return false;
     }
@@ -105,7 +105,7 @@ public class MetricSeriesSlidingWorkset {
     /**
      * Evaluates whether interval is an outlier relative to the current workset, sets isOutlier flag and stores the result in a workset/outlier collection.
      */
-    public void add(MetricIntervalStats interval) {
+    public void add(ISymIntervalStats interval) {
         if (detectOutlier(interval)) {
             addToOutliers(markAsOutlier(interval));
             return;
@@ -125,21 +125,21 @@ public class MetricSeriesSlidingWorkset {
 
     private double[] sortedMins() {
         return intervals.stream()
-                .mapToDouble(MetricIntervalStats::min)
+                .mapToDouble(ISymIntervalStats::getMin)
                 .sorted()
                 .toArray();
     }
 
     private double[] sortedMeans() {
         return intervals.stream()
-                .mapToDouble(MetricIntervalStats::mean)
+                .mapToDouble(ISymIntervalStats::mean)
                 .sorted()
                 .toArray();
     }
 
     private double[] sortedMaxs() {
         return intervals.stream()
-                .mapToDouble(MetricIntervalStats::max)
+                .mapToDouble(ISymIntervalStats::max)
                 .sorted()
                 .toArray();
     }

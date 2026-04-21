@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
 import org.jumpmind.symmetric.observability.repository.MetricsRepository;
@@ -69,16 +68,24 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     protected void saveCompletedIntervalsForAllMetrics() {
         MetricsRepository repo = getOrInitRepository();
         List<MetricIntervalStatsRecord> newlyCompleted = new ArrayList<>();
+        int exportedMetrics = 0;
         for (AbstractQueuedMetric metric : getAllMetrics()) {
-            MetricKey key = repo.getMetricKey(metric.getMetricId());
-            for (MetricIntervalStats interval : metric.exportCompletedIntervals(key)) {
-                newlyCompleted.add(new MetricIntervalStatsRecord(key, interval));
+            try {
+                MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType());
+                for (ISymIntervalStats interval : metric.exportCompletedIntervals(key)) {
+                    newlyCompleted.add(new MetricIntervalStatsRecord(key, interval));
+                }
+                exportedMetrics++;
+            } catch (Exception ex) {
+                log.warn("Failed to export completed intervals for metric={}", metric.getMetricId());
+                continue;
             }
         }
-        log.info("Saving {} metric intervat stats records...", newlyCompleted.size());
-        if (!newlyCompleted.isEmpty()) {
+        if (exportedMetrics > 0 && !newlyCompleted.isEmpty()) {
+            log.debug("Saving {} metric interval stats records...", newlyCompleted.size());
             repo.saveIntervals(newlyCompleted);
         }
+        log.debug("Saved {} completed interval stats records for {} metrics.", newlyCompleted.size(), exportedMetrics);
     }
 
     protected MetricsRepository createMetricsRepository() {
@@ -96,33 +103,46 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             }
         }
         log.debug("Created metrics repository object for engine {}", engine.getEngineName());
-        initializeImportantMetrics(repository);
-        initializeStatsWorksetsForAllMetrics(repository);
-        log.info("Initialized metrics repository for engine {}", engine.getEngineName());
+        try {
+            initializeImportantMetrics(repository);
+        } catch (Exception ex) {
+            log.warn("Failed to initialize metrics repository with important metrics (and historical values) for engine {}", engine.getEngineName());
+        }
+        try {
+            initializeStatsWorksetsForAllMetrics(repository);
+        } catch (Exception ex) {
+            log.warn("Failed to initialize metrics repository with historical values for engine {}", engine.getEngineName());
+        }
         return repository;
     }
 
     /**
-     * Seeds the sliding workset of every registered metric with historical intervals loaded from the database. Called once, immediately after the repository is
-     * initialized (on the aggregator thread), so IQR outlier detection is ready without blocking instrumented code.
+     * Initializes important metrics, to achieve two goals: faster instrumentation ramp-up and seed historical data for outlier detection. Prepares for outlier
+     * interval detection logic and accelerates move of completed intervals to database.
      */
-    private void initializeStatsWorksetsForAllMetrics(MetricsRepository repo) {
-        for (AbstractQueuedMetric metric : getAllMetrics()) {
-            try {
-                MetricKey key = repo.getMetricKey(metric.getMetricId());
-                List<MetricIntervalStats> history = repo.loadRecentIntervalsForKeyFromDatabase(key);
-                metric.prewarmWorkset(history);
-            } catch (Exception e) {
-                log.warn("Failed to pre-warm workset for metric {}", metric.getMetricId(), e);
-            }
-        }
+    protected int initializeImportantMetrics(MetricsRepository repo) {
+        int count = DefaultEngineMetrics.initializeDefaultMetrics(this);
+        log.debug("Initialized repository with {} important metrics for engine {}", count, engine.getEngineName());
+        return count;
     }
 
     /**
-     * Initializes important metrics, to achive two goals: faster instrumentation ramp-up and seed historical data for outlier detection.
+     * Seeds the sliding workset of every registered metric with historical intervals to enable outlier interval detection logic.
      */
-    protected void initializeImportantMetrics(MetricsRepository repo) {
-        getOrCreateUpDownCounter(SymMetricConstants.METRIC_CONNECTIONS_RESERVATIONS_ID,
-                SymMetricConstants.METRIC_CONNECTIONS_RESERVATIONS_DESC, SymMetricConstants.METRIC_CONNECTIONS_RESERVATIONS_UNIT);
+    private int initializeStatsWorksetsForAllMetrics(MetricsRepository repo) {
+        int metricsInitialized = 0;
+        for (AbstractQueuedMetric metric : getAllMetrics()) {
+            try {
+                MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType());
+                List<ISymIntervalStats> history = repo.loadRecentIntervalsForKeyFromDatabase(key);
+                metric.seedWorkset(history);
+                metricsInitialized++;
+            } catch (Exception e) {
+                log.warn("Failed to pre-warm workset for metric=" + metric.getMetricId(), e);
+            }
+        }
+        log.debug("Initialized {} metrics in repository for engine {}", metricsInitialized, engine.getEngineName());
+        return metricsInitialized;
     }
+
 }

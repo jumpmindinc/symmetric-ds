@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.concurrent.atomic.DoubleAdder;
 
+import org.jumpmind.symmetric.observability.models.MetricFactType;
 import org.jumpmind.symmetric.observability.models.ObservationDouble;
 
 import io.opentelemetry.api.common.Attributes;
@@ -31,6 +32,11 @@ public abstract class AbstractGaugeMetric extends AbstractQueuedMetric {
 
     AbstractGaugeMetric(String metricId, Attributes attributes) {
         super(metricId, attributes);
+    }
+
+    @Override
+    public MetricFactType getFactType() {
+        return MetricFactType.FLOAT64;
     }
 
     public double getValue() {

@@ -18,12 +18,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.models;
+package org.jumpmind.symmetric.observability.metrics;
 
-import org.jumpmind.symmetric.observability.metrics.ISymIntervalStats;
+import java.sql.Date;
 
-/**
- * Links a completed interval-stats window to the {@link MetricKey} that identifies the metric series it belongs to.
- */
-public record MetricIntervalStatsRecord(MetricKey key, ISymIntervalStats stats) {
+public interface ISymIntervalStats {
+    long getStartEpoch();
+
+    long getEndEpoch();
+
+    double getAvg();
+
+    double getMin();
+
+    double max();
+
+    double getStdDeviation();
+
+    long getObservationCount();
+
+    double mean();
+
+    boolean isOutlier();
+
+    Date getStartTimeUtc();
+
+    ISymIntervalStats cloneOutlier(boolean isOutlier);
 }

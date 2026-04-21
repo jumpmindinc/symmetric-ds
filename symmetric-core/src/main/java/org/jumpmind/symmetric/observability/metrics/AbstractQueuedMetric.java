@@ -20,20 +20,19 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
+import org.jumpmind.symmetric.observability.models.MetricFactType;
 import org.jumpmind.symmetric.observability.models.MetricKey;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
-import org.jumpmind.symmetric.observability.stats.MetricIntervalAccumulator;
+import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
+import org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator;
+import org.jumpmind.symmetric.observability.stats.IStatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.MetricIntervalStatsQueue;
 import org.jumpmind.symmetric.observability.stats.MetricSeriesSlidingWorkset;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import io.opentelemetry.api.common.Attributes;
 
 /**
@@ -47,7 +46,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     protected volatile long lastModified;
     protected volatile boolean isMetricClosed = false;
     protected ObservationsQueue<ISymObservation> observations = new ObservationsQueue<ISymObservation>();
-    protected MetricIntervalAccumulator currentIntervalAccumulator;
+    protected IStatsAccumulator currentIntervalAccumulator;
     protected MetricIntervalStatsQueue completedIntervals = new MetricIntervalStatsQueue();
     protected MetricSeriesSlidingWorkset workset = new MetricSeriesSlidingWorkset();
 
@@ -67,6 +66,9 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
         return lastModified;
     }
 
+    /** Returns the fact type for this metric, used to select the correct accumulator and persistence table. */
+    public abstract MetricFactType getFactType();
+
     /**
      * Returns estimated number of recorded observations (can change quickly in a highly concurrent environment)
      */
@@ -82,6 +84,11 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     @Override
     public boolean isClosed() {
         return isMetricClosed;
+    }
+
+    @Override
+    public IStatsAccumulator createAccumulator(long intervalStart) {
+        return new Float64StatsAccumulator(intervalStart);
     }
 
     /**
@@ -130,30 +137,29 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     }
 
     public int processObservation(ISymObservation observation) {
-        long bucketStart = MetricIntervalAccumulator.calculateIntervalStart(observation.getTimestamp());
+        long bucketStart = AbstractStatsAccumulator.calculateIntervalStart(observation.getTimestamp());
         if (currentIntervalAccumulator == null) {
-            currentIntervalAccumulator = new MetricIntervalAccumulator(bucketStart);
+            currentIntervalAccumulator = createAccumulator(bucketStart);
         }
         if (currentIntervalAccumulator.isInScope(bucketStart)) {
             currentIntervalAccumulator.addObservation(observation);
             return 1;
         }
-        if (bucketStart < currentIntervalAccumulator.intervalStart) {
+        if (bucketStart < currentIntervalAccumulator.getIntervalStart()) {
             log.debug("Throwing away delinquent observation. timestamp={}, MetricId={}, current.interval.start={}",
-                    observation.getTimestamp(), getMetricId(), currentIntervalAccumulator.intervalStart);
+                    observation.getTimestamp(), getMetricId(), currentIntervalAccumulator.getIntervalStart());
             return 0;
         }
-        // Here bucketStart is in the "future", so new accumulator(s) are needed to catch up to this observation:
-        double carryForwardValue = currentIntervalAccumulator.getLastValue();
-        long nextIntervalStart = currentIntervalAccumulator.intervalEnd;
+        // bucketStart is in the "future" — close current window and carry-forward until we reach bucketStart.
+        // createNext() preserves native precision (long for counters, double for gauges) without any type casting in the caller.
         log.debug(
-                "Closing previous interval and creating new one for observation. timestamp={}, carry.forward.value={}, MetricId={}, current.interval.start={}",
-                observation.getTimestamp(), carryForwardValue, getMetricId(), currentIntervalAccumulator.intervalStart);
+                "Closing previous interval and creating new one for observation. timestamp={}, MetricId={}, current.interval.start={}",
+                observation.getTimestamp(), getMetricId(), currentIntervalAccumulator.getIntervalStart());
         while (!currentIntervalAccumulator.isInScope(bucketStart)) {
+            long nextIntervalStart = currentIntervalAccumulator.getIntervalEnd();
             currentIntervalAccumulator.close();
-            addToCompletedIntervals(currentIntervalAccumulator.toMetricIntervalStats());
-            currentIntervalAccumulator = new MetricIntervalAccumulator(nextIntervalStart, carryForwardValue);
-            nextIntervalStart = currentIntervalAccumulator.intervalEnd;
+            addToCompletedIntervals(currentIntervalAccumulator.toStats());
+            currentIntervalAccumulator = currentIntervalAccumulator.createNext(nextIntervalStart);
         }
         currentIntervalAccumulator.addObservation(observation);
         return 1;
@@ -163,9 +169,9 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
      * If the current accumulator's window has expired, closes it and enqueues the completed interval.
      */
     public void closeExpiredAccumulatorIfNeeded(long nowMs) {
-        if (currentIntervalAccumulator != null && currentIntervalAccumulator.intervalEnd <= nowMs) {
+        if (currentIntervalAccumulator != null && currentIntervalAccumulator.getIntervalEnd() <= nowMs) {
             currentIntervalAccumulator.close();
-            addToCompletedIntervals(currentIntervalAccumulator.toMetricIntervalStats());
+            addToCompletedIntervals(currentIntervalAccumulator.toStats());
             currentIntervalAccumulator = null;
         }
     }
@@ -181,32 +187,35 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     /**
      * Drains all completed intervals from this metric's queue.
      */
-    public List<MetricIntervalStats> exportCompletedIntervals(MetricKey key) {
+    public List<ISymIntervalStats> exportCompletedIntervals(MetricKey key) {
         return completedIntervals.exportAll();
     }
 
     /**
-     * Seeds the sliding workset with historical intervals loaded from the database, bypassing outlier detection so the IQR window is ready from the first live
-     * interval. Should be called once, immediately after the metric is created.
+     * Initializes the sliding workset with provided historical intervals (typically loaded from the database), bypassing outlier detection so the IQR window is
+     * ready from the first live interval. Enables the outlier detection logic. Should be called once, immediately after the metric is created.
      */
-    public void prewarmWorkset(List<MetricIntervalStats> history) {
+    public void seedWorkset(List<ISymIntervalStats> history) {
         if (history == null || history.isEmpty()) {
-            log.warn("No data to prime outlier detection with historical intervals for metric {}", metricId);
+            log.warn("No data to kick-off outlier detection with historical intervals for metric={}", metricId);
+            return;
         }
-        for (MetricIntervalStats interval : history) {
+        int intervalsCount = history.size();
+        if (intervalsCount < MetricSeriesSlidingWorkset.IQR_INTERVALS_MIN) {
+            log.warn("Insufficient data to kick-off outlier detection with historical intervals for metric={}, records={}", metricId, intervalsCount);
+        }
+        for (ISymIntervalStats interval : history) {
             workset.seed(interval);
         }
-        if (!history.isEmpty()) {
-            log.info("Primed outlier detection with {} historical intervals for metric {}", history.size(), metricId);
-        }
+        log.info("Primed outlier detection with {} historical intervals for metric={}", intervalsCount, metricId);
     }
 
     /**
      * Runs outlier detection on the closed interval, tags it if needed, then enqueues it in {@link #completedIntervals} and updates the sliding workset.
      */
-    private void addToCompletedIntervals(MetricIntervalStats interval) {
+    private void addToCompletedIntervals(ISymIntervalStats interval) {
         boolean isOutlier = workset.detectOutlier(interval);
-        MetricIntervalStats tagged = isOutlier ? interval.cloneOutlier(true) : interval;
+        ISymIntervalStats tagged = isOutlier ? interval.cloneOutlier(true) : interval;
         completedIntervals.add(tagged);
         workset.add(tagged);
     }

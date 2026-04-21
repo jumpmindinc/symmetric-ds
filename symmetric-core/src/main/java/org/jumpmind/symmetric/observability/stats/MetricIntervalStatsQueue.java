@@ -9,22 +9,22 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
+import org.jumpmind.symmetric.observability.metrics.ISymIntervalStats;
 
-public class MetricIntervalStatsQueue implements Queue<MetricIntervalStats> {
+public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
     public final static int MAX_QUEUE_SIZE = 10000000;
     protected static final long serialVersionUID = 1L;
     protected final AtomicInteger approximateSize = new AtomicInteger(0);
-    protected volatile ConcurrentLinkedQueue<MetricIntervalStats> queue = new ConcurrentLinkedQueue<>();
+    protected volatile ConcurrentLinkedQueue<ISymIntervalStats> queue = new ConcurrentLinkedQueue<>();
 
     public MetricIntervalStatsQueue() {
         super();
     }
 
     @Override
-    public boolean addAll(Collection<? extends MetricIntervalStats> c) {
+    public boolean addAll(Collection<? extends ISymIntervalStats> c) {
         boolean changed = false;
-        for (MetricIntervalStats item : c) {
+        for (ISymIntervalStats item : c) {
             if (offer(item)) {
                 changed = true;
             }
@@ -58,16 +58,16 @@ public class MetricIntervalStatsQueue implements Queue<MetricIntervalStats> {
     }
 
     @Override
-    public Iterator<MetricIntervalStats> iterator() {
-        Iterator<MetricIntervalStats> delegate = queue.iterator();
-        return new Iterator<MetricIntervalStats>() {
+    public Iterator<ISymIntervalStats> iterator() {
+        Iterator<ISymIntervalStats> delegate = queue.iterator();
+        return new Iterator<ISymIntervalStats>() {
             @Override
             public boolean hasNext() {
                 return delegate.hasNext();
             }
 
             @Override
-            public MetricIntervalStats next() {
+            public ISymIntervalStats next() {
                 return delegate.next();
             }
 
@@ -101,10 +101,10 @@ public class MetricIntervalStatsQueue implements Queue<MetricIntervalStats> {
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        Iterator<MetricIntervalStats> it = queue.iterator();
+        Iterator<ISymIntervalStats> it = queue.iterator();
         boolean changed = false;
         while (it.hasNext()) {
-            MetricIntervalStats item = it.next();
+            ISymIntervalStats item = it.next();
             if (!c.contains(item)) {
                 it.remove();
                 approximateSize.decrementAndGet();
@@ -130,19 +130,19 @@ public class MetricIntervalStatsQueue implements Queue<MetricIntervalStats> {
     }
 
     @Override
-    public boolean add(MetricIntervalStats arg0) {
+    public boolean add(ISymIntervalStats arg0) {
         return offer(arg0);
     }
 
     @Override
-    public MetricIntervalStats element() {
+    public ISymIntervalStats element() {
         return queue.element();
     }
 
     @Override
-    public boolean offer(MetricIntervalStats arg0) {
+    public boolean offer(ISymIntervalStats arg0) {
         while (approximateSize.get() >= MAX_QUEUE_SIZE) {
-            MetricIntervalStats removed = queue.poll();
+            ISymIntervalStats removed = queue.poll();
             if (removed != null) {
                 approximateSize.decrementAndGet();
             } else {
@@ -157,13 +157,13 @@ public class MetricIntervalStatsQueue implements Queue<MetricIntervalStats> {
     }
 
     @Override
-    public MetricIntervalStats peek() {
+    public ISymIntervalStats peek() {
         return queue.peek();
     }
 
     @Override
-    public MetricIntervalStats poll() {
-        MetricIntervalStats item = queue.poll();
+    public ISymIntervalStats poll() {
+        ISymIntervalStats item = queue.poll();
         if (item != null) {
             approximateSize.decrementAndGet();
         }
@@ -171,8 +171,8 @@ public class MetricIntervalStatsQueue implements Queue<MetricIntervalStats> {
     }
 
     @Override
-    public MetricIntervalStats remove() {
-        MetricIntervalStats item = queue.remove();
+    public ISymIntervalStats remove() {
+        ISymIntervalStats item = queue.remove();
         approximateSize.decrementAndGet();
         return item;
     }
@@ -180,32 +180,32 @@ public class MetricIntervalStatsQueue implements Queue<MetricIntervalStats> {
     /**
      * Returns all intervals whose start epoch falls within [start, end] without removing them from the queue.
      */
-    public MetricIntervalStats[] peekBetween(long start, long end) {
-        List<MetricIntervalStats> result = new ArrayList<>();
-        for (MetricIntervalStats item : queue) {
+    public ISymIntervalStats[] peekBetween(long start, long end) {
+        List<ISymIntervalStats> result = new ArrayList<>();
+        for (ISymIntervalStats item : queue) {
             long ts = item.getStartEpoch();
             if (ts >= start && ts <= end) {
                 result.add(item);
             }
         }
-        return result.toArray(new MetricIntervalStats[0]);
+        return result.toArray(new ISymIntervalStats[0]);
     }
 
     /**
      * Removes and returns all intervals whose start epoch falls within [start, end].
      */
-    public MetricIntervalStats[] removeAllBetween(long start, long end) {
-        List<MetricIntervalStats> result = new ArrayList<>();
-        Iterator<MetricIntervalStats> it = iterator();
+    public ISymIntervalStats[] removeAllBetween(long start, long end) {
+        List<ISymIntervalStats> result = new ArrayList<>();
+        Iterator<ISymIntervalStats> it = iterator();
         while (it.hasNext()) {
-            MetricIntervalStats item = it.next();
+            ISymIntervalStats item = it.next();
             long ts = item.getStartEpoch();
             if (ts >= start && ts <= end) {
                 it.remove();
                 result.add(item);
             }
         }
-        return result.toArray(new MetricIntervalStats[0]);
+        return result.toArray(new ISymIntervalStats[0]);
     }
 
     /**
@@ -213,15 +213,15 @@ public class MetricIntervalStatsQueue implements Queue<MetricIntervalStats> {
      * in a single {@code getAndSet}, so callers that concurrently call {@link #offer} are immediately directed to the new queue with zero contention. Draining
      * the detached snapshot requires no per-element atomic operations.
      */
-    public List<MetricIntervalStats> exportAll() {
-        ConcurrentLinkedQueue<MetricIntervalStats> snapshot = queue;
+    public List<ISymIntervalStats> exportAll() {
+        ConcurrentLinkedQueue<ISymIntervalStats> snapshot = queue;
         queue = new ConcurrentLinkedQueue<>();
         int capacity = approximateSize.getAndSet(0);
         if (capacity == 0 && snapshot.isEmpty()) {
             return Collections.emptyList();
         }
-        List<MetricIntervalStats> result = new ArrayList<>(Math.max(capacity, 16));
-        MetricIntervalStats item;
+        List<ISymIntervalStats> result = new ArrayList<>(Math.max(capacity, 16));
+        ISymIntervalStats item;
         while ((item = snapshot.poll()) != null) {
             result.add(item);
         }

@@ -18,12 +18,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.models;
+package org.jumpmind.symmetric.observability.repository;
 
-import org.jumpmind.symmetric.observability.metrics.ISymIntervalStats;
+import org.jumpmind.symmetric.SymmetricException;
 
-/**
- * Links a completed interval-stats window to the {@link MetricKey} that identifies the metric series it belongs to.
- */
-public record MetricIntervalStatsRecord(MetricKey key, ISymIntervalStats stats) {
+public class MetricsRepositoryException extends SymmetricException {
+    private static final long serialVersionUID = 1L;
+
+    public MetricsRepositoryException(String message) {
+        super(message);
+    }
+
+    public MetricsRepositoryException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public MetricsRepositoryException(Throwable cause) {
+        super(cause);
+    }
 }

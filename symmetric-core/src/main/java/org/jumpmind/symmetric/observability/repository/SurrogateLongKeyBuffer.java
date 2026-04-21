@@ -23,7 +23,8 @@ package org.jumpmind.symmetric.observability.repository;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Buffer of long surrogate keys for quick allocation of several keys at once
+ * Buffer of long surrogate keys allocated via some permanent storage (database) and used for quick allocation of several keys at once before writing records
+ * into permanent storage.
  */
 public class SurrogateLongKeyBuffer {
     public static final long SURROGATE_KEY_UNASSIGNED = -1l;

@@ -22,7 +22,10 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.jumpmind.symmetric.observability.models.MetricFactType;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
+import org.jumpmind.symmetric.observability.stats.IStatsAccumulator;
+import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 
 import io.opentelemetry.api.common.Attributes;
 
@@ -34,6 +37,16 @@ public abstract class AbstractCounterMetric extends AbstractQueuedMetric {
 
     AbstractCounterMetric(String metricId, Attributes attributes) {
         super(metricId, attributes);
+    }
+
+    @Override
+    public MetricFactType getFactType() {
+        return MetricFactType.INT64;
+    }
+
+    @Override
+    public IStatsAccumulator createAccumulator(long intervalStart) {
+        return new Int64StatsAccumulator(intervalStart);
     }
 
     /**

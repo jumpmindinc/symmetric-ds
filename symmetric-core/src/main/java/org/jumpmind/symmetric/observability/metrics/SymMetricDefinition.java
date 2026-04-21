@@ -20,26 +20,7 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.sql.Date;
-
-public interface ISymMetricInterval {
-    long getStartEpoch();
-
-    long getEndEpoch();
-
-    double getAvg();
-
-    double getMin();
-
-    double max();
-
-    double getStdDeviation();
-
-    long getObservationCount();
-
-    double mean();
-
-    boolean isOutlier();
-
-    Date getStartTimeUtc();
+/** Describes a single metric instrument: its identity, human-readable metadata, and instrument type. */
+public record SymMetricDefinition(String id, String description, String unit, InstrumentType type) {
+    public enum InstrumentType { COUNTER, GAUGE, HISTOGRAM }
 }

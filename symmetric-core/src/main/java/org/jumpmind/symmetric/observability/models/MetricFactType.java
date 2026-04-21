@@ -20,10 +20,10 @@
  */
 package org.jumpmind.symmetric.observability.models;
 
-import org.jumpmind.symmetric.observability.metrics.ISymIntervalStats;
-
-/**
- * Links a completed interval-stats window to the {@link MetricKey} that identifies the metric series it belongs to.
- */
-public record MetricIntervalStatsRecord(MetricKey key, ISymIntervalStats stats) {
+/** Determines which fact table and numeric precision are used when persisting interval statistics. */
+public enum MetricFactType {
+    /** 64-bit floating-point statistics. Used for gauge-type metrics. Written to {@code metric_stats_float64}. */
+    FLOAT64,
+    /** 64-bit integer statistics. avg, min, max, mean are truncated to {@code long} at persistence time. Used for counter-type metrics. Written to {@code metric_stats_int64}. */
+    INT64
 }

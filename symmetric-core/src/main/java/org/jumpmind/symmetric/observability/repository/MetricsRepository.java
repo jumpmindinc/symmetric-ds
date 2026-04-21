@@ -22,51 +22,36 @@ package org.jumpmind.symmetric.observability.repository;
 
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.common.TableConstants;
+import org.jumpmind.symmetric.observability.metrics.ISymIntervalStats;
+import org.jumpmind.symmetric.observability.models.MetricFactType;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
 import org.jumpmind.symmetric.observability.stats.MetricSeriesSlidingWorkset;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jumpmind.symmetric.service.impl.AbstractService;
 
 /**
- * Repository for all database access to metrics keys and data.
- *
+ * Repository for all database access to metrics keys and data. Manages 3 tables related to metrics:
  * <p>
- * <b>MetricKey</b> — {@link #saveMetricKey} inserts a key if not already present; {@link #loadAllMetricKeys} returns every key stored in the database.
- *
+ * <b>Metric_Key</b> — A header record with a surrogate int64 key used by other (fact) tables.
+ * <b>Metric_Stats_Int64</b> — A fact record with min, max and avg values as int64 (long in Java).
+  *<b>Metric_Stats_Float64</b> — A fact record with min, max and avg values as float64 (double in Java).
  * <p>
- * <b>Intervals — write</b> — {@link #saveIntervals} persists a batch of completed {@link MetricIntervalStats} records in a single transaction, inserting any
- * new {@link MetricKey} dimension rows as part of the same transaction.
- *
- * <p>
- * <b>Intervals — read</b> — {@link #loadRecentIntervals} returns the most recent {@link MetricSeriesSlidingWorkset#IQR_INTERVALS_MIN} intervals for a given
- * key, ordered oldest-first, to seed a freshly created {@link MetricSeriesSlidingWorkset}.
- *
- * <p>
- * An in-memory cache of {@link MetricKey} → surrogate {@code metric_key} is loaded lazily on first use and reused across all operations to avoid redundant
- * JOINs.
+ * An in-memory cache of {@link MetricKey} → surrogate {@code metric_key} is lazy-loaded and reused across all operations to avoid database JOINs.
  */
-public class MetricsRepository {
-    private static final Logger log = LoggerFactory.getLogger(MetricsRepository.class);
+public class MetricsRepository extends AbstractService {
     public static final String METRIC_SHARED_ENGINE = "*";
     private final String engineName;
     private final String hostname;
-    private final String keyTable;
-    private final String intervalsTable;
-    private final ISymmetricEngine engine;
     /** In-memory cache of MetricKey → surrogate metric_key. Loaded lazily on first use. */
     private final Map<Integer, MetricKey> metricKeysCache = new ConcurrentHashMap<>();
     /** Long surrogate key, allocated via database. */
@@ -74,23 +59,18 @@ public class MetricsRepository {
     private volatile boolean cacheLoaded = false;
 
     public MetricsRepository(ISymmetricEngine engine, String hostname) {
-        this.engine = engine;
+        super(engine.getParameterService(), engine.getSymmetricDialect());
         this.engineName = engine.getEngineName();
         this.hostname = hostname;
-        String prefix = engine.getParameterService().getTablePrefix();
-        IDatabasePlatform platform = engine.getDatabasePlatform();
-        this.keyTable = platform.alterCaseToMatchDatabaseDefaultCase(
-                TableConstants.getTableName(prefix, TableConstants.SYM_METRIC_KEY));
-        this.intervalsTable = platform.alterCaseToMatchDatabaseDefaultCase(
-                TableConstants.getTableName(prefix, TableConstants.SYM_METRIC_INTERVAL));
+        setSqlMap(new MetricsRepositorySqlMap(platform, createSqlReplacementTokens()));
     }
 
-    private Integer generateCacheKey(String metricId, String engineName, String hostname) {
-        return Objects.hash(metricId, engineName, hostname);
+    private Integer generateCacheKey(String metricId, String engineName, String hostname, MetricFactType factType) {
+        return Objects.hash(metricId, engineName, hostname, factType);
     }
 
     private Integer generateCacheKey(MetricKey key) {
-        return generateCacheKey(key.metricId(), key.engineName(), key.hostname());
+        return generateCacheKey(key.metricId(), key.engineName(), key.hostname(), key.factType());
     }
 
     public void initializeCache() {
@@ -109,22 +89,22 @@ public class MetricsRepository {
         }
     }
 
-    public MetricKey getMetricKey(String metricId) {
-        return getOrRegisterMetricKey(metricId, this.engineName, this.hostname);
+    public MetricKey getMetricKey(String metricId, MetricFactType factType) {
+        return getOrRegisterMetricKey(metricId, this.engineName, this.hostname, factType);
     }
 
     /**
      * Fetches {@link MetricKey} record from cache or database. Ensures the surrogate ID assigned to new entries.
      */
-    public MetricKey getOrRegisterMetricKey(String metricId, String engineName, String hostname) {
+    public MetricKey getOrRegisterMetricKey(String metricId, String engineName, String hostname, MetricFactType factType) {
         ensureMetricKeyCacheLoaded();
-        Integer cacheKey = generateCacheKey(metricId, engineName, hostname);
+        Integer cacheKey = generateCacheKey(metricId, engineName, hostname, factType);
         MetricKey metricKeyRec = metricKeysCache.get(cacheKey);
         if (metricKeyRec != null) {
             log.debug("Cache hit for metric key {}", metricKeyRec);
             return metricKeyRec;
         }
-        return saveMetricKeyInternal(metricId, engineName, hostname);
+        return saveMetricKeyInternal(metricId, engineName, hostname, factType);
     }
 
     /**
@@ -154,20 +134,20 @@ public class MetricsRepository {
         return saveMetricKeyInternal(metricKeyRec);
     }
 
-    private MetricKey assignSurrogateKeyAndSaveMetricKeyToDatabase(String metricId, String engineName, String hostname) {
+    private MetricKey assignSurrogateKeyAndSaveMetricKeyToDatabase(String metricId, String engineName, String hostname, MetricFactType factType) {
         long surrogateKey = surrogateKeys.getNextValue();
-        MetricKey metricKeyRec = new MetricKey(surrogateKey, metricId, engineName, hostname);
+        MetricKey metricKeyRec = new MetricKey(surrogateKey, hostname, engineName, metricId, factType);
         metricKeyRec = saveMetricKeyToDatabase(metricKeyRec);
         log.debug("Cache miss. Applied available surrogate key {} to new metric key {}", surrogateKey, metricKeyRec);
         return metricKeyRec;
     }
 
-    private MetricKey saveMetricKeyInternal(String metricId, String engineName, String hostname) {
+    private MetricKey saveMetricKeyInternal(String metricId, String engineName, String hostname, MetricFactType factType) {
         MetricKey metricKeyRec = null;
         if (surrogateKeys.isAvailable() && !METRIC_SHARED_ENGINE.equals(engineName)) {
-            metricKeyRec = assignSurrogateKeyAndSaveMetricKeyToDatabase(hostname, engineName, metricId);
+            metricKeyRec = assignSurrogateKeyAndSaveMetricKeyToDatabase(metricId, engineName, hostname, factType);
         } else {
-            metricKeyRec = generateSurrogateKeyAndSaveMetricKeyToDatabase(hostname, engineName, metricId);
+            metricKeyRec = generateSurrogateKeyAndSaveMetricKeyToDatabase(metricId, engineName, hostname, factType);
             if (!METRIC_SHARED_ENGINE.equals(engineName)) {
                 long nextAvailableValue = metricKeyRec.key() + 1;
                 long bufferStart = SurrogateLongKeyBuffer.roundDownToBufferStart(nextAvailableValue);
@@ -188,25 +168,23 @@ public class MetricsRepository {
             if (cachedRec.isSurrogateKeyMissing()) {
                 String message = "Cached MetricKey entries must have surrogate key already assigned! " + cachedRec;
                 log.warn(message);
-                throw new IllegalStateException();
+                throw new MetricsRepositoryException(message);
             }
             return cachedRec;
         }
         return metricKeyRec;
     }
 
-    private MetricKey generateSurrogateKeyAndSaveMetricKeyToDatabase(String metricId, String engineName, String hostname) {
-        String keyInfo = String.format(" metricId=%s, engine=%s, hostname=%s", metricId, engineName, hostname);
+    private MetricKey generateSurrogateKeyAndSaveMetricKeyToDatabase(String metricId, String engineName, String hostname, MetricFactType factType) {
+        String keyInfo = String.format(" metricId=%s, engine=%s, hostname=%s, factType=%s", metricId, engineName, hostname, factType);
         long surrogateKeyBufferSize = SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
         log.debug("Saving metric key and determining new surrogate key ... {}", keyInfo);
         ISqlTransaction transaction = null;
-        String sql = "INSERT INTO " + keyTable + " (metric_key, metric_id, engine_name, hostname) "
-                + " SELECT (?*(MAX(metric_key)+?))/?, ?, ?, ? FROM " + keyTable;
-        Object[] statementParams = { surrogateKeyBufferSize, surrogateKeyBufferSize, surrogateKeyBufferSize, metricId, engineName, hostname };
-        int[] statementTypes = { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+        Object[] statementParams = { surrogateKeyBufferSize, surrogateKeyBufferSize, surrogateKeyBufferSize, metricId, engineName, hostname, factType.name() };
+        int[] statementTypes = { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
         try {
-            transaction = engine.getSqlTemplate().startSqlTransaction();
-            transaction.prepareAndExecute(sql, statementParams, statementTypes);
+            transaction = sqlTemplate.startSqlTransaction();
+            transaction.prepareAndExecute(getSql("generateSurrogateSql"), statementParams, statementTypes);
             transaction.commit();
         } catch (Exception e) {
             if (transaction != null) {
@@ -214,13 +192,15 @@ public class MetricsRepository {
                 // TODO: close connection if platform cannot recover from failed transactions!
                 transaction = null;
             }
-            log.error("Failed to save metric key:" + keyInfo, e);
+            String message = "Failed to save metric key: " + keyInfo;
+            log.error(message, e);
+            throw new MetricsRepositoryException(message, e);
         } finally {
             if (transaction != null) {
                 close(transaction);
             }
         }
-        MetricKey metricKeyRec = loadMetricKeyFromDatabase(metricId, engineName, hostname);
+        MetricKey metricKeyRec = loadMetricKeyFromDatabase(metricId, engineName, hostname, factType);
         if (!METRIC_SHARED_ENGINE.equals(engineName)) {
             synchronized (surrogateKeys) {
                 surrogateKeys.moveTo(metricKeyRec.key(), metricKeyRec.key() + 1);
@@ -231,8 +211,9 @@ public class MetricsRepository {
     }
 
     private MetricKey saveMetricKeyToDatabase(MetricKey key) {
-        String keyInfo = String.format(" metricKey=%d, metricId=%s, engine=%s, hostname=%s", key.key(), key.metricId(), key.engineName(), key.hostname());
-        MetricKey metricKeyInDatabase = loadMetricKeyFromDatabase(key.metricId(), key.engineName(), key.hostname());
+        String keyInfo = String.format(" metricKey=%d, metricId=%s, engine=%s, hostname=%s, factType=%s",
+                key.key(), key.metricId(), key.engineName(), key.hostname(), key.factType());
+        MetricKey metricKeyInDatabase = loadMetricKeyFromDatabase(key.metricId(), key.engineName(), key.hostname(), key.factType());
         if (key.equals(metricKeyInDatabase)) {
             log.debug("Skipping database update, because nothing had changed for metric key: {}", key);
             return key;
@@ -242,12 +223,11 @@ public class MetricsRepository {
         }
         log.debug("Saving metric key... {}", keyInfo);
         ISqlTransaction transaction = null;
-        String sql = "INSERT INTO " + keyTable + " (metric_key, hostname, engine_name, metric_id) VALUES (?, ?, ?, ?)";
-        Object[] statementParams = { key.key(), key.hostname(), key.engineName(), key.metricId() };
-        int[] statementTypes = { Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+        Object[] statementParams = { key.key(), key.hostname(), key.engineName(), key.metricId(), key.factType().name() };
+        int[] statementTypes = { Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
         try {
-            transaction = engine.getSqlTemplate().startSqlTransaction();
-            transaction.prepareAndExecute(sql, statementParams, statementTypes);
+            transaction = sqlTemplate.startSqlTransaction();
+            transaction.prepareAndExecute(getSql("insertMetricKeySql"), statementParams, statementTypes);
             transaction.commit();
             log.debug("Saved metric key {}", key);
         } catch (Exception e) {
@@ -256,7 +236,9 @@ public class MetricsRepository {
                 // TODO: close connection if platform cannot recover from failed transactions!
                 transaction = null;
             }
-            log.error("Failed to save metric key {}", key, e);
+            String message = "Failed to save metric key: " + key;
+            log.error(message, e);
+            throw new MetricsRepositoryException(message, e);
         } finally {
             if (transaction != null) {
                 close(transaction);
@@ -266,20 +248,19 @@ public class MetricsRepository {
     }
 
     private MetricKey updateMetricKeyInDatabase(MetricKey key, MetricKey dbRecord) {
-        String keyInfo = String.format(" metricKey=%d, metricId=%s, engine=%s, hostname=%s", dbRecord.key(), dbRecord.metricId(), dbRecord.engineName(),
-                dbRecord.hostname());
+        String keyInfo = String.format(" metricKey=%d, metricId=%s, engine=%s, hostname=%s, factType=%s",
+                dbRecord.key(), dbRecord.metricId(), dbRecord.engineName(), dbRecord.hostname(), dbRecord.factType());
         if (key.isSurrogateKeyMissing() || key.equals(dbRecord)) {
             log.debug("Database record already has surrogate key assigned! DB entry for metric key:{}, Current surrogateKey={}", keyInfo, key.key());
             return dbRecord;
         }
         log.debug("Updating metric key... {}, new surrogateKey={}", keyInfo, key.key());
         ISqlTransaction transaction = null;
-        String sql = "UPDATE " + keyTable + " SET metric_key=? WHERE metric_id=? AND engine_name=? AND hostname=? ";
-        Object[] statementParams = { key.key(), key.metricId(), key.engineName(), key.hostname() };
-        int[] statementTypes = { Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+        Object[] statementParams = { key.key(), key.metricId(), key.engineName(), key.hostname(), key.factType().name() };
+        int[] statementTypes = { Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
         try {
-            transaction = engine.getSqlTemplate().startSqlTransaction();
-            transaction.prepareAndExecute(sql, statementParams, statementTypes);
+            transaction = sqlTemplate.startSqlTransaction();
+            transaction.prepareAndExecute(getSql("updateMetricKeySql"), statementParams, statementTypes);
             transaction.commit();
             log.debug("Updated metric key {}", key);
         } catch (Exception e) {
@@ -288,7 +269,9 @@ public class MetricsRepository {
                 // TODO: close connection if platform cannot recover from failed transactions!
                 transaction = null;
             }
-            log.error("Failed to update metric key {}", key, e);
+            String message = "Failed to update metric key: " + key;
+            log.error(message, e);
+            throw new MetricsRepositoryException(message, e);
         } finally {
             if (transaction != null) {
                 close(transaction);
@@ -305,83 +288,13 @@ public class MetricsRepository {
         return new ArrayList<>(metricKeysCache.values());
     }
 
-    /**
-     * Persists a batch of newly completed intervals within a single transaction. Any {@link MetricKey} not yet present in {@code metric_key} is inserted first.
-     *
-     * @param intervals
-     *            entries produced by the aggregation cycle
-     */
-    public void saveIntervals(List<MetricIntervalStatsRecord> intervalStats) {
-        if (intervalStats == null || intervalStats.isEmpty()) {
-            return;
-        }
-        ensureMetricKeyCacheLoaded();
-        MetricKey prevKey = null; // Skips cache and database lookups for repeat references to the same metric key
-        for (MetricIntervalStatsRecord record : intervalStats) {
-            MetricKey key = record.key().equalsIgnoreKey(prevKey) ? prevKey : getOrRegisterMetricKey(record.key());
-            saveMetricIntervalStatsInternal(key, record.stats());
-        }
-        log.info("Saved {} metric intervat stats records to database", intervalStats.size());
-    }
-    /*
-     * ISqlTransaction transaction = null; try { // transaction = engine.getSqlTemplate().startSqlTransaction();
-     * 
-     * // Phase 1: ensure every MetricKey has a surrogate ID row in metric_key.
-     * 
-     * 
-     * // Phase 2: batch-insert the interval rows. transaction.prepare("INSERT INTO " + intervalsTable +
-     * " (metric_key, interval_start, interval_end, avg, min, max, std_dev, observation_count)" + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"); for
-     * (MetricIntervalStatsRecord record : intervals) { MetricIntervalStats iv = record.stats(); long attrId = metricKeysCache.get(record.key());
-     * transaction.addRow(null, new Object[] { attrId, iv.intervalStart(), iv.intervalEnd(), iv.avg(), iv.min(), iv.max(), iv.stdDev(), iv.observationCount() },
-     * new int[] { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.DOUBLE, Types.DOUBLE, Types.DOUBLE, Types.DOUBLE, Types.INTEGER }); } transaction.flush();
-     * transaction.commit(); log.debug("Saved {} metric intervals to database", intervals.size()); } catch (Exception e) { if (transaction != null) {
-     * transaction.rollback(); } log.error("Failed to save {} metric intervals to database", intervals.size(), e); } finally { close(transaction); } }
-     */
-
-    /**
-     * Returns the most recent {@link MetricSeriesSlidingWorkset#IQR_INTERVALS_MIN} intervals for the given metric key, ordered oldest-first so they can be fed
-     * sequentially into {@link MetricSeriesSlidingWorkset#add}.
-     *
-     * <p>
-     * Uses the surrogate-key cache to avoid a JOIN: if the key is not present in the cache after loading, it has no stored intervals and an empty list is
-     * returned immediately.
-     */
-    public List<MetricIntervalStats> loadRecentIntervalsForKeyFromDatabase(MetricKey key) {
-        ensureMetricKeyCacheLoaded();
-        if (key.isSurrogateKeyMissing()) {
-            key = getOrRegisterMetricKey(key);
-        }
-        log.debug("Loading metric intervals from database for key... ", key);
-        String sql = "SELECT interval_start, interval_end, avg, min, max, std_dev, observation_count"
-                + " FROM " + intervalsTable
-                + " WHERE metric_key = ?"
-                + " ORDER BY interval_start DESC";
-        List<MetricIntervalStats> rows = engine.getSqlTemplate().query(
-                sql, MetricSeriesSlidingWorkset.IQR_INTERVALS_MIN, ROW_MAPPER, key.key());
-        Collections.reverse(rows); // oldest-first for chronological workset population
-        log.info("Loaded {} historical intervals for metric {}", rows.size(), key);
-        return rows;
-    }
-
-    static class MetricKeySqlRowMapper implements ISqlRowMapper<MetricKey> {
-        @Override
-        public MetricKey mapRow(Row row) {
-            long key = row.getLong("metric_key");
-            String hostname = row.getString("hostname");
-            String engineName = row.getString("engine_name");
-            String metricId = row.getString("metric_id");
-            return new MetricKey(key, metricId, engineName, hostname);
-        }
-    }
-
-    private MetricKey loadMetricKeyFromDatabase(String metricId, String engineName, String hostname) {
-        String sql = "SELECT metric_key, metric_id, hostname, engine_name FROM " + keyTable
-                + " WHERE metric_id=? AND hostname=? AND engine_name IN (?, ?)";
-        Object[] paramValues = { metricId, hostname, engineName, METRIC_SHARED_ENGINE };
-        int[] paramTypes = { Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
-        List<MetricKey> results = engine.getSqlTemplate().query(sql, new MetricKeySqlRowMapper(), paramValues, paramTypes);
-        if (results == null || results.isEmpty())
+    private MetricKey loadMetricKeyFromDatabase(String metricId, String engineName, String hostname, MetricFactType factType) {
+        Object[] paramValues = { metricId, hostname, engineName, METRIC_SHARED_ENGINE, factType.name() };
+        int[] paramTypes = { Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+        List<MetricKey> results = sqlTemplate.query(getSql("selectMetricKeyByIdSql"), new MetricKeySqlRowMapper(), paramValues, paramTypes);
+        if (results == null || results.isEmpty()) {
             return null;
+        }
         return results.get(0);
     }
 
@@ -415,8 +328,8 @@ public class MetricsRepository {
         }
         for (MetricKey key : metricKeyRecs) {
             this.metricKeysCache.put(generateCacheKey(key), key);
-            log.debug("Loaded metric key from database. key={}, id={}, engine={}, hostname={}",
-                    key.key(), key.metricId(), key.engineName(), key.hostname());
+            log.debug("Loaded metric key from database. key={}, id={}, engine={}, hostname={}, factType={}",
+                    key.key(), key.metricId(), key.engineName(), key.hostname(), key.factType());
         }
         int total = metricKeyRecs.size();
         log.info("Loaded {} metric keys from database. hostname={}, engine_name={}", total, hostname, engineName);
@@ -424,11 +337,9 @@ public class MetricsRepository {
     }
 
     private List<MetricKey> loadAllMetricKeysForHostnameFromDatabase() {
-        String sql = "SELECT metric_key, metric_id, hostname, engine_name FROM " + keyTable
-                + " WHERE hostname = ? AND engine_name IN (?, ?)";
         Object[] paramValues = { hostname, engineName, METRIC_SHARED_ENGINE };
         int[] paramTypes = { Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
-        List<MetricKey> metricKeys = engine.getSqlTemplate().query(sql, new MetricKeySqlRowMapper(), paramValues, paramTypes);
+        List<MetricKey> metricKeys = sqlTemplate.query(getSql("selectMetricKeysByHostnameSql"), new MetricKeySqlRowMapper(), paramValues, paramTypes);
         if (metricKeys == null) {
             metricKeys = new ArrayList<MetricKey>(0);
         }
@@ -436,31 +347,114 @@ public class MetricsRepository {
         return metricKeys;
     }
 
-    private void saveMetricIntervalStatsInternal(MetricKey key, MetricIntervalStats intervalStats) {
+    /**
+     * Persists a batch of newly completed intervals within a single transaction. Any {@link MetricKey} not yet present in {@code metric_key} is inserted first.
+     *
+     * @param intervals
+     *            entries produced by the aggregation cycle
+     */
+    public void saveIntervals(List<MetricIntervalStatsRecord> intervalStats) {
+        if (intervalStats == null || intervalStats.isEmpty()) {
+            return;
+        }
+        long startTime = System.currentTimeMillis();
+        ensureMetricKeyCacheLoaded();
+        MetricKey prevKey = null; // Skips cache and database lookups for repeat references to the same metric key
+        MetricKey skipKey = null; // Skips cache and database writes for repeat references to the same (failed to save) metric key.
+        int savedCount = 0;
+        for (MetricIntervalStatsRecord record : intervalStats) {
+            MetricKey key = record.key();
+            if (key == null || key.equalsIgnoreKey(skipKey)) {
+                continue;
+            }
+            if (key.equalsIgnoreKey(prevKey)) {
+                key = prevKey;
+            } else {
+                try {
+                    key = getOrRegisterMetricKey(key);
+                } catch (Exception ex) {
+                    skipKey = key;
+                    continue;
+                }
+            }
+            saveMetricIntervalStatsInternal(key, record.stats());
+            savedCount++;
+        }
+        log.info("Saved {} metric interval stats records to database in {} seconds", savedCount, (System.currentTimeMillis() - startTime) / 1000.0);
+    }
+
+    /**
+     * Returns recent (last 24-hours) intervals for the given metric key, ordered oldest-first so they can be fed sequentially into
+     * {@link MetricSeriesSlidingWorkset#add}.
+     * <p>
+     * Uses the surrogate-key cache to avoid a JOIN: if the key is not present in the cache after loading, it has no stored intervals and an empty list is
+     * returned immediately.
+     */
+    public List<ISymIntervalStats> loadRecentIntervalsForKeyFromDatabase(MetricKey key) {
+        ensureMetricKeyCacheLoaded();
+        if (!metricKeysCache.containsKey(generateCacheKey(key))) {
+            return new ArrayList<ISymIntervalStats>(0);
+        }
+        if (key.isSurrogateKeyMissing()) {
+            key = getOrRegisterMetricKey(key);
+        }
+        log.debug("Loading metric intervals from database for key... ", key);
+        long oneDayAgo = System.currentTimeMillis() - java.util.concurrent.TimeUnit.DAYS.toMillis(1);
+        String sqlKey = key.factType() == MetricFactType.INT64 ? "selectRecentIntervalsInt64Sql" : "selectRecentIntervalsSql";
+        List<ISymIntervalStats> rows = sqlTemplate.query(
+                getSql(sqlKey), MetricSeriesSlidingWorkset.IQR_INTERVALS_MIN, new DoubleStatsSqlRowMapper(), key.key(), oneDayAgo);
+        log.info("Loaded {} historical intervals for metric {}", rows.size(), key);
+        return rows;
+    }
+
+    private void saveMetricIntervalStatsInternal(MetricKey key, ISymIntervalStats intervalStats) {
         if (key == null) {
-            throw new IllegalArgumentException("key cannot be null!");
+            String message = "key cannot be null!";
+            log.error(message);
+            throw new MetricsRepositoryException(message);
         }
         if (intervalStats == null) {
-            throw new IllegalArgumentException("intervalStats cannot be null!");
+            String message = "intervalStats cannot be null!";
+            log.error(message);
+            throw new MetricsRepositoryException(message);
         }
         log.debug("Saving metric interval stats for key... {}", key);
         ISqlTransaction transaction = null;
-        String sql = "INSERT INTO " + intervalsTable
-                + " (metric_key, interval_start, interval_end, avg, min, max, std_dev, observation_count, created_time)"
-                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, current_timestamp)";
-        Object[] statementParams = {
-                key.key(),
-                intervalStats.intervalStart(), intervalStats.intervalEnd(),
-                intervalStats.avg(), intervalStats.min(), intervalStats.max(),
-                intervalStats.stdDev(), intervalStats.observationCount() };
-        int[] statementTypes = {
-                Types.BIGINT,
-                Types.BIGINT, Types.BIGINT,
-                Types.DOUBLE, Types.DOUBLE, Types.DOUBLE, Types.DOUBLE,
-                Types.INTEGER };
+        String sqlKey;
+        Object[] statementParams;
+        int[] statementTypes;
+        if (key.factType() == MetricFactType.INT64) {
+            sqlKey = "insertMetricIntervalInt64Sql";
+            statementParams = new Object[] {
+                    key.key(),
+                    intervalStats.getStartEpoch(), new java.sql.Timestamp(intervalStats.getEndEpoch()),
+                    (long) intervalStats.getAvg(), (long) intervalStats.getMin(), (long) intervalStats.max(),
+                    intervalStats.getStdDeviation(), intervalStats.getObservationCount(),
+                    (long) intervalStats.mean(),
+                    (intervalStats.getEndEpoch() - intervalStats.getStartEpoch()) / 1000 };
+            statementTypes = new int[] {
+                    Types.BIGINT,
+                    Types.BIGINT, Types.TIMESTAMP,
+                    Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.DOUBLE,
+                    Types.INTEGER, Types.BIGINT, Types.INTEGER };
+        } else {
+            sqlKey = "insertMetricIntervalSql";
+            statementParams = new Object[] {
+                    key.key(),
+                    intervalStats.getStartEpoch(), new java.sql.Timestamp(intervalStats.getEndEpoch()),
+                    intervalStats.getAvg(), intervalStats.getMin(), intervalStats.max(),
+                    intervalStats.getStdDeviation(), intervalStats.getObservationCount(),
+                    intervalStats.mean(),
+                    (intervalStats.getEndEpoch() - intervalStats.getStartEpoch()) / 1000 };
+            statementTypes = new int[] {
+                    Types.BIGINT,
+                    Types.BIGINT, Types.TIMESTAMP,
+                    Types.DOUBLE, Types.DOUBLE, Types.DOUBLE, Types.DOUBLE,
+                    Types.INTEGER, Types.DOUBLE, Types.INTEGER };
+        }
         try {
-            transaction = engine.getSqlTemplate().startSqlTransaction();
-            transaction.prepareAndExecute(sql, statementParams, statementTypes);
+            transaction = sqlTemplate.startSqlTransaction();
+            transaction.prepareAndExecute(getSql(sqlKey), statementParams, statementTypes);
             transaction.commit();
         } catch (Exception e) {
             if (transaction != null) {
@@ -468,7 +462,9 @@ public class MetricsRepository {
                 // TODO: close connection if platform cannot recover from failed transactions!
                 transaction = null;
             }
-            log.error("Failed to save metric key: " + key, e);
+            String message = "Failed to save metric interval stats for key: " + key;
+            log.error(message, e);
+            throw new MetricsRepositoryException(message, e);
         } finally {
             if (transaction != null) {
                 close(transaction);
@@ -479,10 +475,12 @@ public class MetricsRepository {
 
     private MetricKey saveMetricKeyInternal(MetricKey metricKeyRec) {
         if (metricKeyRec == null) {
-            throw new IllegalArgumentException("metricKeyRec cannot be null!");
+            String message = "metricKeyRec cannot be null!";
+            log.error(message);
+            throw new MetricsRepositoryException(message);
         }
         if (metricKeyRec.isSurrogateKeyMissing()) {
-            return saveMetricKeyInternal(metricKeyRec.metricId(), metricKeyRec.engineName(), metricKeyRec.hostname());
+            return saveMetricKeyInternal(metricKeyRec.metricId(), metricKeyRec.engineName(), metricKeyRec.hostname(), metricKeyRec.factType());
         }
         return saveMetricKeyToDatabase(metricKeyRec);
     }
@@ -496,27 +494,34 @@ public class MetricsRepository {
         return v instanceof Number ? ((Number) v).doubleValue() : 0.0;
     }
 
-    private static final ISqlRowMapper<MetricIntervalStats> ROW_MAPPER = new ISqlRowMapper<MetricIntervalStats>() {
+    static class MetricKeySqlRowMapper implements ISqlRowMapper<MetricKey> {
         @Override
-        public MetricIntervalStats mapRow(Row row) {
+        public MetricKey mapRow(Row row) {
+            long key = row.getLong("metric_key");
+            String hostname = row.getString("hostname");
+            String engineName = row.getString("engine_name");
+            String metricId = row.getString("metric_id");
+            MetricFactType factType = MetricFactType.valueOf(row.getString("fact_type"));
+            return new MetricKey(key, hostname, engineName, metricId, factType);
+        }
+    }
+
+    /**
+     * Serializes MetricIntervalStats to/from database record.
+     */
+    static class DoubleStatsSqlRowMapper implements ISqlRowMapper<ISymIntervalStats> {
+        @Override
+        public ISymIntervalStats mapRow(Row row) {
             long intervalStart = row.getLong("interval_start");
-            long intervalEnd = row.getLong("interval_end");
-            double avg = rowDouble(row, "avg");
+            java.sql.Timestamp endTimestamp = (java.sql.Timestamp) row.get("end_time");
+            long intervalEnd = endTimestamp != null ? endTimestamp.getTime() : 0L;
+            double avg = rowDouble(row, "avg"); // The time-weighted average
             double min = rowDouble(row, "min");
             double max = rowDouble(row, "max");
             double stdDev = rowDouble(row, "std_dev");
             int observationCount = row.getInt("observation_count");
-            // mean is not persisted separately; avg is used as the best available approximation
-            return new MetricIntervalStats(intervalStart, intervalEnd, avg, min, max, stdDev, observationCount, avg, false);
+            double mean = rowDouble(row, "mean");
+            return new MetricIntervalStats(intervalStart, intervalEnd, avg, min, max, stdDev, observationCount, mean, false);
         }
     };
-
-    private void close(ISqlTransaction transaction) {
-        if (transaction != null) {
-            try {
-                transaction.close();
-            } catch (Exception ignored) {
-            }
-        }
-    }
 }

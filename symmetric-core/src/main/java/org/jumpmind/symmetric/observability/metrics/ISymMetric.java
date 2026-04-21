@@ -20,6 +20,8 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import org.jumpmind.symmetric.observability.stats.IStatsAccumulator;
+
 public interface ISymMetric {
     String getMetricId();
 
@@ -36,4 +38,12 @@ public interface ISymMetric {
     void close();
 
     boolean isClosed();
+
+    /**
+     * Creates the first accumulator for this metric. Called once when no prior interval exists. Implementations return the type appropriate for this metric
+     * ({@link org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator} for gauges,
+     * {@link org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator} for counters). Carry-forward for subsequent windows uses
+     * {@link org.jumpmind.symmetric.observability.stats.IStatsAccumulator#createNext}.
+     */
+    IStatsAccumulator createAccumulator(long intervalStart);
 }

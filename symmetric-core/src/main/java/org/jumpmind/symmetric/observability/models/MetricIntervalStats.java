@@ -23,7 +23,7 @@ package org.jumpmind.symmetric.observability.models;
 import java.io.Serializable;
 import java.sql.Date;
 
-import org.jumpmind.symmetric.observability.metrics.ISymMetricInterval;
+import org.jumpmind.symmetric.observability.metrics.ISymIntervalStats;
 
 /**
  * Immutable snapshot of aggregated statistics for one closed 5-minute window of a single metric.
@@ -41,7 +41,7 @@ public record MetricIntervalStats(
         double stdDev,
         int observationCount,
         double mean,
-        boolean isOutlier) implements ISymMetricInterval, Serializable {
+        boolean isOutlier) implements ISymIntervalStats, Serializable {
     @Override
     public long getStartEpoch() {
         return intervalStart;

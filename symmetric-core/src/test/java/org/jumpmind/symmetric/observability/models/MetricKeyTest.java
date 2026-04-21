@@ -28,86 +28,87 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MetricKeyTest {
     private static final long KEY_A = 1L;
     private static final long KEY_B = 2L;
+    private static final MetricFactType FLOAT64 = MetricFactType.FLOAT64;
 
     @Test
     void sameInstance_returnsTrue() {
-        MetricKey key = new MetricKey(KEY_A, "host1", "engine1", "metric1");
+        MetricKey key = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
         assertTrue(key.equalsIgnoreKey(key));
     }
 
     @Test
     void differentKeyField_sameOtherFields_returnsTrue() {
-        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1");
-        MetricKey b = new MetricKey(KEY_B, "host1", "engine1", "metric1");
+        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
+        MetricKey b = new MetricKey(KEY_B, "host1", "engine1", "metric1", FLOAT64);
         assertTrue(a.equalsIgnoreKey(b));
     }
 
     @Test
     void caseInsensitiveHostname_returnsTrue() {
-        MetricKey a = new MetricKey(KEY_A, "HOST1", "engine1", "metric1");
-        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1");
+        MetricKey a = new MetricKey(KEY_A, "HOST1", "engine1", "metric1", FLOAT64);
+        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
         assertTrue(a.equalsIgnoreKey(b));
     }
 
     @Test
     void caseInsensitiveEngineName_returnsTrue() {
-        MetricKey a = new MetricKey(KEY_A, "host1", "Engine1", "metric1");
-        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1");
+        MetricKey a = new MetricKey(KEY_A, "host1", "Engine1", "metric1", FLOAT64);
+        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
         assertTrue(a.equalsIgnoreKey(b));
     }
 
     @Test
     void caseInsensitiveMetricId_returnsTrue() {
-        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "Metric1");
-        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1");
+        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "Metric1", FLOAT64);
+        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
         assertTrue(a.equalsIgnoreKey(b));
     }
 
     @Test
     void differentHostname_returnsFalse() {
-        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1");
-        MetricKey b = new MetricKey(KEY_A, "host2", "engine1", "metric1");
+        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
+        MetricKey b = new MetricKey(KEY_A, "host2", "engine1", "metric1", FLOAT64);
         assertFalse(a.equalsIgnoreKey(b));
     }
 
     @Test
     void differentEngineName_returnsFalse() {
-        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1");
-        MetricKey b = new MetricKey(KEY_A, "host1", "engine2", "metric1");
+        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
+        MetricKey b = new MetricKey(KEY_A, "host1", "engine2", "metric1", FLOAT64);
         assertFalse(a.equalsIgnoreKey(b));
     }
 
     @Test
     void differentMetricId_returnsFalse() {
-        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1");
-        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric2");
+        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
+        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric2", FLOAT64);
         assertFalse(a.equalsIgnoreKey(b));
     }
 
     @Test
     void nullArgument_returnsFalse() {
-        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1");
+        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
         assertFalse(a.equalsIgnoreKey(null));
     }
 
     @Test
     void nullHostnameOnThis_returnsFalse() {
-        MetricKey a = new MetricKey(KEY_A, null, "engine1", "metric1");
-        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1");
+        MetricKey a = new MetricKey(KEY_A, null, "engine1", "metric1", FLOAT64);
+        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
         assertFalse(a.equalsIgnoreKey(b));
     }
 
     @Test
     void nullEngineNameOnThis_returnsFalse() {
-        MetricKey a = new MetricKey(KEY_A, "host1", null, "metric1");
-        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1");
+        MetricKey a = new MetricKey(KEY_A, "host1", null, "metric1", FLOAT64);
+        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
         assertFalse(a.equalsIgnoreKey(b));
     }
 
     @Test
     void nullMetricIdOnThis_returnsFalse() {
-        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", null);
-        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1");
+        MetricKey a = new MetricKey(KEY_A, "host1", "engine1", null, FLOAT64);
+        MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64);
         assertFalse(a.equalsIgnoreKey(b));
     }
 }
