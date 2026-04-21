@@ -26,6 +26,7 @@ import org.jumpmind.symmetric.observability.metrics.ISymObservation;
 import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 /**
  * Periodically drains observation queues from all registered {@link IEngineMetricsService} instances, assigns observations to 5-minute window accumulators, and
@@ -100,6 +101,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
 
     void processAll() {
         for (IEngineMetricsService svc : metricsManager.getEngineMetricsServices()) {
+            MDC.put("engineName", svc.getEngineName());
             try {
                 for (AbstractQueuedMetric metric : svc.getAllMetrics()) {
                     ISymObservation[] observations = metric.removeAllObservations();
@@ -110,6 +112,8 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
                 svc.saveCompletedIntervalStats();
             } catch (Exception ex) {
                 log.warn("Failed to process metrics for engine " + svc.getEngineName(), ex);
+            } finally {
+                MDC.remove("engineName");
             }
         }
     }

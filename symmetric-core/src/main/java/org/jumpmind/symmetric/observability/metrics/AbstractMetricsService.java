@@ -50,6 +50,10 @@ abstract class AbstractMetricsService implements IMetricsService {
         this.isOtelPublishingEnabled = isOtelPublishingEnabled;
     }
 
+    @Override
+    public void initRepository() {
+    }
+
     public boolean isOtelPublishingEnabled() {
         return isOtelPublishingEnabled;
     }

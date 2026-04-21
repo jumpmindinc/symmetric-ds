@@ -58,6 +58,11 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     }
 
     @Override
+    public void initRepository() {
+        getOrInitRepository();
+    }
+
+    @Override
     public void saveCompletedIntervalStats() {
         saveCompletedIntervalsForAllMetrics();
     }

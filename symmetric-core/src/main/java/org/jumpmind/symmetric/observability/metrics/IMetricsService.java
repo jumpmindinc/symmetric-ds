@@ -21,6 +21,8 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 public interface IMetricsService {
+    void initRepository();
+
     void saveCompletedIntervalStats();
 
     void shutdown();
