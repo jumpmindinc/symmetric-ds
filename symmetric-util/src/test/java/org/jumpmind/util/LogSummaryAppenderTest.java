@@ -112,11 +112,14 @@ class LogSummaryAppenderTest {
     }
 
     @Test
-    void testMostRecentTimeUpdatedOnRepeat() throws InterruptedException {
-        appender.doAppend(mockEvent(Level.ERROR, "server", "repeated"));
+    void testMostRecentTimeUpdatedOnRepeat() {
+        ILoggingEvent first = mockEvent(Level.ERROR, "server", "repeated");
+        when(first.getTimeStamp()).thenReturn(1000L);
+        appender.doAppend(first);
         long firstTime = appender.getLogSummaries("server", Level.ERROR).get(0).getMostRecentTime();
-        Thread.sleep(5);
-        appender.doAppend(mockEvent(Level.ERROR, "server", "repeated"));
+        ILoggingEvent second = mockEvent(Level.ERROR, "server", "repeated");
+        when(second.getTimeStamp()).thenReturn(2000L);
+        appender.doAppend(second);
         long secondTime = appender.getLogSummaries("server", Level.ERROR).get(0).getMostRecentTime();
         assertTrue(secondTime >= firstTime);
     }
@@ -176,10 +179,13 @@ class LogSummaryAppenderTest {
     }
 
     @Test
-    void testSummariesSortedByMostRecentTime() throws InterruptedException {
-        appender.doAppend(mockEvent(Level.ERROR, "server", "first error"));
-        Thread.sleep(5);
-        appender.doAppend(mockEvent(Level.ERROR, "server", "second error"));
+    void testSummariesSortedByMostRecentTime() {
+        ILoggingEvent first = mockEvent(Level.ERROR, "server", "first error");
+        when(first.getTimeStamp()).thenReturn(1000L);
+        ILoggingEvent second = mockEvent(Level.ERROR, "server", "second error");
+        when(second.getTimeStamp()).thenReturn(2000L);
+        appender.doAppend(first);
+        appender.doAppend(second);
         List<LogSummary> summaries = appender.getLogSummaries("server", Level.ERROR);
         assertEquals(2, summaries.size());
         assertTrue(summaries.get(0).getMostRecentTime() <= summaries.get(1).getMostRecentTime());

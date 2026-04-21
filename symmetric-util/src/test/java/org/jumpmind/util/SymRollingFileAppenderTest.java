@@ -29,8 +29,6 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.io.UnsupportedEncodingException;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -121,7 +119,7 @@ class SymRollingFileAppenderTest {
     }
 
     @Test
-    void testGetThrowableHashConsistency() throws UnsupportedEncodingException {
+    void testGetThrowableHashConsistency() {
         StackTraceElement frame = new StackTraceElement("com.example.Foo", "doIt", "Foo.java", 10);
         StackTraceElementProxy proxy = new StackTraceElementProxy(frame);
         long hash1 = appender.getThrowableHash(new StackTraceElementProxy[] { proxy }, "msg");
@@ -130,7 +128,7 @@ class SymRollingFileAppenderTest {
     }
 
     @Test
-    void testGetThrowableHashDiffersForDifferentMessage() throws UnsupportedEncodingException {
+    void testGetThrowableHashDiffersForDifferentMessage() {
         StackTraceElement frame = new StackTraceElement("com.example.Foo", "doIt", "Foo.java", 10);
         StackTraceElementProxy proxy = new StackTraceElementProxy(frame);
         long hash1 = appender.getThrowableHash(new StackTraceElementProxy[] { proxy }, "msg1");

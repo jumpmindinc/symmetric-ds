@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +52,9 @@ import ch.qos.logback.core.util.FileSize;
 public class LogbackHelper {
     private static final Logger log = LoggerFactory.getLogger(LogbackHelper.class);
     private static final String DEFAULT_LOG_PATTERN = "%d %p [%X{engineName}] [%c{0}] [%t] %m%n";
+    private static final String APPENDER_CONSOLE = "CONSOLE";
+    private static final String APPENDER_CONSOLE_ERR = "CONSOLE_ERR";
+    private static final String APPENDER_ROLLING = "ROLLING";
     private final Map<String, Level> protectedLoggers = new HashMap<>();
 
     public void initialize(boolean isDebug) {
@@ -64,7 +68,7 @@ public class LogbackHelper {
             try {
                 joranConfigurator.doConfigure(logbackFile.getAbsolutePath());
             } catch (Exception e) {
-                System.err.println("Failed to configure Logback from " + logbackFile.getAbsolutePath() + ": " + e.getMessage());
+                log.error("Failed to configure Logback from {}: {}", logbackFile.getAbsolutePath(), e.getMessage());
             }
             enforceProtectedLoggers();
         }
@@ -82,24 +86,24 @@ public class LogbackHelper {
     }
 
     public void registerConsoleAppender() {
-        removeAppender("CONSOLE");
-        removeAppender("CONSOLE_ERR");
+        removeAppender(APPENDER_CONSOLE);
+        removeAppender(APPENDER_CONSOLE_ERR);
         String pattern = "%d %p [%X{engineName}] [%c{0}] [%t] %m%ex%n";
-        addAppender(buildConsoleAppender("CONSOLE", "System.out", pattern,
+        addAppender(buildConsoleAppender(APPENDER_CONSOLE, "System.out", pattern,
                 buildLevelFilter(Level.WARN, FilterReply.DENY, FilterReply.NEUTRAL),
                 buildLevelFilter(Level.ERROR, FilterReply.DENY, FilterReply.ACCEPT)));
-        addAppender(buildConsoleAppender("CONSOLE_ERR", "System.err", pattern,
+        addAppender(buildConsoleAppender(APPENDER_CONSOLE_ERR, "System.err", pattern,
                 buildThresholdFilter(Level.WARN.toString())));
     }
 
     public void registerVerboseConsoleAppender() {
-        removeAppender("CONSOLE");
-        removeAppender("CONSOLE_ERR");
+        removeAppender(APPENDER_CONSOLE);
+        removeAppender(APPENDER_CONSOLE_ERR);
         String pattern = "%d %-5p [%X{engineName}] [%c{0}] [%t] %m%ex%n";
-        addAppender(buildConsoleAppender("CONSOLE", "System.out", pattern,
+        addAppender(buildConsoleAppender(APPENDER_CONSOLE, "System.out", pattern,
                 buildLevelFilter(Level.WARN, FilterReply.DENY, FilterReply.NEUTRAL),
                 buildLevelFilter(Level.ERROR, FilterReply.DENY, FilterReply.ACCEPT)));
-        addAppender(buildConsoleAppender("CONSOLE_ERR", "System.err", pattern,
+        addAppender(buildConsoleAppender(APPENDER_CONSOLE_ERR, "System.err", pattern,
                 buildThresholdFilter(Level.WARN.toString())));
     }
 
@@ -142,9 +146,8 @@ public class LogbackHelper {
     }
 
     public void registerRollingFileAppender(String overrideLogFileName) {
-        Appender<ILoggingEvent> existing = getAppender("ROLLING");
-        if (existing instanceof SymRollingFileAppender) {
-            SymRollingFileAppender fileAppender = (SymRollingFileAppender) existing;
+        Appender<ILoggingEvent> existing = getAppender(APPENDER_ROLLING);
+        if (existing instanceof SymRollingFileAppender fileAppender) {
             String fileName = fileAppender.getFile();
             if (overrideLogFileName != null) {
                 fileName = fileName.replace("symmetric.log", overrideLogFileName);
@@ -152,10 +155,10 @@ public class LogbackHelper {
                         .getFileNamePattern().replace("symmetric.log", overrideLogFileName);
                 LoggerContext context = getContext();
                 SymRollingFileAppender newAppender = buildRollingFileAppender(context, fileName, newFilePattern);
-                removeAppender("ROLLING");
+                removeAppender(APPENDER_ROLLING);
                 addAppender(newAppender);
             }
-            System.err.println(String.format("Log output will be written to %s", fileName));
+            log.info("Log output will be written to {}", fileName);
         }
     }
 
@@ -175,7 +178,7 @@ public class LogbackHelper {
         triggeringPolicy.start();
         SymRollingFileAppender appender = new SymRollingFileAppender();
         appender.setContext(context);
-        appender.setName("ROLLING");
+        appender.setName(APPENDER_ROLLING);
         appender.setFile(fileName);
         appender.setRollingPolicy(rollingPolicy);
         appender.setTriggeringPolicy(triggeringPolicy);
@@ -225,7 +228,7 @@ public class LogbackHelper {
         Iterator<Appender<ILoggingEvent>> appenderIterator = rootLogger.iteratorForAppenders();
         while (appenderIterator.hasNext()) {
             Appender<ILoggingEvent> appender = appenderIterator.next();
-            if (appender instanceof FileAppender fileAppender) {
+            if (appender instanceof FileAppender<?> fileAppender) {
                 String fileName = fileAppender.getFile();
                 if (fileName != null) {
                     return new File(fileName);
@@ -240,7 +243,7 @@ public class LogbackHelper {
         Iterator<Appender<ILoggingEvent>> appenderIterator = rootLogger.iteratorForAppenders();
         while (appenderIterator.hasNext()) {
             Appender<ILoggingEvent> appender = appenderIterator.next();
-            if (appender instanceof FileAppender fileAppender) {
+            if (appender instanceof FileAppender<?> fileAppender) {
                 Encoder<?> encoder = fileAppender.getEncoder();
                 if (encoder instanceof PatternLayoutEncoder patternLayoutEncoder) {
                     return DEFAULT_LOG_PATTERN.equals(patternLayoutEncoder.getPattern());
@@ -314,10 +317,14 @@ public class LogbackHelper {
     }
 
     private LoggerContext getContext() {
-        return (LoggerContext) LoggerFactory.getILoggerFactory();
+        ILoggerFactory factory = LoggerFactory.getILoggerFactory();
+        if (!(factory instanceof LoggerContext)) {
+            throw new IllegalStateException("SLF4J is not bound to Logback in this context: " + factory.getClass().getName());
+        }
+        return (LoggerContext) factory;
     }
 
     private ch.qos.logback.classic.Logger getRootLogger() {
-        return getContext().getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+        return getContext().getLogger(Logger.ROOT_LOGGER_NAME);
     }
 }

@@ -32,6 +32,7 @@ import java.util.List;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import org.slf4j.ILoggerFactory;
 import org.slf4j.LoggerFactory;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Column;
@@ -71,14 +72,19 @@ public class DatabasePlatformTest {
 
     @BeforeEach
     public void turnOnDebug() {
-        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
-        originalLevel = context.getLogger("org.jumpmind.db").getEffectiveLevel();
-        context.getLogger("org.jumpmind.db").setLevel(Level.TRACE);
+        ILoggerFactory factory = LoggerFactory.getILoggerFactory();
+        if (factory instanceof LoggerContext context) {
+            originalLevel = context.getLogger("org.jumpmind.db").getEffectiveLevel();
+            context.getLogger("org.jumpmind.db").setLevel(Level.TRACE);
+        }
     }
 
     // @After
     public void turnOffDebug() {
-        ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger("org.jumpmind.db").setLevel(originalLevel);
+        ILoggerFactory factory = LoggerFactory.getILoggerFactory();
+        if (factory instanceof LoggerContext context) {
+            context.getLogger("org.jumpmind.db").setLevel(originalLevel);
+        }
     }
 
     @Test

@@ -63,13 +63,12 @@ public class LogSummaryAppender extends AppenderBase<ILoggingEvent> {
         Map<String, LogSummary> summariesForEngine = summaries.computeIfAbsent(engineName,
                 k -> new ConcurrentHashMap<>());
         String message = extractMessage(event);
-        LogSummary summary = summariesForEngine.get(message);
-        if (summary == null) {
-            summary = new LogSummary();
-            summary.setMessage(message);
-            summary.setFirstOccurranceTime(event.getTimeStamp());
-            summariesForEngine.put(message, summary);
-        }
+        LogSummary summary = summariesForEngine.computeIfAbsent(message, k -> {
+            LogSummary newSummary = new LogSummary();
+            newSummary.setMessage(message);
+            newSummary.setFirstOccurranceTime(event.getTimeStamp());
+            return newSummary;
+        });
         summary.setLevel(convertFromLevel(event.getLevel()));
         summary.setMostRecentTime(event.getTimeStamp());
         summary.setCount(summary.getCount() + 1);

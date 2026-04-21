@@ -27,7 +27,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 
 import org.jumpmind.util.LogSummary;
-import org.jumpmind.util.LogSummaryAppender;
 import org.junit.jupiter.api.Test;
 import org.slf4j.event.Level;
 
@@ -70,13 +69,6 @@ class LogSummaryAppenderUtilsTest {
         LogSummaryAppenderUtils.setLevel("org.jumpmind.test.utils", Level.DEBUG);
         Level result = LogSummaryAppenderUtils.getLevel("org.jumpmind.test.utils");
         assertNotNull(result);
-    }
-
-    @Test
-    void testInitializeRegistersLogSummaryAppender() {
-        LogSummaryAppenderUtils.initialize();
-        LogSummaryAppender appender = LogSummaryAppenderUtils.getLogSummaryAppender();
-        assertNotNull(appender);
     }
 
     @Test

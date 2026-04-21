@@ -20,7 +20,7 @@
  */
 package org.jumpmind.util;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -102,15 +102,15 @@ public class SymRollingFileAppender extends RollingFileAppender<ILoggingEvent> {
         }
     }
 
-    protected long getThrowableHash(StackTraceElementProxy[] elements, String message) throws UnsupportedEncodingException {
+    protected long getThrowableHash(StackTraceElementProxy[] elements, String message) {
         CRC32 crc = new CRC32();
         if (message != null) {
-            crc.update(message.getBytes("UTF8"));
+            crc.update(message.getBytes(StandardCharsets.UTF_8));
         }
         for (StackTraceElementProxy element : elements) {
             StackTraceElement stackTraceElement = element.getStackTraceElement();
             crc.update((stackTraceElement.getClassName() + stackTraceElement.getMethodName()
-                    + stackTraceElement.getLineNumber()).getBytes("UTF8"));
+                    + stackTraceElement.getLineNumber()).getBytes(StandardCharsets.UTF_8));
         }
         return crc.getValue();
     }
