@@ -71,15 +71,6 @@ class HikariBuilderTest {
     }
 
     @Test
-    void buildDefaultsMinimumIdleToMaximumPoolSizeWhenZero() {
-        TypedProperties properties = buildH2Properties();
-        properties.setProperty(DataSourceProperties.DB_POOL_MAX_ACTIVE, "5");
-        properties.setProperty(DataSourceProperties.DB_POOL_MIN_IDLE, "0");
-        dataSource = build(properties);
-        assertEquals(dataSource.getMaximumPoolSize(), dataSource.getMinimumIdle());
-    }
-
-    @Test
     void buildSetsConnectionTimeout() {
         TypedProperties properties = buildH2Properties();
         properties.setProperty(DataSourceProperties.DB_POOL_MAX_WAIT, "10000");

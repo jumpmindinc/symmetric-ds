@@ -47,8 +47,8 @@ public final class DataSourceUtils {
 
     /**
      * Resets a {@link DataSource} so that subsequent borrows receive fresh connections. For {@link HikariDataSource}, which cannot be reopened after a
-     * permanent close, idle connections are evicted instead so the pool remains usable. For all other pool types, this delegates to {@link #closeQuietly}
-     * which closes the pool and allows implementations like {@code ResettableBasicDataSource} to reopen it on the next borrow.
+     * permanent close, idle connections are evicted instead so the pool remains usable. For all other pool types, this delegates to {@link #closeQuietly} which
+     * closes the pool and allows implementations like {@code ResettableBasicDataSource} to reopen it on the next borrow.
      */
     public static void resetQuietly(DataSource ds) {
         if (ds instanceof HikariDataSource hikari) {

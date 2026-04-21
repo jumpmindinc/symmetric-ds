@@ -278,7 +278,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
     }
 
     /**
-     * @deprecated Use {@link #createDataSource()} that returns a {@link javax.sql.DataSource}.
+     * @deprecated Use {@link #createDataSource(File)} that returns a {@link javax.sql.DataSource}.
      */
     @Deprecated(forRemoval = true)
     public static BasicDataSource createBasicDataSource(File propsFile) {

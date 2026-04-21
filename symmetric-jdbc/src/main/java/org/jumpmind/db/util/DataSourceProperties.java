@@ -76,9 +76,10 @@ public final class DataSourceProperties {
      * The behavior differs by pool implementation:
      * <ul>
      * <li><b>DBCP2</b> — the eviction thread will create new connections to keep the idle count at or above this value.</li>
-     * <li><b>HikariCP</b> — HikariCP will maintain this many idle connections. At {@code 0} (the default) the pool is fully elastic: it creates connections
-     * on demand and reclaims them once they have been idle for {@code idleTimeout}. Per HikariCP's documentation, pairing {@code minimumIdle=0} with an
-     * {@code idleTimeout} and {@code maxLifetime} shorter than the database's own connection timeout is recommended to avoid stale-connection memory leaks.</li>
+     * <li><b>HikariCP</b> — HikariCP will maintain this many idle connections. At {@code 0} (the default) the pool is fully elastic: it creates connections on
+     * demand and reclaims them once they have been idle for {@code idleTimeout}. Per HikariCP's documentation, pairing {@code minimumIdle=0} with an
+     * {@code idleTimeout} and {@code maxLifetime} shorter than the database's own connection timeout is recommended to avoid stale-connection memory
+     * leaks.</li>
      * </ul>
      * </p>
      */
