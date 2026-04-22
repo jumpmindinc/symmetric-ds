@@ -21,11 +21,13 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
+import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
 import org.jumpmind.symmetric.observability.repository.MetricsRepository;
@@ -56,7 +58,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     public void shutdown() {
         metricsManager.unregister(this);
         super.shutdown();
-        log.info("Host metrics service shut down");
+        log.info("Engine metrics service shut down");
     }
 
     @Override
@@ -75,25 +77,35 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     protected void saveCompletedIntervalsForAllMetrics() {
         MetricsRepository repo = getOrInitRepository();
         List<MetricIntervalStatsRecord> newlyCompleted = new ArrayList<>();
-        int exportedMetrics = 0;
-        for (AbstractQueuedMetric metric : (java.util.Collection<AbstractQueuedMetric>)(java.util.Collection<?>) getAllMetrics()) {
+        int processedMetrics = 0;
+        Collection<ISymMetric> allMetrics = getAllMetrics();
+        for (ISymMetric metric : allMetrics) {
+            if (!metric.isEnabled()) {
+                continue;
+            }
             try {
                 metric.closeCompletedIntervals();
-                MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType());
-                for (ISymIntervalStats interval : metric.exportCompletedIntervals(key)) {
+                MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.isEnabled());
+                if (!key.isEnabled()) {
+                    metric.removeAllObservations();
+                    metric.exportCompletedIntervals();
+                    metric.close();
+                    continue;
+                }
+                for (ISymIntervalStats interval : metric.exportCompletedIntervals()) {
                     newlyCompleted.add(new MetricIntervalStatsRecord(key, interval));
                 }
-                exportedMetrics++;
+                processedMetrics++;
             } catch (Exception ex) {
                 log.warn("Failed to export completed intervals for metric={}", metric.getMetricId());
                 continue;
             }
         }
-        if (exportedMetrics > 0 && !newlyCompleted.isEmpty()) {
+        if (processedMetrics > 0 && !newlyCompleted.isEmpty()) {
             log.debug("Saving {} metric interval stats records...", newlyCompleted.size());
             repo.saveIntervals(newlyCompleted);
         }
-        log.debug("Saved {} completed interval stats records for {} metrics.", newlyCompleted.size(), exportedMetrics);
+        log.debug("Saved {} completed interval stats records for {} metrics.", newlyCompleted.size(), processedMetrics);
     }
 
     protected MetricsRepository createMetricsRepository() {
@@ -139,9 +151,9 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
      */
     private int initializeStatsWorksetsForAllMetrics(MetricsRepository repo) {
         int metricsInitialized = 0;
-        for (AbstractQueuedMetric metric : (java.util.Collection<AbstractQueuedMetric>)(java.util.Collection<?>) getAllMetrics()) {
+        for (AbstractQueuedMetric metric : (java.util.Collection<AbstractQueuedMetric>) (java.util.Collection<?>) getAllMetrics()) {
             try {
-                MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType());
+                MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.isEnabled());
                 List<ISymIntervalStats> history = repo.loadRecentIntervalsForKeyFromDatabase(key);
                 metric.seedWorkset(history);
                 metricsInitialized++;

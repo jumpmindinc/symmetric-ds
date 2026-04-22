@@ -22,7 +22,8 @@ package org.jumpmind.symmetric.observability.interfaces;
 
 /**
  * Contract for a mutable, time-windowed statistics accumulator. Implementations differ in the precision used for min, max, and last-value tracking
- * ({@link org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator} uses {@code double}; {@link org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator} uses {@code long}).
+ * ({@link org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator} uses {@code double};
+ * {@link org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator} uses {@code long}).
  */
 public interface IStatsAccumulator {
     long getIntervalStart();
@@ -44,10 +45,9 @@ public interface IStatsAccumulator {
     double getLastValueAsDouble();
 
     /**
-     * Creates a new accumulator of the same concrete type for {@code intervalStart}, carrying this accumulator's last value forward. The carry value is
-     * transferred at native precision — no {@code double} conversion for {@code long}-typed accumulators.
+     * Creates a new accumulator of the same concrete type, carrying this accumulator's last value forward. The new accumulator covers the next time window.
      */
-    IStatsAccumulator createNext(long intervalStart);
+    IStatsAccumulator createNext();
 
     ISymIntervalStats toStats();
 }

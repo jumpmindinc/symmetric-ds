@@ -92,7 +92,7 @@ public class MetricsManager {
     }
 
     public IMetricDefinitionFactory getMetricDefinitionFactory() {
-        if(definitionFactory==null) {
+        if (definitionFactory == null) {
             return new MetricDefinitionFactory();
         }
         return definitionFactory;
@@ -218,7 +218,7 @@ public class MetricsManager {
     public IPrimaryMetricAggregator getAggregator() {
         return aggregator;
     }
- 
+
     private static String resolveHostname() {
         try {
             return InetAddress.getLocalHost().getHostName();

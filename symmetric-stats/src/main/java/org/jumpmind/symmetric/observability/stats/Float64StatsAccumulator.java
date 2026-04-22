@@ -50,16 +50,18 @@ public class Float64StatsAccumulator extends AbstractStatsAccumulator {
 
     @Override
     protected void updateMinMaxAndLastValue(double value) {
-        if (value < min)
+        if (value < min) {
             min = value;
-        if (value > max)
+        }
+        if (value > max) {
             max = value;
+        }
         lastValue = value;
     }
 
     @Override
-    public IStatsAccumulator createNext(long intervalStart) {
-        return new Float64StatsAccumulator(intervalStart, lastValue);
+    public IStatsAccumulator createNext() {
+        return new Float64StatsAccumulator(this.intervalEnd, this.lastValue);
     }
 
     @Override

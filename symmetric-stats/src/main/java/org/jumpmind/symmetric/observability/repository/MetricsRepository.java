@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
+import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricFactType;
@@ -42,9 +43,8 @@ import org.jumpmind.symmetric.service.impl.AbstractService;
 /**
  * Repository for all database access to metrics keys and data. Manages 3 tables related to metrics:
  * <p>
- * <b>Metric_Key</b> — A header record with a surrogate int64 key used by other (fact) tables.
- * <b>Metric_Stats_Int64</b> — A fact record with min, max and avg values as int64 (long in Java).
-  *<b>Metric_Stats_Float64</b> — A fact record with min, max and avg values as float64 (double in Java).
+ * <b>Metric_Key</b> — A header record with a surrogate int64 key used by other (fact) tables. <b>Metric_Stats_Int64</b> — A fact record with min, max and avg
+ * values as int64 (long in Java). <b>Metric_Stats_Float64</b> — A fact record with min, max and avg values as float64 (double in Java).
  * <p>
  * An in-memory cache of {@link MetricKey} → surrogate {@code metric_key} is lazy-loaded and reused across all operations to avoid database JOINs.
  */
@@ -90,22 +90,24 @@ public class MetricsRepository extends AbstractService {
         }
     }
 
-    public MetricKey getMetricKey(String metricId, MetricFactType factType) {
-        return getOrRegisterMetricKey(metricId, this.engineName, this.hostname, factType);
+    public MetricKey getMetricKey(String metricId, MetricFactType factType, boolean isEnabled) {
+        return getOrRegisterMetricKey(metricId, this.engineName, this.hostname, factType, isEnabled);
     }
 
     /**
      * Fetches {@link MetricKey} record from cache or database. Ensures the surrogate ID assigned to new entries.
      */
-    public MetricKey getOrRegisterMetricKey(String metricId, String engineName, String hostname, MetricFactType factType) {
+    public MetricKey getOrRegisterMetricKey(String metricId, String engineName, String hostname, MetricFactType factType, boolean isEnabled) {
         ensureMetricKeyCacheLoaded();
         Integer cacheKey = generateCacheKey(metricId, engineName, hostname, factType);
         MetricKey metricKeyRec = metricKeysCache.get(cacheKey);
         if (metricKeyRec != null) {
-            log.debug("Cache hit for metric key {}", metricKeyRec);
+            if (log.isDebugEnabled()) {
+                log.debug("Cache hit for metric key {}", metricKeyRec);
+            }
             return metricKeyRec;
         }
-        return saveMetricKeyInternal(metricId, engineName, hostname, factType);
+        return saveMetricKeyInternal(metricId, engineName, hostname, factType, isEnabled);
     }
 
     /**
@@ -116,7 +118,9 @@ public class MetricsRepository extends AbstractService {
         Integer cacheKey = generateCacheKey(key);
         MetricKey metricKeyRec = metricKeysCache.get(cacheKey);
         if (metricKeyRec != null) {
-            log.debug("Cache hit for metric key {}", metricKeyRec);
+            if (log.isDebugEnabled()) {
+                log.debug("Cache hit for metric key {}", metricKeyRec);
+            }
             return metricKeyRec;
         }
         return saveMetricKeyInternal(key);
@@ -129,35 +133,61 @@ public class MetricsRepository extends AbstractService {
         ensureMetricKeyCacheLoaded();
         MetricKey cachedRec = metricKeysCache.get(generateCacheKey(metricKeyRec));
         if (cachedRec != null) {
-            log.debug("Cache already has an entry for {}", metricKeyRec);
+            if (log.isDebugEnabled()) {
+                log.debug("Cache already has an entry for {}", metricKeyRec);
+            }
             return reconcileMetricKeyWithCachedEntry(metricKeyRec, cachedRec);
         }
         return saveMetricKeyInternal(metricKeyRec);
     }
 
-    private MetricKey assignSurrogateKeyAndSaveMetricKeyToDatabase(String metricId, String engineName, String hostname, MetricFactType factType) {
+    private MetricKey assignSurrogateKeyAndSaveMetricKeyToDatabase(String metricId, String engineName, String hostname, MetricFactType factType,
+            boolean isEnabled) {
         long surrogateKey = surrogateKeys.getNextValue();
-        MetricKey metricKeyRec = new MetricKey(surrogateKey, hostname, engineName, metricId, factType);
+        MetricKey metricKeyRec = new MetricKey(surrogateKey, hostname, engineName, metricId, factType, isEnabled);
         metricKeyRec = saveMetricKeyToDatabase(metricKeyRec);
-        log.debug("Cache miss. Applied available surrogate key {} to new metric key {}", surrogateKey, metricKeyRec);
+        if (log.isDebugEnabled()) {
+            log.debug("Cache miss. Applied available surrogate key {} to new metric key {}", surrogateKey, metricKeyRec);
+        }
         return metricKeyRec;
     }
 
-    private MetricKey saveMetricKeyInternal(String metricId, String engineName, String hostname, MetricFactType factType) {
+    private MetricKey saveMetricKeyInternal(String metricId, String engineName, String hostname, MetricFactType factType, boolean isEnabled) {
         MetricKey metricKeyRec = null;
         if (surrogateKeys.isAvailable() && !METRIC_SHARED_ENGINE.equals(engineName)) {
-            metricKeyRec = assignSurrogateKeyAndSaveMetricKeyToDatabase(metricId, engineName, hostname, factType);
-        } else {
-            metricKeyRec = generateSurrogateKeyAndSaveMetricKeyToDatabase(metricId, engineName, hostname, factType);
+            try {
+                metricKeyRec = assignSurrogateKeyAndSaveMetricKeyToDatabase(metricId, engineName, hostname, factType, isEnabled);
+            } catch (MetricsRepositoryException e) {
+                if (!isCausedByUniqueKeyViolation(e)) {
+                    throw e;
+                }
+                log.warn("Surrogate key collision for metricId={}, engine={}, falling back to DB-generated key", metricId, engineName);
+            }
+        }
+        if (metricKeyRec == null) {
+            metricKeyRec = generateSurrogateKeyAndSaveMetricKeyToDatabase(metricId, engineName, hostname, factType, isEnabled);
             if (!METRIC_SHARED_ENGINE.equals(engineName)) {
                 long nextAvailableValue = metricKeyRec.key() + 1;
                 long bufferStart = SurrogateLongKeyBuffer.roundDownToBufferStart(nextAvailableValue);
                 surrogateKeys.moveTo(bufferStart, nextAvailableValue);
             }
         }
-        log.debug("Cache miss. Inserted new metric key record {}", metricKeyRec);
         metricKeysCache.put(generateCacheKey(metricKeyRec), metricKeyRec);
+        if (log.isDebugEnabled()) {
+            log.debug("Cache miss. Inserted new metric key record {}", metricKeyRec);
+        }
         return metricKeyRec;
+    }
+
+    private boolean isCausedByUniqueKeyViolation(Exception e) {
+        Throwable cause = e;
+        while (cause != null) {
+            if (cause instanceof UniqueKeyException) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     private MetricKey reconcileMetricKeyWithCachedEntry(MetricKey metricKeyRec, MetricKey cachedRec) {
@@ -165,7 +195,7 @@ public class MetricsRepository extends AbstractService {
             return metricKeyRec;
         }
         if (metricKeyRec == null
-                || (metricKeyRec.equalsIgnoreKey(cachedRec) && metricKeyRec.isSurrogateKeyMissing())) {
+                || (metricKeyRec.equalsOnCompositeKey(cachedRec) && metricKeyRec.isSurrogateKeyMissing())) {
             if (cachedRec.isSurrogateKeyMissing()) {
                 String message = "Cached MetricKey entries must have surrogate key already assigned! " + cachedRec;
                 log.warn(message);
@@ -176,32 +206,42 @@ public class MetricsRepository extends AbstractService {
         return metricKeyRec;
     }
 
-    private MetricKey generateSurrogateKeyAndSaveMetricKeyToDatabase(String metricId, String engineName, String hostname, MetricFactType factType) {
+    private static final int SURROGATE_KEY_MAX_RETRIES = 3;
+
+    private MetricKey generateSurrogateKeyAndSaveMetricKeyToDatabase(String metricId, String engineName, String hostname, MetricFactType factType,
+            boolean isEnabled) {
         String keyInfo = String.format(" metricId=%s, engine=%s, hostname=%s, factType=%s", metricId, engineName, hostname, factType);
         long surrogateKeyBufferSize = SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
         log.debug("Saving metric key and determining new surrogate key ... {}", keyInfo);
-        ISqlTransaction transaction = null;
-        Object[] statementParams = { surrogateKeyBufferSize, surrogateKeyBufferSize, surrogateKeyBufferSize, metricId, engineName, hostname, factType.name() };
-        int[] statementTypes = { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
-        try {
-            transaction = sqlTemplate.startSqlTransaction();
-            transaction.prepareAndExecute(getSql("generateSurrogateSql"), statementParams, statementTypes);
-            transaction.commit();
-        } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
-                // TODO: close connection if platform cannot recover from failed transactions!
-                transaction = null;
-            }
-            String message = "Failed to save metric key: " + keyInfo;
-            log.error(message, e);
-            throw new MetricsRepositoryException(message, e);
-        } finally {
-            if (transaction != null) {
-                close(transaction);
+        for (int attempt = 1; attempt <= SURROGATE_KEY_MAX_RETRIES; attempt++) {
+            ISqlTransaction transaction = null;
+            Object[] statementParams = { surrogateKeyBufferSize, surrogateKeyBufferSize, surrogateKeyBufferSize, metricId, engineName, hostname, factType
+                    .name(), isEnabled ? 1 : 0 };
+            int[] statementTypes = { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT };
+            try {
+                transaction = sqlTemplate.startSqlTransaction();
+                transaction.prepareAndExecute(getSql("generateSurrogateSql"), statementParams, statementTypes);
+                transaction.commit();
+                break;
+            } catch (Exception e) {
+                if (transaction != null) {
+                    transaction.rollback();
+                    transaction = null;
+                }
+                if (isCausedByUniqueKeyViolation(e) && attempt < SURROGATE_KEY_MAX_RETRIES) {
+                    log.warn("Surrogate key collision on DB-generated path for {} (attempt {}/{}), retrying", keyInfo, attempt, SURROGATE_KEY_MAX_RETRIES);
+                    continue;
+                }
+                String message = "Failed to save metric key: " + keyInfo;
+                log.error(message, e);
+                throw new MetricsRepositoryException(message, e);
+            } finally {
+                if (transaction != null) {
+                    close(transaction);
+                }
             }
         }
-        MetricKey metricKeyRec = loadMetricKeyFromDatabase(metricId, engineName, hostname, factType);
+        MetricKey metricKeyRec = loadMetricKeyFromDatabase(metricId, engineName, hostname);
         if (!METRIC_SHARED_ENGINE.equals(engineName)) {
             synchronized (surrogateKeys) {
                 surrogateKeys.moveTo(metricKeyRec.key(), metricKeyRec.key() + 1);
@@ -214,9 +254,9 @@ public class MetricsRepository extends AbstractService {
     private MetricKey saveMetricKeyToDatabase(MetricKey key) {
         String keyInfo = String.format(" metricKey=%d, metricId=%s, engine=%s, hostname=%s, factType=%s",
                 key.key(), key.metricId(), key.engineName(), key.hostname(), key.factType());
-        MetricKey metricKeyInDatabase = loadMetricKeyFromDatabase(key.metricId(), key.engineName(), key.hostname(), key.factType());
+        MetricKey metricKeyInDatabase = loadMetricKeyFromDatabase(key.metricId(), key.engineName(), key.hostname());
         if (key.equals(metricKeyInDatabase)) {
-            log.debug("Skipping database update, because nothing had changed for metric key: {}", key);
+            log.debug("Skipping database update, because nothing had changed for metric key: {}", keyInfo);
             return key;
         }
         if (metricKeyInDatabase != null) {
@@ -224,8 +264,8 @@ public class MetricsRepository extends AbstractService {
         }
         log.debug("Saving metric key... {}", keyInfo);
         ISqlTransaction transaction = null;
-        Object[] statementParams = { key.key(), key.hostname(), key.engineName(), key.metricId(), key.factType().name() };
-        int[] statementTypes = { Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+        Object[] statementParams = { key.key(), key.hostname(), key.engineName(), key.metricId(), key.factType().name(), key.isEnabled() ? 1 : 0 };
+        int[] statementTypes = { Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT };
         try {
             transaction = sqlTemplate.startSqlTransaction();
             transaction.prepareAndExecute(getSql("insertMetricKeySql"), statementParams, statementTypes);
@@ -257,8 +297,8 @@ public class MetricsRepository extends AbstractService {
         }
         log.debug("Updating metric key... {}, new surrogateKey={}", keyInfo, key.key());
         ISqlTransaction transaction = null;
-        Object[] statementParams = { key.key(), key.metricId(), key.engineName(), key.hostname(), key.factType().name() };
-        int[] statementTypes = { Types.BIGINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+        Object[] statementParams = { key.key(), key.factType().name(), key.isEnabled() ? 1 : 0, key.metricId(), key.engineName(), key.hostname() };
+        int[] statementTypes = { Types.BIGINT, Types.VARCHAR, Types.SMALLINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
         try {
             transaction = sqlTemplate.startSqlTransaction();
             transaction.prepareAndExecute(getSql("updateMetricKeySql"), statementParams, statementTypes);
@@ -289,9 +329,9 @@ public class MetricsRepository extends AbstractService {
         return new ArrayList<>(metricKeysCache.values());
     }
 
-    private MetricKey loadMetricKeyFromDatabase(String metricId, String engineName, String hostname, MetricFactType factType) {
-        Object[] paramValues = { metricId, hostname, engineName, METRIC_SHARED_ENGINE, factType.name() };
-        int[] paramTypes = { Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+    private MetricKey loadMetricKeyFromDatabase(String metricId, String engineName, String hostname) {
+        Object[] paramValues = { metricId, hostname, engineName, METRIC_SHARED_ENGINE };
+        int[] paramTypes = { Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
         List<MetricKey> results = sqlTemplate.query(getSql("selectMetricKeyByIdSql"), new MetricKeySqlRowMapper(), paramValues, paramTypes);
         if (results == null || results.isEmpty()) {
             return null;
@@ -310,7 +350,7 @@ public class MetricsRepository extends AbstractService {
                 if (nextAvailableValue < key.key()) {
                     if (METRIC_SHARED_ENGINE.equals(key.engineName())) {
                         nextAvailableValue = SurrogateLongKeyBuffer.roundUpToNextBufferStart(key.key());
-                    } else {
+                    } else if (nextAvailableValue <= key.key()) {
                         nextAvailableValue = key.key() + 1;
                     }
                 }
@@ -344,7 +384,7 @@ public class MetricsRepository extends AbstractService {
         if (metricKeys == null) {
             metricKeys = new ArrayList<MetricKey>(0);
         }
-        log.debug("Loaded {} metric keys from database. hostname={}, engine_name={}", metricKeys.size(), hostname, engineName);
+        log.debug("Loaded {} metric keys from database. Engine={}, hostname={}", metricKeys.size(), engineName, hostname);
         return metricKeys;
     }
 
@@ -365,10 +405,10 @@ public class MetricsRepository extends AbstractService {
         int savedCount = 0;
         for (MetricIntervalStatsRecord record : intervalStats) {
             MetricKey key = record.key();
-            if (key == null || key.equalsIgnoreKey(skipKey)) {
+            if (key == null || key.equalsOnCompositeKey(skipKey)) {
                 continue;
             }
-            if (key.equalsIgnoreKey(prevKey)) {
+            if (key.equalsOnCompositeKey(prevKey)) {
                 key = prevKey;
             } else {
                 try {
@@ -377,6 +417,12 @@ public class MetricsRepository extends AbstractService {
                     skipKey = key;
                     continue;
                 }
+            }
+            if (!key.isEnabled()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Skipped deactivated metric. Id={}, engine={}, hostname={}", key.metricId(), key.engineName(), key.hostname());
+                }
+                continue;
             }
             saveMetricIntervalStatsInternal(key, record.stats());
             savedCount++;
@@ -481,7 +527,8 @@ public class MetricsRepository extends AbstractService {
             throw new MetricsRepositoryException(message);
         }
         if (metricKeyRec.isSurrogateKeyMissing()) {
-            return saveMetricKeyInternal(metricKeyRec.metricId(), metricKeyRec.engineName(), metricKeyRec.hostname(), metricKeyRec.factType());
+            return saveMetricKeyInternal(metricKeyRec.metricId(), metricKeyRec.engineName(), metricKeyRec.hostname(), metricKeyRec.factType(), metricKeyRec
+                    .isEnabled());
         }
         return saveMetricKeyToDatabase(metricKeyRec);
     }
@@ -503,7 +550,8 @@ public class MetricsRepository extends AbstractService {
             String engineName = row.getString("engine_name");
             String metricId = row.getString("metric_id");
             MetricFactType factType = MetricFactType.valueOf(row.getString("fact_type"));
-            return new MetricKey(key, hostname, engineName, metricId, factType);
+            boolean isEnabled = row.getInt("enabled") != 0;
+            return new MetricKey(key, hostname, engineName, metricId, factType, isEnabled);
         }
     }
 

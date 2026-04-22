@@ -24,5 +24,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 
 /** Describes a single metric instrument: its identity, human-readable metadata, and instrument type. */
 public record SymMetricDefinition(String id, String description, String unit, InstrumentType type) implements ISymMetricDefinition {
-    public enum InstrumentType { COUNTER, GAUGE, HISTOGRAM }
+    public enum InstrumentType {
+        COUNTER, GAUGE, HISTOGRAM
+    }
 }

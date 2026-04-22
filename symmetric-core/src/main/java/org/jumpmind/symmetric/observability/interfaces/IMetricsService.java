@@ -28,11 +28,11 @@ public interface IMetricsService {
 
     /**
      * Persists stats for any completed time intervals for all metrics registered with this service.
-    */
+     */
     void saveCompletedIntervalStats();
 
     /**
      * Deactivates all metrics registered with this service.
-    */
+     */
     void shutdown();
 }

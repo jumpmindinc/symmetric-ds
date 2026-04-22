@@ -21,8 +21,8 @@
 package org.jumpmind.symmetric.observability.interfaces;
 
 /**
- * Contract for a background component that drains metric observation queues, aggregates them into {@link ISymIntervalStats} windows — primary aggregation.
- * This is in contrast to secondary aggregation which changes scale from smaller (primary) time intervals into larger ones.
+ * Contract for a background component that drains metric observation queues, aggregates them into {@link ISymIntervalStats} windows — primary aggregation. This
+ * is in contrast to secondary aggregation which changes scale from smaller (primary) time intervals into larger ones.
  */
 public interface IPrimaryMetricAggregator {
     /** Starts the aggregation background thread. */

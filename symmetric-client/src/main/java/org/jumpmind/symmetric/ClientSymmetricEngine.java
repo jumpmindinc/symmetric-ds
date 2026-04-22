@@ -448,7 +448,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
     protected IEngineMetricsService createMetricsService() {
         try {
             return new EngineMetricsService(this, MetricsManager.getGlobalInstance(),
-                parameterService.is(ParameterConstants.OTEL_METRICS_ENABLED, false));
+                    parameterService.is(ParameterConstants.OTEL_METRICS_ENABLED, false));
         } catch (Exception ex) {
             log.error("Failed to initialize EngineMetricsService!", ex);
             return null;

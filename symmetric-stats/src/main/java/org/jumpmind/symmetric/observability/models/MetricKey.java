@@ -25,16 +25,15 @@ import org.jumpmind.symmetric.observability.repository.SurrogateLongKeyBuffer;
 /**
  * Uniquely identifies a metric time-series by host, engine, metric name, and fact type.
  */
-public record MetricKey(long key, String hostname, String engineName, String metricId, MetricFactType factType) {
+public record MetricKey(long key, String hostname, String engineName, String metricId, MetricFactType factType, boolean isEnabled) {
     public boolean isSurrogateKeyMissing() {
         return (key == SurrogateLongKeyBuffer.SURROGATE_KEY_UNASSIGNED);
     }
 
-    public boolean equalsIgnoreKey(MetricKey other) {
+    public boolean equalsOnCompositeKey(MetricKey other) {
         return other != null && ((this == other)
                 || ((hostname != null) && (hostname.equalsIgnoreCase(other.hostname))
                         && (engineName != null) && (engineName.equalsIgnoreCase(other.engineName))
-                        && (metricId != null) && (metricId.equalsIgnoreCase(other.metricId))
-                        && (factType != null) && (factType == other.factType)));
+                        && (metricId != null) && (metricId.equalsIgnoreCase(other.metricId))));
     }
 }

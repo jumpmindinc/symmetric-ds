@@ -34,7 +34,6 @@ public abstract class AbstractStatsAccumulator implements IStatsAccumulator {
     public static final long INTERVAL_DURATION_MS = 5 * 60_000L;
     public static final long INTERVAL_TIME_UNKNOWN = 0;
     public static final double INTERVAL_VALUE_DEFAULT = 0.0;
-
     public final long intervalStart;
     public final long intervalEnd;
     protected double weightedSum;
@@ -104,7 +103,8 @@ public abstract class AbstractStatsAccumulator implements IStatsAccumulator {
     @Override
     public long closeAtObservation(long epochTimestamp) {
         if (epochTimestamp > this.intervalEnd)
-            throw new IllegalArgumentException(String.format("Observation occurs after this interval ends! timestamp=%d, end=%d", epochTimestamp, this.intervalEnd));
+            throw new IllegalArgumentException(String.format("Observation occurs after this interval ends! timestamp=%d, end=%d", epochTimestamp,
+                    this.intervalEnd));
         long delta = epochTimestamp - lastTimestamp;
         if (delta > 0) {
             totalWeightMs += delta;

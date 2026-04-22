@@ -22,5 +22,6 @@ package org.jumpmind.symmetric.observability.interfaces;
 
 public interface ISymDoubleGauge {
     void setValue(double value);
+
     double getValue();
 }

@@ -107,6 +107,36 @@ abstract class AbstractMetricsService implements IMetricsService {
 
     @Override
     public void shutdown() {
+        closeAllCounters();
+        closeAllGauges();
+        closeAllOtelHandles();
+    }
+
+    private void closeAllCounters() {
+        for (UpDownCounter metric : upDownCounters.values()) {
+            try {
+                metric.close();
+                metric.removeAllObservations();
+            } catch (Exception e) {
+                log.warn("Failed to close counter metric" + metric.getMetricId(), e);
+            }
+        }
+        upDownCounters.clear();
+    }
+
+    private void closeAllGauges() {
+        for (SymDoubleGauge metric : gauges.values()) {
+            try {
+                metric.close();
+                metric.removeAllObservations();
+            } catch (Exception e) {
+                log.warn("Failed to close gauge metric" + metric.getMetricId(), e);
+            }
+        }
+        gauges.clear();
+    }
+
+    private void closeAllOtelHandles() {
         for (AutoCloseable handle : otelHandles) {
             try {
                 handle.close();
@@ -115,7 +145,5 @@ abstract class AbstractMetricsService implements IMetricsService {
             }
         }
         otelHandles.clear();
-        upDownCounters.clear();
-        gauges.clear();
     }
 }

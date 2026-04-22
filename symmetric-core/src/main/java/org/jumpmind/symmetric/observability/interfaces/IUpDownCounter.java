@@ -22,5 +22,6 @@ package org.jumpmind.symmetric.observability.interfaces;
 
 public interface IUpDownCounter {
     void add(long value);
+
     long getValue();
 }

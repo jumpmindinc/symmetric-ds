@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.observability.interfaces;
 /** Metric ID constants. Referenced by callers that register or look up pre-registered metrics by ID. */
 public abstract class SymMetricConstants {
     public static final String OTEL_SCOPE = "symmetricds";
-
     public static final String METRIC_UNIT_PERCENT = "percent";
     public static final String METRIC_UNIT_CONNECTIONS = "connections";
     public static final String METRIC_UNIT_BYTES = "bytes";
@@ -34,13 +33,10 @@ public abstract class SymMetricConstants {
     public static final String METRIC_UNIT_HOURS = "hours";
     public static final String METRIC_UNIT_DAYS = "days";
     public static final String METRIC_UNIT_MONTHS = "months";
-
     public static final String METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS = OTEL_SCOPE + ".server.reservations.count";
     public static final String METRIC_ID_SERVER_CONNECTIONS_UTILIZATION = OTEL_SCOPE + ".server.connections.utilization";
-
     public static final String[] DEFAULT_METRIC_IDS = {
-        METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS, 
-        METRIC_ID_SERVER_CONNECTIONS_UTILIZATION
+            METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS,
+            METRIC_ID_SERVER_CONNECTIONS_UTILIZATION
     };
 }
-

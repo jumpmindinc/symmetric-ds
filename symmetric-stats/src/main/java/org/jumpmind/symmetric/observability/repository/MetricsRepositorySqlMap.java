@@ -30,22 +30,22 @@ public class MetricsRepositorySqlMap extends AbstractSqlMap {
         super(platform, replacementTokens);
         // @formatter:off
         putSql("generateSurrogateSql",
-            "INSERT INTO $(metric_key) (metric_key, metric_id, engine_name, hostname, fact_type, create_time, last_update_time)" +
-            " SELECT (?*(COALESCE(MAX(metric_key),1)+?))/?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM $(metric_key)");
+            "INSERT INTO $(metric_key) (metric_key, metric_id, engine_name, hostname, fact_type, enabled, create_time, last_update_time)" +
+            " SELECT (?*(COALESCE(MAX(metric_key),1)+?))/?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM $(metric_key)");
 
         putSql("insertMetricKeySql",
-            "INSERT INTO $(metric_key) (metric_key, hostname, engine_name, metric_id, fact_type, create_time, last_update_time)" +
-            " VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+            "INSERT INTO $(metric_key) (metric_key, hostname, engine_name, metric_id, fact_type, enabled, create_time, last_update_time)" +
+            " VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
 
         putSql("updateMetricKeySql",
-            "UPDATE $(metric_key) SET metric_key=? WHERE metric_id=? AND engine_name=? AND hostname=? AND fact_type=?");
+            "UPDATE $(metric_key) SET metric_key=?,fact_type=?,enabled=?,last_update_time=CURRENT_TIMESTAMP WHERE metric_id=? AND engine_name=? AND hostname=?");
 
         putSql("selectMetricKeyByIdSql",
-            "SELECT metric_key, metric_id, hostname, engine_name, fact_type FROM $(metric_key)" +
-            " WHERE metric_id=? AND hostname=? AND engine_name IN (?, ?) AND fact_type=?");
+            "SELECT metric_key, metric_id, hostname, engine_name, fact_type, enabled FROM $(metric_key)" +
+            " WHERE metric_id=? AND hostname=? AND engine_name IN (?, ?)");
 
         putSql("selectMetricKeysByHostnameSql",
-            "SELECT metric_key, metric_id, hostname, engine_name, fact_type FROM $(metric_key)" +
+            "SELECT metric_key, metric_id, hostname, engine_name, fact_type, enabled FROM $(metric_key)" +
             " WHERE hostname = ? AND engine_name IN (?, ?)");
 
         putSql("selectRecentIntervalsSql",

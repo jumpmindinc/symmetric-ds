@@ -51,7 +51,6 @@ class MetricSeriesSlidingWorksetTest {
             workset.seed(interval(value, value, value));
         }
     }
-
     // -----------------------------------------------------------------------
     // computePercentiles — direct unit tests
     // With uniform seed value=50: IQR=0 so fences both equal 50.
@@ -99,9 +98,8 @@ class MetricSeriesSlidingWorksetTest {
     @Test
     void computePercentiles_singleElement_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> MetricSeriesSlidingWorkset.computePercentiles(new double[]{ 42.0 }));
+                () -> MetricSeriesSlidingWorkset.computePercentiles(new double[] { 42.0 }));
     }
-
     // -----------------------------------------------------------------------
     // hasEnoughData
     // -----------------------------------------------------------------------
@@ -117,7 +115,6 @@ class MetricSeriesSlidingWorksetTest {
         seedUniform(IQR_INTERVALS_MIN, 50.0);
         assertTrue(workset.hasEnoughData());
     }
-
     // -----------------------------------------------------------------------
     // detectOutlier — guards
     // -----------------------------------------------------------------------
@@ -127,7 +124,6 @@ class MetricSeriesSlidingWorksetTest {
         seedUniform(IQR_INTERVALS_MIN - 1, 50.0);
         assertFalse(workset.detectOutlier(interval(9999.0, 9999.0, 9999.0)));
     }
-
     // -----------------------------------------------------------------------
     // detectOutlier — with enough data (seed=50, IQR=0, fences=[50,50])
     // -----------------------------------------------------------------------
@@ -161,7 +157,6 @@ class MetricSeriesSlidingWorksetTest {
         seedUniform(IQR_INTERVALS_MIN, 50.0);
         assertTrue(workset.detectOutlier(interval(50.0, 50.0, 200.0)));
     }
-
     // -----------------------------------------------------------------------
     // seed — bypasses outlier detection
     // -----------------------------------------------------------------------
@@ -172,7 +167,6 @@ class MetricSeriesSlidingWorksetTest {
         workset.seed(interval(99999.0, 99999.0, 99999.0));
         assertEquals(IQR_INTERVALS_MIN + 1, workset.size());
     }
-
     // -----------------------------------------------------------------------
     // add — normal interval goes to workset
     // -----------------------------------------------------------------------
@@ -183,7 +177,6 @@ class MetricSeriesSlidingWorksetTest {
         workset.add(interval(50.0, 50.0, 50.0));
         assertEquals(IQR_INTERVALS_MIN + 1, workset.size());
     }
-
     // -----------------------------------------------------------------------
     // add — outlier goes to outlier buffer, not workset
     // -----------------------------------------------------------------------
@@ -206,7 +199,6 @@ class MetricSeriesSlidingWorksetTest {
         workset.add(outlier); // 10th outlier triggers promotion
         assertEquals(IQR_INTERVALS_MIN + IQR_OUTLIERS_MAX, workset.size());
     }
-
     // -----------------------------------------------------------------------
     // Sliding window eviction
     // -----------------------------------------------------------------------

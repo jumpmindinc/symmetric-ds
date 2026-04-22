@@ -20,11 +20,14 @@
  */
 package org.jumpmind.symmetric.observability.stats;
 
+import java.util.Collection;
+
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.IPrimaryMetricAggregator;
+import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
-import org.jumpmind.symmetric.observability.metrics.AbstractQueuedMetric;
 import org.jumpmind.symmetric.observability.metrics.MetricsManager;
+import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -45,30 +48,45 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
     private final MetricsManager metricsManager;
     private final String hostname;
     private volatile boolean running;
-    private volatile Thread thread;
+    private static volatile Thread thread;
 
     public PrimaryMetricAggregator(MetricsManager metricsManager, String hostname) {
         this.metricsManager = metricsManager;
         this.hostname = hostname;
     }
 
-    public void start() {
+    public synchronized boolean isRunning() {
+        Thread t = thread;
+        return t != null && t.isAlive();
+    }
+
+    @Override
+    public synchronized void start() {
+        if (isRunning()) {
+            log.debug("{} thread is already running, skipping start. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.getId());
+            return;
+        }
         log.debug("Starting {} thread... Hostname={}", AGGREGATOR_PROCESSING_THREAD, hostname);
         running = true;
         thread = new Thread(this::run, AGGREGATOR_PROCESSING_THREAD);
         thread.setDaemon(true);
         thread.start();
-        log.info("Started {} thread. Hostname={}, Thread.id={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.getId());
+        log.info("Started {} thread. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.getId());
     }
 
+    @Override
     public void stop() {
-        log.debug("Stopping {} thread... Hostname={}, Thread.id={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.getId());
-        running = false;
+        if (!isRunning()) {
+            log.debug("{} thread was already stopped, skipping interrupt. Hostname={}", AGGREGATOR_PROCESSING_THREAD, hostname);
+            return;
+        }
         Thread t = thread;
+        log.debug("Stopping {} thread... Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t != null ? t.getId() : -1);
+        running = false;
         if (t != null) {
             t.interrupt();
+            log.info("Stopped {} thread. Hostname={}, Thread.id={}", AGGREGATOR_PROCESSING_THREAD, hostname, t.getId());
         }
-        log.info("Stopped {} thread. Hostname={}, Thread.id={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.getId());
     }
 
     private void run() {
@@ -104,11 +122,13 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
         for (IEngineMetricsService svc : metricsManager.getEngineMetricsServices()) {
             MDC.put("engineName", svc.getEngineName());
             try {
-                for (AbstractQueuedMetric metric : (java.util.Collection<AbstractQueuedMetric>)(java.util.Collection<?>) svc.getAllMetrics()) {
+                Collection<ISymMetric> allMetrics = svc.getAllMetrics();
+                for (ISymMetric metric : allMetrics) {
                     ISymObservation[] observations = metric.removeAllObservations();
                     if (observations.length > 0) {
                         metric.processObservations(observations);
                     }
+                    metric.closeCompletedIntervals();
                 }
                 svc.saveCompletedIntervalStats();
             } catch (Exception ex) {

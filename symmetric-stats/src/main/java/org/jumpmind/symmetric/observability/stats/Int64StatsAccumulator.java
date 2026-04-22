@@ -32,7 +32,7 @@ public class Int64StatsAccumulator extends AbstractStatsAccumulator {
     private long lastValue;
 
     public Int64StatsAccumulator(long intervalStart, long carryForwardValue) {
-        super(intervalStart, (double) carryForwardValue);
+        super(intervalStart, carryForwardValue);
         this.lastValue = carryForwardValue;
     }
 
@@ -51,32 +51,34 @@ public class Int64StatsAccumulator extends AbstractStatsAccumulator {
 
     @Override
     public double getLastValueAsDouble() {
-        return (double) lastValue;
+        return lastValue;
     }
 
     /** Creates the successor window carrying {@code lastValue} forward at {@code long} precision — no {@code double} roundtrip. */
     @Override
-    public IStatsAccumulator createNext(long intervalStart) {
-        return new Int64StatsAccumulator(intervalStart, lastValue);
+    public IStatsAccumulator createNext() {
+        return new Int64StatsAccumulator(this.intervalEnd, this.lastValue);
     }
 
     @Override
     protected void updateMinMaxAndLastValue(double value) {
         long v = (long) value;
-        if (v < min)
+        if (v < min) {
             min = v;
-        if (v > max)
+        }
+        if (v > max) {
             max = v;
+        }
         lastValue = v;
     }
 
     @Override
     protected double getMinAsDouble() {
-        return (double) min;
+        return min;
     }
 
     @Override
     protected double getMaxAsDouble() {
-        return (double) max;
+        return max;
     }
 }

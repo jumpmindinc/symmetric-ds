@@ -52,7 +52,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
     }
 
     public void register(SymMetricDefinition definition) {
-         if (definition == null) {
+        if (definition == null) {
             String message = String.format("Metric definition cannot be null!");
             log.error(message);
             throw new InvalidMetricDataException(message);

@@ -41,7 +41,6 @@ public interface IEngineMetricsService extends IMetricsService {
 
     ISymDoubleGauge registerGauge(ISymMetricDefinition definition);
 
-
     Collection<ISymMetric> getAllMetrics();
 
     /**

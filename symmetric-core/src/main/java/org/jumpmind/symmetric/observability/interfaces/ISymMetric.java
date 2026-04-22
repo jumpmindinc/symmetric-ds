@@ -20,6 +20,10 @@
  */
 package org.jumpmind.symmetric.observability.interfaces;
 
+import java.util.List;
+
+import org.jumpmind.symmetric.observability.models.MetricFactType;
+
 public interface ISymMetric {
     String getMetricId();
 
@@ -35,7 +39,7 @@ public interface ISymMetric {
      */
     void close();
 
-    boolean isClosed();
+    boolean isEnabled();
 
     /**
      * Creates the first accumulator for this metric. Called once when no prior interval exists. Implementations return the type appropriate for this metric
@@ -44,4 +48,12 @@ public interface ISymMetric {
      * {@link org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator#createNext}.
      */
     IStatsAccumulator createAccumulator(long intervalStart);
+
+    ISymObservation[] removeAllObservations();
+
+    int processObservations(ISymObservation[] observations);
+
+    MetricFactType getFactType();
+
+    List<ISymIntervalStats> exportCompletedIntervals();
 }
