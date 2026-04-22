@@ -14,7 +14,7 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
     public final static int MAX_QUEUE_SIZE = 10000000;
     protected static final long serialVersionUID = 1L;
     protected final AtomicInteger approximateSize = new AtomicInteger(0);
-    protected ConcurrentLinkedQueue<T> queue = new ConcurrentLinkedQueue<T>();
+    protected ConcurrentLinkedQueue<T> queue = new ConcurrentLinkedQueue<>();
 
     public ObservationsQueue() {
         super();

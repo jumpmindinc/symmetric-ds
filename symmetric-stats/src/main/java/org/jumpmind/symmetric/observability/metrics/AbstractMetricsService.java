@@ -43,7 +43,7 @@ import io.opentelemetry.api.common.Attributes;
 abstract class AbstractMetricsService implements IMetricsService {
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     protected final MetricsManager metricsManager;
-    protected static final String hostname = AppUtils.getHostName();
+    protected static String hostname = AppUtils.getHostName();
     protected final Attributes attributes;
     private final Map<String, UpDownCounter> upDownCounters = new ConcurrentHashMap<>();
     private final Map<String, SymDoubleGauge> gauges = new ConcurrentHashMap<>();

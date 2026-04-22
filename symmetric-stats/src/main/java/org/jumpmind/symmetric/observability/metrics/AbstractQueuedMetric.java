@@ -47,7 +47,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     protected final Attributes attributes;
     protected volatile long lastModified = System.currentTimeMillis();
     protected volatile boolean isMetricEnabled = true;
-    protected ObservationsQueue<ISymObservation> observations = new ObservationsQueue<ISymObservation>();
+    protected ObservationsQueue<ISymObservation> observations = new ObservationsQueue<>();
     protected IStatsAccumulator currentIntervalAccumulator;
     protected final Object accumulatorLock = "accumulatorLock";
     protected MetricIntervalStatsQueue completedIntervals = new MetricIntervalStatsQueue();
@@ -115,7 +115,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
      */
     protected synchronized ObservationsQueue<ISymObservation> retrieveAndSwapForNewQueue() {
         ObservationsQueue<ISymObservation> oldObservations = this.observations;
-        this.observations = new ObservationsQueue<ISymObservation>();
+        this.observations = new ObservationsQueue<>();
         return oldObservations;
     }
 
@@ -124,7 +124,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
      */
     @Override
     public ISymObservation[] removeAllObservations() {
-        if (this.observations.size() < 1) {
+        if (this.observations.isEmpty()) {
             return new ISymObservation[] {};
         }
         ObservationsQueue<ISymObservation> oldObservations = retrieveAndSwapForNewQueue();
@@ -162,6 +162,10 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
             }
             if (currentIntervalAccumulator.isInScope(timeWindowStart)) {
                 currentIntervalAccumulator.addObservation(observation);
+                if (log.isDebugEnabled()) {
+                    log.debug("Processed new observation. value={}, timestamp={}, MetricId={}, current.interval.start={}",
+                            observation.getValueAsDouble(), observation.getTimestamp(), getMetricId(), currentIntervalAccumulator.getIntervalStart());
+                }
                 return 1;
             }
             if (timeWindowStart < currentIntervalAccumulator.getIntervalStart()) {

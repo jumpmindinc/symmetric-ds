@@ -120,18 +120,18 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
         synchronized (this) {
             if (repository == null) {
                 repository = createMetricsRepository();
+                log.debug("Created metrics repository object for engine {}", engine.getEngineName());
+                try {
+                    initializeImportantMetrics();
+                } catch (Exception ex) {
+                    log.warn("Failed to initialize metrics repository with important metrics (and historical values) for engine {}", engine.getEngineName());
+                }
+                try {
+                    initializeStatsWorksetsForAllMetrics(repository);
+                } catch (Exception ex) {
+                    log.warn("Failed to initialize metrics repository with historical values for engine {}", engine.getEngineName());
+                }
             }
-        }
-        log.debug("Created metrics repository object for engine {}", engine.getEngineName());
-        try {
-            initializeImportantMetrics(repository);
-        } catch (Exception ex) {
-            log.warn("Failed to initialize metrics repository with important metrics (and historical values) for engine {}", engine.getEngineName());
-        }
-        try {
-            initializeStatsWorksetsForAllMetrics(repository);
-        } catch (Exception ex) {
-            log.warn("Failed to initialize metrics repository with historical values for engine {}", engine.getEngineName());
         }
         return repository;
     }
@@ -140,7 +140,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
      * Initializes important metrics, to achieve two goals: faster instrumentation ramp-up and seed historical data for outlier detection. Prepares for outlier
      * interval detection logic and accelerates move of completed intervals to database.
      */
-    protected int initializeImportantMetrics(MetricsRepository repo) {
+    protected int initializeImportantMetrics() {
         int count = metricsManager.getMetricDefinitionFactory().initializeMetrics(this);
         log.debug("Initialized repository with {} important metrics for engine {}", count, engine.getEngineName());
         return count;

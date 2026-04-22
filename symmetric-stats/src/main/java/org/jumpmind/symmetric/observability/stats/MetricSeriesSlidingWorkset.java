@@ -47,8 +47,8 @@ public class MetricSeriesSlidingWorkset {
      * Multiplier applied to IQR to form Tukey's outer fences. Values beyond the outer fences are considered "significant" outliers. Values between the inner
      * and outer fences are considered "mild" outliers.
      */
-    static public final double INNER_FENCE_MULTIPLIER = 1.5;
-    static public final double OUTER_FENCE_MULTIPLIER = 3.0;
+    public static final double INNER_FENCE_MULTIPLIER = 1.5;
+    public static final double OUTER_FENCE_MULTIPLIER = 3.0;
     public static final double IQR_ZERO_FLAT_TOLERANCE = 0.05; // Dead-band fraction of Q2 applied when IQR=0; prevents flagging changes smaller than 5% of the
                                                                // median.
     private final ArrayDeque<ISymIntervalStats> intervals = new ArrayDeque<>(IQR_INTERVALS_MAX); // FILO: Oldest time window at the end of queue, newest first

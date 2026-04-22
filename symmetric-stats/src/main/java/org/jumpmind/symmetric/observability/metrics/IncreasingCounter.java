@@ -20,8 +20,6 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import org.jumpmind.symmetric.observability.models.ObservationLong;
-
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableLongCounter;
 
@@ -31,7 +29,6 @@ import io.opentelemetry.api.metrics.ObservableLongCounter;
  */
 public class IncreasingCounter extends AbstractCounterMetric {
     protected final ObservableLongCounter otelCounter;
-    protected ObservationsQueue<ObservationLong> observations = new ObservationsQueue<ObservationLong>();
 
     IncreasingCounter(String metricId, ObservableLongCounter otelCounter, Attributes attributes) {
         super(metricId, attributes);

@@ -21,7 +21,9 @@
 package org.jumpmind.symmetric.observability.interfaces;
 
 /** Metric ID constants. Referenced by callers that register or look up pre-registered metrics by ID. */
-public abstract class SymMetricConstants {
+public final class SymMetricConstants {
+    private SymMetricConstants() {}
+
     public static final String OTEL_SCOPE = "symmetricds";
     public static final String METRIC_UNIT_PERCENT = "percent";
     public static final String METRIC_UNIT_CONNECTIONS = "connections";

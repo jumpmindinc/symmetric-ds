@@ -274,7 +274,6 @@ public class MetricsRepository extends AbstractService {
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
-                // TODO: close connection if platform cannot recover from failed transactions!
                 transaction = null;
             }
             String message = "Failed to save metric key: " + key;
@@ -307,7 +306,6 @@ public class MetricsRepository extends AbstractService {
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
-                // TODO: close connection if platform cannot recover from failed transactions!
                 transaction = null;
             }
             String message = "Failed to update metric key: " + key;
@@ -444,7 +442,7 @@ public class MetricsRepository extends AbstractService {
         if (key.isSurrogateKeyMissing()) {
             key = getOrRegisterMetricKey(key);
         }
-        log.debug("Loading metric intervals from database for key... ", key);
+        log.debug("Loading metric intervals from database for key... {}", key);
         long oneDayAgo = System.currentTimeMillis() - java.util.concurrent.TimeUnit.DAYS.toMillis(1);
         String sqlKey = key.factType() == MetricFactType.INT64 ? "selectRecentIntervalsInt64Sql" : "selectRecentIntervalsSql";
         List<ISymIntervalStats> rows = sqlTemplate.query(
@@ -505,7 +503,6 @@ public class MetricsRepository extends AbstractService {
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
-                // TODO: close connection if platform cannot recover from failed transactions!
                 transaction = null;
             }
             String message = "Failed to save metric interval stats for key: " + key;
@@ -538,7 +535,7 @@ public class MetricsRepository extends AbstractService {
      */
     private static double rowDouble(Row row, String columnName) {
         Object v = row.get(columnName);
-        return v instanceof Number ? ((Number) v).doubleValue() : 0.0;
+        return v instanceof Number n ? n.doubleValue() : 0.0;
     }
 
     static class MetricKeySqlRowMapper implements ISqlRowMapper<MetricKey> {

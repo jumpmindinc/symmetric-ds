@@ -65,7 +65,7 @@ public class MetricsManager {
     private final IMetricDefinitionFactory definitionFactory;
 
     private MetricsManager() {
-        this.isOtelPublishingEnabled = isSystemPropetryOtelPublishingEnabled();
+        this.isOtelPublishingEnabled = isSystemPropertyOtelPublishingEnabled();
         log.debug("Starting MetricsManager. isOtelPublishingEnabled={}", isOtelPublishingEnabled);
         OpenTelemetry global = GlobalOpenTelemetry.get();
         if (global == OpenTelemetry.noop()) {
@@ -83,7 +83,7 @@ public class MetricsManager {
     }
 
     MetricsManager(OpenTelemetry openTelemetry) {
-        this.isOtelPublishingEnabled = isSystemPropetryOtelPublishingEnabled();
+        this.isOtelPublishingEnabled = isSystemPropertyOtelPublishingEnabled();
         this.openTelemetry = openTelemetry;
         this.isOtelSdkInternal = false;
         otelMeter = openTelemetry.getMeter(SymMetricConstants.OTEL_SCOPE);
@@ -98,7 +98,7 @@ public class MetricsManager {
         return definitionFactory;
     }
 
-    private boolean isSystemPropetryOtelPublishingEnabled() {
+    private boolean isSystemPropertyOtelPublishingEnabled() {
         String otelEnabledProperty = System.getProperty(ParameterConstants.OTEL_METRICS_ENABLED);
         return StringUtils.isBlank(otelEnabledProperty) || otelEnabledProperty.equalsIgnoreCase("true");
     }
@@ -124,9 +124,7 @@ public class MetricsManager {
             return hostMetricsService;
         }
         try {
-            if (hostMetricsService == null) {
-                hostMetricsService = new HostMetricsService(this, this.isOtelPublishingEnabled);
-            }
+            hostMetricsService = new HostMetricsService(this, this.isOtelPublishingEnabled);
         } catch (Exception ex) {
             log.error("Failed to initialize Host metrics service!", ex);
         }
