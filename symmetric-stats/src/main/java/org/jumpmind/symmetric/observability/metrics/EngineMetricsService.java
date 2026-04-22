@@ -122,7 +122,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                 repository = createMetricsRepository();
                 log.debug("Created metrics repository object for engine {}", engine.getEngineName());
                 try {
-                    initializeImportantMetrics();
+                    initializeDefaultMetrics();
                 } catch (Exception ex) {
                     log.warn("Failed to initialize metrics repository with important metrics (and historical values) for engine {}", engine.getEngineName());
                 }
@@ -140,9 +140,9 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
      * Initializes important metrics, to achieve two goals: faster instrumentation ramp-up and seed historical data for outlier detection. Prepares for outlier
      * interval detection logic and accelerates move of completed intervals to database.
      */
-    protected int initializeImportantMetrics() {
+    protected int initializeDefaultMetrics() {
         int count = metricsManager.getMetricDefinitionFactory().initializeMetrics(this);
-        log.debug("Initialized repository with {} important metrics for engine {}", count, engine.getEngineName());
+        log.debug("Initialized repository with {} default metrics for engine {}", count, engine.getEngineName());
         return count;
     }
 
