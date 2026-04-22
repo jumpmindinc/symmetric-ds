@@ -27,13 +27,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.jumpmind.symmetric.model.MetricFactType;
+
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
-import org.jumpmind.symmetric.observability.models.MetricFactType;
+
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;

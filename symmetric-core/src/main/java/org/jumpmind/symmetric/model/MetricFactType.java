@@ -18,7 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.models;
+package org.jumpmind.symmetric.model;
 
 /** Determines which fact table and numeric precision are used when persisting interval statistics. */
 public enum MetricFactType {

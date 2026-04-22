@@ -22,7 +22,7 @@ package org.jumpmind.symmetric.observability.interfaces;
 
 import java.util.List;
 
-import org.jumpmind.symmetric.observability.models.MetricFactType;
+import org.jumpmind.symmetric.model.MetricFactType;
 
 public interface ISymMetric {
     String getMetricId();

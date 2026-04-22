@@ -22,7 +22,7 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.concurrent.atomic.DoubleAdder;
 
-import org.jumpmind.symmetric.observability.models.MetricFactType;
+import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.models.ObservationDouble;
 
 import io.opentelemetry.api.common.Attributes;

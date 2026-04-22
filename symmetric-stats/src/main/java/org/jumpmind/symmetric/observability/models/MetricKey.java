@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.observability.models;
 
+import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.repository.SurrogateLongKeyBuffer;
 
 /**

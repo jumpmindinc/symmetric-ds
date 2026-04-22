@@ -22,11 +22,11 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
-import org.jumpmind.symmetric.observability.models.MetricFactType;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
 import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator;
@@ -228,6 +228,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     /**
      * Drains all completed intervals from this metric's queue.
      */
+    @Override
     public List<ISymIntervalStats> exportCompletedIntervals() {
         return completedIntervals.exportAll();
     }
