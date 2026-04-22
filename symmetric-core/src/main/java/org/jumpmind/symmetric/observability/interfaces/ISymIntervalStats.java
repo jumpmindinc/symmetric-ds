@@ -20,12 +20,17 @@
  */
 package org.jumpmind.symmetric.observability.interfaces;
 
+import java.io.Serializable;
 import java.sql.Date;
 
-public interface ISymIntervalStats {
+public interface ISymIntervalStats extends Comparable<ISymIntervalStats>, Serializable {
     long getStartEpoch();
 
     long getEndEpoch();
+
+    long getDurationMillis();
+
+    long getDurationSeconds();
 
     double getAvg();
 

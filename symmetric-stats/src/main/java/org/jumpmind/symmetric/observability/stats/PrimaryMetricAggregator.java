@@ -33,9 +33,8 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 /**
- * Periodically drains observation queues from all registered {@link IEngineMetricsService} instances, assigns observations to 5-minute window accumulators, and
- * stores completed {@link MetricIntervalStats} records.
- *
+ * Periodically drains observation queues from all registered {@link IEngineMetricsService} instances, assigns observations to an interval (time window) via
+ * accumulators, and initiates export of completed {@link MetricIntervalStats} records to database. *
  * <p>
  * Runs on a dedicated daemon thread. Call {@link #start()} once and {@link #stop()} on shutdown. The thread exits cleanly on both an explicit {@code stop()}
  * and a JVM interrupt.

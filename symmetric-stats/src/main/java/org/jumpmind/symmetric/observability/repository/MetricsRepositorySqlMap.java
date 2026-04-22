@@ -54,7 +54,7 @@ public class MetricsRepositorySqlMap extends AbstractSqlMap {
             " WHERE metric_key = ? AND interval_start >= ?" +
             " ORDER BY interval_start");
 
-        putSql("insertMetricIntervalSql",
+        putSql("insertMetriMetricSeriesSlidingWorkset.java)cIntervalSql",
             "INSERT INTO $(metric_stats_float64)" +
             " (metric_key, interval_start, end_time, avg, min, max, std_dev, observation_count, mean, duration_seconds)" +
             " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");

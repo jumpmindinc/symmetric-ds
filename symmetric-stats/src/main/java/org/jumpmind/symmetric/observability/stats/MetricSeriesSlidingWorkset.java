@@ -21,6 +21,10 @@
 package org.jumpmind.symmetric.observability.stats;
 
 import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricSeriesInterquartileRange;
 
@@ -31,52 +35,71 @@ import org.jumpmind.symmetric.observability.models.MetricSeriesInterquartileRang
  * See also: https://en.wikipedia.org/wiki/Interquartile_range
  */
 public class MetricSeriesSlidingWorkset {
-    static public final int IQR_OUTLIERS_MAX = 10; // Maximum number of outlier intervals deferred for later adoption into workset.
-    static public final int IQR_INTERVALS_MIN = 300; // Minimum number of intervals required before IQR and outlier detection are active
-    static public final int IQR_INTERVALS_MAX = 900; // Maximum number of intervals retained; oldest is evicted when this is reached.
-    static final double IQR_Q1_MULTIPLIER = 0.25; // Quartile of the smallest values
-    static final double IQR_Q2_MULTIPLIER = 0.5; // Quartile of the ordinary median
-    static final double IQR_Q3_MULTIPLIER = 0.75; // Quartile of the largest values
+    public static final int IQR_OUTLIERS_MAX = 10; // Maximum number of outlier intervals deferred for later adoption into workset (should be less than IQR_INTERVALS_MIN).
+    public static final int EXPIRE_OUTLIERS_RATIO = 7; // Multiplier (* time window size) for discarding an outlier (should be less than IQR_OUTLIERS_MAX).
+    public static final int IQR_INTERVALS_MIN = 300; // Minimum number of intervals required before IQR and outlier detection are active
+    public static final int IQR_INTERVALS_MAX = 900; // Maximum number of intervals retained; oldest is evicted when this is reached.
+    public static final double IQR_Q1_MULTIPLIER = 0.25; // Quartile of the smallest values
+    public static final double IQR_Q2_MULTIPLIER = 0.5; // Quartile of the ordinary median
+    public static final double IQR_Q3_MULTIPLIER = 0.75; // Quartile of the largest values
     /**
-     * Multiplier applied to IQR to form Tukey's outer fences. Values beyond the outer fences are "extreme" outliers.
+     * Multiplier applied to IQR to form Tukey's outer fences. Values beyond the outer fences are considered "significant" outliers. 
+     * Values between the inner and outer fences are considered "mild" outliers.
      */
     static public final double INNER_FENCE_MULTIPLIER = 1.5;
     static public final double OUTER_FENCE_MULTIPLIER = 3.0;
-    /** Oldest entry at the head, newest at the tail. */
-    private final ArrayDeque<ISymIntervalStats> intervals = new ArrayDeque<>(IQR_INTERVALS_MAX);
+    public static final double IQR_ZERO_FLAT_TOLERANCE = 0.05; // Dead-band fraction of Q2 applied when IQR=0; prevents flagging changes smaller than 5% of the median.
+    
+    private final ArrayDeque<ISymIntervalStats> intervals = new ArrayDeque<>(IQR_INTERVALS_MAX); // FILO: Oldest time window at the end of queue, newest first
     private final ArrayDeque<ISymIntervalStats> outliers = new ArrayDeque<>(IQR_OUTLIERS_MAX);
 
     /**
-     * Adds an interval directly to the workset, bypassing outlier detection. Intended for pre-warming from historical database rows loaded at startup.
+     * Adds an interval directly to the workset, bypassing outlier detection. Intended for seed data for outlier detection from historical entries at startup.
      */
-    public void seed(ISymIntervalStats interval) {
-        addToWorkset(interval);
+    public void seed(Collection<ISymIntervalStats> history) {
+        List<ISymIntervalStats> oldestLast = history.stream().sorted((a, b) -> b.compareTo(a)).limit(IQR_INTERVALS_MAX).collect(Collectors.toList());
+        intervals.addAll(oldestLast);
+        while (intervals.size() > IQR_INTERVALS_MAX) {
+            intervals.removeLast();
+        }
     }
 
-    /** Evicts the oldest entry if the workset is full, then appends interval. */
+    /** Evicts the oldest entry if the workset is at capacity, then appends interval. */
     private void addToWorkset(ISymIntervalStats interval) {
         if (intervals.size() >= IQR_INTERVALS_MAX) {
-            intervals.removeFirst();
+            intervals.removeLast();
         }
-        intervals.addLast(interval);
+        intervals.add(interval);
+        checkExpirationOfOldestOutlier(interval.getStartEpoch() - EXPIRE_OUTLIERS_RATIO * interval.getDurationMillis());
     }
 
-    /** Adds to the outliers collection. If the outliers buffer is full, then moves all to the current workset. */
+    /** Adds to the outliers collection. If the outliers buffer is full, then moves all to the current workset (adopts all outliers as new trend). */
     private void addToOutliers(ISymIntervalStats interval) {
         ISymIntervalStats markedInterval = interval;
         if (!interval.isOutlier()) {
             markedInterval = interval.cloneOutlier(true);
         }
-        outliers.addLast(markedInterval);
+        outliers.add(markedInterval);
         if (outliers.size() >= IQR_OUTLIERS_MAX) {
             moveOutliersToWorkset();
         }
     }
 
     private ISymIntervalStats markAsOutlier(ISymIntervalStats interval) {
-        if (interval.isOutlier())
+        if (interval.isOutlier()) {
             return interval;
+        }
         return interval.cloneOutlier(true);
+    }
+
+    private void checkExpirationOfOldestOutlier(long cutOff) {
+        if (outliers.isEmpty()) {
+            return;
+        }
+        ISymIntervalStats oldestOutlier = outliers.peekLast();
+        if (oldestOutlier != null && oldestOutlier.getEndEpoch() <= cutOff) {
+            outliers.removeLastOccurrence(oldestOutlier);
+        }
     }
 
     private void moveOutliersToWorkset() {
@@ -88,17 +111,21 @@ public class MetricSeriesSlidingWorkset {
      * Evaluates whether interval is an outlier relative to the current workset by checking its min, avg and max values against outer fences.
      */
     public boolean detectOutlier(ISymIntervalStats interval) {
-        if (!hasEnoughData())
+        if (!hasEnoughData()) {
             return false;
+        }
         MetricSeriesInterquartileRange meansIqr = computePercentiles(sortedMeans());
-        if (interval.mean() < meansIqr.lowerOutlierFence() || interval.mean() > meansIqr.upperOutlierFence())
+        if (interval.mean() < meansIqr.lowerOutlierFence() || interval.mean() > meansIqr.upperOutlierFence()) {
             return true;
+        }
         MetricSeriesInterquartileRange maxIqr = computePercentiles(sortedMaxs());
-        if (interval.max() < maxIqr.lowerOutlierFence() || interval.max() > maxIqr.upperOutlierFence())
+        if (interval.max() < maxIqr.lowerOutlierFence() || interval.max() > maxIqr.upperOutlierFence()) {
             return true;
+        }
         MetricSeriesInterquartileRange minsIqr = computePercentiles(sortedMins());
-        if (interval.getMin() < minsIqr.lowerOutlierFence() || interval.getMin() > minsIqr.upperOutlierFence())
+        if (interval.getMin() < minsIqr.lowerOutlierFence() || interval.getMin() > minsIqr.upperOutlierFence()) {
             return true;
+        }
         return false;
     }
 
@@ -153,8 +180,10 @@ public class MetricSeriesSlidingWorkset {
         double q2 = interpolatePercentile(sorted, IQR_Q2_MULTIPLIER);
         double q3 = interpolatePercentile(sorted, IQR_Q3_MULTIPLIER);
         double iqr = q3 - q1;
-        double lowerOutlierFence = q1 - OUTER_FENCE_MULTIPLIER * iqr;
-        double upperOutlierFence = q3 + OUTER_FENCE_MULTIPLIER * iqr;
+        double iqrFloor = Math.abs(q2) * IQR_ZERO_FLAT_TOLERANCE / OUTER_FENCE_MULTIPLIER;
+        double effectiveIqr = Math.max(iqr, iqrFloor);
+        double lowerOutlierFence = q1 - OUTER_FENCE_MULTIPLIER * effectiveIqr;
+        double upperOutlierFence = q3 + OUTER_FENCE_MULTIPLIER * effectiveIqr;
         return new MetricSeriesInterquartileRange(q1, q2, iqr, lowerOutlierFence, upperOutlierFence);
     }
 
@@ -162,10 +191,12 @@ public class MetricSeriesSlidingWorkset {
      * Returns the value for fractional rank (percentile) using linear interpolation between adjacent elements of a sorted array (ascending).
      */
     private static double interpolatePercentile(double[] sortedValues, double percentile) {
-        if (sortedValues == null || sortedValues.length < 2)
+        if (sortedValues == null || sortedValues.length < 2) {
             throw new IllegalArgumentException("Sorted array cannot be null or trivial");
-        if (percentile < 0.0 || percentile > 1.0)
+        }
+        if (percentile < 0.0 || percentile > 1.0) {
             throw new IllegalArgumentException("Percentile value must be between 0.0 and 1.0");
+        }
         double index = percentile * (sortedValues.length - 1);
         int lo = (int) index;
         int hi = lo + 1;

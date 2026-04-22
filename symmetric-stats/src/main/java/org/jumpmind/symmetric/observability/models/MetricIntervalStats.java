@@ -20,7 +20,6 @@
  */
 package org.jumpmind.symmetric.observability.models;
 
-import java.io.Serializable;
 import java.sql.Date;
 
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
@@ -41,7 +40,7 @@ public record MetricIntervalStats(
         double stdDev,
         int observationCount,
         double mean,
-        boolean isOutlier) implements ISymIntervalStats, Serializable {
+        boolean isOutlier) implements ISymIntervalStats {
     @Override
     public long getStartEpoch() {
         return intervalStart;
@@ -51,6 +50,17 @@ public record MetricIntervalStats(
     public long getEndEpoch() {
         return intervalEnd;
     }
+
+    @Override
+    public long getDurationMillis() {
+        return intervalEnd - intervalStart;
+    }
+
+    @Override
+    public long getDurationSeconds() {
+        return (intervalEnd - intervalStart) / 1000l;
+    }
+
 
     @Override
     public double getAvg() {
@@ -78,7 +88,18 @@ public record MetricIntervalStats(
     }
 
     /** Returns a copy of this interval with {@code isOutlier} set to the given value. */
+    @Override
     public MetricIntervalStats cloneOutlier(boolean isOutlier) {
         return new MetricIntervalStats(intervalStart, intervalEnd, avg, min, max, stdDev, observationCount, mean, isOutlier);
+    }
+
+    /** Produces ascending time order (oldest first) */
+    @Override
+    public int compareTo(ISymIntervalStats other) {
+        int cmp = Long.compare(this.intervalEnd, other.getEndEpoch());
+        if (cmp != 0) {
+            return cmp;
+        }
+        return Long.compare(this.intervalStart, other.getStartEpoch());
     }
 }

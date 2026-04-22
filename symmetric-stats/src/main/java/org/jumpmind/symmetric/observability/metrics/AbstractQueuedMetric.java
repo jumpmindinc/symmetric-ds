@@ -246,9 +246,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
         if (intervalsCount < MetricSeriesSlidingWorkset.IQR_INTERVALS_MIN) {
             log.warn("Insufficient data to kick-off outlier detection with historical intervals for metric={}, records={}", metricId, intervalsCount);
         }
-        for (ISymIntervalStats interval : history) {
-            workset.seed(interval);
-        }
+        workset.seed(history);
         log.info("Primed outlier detection with {} historical intervals for metric={}", intervalsCount, metricId);
     }
 
