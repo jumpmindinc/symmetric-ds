@@ -27,15 +27,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.jumpmind.symmetric.model.MetricFactType;
-
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
-
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
@@ -363,8 +361,7 @@ public class MetricsRepository extends AbstractService {
         log.info("Processed {} keys. Computed max surrogate key span: start={}, next.value={}", metricKeys.size(), bufferStart, nextAvailableValue);
     }
 
-    private int populateMetricKeyCache(List<MetricKey> metricKeys) {
-        List<MetricKey> metricKeyRecs = loadAllMetricKeysForHostnameFromDatabase();
+    private int populateMetricKeyCache(List<MetricKey> metricKeyRecs) {
         if (metricKeyRecs == null || metricKeyRecs.isEmpty()) {
             log.warn("Failed to loaded any metric keys from database! hostname={}, engine_name={}", hostname, engineName);
             return 0;
