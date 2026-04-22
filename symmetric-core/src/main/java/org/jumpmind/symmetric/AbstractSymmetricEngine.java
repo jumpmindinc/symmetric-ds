@@ -86,9 +86,7 @@ import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
-import org.jumpmind.symmetric.observability.metrics.EngineMetricsService;
-import org.jumpmind.symmetric.observability.metrics.IEngineMetricsService;
-import org.jumpmind.symmetric.observability.metrics.MetricsManager;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
@@ -316,6 +314,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 .getLong(ParameterConstants.CACHE_TIMEOUT_TABLES_IN_MS));
         this.symmetricDialect = createSymmetricDialect();
         this.symmetricDialect.setTargetDialect(createTargetDialect());
+        this.metricsService = createMetricsService();
+        this.metricsService.initRepository();
         this.extensionService = createExtensionService();
         this.extensionService.refresh();
         this.symmetricDialect.setExtensionService(extensionService);
@@ -331,8 +331,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.clusterService = createClusterService();
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
-        this.metricsService = createMetricsService();
-        this.metricsService.initRepository();
+
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
                 statisticManager, metricsService);
         this.purgeService = new PurgeService(parameterService, symmetricDialect, clusterService, dataService, sequenceService,
@@ -396,12 +395,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     protected IEngineMetricsService createMetricsService() {
-        try {
-            return new EngineMetricsService(this, MetricsManager.getGlobalInstance(), parameterService.is(ParameterConstants.OTEL_METRICS_ENABLED, false));
-        } catch (Exception ex) {
-            log.error("Failed to initialize EngineMetricsService!", ex);
-            return null;
-        }
+        return null;
+    }
+
+    protected void startMetricsAggregation() {
     }
 
     protected IClusterService createClusterService() {
@@ -737,8 +734,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                     }
                     lastRestartTime = new Date();
                     statisticManager.incrementRestart();
-                    MetricsManager mgr = MetricsManager.getGlobalInstance();
-                    mgr.startAggregation();
+                    startMetricsAggregation();
                     started = true;
                     for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
                         ext.started(this);

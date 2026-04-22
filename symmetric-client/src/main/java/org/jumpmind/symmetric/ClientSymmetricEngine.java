@@ -71,6 +71,9 @@ import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.impl.ClientExtensionService;
 import org.jumpmind.symmetric.service.impl.NodeService;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.metrics.EngineMetricsService;
+import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.statistic.StatisticManager;
 import org.jumpmind.symmetric.util.ConfigImportHelper;
@@ -439,6 +442,23 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             }
         }
         return new StatisticManager(this);
+    }
+
+    @Override
+    protected IEngineMetricsService createMetricsService() {
+        try {
+            return new EngineMetricsService(this, MetricsManager.getGlobalInstance(),
+                parameterService.is(ParameterConstants.OTEL_METRICS_ENABLED, false));
+        } catch (Exception ex) {
+            log.error("Failed to initialize EngineMetricsService!", ex);
+            return null;
+        }
+    }
+
+    @Override
+    protected void startMetricsAggregation() {
+        MetricsManager mgr = MetricsManager.getGlobalInstance();
+        mgr.startAggregation();
     }
 
     protected static void waitForAvailableDatabase(DataSource dataSource) {
