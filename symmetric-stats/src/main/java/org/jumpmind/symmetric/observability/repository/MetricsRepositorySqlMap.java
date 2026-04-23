@@ -69,6 +69,20 @@ public class MetricsRepositorySqlMap extends AbstractSqlMap {
             "INSERT INTO $(metric_stats_int64)" +
             " (metric_key, context_id, interval_start_time, duration_seconds, interval_end_millis, observation_count, min, max, avg, mean, std_dev)" +
             " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        putSql("generateContextSurrogateSql",
+            "INSERT INTO $(metric_context)" +
+            " (context_id, attributes_hash, attr1_name, attr1_value, attr2_name, attr2_value, attr3_name, attr3_value, create_time)" +
+            " SELECT (?*(COALESCE(MAX(context_id),1)+?))/?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP FROM $(metric_context)");
+
+        putSql("insertMetricContextSql",
+            "INSERT INTO $(metric_context)" +
+            " (context_id, attributes_hash, attr1_name, attr1_value, attr2_name, attr2_value, attr3_name, attr3_value, create_time)" +
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)");
+
+        putSql("selectMetricContextByHashSql",
+            "SELECT context_id, attributes_hash, attr1_name, attr1_value, attr2_name, attr2_value, attr3_name, attr3_value" +
+            " FROM $(metric_context) WHERE attributes_hash = ?");
         // @formatter:on
     }
 }

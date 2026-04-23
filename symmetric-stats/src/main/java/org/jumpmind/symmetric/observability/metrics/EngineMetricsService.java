@@ -32,6 +32,7 @@ import org.jumpmind.symmetric.observability.models.MetricContext;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
 import org.jumpmind.symmetric.observability.repository.MetricsRepository;
+import org.jumpmind.symmetric.observability.repository.MetricsRepositoryException;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -93,7 +94,16 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                     metric.close();
                     continue;
                 }
-                long contextId = metric.getContext() != null ? metric.getContext().getContextId() : MetricContext.UNASSIGNED;
+                long contextId;
+                if (metric.getContext() != null) {
+                    contextId = metric.getContext().getContextId();
+                } else if (!metric.getAttributes().isEmpty()) {
+                    MetricContext ctx = repo.getOrRegisterContext(metric.getAttributes());
+                    metric.setContext(ctx);
+                    contextId = ctx.contextId();
+                } else {
+                    contextId = MetricContext.UNASSIGNED;
+                }
                 for (ISymIntervalStats interval : metric.exportCompletedIntervals()) {
                     newlyCompleted.add(new MetricIntervalStatsRecord(key, contextId, interval));
                 }
@@ -129,6 +139,11 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                     log.warn("Failed to initialize metrics repository with important metrics (and historical values) for engine {}", engine.getEngineName());
                 }
                 try {
+                    initializeDefaultContexts();
+                } catch (Exception ex) {
+                    log.warn("Failed to initialize default metric contexts for engine {}", engine.getEngineName());
+                }
+                try {
                     initializeStatsWorksetsForAllMetrics(repository);
                 } catch (Exception ex) {
                     log.warn("Failed to initialize metrics repository with historical values for engine {}", engine.getEngineName());
@@ -136,6 +151,21 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             }
         }
         return repository;
+    }
+
+    protected void initializeDefaultContexts() {
+        MetricsRepository repo = getOrInitRepository();
+        List<ContextDefinition> defs = metricsManager.getMetricDefinitionFactory().getDefaultContexts();
+        int count = 0;
+        for (ContextDefinition def : defs) {
+            try {
+                repo.getOrRegisterContext(def);
+                count++;
+            } catch (MetricsRepositoryException ex) {
+                log.warn("Failed to register default context id={}", def.contextId(), ex);
+            }
+        }
+        log.debug("Initialized {} default metric contexts for engine {}", count, engine.getEngineName());
     }
 
     /**

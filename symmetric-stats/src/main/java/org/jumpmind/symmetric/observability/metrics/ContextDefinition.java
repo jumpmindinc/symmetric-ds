@@ -25,7 +25,8 @@ import java.util.List;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 
 /**
- * Seed definition for a pre-assigned metric context. Used to pre-populate well-known contexts (e.g. built-in channels) at startup before any observations arrive.
+ * Seed definition for a pre-assigned metric context. Used to pre-populate well-known contexts (e.g. built-in channels) at startup before any observations
+ * arrive.
  */
 public record ContextDefinition(long contextId, List<MetricAttribute> attributes) {
     public ContextDefinition {

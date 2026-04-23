@@ -20,10 +20,16 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import java.util.List;
+
 public interface IMetricDefinitionFactory {
     void register(SymMetricDefinition definition);
 
     SymMetricDefinition getDefinition(String metricId);
 
     int initializeMetrics(AbstractMetricsService service);
+
+    List<ContextDefinition> getDefaultContexts();
+
+    void registerDefaultContext(ContextDefinition... definitions);
 }

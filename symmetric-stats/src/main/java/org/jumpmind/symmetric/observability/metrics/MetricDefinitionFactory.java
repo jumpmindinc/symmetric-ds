@@ -55,7 +55,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             new ContextDefinition(10000152009L, List.of(new MetricAttribute(ATTR_CHANNEL, "monitor"))),
             new ContextDefinition(10000162009L, List.of(new MetricAttribute(ATTR_CHANNEL, "dynamic"))),
             new ContextDefinition(10000172009L, List.of(new MetricAttribute(ATTR_CHANNEL, "filesync"))),
-            new ContextDefinition(10000182009L, List.of(new MetricAttribute(ATTR_CHANNEL, "filesync_reload"))),            
+            new ContextDefinition(10000182009L, List.of(new MetricAttribute(ATTR_CHANNEL, "filesync_reload"))),
             new ContextDefinition(12000102020L, List.of(new MetricAttribute(ATTR_CHANNEL, "business_unit"))), // JMC channels
             new ContextDefinition(12000112020L, List.of(new MetricAttribute(ATTR_CHANNEL, "carrier"))),
             new ContextDefinition(12000122020L, List.of(new MetricAttribute(ATTR_CHANNEL, "ctx"))),
@@ -99,12 +99,10 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             new ContextDefinition(10200332009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "rig"))),
             new ContextDefinition(10200342009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "iot"))),
             new ContextDefinition(10200352009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "clinic"))),
-            new ContextDefinition(10200362009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "azure"))),  
+            new ContextDefinition(10200362009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "azure"))),
             new ContextDefinition(10200382009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "bigquery"))),
             new ContextDefinition(10200392009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "aws"))),
-            new ContextDefinition(ATTR_DEFAULT_IDS_END, List.of(new MetricAttribute("system", "specific")))
-    ));
-
+            new ContextDefinition(ATTR_DEFAULT_IDS_END, List.of(new MetricAttribute("system", "specific")))));
 
     MetricDefinitionFactory() {
         register(new SymMetricDefinition(

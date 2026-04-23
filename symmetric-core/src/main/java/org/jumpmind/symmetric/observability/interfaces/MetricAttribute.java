@@ -21,4 +21,5 @@
 package org.jumpmind.symmetric.observability.interfaces;
 
 /** A single named attribute (label) attached to a metric context. */
-public record MetricAttribute(String name, String value) {}
+public record MetricAttribute(String name, String value) {
+}

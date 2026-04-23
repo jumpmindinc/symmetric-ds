@@ -22,6 +22,8 @@ package org.jumpmind.symmetric.observability.repository;
 
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,6 +36,9 @@ import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.metrics.ContextDefinition;
+import org.jumpmind.symmetric.observability.models.MetricContext;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
@@ -57,6 +62,16 @@ public class MetricsRepository extends AbstractService {
     /** Long surrogate key, allocated via database. */
     private final SurrogateLongKeyBuffer surrogateKeys = new SurrogateLongKeyBuffer();
     private volatile boolean cacheLoaded = false;
+    /** Seed contexts (contextId <= MetricContext.SEED_IDS_END) — never evicted. */
+    private final Map<String, MetricContext> seedContextCache = new ConcurrentHashMap<>();
+    /** Dynamic contexts — LRU, max 2000 entries. */
+    private final Map<String, MetricContext> dynamicContextCache = Collections.synchronizedMap(
+            new LinkedHashMap<String, MetricContext>(2048, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, MetricContext> e) {
+                    return size() > 2000;
+                }
+            });
 
     public MetricsRepository(ISymmetricEngine engine, String hostname) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
@@ -384,6 +399,196 @@ public class MetricsRepository extends AbstractService {
         log.debug("Loaded {} metric keys from database. Engine={}, hostname={}", metricKeys.size(), engineName, hostname);
         return metricKeys;
     }
+    // -----------------------------------------------------------------------
+    // MetricContext — cache, surrogate ID, DB read/write
+    // -----------------------------------------------------------------------
+
+    static String contextCacheKey(List<MetricAttribute> attrs) {
+        String v1 = MetricContext.NA, v2 = MetricContext.NA, v3 = MetricContext.NA;
+        StringBuilder names = new StringBuilder();
+        int size = attrs != null ? Math.min(attrs.size(), 3) : 0;
+        for (int i = 0; i < size; i++) {
+            MetricAttribute a = attrs.get(i);
+            if (i > 0) {
+                names.append('+');
+            }
+            names.append(a.name() != null ? a.name() : "");
+            String v = a.value() != null ? a.value() : MetricContext.NA;
+            if (i == 0) {
+                v1 = v;
+            } else if (i == 1) {
+                v2 = v;
+            } else {
+                v3 = v;
+            }
+        }
+        return names.append('=').append(Objects.hash(v1, v2, v3)).toString();
+    }
+
+    private MetricContext getFromContextCache(String cacheKey) {
+        MetricContext ctx = seedContextCache.get(cacheKey);
+        return ctx != null ? ctx : dynamicContextCache.get(cacheKey);
+    }
+
+    private void putToContextCache(String cacheKey, MetricContext ctx) {
+        if (ctx.contextId() <= MetricContext.SEED_IDS_END) {
+            seedContextCache.put(cacheKey, ctx);
+        } else {
+            dynamicContextCache.put(cacheKey, ctx);
+        }
+    }
+
+    static boolean attributesMatch(MetricContext ctx, List<MetricAttribute> attrs) {
+        return contextCacheKey(ctx.getAttributes()).equals(contextCacheKey(attrs));
+    }
+
+    /**
+     * Looks up or inserts a {@link MetricContext} for the given pre-assigned {@link ContextDefinition}. Used at startup to seed well-known contexts.
+     */
+    public MetricContext getOrRegisterContext(ContextDefinition def) {
+        List<MetricAttribute> attrs = def.attributes();
+        String cacheKey = contextCacheKey(attrs);
+        MetricContext cached = getFromContextCache(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        MetricContext ctx;
+        try {
+            ctx = insertContextToDatabase(def.contextId(), attrs);
+        } catch (Exception e) {
+            if (!isCausedByUniqueKeyViolation(e)) {
+                throw new MetricsRepositoryException("Failed to insert seed context id=" + def.contextId(), e);
+            }
+            ctx = loadContextByAttrsFromDatabase(MetricContext.computeHash(attrs), attrs);
+            if (ctx == null) {
+                throw new MetricsRepositoryException("Context not found after UniqueKeyException for id=" + def.contextId());
+            }
+        }
+        putToContextCache(cacheKey, ctx);
+        return ctx;
+    }
+
+    /**
+     * Looks up or inserts a {@link MetricContext} for the given attributes. Surrogate ID is always computed by the database to avoid ownership conflicts across
+     * engines and hosts.
+     */
+    public MetricContext getOrRegisterContext(List<MetricAttribute> attrs) {
+        String cacheKey = contextCacheKey(attrs);
+        MetricContext cached = getFromContextCache(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        int hash = MetricContext.computeHash(attrs);
+        MetricContext found = loadContextByAttrsFromDatabase(hash, attrs);
+        if (found != null) {
+            putToContextCache(cacheKey, found);
+            return found;
+        }
+        MetricContext ctx = generateContextSurrogateAndInsert(attrs);
+        putToContextCache(cacheKey, ctx);
+        return ctx;
+    }
+
+    private MetricContext insertContextToDatabase(long contextId, List<MetricAttribute> attrs) {
+        int hash = MetricContext.computeHash(attrs);
+        String n1 = "", v1 = "", n2 = "", v2 = "", n3 = "", v3 = "";
+        int size = attrs != null ? Math.min(attrs.size(), 3) : 0;
+        if (size > 0) {
+            n1 = attrs.get(0).name() != null ? attrs.get(0).name() : "";
+            v1 = attrs.get(0).value() != null ? attrs.get(0).value() : "";
+        }
+        if (size > 1) {
+            n2 = attrs.get(1).name() != null ? attrs.get(1).name() : "";
+            v2 = attrs.get(1).value() != null ? attrs.get(1).value() : "";
+        }
+        if (size > 2) {
+            n3 = attrs.get(2).name() != null ? attrs.get(2).name() : "";
+            v3 = attrs.get(2).value() != null ? attrs.get(2).value() : "";
+        }
+        Object[] params = { contextId, hash, n1, v1, n2, v2, n3, v3 };
+        int[] types = { Types.BIGINT, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+        ISqlTransaction tx = null;
+        try {
+            tx = sqlTemplate.startSqlTransaction();
+            tx.prepareAndExecute(getSql("insertMetricContextSql"), params, types);
+            tx.commit();
+        } catch (Exception e) {
+            if (tx != null) {
+                tx.rollback();
+                tx = null;
+            }
+            throw e;
+        } finally {
+            if (tx != null) {
+                close(tx);
+            }
+        }
+        log.debug("Inserted metric context id={}, hash={}", contextId, hash);
+        return new MetricContext(contextId, attrs != null ? List.copyOf(attrs) : List.of());
+    }
+
+    private MetricContext loadContextByAttrsFromDatabase(int hash, List<MetricAttribute> attrs) {
+        List<MetricContext> candidates = sqlTemplate.query(
+                getSql("selectMetricContextByHashSql"), new MetricContextSqlRowMapper(), hash);
+        for (MetricContext c : candidates) {
+            if (attributesMatch(c, attrs)) {
+                return c;
+            }
+        }
+        return null;
+    }
+
+    private static final int CONTEXT_SURROGATE_MAX_RETRIES = 3;
+
+    private MetricContext generateContextSurrogateAndInsert(List<MetricAttribute> attrs) {
+        int hash = MetricContext.computeHash(attrs);
+        String n1 = "", v1 = "", n2 = "", v2 = "", n3 = "", v3 = "";
+        int size = attrs != null ? Math.min(attrs.size(), 3) : 0;
+        if (size > 0) {
+            n1 = attrs.get(0).name() != null ? attrs.get(0).name() : "";
+            v1 = attrs.get(0).value() != null ? attrs.get(0).value() : "";
+        }
+        if (size > 1) {
+            n2 = attrs.get(1).name() != null ? attrs.get(1).name() : "";
+            v2 = attrs.get(1).value() != null ? attrs.get(1).value() : "";
+        }
+        if (size > 2) {
+            n3 = attrs.get(2).name() != null ? attrs.get(2).name() : "";
+            v3 = attrs.get(2).value() != null ? attrs.get(2).value() : "";
+        }
+        long bufferSize = SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
+        Object[] params = { bufferSize, bufferSize, bufferSize, hash, n1, v1, n2, v2, n3, v3 };
+        int[] types = { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                Types.VARCHAR };
+        for (int attempt = 1; attempt <= CONTEXT_SURROGATE_MAX_RETRIES; attempt++) {
+            ISqlTransaction tx = null;
+            try {
+                tx = sqlTemplate.startSqlTransaction();
+                tx.prepareAndExecute(getSql("generateContextSurrogateSql"), params, types);
+                tx.commit();
+                break;
+            } catch (Exception e) {
+                if (tx != null) {
+                    tx.rollback();
+                    tx = null;
+                }
+                if (isCausedByUniqueKeyViolation(e) && attempt < CONTEXT_SURROGATE_MAX_RETRIES) {
+                    log.warn("Context surrogate collision (attempt {}/{}), retrying", attempt, CONTEXT_SURROGATE_MAX_RETRIES);
+                    continue;
+                }
+                throw new MetricsRepositoryException("Failed to generate context surrogate after " + attempt + " attempts", e);
+            } finally {
+                if (tx != null) {
+                    close(tx);
+                }
+            }
+        }
+        MetricContext ctx = loadContextByAttrsFromDatabase(hash, attrs);
+        if (ctx == null) {
+            throw new MetricsRepositoryException("Context not found after generateContextSurrogateSql insert");
+        }
+        return ctx;
+    }
 
     /**
      * Persists a batch of newly completed intervals within a single transaction. Any {@link MetricKey} not yet present in {@code metric_key} is inserted first.
@@ -554,6 +759,27 @@ public class MetricsRepository extends AbstractService {
             MetricFactType factType = MetricFactType.valueOf(row.getString("fact_type"));
             boolean isEnabled = row.getInt("enabled") != 0;
             return new MetricKey(key, hostname, engineName, metricId, factType, isEnabled);
+        }
+    }
+
+    static class MetricContextSqlRowMapper implements ISqlRowMapper<MetricContext> {
+        @Override
+        public MetricContext mapRow(Row row) {
+            long contextId = row.getLong("context_id");
+            List<MetricAttribute> attrs = new ArrayList<>();
+            String n1 = row.getString("attr1_name"), v1 = row.getString("attr1_value");
+            if (n1 != null && !n1.isEmpty()) {
+                attrs.add(new MetricAttribute(n1, v1 != null ? v1 : ""));
+            }
+            String n2 = row.getString("attr2_name"), v2 = row.getString("attr2_value");
+            if (n2 != null && !n2.isEmpty()) {
+                attrs.add(new MetricAttribute(n2, v2 != null ? v2 : ""));
+            }
+            String n3 = row.getString("attr3_name"), v3 = row.getString("attr3_value");
+            if (n3 != null && !n3.isEmpty()) {
+                attrs.add(new MetricAttribute(n3, v3 != null ? v3 : ""));
+            }
+            return new MetricContext(contextId, attrs);
         }
     }
 

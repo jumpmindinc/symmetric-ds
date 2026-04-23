@@ -36,7 +36,9 @@ import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.common.AttributesBuilder;
 
 /**
  * Base class which owns multiple metrics (counters, gauges). Subclasses supply the attributes that identify the metric's scope (e.g. engine name, host).
@@ -75,12 +77,26 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     private UpDownCounter createUpDownCounterInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
-        UpDownCounter counter = new UpDownCounter(definition.id(), attributes, attrs);
+        UpDownCounter counter = new UpDownCounter(definition.id(), this.attributes, attrs);
         if (isOtelPublishingEnabled) {
+            Attributes instrAttrs = buildInstrumentAttributes(attrs);
             otelHandles.add(metricsManager.createUpDownCounter(
-                    definition.id(), definition.description(), definition.unit(), counter::getValue, attributes));
+                    definition.id(), definition.description(), definition.unit(), counter::getValue, instrAttrs));
         }
         return counter;
+    }
+
+    private Attributes buildInstrumentAttributes(List<MetricAttribute> attrs) {
+        if (attrs == null || attrs.isEmpty()) {
+            return this.attributes;
+        }
+        AttributesBuilder builder = this.attributes.toBuilder();
+        for (MetricAttribute a : attrs) {
+            if (a.name() != null && a.value() != null) {
+                builder.put(AttributeKey.stringKey(a.name()), a.value());
+            }
+        }
+        return builder.build();
     }
 
     public IUpDownCounter getUpDownCounter(String metricId) {
@@ -100,10 +116,11 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     private SymDoubleGauge createGaugeInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
-        SymDoubleGauge gauge = new SymDoubleGauge(definition.id(), attributes, attrs);
+        SymDoubleGauge gauge = new SymDoubleGauge(definition.id(), this.attributes, attrs);
         if (isOtelPublishingEnabled) {
+            Attributes instrAttrs = buildInstrumentAttributes(attrs);
             otelHandles.add(metricsManager.createGauge(
-                    definition.id(), definition.description(), definition.unit(), gauge::getValue, attributes));
+                    definition.id(), definition.description(), definition.unit(), gauge::getValue, instrAttrs));
         }
         return gauge;
     }
