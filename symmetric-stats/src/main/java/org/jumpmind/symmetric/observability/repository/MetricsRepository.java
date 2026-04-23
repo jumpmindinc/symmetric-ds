@@ -241,7 +241,6 @@ public class MetricsRepository extends AbstractService {
             } catch (Exception e) {
                 if (transaction != null) {
                     transaction.rollback();
-                    transaction = null;
                 }
                 if (isCausedByUniqueKeyViolation(e) && attempt < SURROGATE_KEY_MAX_RETRIES) {
                     log.warn("Surrogate key collision on DB-generated path for {} (attempt {}/{}), retrying", keyInfo, attempt, SURROGATE_KEY_MAX_RETRIES);
@@ -251,9 +250,7 @@ public class MetricsRepository extends AbstractService {
                 log.error(message, e);
                 throw new MetricsRepositoryException(message, e);
             } finally {
-                if (transaction != null) {
-                    close(transaction);
-                }
+                close(transaction);
             }
         }
         MetricKey metricKeyRec = loadMetricKeyFromDatabase(metricId, engineName, hostname);
@@ -289,15 +286,12 @@ public class MetricsRepository extends AbstractService {
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
-                transaction = null;
             }
             String message = "Failed to save metric key: " + key;
             log.error(message, e);
             throw new MetricsRepositoryException(message, e);
         } finally {
-            if (transaction != null) {
-                close(transaction);
-            }
+            close(transaction);
         }
         return key;
     }
@@ -321,15 +315,12 @@ public class MetricsRepository extends AbstractService {
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
-                transaction = null;
             }
             String message = "Failed to update metric key: " + key;
             log.error(message, e);
             throw new MetricsRepositoryException(message, e);
         } finally {
-            if (transaction != null) {
-                close(transaction);
-            }
+            close(transaction);
         }
         return key;
     }
@@ -515,13 +506,10 @@ public class MetricsRepository extends AbstractService {
         } catch (Exception e) {
             if (tx != null) {
                 tx.rollback();
-                tx = null;
             }
             throw e;
         } finally {
-            if (tx != null) {
-                close(tx);
-            }
+            close(tx);
         }
         log.debug("Inserted metric context id={}, hash={}", contextId, hash);
         return new MetricContext(contextId, attrs != null ? List.copyOf(attrs) : List.of());
@@ -570,7 +558,6 @@ public class MetricsRepository extends AbstractService {
             } catch (Exception e) {
                 if (tx != null) {
                     tx.rollback();
-                    tx = null;
                 }
                 if (isCausedByUniqueKeyViolation(e) && attempt < CONTEXT_SURROGATE_MAX_RETRIES) {
                     log.warn("Context surrogate collision (attempt {}/{}), retrying", attempt, CONTEXT_SURROGATE_MAX_RETRIES);
@@ -578,9 +565,7 @@ public class MetricsRepository extends AbstractService {
                 }
                 throw new MetricsRepositoryException("Failed to generate context surrogate after " + attempt + " attempts", e);
             } finally {
-                if (tx != null) {
-                    close(tx);
-                }
+                close(tx);
             }
         }
         MetricContext ctx = loadContextByAttrsFromDatabase(hash, attrs);
@@ -714,15 +699,12 @@ public class MetricsRepository extends AbstractService {
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
-                transaction = null;
             }
             String message = "Failed to save metric interval stats for key: " + key;
             log.error(message, e);
             throw new MetricsRepositoryException(message, e);
         } finally {
-            if (transaction != null) {
-                close(transaction);
-            }
+            close(transaction);
         }
         log.info("Saved metric interval stats for key: {}, Interval.start={}", key, intervalStats.getStartEpoch());
     }
