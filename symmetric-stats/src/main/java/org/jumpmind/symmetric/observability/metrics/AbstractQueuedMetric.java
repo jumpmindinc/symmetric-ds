@@ -26,7 +26,9 @@ import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
+import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
 import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator;
@@ -45,6 +47,8 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     private final String metricId;
     protected final Attributes attributes;
+    private final List<MetricAttribute> metricAttributes;
+    private volatile ISymMetricContext context;
     protected volatile long lastModified = System.currentTimeMillis();
     protected volatile boolean isMetricEnabled = true;
     protected ObservationsQueue<ISymObservation> observations = new ObservationsQueue<>();
@@ -53,15 +57,33 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     protected MetricIntervalStatsQueue completedIntervals = new MetricIntervalStatsQueue();
     protected MetricSeriesSlidingWorkset workset = new MetricSeriesSlidingWorkset();
 
-    AbstractQueuedMetric(String metricId, Attributes attributes) {
+    AbstractQueuedMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
         this.metricId = metricId;
         this.attributes = attributes;
+        this.metricAttributes = metricAttributes != null ? List.copyOf(metricAttributes) : List.of();
         this.currentIntervalAccumulator = null;
     }
 
     @Override
     public String getMetricId() {
         return metricId;
+    }
+
+    @Override
+    public ISymMetricContext getContext() {
+        return context;
+    }
+
+    @Override
+    public void setContext(ISymMetricContext context) {
+        if (this.context == null) {
+            this.context = context;
+        }
+    }
+
+    @Override
+    public List<MetricAttribute> getAttributes() {
+        return metricAttributes;
     }
 
     @Override

@@ -20,7 +20,10 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import java.util.List;
+
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableDoubleGauge;
@@ -33,8 +36,8 @@ import io.opentelemetry.api.metrics.ObservableDoubleGauge;
 public class SymDoubleGauge extends AbstractGaugeMetric implements ISymDoubleGauge {
     private ObservableDoubleGauge otelHandle;
 
-    SymDoubleGauge(String metricId, Attributes attributes) {
-        super(metricId, attributes);
+    SymDoubleGauge(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(metricId, attributes, metricAttributes);
     }
 
     void setOtelHandle(ObservableDoubleGauge handle) {

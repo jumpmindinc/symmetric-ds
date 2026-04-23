@@ -20,7 +20,10 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import java.util.List;
+
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
@@ -33,8 +36,8 @@ import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 public class UpDownCounter extends AbstractCounterMetric implements IUpDownCounter {
     private ObservableLongUpDownCounter otelHandle;
 
-    UpDownCounter(String metricId, Attributes attributes) {
-        super(metricId, attributes);
+    UpDownCounter(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(metricId, attributes, metricAttributes);
     }
 
     void setOtelHandle(ObservableLongUpDownCounter handle) {

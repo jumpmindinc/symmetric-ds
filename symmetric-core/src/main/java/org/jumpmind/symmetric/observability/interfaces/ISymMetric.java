@@ -27,6 +27,15 @@ import org.jumpmind.symmetric.model.MetricFactType;
 public interface ISymMetric {
     String getMetricId();
 
+    /** Returns the metric context, or {@code null} if not yet assigned by the repository. */
+    ISymMetricContext getContext();
+
+    /** Write-once: ignored if a context has already been set. */
+    void setContext(ISymMetricContext context);
+
+    /** Returns the attribute list supplied at instrument creation (0–3 elements, never null). */
+    List<MetricAttribute> getAttributes();
+
     long getLastModified();
 
     /**

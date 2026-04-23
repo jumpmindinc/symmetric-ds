@@ -421,7 +421,7 @@ public class MetricsRepository extends AbstractService {
                 }
                 continue;
             }
-            saveMetricIntervalStatsInternal(key, record.stats());
+            saveMetricIntervalStatsInternal(key, record.contextId(), record.stats());
             savedCount++;
         }
         log.info("Saved {} metric interval stats records to database in {} seconds", savedCount, (System.currentTimeMillis() - startTime) / 1000.0);
@@ -443,7 +443,7 @@ public class MetricsRepository extends AbstractService {
             key = getOrRegisterMetricKey(key);
         }
         log.debug("Loading metric intervals from database for key... {}", key);
-        long oneDayAgo = System.currentTimeMillis() - java.util.concurrent.TimeUnit.DAYS.toMillis(1);
+        java.sql.Timestamp oneDayAgo = new java.sql.Timestamp(System.currentTimeMillis() - java.util.concurrent.TimeUnit.DAYS.toMillis(1));
         String sqlKey = key.factType() == MetricFactType.INT64 ? "selectRecentIntervalsInt64Sql" : "selectRecentIntervalsSql";
         List<ISymIntervalStats> rows = sqlTemplate.query(
                 getSql(sqlKey), MetricSeriesSlidingWorkset.IQR_INTERVALS_MIN, new DoubleStatsSqlRowMapper(), key.key(), oneDayAgo);
@@ -451,7 +451,7 @@ public class MetricsRepository extends AbstractService {
         return rows;
     }
 
-    private void saveMetricIntervalStatsInternal(MetricKey key, ISymIntervalStats intervalStats) {
+    private void saveMetricIntervalStatsInternal(MetricKey key, long contextId, ISymIntervalStats intervalStats) {
         if (key == null) {
             String message = "key cannot be null!";
             log.error(message);
@@ -467,34 +467,40 @@ public class MetricsRepository extends AbstractService {
         String sqlKey;
         Object[] statementParams;
         int[] statementTypes;
+        long durationSeconds = (intervalStats.getEndEpoch() - intervalStats.getStartEpoch()) / 1000;
+        java.sql.Timestamp intervalStartTime = new java.sql.Timestamp(intervalStats.getStartEpoch());
         if (key.factType() == MetricFactType.INT64) {
             sqlKey = "insertMetricIntervalInt64Sql";
             statementParams = new Object[] {
-                    key.key(),
-                    intervalStats.getStartEpoch(), new java.sql.Timestamp(intervalStats.getEndEpoch()),
-                    (long) intervalStats.getAvg(), (long) intervalStats.getMin(), (long) intervalStats.max(),
-                    intervalStats.getStdDeviation(), intervalStats.getObservationCount(),
-                    (long) intervalStats.mean(),
-                    (intervalStats.getEndEpoch() - intervalStats.getStartEpoch()) / 1000 };
+                    key.key(), contextId,
+                    intervalStartTime, durationSeconds, intervalStats.getEndEpoch(),
+                    intervalStats.getObservationCount(),
+                    (long) intervalStats.getMin(), (long) intervalStats.max(),
+                    (long) intervalStats.getAvg(), (long) intervalStats.mean(),
+                    intervalStats.getStdDeviation() };
             statementTypes = new int[] {
-                    Types.BIGINT,
-                    Types.BIGINT, Types.TIMESTAMP,
-                    Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.DOUBLE,
-                    Types.INTEGER, Types.BIGINT, Types.INTEGER };
+                    Types.BIGINT, Types.BIGINT,
+                    Types.TIMESTAMP, Types.INTEGER, Types.BIGINT,
+                    Types.INTEGER,
+                    Types.BIGINT, Types.BIGINT,
+                    Types.BIGINT, Types.BIGINT,
+                    Types.DOUBLE };
         } else {
             sqlKey = "insertMetricIntervalSql";
             statementParams = new Object[] {
-                    key.key(),
-                    intervalStats.getStartEpoch(), new java.sql.Timestamp(intervalStats.getEndEpoch()),
-                    intervalStats.getAvg(), intervalStats.getMin(), intervalStats.max(),
-                    intervalStats.getStdDeviation(), intervalStats.getObservationCount(),
-                    intervalStats.mean(),
-                    (intervalStats.getEndEpoch() - intervalStats.getStartEpoch()) / 1000 };
+                    key.key(), contextId,
+                    intervalStartTime, durationSeconds, intervalStats.getEndEpoch(),
+                    intervalStats.getObservationCount(),
+                    intervalStats.getMin(), intervalStats.max(),
+                    intervalStats.getAvg(), intervalStats.mean(),
+                    intervalStats.getStdDeviation() };
             statementTypes = new int[] {
-                    Types.BIGINT,
-                    Types.BIGINT, Types.TIMESTAMP,
-                    Types.DOUBLE, Types.DOUBLE, Types.DOUBLE, Types.DOUBLE,
-                    Types.INTEGER, Types.DOUBLE, Types.INTEGER };
+                    Types.BIGINT, Types.BIGINT,
+                    Types.TIMESTAMP, Types.INTEGER, Types.BIGINT,
+                    Types.INTEGER,
+                    Types.DOUBLE, Types.DOUBLE,
+                    Types.DOUBLE, Types.DOUBLE,
+                    Types.DOUBLE };
         }
         try {
             transaction = sqlTemplate.startSqlTransaction();
@@ -557,9 +563,9 @@ public class MetricsRepository extends AbstractService {
     static class DoubleStatsSqlRowMapper implements ISqlRowMapper<ISymIntervalStats> {
         @Override
         public ISymIntervalStats mapRow(Row row) {
-            long intervalStart = row.getLong("interval_start");
-            java.sql.Timestamp endTimestamp = (java.sql.Timestamp) row.get("end_time");
-            long intervalEnd = endTimestamp != null ? endTimestamp.getTime() : 0L;
+            java.sql.Timestamp startTimestamp = (java.sql.Timestamp) row.get("interval_start_time");
+            long intervalStart = startTimestamp != null ? startTimestamp.getTime() : 0L;
+            long intervalEnd = row.getLong("interval_end_millis");
             double avg = rowDouble(row, "avg"); // The time-weighted average
             double min = rowDouble(row, "min");
             double max = rowDouble(row, "max");

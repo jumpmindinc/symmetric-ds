@@ -1033,30 +1033,56 @@
         </index>
     </table>
 
+    <table name="metric_context"
+           description="Dimension table mapping a surrogate context_id to a set of up to three metric attribute name/value pairs.">
+        <column name="context_id"      type="BIGINT"    required="true"  primaryKey="true"
+                description="Surrogate identifier in format NNNNNNNYYYY (sequential part x 10000 + current year)." />
+        <column name="attributes_hash" type="INTEGER"   required="true"
+                description="Java Objects.hash() across all six attribute fields, null substituted with N/A. Used for fast lookup." />
+        <column name="attr1_name"      type="VARCHAR"   size="255"  required="false"  defaultValue="" />
+        <column name="attr1_value"     type="VARCHAR"   size="255"  required="false"  defaultValue="" />
+        <column name="attr2_name"      type="VARCHAR"   size="255"  required="false"  defaultValue="" />
+        <column name="attr2_value"     type="VARCHAR"   size="255"  required="false"  defaultValue="" />
+        <column name="attr3_name"      type="VARCHAR"   size="255"  required="false"  defaultValue="" />
+        <column name="attr3_value"     type="VARCHAR"   size="255"  required="false"  defaultValue="" />
+        <column name="create_time"     type="TIMESTAMP" required="true" />
+        <index name="idx_metric_context_hash">
+            <index-column name="attributes_hash" />
+        </index>
+    </table>
+
     <table name="metric_stats_float64" description="Fact table for floating-point observations aggregated across a time window (per metric). Statistics are time-weighted using a step-function model.">
-        <column name="metric_key" type="BIGINT" required="true" primaryKey="true" description="Foreign key to metric_key." />
-        <column name="interval_start" type="BIGINT" required="true" primaryKey="true" description="Start of the 5-minute window in epoch milliseconds." />
-        <column name="end_time" type="TIMESTAMP" required="true" description="End of the 5-minute window as a timestamp with time zone." />
-        <column name="avg" type="DOUBLE" required="true" description="Time-weighted average value over the interval." />
-        <column name="min" type="DOUBLE" required="true" description="Minimum observed value during the interval." />
-        <column name="max" type="DOUBLE" required="true" description="Maximum observed value during the interval." />
-        <column name="std_dev" type="DOUBLE" required="true" description="Time-weighted standard deviation of the value during the interval." />
-        <column name="observation_count" type="INTEGER" required="true" description="Number of discrete observations recorded in the interval." />
-        <column name="mean" type="DOUBLE" required="true" description="Simple arithmetic mean of observed values during the interval." />
-        <column name="duration_seconds" type="INTEGER" required="true" description="Duration of the interval in seconds (interval_end - interval_start converted from milliseconds)." />
+        <column name="metric_key"              type="BIGINT"    required="true"  primaryKey="true" description="Foreign key to metric_key." />
+        <column name="context_id"              type="BIGINT"    required="true"  primaryKey="true" description="Foreign key to metric_context." />
+        <column name="interval_start_time"     type="TIMESTAMP" required="true"  primaryKey="true" description="Start of the aggregation window." />
+        <column name="duration_seconds"        type="INTEGER"   required="true"                    description="Duration of the interval in seconds." />
+        <column name="interval_end_millis"     type="BIGINT"    required="true"                    description="End of the aggregation window in epoch milliseconds." />
+        <column name="observation_count"       type="INTEGER"   required="true"                    description="Number of discrete observations recorded in the interval." />
+        <column name="min"                     type="DOUBLE"    required="true"                    description="Minimum observed value during the interval." />
+        <column name="max"                     type="DOUBLE"    required="true"                    description="Maximum observed value during the interval." />
+        <column name="avg"                     type="DOUBLE"    required="true"                    description="Time-weighted average value over the interval." />
+        <column name="mean"                    type="DOUBLE"    required="true"                    description="Simple arithmetic mean of observed values during the interval." />
+        <column name="std_dev"                 type="DOUBLE"    required="true"                    description="Time-weighted standard deviation of the value during the interval." />
+        <index name="idx_metric_stats_float64_key">
+            <index-column name="metric_key" />
+        </index>
     </table>
 
     <table name="metric_stats_int64" description="Fact table for integer observations aggregated across a time window (per metric). Statistics are time-weighted using a step-function model. Integer variant: min, max, avg, mean are BIGINT.">
-        <column name="metric_key" type="BIGINT" required="true" primaryKey="true" description="Foreign key to metric_key." />
-        <column name="interval_start" type="BIGINT" required="true" primaryKey="true" description="Start of the 5-minute window in epoch milliseconds." />
-        <column name="end_time" type="TIMESTAMP" required="true" description="End of the 5-minute window as a timestamp with time zone." />
-        <column name="avg" type="BIGINT" required="true" description="Time-weighted average value over the interval." />
-        <column name="min" type="BIGINT" required="true" description="Minimum observed value during the interval." />
-        <column name="max" type="BIGINT" required="true" description="Maximum observed value during the interval." />
-        <column name="std_dev" type="DOUBLE" required="true" description="Time-weighted standard deviation of the value during the interval." />
-        <column name="observation_count" type="INTEGER" required="true" description="Number of discrete observations recorded in the interval." />
-        <column name="mean" type="BIGINT" required="true" description="Simple arithmetic mean of observed values during the interval." />
-        <column name="duration_seconds" type="INTEGER" required="true" description="Duration of the interval in seconds (interval_end - interval_start converted from milliseconds)." />
+        <column name="metric_key"              type="BIGINT"    required="true"  primaryKey="true" description="Foreign key to metric_key." />
+        <column name="context_id"              type="BIGINT"    required="true"  primaryKey="true" description="Foreign key to metric_context." />
+        <column name="interval_start_time"     type="TIMESTAMP" required="true"  primaryKey="true" description="Start of the aggregation window." />
+        <column name="duration_seconds"        type="INTEGER"   required="true"                    description="Duration of the interval in seconds." />
+        <column name="interval_end_millis"     type="BIGINT"    required="true"                    description="End of the aggregation window in epoch milliseconds." />
+        <column name="observation_count"       type="INTEGER"   required="true"                    description="Number of discrete observations recorded in the interval." />
+        <column name="min"                     type="BIGINT"    required="true"                    description="Minimum observed value during the interval." />
+        <column name="max"                     type="BIGINT"    required="true"                    description="Maximum observed value during the interval." />
+        <column name="avg"                     type="BIGINT"    required="true"                    description="Time-weighted average value over the interval." />
+        <column name="mean"                    type="BIGINT"    required="true"                    description="Simple arithmetic mean of observed values during the interval." />
+        <column name="std_dev"                 type="DOUBLE"    required="true"                    description="Time-weighted standard deviation of the value during the interval." />
+        <index name="idx_metric_stats_int64_key">
+            <index-column name="metric_key" />
+        </index>
     </table>
 
 </database>

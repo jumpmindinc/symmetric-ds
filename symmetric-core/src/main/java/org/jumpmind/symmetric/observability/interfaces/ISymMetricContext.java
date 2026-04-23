@@ -18,12 +18,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.models;
+package org.jumpmind.symmetric.observability.interfaces;
 
-import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
+import java.util.List;
 
 /**
- * Links a completed interval-stats window to the {@link MetricKey} and surrogate {@code contextId} that identify the metric series it belongs to.
+ * Identifies a metric series by its surrogate {@code context_id} and up to three {@link MetricAttribute} pairs. The context_id is assigned by the repository on
+ * first persistence and never changes thereafter.
  */
-public record MetricIntervalStatsRecord(MetricKey key, long contextId, ISymIntervalStats stats) {
+public interface ISymMetricContext {
+    long getContextId();
+
+    List<MetricAttribute> getAttributes();
 }

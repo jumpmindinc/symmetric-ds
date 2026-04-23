@@ -20,11 +20,15 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.observability.interfaces.InvalidMetricDataException;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
 import org.jumpmind.symmetric.observability.metrics.SymMetricDefinition.InstrumentType;
 import org.slf4j.Logger;
@@ -36,7 +40,71 @@ import org.slf4j.LoggerFactory;
  */
 public class MetricDefinitionFactory implements IMetricDefinitionFactory {
     private static final Logger log = LoggerFactory.getLogger(MetricDefinitionFactory.class);
+    public static final long ATTR_DEFAULT_IDS_END = 19999999999L;
+    public static final String ATTR_CHANNEL = "channel";
+    public static final String ATTR_NODE_GROUP = "node_group";
+    public static final String ATTR_NODE_NAME = "node_name"; // group-node_id
+    public static final String ATTR_CDC_EVENT = "cdc_event_type"; // I=insert,U=update,D=delete,C=create,R=reload,S=sql
     private final Map<String, SymMetricDefinition> registry = new LinkedHashMap<>();
+    private final List<ContextDefinition> defaultContexts = new ArrayList<>(List.of(
+            new ContextDefinition(10000102009L, List.of(new MetricAttribute(ATTR_CHANNEL, "default"))), // SymmetricDS default channels
+            new ContextDefinition(10000112009L, List.of(new MetricAttribute(ATTR_CHANNEL, "config"))),
+            new ContextDefinition(10000122009L, List.of(new MetricAttribute(ATTR_CHANNEL, "system"))),
+            new ContextDefinition(10000132009L, List.of(new MetricAttribute(ATTR_CHANNEL, "reload"))),
+            new ContextDefinition(10000142009L, List.of(new MetricAttribute(ATTR_CHANNEL, "heartbeat"))),
+            new ContextDefinition(10000152009L, List.of(new MetricAttribute(ATTR_CHANNEL, "monitor"))),
+            new ContextDefinition(10000162009L, List.of(new MetricAttribute(ATTR_CHANNEL, "dynamic"))),
+            new ContextDefinition(10000172009L, List.of(new MetricAttribute(ATTR_CHANNEL, "filesync"))),
+            new ContextDefinition(10000182009L, List.of(new MetricAttribute(ATTR_CHANNEL, "filesync_reload"))),            
+            new ContextDefinition(12000102020L, List.of(new MetricAttribute(ATTR_CHANNEL, "business_unit"))), // JMC channels
+            new ContextDefinition(12000112020L, List.of(new MetricAttribute(ATTR_CHANNEL, "carrier"))),
+            new ContextDefinition(12000122020L, List.of(new MetricAttribute(ATTR_CHANNEL, "ctx"))),
+            new ContextDefinition(12000132020L, List.of(new MetricAttribute(ATTR_CHANNEL, "cust"))),
+            new ContextDefinition(12000142020L, List.of(new MetricAttribute(ATTR_CHANNEL, "device"))),
+            new ContextDefinition(12000152020L, List.of(new MetricAttribute(ATTR_CHANNEL, "foundation"))),
+            new ContextDefinition(12000162020L, List.of(new MetricAttribute(ATTR_CHANNEL, "i18n"))),
+            new ContextDefinition(12000172020L, List.of(new MetricAttribute(ATTR_CHANNEL, "itm"))),
+            new ContextDefinition(12000182020L, List.of(new MetricAttribute(ATTR_CHANNEL, "ops"))),
+            new ContextDefinition(12000192020L, List.of(new MetricAttribute(ATTR_CHANNEL, "prc"))),
+            new ContextDefinition(12000202020L, List.of(new MetricAttribute(ATTR_CHANNEL, "prm"))),
+            new ContextDefinition(12000212020L, List.of(new MetricAttribute(ATTR_CHANNEL, "pub"))),
+            new ContextDefinition(12000222020L, List.of(new MetricAttribute(ATTR_CHANNEL, "sls"))),
+            new ContextDefinition(12000232020L, List.of(new MetricAttribute(ATTR_CHANNEL, "sls_from_corp"))),
+            new ContextDefinition(12000242020L, List.of(new MetricAttribute(ATTR_CHANNEL, "tax"))),
+            new ContextDefinition(12000252020L, List.of(new MetricAttribute(ATTR_CHANNEL, "tng"))),
+            new ContextDefinition(12000262020L, List.of(new MetricAttribute(ATTR_CHANNEL, "usr"))),
+            new ContextDefinition(10200102009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "central"))), // Common node groups
+            new ContextDefinition(10200112009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "server"))),
+            new ContextDefinition(10200122009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "source"))),
+            new ContextDefinition(10200132009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "corp"))),
+            new ContextDefinition(10200142009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "master"))),
+            new ContextDefinition(10200152009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "main"))),
+            new ContextDefinition(10200162009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "cloud"))),
+            new ContextDefinition(10200172009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "replica"))),
+            new ContextDefinition(10200182009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "client"))),
+            new ContextDefinition(10200192009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "target"))),
+            new ContextDefinition(10200202009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "device"))),
+            new ContextDefinition(10200212009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "fixed"))),
+            new ContextDefinition(10200222009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "businessunit"))),
+            new ContextDefinition(10200232009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "store"))),
+            new ContextDefinition(10200242009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "pos"))),
+            new ContextDefinition(10200252009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "test"))),
+            new ContextDefinition(10200262009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "lab"))),
+            new ContextDefinition(10200272009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "isp"))),
+            new ContextDefinition(10200282009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "ship"))),
+            new ContextDefinition(10200292009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "shore"))),
+            new ContextDefinition(10200302009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "warehouse"))),
+            new ContextDefinition(10200312009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "hub"))),
+            new ContextDefinition(10200322009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "enterprise_hub"))),
+            new ContextDefinition(10200332009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "rig"))),
+            new ContextDefinition(10200342009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "iot"))),
+            new ContextDefinition(10200352009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "clinic"))),
+            new ContextDefinition(10200362009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "azure"))),  
+            new ContextDefinition(10200382009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "bigquery"))),
+            new ContextDefinition(10200392009L, List.of(new MetricAttribute(ATTR_NODE_GROUP, "aws"))),
+            new ContextDefinition(ATTR_DEFAULT_IDS_END, List.of(new MetricAttribute("system", "specific")))
+    ));
+
 
     MetricDefinitionFactory() {
         register(new SymMetricDefinition(
@@ -49,6 +117,21 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
                 "Active connection as a percentage of max concurrent workers",
                 SymMetricConstants.METRIC_UNIT_PERCENT,
                 InstrumentType.GAUGE));
+    }
+
+    public void registerDefaultContext(ContextDefinition... definitions) {
+        if (definitions == null || definitions.length == 0) {
+            return;
+        }
+        for (ContextDefinition def : definitions) {
+            if (def != null) {
+                defaultContexts.add(def);
+            }
+        }
+    }
+
+    public List<ContextDefinition> getDefaultContexts() {
+        return Collections.unmodifiableList(defaultContexts);
     }
 
     public void register(SymMetricDefinition definition) {

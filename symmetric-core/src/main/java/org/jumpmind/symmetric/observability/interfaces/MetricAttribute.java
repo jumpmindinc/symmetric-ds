@@ -18,12 +18,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.models;
+package org.jumpmind.symmetric.observability.interfaces;
 
-import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
-
-/**
- * Links a completed interval-stats window to the {@link MetricKey} and surrogate {@code contextId} that identify the metric series it belongs to.
- */
-public record MetricIntervalStatsRecord(MetricKey key, long contextId, ISymIntervalStats stats) {
-}
+/** A single named attribute (label) attached to a metric context. */
+public record MetricAttribute(String name, String value) {}

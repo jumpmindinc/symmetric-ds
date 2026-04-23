@@ -31,6 +31,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,12 +66,16 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     public IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition) {
-        return upDownCounters.computeIfAbsent(definition.id(),
-                id -> createUpDownCounterInternal(definition));
+        return registerUpDownCounter(definition, List.of());
     }
 
-    private UpDownCounter createUpDownCounterInternal(ISymMetricDefinition definition) {
-        UpDownCounter counter = new UpDownCounter(definition.id(), attributes);
+    public IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+        return upDownCounters.computeIfAbsent(instrumentKey(definition.id(), attrs),
+                k -> createUpDownCounterInternal(definition, attrs));
+    }
+
+    private UpDownCounter createUpDownCounterInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+        UpDownCounter counter = new UpDownCounter(definition.id(), attributes, attrs);
         if (isOtelPublishingEnabled) {
             otelHandles.add(metricsManager.createUpDownCounter(
                     definition.id(), definition.description(), definition.unit(), counter::getValue, attributes));
@@ -79,15 +84,23 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     public IUpDownCounter getUpDownCounter(String metricId) {
-        return upDownCounters.get(metricId);
+        return getUpDownCounter(metricId, List.of());
+    }
+
+    public IUpDownCounter getUpDownCounter(String metricId, List<MetricAttribute> attrs) {
+        return upDownCounters.get(instrumentKey(metricId, attrs));
     }
 
     public ISymDoubleGauge registerGauge(ISymMetricDefinition definition) {
-        return gauges.computeIfAbsent(definition.id(), k -> createGaugeInternal(definition));
+        return registerGauge(definition, List.of());
     }
 
-    private SymDoubleGauge createGaugeInternal(ISymMetricDefinition definition) {
-        SymDoubleGauge gauge = new SymDoubleGauge(definition.id(), attributes);
+    public ISymDoubleGauge registerGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+        return gauges.computeIfAbsent(instrumentKey(definition.id(), attrs), k -> createGaugeInternal(definition, attrs));
+    }
+
+    private SymDoubleGauge createGaugeInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+        SymDoubleGauge gauge = new SymDoubleGauge(definition.id(), attributes, attrs);
         if (isOtelPublishingEnabled) {
             otelHandles.add(metricsManager.createGauge(
                     definition.id(), definition.description(), definition.unit(), gauge::getValue, attributes));
@@ -96,7 +109,22 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     public ISymDoubleGauge getGauge(String metricId) {
-        return gauges.get(metricId);
+        return getGauge(metricId, List.of());
+    }
+
+    public ISymDoubleGauge getGauge(String metricId, List<MetricAttribute> attrs) {
+        return gauges.get(instrumentKey(metricId, attrs));
+    }
+
+    private static String instrumentKey(String metricId, List<MetricAttribute> attrs) {
+        if (attrs == null || attrs.isEmpty()) {
+            return metricId;
+        }
+        StringBuilder sb = new StringBuilder(metricId);
+        for (MetricAttribute a : attrs) {
+            sb.append('\0').append(a.name() != null ? a.name() : "").append('=').append(a.value() != null ? a.value() : "");
+        }
+        return sb.toString();
     }
 
     public Collection<ISymMetric> getAllMetrics() {

@@ -20,6 +20,10 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import java.util.List;
+
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableLongCounter;
 
@@ -30,8 +34,8 @@ import io.opentelemetry.api.metrics.ObservableLongCounter;
 public class IncreasingCounter extends AbstractCounterMetric {
     protected final ObservableLongCounter otelCounter;
 
-    IncreasingCounter(String metricId, ObservableLongCounter otelCounter, Attributes attributes) {
-        super(metricId, attributes);
+    IncreasingCounter(String metricId, ObservableLongCounter otelCounter, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(metricId, attributes, metricAttributes);
         this.otelCounter = otelCounter;
     }
 

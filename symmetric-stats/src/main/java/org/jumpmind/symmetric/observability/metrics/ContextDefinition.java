@@ -18,12 +18,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.models;
+package org.jumpmind.symmetric.observability.metrics;
 
-import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
+import java.util.List;
+
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 
 /**
- * Links a completed interval-stats window to the {@link MetricKey} and surrogate {@code contextId} that identify the metric series it belongs to.
+ * Seed definition for a pre-assigned metric context. Used to pre-populate well-known contexts (e.g. built-in channels) at startup before any observations arrive.
  */
-public record MetricIntervalStatsRecord(MetricKey key, long contextId, ISymIntervalStats stats) {
+public record ContextDefinition(long contextId, List<MetricAttribute> attributes) {
+    public ContextDefinition {
+        attributes = attributes != null ? List.copyOf(attributes) : List.of();
+    }
 }

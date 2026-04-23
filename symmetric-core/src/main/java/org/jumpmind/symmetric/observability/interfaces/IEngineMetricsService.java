@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.observability.interfaces;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface IEngineMetricsService extends IMetricsService {
     String getEngineName();
@@ -28,18 +29,32 @@ public interface IEngineMetricsService extends IMetricsService {
     boolean isOtelPublishingEnabled();
 
     /**
-     * In order for this to work MetricDefinitionFactory should have already registered metric with this Id.
+     * Returns the counter registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
      */
     IUpDownCounter getUpDownCounter(String metricId);
 
     /**
-     * In order for this to work MetricDefinitionFactory should have already registered metric with this Id.
+     * Returns the counter registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
+     */
+    IUpDownCounter getUpDownCounter(String metricId, List<MetricAttribute> attrs);
+
+    /**
+     * Returns the gauge registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
      */
     ISymDoubleGauge getGauge(String metricId);
 
+    /**
+     * Returns the gauge registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
+     */
+    ISymDoubleGauge getGauge(String metricId, List<MetricAttribute> attrs);
+
     IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition);
 
+    IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition, List<MetricAttribute> attrs);
+
     ISymDoubleGauge registerGauge(ISymMetricDefinition definition);
+
+    ISymDoubleGauge registerGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs);
 
     Collection<ISymMetric> getAllMetrics();
 

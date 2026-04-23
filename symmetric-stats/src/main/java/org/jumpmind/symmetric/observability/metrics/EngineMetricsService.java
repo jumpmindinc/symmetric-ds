@@ -28,6 +28,7 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
+import org.jumpmind.symmetric.observability.models.MetricContext;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
 import org.jumpmind.symmetric.observability.repository.MetricsRepository;
@@ -92,8 +93,9 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                     metric.close();
                     continue;
                 }
+                long contextId = metric.getContext() != null ? metric.getContext().getContextId() : MetricContext.UNASSIGNED;
                 for (ISymIntervalStats interval : metric.exportCompletedIntervals()) {
-                    newlyCompleted.add(new MetricIntervalStatsRecord(key, interval));
+                    newlyCompleted.add(new MetricIntervalStatsRecord(key, contextId, interval));
                 }
                 processedMetrics++;
             } catch (Exception ex) {

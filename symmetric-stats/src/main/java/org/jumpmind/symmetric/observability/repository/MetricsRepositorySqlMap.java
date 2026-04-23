@@ -49,26 +49,26 @@ public class MetricsRepositorySqlMap extends AbstractSqlMap {
             " WHERE hostname = ? AND engine_name IN (?, ?)");
 
         putSql("selectRecentIntervalsSql",
-            "SELECT interval_start, end_time, avg, min, max, std_dev, observation_count, mean" +
+            "SELECT interval_start_time, interval_end_millis, avg, min, max, std_dev, observation_count, mean" +
             " FROM $(metric_stats_float64)" +
-            " WHERE metric_key = ? AND interval_start >= ?" +
-            " ORDER BY interval_start");
+            " WHERE metric_key = ? AND interval_start_time >= ?" +
+            " ORDER BY interval_start_time");
 
-        putSql("insertMetriMetricSeriesSlidingWorkset.java)cIntervalSql",
+        putSql("insertMetricIntervalSql",
             "INSERT INTO $(metric_stats_float64)" +
-            " (metric_key, interval_start, end_time, avg, min, max, std_dev, observation_count, mean, duration_seconds)" +
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            " (metric_key, context_id, interval_start_time, duration_seconds, interval_end_millis, observation_count, min, max, avg, mean, std_dev)" +
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         putSql("selectRecentIntervalsInt64Sql",
-            "SELECT interval_start, end_time, avg, min, max, std_dev, observation_count, mean" +
+            "SELECT interval_start_time, interval_end_millis, avg, min, max, std_dev, observation_count, mean" +
             " FROM $(metric_stats_int64)" +
-            " WHERE metric_key = ? AND interval_start >= ?" +
-            " ORDER BY interval_start");
+            " WHERE metric_key = ? AND interval_start_time >= ?" +
+            " ORDER BY interval_start_time");
 
         putSql("insertMetricIntervalInt64Sql",
             "INSERT INTO $(metric_stats_int64)" +
-            " (metric_key, interval_start, end_time, avg, min, max, std_dev, observation_count, mean, duration_seconds)" +
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            " (metric_key, context_id, interval_start_time, duration_seconds, interval_end_millis, observation_count, min, max, avg, mean, std_dev)" +
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         // @formatter:on
     }
 }
