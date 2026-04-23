@@ -31,7 +31,7 @@ import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
  * current year) assigned by the repository on first persistence. Holds up to three {@link MetricAttribute} pairs.
  */
 public record MetricContext(long contextId, List<MetricAttribute> attributes) implements ISymMetricContext {
-    public static final long UNASSIGNED = -1L;
+    public static final long UNDEFINED = -1L;
     public static final String NA = "N/A";
     /** Upper bound (inclusive) of the pre-assigned seed context ID range. IDs at or below this value are never evicted from cache. */
     public static final long SEED_IDS_END = 20_000_000_000L;

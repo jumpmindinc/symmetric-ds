@@ -55,6 +55,8 @@ import org.jumpmind.symmetric.service.impl.AbstractService;
  */
 public class MetricsRepository extends AbstractService {
     public static final String METRIC_SHARED_ENGINE = "*";
+    public static final int ATTR_MAX_VALUES = 3;
+    public static final int ATTR_MIN_VALUES = 1;
     private final String engineName;
     private final String hostname;
     /** In-memory cache of MetricKey → surrogate metric_key. Loaded lazily on first use. */
@@ -397,7 +399,7 @@ public class MetricsRepository extends AbstractService {
     static String contextCacheKey(List<MetricAttribute> attrs) {
         String v1 = MetricContext.NA, v2 = MetricContext.NA, v3 = MetricContext.NA;
         StringBuilder names = new StringBuilder();
-        int size = attrs != null ? Math.min(attrs.size(), 3) : 0;
+        int size = attrs != null ? Math.min(attrs.size(), ATTR_MAX_VALUES) : 0;
         for (int i = 0; i < size; i++) {
             MetricAttribute a = attrs.get(i);
             if (i > 0) {
@@ -480,24 +482,46 @@ public class MetricsRepository extends AbstractService {
         return ctx;
     }
 
+    public static final int ATTR_MAX_LENGTH = 255;
+
+    private static void validateAttributes(List<MetricAttribute> attrs) {
+        if (attrs == null || attrs.size() < ATTR_MIN_VALUES) {
+            throw new MetricsRepositoryException("MetricContext must have at least " + ATTR_MIN_VALUES + " attribute(s)");
+        }
+        int size = Math.min(attrs.size(), ATTR_MAX_VALUES);
+        for (int i = 0; i < size; i++) {
+            MetricAttribute a = attrs.get(i);
+            if (a.name() == null || a.name().isEmpty()) {
+                throw new MetricsRepositoryException("MetricAttribute at index " + i + " has null or empty name");
+            }
+            if (a.name().length() > ATTR_MAX_LENGTH) {
+                throw new MetricsRepositoryException("MetricAttribute at index " + i + " name exceeds " + ATTR_MAX_LENGTH + " characters");
+            }
+            if (a.value() == null || a.value().isEmpty()) {
+                throw new MetricsRepositoryException("MetricAttribute at index " + i + " has null or empty value");
+            }
+            if (a.value().length() > ATTR_MAX_LENGTH) {
+                throw new MetricsRepositoryException("MetricAttribute at index " + i + " value exceeds " + ATTR_MAX_LENGTH + " characters");
+            }
+        }
+    }
+
+    /** Returns [n1, v1, n2, v2, n3, v3] with null for unused attribute slots. */
+    private static String[] attrValues(List<MetricAttribute> attrs) {
+        String[] av = new String[6];
+        int size = attrs != null ? Math.min(attrs.size(), ATTR_MAX_VALUES) : 0;
+        for (int i = 0; i < size; i++) {
+            av[i * 2] = attrs.get(i).name();
+            av[i * 2 + 1] = attrs.get(i).value();
+        }
+        return av;
+    }
+
     private Object[] packageSqlParamForContextToDatabase(long contextId, List<MetricAttribute> attrs) {
+        validateAttributes(attrs);
         int hash = MetricContext.computeHash(attrs);
-        String n1 = "", v1 = "", n2 = "", v2 = "", n3 = "", v3 = "";
-        int size = attrs != null ? Math.min(attrs.size(), 3) : 0;
-        if (size > 0) {
-            n1 = attrs.get(0).name() != null ? attrs.get(0).name() : "";
-            v1 = attrs.get(0).value() != null ? attrs.get(0).value() : "";
-        }
-        if (size > 1) {
-            n2 = attrs.get(1).name() != null ? attrs.get(1).name() : "";
-            v2 = attrs.get(1).value() != null ? attrs.get(1).value() : "";
-        }
-        if (size > 2) {
-            n3 = attrs.get(2).name() != null ? attrs.get(2).name() : "";
-            v3 = attrs.get(2).value() != null ? attrs.get(2).value() : "";
-        }
-        Object[] params = { contextId, hash, n1, v1, n2, v2, n3, v3 };
-        return params;
+        String[] av = attrValues(attrs);
+        return new Object[] { contextId, hash, av[0], av[1], av[2], av[3], av[4], av[5] };
     }
 
     private MetricContext insertContextToDatabase(long contextId, List<MetricAttribute> attrs) {
@@ -534,23 +558,11 @@ public class MetricsRepository extends AbstractService {
     private static final int CONTEXT_SURROGATE_MAX_RETRIES = 3;
 
     private MetricContext generateContextSurrogateAndInsert(List<MetricAttribute> attrs) {
+        validateAttributes(attrs);
         int hash = MetricContext.computeHash(attrs);
-        String n1 = "", v1 = "", n2 = "", v2 = "", n3 = "", v3 = "";
-        int size = attrs != null ? Math.min(attrs.size(), 3) : 0;
-        if (size > 0) {
-            n1 = attrs.get(0).name() != null ? attrs.get(0).name() : "";
-            v1 = attrs.get(0).value() != null ? attrs.get(0).value() : "";
-        }
-        if (size > 1) {
-            n2 = attrs.get(1).name() != null ? attrs.get(1).name() : "";
-            v2 = attrs.get(1).value() != null ? attrs.get(1).value() : "";
-        }
-        if (size > 2) {
-            n3 = attrs.get(2).name() != null ? attrs.get(2).name() : "";
-            v3 = attrs.get(2).value() != null ? attrs.get(2).value() : "";
-        }
+        String[] av = attrValues(attrs);
         long bufferSize = SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
-        Object[] params = { bufferSize, bufferSize, bufferSize, hash, n1, v1, n2, v2, n3, v3 };
+        Object[] params = { bufferSize, bufferSize, bufferSize, hash, av[0], av[1], av[2], av[3], av[4], av[5] };
         int[] types = { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                 Types.VARCHAR };
         for (int attempt = 1; attempt <= CONTEXT_SURROGATE_MAX_RETRIES; attempt++) {

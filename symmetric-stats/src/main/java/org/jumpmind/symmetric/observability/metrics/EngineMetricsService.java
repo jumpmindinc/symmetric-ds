@@ -102,7 +102,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                     metric.setContext(ctx);
                     contextId = ctx.contextId();
                 } else {
-                    contextId = MetricContext.UNASSIGNED;
+                    contextId = MetricContext.UNDEFINED;
                 }
                 for (ISymIntervalStats interval : metric.exportCompletedIntervals()) {
                     newlyCompleted.add(new MetricIntervalStatsRecord(key, contextId, interval));
