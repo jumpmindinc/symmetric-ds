@@ -153,6 +153,19 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
         return repository;
     }
 
+    /**
+     * Initializes default metrics, to achieve two goals: faster instrumentation ramp-up and seed historical data for outlier detection. Prepares for outlier
+     * interval detection logic and accelerates move of completed intervals to database.
+     */
+    protected int initializeDefaultMetrics() {
+        int count = metricsManager.getMetricDefinitionFactory().initializeMetrics(this);
+        log.debug("Initialized repository with {} default metrics for engine {}", count, engine.getEngineName());
+        return count;
+    }
+
+    /**
+     * Initializes default metrics, to have consistent IDs for default context entries across all installations.
+     */
     protected void initializeDefaultContexts() {
         MetricsRepository repo = getOrInitRepository();
         List<ContextDefinition> defs = metricsManager.getMetricDefinitionFactory().getDefaultContexts();
@@ -161,21 +174,12 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             try {
                 repo.getOrRegisterContext(def);
                 count++;
-            } catch (MetricsRepositoryException ex) {
+            } catch (Exception ex) {
                 log.warn("Failed to register default context id={}", def.contextId(), ex);
+                continue;
             }
         }
-        log.debug("Initialized {} default metric contexts for engine {}", count, engine.getEngineName());
-    }
-
-    /**
-     * Initializes important metrics, to achieve two goals: faster instrumentation ramp-up and seed historical data for outlier detection. Prepares for outlier
-     * interval detection logic and accelerates move of completed intervals to database.
-     */
-    protected int initializeDefaultMetrics() {
-        int count = metricsManager.getMetricDefinitionFactory().initializeMetrics(this);
-        log.debug("Initialized repository with {} default metrics for engine {}", count, engine.getEngineName());
-        return count;
+        log.info("Initialized {} default metric contexts for engine {}", count, engine.getEngineName());
     }
 
     /**
