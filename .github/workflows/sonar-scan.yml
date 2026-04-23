@@ -8,25 +8,25 @@ on:
 jobs:
   sonar-scan:
     name: Sonar Scan
-    runs-on: ubuntu-latest
+    runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
       - name: Setup JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.2.0
         with:
           java-version: 17
           distribution: 'temurin'
           cache: gradle
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6.0.1
 
       - name: Cache Sonar packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar

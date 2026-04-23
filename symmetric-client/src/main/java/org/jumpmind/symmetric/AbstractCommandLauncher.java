@@ -293,8 +293,7 @@ public abstract class AbstractCommandLauncher {
             if (testConnection) {
                 testConnection();
             }
-            ITypedPropertiesFactory factory = PropertiesUtil.createTypedPropertiesFactory(propertiesFile, null);
-            TypedProperties properties = factory.reload(propertiesFile);
+            TypedProperties properties = getTypedProperties();
             if (properties.is(ParameterConstants.NODE_LOAD_ONLY, false)) {
                 if (!symmetricPlatform) {
                     TypedProperties copiedProperties = new TypedProperties();
@@ -309,7 +308,7 @@ public abstract class AbstractCommandLauncher {
         return platform;
     }
 
-    private void copyProperties(TypedProperties sourceProperties, TypedProperties targetProperties,
+    protected void copyProperties(TypedProperties sourceProperties, TypedProperties targetProperties,
             String prefix, String[] parameterNames) {
         for (String name : parameterNames) {
             targetProperties.put(name, sourceProperties.get(prefix + name));

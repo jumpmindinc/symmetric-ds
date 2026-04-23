@@ -12,7 +12,7 @@ jobs:
     runs-on: runs-on=${{ github.run_id }}/runner=2cpu-linux-x64
     
     steps:
-      - uses: runs-on/action@v2
+      - uses: runs-on/action@v2.1.0
       
       - name: GET private tickets
         id: get-tickets

@@ -1,1 +1,0 @@
-update sym_trigger set tx_id_expression='$(curTriggerValue).$(curColumnPrefix)id from $(curTriggerValue)' where trigger_id='1000';
