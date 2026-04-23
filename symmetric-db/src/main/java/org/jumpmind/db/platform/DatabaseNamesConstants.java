@@ -81,4 +81,5 @@ final public class DatabaseNamesConstants {
     public final static String SPARKSQL = "sparksql";
     public final static String DATABRICKS = "databricks";
     public static final String AWSSQS = "awssqs";
+    public static final String FILESYNC = "filesync";
 }
