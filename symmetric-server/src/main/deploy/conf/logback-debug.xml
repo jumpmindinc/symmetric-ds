@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true">
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+    <appender name="ROLLING" class="org.jumpmind.util.SymRollingFileAppender">
+        <file>${SYM_HOME:-.}/logs/symmetric.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>${SYM_HOME:-.}/logs/symmetric.log.%i</fileNamePattern>
+            <minIndex>1</minIndex>
+            <maxIndex>3</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>20MB</maxFileSize>
+        </triggeringPolicy>
+        <encoder>
+            <pattern>%d %p [%X{engineName}] [%c{0}] [%t] %m%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="org.jumpmind" level="INFO" />
+    <logger name="org.jumpmind.symmetric" level="DEBUG" />
+    <logger name="org.jumpmind.symmetric.io.data.writer" level="DEBUG" />
+    <logger name="com.mangofactory.swagger.filters.AnnotatedParameterFilter" level="ERROR" />
+    <logger name="org.eclipse.jetty.util.ssl.SslContextFactory" level="ERROR" />
+    <logger name="org.jumpmind.symmetric.util.PropertiesFactoryBean" level="ERROR" />
+    <logger name="org.jumpmind.symmetric.service.impl.ParameterService" level="ERROR" />
+    <logger name="org.jumpmind.symmetric.db.SqlScript" level="ERROR" />
+    <logger name="org.springframework" level="ERROR" />
+    <logger name="springfox.documentation" level="WARN" />
+    <logger name="com.vaadin.server.DefaultDeploymentConfiguration" level="ERROR" />
+    <logger name="com.vaadin.event.ConnectorActionManager" level="ERROR" />
+    <logger name="com.vaadin.server.communication" level="OFF" />
+    <logger name="org.atmosphere" level="OFF" />
+    <logger name="io.confluent.kafka.serializers.KafkaAvroSerializerConfig" level="WARN" />
+    <logger name="org.atmosphere.cpr.AtmosphereFramework" level="ERROR" />
+    <logger name="org.atmosphere.util.IOUtils" level="ERROR" />
+    <logger name="com.vaadin.event.EventRouter" level="ERROR" />
+    <logger name="sun.net.www.protocol.http.HttpURLConnection" level="ERROR" />
+
+    <!-- SQL for all statements
+    <logger name="org.jumpmind.db.sql" level="DEBUG" />
+    -->
+    <!-- SQL for loading batches
+    <logger name="org.jumpmind.symmetric.io.data.writer.DefaultDatabaseWriter" level="DEBUG" />
+    -->
+    <!-- CSV protocol
+    <logger name="org.jumpmind.symmetric.io.data.writer.ProtocolDataWriter" level="DEBUG"/>
+    -->
+    <!-- DDL comparison
+    <logger name="org.jumpmind.db.alter" level="DEBUG" />
+    <logger name="org.jumpmind.db.alter.ModelComparator" level="DEBUG" />
+    -->
+    <!-- JMS publishing
+    <logger name="org.jumpmind.symmetric.integrate" level="DEBUG" />
+    -->
+    <!-- HTTP headers (also edit logging.properties)
+    <logger name="sun.net.www.protocol.http.HttpURLConnection" level="ALL" />
+    -->
+    <!-- File sync
+    <logger name="org.jumpmind.symmetric.service.impl.FileSyncService" level="DEBUG"/>
+    <logger name="org.jumpmind.symmetric.file.FileTriggerFileModifiedListener" level="DEBUG"/>
+    -->
+
+    <root level="ERROR">
+        <appender-ref ref="ROLLING" />
+    </root>
+</configuration>

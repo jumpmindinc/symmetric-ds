@@ -21,59 +21,64 @@
 package org.jumpmind.symmetric.util;
 
 import java.io.File;
-import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import org.jumpmind.util.LogSummary;
 import org.jumpmind.util.LogSummaryAppender;
-import org.jumpmind.util.Log4j2Helper;
+import org.jumpmind.util.LogbackHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 import org.slf4j.event.Level;
 
 /**
- * Compiles against slf4j and only instantiates the helper if log4j is present
+ * Compiles against slf4j and only instantiates the helper if Logback is present.
  */
 public class LogSummaryAppenderUtils {
     private static final String LOG_SUMMARY_APPENDER_NAME = "SUMMARY";
     private static final Logger log = LoggerFactory.getLogger(LogSummaryAppenderUtils.class);
-    private static final List<LogSummary> EMPTY_LIST = new ArrayList<LogSummary>();
-    private static Log4j2Helper helper;
+    private static final List<LogSummary> EMPTY_LIST = new ArrayList<>();
+    private static LogbackHelper helper;
 
     private LogSummaryAppenderUtils() {
     }
 
     static {
+        System.setProperty("org.springframework.boot.logging.LoggingSystem", "none");
         SLF4JBridgeHandler.install();
         try {
-            Class.forName("org.apache.logging.log4j.core.Appender", false, LogSummaryAppenderUtils.class.getClassLoader());
-            // WebLogic log4j is not complete, so don't use it
-            if (!"true".equalsIgnoreCase(System.getProperty("weblogic.log.Log4jLoggingEnabled"))) {
-                helper = new Log4j2Helper();
-            }
+            Class.forName("ch.qos.logback.classic.LoggerContext", false,
+                    LogSummaryAppenderUtils.class.getClassLoader());
+            helper = new LogbackHelper();
         } catch (ClassNotFoundException e) {
         }
     }
 
-    public static void initialize(boolean isDebug, boolean isVerbose, boolean isNoConsole, boolean isNoLog, String overrideLogFileName)
-            throws MalformedURLException {
+    public static void initialize(boolean isDebug, boolean isVerbose, boolean isNoConsole, boolean isNoLog, String overrideLogFileName) {
         if (helper != null) {
-            helper.initialize(isDebug);
-            if (isVerbose) {
-                helper.registerVerboseConsoleAppender();
-            }
-            if (isNoConsole) {
-                helper.removeAppender("CONSOLE");
-            }
-            if (!isVerbose && !isNoConsole) {
-                helper.registerConsoleAppender();
-            }
-            if (isNoLog) {
-                helper.removeAppender("ROLLING");
-            } else {
-                helper.registerRollingFileAppender(overrideLogFileName);
+            try {
+                helper.initialize(isDebug);
+                if (isVerbose) {
+                    helper.registerVerboseConsoleAppender();
+                }
+                if (isNoConsole) {
+                    helper.removeAppender("CONSOLE");
+                    helper.removeAppender("CONSOLE_ERR");
+                }
+                if (!isVerbose && !isNoConsole) {
+                    helper.registerConsoleAppender();
+                }
+                if (isNoLog) {
+                    helper.removeAppender("ROLLING");
+                } else {
+                    helper.registerRollingFileAppender(overrideLogFileName);
+                }
+            } catch (NoSuchMethodError | RuntimeException e) {
+                helper = null;
+                log.debug("Disabling Logback helper", e);
             }
         }
     }
@@ -82,12 +87,12 @@ public class LogSummaryAppenderUtils {
         if (helper != null) {
             try {
                 LogSummaryAppender appender = getLogSummaryAppender();
-                if (appender == null) {
+                if (appender == null && helper != null) {
                     helper.registerLogSummaryAppenderInternal(LOG_SUMMARY_APPENDER_NAME);
                 }
-            } catch (NoSuchMethodError e) {
+            } catch (NoSuchMethodError | RuntimeException e) {
                 helper = null;
-                log.debug("Disabling log4j because it appears to be a wrapper implementation", e);
+                log.debug("Disabling Logback helper", e);
             }
         }
     }
@@ -105,10 +110,36 @@ public class LogSummaryAppenderUtils {
                 } catch (Exception ex) {
                     log.debug("Failed to remove appender " + LOG_SUMMARY_APPENDER_NAME, ex);
                 }
-                appender = helper.registerLogSummaryAppenderInternal(LOG_SUMMARY_APPENDER_NAME);
+                try {
+                    appender = helper.registerLogSummaryAppenderInternal(LOG_SUMMARY_APPENDER_NAME);
+                } catch (Exception ex) {
+                    helper = null;
+                    log.debug("Disabling Logback helper — SLF4J is not bound to Logback in this context", ex);
+                }
             }
         }
         return appender;
+    }
+
+    public static Appender<ILoggingEvent> getConsoleViewerAppender() {
+        if (helper != null) {
+            try {
+                return helper.getAppender("CONSOLE_VIEWER");
+            } catch (NoSuchMethodError | RuntimeException e) {
+                log.debug("Failed to get CONSOLE_VIEWER appender", e);
+            }
+        }
+        return null;
+    }
+
+    public static void addAppender(Appender<ILoggingEvent> appender) {
+        if (helper != null) {
+            try {
+                helper.addAppender(appender);
+            } catch (NoSuchMethodError | RuntimeException e) {
+                log.debug("Failed to add appender", e);
+            }
+        }
     }
 
     public static void clearAllLogSummaries(String engineName) {
@@ -137,42 +168,76 @@ public class LogSummaryAppenderUtils {
 
     public static File getLogDir() {
         if (helper != null) {
-            return helper.getLogDir();
+            try {
+                return helper.getLogDir();
+            } catch (NoSuchMethodError | RuntimeException e) {
+                log.debug("Failed to get log directory", e);
+            }
         }
         return null;
     }
 
     public static File getLogFile() {
         if (helper != null) {
-            return helper.getLogFile();
+            try {
+                return helper.getLogFile();
+            } catch (NoSuchMethodError | RuntimeException e) {
+                log.debug("Failed to get log file", e);
+            }
         }
         return null;
     }
 
     public static boolean isDefaultLogLayoutPattern() {
         if (helper != null) {
-            return helper.isDefaultLogLayoutPattern();
+            try {
+                return helper.isDefaultLogLayoutPattern();
+            } catch (NoSuchMethodError | RuntimeException e) {
+                log.debug("Failed to check log layout pattern", e);
+            }
         }
         return false;
     }
 
     public static void setLevel(String loggerName, Level level) {
         if (helper != null) {
-            helper.setLevel(loggerName, level);
+            try {
+                helper.setLevel(loggerName, level);
+            } catch (NoSuchMethodError | RuntimeException e) {
+                log.debug("Failed to set log level", e);
+            }
         }
     }
 
     public static Level getLevel(String loggerName) {
         if (helper != null) {
-            return helper.getLevel(loggerName);
+            try {
+                return helper.getLevel(loggerName);
+            } catch (NoSuchMethodError | RuntimeException e) {
+                log.debug("Failed to get log level", e);
+            }
         }
         return Level.INFO;
     }
 
-    public static org.slf4j.event.Level getRootLevel() {
+    public static Level getRootLevel() {
         if (helper != null) {
-            return helper.getRootLevel();
+            try {
+                return helper.getRootLevel();
+            } catch (NoSuchMethodError | RuntimeException e) {
+                log.debug("Failed to get root log level", e);
+            }
         }
         return Level.INFO;
+    }
+
+    public static void addProtectedLogger(String loggerName, Level minimumLevel) {
+        if (helper != null) {
+            try {
+                helper.addProtectedLogger(loggerName, helper.convertToLevel(minimumLevel));
+            } catch (NoSuchMethodError | RuntimeException e) {
+                log.debug("Failed to add protected logger", e);
+            }
+        }
     }
 }
