@@ -349,6 +349,7 @@ public class SnapshotUtil {
         extract(export, new File(exportDir, "table_group_hier.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_GROUP_HIER));
         extract(export, new File(exportDir, "console_role.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE));
         extract(export, new File(exportDir, "console_role_privilege.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE_PRIVILEGE));
+        extract(export, new File(exportDir, "analytics_report.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_ANALYTICS_REPORT));
         log.info("Writing runtime data - parameters");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         writeRuntimeParameters(engine, tmpDir);
