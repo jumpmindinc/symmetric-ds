@@ -20,10 +20,6 @@
  */
 package org.jumpmind.util;
 
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,68 +29,82 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.Filter;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.commons.lang3.StringUtils;
 
-public class LogSummaryAppender extends AbstractAppender {
-    protected Map<String, Map<String, LogSummary>> errorsByEngineByMessage = new ConcurrentHashMap<String, Map<String, LogSummary>>();
-    protected Map<String, Map<String, LogSummary>> warningByEngineByMessage = new ConcurrentHashMap<String, Map<String, LogSummary>>();
-    protected Log4j2Helper helper = new Log4j2Helper();
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
+import ch.qos.logback.classic.spi.ThrowableProxyUtil;
+import ch.qos.logback.core.AppenderBase;
 
-    public LogSummaryAppender(String name, Filter filter) {
-        super(name, filter, null, false, null);
+public class LogSummaryAppender extends AppenderBase<ILoggingEvent> {
+    protected Map<String, Map<String, LogSummary>> errorsByEngineByMessage = new ConcurrentHashMap<>();
+    protected Map<String, Map<String, LogSummary>> warningByEngineByMessage = new ConcurrentHashMap<>();
+
+    public LogSummaryAppender(String name) {
+        setName(name);
     }
 
     @Override
-    public void append(LogEvent event) {
+    protected void append(ILoggingEvent event) {
         Map<String, Map<String, LogSummary>> summaries = null;
         if (event.getLevel() == Level.ERROR) {
             summaries = errorsByEngineByMessage;
         } else if (event.getLevel() == Level.WARN) {
             summaries = warningByEngineByMessage;
         }
-        if (summaries != null) {
-            String engineName = (String) event.getContextData().getValue("engineName");
-            if (isNotBlank(engineName)) {
-                Map<String, LogSummary> byMessage = summaries.get(engineName);
-                if (byMessage == null) {
-                    byMessage = new ConcurrentHashMap<String, LogSummary>();
-                    summaries.put(engineName, byMessage);
-                }
-                String message = null;
-                if (event.getMessage() != null && !event.getMessage().toString().equals("") &&
-                        !event.getMessage().toString().equals("null")) {
-                    message = event.getMessage().toString();
-                } else {
-                    if (event.getThrown() != null) {
-                        Throwable t = event.getThrown();
-                        message = t.getClass().getName() + ": " + t.getMessage();
-                    } else {
-                        message = "Unhandled error";
-                    }
-                }
-                LogSummary summary = byMessage.get(message);
-                if (summary == null) {
-                    summary = new LogSummary();
-                    summary.setMessage(message);
-                    summary.setFirstOccurranceTime(event.getInstant().getEpochMillisecond());
-                    byMessage.put(message, summary);
-                }
-                summary.setLevel(helper.convertFromLevel(event.getLevel()));
-                summary.setMostRecentTime(event.getInstant().getEpochMillisecond());
-                summary.setCount(summary.getCount() + 1);
-                Throwable throwable = event.getThrown();
-                summary.setThrowable(throwable);
-                if (throwable != null) {
-                    StringWriter st = new StringWriter();
-                    throwable.printStackTrace(new PrintWriter(st));
-                    summary.setStackTrace(st.toString());
-                }
-                summary.setMostRecentThreadName(event.getThreadName());
-            }
+        if (summaries == null) {
+            return;
         }
+        String engineName = event.getMDCPropertyMap().get("engineName");
+        if (StringUtils.isBlank(engineName)) {
+            return;
+        }
+        Map<String, LogSummary> summariesForEngine = summaries.computeIfAbsent(engineName,
+                k -> new ConcurrentHashMap<>());
+        String message = extractMessage(event);
+        LogSummary summary = summariesForEngine.computeIfAbsent(message, k -> {
+            LogSummary newSummary = new LogSummary();
+            newSummary.setMessage(message);
+            newSummary.setFirstOccurranceTime(event.getTimeStamp());
+            return newSummary;
+        });
+        summary.setLevel(convertFromLevel(event.getLevel()));
+        summary.setMostRecentTime(event.getTimeStamp());
+        summary.setCount(summary.getCount() + 1);
+        IThrowableProxy proxy = event.getThrowableProxy();
+        if (proxy != null) {
+            summary.setStackTrace(ThrowableProxyUtil.asString(proxy));
+        }
+        summary.setMostRecentThreadName(event.getThreadName());
+    }
+
+    private String extractMessage(ILoggingEvent event) {
+        String message = event.getFormattedMessage();
+        if (StringUtils.isNotEmpty(message) && !"null".equals(message)) {
+            return message;
+        }
+        IThrowableProxy proxy = event.getThrowableProxy();
+        if (proxy != null) {
+            return proxy.getClassName() + ": " + proxy.getMessage();
+        }
+        return "Unhandled error";
+    }
+
+    private org.slf4j.event.Level convertFromLevel(Level level) {
+        if (level == Level.TRACE) {
+            return org.slf4j.event.Level.TRACE;
+        }
+        if (level == Level.DEBUG) {
+            return org.slf4j.event.Level.DEBUG;
+        }
+        if (level == Level.INFO) {
+            return org.slf4j.event.Level.INFO;
+        }
+        if (level == Level.WARN) {
+            return org.slf4j.event.Level.WARN;
+        }
+        return org.slf4j.event.Level.ERROR;
     }
 
     public List<LogSummary> getLogSummaries(String engineName, Level level) {
@@ -104,15 +114,10 @@ public class LogSummaryAppender extends AbstractAppender {
         } else if (level == Level.WARN) {
             summaries = warningByEngineByMessage;
         }
-        List<LogSummary> list = new ArrayList<LogSummary>();
+        List<LogSummary> list = new ArrayList<>();
         if (summaries != null && summaries.get(engineName) != null) {
             list.addAll(summaries.get(engineName).values());
-            Collections.sort(list, new Comparator<LogSummary>() {
-                @Override
-                public int compare(LogSummary o1, LogSummary o2) {
-                    return Long.valueOf(o1.getMostRecentTime()).compareTo(o2.getMostRecentTime());
-                }
-            });
+            Collections.sort(list, Comparator.comparingLong(LogSummary::getMostRecentTime));
         }
         return list;
     }
@@ -134,10 +139,8 @@ public class LogSummaryAppender extends AbstractAppender {
             Set<String> keys = map.keySet();
             for (String key : keys) {
                 LogSummary summary = map.get(key);
-                if (summary != null) {
-                    if (summary.getMostRecentTime() < time) {
-                        map.remove(key);
-                    }
+                if (summary != null && summary.getMostRecentTime() < time) {
+                    map.remove(key);
                 }
             }
         }

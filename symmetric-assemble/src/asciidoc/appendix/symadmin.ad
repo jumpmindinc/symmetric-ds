@@ -224,7 +224,7 @@ symadmin export-properties sym-defaults.properties
 *create-war* _<filename>_::
 Generate a web archive that can be deployed to a web server like Tomcat.  The name of the output file must be provided.  If a properties file is designated, it will be renamed and packaged as symmetric.properties.  Other than the optional properties file, a war is made up of the contents of the web directory and the conf directory of the standalone installation.  Does not require an engine or properties file.
 +
-Additional options: *--exclude-log4j* excludes log4j logging framework and configuration.  *--external-security* uses security files outside of the WAR file for encryption keys and certificates.
+Additional options: *--exclude-logback* excludes logback logging framework and configuration.  *--external-security* uses security files outside of the WAR file for encryption keys and certificates.
 +
 [source]
 ----

@@ -329,7 +329,7 @@ subprojects { subproject ->
         guavaVersion = '33.2.0-android'
         junitVersion = '5.13.3'
         spotBugsVersion = '4.8.5'
-        log4jVersion = '2.23.1'
+        logbackVersion = '1.5.32'
         slf4jVersion = '2.0.17'
         mockitoVersion = '5.11.0'
         powerMockVersion = '2.0.9'
@@ -347,11 +347,8 @@ subprojects { subproject ->
     }
 
     dependencies {
-        api "org.apache.logging.log4j:log4j-core:$log4jVersion"
-        api "org.apache.logging.log4j:log4j-api:$log4jVersion"
-        annotationProcessor "org.apache.logging.log4j:log4j-core:$log4jVersion"
-        api "org.apache.logging.log4j:log4j-slf4j2-impl:$log4jVersion"
-        api "org.apache.logging.log4j:log4j-web:$log4jVersion"
+        api "ch.qos.logback:logback-classic:$logbackVersion"
+        api "ch.qos.logback:logback-core:$logbackVersion"
         api "org.slf4j:slf4j-api:$slf4jVersion"
         api "org.slf4j:jul-to-slf4j:$slf4jVersion"
         api "org.slf4j:jcl-over-slf4j:$slf4jVersion"

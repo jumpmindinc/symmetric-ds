@@ -1,12 +1,12 @@
 
 === Logging
 	   
-The standalone SymmetricDS installation uses http://logging.apache.org/log4j/1.2/index.html[Log4J] for logging.  The configuration file is `conf/log4j.xml`.
-The `log4j.xml` file has hints as to what logging can be enabled for useful, finer-grained logging.
+The standalone SymmetricDS installation uses https://logback.qos.ch/[Logback] for logging.  The configuration file is `conf/logback.xml`.
+The `logback.xml` file has hints as to what logging can be enabled for useful, finer-grained logging.
 
-There is a command line option to turn on preconfigured debugging levels.  When the `--debug` option is used the `conf/debug-log4j.xml` is used instead of log4j.xml.
+There is a command line option to turn on preconfigured debugging levels.  When the `--debug` option is used the `conf/logback-debug.xml` is used instead of `logback.xml`.
 
-SymmetricDS proxies all of its logging through http://www.slf4j.org/[SLF4J].  When deploying to an application server or if Log4J is not
+SymmetricDS proxies all of its logging through http://www.slf4j.org/[SLF4J].  When deploying to an application server or if Logback is not
 being leveraged, then the general rules for SLF4J logging apply.
 
 
