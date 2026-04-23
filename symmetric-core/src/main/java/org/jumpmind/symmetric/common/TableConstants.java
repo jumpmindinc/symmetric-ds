@@ -99,7 +99,6 @@ public class TableConstants {
     public static final String METRIC_KEY = "metric_key";
     public static final String METRIC_STATS_FLOAT64 = "metric_stats_float64";
     public static final String METRIC_STATS_INT64 = "metric_stats_int64";
-    public static final String METRIC_SERIES = "metric_series";
     public static final String METRIC_CONTEXT = "metric_context";
     protected static boolean hasConsoleSchema = TableConstants.class.getResourceAsStream("/console-schema.xml") != null;
     /**
@@ -120,7 +119,7 @@ public class TableConstants {
                 SYM_NODE_HOST_JOB_STATS, SYM_NODE_HOST_STATS, SYM_NODE_IDENTITY, SYM_NODE_SECURITY, SYM_OUTGOING_BATCH, SYM_PARAMETER,
                 SYM_REGISTRATION_REDIRECT, SYM_REGISTRATION_REQUEST, SYM_ROUTER, SYM_SEQUENCE, SYM_TABLE_RELOAD_REQUEST, SYM_TABLE_RELOAD_STATUS,
                 SYM_TRANSFORM_TABLE, SYM_TRANSFORM_COLUMN, SYM_TRIGGER, SYM_TRIGGER_HIST, SYM_TRIGGER_ROUTER, SYM_TRIGGER_ROUTER_GROUPLET, SYM_OUTGOING_ERROR,
-                METRIC_KEY, METRIC_STATS_FLOAT64, METRIC_STATS_INT64, METRIC_SERIES, METRIC_CONTEXT);
+                METRIC_KEY, METRIC_STATS_FLOAT64, METRIC_STATS_INT64, METRIC_CONTEXT);
         if (hasConsoleSchema) {
             tables.addAll(getTablesForConsole(tablePrefix));
         }

@@ -480,7 +480,7 @@ public class MetricsRepository extends AbstractService {
         return ctx;
     }
 
-    private MetricContext insertContextToDatabase(long contextId, List<MetricAttribute> attrs) {
+    private Object[] packageSqlParamForContextToDatabase(long contextId, List<MetricAttribute> attrs) {
         int hash = MetricContext.computeHash(attrs);
         String n1 = "", v1 = "", n2 = "", v2 = "", n3 = "", v3 = "";
         int size = attrs != null ? Math.min(attrs.size(), 3) : 0;
@@ -497,6 +497,11 @@ public class MetricsRepository extends AbstractService {
             v3 = attrs.get(2).value() != null ? attrs.get(2).value() : "";
         }
         Object[] params = { contextId, hash, n1, v1, n2, v2, n3, v3 };
+        return params;
+    }
+
+    private MetricContext insertContextToDatabase(long contextId, List<MetricAttribute> attrs) {
+        Object[] params = packageSqlParamForContextToDatabase(contextId, attrs);
         int[] types = { Types.BIGINT, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
         ISqlTransaction tx = null;
         try {
@@ -511,16 +516,16 @@ public class MetricsRepository extends AbstractService {
         } finally {
             close(tx);
         }
-        log.debug("Inserted metric context id={}, hash={}", contextId, hash);
+        log.debug("Inserted metric context id={}, hash={}, attr1={}, value1={}", contextId, params[1], params[2], params[3]);
         return new MetricContext(contextId, attrs != null ? List.copyOf(attrs) : List.of());
     }
 
     private MetricContext loadContextByAttrsFromDatabase(int hash, List<MetricAttribute> attrs) {
         List<MetricContext> candidates = sqlTemplate.query(
                 getSql("selectMetricContextByHashSql"), new MetricContextSqlRowMapper(), hash);
-        for (MetricContext c : candidates) {
-            if (attributesMatch(c, attrs)) {
-                return c;
+        for (MetricContext context : candidates) {
+            if (attributesMatch(context, attrs)) {
+                return context;
             }
         }
         return null;
