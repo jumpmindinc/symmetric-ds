@@ -150,7 +150,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
             return new ISymObservation[] {};
         }
         ObservationsQueue<ISymObservation> oldObservations = retrieveAndSwapForNewQueue();
-        ObservationLong[] removedObservations = (ObservationLong[]) oldObservations.toArray();
+        ISymObservation[] removedObservations = oldObservations.toArray(new ISymObservation[0]);
         oldObservations.clear();
         lastModified = System.currentTimeMillis();
         if (log.isDebugEnabled()) {

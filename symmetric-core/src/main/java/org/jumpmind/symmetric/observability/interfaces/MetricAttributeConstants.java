@@ -32,6 +32,7 @@ public final class MetricAttributeConstants {
     public static final String CLIENT_PORT = "client_port";
     public static final String CLIENT_VERSION = "client_version";
     public static final String HTTP_METHOD = "http_method";
+    public static final String JOB = "job";
     public static final String NODE_GROUP = "node_group";
     public static final String NODE_NAME = "node_name";
     public static final String SERVER_ADDRESS = "server_address";
