@@ -214,7 +214,7 @@ public class ColumnsAccordingToTriggerHistory {
     protected TransformTable getTransform(String sourceNodeGroupId, String targetNodeGroupId, Table table,
             TransformPoint transformPoint, int order) {
         List<TransformTableNodeGroupLink> transforms = transformService.findTransformsFor(sourceNode.getNodeGroupId(),
-                targetNode.getNodeGroupId(), table.getName());
+                targetNode.getNodeGroupId(), table.getName(), table.getSchema(), table.getCatalog());
         if (transforms != null) {
             for (TransformTableNodeGroupLink transform : transforms) {
                 if (Strings.CS.equals(transform.getSourceCatalogName(), table.getCatalog())
