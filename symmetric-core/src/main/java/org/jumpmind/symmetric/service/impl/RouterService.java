@@ -682,7 +682,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 }
                 if (context != null) {
                     hasMaxDataRoutedByChannel.put(nodeChannel.getChannelId(), context.getCommittedDataIdCount() >= context.getChannel().getMaxDataToRoute());
-                    isAllDataReadByChannel.putIfAbsent(nodeChannel.getChannelId(), context.getCommittedDataIdCount() < context.getChannel().getMaxDataToRoute());
+                    isAllDataReadByChannel.putIfAbsent(nodeChannel.getChannelId(), context.getCommittedDataIdCount() < context.getChannel()
+                            .getMaxDataToRoute());
                 }
             } catch (Exception e) {
                 if (context != null) {
