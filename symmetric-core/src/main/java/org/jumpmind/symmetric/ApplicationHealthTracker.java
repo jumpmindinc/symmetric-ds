@@ -20,17 +20,19 @@
  */
 package org.jumpmind.symmetric;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 public class ApplicationHealthTracker implements IApplicationHealthTracker {
-    private static volatile IApplicationHealthTracker tracker;
+    private static final AtomicReference<IApplicationHealthTracker> tracker = new AtomicReference<>();
     private volatile boolean alive = true;
     private volatile boolean ready = false;
 
     public static void setTracker(IApplicationHealthTracker tracker) {
-        ApplicationHealthTracker.tracker = tracker;
+        ApplicationHealthTracker.tracker.set(tracker);
     }
 
     public static IApplicationHealthTracker getTracker() {
-        return tracker;
+        return tracker.get();
     }
 
     @Override
