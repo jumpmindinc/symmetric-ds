@@ -42,7 +42,7 @@ import io.opentelemetry.api.common.Attributes;
  */
 public class EngineMetricsService extends AbstractMetricsService implements IEngineMetricsService {
     private final ISymmetricEngine engine;
-    private volatile MetricsRepository repository;
+    private volatile MetricsRepository repository; // The volatile is faster than synchronized(lock) and optimal for this "write-once, read-many" field.
 
     public EngineMetricsService(ISymmetricEngine engine, MetricsManager metricsManager, boolean isOtelPublishingEnabled) {
         super(metricsManager, Attributes.of(AttributeKey.stringKey("engine.name"), engine.getEngineName()), isOtelPublishingEnabled);
@@ -67,15 +67,11 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
         getOrInitRepository();
     }
 
+    /**
+     * Drains completed intervals from all metrics owned by this service and persists them to the {@link MetricsRepository}.
+     */
     @Override
     public void saveCompletedIntervalStats() {
-        saveCompletedIntervalsForAllMetrics();
-    }
-
-    /**
-     * Drains completed intervals from every metric owned by this service and persists them to the engine's database via {@link MetricsRepository}.
-     */
-    protected void saveCompletedIntervalsForAllMetrics() {
         MetricsRepository repo = getOrInitRepository();
         List<MetricIntervalStatsRecord> newlyCompleted = new ArrayList<>();
         int processedMetrics = 0;
@@ -87,36 +83,32 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             try {
                 metric.closeCompletedIntervals();
                 MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.isEnabled());
-                if (!key.isEnabled()) {
-                    metric.removeAllObservations();
-                    metric.exportCompletedIntervals();
-                    metric.close();
-                    continue;
-                }
-                long contextId;
-                if (metric.getContext() != null) {
-                    contextId = metric.getContext().getContextId();
-                } else if (!metric.getAttributes().isEmpty()) {
-                    MetricContext ctx = repo.getOrRegisterContext(metric.getAttributes());
-                    metric.setContext(ctx);
-                    contextId = ctx.contextId();
-                } else {
-                    contextId = MetricContext.UNDEFINED;
-                }
+                long contextId = getOrAssignContextId(metric, repo);
                 for (ISymIntervalStats interval : metric.exportCompletedIntervals()) {
                     newlyCompleted.add(new MetricIntervalStatsRecord(key, contextId, interval));
                 }
                 processedMetrics++;
             } catch (Exception ex) {
                 log.warn("Failed to export completed intervals for metric={}", metric.getMetricId(), ex);
-                continue;
             }
         }
-        if (processedMetrics > 0 && !newlyCompleted.isEmpty()) {
+        if (processedMetrics > 0 && !newlyCompleted.isEmpty() && repo != null) {
             log.debug("Saving {} metric interval stats records...", newlyCompleted.size());
             repo.saveIntervals(newlyCompleted);
         }
         log.debug("Saved {} completed interval stats records for {} metrics (in specific context).", newlyCompleted.size(), processedMetrics);
+    }
+
+    protected long getOrAssignContextId(ISymMetric metric, MetricsRepository repo) {
+        long contextId = MetricContext.UNDEFINED;
+        if (metric.getContext() != null) {
+            contextId = metric.getContext().getContextId();
+        } else if (repo != null && !metric.getAttributes().isEmpty()) {
+            MetricContext ctx = repo.getOrRegisterContext(metric.getAttributes());
+            metric.setContext(ctx);
+            contextId = ctx.contextId();
+        }
+        return contextId;
     }
 
     protected MetricsRepository createMetricsRepository() {
@@ -190,9 +182,14 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
         for (AbstractQueuedMetric metric : (java.util.Collection<AbstractQueuedMetric>) (java.util.Collection<?>) getAllMetrics()) {
             try {
                 MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.isEnabled());
-                List<ISymIntervalStats> history = repo.loadRecentIntervalsForKeyFromDatabase(key);
-                metric.seedWorkset(history);
-                metricsInitialized++;
+                if (key.isEnabled()) {
+                    List<ISymIntervalStats> history = repo.loadRecentIntervalsForKeyFromDatabase(key);
+                    metric.seedWorkset(history);
+                    metricsInitialized++;
+                } else {
+                    metric.close();
+                    log.warn("Metric was closed because it is not enabled in database. {}", key);
+                }
             } catch (Exception e) {
                 log.warn("Failed to pre-warm workset for metric=" + metric.getMetricId(), e);
             }

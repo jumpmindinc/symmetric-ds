@@ -163,6 +163,26 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     }
 
     /**
+     * Processes all available observations from an internal queue to interval accumulator.
+     */
+    public void processAllObservations() {
+        try {
+            ISymObservation[] observations = removeAllObservations();
+            if (observations.length > 0) {
+                processObservations(observations);
+            }
+        } catch (Exception ex) {
+            log.warn("Trouble processing observations for MetricId=" + getMetricId(), ex);
+        }
+    }
+
+    @Override
+    public void processAllObservationsAndRefreshInterval() {
+        processAllObservations();
+        closeCompletedIntervals();
+    }
+
+    /**
      * Assigns each observation to the current accumulator, rolling over to a new window whenever an observation falls into a later bucket. Completed intervals
      * are enqueued into completedIntervals.
      */
@@ -251,7 +271,12 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
      */
     @Override
     public void closeCompletedIntervals() {
-        closeExpiredAccumulatorIfNeeded(System.currentTimeMillis());
+        try {
+            closeExpiredAccumulatorIfNeeded(System.currentTimeMillis());
+        } catch (Exception ex) {
+            log.warn("Trouble closing previous interval for MetricId=" + getMetricId(), ex);
+            currentIntervalAccumulator = createAccumulator(AbstractStatsAccumulator.calculateIntervalStart(System.currentTimeMillis()));
+        }
     }
 
     /**

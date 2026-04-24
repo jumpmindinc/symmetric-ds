@@ -25,7 +25,6 @@ import java.util.Collection;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.IPrimaryMetricAggregator;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
-import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
 import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.slf4j.Logger;
@@ -123,11 +122,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
             try {
                 Collection<ISymMetric> allMetrics = svc.getAllMetrics();
                 for (ISymMetric metric : allMetrics) {
-                    ISymObservation[] observations = metric.removeAllObservations();
-                    if (observations.length > 0) {
-                        metric.processObservations(observations);
-                    }
-                    metric.closeCompletedIntervals();
+                    metric.processAllObservationsAndRefreshInterval();
                 }
                 svc.saveCompletedIntervalStats();
             } catch (Exception ex) {

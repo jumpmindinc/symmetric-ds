@@ -62,6 +62,8 @@ public interface ISymMetric {
 
     int processObservations(ISymObservation[] observations);
 
+    void processAllObservationsAndRefreshInterval();
+
     MetricFactType getFactType();
 
     List<ISymIntervalStats> exportCompletedIntervals();

@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
+import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 
 import io.opentelemetry.api.common.Attributes;
