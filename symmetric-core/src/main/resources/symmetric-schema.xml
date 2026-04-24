@@ -1063,6 +1063,7 @@
         <column name="avg"                     type="DOUBLE"    required="true"                    description="Time-weighted average value over the interval." />
         <column name="mean"                    type="DOUBLE"    required="true"                    description="Simple arithmetic mean of observed values during the interval." />
         <column name="std_dev"                 type="DOUBLE"    required="true"                    description="Time-weighted standard deviation of the value during the interval." />
+        <column name="outlier"                 type="SMALLINT"                                     description="1 if this interval was flagged as a statistical outlier, 0 otherwise." />
         <index name="idx_metric_stats_float64_key">
             <index-column name="metric_key" />
         </index>
@@ -1080,6 +1081,7 @@
         <column name="avg"                     type="BIGINT"    required="true"                    description="Time-weighted average value over the interval." />
         <column name="mean"                    type="BIGINT"    required="true"                    description="Simple arithmetic mean of observed values during the interval." />
         <column name="std_dev"                 type="DOUBLE"    required="true"                    description="Time-weighted standard deviation of the value during the interval." />
+        <column name="outlier"                 type="SMALLINT"                                     description="1 if this interval was flagged as a statistical outlier, 0 otherwise." />
         <index name="idx_metric_stats_int64_key">
             <index-column name="metric_key" />
         </index>

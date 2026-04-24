@@ -678,14 +678,16 @@ public class MetricsRepository extends AbstractService {
                     intervalStats.getObservationCount(),
                     (long) intervalStats.getMin(), (long) intervalStats.max(),
                     (long) intervalStats.getAvg(), (long) intervalStats.mean(),
-                    intervalStats.getStdDeviation() };
+                    intervalStats.getStdDeviation(),
+                    intervalStats.isOutlier() ? 1 : 0 };
             statementTypes = new int[] {
                     Types.BIGINT, Types.BIGINT,
                     Types.TIMESTAMP, Types.INTEGER, Types.BIGINT,
                     Types.INTEGER,
                     Types.BIGINT, Types.BIGINT,
                     Types.BIGINT, Types.BIGINT,
-                    Types.DOUBLE };
+                    Types.DOUBLE,
+                    Types.SMALLINT };
         } else {
             sqlKey = "insertMetricIntervalSql";
             statementParams = new Object[] {
@@ -694,14 +696,16 @@ public class MetricsRepository extends AbstractService {
                     intervalStats.getObservationCount(),
                     intervalStats.getMin(), intervalStats.max(),
                     intervalStats.getAvg(), intervalStats.mean(),
-                    intervalStats.getStdDeviation() };
+                    intervalStats.getStdDeviation(),
+                    intervalStats.isOutlier() ? 1 : 0 };
             statementTypes = new int[] {
                     Types.BIGINT, Types.BIGINT,
                     Types.TIMESTAMP, Types.INTEGER, Types.BIGINT,
                     Types.INTEGER,
                     Types.DOUBLE, Types.DOUBLE,
                     Types.DOUBLE, Types.DOUBLE,
-                    Types.DOUBLE };
+                    Types.DOUBLE,
+                    Types.SMALLINT };
         }
         try {
             transaction = sqlTemplate.startSqlTransaction();
@@ -791,7 +795,8 @@ public class MetricsRepository extends AbstractService {
             double stdDev = rowDouble(row, "std_dev");
             int observationCount = row.getInt("observation_count");
             double mean = rowDouble(row, "mean");
-            return new MetricIntervalStats(intervalStart, intervalEnd, avg, min, max, stdDev, observationCount, mean, false);
+            boolean isOutlier = row.getInt("outlier") != 0;
+            return new MetricIntervalStats(intervalStart, intervalEnd, avg, min, max, stdDev, observationCount, mean, isOutlier);
         }
     };
 }
