@@ -18,29 +18,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.web;
+package org.jumpmind.symmetric;
 
-public class ApplicationHealthTracker implements IApplicationHealthTracker {
-    private volatile boolean alive = true;
-    private volatile boolean ready = false;
+public interface IApplicationHealthTracker {
+    boolean isAlive();
 
-    @Override
-    public boolean isAlive() {
-        return alive;
-    }
+    void setAlive(boolean alive);
 
-    @Override
-    public void setAlive(boolean alive) {
-        this.alive = alive;
-    }
+    boolean isReady();
 
-    @Override
-    public boolean isReady() {
-        return ready;
-    }
-
-    @Override
-    public void setReady(boolean ready) {
-        this.ready = ready;
-    }
+    void setReady(boolean ready);
 }

@@ -25,8 +25,11 @@ import java.net.URL;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
+import org.jumpmind.symmetric.ApplicationHealthTracker;
+import org.jumpmind.symmetric.IApplicationHealthTracker;
 import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
+import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.context.support.WebApplicationContextUtils;
@@ -67,6 +70,7 @@ public class SymmetricContextListener implements ServletContextListener {
                 && staticEnginesMode.equalsIgnoreCase("true"));
         engineHolder.setDeploymentType(ctx.getInitParameter(WebConstants.INIT_PARAM_DEPLOYMENT_TYPE));
         ctx.setAttribute(WebConstants.ATTR_ENGINE_HOLDER, engineHolder);
+        ApplicationHealthTracker.setTracker(AppUtils.newInstance(IApplicationHealthTracker.class, ApplicationHealthTracker.class));
         String useWebApplicationContext = ctx.getInitParameter(WebConstants.INIT_SINGLE_USE_WEBAPP_CONTEXT);
         if ("true".equals(useWebApplicationContext)) {
             engineHolder.setSpringContext(WebApplicationContextUtils.getWebApplicationContext(sce.getServletContext()));

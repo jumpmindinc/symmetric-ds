@@ -28,11 +28,21 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.jumpmind.symmetric.ApplicationHealthTracker;
+import org.jumpmind.symmetric.IApplicationHealthTracker;
+
 public class LivelinessUriHandler implements IUriHandler {
     @Override
     public void handle(HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+        IApplicationHealthTracker tracker = ApplicationHealthTracker.getTracker();
+        boolean alive = tracker == null || tracker.isAlive();
         res.setContentType("application/json");
-        res.getWriter().write("{\"status\": \"UP\"}");
+        if (alive) {
+            res.getWriter().write("{\"status\": \"UP\"}");
+        } else {
+            res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            res.getWriter().write("{\"status\": \"DOWN\"}");
+        }
     }
 
     @Override
