@@ -17,6 +17,7 @@
     </appender>
 
     <logger name="org.jumpmind" level="INFO" />
+    <logger name="com.jumpmind" level="INFO" />
     <logger name="com.mangofactory.swagger.filters.AnnotatedParameterFilter" level="ERROR" />
     <logger name="org.eclipse.jetty.util.ssl.SslContextFactory" level="ERROR" />
     <logger name="org.jumpmind.symmetric.util.PropertiesFactoryBean" level="ERROR" />
