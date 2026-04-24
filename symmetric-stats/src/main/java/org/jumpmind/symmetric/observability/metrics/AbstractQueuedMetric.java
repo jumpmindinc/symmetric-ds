@@ -47,7 +47,8 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     private final String metricId;
     protected final Attributes attributes;
     private final List<MetricAttribute> metricAttributes;
-    private volatile ISymMetricContext context;
+    private final MetricFactType factType;
+    private volatile ISymMetricContext context; // The volatile is faster than synchronized(lock) and optimal for this "write-once, read-many" field.
     protected volatile long lastModified = System.currentTimeMillis();
     protected volatile boolean isMetricEnabled = true;
     protected ObservationsQueue<ISymObservation> observations = new ObservationsQueue<>();
@@ -56,10 +57,11 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     protected MetricIntervalStatsQueue completedIntervals = new MetricIntervalStatsQueue();
     protected MetricSeriesSlidingWorkset workset = new MetricSeriesSlidingWorkset();
 
-    AbstractQueuedMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
+    AbstractQueuedMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes, MetricFactType factType) {
         this.metricId = metricId;
         this.attributes = attributes;
         this.metricAttributes = metricAttributes != null ? List.copyOf(metricAttributes) : List.of();
+        this.factType = factType;
         this.currentIntervalAccumulator = null;
     }
 
@@ -92,7 +94,9 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
 
     /** Returns the fact type for this metric, used to select the correct accumulator and persistence table. */
     @Override
-    public abstract MetricFactType getFactType();
+    public MetricFactType getFactType() {
+        return factType;
+    }
 
     /**
      * Returns estimated number of recorded observations (can change quickly in a highly concurrent environment)

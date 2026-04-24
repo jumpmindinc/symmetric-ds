@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.observability.metrics;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
@@ -38,12 +37,7 @@ public abstract class AbstractCounterMetric extends AbstractQueuedMetric {
     protected final AtomicLong currentValue = new AtomicLong(0);
 
     AbstractCounterMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        super(metricId, attributes, metricAttributes);
-    }
-
-    @Override
-    public MetricFactType getFactType() {
-        return MetricFactType.INT64;
+        super(metricId, attributes, metricAttributes, MetricFactType.INT64);
     }
 
     @Override
@@ -65,8 +59,9 @@ public abstract class AbstractCounterMetric extends AbstractQueuedMetric {
         if (delta == 0) {
             return;
         }
-        // Update current value via atomic operation and record observation:
-        addObservation(new ObservationLong(this.currentValue.addAndGet(delta), this.lastModified = System.currentTimeMillis()));
+        long now = System.currentTimeMillis();
+        this.lastModified = now;
+        addObservation(new ObservationLong(this.currentValue.addAndGet(delta), now));
     }
 
     /**

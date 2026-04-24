@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.observability.metrics;
 import java.util.List;
 import java.util.concurrent.atomic.DoubleAdder;
 
-import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.models.ObservationDouble;
 
@@ -33,12 +32,7 @@ public abstract class AbstractGaugeMetric extends AbstractQueuedMetric {
     protected final DoubleAdder currentValue = new DoubleAdder();
 
     AbstractGaugeMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        super(metricId, attributes, metricAttributes);
-    }
-
-    @Override
-    public MetricFactType getFactType() {
-        return MetricFactType.FLOAT64;
+        super(metricId, attributes, metricAttributes, MetricFactType.FLOAT64);
     }
 
     public double getValue() {
@@ -51,7 +45,9 @@ public abstract class AbstractGaugeMetric extends AbstractQueuedMetric {
     public void setValue(double newValue) {
         this.currentValue.reset();
         this.currentValue.add(newValue - this.currentValue.sum());
-        addObservation(new ObservationDouble(this.currentValue.sum(), this.lastModified = System.currentTimeMillis()));
+        long now = System.currentTimeMillis();
+        this.lastModified = now;
+        addObservation(new ObservationDouble(this.currentValue.sum(), now));
     }
 
     /**
@@ -59,7 +55,8 @@ public abstract class AbstractGaugeMetric extends AbstractQueuedMetric {
      */
     public void add(double delta) {
         this.currentValue.add(delta);
-        // Update current value via atomic operation and record observation:
-        addObservation(new ObservationDouble(this.currentValue.sum(), this.lastModified = System.currentTimeMillis()));
+        long now = System.currentTimeMillis();
+        this.lastModified = now;
+        addObservation(new ObservationDouble(this.currentValue.sum(), now));
     }
 }
