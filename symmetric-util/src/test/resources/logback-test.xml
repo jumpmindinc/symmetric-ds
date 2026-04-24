@@ -25,6 +25,7 @@
         </encoder>
     </appender>
     <logger name="org.jumpmind" level="INFO" />
+    <logger name="com.jumpmind" level="INFO" />
     <root level="ERROR">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="CONSOLE_ERR" />
