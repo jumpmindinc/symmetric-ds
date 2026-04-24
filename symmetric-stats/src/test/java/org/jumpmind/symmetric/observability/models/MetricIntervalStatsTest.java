@@ -39,9 +39,6 @@ class MetricIntervalStatsTest {
     private static MetricIntervalStats interval(long start, long end) {
         return new MetricIntervalStats(start, end, 0, 0, 0, 0, 1, 0, false);
     }
-    // -----------------------------------------------------------------------
-    // compareTo — end-time ordering (post-2000 timestamps)
-    // -----------------------------------------------------------------------
 
     @Test
     void compareTo_earlierEndTime_comesFirst() {
@@ -61,9 +58,6 @@ class MetricIntervalStatsTest {
         assertTrue(second.compareTo(third) < 0);
         assertTrue(first.compareTo(third) < 0);
     }
-    // -----------------------------------------------------------------------
-    // compareTo — same end time: longer interval (earlier start) sorts first
-    // -----------------------------------------------------------------------
 
     @Test
     void compareTo_sameEnd_longerIntervalComesFirst() {
@@ -82,9 +76,6 @@ class MetricIntervalStatsTest {
         assertEquals(0, a.compareTo(b));
         assertEquals(0, b.compareTo(a));
     }
-    // -----------------------------------------------------------------------
-    // Stream.sorted() — verifies natural ordering end-to-end
-    // -----------------------------------------------------------------------
 
     @Test
     void sorted_mixedIntervals_orderedByEndThenStart() {

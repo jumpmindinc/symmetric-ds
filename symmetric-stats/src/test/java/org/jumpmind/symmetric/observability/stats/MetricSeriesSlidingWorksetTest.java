@@ -80,9 +80,6 @@ class MetricSeriesSlidingWorksetTest {
         }
         workset.seed(history);
     }
-    // -----------------------------------------------------------------------
-    // computePercentiles — direct unit tests
-    // -----------------------------------------------------------------------
 
     @Test
     void computePercentiles_evenDistribution() {
@@ -140,9 +137,6 @@ class MetricSeriesSlidingWorksetTest {
         assertThrows(IllegalArgumentException.class,
                 () -> MetricSeriesSlidingWorkset.computePercentiles(new double[] { 42.0 }));
     }
-    // -----------------------------------------------------------------------
-    // hasEnoughData
-    // -----------------------------------------------------------------------
 
     @Test
     void hasEnoughData_belowMinimum_returnsFalse() {
@@ -155,18 +149,12 @@ class MetricSeriesSlidingWorksetTest {
         seedUniform(IQR_INTERVALS_MIN, 50.0);
         assertTrue(workset.hasEnoughData());
     }
-    // -----------------------------------------------------------------------
-    // detectOutlier — guards
-    // -----------------------------------------------------------------------
 
     @Test
     void detectOutlier_notEnoughData_alwaysFalse() {
         seedUniform(IQR_INTERVALS_MIN - 1, 50.0);
         assertFalse(workset.detectOutlier(interval(9999.0, 9999.0, 9999.0)));
     }
-    // -----------------------------------------------------------------------
-    // detectOutlier — with enough data (seed=50, IQR=0, fences=[50,50])
-    // -----------------------------------------------------------------------
 
     @Test
     void detectOutlier_valueEqualToFence_notOutlier() {
@@ -197,9 +185,6 @@ class MetricSeriesSlidingWorksetTest {
         seedUniform(IQR_INTERVALS_MIN, 50.0);
         assertTrue(workset.detectOutlier(interval(50.0, 50.0, 200.0)));
     }
-    // -----------------------------------------------------------------------
-    // seed — basic collection API
-    // -----------------------------------------------------------------------
 
     @Test
     void seed_extremeValue_addedToWorksetWithoutDetection() {
@@ -222,9 +207,6 @@ class MetricSeriesSlidingWorksetTest {
         workset.seed(List.of(interval(50.0, 50.0, 50.0)));
         assertEquals(IQR_INTERVALS_MAX, workset.size());
     }
-    // -----------------------------------------------------------------------
-    // seed — post-2000 timestamps, chronological ordering
-    // -----------------------------------------------------------------------
 
     @Test
     void seed_timedIntervals_loadsAllWhenUnderCapacity() {
@@ -245,9 +227,6 @@ class MetricSeriesSlidingWorksetTest {
         // IQR statistics must be valid regardless of insertion order
         assertFalse(workset.detectOutlier(timedInterval(T_2020, 50.0, 50.0, 50.0)));
     }
-    // -----------------------------------------------------------------------
-    // seed — older intervals discarded when collection exceeds IQR_INTERVALS_MAX
-    // -----------------------------------------------------------------------
 
     @Test
     void seed_collectionExceedsMax_sizeIsCappedAtMax() {
@@ -275,9 +254,6 @@ class MetricSeriesSlidingWorksetTest {
         assertFalse(workset.detectOutlier(timedInterval(T_2020, 50.0, 50.0, 50.0)));
         assertTrue(workset.detectOutlier(timedInterval(T_2020, 100.0, 100.0, 100.0)));
     }
-    // -----------------------------------------------------------------------
-    // add — normal interval goes to workset
-    // -----------------------------------------------------------------------
 
     @Test
     void add_normalInterval_increasesWorksetSize() {
@@ -285,9 +261,6 @@ class MetricSeriesSlidingWorksetTest {
         workset.add(interval(50.0, 50.0, 50.0));
         assertEquals(IQR_INTERVALS_MIN + 1, workset.size());
     }
-    // -----------------------------------------------------------------------
-    // add — outlier goes to outlier buffer, not workset
-    // -----------------------------------------------------------------------
 
     @Test
     void add_outlierInterval_doesNotIncreaseWorksetSize() {

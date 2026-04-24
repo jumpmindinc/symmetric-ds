@@ -177,6 +177,13 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
     }
 
     /**
+     * Returns a snapshot of all current observations as a {@link List}, without modifying the queue.
+     */
+    public List<T> toList() {
+        return new ArrayList<>(queue);
+    }
+
+    /**
      * Returns all observations whose timestamp falls within [start, end] without removing them from the queue.
      */
     @SuppressWarnings("unchecked")

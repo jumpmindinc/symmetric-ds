@@ -58,9 +58,9 @@ public interface ISymMetric {
      */
     IStatsAccumulator createAccumulator(long intervalStart);
 
-    ISymObservation[] removeAllObservations();
+    List<ISymObservation> removeAllObservations();
 
-    int processObservations(ISymObservation[] observations);
+    int processObservations(List<ISymObservation> observations);
 
     void processAllObservationsAndRefreshInterval();
 

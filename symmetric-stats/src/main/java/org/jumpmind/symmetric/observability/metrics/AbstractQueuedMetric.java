@@ -136,30 +136,28 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     }
 
     /**
-     * Atomic operation of retrieving the old queue object and replacing it with new empty queue.
+     * Atomically swaps the observation queue for a new empty one and returns the contents of the old queue as a list.
      */
-    protected synchronized ObservationsQueue<ISymObservation> retrieveAndSwapForNewQueue() {
+    protected synchronized List<ISymObservation> retrieveAndSwapForNewQueue() {
         ObservationsQueue<ISymObservation> oldObservations = this.observations;
         this.observations = new ObservationsQueue<>();
-        return oldObservations;
+        return oldObservations.toList();
     }
 
     /**
      * Returns all currently available observations (which can change quickly in a highly concurrent environment) and removes them from an internal queue
      */
     @Override
-    public ISymObservation[] removeAllObservations() {
+    public List<ISymObservation> removeAllObservations() {
         if (this.observations.isEmpty()) {
-            return new ISymObservation[] {};
+            return List.of();
         }
-        ObservationsQueue<ISymObservation> oldObservations = retrieveAndSwapForNewQueue();
-        ISymObservation[] removedObservations = oldObservations.toArray(new ISymObservation[0]);
-        oldObservations.clear();
+        List<ISymObservation> removed = retrieveAndSwapForNewQueue();
         lastModified = System.currentTimeMillis();
         if (log.isDebugEnabled()) {
-            log.debug("Removed {} observations from the queue. MetricId={}", removedObservations.length, getMetricId());
+            log.debug("Removed {} observations from the queue. MetricId={}", removed.size(), getMetricId());
         }
-        return removedObservations;
+        return removed;
     }
 
     /**
@@ -167,9 +165,9 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
      */
     public void processAllObservations() {
         try {
-            ISymObservation[] observations = removeAllObservations();
-            if (observations.length > 0) {
-                processObservations(observations);
+            List<ISymObservation> unprocessed = removeAllObservations();
+            if (!unprocessed.isEmpty()) {
+                processObservations(unprocessed);
             }
         } catch (Exception ex) {
             log.warn("Trouble processing observations for MetricId=" + getMetricId(), ex);
@@ -187,7 +185,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
      * are enqueued into completedIntervals.
      */
     @Override
-    public int processObservations(ISymObservation[] obs) {
+    public int processObservations(List<ISymObservation> obs) {
         int processedCount = 0;
         for (ISymObservation observation : obs) {
             processedCount += processObservation(observation);

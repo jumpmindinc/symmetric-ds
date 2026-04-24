@@ -588,9 +588,6 @@ public class MetricsRepository extends AbstractService {
 
     /**
      * Persists a batch of newly completed intervals within a single transaction. Any {@link MetricKey} not yet present in {@code metric_key} is inserted first.
-     *
-     * @param intervals
-     *            entries produced by the aggregation cycle
      */
     public void saveIntervals(List<MetricIntervalStatsRecord> intervalStats) {
         if (intervalStats == null || intervalStats.isEmpty()) {
@@ -598,34 +595,46 @@ public class MetricsRepository extends AbstractService {
         }
         long startTime = System.currentTimeMillis();
         ensureMetricKeyCacheLoaded();
-        MetricKey prevKey = null; // Skips cache and database lookups for repeat references to the same metric key
-        MetricKey skipKey = null; // Skips cache and database writes for repeat references to the same (failed to save) metric key.
-        int savedCount = 0;
+        List<MetricIntervalStatsRecord> readyStats = prepareStatsForDatabase(intervalStats);
+        saveMetricIntervalStatsAll(readyStats);
+        log.info("Saved {} metric interval stats records to database in {} seconds", readyStats.size(), (System.currentTimeMillis() - startTime) / 1000.0);
+    }
+
+    public List<MetricIntervalStatsRecord> prepareStatsForDatabase(List<MetricIntervalStatsRecord> intervalStats) {
+        List<MetricIntervalStatsRecord> readyStats = new ArrayList<>(intervalStats.size());
+        MetricKey prevKey = null, skipKey = null; // Optimization: Skip cache and database lookups for repeat references to evaluated key
         for (MetricIntervalStatsRecord record : intervalStats) {
             MetricKey key = record.key();
-            if (key == null || key.equalsOnCompositeKey(skipKey)) {
-                continue;
-            }
-            if (key.equalsOnCompositeKey(prevKey)) {
-                key = prevKey;
-            } else {
+            if (key != null && key.isEnabled() && !key.equalsOnCompositeKey(skipKey)) {
                 try {
-                    key = getOrRegisterMetricKey(key);
+                    if (key == prevKey || key.equalsOnCompositeKey(prevKey)) {
+                        key = prevKey;
+                    } else {
+                        key = getOrRegisterMetricKey(key);
+                    }
+                    if (key.isEnabled()) {
+                        readyStats.add(new MetricIntervalStatsRecord(key, record.contextId(), record.stats()));
+                        prevKey = key;
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Skipped deactivated metric. Id={}, engine={}, hostname={}", key.metricId(), key.engineName(), key.hostname());
+                        }
+                    }
                 } catch (Exception ex) {
                     skipKey = key;
-                    continue;
+                    if (log.isDebugEnabled()) {
+                        log.debug("Trouble with metric " + key, ex);
+                    }
                 }
             }
-            if (!key.isEnabled()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Skipped deactivated metric. Id={}, engine={}, hostname={}", key.metricId(), key.engineName(), key.hostname());
-                }
-                continue;
-            }
-            saveMetricIntervalStatsInternal(key, record.contextId(), record.stats());
-            savedCount++;
         }
-        log.info("Saved {} metric interval stats records to database in {} seconds", savedCount, (System.currentTimeMillis() - startTime) / 1000.0);
+        return readyStats;
+    }
+
+    private void saveMetricIntervalStatsAll(List<MetricIntervalStatsRecord> records) {
+        for (MetricIntervalStatsRecord record : records) {
+            saveMetricIntervalStatsInternal(record.key(), record.contextId(), record.stats());
+        }
     }
 
     /**

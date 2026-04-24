@@ -47,9 +47,6 @@ class ObservationsQueueTest {
     void setUp() {
         queue = new ObservationsQueue<>();
     }
-    // -----------------------------------------------------------------------
-    // offer / add / size / isEmpty
-    // -----------------------------------------------------------------------
 
     @Test
     void offer_singleItem_sizeIsOne() {
@@ -77,9 +74,6 @@ class ObservationsQueueTest {
         assertTrue(queue.isEmpty());
         assertEquals(0, queue.size());
     }
-    // -----------------------------------------------------------------------
-    // poll / peek / element / remove()
-    // -----------------------------------------------------------------------
 
     @Test
     void poll_emptyQueue_returnsNull() {
@@ -148,9 +142,6 @@ class ObservationsQueueTest {
         assertEquals(first, removed);
         assertEquals(1, queue.size());
     }
-    // -----------------------------------------------------------------------
-    // remove(Object)
-    // -----------------------------------------------------------------------
 
     @Test
     void removeObject_presentItem_returnsTrueAndDecrementsSize() {
@@ -169,9 +160,6 @@ class ObservationsQueueTest {
         assertFalse(result);
         assertEquals(1, queue.size());
     }
-    // -----------------------------------------------------------------------
-    // clear
-    // -----------------------------------------------------------------------
 
     @Test
     void clear_removesAllItems_sizeZero() {
@@ -181,9 +169,6 @@ class ObservationsQueueTest {
         assertEquals(0, queue.size());
         assertTrue(queue.isEmpty());
     }
-    // -----------------------------------------------------------------------
-    // contains / containsAll
-    // -----------------------------------------------------------------------
 
     @Test
     void contains_presentItem_returnsTrue() {
@@ -213,9 +198,6 @@ class ObservationsQueueTest {
         queue.offer(a);
         assertFalse(queue.containsAll(List.of(a, obs(99.0, T + 1))));
     }
-    // -----------------------------------------------------------------------
-    // addAll
-    // -----------------------------------------------------------------------
 
     @Test
     void addAll_nonEmptyCollection_addsAllAndReturnsTrue() {
@@ -231,9 +213,6 @@ class ObservationsQueueTest {
         assertFalse(changed);
         assertEquals(0, queue.size());
     }
-    // -----------------------------------------------------------------------
-    // removeAll
-    // -----------------------------------------------------------------------
 
     @Test
     void removeAll_removesOnlySpecifiedItems() {
@@ -256,9 +235,6 @@ class ObservationsQueueTest {
         assertFalse(changed);
         assertEquals(1, queue.size());
     }
-    // -----------------------------------------------------------------------
-    // retainAll
-    // -----------------------------------------------------------------------
 
     @Test
     void retainAll_keepsOnlySpecifiedItems() {
@@ -286,9 +262,6 @@ class ObservationsQueueTest {
         assertFalse(changed);
         assertEquals(2, queue.size());
     }
-    // -----------------------------------------------------------------------
-    // iterator remove
-    // -----------------------------------------------------------------------
 
     @Test
     void iterator_remove_decrementsSize() {
@@ -301,9 +274,42 @@ class ObservationsQueueTest {
         it.remove();
         assertEquals(1, queue.size());
     }
-    // -----------------------------------------------------------------------
-    // toArray
-    // -----------------------------------------------------------------------
+
+    @Test
+    void toList_emptyQueue_returnsEmptyList() {
+        assertTrue(queue.toList().isEmpty());
+    }
+
+    @Test
+    void toList_returnsAllItemsInOrder() {
+        ObservationDouble a = obs(1.0, T);
+        ObservationDouble b = obs(2.0, T + 1);
+        ObservationDouble c = obs(3.0, T + 2);
+        queue.offer(a);
+        queue.offer(b);
+        queue.offer(c);
+        List<ISymObservation> list = queue.toList();
+        assertEquals(3, list.size());
+        assertEquals(a, list.get(0));
+        assertEquals(b, list.get(1));
+        assertEquals(c, list.get(2));
+    }
+
+    @Test
+    void toList_doesNotModifyQueue() {
+        queue.offer(obs(1.0, T));
+        queue.offer(obs(2.0, T + 1));
+        queue.toList();
+        assertEquals(2, queue.size());
+    }
+
+    @Test
+    void toList_isSnapshot_laterAdditionsNotReflected() {
+        queue.offer(obs(1.0, T));
+        List<ISymObservation> snapshot = queue.toList();
+        queue.offer(obs(2.0, T + 1));
+        assertEquals(1, snapshot.size());
+    }
 
     @Test
     void toArray_returnsAllItems() {
@@ -323,9 +329,6 @@ class ObservationsQueueTest {
         assertEquals(1, arr.length);
         assertEquals(a, arr[0]);
     }
-    // -----------------------------------------------------------------------
-    // MAX_QUEUE_SIZE enforcement
-    // -----------------------------------------------------------------------
 
     @Test
     void offer_atMaxCapacity_evictsOldestBeforeAdding() {
@@ -361,9 +364,6 @@ class ObservationsQueueTest {
         // The oldest item (value=1.0) should have been evicted; newest should be present
         assertTrue(capped.contains(newest));
     }
-    // -----------------------------------------------------------------------
-    // peekBetween
-    // -----------------------------------------------------------------------
 
     @Test
     void peekBetween_returnsItemsInRangeWithoutRemoving() {
@@ -397,9 +397,6 @@ class ObservationsQueueTest {
         assertEquals(0, result.length);
         assertEquals(1, queue.size());
     }
-    // -----------------------------------------------------------------------
-    // removeAllBetween
-    // -----------------------------------------------------------------------
 
     @Test
     void removeAllBetween_removesAndReturnsItemsInRange() {
