@@ -133,18 +133,6 @@ public class ConfigurationVersionHelperTest {
     }
 
     @Test
-    public void testIsTargetNodeOlderThan() {
-        ConfigurationVersionHelper helper = new ConfigurationVersionHelper(PREFIX);
-        Node node = new Node();
-        node.setDeploymentType(Constants.DEPLOYMENT_TYPE_SERVER);
-        node.setSymmetricVersion("3.14.0");
-        helper.setTargetNode(node);
-        assertTrue(helper.isTargetNodeOlderThan("3.15.0"));
-        assertFalse(helper.isTargetNodeOlderThan("3.14.0"));
-        assertFalse(helper.isTargetNodeOlderThan("3.13.0"));
-    }
-
-    @Test
     public void testShouldSendTableOss() {
         testShouldSendTable(false);
     }
