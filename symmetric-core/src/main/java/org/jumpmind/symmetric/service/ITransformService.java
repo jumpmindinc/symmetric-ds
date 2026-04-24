@@ -35,7 +35,8 @@ public interface ITransformService {
     public List<TransformTableNodeGroupLink> findTransformsFor(NodeGroupLink link,
             TransformPoint transformPoint);
 
-    public List<TransformTableNodeGroupLink> findTransformsFor(String sourceNodeGroupId, String targetNodeGroupId, String table);
+    public List<TransformTableNodeGroupLink> findTransformsFor(String sourceNodeGroupId, String targetNodeGroupId, String table,
+            String schema, String catalog);
 
     public List<TransformTableNodeGroupLink> getTransformTables(boolean includeColumns);
 

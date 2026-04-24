@@ -225,14 +225,18 @@ public class TransformService extends AbstractService implements ITransformServi
     }
 
     @Override
-    public List<TransformTableNodeGroupLink> findTransformsFor(String sourceNodeGroupId, String targetNodeGroupId, String table) {
+    public List<TransformTableNodeGroupLink> findTransformsFor(String sourceNodeGroupId, String targetNodeGroupId, String table, String schema, String catalog) {
         NodeGroupLink nodeGroupLink = new NodeGroupLink(sourceNodeGroupId, targetNodeGroupId);
         List<TransformTableNodeGroupLink> transformsForNodeGroupLink = findTransformsFor(nodeGroupLink);
         if (!CollectionUtils.isEmpty(transformsForNodeGroupLink)) {
             List<TransformTableNodeGroupLink> transforms = new ArrayList<TransformTableNodeGroupLink>();
             for (TransformTableNodeGroupLink transform : transformsForNodeGroupLink) {
-                if (Strings.CI.equals(table, transform.getSourceTableName())) {
-                    transforms.add(transform);
+                if (Strings.CI.equals(catalog, transform.getSourceCatalogName())) {
+                    if (Strings.CI.equals(schema, transform.getSourceSchemaName())) {
+                        if (Strings.CI.equals(table, transform.getSourceTableName())) {
+                            transforms.add(transform);
+                        }
+                    }
                 }
             }
             if (!transforms.isEmpty()) {
