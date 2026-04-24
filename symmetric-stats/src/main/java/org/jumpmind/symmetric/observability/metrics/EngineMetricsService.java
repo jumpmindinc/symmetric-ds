@@ -32,7 +32,6 @@ import org.jumpmind.symmetric.observability.models.MetricContext;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
 import org.jumpmind.symmetric.observability.repository.MetricsRepository;
-import org.jumpmind.symmetric.observability.repository.MetricsRepositoryException;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
@@ -117,7 +116,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             log.debug("Saving {} metric interval stats records...", newlyCompleted.size());
             repo.saveIntervals(newlyCompleted);
         }
-        log.debug("Saved {} completed interval stats records for {} metrics.", newlyCompleted.size(), processedMetrics);
+        log.debug("Saved {} completed interval stats records for {} metrics (in specific context).", newlyCompleted.size(), processedMetrics);
     }
 
     protected MetricsRepository createMetricsRepository() {

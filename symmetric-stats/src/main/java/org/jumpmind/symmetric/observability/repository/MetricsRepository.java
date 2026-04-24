@@ -119,9 +119,6 @@ public class MetricsRepository extends AbstractService {
         Integer cacheKey = generateCacheKey(metricId, engineName, hostname, factType);
         MetricKey metricKeyRec = metricKeysCache.get(cacheKey);
         if (metricKeyRec != null) {
-            if (log.isDebugEnabled()) {
-                log.debug("Cache hit for metric key {}", metricKeyRec);
-            }
             return metricKeyRec;
         }
         return saveMetricKeyInternal(metricId, engineName, hostname, factType, isEnabled);
@@ -135,9 +132,6 @@ public class MetricsRepository extends AbstractService {
         Integer cacheKey = generateCacheKey(key);
         MetricKey metricKeyRec = metricKeysCache.get(cacheKey);
         if (metricKeyRec != null) {
-            if (log.isDebugEnabled()) {
-                log.debug("Cache hit for metric key {}", metricKeyRec);
-            }
             return metricKeyRec;
         }
         return saveMetricKeyInternal(key);
@@ -717,13 +711,13 @@ public class MetricsRepository extends AbstractService {
             if (transaction != null) {
                 transaction.rollback();
             }
-            String message = "Failed to save metric interval stats for key: " + key;
+            String message = "Failed to save metric interval stats for " + key;
             log.error(message, e);
             throw new MetricsRepositoryException(message, e);
         } finally {
             close(transaction);
         }
-        log.info("Saved metric interval stats for key: {}, Interval.start={}", key, intervalStats.getStartEpoch());
+        log.info("Saved metric interval stats for {}, Interval.start={}", key, intervalStats.getStartEpoch());
     }
 
     private MetricKey saveMetricKeyInternal(MetricKey metricKeyRec) {

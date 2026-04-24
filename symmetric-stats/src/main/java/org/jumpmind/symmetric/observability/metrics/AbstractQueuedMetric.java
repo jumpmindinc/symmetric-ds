@@ -29,7 +29,6 @@ import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
-import org.jumpmind.symmetric.observability.models.ObservationLong;
 import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.MetricIntervalStatsQueue;
@@ -265,15 +264,15 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
      */
     public void seedWorkset(List<ISymIntervalStats> history) {
         if (history == null || history.isEmpty()) {
-            log.warn("No data to kick-off outlier detection with historical intervals for metric={}", metricId);
+            log.debug("No data to kick-off outlier detection with historical intervals for metric={}", metricId);
             return;
         }
         int intervalsCount = history.size();
         if (intervalsCount < MetricSeriesSlidingWorkset.IQR_INTERVALS_MIN) {
-            log.warn("Insufficient data to kick-off outlier detection with historical intervals for metric={}, records={}", metricId, intervalsCount);
+            log.debug("Insufficient data to kick-off outlier detection with historical intervals for metric={}, records={}", metricId, intervalsCount);
         }
         workset.seed(history);
-        log.info("Primed outlier detection with {} historical intervals for metric={}", intervalsCount, metricId);
+        log.debug("Primed outlier detection with {} historical intervals for metric={}", intervalsCount, metricId);
     }
 
     /**
