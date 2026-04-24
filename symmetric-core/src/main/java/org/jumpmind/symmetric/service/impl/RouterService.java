@@ -650,7 +650,11 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 context.rollback();
                 dataCount = context.getCommittedDataEventCount();
             }
-            engine.getOutgoingBatchService().updateAbandonedRoutingBatches();
+            try {
+                engine.getOutgoingBatchService().updateAbandonedRoutingBatches();
+            } catch (Exception e) {
+                log.error("Failed to update abandoned routing batches", e);
+            }
         } finally {
             try {
                 if (dataCount > 0) {
@@ -676,8 +680,10 @@ public class RouterService extends AbstractService implements IRouterService, IN
                         }
                     }
                 }
-                hasMaxDataRoutedByChannel.put(nodeChannel.getChannelId(), context.getCommittedDataIdCount() >= context.getChannel().getMaxDataToRoute());
-                isAllDataReadByChannel.putIfAbsent(nodeChannel.getChannelId(), context.getCommittedDataIdCount() < context.getChannel().getMaxDataToRoute());
+                if (context != null) {
+                    hasMaxDataRoutedByChannel.put(nodeChannel.getChannelId(), context.getCommittedDataIdCount() >= context.getChannel().getMaxDataToRoute());
+                    isAllDataReadByChannel.putIfAbsent(nodeChannel.getChannelId(), context.getCommittedDataIdCount() < context.getChannel().getMaxDataToRoute());
+                }
             } catch (Exception e) {
                 if (context != null) {
                     context.rollback();
