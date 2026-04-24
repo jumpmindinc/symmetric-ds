@@ -225,18 +225,15 @@ public class TransformService extends AbstractService implements ITransformServi
     }
 
     @Override
-    public List<TransformTableNodeGroupLink> findTransformsFor(String sourceNodeGroupId, String targetNodeGroupId, String table, String schema, String catalog) {
+    public List<TransformTableNodeGroupLink> findTransformsFor(String sourceNodeGroupId, String targetNodeGroupId, String table, String schema,
+            String catalog) {
         NodeGroupLink nodeGroupLink = new NodeGroupLink(sourceNodeGroupId, targetNodeGroupId);
         List<TransformTableNodeGroupLink> transformsForNodeGroupLink = findTransformsFor(nodeGroupLink);
         if (!CollectionUtils.isEmpty(transformsForNodeGroupLink)) {
-            List<TransformTableNodeGroupLink> transforms = new ArrayList<TransformTableNodeGroupLink>();
+            List<TransformTableNodeGroupLink> transforms = new ArrayList<>();
             for (TransformTableNodeGroupLink transform : transformsForNodeGroupLink) {
-                if (Strings.CI.equals(catalog, transform.getSourceCatalogName())) {
-                    if (Strings.CI.equals(schema, transform.getSourceSchemaName())) {
-                        if (Strings.CI.equals(table, transform.getSourceTableName())) {
-                            transforms.add(transform);
-                        }
-                    }
+                if (doesTransformApply(transform, catalog, schema, table)) {
+                    transforms.add(transform);
                 }
             }
             if (!transforms.isEmpty()) {
@@ -244,6 +241,12 @@ public class TransformService extends AbstractService implements ITransformServi
             }
         }
         return null;
+    }
+
+    private boolean doesTransformApply(TransformTableNodeGroupLink transform, String catalog, String schema, String table) {
+        return Strings.CI.equals(catalog, transform.getSourceCatalogName()) &&
+                Strings.CI.equals(schema, transform.getSourceSchemaName()) &&
+                Strings.CI.equals(table, transform.getSourceTableName());
     }
 
     @Override
