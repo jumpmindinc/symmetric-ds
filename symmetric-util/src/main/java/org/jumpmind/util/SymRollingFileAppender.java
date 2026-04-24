@@ -20,153 +20,130 @@
  */
 package org.jumpmind.util;
 
-import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
-import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.CRC32;
-import java.util.zip.Deflater;
 
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.Core;
-import org.apache.logging.log4j.core.Filter;
-import org.apache.logging.log4j.core.Layout;
-import org.apache.logging.log4j.core.LogEvent;
-import org.apache.logging.log4j.core.appender.AbstractOutputStreamAppender;
-import org.apache.logging.log4j.core.appender.rolling.DefaultRolloverStrategy;
-import org.apache.logging.log4j.core.appender.rolling.DirectFileRolloverStrategy;
-import org.apache.logging.log4j.core.appender.rolling.DirectWriteRolloverStrategy;
-import org.apache.logging.log4j.core.appender.rolling.RollingFileManager;
-import org.apache.logging.log4j.core.appender.rolling.RolloverStrategy;
-import org.apache.logging.log4j.core.appender.rolling.TriggeringPolicy;
-import org.apache.logging.log4j.core.config.Property;
-import org.apache.logging.log4j.core.config.plugins.Plugin;
-import org.apache.logging.log4j.core.config.plugins.PluginBuilderAttribute;
-import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
-import org.apache.logging.log4j.core.config.plugins.PluginElement;
-import org.apache.logging.log4j.core.config.plugins.validation.constraints.Required;
-import org.apache.logging.log4j.core.impl.Log4jLogEvent;
-import org.apache.logging.log4j.core.net.Advertiser;
-import org.apache.logging.log4j.message.SimpleMessage;
-import org.apache.logging.log4j.status.StatusLogger;
+import ch.qos.logback.classic.Level;
+import org.slf4j.Marker;
+import org.slf4j.event.KeyValuePair;
 
-@Plugin(name = "SymRollingFile", category = Core.CATEGORY_NAME, elementType = Appender.ELEMENT_TYPE, printObject = true)
-public class SymRollingFileAppender extends AbstractOutputStreamAppender<RollingFileManager> {
-    private String fileName;
-    private String filePattern;
-    private Object advertisement;
-    private final Advertiser advertiser;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
+import ch.qos.logback.classic.spi.LoggerContextVO;
+import ch.qos.logback.classic.spi.StackTraceElementProxy;
+import ch.qos.logback.core.rolling.RollingFileAppender;
+
+public class SymRollingFileAppender extends RollingFileAppender<ILoggingEvent> {
     private int historySize = 2048;
     private Map<String, String> loggedEventKeys;
-    private long lastFileTime;
 
-    private SymRollingFileAppender(final String name, final Layout<? extends Serializable> layout, final Filter filter,
-            final RollingFileManager manager, final String fileName, final String filePattern,
-            final boolean ignoreExceptions, final boolean immediateFlush, final Advertiser advertiser,
-            final Property[] properties) {
-        super(name, layout, filter, ignoreExceptions, immediateFlush, properties, manager);
-        if (advertiser != null) {
-            final Map<String, String> configuration = new HashMap<>(layout.getContentFormat());
-            configuration.put("contentType", layout.getContentType());
-            configuration.put("name", name);
-            advertisement = advertiser.advertise(configuration);
-        }
-        this.fileName = fileName;
-        this.filePattern = filePattern;
-        this.advertiser = advertiser;
-        this.loggedEventKeys = new LinkedHashMap<String, String>() {
+    @Override
+    public void start() {
+        loggedEventKeys = new LinkedHashMap<String, String>() {
             private static final long serialVersionUID = 1L;
 
             @Override
             protected boolean removeEldestEntry(Entry<String, String> eldest) {
-                return (size() >= historySize);
+                return size() >= historySize;
             }
         };
+        super.start();
     }
 
     @Override
-    public synchronized void append(LogEvent event) {
-        if (!isLoggerAtDebug(event)) {
+    public void rollover() {
+        loggedEventKeys.clear();
+        super.rollover();
+    }
+
+    @Override
+    protected void append(ILoggingEvent event) {
+        if (!isDebugOrBelow(event)) {
             String key = toKey(event);
             if (key != null) {
                 if (loggedEventKeys.containsKey(key)) {
-                    event = supressStackTrace(event, key);
+                    event = suppressStackTrace(event, key);
                 } else {
                     event = appendKey(event, key);
                     loggedEventKeys.put(key, null);
                 }
             }
         }
-        getManager().checkRollover(event);
-        if (getManager().getFileTime() != lastFileTime) {
-            loggedEventKeys.clear();
-            lastFileTime = getManager().getFileTime();
-        }
         super.append(event);
     }
 
-    private boolean isLoggerAtDebug(LogEvent event) {
-        if (event != null && event.getLevel() != null) {
-            return event.getLevel().intLevel() >= Level.DEBUG.intLevel();
-        }
-        return false;
+    private boolean isDebugOrBelow(ILoggingEvent event) {
+        return event != null && event.getLevel() != null && !event.getLevel().isGreaterOrEqual(Level.INFO);
     }
 
-    protected String toKey(LogEvent event) {
-        if (event.getThrown() == null || event.getThrown().getStackTrace() == null) {
+    protected String toKey(ILoggingEvent event) {
+        IThrowableProxy proxy = event.getThrowableProxy();
+        if (proxy == null || proxy.getStackTraceElementProxyArray() == null) {
             return null;
         }
         try {
+            String className = proxy.getClassName();
+            int periodIndex = className.lastIndexOf('.');
+            String simpleName = periodIndex >= 0 ? className.substring(periodIndex + 1) : className;
             StringBuilder buff = new StringBuilder(128);
-            Throwable throwable = event.getThrown();
-            buff.append(throwable.getClass().getSimpleName());
-            if (throwable.getStackTrace().length == 0) {
+            buff.append(simpleName);
+            if (proxy.getStackTraceElementProxyArray().length == 0) {
                 buff.append("-jvm-optimized");
             }
             buff.append(":");
-            buff.append(getThrowableHash(event.getThrown().getStackTrace(), event.getThrown().getMessage()));
+            buff.append(getThrowableHash(proxy.getStackTraceElementProxyArray(), proxy.getMessage()));
             return buff.toString();
         } catch (Exception ex) {
-            StatusLogger.getLogger().error("Failed to hash stack trace.", ex);
             return null;
         }
     }
 
-    protected long getThrowableHash(StackTraceElement[] elements, String message) throws UnsupportedEncodingException {
+    protected long getThrowableHash(StackTraceElementProxy[] elements, String message) {
         CRC32 crc = new CRC32();
         if (message != null) {
-            crc.update(message.getBytes("UTF8"));
+            crc.update(message.getBytes(StandardCharsets.UTF_8));
         }
-        for (StackTraceElement element : elements) {
-            crc.update((element.getClassName() + element.getMethodName() + element.getLineNumber()).getBytes("UTF8"));
+        for (StackTraceElementProxy element : elements) {
+            StackTraceElement stackTraceElement = element.getStackTraceElement();
+            crc.update((stackTraceElement.getClassName() + stackTraceElement.getMethodName()
+                    + stackTraceElement.getLineNumber()).getBytes(StandardCharsets.UTF_8));
         }
         return crc.getValue();
     }
 
-    protected LogEvent appendKey(LogEvent event, String key) {
-        String message = getMessageWithKey(event, key, ".init");
-        LogEvent eventClone = new Log4jLogEvent.Builder(event).setMessage(new SimpleMessage(message)).build();
-        return eventClone;
+    protected ILoggingEvent appendKey(ILoggingEvent event, String key) {
+        String message = buildMessageWithKey(event, key, ".init");
+        return new WrappedLoggingEvent(event) {
+            @Override
+            public String getFormattedMessage() {
+                return message;
+            }
+        };
     }
 
-    protected LogEvent supressStackTrace(LogEvent event, String key) {
-        String message = getMessageWithKey(event, key);
-        LogEvent eventClone = new Log4jLogEvent.Builder(event).setMessage(new SimpleMessage(message)).setThrown(null).build();
-        return eventClone;
+    protected ILoggingEvent suppressStackTrace(ILoggingEvent event, String key) {
+        String message = buildMessageWithKey(event, key, null);
+        return new WrappedLoggingEvent(event) {
+            @Override
+            public IThrowableProxy getThrowableProxy() {
+                return null;
+            }
+
+            @Override
+            public String getFormattedMessage() {
+                return message;
+            }
+        };
     }
 
-    protected String getMessageWithKey(LogEvent event, String key) {
-        return getMessageWithKey(event, key, null);
-    }
-
-    protected String getMessageWithKey(LogEvent event, String key, String prefix) {
+    protected String buildMessageWithKey(ILoggingEvent event, String key, String prefix) {
         StringBuilder buff = new StringBuilder(128);
-        if (event.getMessage() != null) {
-            buff.append(event.getMessage()).append(" ");
+        if (event.getFormattedMessage() != null) {
+            buff.append(event.getFormattedMessage()).append(" ");
         }
         buff.append("StackTraceKey");
         if (prefix != null) {
@@ -174,23 +151,6 @@ public class SymRollingFileAppender extends AbstractOutputStreamAppender<Rolling
         }
         buff.append(" [").append(key).append("]");
         return buff.toString();
-    }
-
-    @Override
-    public void start() {
-        super.start();
-        lastFileTime = getManager().getFileTime();
-    }
-
-    @Override
-    public boolean stop(final long timeout, final TimeUnit timeUnit) {
-        setStopping();
-        final boolean stopped = super.stop(timeout, timeUnit, false);
-        if (advertiser != null) {
-            advertiser.unadvertise(advertisement);
-        }
-        setStopped();
-        return stopped;
     }
 
     public int getHistorySize() {
@@ -201,206 +161,102 @@ public class SymRollingFileAppender extends AbstractOutputStreamAppender<Rolling
         this.historySize = historySize;
     }
 
-    public String getFileName() {
-        return fileName;
-    }
+    abstract static class WrappedLoggingEvent implements ILoggingEvent {
+        protected final ILoggingEvent delegate;
 
-    public String getFilePattern() {
-        return filePattern;
-    }
-
-    public <T extends TriggeringPolicy> T getTriggeringPolicy() {
-        return getManager().getTriggeringPolicy();
-    }
-
-    @PluginBuilderFactory
-    public static <B extends Builder<B>> B newBuilder() {
-        return new Builder<B>().asBuilder();
-    }
-
-    public static class Builder<B extends Builder<B>> extends AbstractOutputStreamAppender.Builder<B>
-            implements org.apache.logging.log4j.core.util.Builder<SymRollingFileAppender> {
-        @PluginBuilderAttribute
-        private String fileName;
-        @PluginBuilderAttribute
-        @Required
-        private String filePattern;
-        @PluginBuilderAttribute
-        private boolean append = true;
-        @PluginBuilderAttribute
-        private boolean locking;
-        @PluginElement("Policy")
-        @Required
-        private TriggeringPolicy policy;
-        @PluginElement("Strategy")
-        private RolloverStrategy strategy;
-        @PluginBuilderAttribute
-        private boolean advertise;
-        @PluginBuilderAttribute
-        private String advertiseUri;
-        @PluginBuilderAttribute
-        private boolean createOnDemand;
-        @PluginBuilderAttribute
-        private String filePermissions;
-        @PluginBuilderAttribute
-        private String fileOwner;
-        @PluginBuilderAttribute
-        private String fileGroup;
+        WrappedLoggingEvent(ILoggingEvent delegate) {
+            this.delegate = delegate;
+        }
 
         @Override
-        public SymRollingFileAppender build() {
-            final boolean isBufferedIo = isBufferedIo();
-            final int bufferSize = getBufferSize();
-            if (getName() == null) {
-                LOGGER.error("RollingFileAppender '{}': No name provided.", getName());
-                return null;
-            }
-            if (!isBufferedIo && bufferSize > 0) {
-                LOGGER.warn("RollingFileAppender '{}': The bufferSize is set to {} but bufferedIO is not true",
-                        getName(), bufferSize);
-            }
-            if (filePattern == null) {
-                LOGGER.error("RollingFileAppender '{}': No file name pattern provided.", getName());
-                return null;
-            }
-            if (policy == null) {
-                LOGGER.error("RollingFileAppender '{}': No TriggeringPolicy provided.", getName());
-                return null;
-            }
-            if (strategy == null) {
-                if (fileName != null) {
-                    strategy = DefaultRolloverStrategy.newBuilder()
-                            .withCompressionLevelStr(String.valueOf(Deflater.DEFAULT_COMPRESSION))
-                            .withConfig(getConfiguration()).build();
-                } else {
-                    strategy = DirectWriteRolloverStrategy.newBuilder()
-                            .withCompressionLevelStr(String.valueOf(Deflater.DEFAULT_COMPRESSION))
-                            .withConfig(getConfiguration()).build();
-                }
-            } else if (fileName == null && !(strategy instanceof DirectFileRolloverStrategy)) {
-                LOGGER.error("RollingFileAppender '{}': When no file name is provided a DirectFilenameRolloverStrategy must be configured",
-                        getName());
-                return null;
-            }
-            final Layout<? extends Serializable> layout = getOrCreateLayout();
-            final RollingFileManager manager = RollingFileManager.getFileManager(fileName, filePattern, append,
-                    isBufferedIo, policy, strategy, advertiseUri, layout, bufferSize, isImmediateFlush(),
-                    createOnDemand, filePermissions, fileOwner, fileGroup, getConfiguration());
-            if (manager == null) {
-                return null;
-            }
-            manager.initialize();
-            return new SymRollingFileAppender(getName(), layout, getFilter(), manager, fileName, filePattern,
-                    isIgnoreExceptions(), isImmediateFlush(), advertise ? getConfiguration().getAdvertiser() : null,
-                    getPropertyArray());
+        public String getThreadName() {
+            return delegate.getThreadName();
         }
 
-        public String getAdvertiseUri() {
-            return advertiseUri;
+        @Override
+        public Level getLevel() {
+            return delegate.getLevel();
         }
 
-        public String getFileName() {
-            return fileName;
+        @Override
+        public String getMessage() {
+            return delegate.getMessage();
         }
 
-        public boolean isAdvertise() {
-            return advertise;
+        @Override
+        public Object[] getArgumentArray() {
+            return delegate.getArgumentArray();
         }
 
-        public boolean isAppend() {
-            return append;
+        @Override
+        public String getFormattedMessage() {
+            return delegate.getFormattedMessage();
         }
 
-        public boolean isCreateOnDemand() {
-            return createOnDemand;
+        @Override
+        public String getLoggerName() {
+            return delegate.getLoggerName();
         }
 
-        public boolean isLocking() {
-            return locking;
+        @Override
+        public LoggerContextVO getLoggerContextVO() {
+            return delegate.getLoggerContextVO();
         }
 
-        public String getFilePermissions() {
-            return filePermissions;
+        @Override
+        public IThrowableProxy getThrowableProxy() {
+            return delegate.getThrowableProxy();
         }
 
-        public String getFileOwner() {
-            return fileOwner;
+        @Override
+        public StackTraceElement[] getCallerData() {
+            return delegate.getCallerData();
         }
 
-        public String getFileGroup() {
-            return fileGroup;
+        @Override
+        public boolean hasCallerData() {
+            return delegate.hasCallerData();
         }
 
-        public B withAdvertise(final boolean advertise) {
-            this.advertise = advertise;
-            return asBuilder();
+        @Override
+        public List<Marker> getMarkerList() {
+            return delegate.getMarkerList();
         }
 
-        public B withAdvertiseUri(final String advertiseUri) {
-            this.advertiseUri = advertiseUri;
-            return asBuilder();
+        @Override
+        public Map<String, String> getMDCPropertyMap() {
+            return delegate.getMDCPropertyMap();
         }
 
-        public B withAppend(final boolean append) {
-            this.append = append;
-            return asBuilder();
+        @Override
+        @SuppressWarnings("deprecation")
+        public Map<String, String> getMdc() {
+            return delegate.getMdc();
         }
 
-        public B withFileName(final String fileName) {
-            this.fileName = fileName;
-            return asBuilder();
+        @Override
+        public long getTimeStamp() {
+            return delegate.getTimeStamp();
         }
 
-        public B withCreateOnDemand(final boolean createOnDemand) {
-            this.createOnDemand = createOnDemand;
-            return asBuilder();
+        @Override
+        public int getNanoseconds() {
+            return delegate.getNanoseconds();
         }
 
-        public B withLocking(final boolean locking) {
-            this.locking = locking;
-            return asBuilder();
+        @Override
+        public long getSequenceNumber() {
+            return delegate.getSequenceNumber();
         }
 
-        public String getFilePattern() {
-            return filePattern;
+        @Override
+        public List<KeyValuePair> getKeyValuePairs() {
+            return delegate.getKeyValuePairs();
         }
 
-        public TriggeringPolicy getPolicy() {
-            return policy;
-        }
-
-        public RolloverStrategy getStrategy() {
-            return strategy;
-        }
-
-        public B withFilePattern(final String filePattern) {
-            this.filePattern = filePattern;
-            return asBuilder();
-        }
-
-        public B withPolicy(final TriggeringPolicy policy) {
-            this.policy = policy;
-            return asBuilder();
-        }
-
-        public B withStrategy(final RolloverStrategy strategy) {
-            this.strategy = strategy;
-            return asBuilder();
-        }
-
-        public B withFilePermissions(final String filePermissions) {
-            this.filePermissions = filePermissions;
-            return asBuilder();
-        }
-
-        public B withFileOwner(final String fileOwner) {
-            this.fileOwner = fileOwner;
-            return asBuilder();
-        }
-
-        public B withFileGroup(final String fileGroup) {
-            this.fileGroup = fileGroup;
-            return asBuilder();
+        @Override
+        public void prepareForDeferredProcessing() {
+            delegate.prepareForDeferredProcessing();
         }
     }
 }
