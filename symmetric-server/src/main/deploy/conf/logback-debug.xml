@@ -17,6 +17,7 @@
     </appender>
 
     <logger name="org.jumpmind" level="INFO" />
+    <logger name="com.jumpmind" level="INFO" />
     <logger name="org.jumpmind.symmetric" level="DEBUG" />
     <logger name="org.jumpmind.symmetric.io.data.writer" level="DEBUG" />
     <logger name="com.mangofactory.swagger.filters.AnnotatedParameterFilter" level="ERROR" />
