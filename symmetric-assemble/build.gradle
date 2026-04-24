@@ -130,11 +130,13 @@ task codeCoverageReport(type: JacocoReport) {
     dependsOn ':symmetric-util:processTestResources'
     dependsOn ':symmetric-wrapper:test'
     dependsOn ':test'
-    // Gather execution data from all subprojects (resolved lazily at execution time, after tests run).
-    // Uses rootDir.parentFile because subprojects are siblings of symmetric-assemble (includeFlat).
-    executionData fileTree(rootDir.parentFile) {
-        include "**/jacoco/test.exec"
-    }
+    // Gather execution data from all subprojects. The closure defers evaluation to execution time
+    // (after tests run), so .exists() correctly finds the .exec files produced by each test task.
+    executionData = files({
+        subprojects.collect { subproject ->
+            file("${subproject.buildDir}/jacoco/test.exec")
+        }.findAll { it.exists() }
+    })
     
     allprojects.each {
         sourceSets it.sourceSets.main
