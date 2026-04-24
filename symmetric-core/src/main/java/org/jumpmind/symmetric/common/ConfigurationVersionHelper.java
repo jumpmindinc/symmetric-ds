@@ -87,6 +87,10 @@ public class ConfigurationVersionHelper {
         return Version.isOlderThanVersion(targetNodeVersion, monitorVersion);
     }
 
+    public boolean isTargetNodeOlderThan(String version) {
+        return Version.isOlderThanVersion(targetNodeVersion, version);
+    }
+
     public void setTargetNode(Node targetNode) {
         targetNodeVersion = targetNode.getSymmetricVersion();
         isTargetNodePro = Strings.CS.equals(targetNode.getDeploymentType(), Constants.DEPLOYMENT_TYPE_PROFESSIONAL);
