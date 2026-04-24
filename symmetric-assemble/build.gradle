@@ -130,8 +130,9 @@ task codeCoverageReport(type: JacocoReport) {
     dependsOn ':symmetric-util:processTestResources'
     dependsOn ':symmetric-wrapper:test'
     dependsOn ':test'
-    // Gather execution data from all subprojects (resolved lazily at execution time, after tests run)
-    executionData fileTree(rootDir) {
+    // Gather execution data from all subprojects (resolved lazily at execution time, after tests run).
+    // Uses rootDir.parentFile because subprojects are siblings of symmetric-assemble (includeFlat).
+    executionData fileTree(rootDir.parentFile) {
         include "**/jacoco/test.exec"
     }
     
