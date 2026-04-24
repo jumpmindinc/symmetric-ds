@@ -31,7 +31,6 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.observability.metrics.EngineMetricsService;
 import org.jumpmind.symmetric.observability.metrics.TestMetricsManagerFactory;
 import org.jumpmind.symmetric.service.IParameterService;
-import org.jumpmind.symmetric.statistic.MockStatisticManager;
 import org.jumpmind.symmetric.transport.ConcurrentConnectionManager.Reservation;
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager.ReservationType;
 import org.junit.jupiter.api.Test;
@@ -42,7 +41,7 @@ public class ConcurrentConnectionManagerUnitTest {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
         when(engine.getEngineName()).thenReturn("test-engine");
         IParameterService parameterService = mock(IParameterService.class);
-        ConcurrentConnectionManager mgr = new ConcurrentConnectionManager(parameterService, new MockStatisticManager(), new EngineMetricsService(engine,
+        ConcurrentConnectionManager mgr = new ConcurrentConnectionManager(parameterService, new EngineMetricsService(engine,
                 TestMetricsManagerFactory.create(), false));
         Map<String, Reservation> reservations = new HashMap<String, Reservation>();
         String nodeId = "1";

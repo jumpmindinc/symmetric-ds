@@ -32,7 +32,6 @@ import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
 import org.jumpmind.symmetric.service.IParameterService;
-import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +49,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     private ISymDoubleGauge utilizationGauge;
 
     public ConcurrentConnectionManager(IParameterService parameterService,
-            IStatisticManager statisticManager, IEngineMetricsService metricsService) {
+            IEngineMetricsService metricsService) {
         this.parameterService = parameterService;
         registerMetrics(metricsService);
     }
