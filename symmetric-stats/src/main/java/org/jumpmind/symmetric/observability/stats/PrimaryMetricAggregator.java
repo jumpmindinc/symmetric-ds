@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.observability.stats;
 
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.IPrimaryMetricAggregator;
@@ -46,7 +47,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
     private final MetricsManager metricsManager;
     private final String hostname;
     private volatile boolean running;
-    private static volatile Thread thread;
+    private static final AtomicReference<Thread> thread = new AtomicReference<>();
 
     public PrimaryMetricAggregator(MetricsManager metricsManager, String hostname) {
         this.metricsManager = metricsManager;
@@ -54,22 +55,23 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
     }
 
     public synchronized boolean isRunning() {
-        Thread t = thread;
+        Thread t = thread.get();
         return t != null && t.isAlive();
     }
 
     @Override
     public synchronized void start() {
         if (isRunning()) {
-            log.debug("{} thread is already running, skipping start. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.getId());
+            log.debug("{} thread is already running, skipping start. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.get().getId());
             return;
         }
         log.debug("Starting {} thread... Hostname={}", AGGREGATOR_PROCESSING_THREAD, hostname);
         running = true;
-        thread = new Thread(this::run, AGGREGATOR_PROCESSING_THREAD);
-        thread.setDaemon(true);
-        thread.start();
-        log.info("Started {} thread. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.getId());
+        Thread t = new Thread(this::run, AGGREGATOR_PROCESSING_THREAD);
+        t.setDaemon(true);
+        thread.set(t);
+        t.start();
+        log.info("Started {} thread. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t.getId());
     }
 
     @Override
@@ -78,7 +80,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
             log.debug("{} thread was already stopped, skipping interrupt. Hostname={}", AGGREGATOR_PROCESSING_THREAD, hostname);
             return;
         }
-        Thread t = thread;
+        Thread t = thread.get();
         log.debug("Stopping {} thread... Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t != null ? t.getId() : -1);
         running = false;
         if (t != null) {

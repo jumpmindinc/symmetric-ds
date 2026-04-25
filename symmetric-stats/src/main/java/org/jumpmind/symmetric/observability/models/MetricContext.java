@@ -51,9 +51,14 @@ public record MetricContext(long contextId, List<MetricAttribute> attributes) im
      * Attributes beyond position 2 (0-indexed) are treated as absent.
      */
     public static int computeHash(List<MetricAttribute> attrs) {
-        String a1n = NA, a1v = NA, a2n = NA, a2v = NA, a3n = NA, a3v = NA;
+        String a1n = NA;
+        String a1v = NA;
+        String a2n = NA;
+        String a2v = NA;
+        String a3n = NA;
+        String a3v = NA;
         if (attrs != null) {
-            if (attrs.size() > 0) {
+            if (!attrs.isEmpty()) {
                 MetricAttribute a = attrs.get(0);
                 a1n = orNA(a.name());
                 a1v = orNA(a.value());

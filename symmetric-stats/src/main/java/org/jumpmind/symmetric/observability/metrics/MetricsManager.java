@@ -25,9 +25,9 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.DoubleSupplier;
 import java.util.function.LongSupplier;
-import java.util.function.Supplier;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -54,7 +54,7 @@ import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
  */
 public class MetricsManager {
     private static final Logger log = LoggerFactory.getLogger(MetricsManager.class);
-    private static volatile MetricsManager globalInstance;
+    private static final AtomicReference<MetricsManager> globalInstance = new AtomicReference<>();
     private OpenTelemetry openTelemetry;
     private final boolean isOtelSdkInternal;
     private final boolean isOtelPublishingEnabled;
@@ -104,19 +104,20 @@ public class MetricsManager {
     }
 
     public static MetricsManager getGlobalInstance() {
-        if (globalInstance != null) {
-            return globalInstance;
+        MetricsManager instance = globalInstance.get();
+        if (instance != null) {
+            return instance;
         }
         try {
             synchronized (MetricsManager.class) {
-                if (globalInstance == null) {
-                    globalInstance = new MetricsManager();
+                if (globalInstance.get() == null) {
+                    globalInstance.set(new MetricsManager());
                 }
             }
         } catch (Exception ex) {
             log.error("Failed to initialize MetricsManager! Double-check OpenTelemetry configuration.", ex);
         }
-        return globalInstance;
+        return globalInstance.get();
     }
 
     public synchronized HostMetricsService getHostMetricsService() {
@@ -156,11 +157,11 @@ public class MetricsManager {
      * returned handle is {@link AutoCloseable}; close it to unregister the callback.
      */
     public ObservableDoubleGauge createObservableGauge(String metricId, String description, String unitOfMeasurement,
-            Supplier<Double> valueSupplier) {
+            DoubleSupplier valueSupplier) {
         return otelMeter.gaugeBuilder(metricId)
                 .setDescription(description)
                 .setUnit(unitOfMeasurement)
-                .buildWithCallback(measurement -> measurement.record(valueSupplier.get()));
+                .buildWithCallback(measurement -> measurement.record(valueSupplier.getAsDouble()));
     }
 
     /**

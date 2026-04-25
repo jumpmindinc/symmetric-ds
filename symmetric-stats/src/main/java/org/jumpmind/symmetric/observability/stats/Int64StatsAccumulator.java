@@ -51,7 +51,7 @@ public class Int64StatsAccumulator extends AbstractStatsAccumulator {
 
     @Override
     public double getLastValueAsDouble() {
-        return lastValue;
+        return (double) lastValue;
     }
 
     /** Creates the successor window carrying {@code lastValue} forward at {@code long} precision — no {@code double} roundtrip. */

@@ -45,16 +45,6 @@ public class UpDownCounter extends AbstractCounterMetric implements IUpDownCount
     }
 
     @Override
-    public void add(long delta) {
-        super.add(delta);
-    }
-
-    @Override
-    public long getValue() {
-        return super.getValue();
-    }
-
-    @Override
     public void close() {
         if (otelHandle != null) {
             try {

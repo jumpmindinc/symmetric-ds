@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.observability.stats;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricSeriesInterquartileRange;
@@ -58,7 +57,7 @@ public class MetricSeriesSlidingWorkset {
      * Adds an interval directly to the workset, bypassing outlier detection. Intended for seed data for outlier detection from historical entries at startup.
      */
     public void seed(Collection<ISymIntervalStats> history) {
-        List<ISymIntervalStats> oldestLast = history.stream().sorted((a, b) -> b.compareTo(a)).limit(IQR_INTERVALS_MAX).collect(Collectors.toList());
+        List<ISymIntervalStats> oldestLast = history.stream().sorted((a, b) -> b.compareTo(a)).limit(IQR_INTERVALS_MAX).toList();
         intervals.addAll(oldestLast);
         while (intervals.size() > IQR_INTERVALS_MAX) {
             intervals.removeLast();
@@ -124,10 +123,7 @@ public class MetricSeriesSlidingWorkset {
             return true;
         }
         MetricSeriesInterquartileRange minsIqr = computePercentiles(sortedMins());
-        if (interval.getMin() < minsIqr.lowerOutlierFence() || interval.getMin() > minsIqr.upperOutlierFence()) {
-            return true;
-        }
-        return false;
+        return interval.getMin() < minsIqr.lowerOutlierFence() || interval.getMin() > minsIqr.upperOutlierFence();
     }
 
     /**

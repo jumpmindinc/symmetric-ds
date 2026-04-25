@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.observability.metrics;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
@@ -42,7 +43,7 @@ import io.opentelemetry.api.common.Attributes;
  */
 public class EngineMetricsService extends AbstractMetricsService implements IEngineMetricsService {
     private final ISymmetricEngine engine;
-    private volatile MetricsRepository repository; // The volatile is faster than synchronized(lock) and optimal for this "write-once, read-many" field.
+    private final AtomicReference<MetricsRepository> repository = new AtomicReference<>();
 
     public EngineMetricsService(ISymmetricEngine engine, MetricsManager metricsManager, boolean isOtelPublishingEnabled) {
         super(metricsManager, Attributes.of(AttributeKey.stringKey("engine.name"), engine.getEngineName()), isOtelPublishingEnabled);
@@ -92,7 +93,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                 log.warn("Failed to export completed intervals for metric={}", metric.getMetricId(), ex);
             }
         }
-        if (processedMetrics > 0 && !newlyCompleted.isEmpty() && repo != null) {
+        if (processedMetrics > 0 && !newlyCompleted.isEmpty()) {
             log.debug("Saving {} metric interval stats records...", newlyCompleted.size());
             repo.saveIntervals(newlyCompleted);
         }
@@ -118,19 +119,22 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     }
 
     private MetricsRepository getOrInitRepository() {
-        if (repository != null) {
-            return repository;
+        MetricsRepository repo = repository.get();
+        if (repo != null) {
+            return repo;
         }
         log.debug("About to create metrics repository object for engine {}", engine.getEngineName());
         synchronized (this) {
-            if (repository == null) {
-                repository = createMetricsRepository();
+            repo = repository.get();
+            if (repo == null) {
+                repo = createMetricsRepository();
                 initializeDefaultMetrics();
                 initializeDefaultContexts();
-                initializeStatsWorksetsForAllMetrics(repository);
+                initializeStatsWorksetsForAllMetrics(repo);
+                repository.set(repo);
             }
         }
-        return repository;
+        return repository.get();
     }
 
     /**
@@ -173,24 +177,28 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
         int metricsInitialized = 0;
         try {
             for (AbstractQueuedMetric metric : (java.util.Collection<AbstractQueuedMetric>) (java.util.Collection<?>) getAllMetrics()) {
-                try {
-                    MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.isEnabled());
-                    if (key.isEnabled()) {
-                        List<ISymIntervalStats> history = repo.loadRecentIntervalsForKeyFromDatabase(key);
-                        metric.seedWorkset(history);
-                        metricsInitialized++;
-                    } else {
-                        metric.close();
-                        log.warn("Metric was closed because it is not enabled in database. {}", key);
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to pre-warm workset for metric=" + metric.getMetricId(), e);
-                }
+                metricsInitialized += initWorksetForMetric(metric, repo);
             }
             log.debug("Initialized {} metrics in repository for engine {}", metricsInitialized, engine.getEngineName());
         } catch (Exception ex) {
             log.warn("Failed to initialize metrics repository with historical values for engine {}", engine.getEngineName(), ex);
         }
         return metricsInitialized;
+    }
+
+    private int initWorksetForMetric(AbstractQueuedMetric metric, MetricsRepository repo) {
+        try {
+            MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.isEnabled());
+            if (key.isEnabled()) {
+                List<ISymIntervalStats> history = repo.loadRecentIntervalsForKeyFromDatabase(key);
+                metric.seedWorkset(history);
+                return 1;
+            }
+            metric.close();
+            log.warn("Metric was closed because it is not enabled in database. {}", key);
+        } catch (Exception e) {
+            log.warn("Failed to pre-warm workset for metric=" + metric.getMetricId(), e);
+        }
+        return 0;
     }
 }

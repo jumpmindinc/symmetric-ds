@@ -87,7 +87,7 @@ public final class SymMetricConstants {
     public static final String METRIC_ID_TRIGGERS_REMOVED = OTEL_SCOPE + ".triggers.removed.count";
     public static final String METRIC_ID_TRIGGERS_REBUILT = OTEL_SCOPE + ".triggers.rebuilt.count";
     public static final String METRIC_ID_TRIGGERS_CREATED = OTEL_SCOPE + ".triggers.created.count";
-    public static final String[] DEFAULT_METRIC_IDS = {
+    protected static final String[] DEFAULT_METRIC_IDS = {
             METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS,
             METRIC_ID_SERVER_CONNECTIONS_UTILIZATION,
             METRIC_ID_DATA_ROUTED,

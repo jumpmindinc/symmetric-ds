@@ -45,16 +45,6 @@ public class SymDoubleGauge extends AbstractGaugeMetric implements ISymDoubleGau
     }
 
     @Override
-    public void setValue(double value) {
-        super.setValue(value);
-    }
-
-    @Override
-    public double getValue() {
-        return super.getValue();
-    }
-
-    @Override
     public void close() {
         if (otelHandle != null) {
             try {

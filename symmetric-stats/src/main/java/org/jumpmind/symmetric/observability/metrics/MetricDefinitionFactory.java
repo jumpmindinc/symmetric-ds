@@ -270,7 +270,6 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
         for (SymMetricDefinition def : registry.values()) {
             if (StringUtils.isBlank(def.id())) {
                 log.warn("Skipping metric definition with a blank id! {}", def);
-                continue;
             } else if (!channelScopedMetricIds.contains(def.id())) {
                 try {
                     switch (def.type()) {
@@ -300,20 +299,19 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             List<MetricAttribute> channelAttrs = List.of(new MetricAttribute(CHANNEL, channelId));
             for (String metricId : channelScopedMetricIds) {
                 SymMetricDefinition def = registry.get(metricId);
-                if (def == null) {
-                    continue;
-                }
-                try {
-                    switch (def.type()) {
-                        case COUNTER -> service.registerUpDownCounter(def, channelAttrs);
-                        case GAUGE -> service.registerGauge(def, channelAttrs);
-                        default -> {
-                            continue;
+                if (def != null) {
+                    try {
+                        switch (def.type()) {
+                            case COUNTER -> service.registerUpDownCounter(def, channelAttrs);
+                            case GAUGE -> service.registerGauge(def, channelAttrs);
+                            default -> {
+                                continue;
+                            }
                         }
+                        count++;
+                    } catch (Exception e) {
+                        log.warn("Failed to pre-register channel-scoped metric {} for channel {}", metricId, channelId, e);
                     }
-                    count++;
-                } catch (Exception e) {
-                    log.warn("Failed to pre-register channel-scoped metric {} for channel {}", metricId, channelId, e);
                 }
             }
         }

@@ -24,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -85,7 +84,7 @@ class MetricIntervalStatsTest {
         MetricIntervalStats late = interval(T_2023, T_2023 + 2 * D); // ends latest
         List<MetricIntervalStats> sorted = Stream.of(late, shorterSameEnd, early, longerSameEnd)
                 .sorted()
-                .collect(Collectors.toList());
+                .toList();
         assertEquals(early, sorted.get(0), "earliest end should be first");
         assertEquals(longerSameEnd, sorted.get(1), "longer interval should precede shorter when end times match");
         assertEquals(shorterSameEnd, sorted.get(2));

@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
 class MetricContextTest {
     @Test
     void undefined_isNegativeOne() {
-        assertEquals(-1L, MetricContext.UNDEFINED);
+        assertEquals(MetricContext.UNDEFINED, -1L);
     }
 
     @Test

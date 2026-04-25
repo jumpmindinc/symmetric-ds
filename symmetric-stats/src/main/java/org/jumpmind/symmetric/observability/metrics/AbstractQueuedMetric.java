@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
@@ -48,12 +49,12 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     protected final Attributes attributes;
     private final List<MetricAttribute> metricAttributes;
     private final MetricFactType factType;
-    private volatile ISymMetricContext context; // The volatile is faster than synchronized(lock) and optimal for this "write-once, read-many" field.
+    private final AtomicReference<ISymMetricContext> contextRef = new AtomicReference<>();
     protected volatile long lastModified = System.currentTimeMillis();
     protected volatile boolean isMetricEnabled = true;
     protected ObservationsQueue<ISymObservation> observations = new ObservationsQueue<>();
     protected IStatsAccumulator currentIntervalAccumulator;
-    protected final Object accumulatorLock = "accumulatorLock";
+    protected final Object accumulatorLock = new Object();
     protected MetricIntervalStatsQueue completedIntervals = new MetricIntervalStatsQueue();
     protected MetricSeriesSlidingWorkset workset = new MetricSeriesSlidingWorkset();
 
@@ -72,14 +73,12 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
 
     @Override
     public ISymMetricContext getContext() {
-        return context;
+        return contextRef.get();
     }
 
     @Override
     public void setContext(ISymMetricContext context) {
-        if (this.context == null) {
-            this.context = context;
-        }
+        contextRef.compareAndSet(null, context);
     }
 
     @Override
