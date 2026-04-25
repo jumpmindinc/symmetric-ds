@@ -96,15 +96,12 @@ public abstract class AbstractStatsAccumulator implements IStatsAccumulator {
     /** Updates min, max, and lastValue from {@code value}. Subclass casts to its native precision before storing. */
     protected abstract void updateMinMaxAndLastValue(double value);
 
-    protected abstract double getMinAsDouble();
-
-    protected abstract double getMaxAsDouble();
-
     @Override
     public long closeAtObservation(long epochTimestamp) {
-        if (epochTimestamp > this.intervalEnd)
+        if (epochTimestamp > this.intervalEnd) {
             throw new IllegalArgumentException(String.format("Observation occurs after this interval ends! timestamp=%d, end=%d", epochTimestamp,
                     this.intervalEnd));
+        }
         long delta = epochTimestamp - lastTimestamp;
         if (delta > 0) {
             totalWeightMs += delta;
@@ -132,7 +129,8 @@ public abstract class AbstractStatsAccumulator implements IStatsAccumulator {
         return lastTimestamp;
     }
 
-    protected double computeAvg() {
+    @Override
+    public double computeAvg() {
         return totalWeightMs > 0 ? weightedSum / totalWeightMs : getLastValueAsDouble();
     }
 

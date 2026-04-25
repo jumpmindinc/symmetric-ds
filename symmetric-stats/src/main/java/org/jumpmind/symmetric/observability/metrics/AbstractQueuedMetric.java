@@ -255,8 +255,8 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
         synchronized (accumulatorLock) {
             if (currentIntervalAccumulator != null && currentIntervalAccumulator.getIntervalEnd() <= epochMillis) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Closing previous interval and creating new one. MetricId={}, interval.start={}",
-                            getMetricId(), currentIntervalAccumulator.getIntervalStart());
+                    log.debug("Closing previous interval and creating new one. MetricId={}, interval.start={}, average={}",
+                            getMetricId(), currentIntervalAccumulator.getIntervalStart(), currentIntervalAccumulator.computeAvg());
                 }
                 closeAccumulatorAndOpenNewOne();
             }

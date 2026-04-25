@@ -44,6 +44,12 @@ public interface IStatsAccumulator {
 
     double getLastValueAsDouble();
 
+    double getMinAsDouble();
+
+    double getMaxAsDouble();
+
+    double computeAvg();
+
     /**
      * Creates a new accumulator of the same concrete type, carrying this accumulator's last value forward. The new accumulator covers the next time window.
      */

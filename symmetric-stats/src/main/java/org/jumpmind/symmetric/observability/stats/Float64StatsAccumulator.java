@@ -65,12 +65,12 @@ public class Float64StatsAccumulator extends AbstractStatsAccumulator {
     }
 
     @Override
-    protected double getMinAsDouble() {
+    public double getMinAsDouble() {
         return min;
     }
 
     @Override
-    protected double getMaxAsDouble() {
+    public double getMaxAsDouble() {
         return max;
     }
 }
