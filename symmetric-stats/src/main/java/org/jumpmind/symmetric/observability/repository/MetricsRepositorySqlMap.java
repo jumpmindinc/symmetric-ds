@@ -54,7 +54,7 @@ public class MetricsRepositorySqlMap extends AbstractSqlMap {
             " WHERE metric_key = ? AND interval_start_time >= ?" +
             " ORDER BY interval_start_time");
 
-        putSql("insertMetricIntervalSql",
+        putSql("insertMetricIntervalFloat64Sql",
             "INSERT INTO $(metric_stats_float64)" +
             " (metric_key, context_id, interval_start_time, duration_seconds, interval_end_millis, observation_count, min, max, avg, mean, std_dev, outlier)" +
             " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");

@@ -223,7 +223,9 @@ public class MetricsRepository extends AbstractService {
             boolean isEnabled) {
         String keyInfo = String.format(" metricId=%s, engine=%s, hostname=%s, factType=%s", metricId, engineName, hostname, factType);
         long surrogateKeyBufferSize = SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
-        log.debug("Saving metric key and determining new surrogate key ... {}", keyInfo);
+        if(log.isTraceEnabled()) {
+            log.trace("Saving metric key and determining new surrogate key ... {}", keyInfo);
+        }
         for (int attempt = 1; attempt <= SURROGATE_KEY_MAX_RETRIES; attempt++) {
             ISqlTransaction transaction = null;
             Object[] statementParams = { surrogateKeyBufferSize, surrogateKeyBufferSize, surrogateKeyBufferSize, metricId, engineName, hostname, factType
@@ -277,7 +279,9 @@ public class MetricsRepository extends AbstractService {
             transaction = sqlTemplate.startSqlTransaction();
             transaction.prepareAndExecute(getSql("insertMetricKeySql"), statementParams, statementTypes);
             transaction.commit();
-            log.debug("Saved metric key {}", key);
+            if(log.isDebugEnabled()) {
+                log.debug("Saved metric key {}", key);
+            }
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
@@ -295,7 +299,7 @@ public class MetricsRepository extends AbstractService {
         String keyInfo = String.format(" metricKey=%d, metricId=%s, engine=%s, hostname=%s, factType=%s",
                 dbRecord.key(), dbRecord.metricId(), dbRecord.engineName(), dbRecord.hostname(), dbRecord.factType());
         if (key.isSurrogateKeyMissing() || key.equals(dbRecord)) {
-            log.debug("Database record already has surrogate key assigned! DB entry for metric key:{}, Current surrogateKey={}", keyInfo, key.key());
+            log.debug("Database record already has surrogate key assigned. DB entry for metric key:{}, Current surrogateKey={}", keyInfo, key.key());
             return dbRecord;
         }
         log.debug("Updating metric key... {}, new surrogateKey={}", keyInfo, key.key());
@@ -691,19 +695,20 @@ public class MetricsRepository extends AbstractService {
             log.error(message);
             throw new MetricsRepositoryException(message);
         }
-        log.debug("Saving metric interval stats for key... {}", key);
+        if (log.isTraceEnabled()) {
+            log.trace("Saving metric interval stats for key... {}", key);
+        }
         if (key.factType() == MetricFactType.INT64) {
             saveMetricIntervalInt64(transaction, key, contextId, intervalStats);
         } else {
             saveMetricIntervalFloat64(transaction, key, contextId, intervalStats);
         }
-        log.debug("Queued metric interval stats for {}, Interval.start={}", key, intervalStats.getStartEpoch());
     }
 
     private void saveMetricIntervalInt64(ISqlTransaction transaction, MetricKey key, long contextId, ISymIntervalStats intervalStats) {
         long durationSeconds = (intervalStats.getEndEpoch() - intervalStats.getStartEpoch()) / 1000;
         java.sql.Timestamp intervalStartTime = new java.sql.Timestamp(intervalStats.getStartEpoch());
-        Object[] params = new Object[] {
+        Object[] paramsInsertIntervalStats = new Object[] {
                 key.key(), contextId,
                 intervalStartTime, durationSeconds, intervalStats.getEndEpoch(),
                 intervalStats.getObservationCount(),
@@ -719,13 +724,13 @@ public class MetricsRepository extends AbstractService {
                 Types.BIGINT, Types.BIGINT,
                 Types.DOUBLE,
                 Types.SMALLINT };
-        executeIntervalInsert(transaction, key, "insertMetricIntervalInt64Sql", params, types);
+        executeIntervalInsert(transaction, key, "insertMetricIntervalInt64Sql", paramsInsertIntervalStats, types);
     }
 
     private void saveMetricIntervalFloat64(ISqlTransaction transaction, MetricKey key, long contextId, ISymIntervalStats intervalStats) {
         long durationSeconds = (intervalStats.getEndEpoch() - intervalStats.getStartEpoch()) / 1000;
         java.sql.Timestamp intervalStartTime = new java.sql.Timestamp(intervalStats.getStartEpoch());
-        Object[] params = new Object[] {
+        Object[] paramsInsertIntervalStats = new Object[] {
                 key.key(), contextId,
                 intervalStartTime, durationSeconds, intervalStats.getEndEpoch(),
                 intervalStats.getObservationCount(),
@@ -741,12 +746,13 @@ public class MetricsRepository extends AbstractService {
                 Types.DOUBLE, Types.DOUBLE,
                 Types.DOUBLE,
                 Types.SMALLINT };
-        executeIntervalInsert(transaction, key, "insertMetricIntervalSql", params, types);
+        executeIntervalInsert(transaction, key, "insertMetricIntervalFloat64Sql", paramsInsertIntervalStats, types);
     }
 
-    private void executeIntervalInsert(ISqlTransaction transaction, MetricKey key, String sqlKey, Object[] params, int[] types) {
+    private void executeIntervalInsert(ISqlTransaction transaction, MetricKey key, String sqlKey, Object[] paramsInsertIntervalStats, int[] types) {
         try {
-            transaction.prepareAndExecute(getSql(sqlKey), params, types);
+            transaction.prepareAndExecute(getSql(sqlKey), paramsInsertIntervalStats, types);
+            log.trace("Saved metric interval stats for {}, Context.id={}, Interval.start={}", key, paramsInsertIntervalStats[1], paramsInsertIntervalStats[2]);
         } catch (Exception e) {
             String message = "Failed to save metric interval stats for " + key;
             log.error(message, e);
