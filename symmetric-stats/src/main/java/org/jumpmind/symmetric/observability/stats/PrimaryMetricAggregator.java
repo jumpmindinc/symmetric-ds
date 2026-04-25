@@ -42,7 +42,7 @@ import org.slf4j.MDC;
 public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
     private static final Logger log = LoggerFactory.getLogger(PrimaryMetricAggregator.class);
     static final int MAX_HISTORY_INTERVALS = 12;
-    static final long PROCESSING_INTERVAL_10SEC = 10000L;
+    static final long AGGREGATOR_PROCESSING_INTERVAL_MS = AbstractStatsAccumulator.INTERVAL_DURATION_MS / 3;
     static final String AGGREGATOR_PROCESSING_THREAD = "metrics-primary-aggregator";
     private final MetricsManager metricsManager;
     private final String hostname;
@@ -89,22 +89,32 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
         }
     }
 
+    /**
+     * Main processing loop for all metrics (from processing raw observations and to saving statistics (per metric-context-engine-host). Sleeps until the next
+     * 20-second iteration estimate. An external {@link InterruptedException} causes an immediate exit without final processing.
+     */
     private void run() {
+        long iterationTargetStart = 0;
         while (running && !Thread.currentThread().isInterrupted()) {
+            long remainingMs = iterationTargetStart - System.currentTimeMillis();
+            iterationTargetStart = System.currentTimeMillis() + AGGREGATOR_PROCESSING_INTERVAL_MS;
             try {
+                if (remainingMs > 0) {
+                    log.trace("Sleeping {} thread for {} milliseconds. ThreadId={} ....", remainingMs, AGGREGATOR_PROCESSING_THREAD);
+                    Thread.sleep(remainingMs);
+                }
                 processAll();
-                Thread.sleep(PROCESSING_INTERVAL_10SEC);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 log.warn("Thread interrupted " + AGGREGATOR_PROCESSING_THREAD, e);
-                closeAll();
-                return; // Interruptions require immediate exit, without draining pending observations!
+                closeAll(); // Interruptions require immediate exit, without delay from processing observations!
+                return;
             } catch (Exception e) {
                 log.error("Error during metrics processing", e);
             }
         }
-        processAll(); // final drain before exit
-        closeAll(); // close all open accumulators before exit
+        processAll(); // Final processing before exit
+        closeAll(); // Close all open accumulators and metrics before exit
         log.info("Exited metrics processing gracefully.");
     }
 
