@@ -128,10 +128,10 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             repo = repository.get();
             if (repo == null) {
                 repo = createMetricsRepository();
+                repository.set(repo);
                 initializeDefaultMetrics();
                 initializeDefaultContexts();
                 initializeStatsWorksetsForAllMetrics(repo);
-                repository.set(repo);
             }
         }
         return repository.get();
