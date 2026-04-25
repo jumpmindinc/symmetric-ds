@@ -153,8 +153,8 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
         }
         List<ISymObservation> removed = retrieveAndSwapForNewQueue();
         lastModified = System.currentTimeMillis();
-        if (log.isDebugEnabled()) {
-            log.debug("Removed {} observations from the queue. MetricId={}", removed.size(), getMetricId());
+        if (log.isTraceEnabled()) {
+            log.trace("Removed {} observations from the queue. MetricId={}", removed.size(), getMetricId());
         }
         return removed;
     }

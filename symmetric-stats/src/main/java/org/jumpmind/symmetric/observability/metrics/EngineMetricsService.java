@@ -94,7 +94,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             }
         }
         if (processedMetrics > 0 && !newlyCompleted.isEmpty()) {
-            log.debug("Saving {} metric interval stats records...", newlyCompleted.size());
+            log.trace("Saving {} metric interval stats records for {} metrics ...", newlyCompleted.size(), processedMetrics);
             repo.saveIntervals(newlyCompleted);
         }
         log.debug("Saved {} completed interval stats records for {} metrics (in specific context).", newlyCompleted.size(), processedMetrics);
