@@ -741,7 +741,7 @@ public class MetricsRepository extends AbstractService {
                 Types.DOUBLE, Types.DOUBLE,
                 Types.DOUBLE,
                 Types.SMALLINT };
-        executeIntervalInsert(transaction, key, "insertMetricIntervalSql", params, types);
+        executeIntervalInsert(transaction, key, "insertMetricIntervalFloat64Sql", params, types);
     }
 
     private void executeIntervalInsert(ISqlTransaction transaction, MetricKey key, String sqlKey, Object[] params, int[] types) {
