@@ -204,8 +204,8 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
             }
             if (currentIntervalAccumulator.isInScope(timeWindowStart)) {
                 currentIntervalAccumulator.addObservation(observation);
-                if (log.isDebugEnabled()) {
-                    log.debug("Processed new observation. value={}, timestamp={}, MetricId={}, current.interval.start={}",
+                if (log.isTraceEnabled()) {
+                    log.trace("Processed new observation. value={}, timestamp={}, MetricId={}, current.interval.start={}",
                             observation.getValueAsDouble(), observation.getTimestamp(), getMetricId(), currentIntervalAccumulator.getIntervalStart());
                 }
                 return 1;
