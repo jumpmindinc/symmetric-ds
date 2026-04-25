@@ -632,8 +632,24 @@ public class MetricsRepository extends AbstractService {
     }
 
     private void saveMetricIntervalStatsAll(List<MetricIntervalStatsRecord> records) {
-        for (MetricIntervalStatsRecord record : records) {
-            saveMetricIntervalStatsInternal(record.key(), record.contextId(), record.stats());
+        if (records.isEmpty()) {
+            return;
+        }
+        ISqlTransaction transaction = null;
+        try {
+            transaction = sqlTemplate.startSqlTransaction();
+            for (MetricIntervalStatsRecord record : records) {
+                saveMetricIntervalStatsInternal(transaction, record.key(), record.contextId(), record.stats());
+            }
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            log.error("Failed to save {} metric interval stats records", records.size(), e);
+            throw new MetricsRepositoryException("Failed to save metric interval stats batch of " + records.size(), e);
+        } finally {
+            close(transaction);
         }
     }
 
@@ -661,7 +677,7 @@ public class MetricsRepository extends AbstractService {
         return rows;
     }
 
-    private void saveMetricIntervalStatsInternal(MetricKey key, long contextId, ISymIntervalStats intervalStats) {
+    private void saveMetricIntervalStatsInternal(ISqlTransaction transaction, MetricKey key, long contextId, ISymIntervalStats intervalStats) {
         if (key == null) {
             String message = "key cannot be null!";
             log.error(message);
@@ -673,64 +689,66 @@ public class MetricsRepository extends AbstractService {
             throw new MetricsRepositoryException(message);
         }
         log.debug("Saving metric interval stats for key... {}", key);
-        ISqlTransaction transaction = null;
-        String sqlKey;
-        Object[] statementParams;
-        int[] statementTypes;
+        if (key.factType() == MetricFactType.INT64) {
+            saveMetricIntervalInt64(transaction, key, contextId, intervalStats);
+        } else {
+            saveMetricIntervalFloat64(transaction, key, contextId, intervalStats);
+        }
+        log.debug("Queued metric interval stats for {}, Interval.start={}", key, intervalStats.getStartEpoch());
+    }
+
+    private void saveMetricIntervalInt64(ISqlTransaction transaction, MetricKey key, long contextId, ISymIntervalStats intervalStats) {
         long durationSeconds = (intervalStats.getEndEpoch() - intervalStats.getStartEpoch()) / 1000;
         java.sql.Timestamp intervalStartTime = new java.sql.Timestamp(intervalStats.getStartEpoch());
-        if (key.factType() == MetricFactType.INT64) {
-            sqlKey = "insertMetricIntervalInt64Sql";
-            statementParams = new Object[] {
-                    key.key(), contextId,
-                    intervalStartTime, durationSeconds, intervalStats.getEndEpoch(),
-                    intervalStats.getObservationCount(),
-                    (long) intervalStats.getMin(), (long) intervalStats.max(),
-                    (long) intervalStats.getAvg(), (long) intervalStats.mean(),
-                    intervalStats.getStdDeviation(),
-                    intervalStats.isOutlier() ? 1 : 0 };
-            statementTypes = new int[] {
-                    Types.BIGINT, Types.BIGINT,
-                    Types.TIMESTAMP, Types.INTEGER, Types.BIGINT,
-                    Types.INTEGER,
-                    Types.BIGINT, Types.BIGINT,
-                    Types.BIGINT, Types.BIGINT,
-                    Types.DOUBLE,
-                    Types.SMALLINT };
-        } else {
-            sqlKey = "insertMetricIntervalSql";
-            statementParams = new Object[] {
-                    key.key(), contextId,
-                    intervalStartTime, durationSeconds, intervalStats.getEndEpoch(),
-                    intervalStats.getObservationCount(),
-                    intervalStats.getMin(), intervalStats.max(),
-                    intervalStats.getAvg(), intervalStats.mean(),
-                    intervalStats.getStdDeviation(),
-                    intervalStats.isOutlier() ? 1 : 0 };
-            statementTypes = new int[] {
-                    Types.BIGINT, Types.BIGINT,
-                    Types.TIMESTAMP, Types.INTEGER, Types.BIGINT,
-                    Types.INTEGER,
-                    Types.DOUBLE, Types.DOUBLE,
-                    Types.DOUBLE, Types.DOUBLE,
-                    Types.DOUBLE,
-                    Types.SMALLINT };
-        }
+        Object[] params = new Object[] {
+                key.key(), contextId,
+                intervalStartTime, durationSeconds, intervalStats.getEndEpoch(),
+                intervalStats.getObservationCount(),
+                (long) intervalStats.getMin(), (long) intervalStats.max(),
+                (long) intervalStats.getAvg(), (long) intervalStats.mean(),
+                intervalStats.getStdDeviation(),
+                intervalStats.isOutlier() ? 1 : 0 };
+        int[] types = new int[] {
+                Types.BIGINT, Types.BIGINT,
+                Types.TIMESTAMP, Types.INTEGER, Types.BIGINT,
+                Types.INTEGER,
+                Types.BIGINT, Types.BIGINT,
+                Types.BIGINT, Types.BIGINT,
+                Types.DOUBLE,
+                Types.SMALLINT };
+        executeIntervalInsert(transaction, key, "insertMetricIntervalInt64Sql", params, types);
+    }
+
+    private void saveMetricIntervalFloat64(ISqlTransaction transaction, MetricKey key, long contextId, ISymIntervalStats intervalStats) {
+        long durationSeconds = (intervalStats.getEndEpoch() - intervalStats.getStartEpoch()) / 1000;
+        java.sql.Timestamp intervalStartTime = new java.sql.Timestamp(intervalStats.getStartEpoch());
+        Object[] params = new Object[] {
+                key.key(), contextId,
+                intervalStartTime, durationSeconds, intervalStats.getEndEpoch(),
+                intervalStats.getObservationCount(),
+                intervalStats.getMin(), intervalStats.max(),
+                intervalStats.getAvg(), intervalStats.mean(),
+                intervalStats.getStdDeviation(),
+                intervalStats.isOutlier() ? 1 : 0 };
+        int[] types = new int[] {
+                Types.BIGINT, Types.BIGINT,
+                Types.TIMESTAMP, Types.INTEGER, Types.BIGINT,
+                Types.INTEGER,
+                Types.DOUBLE, Types.DOUBLE,
+                Types.DOUBLE, Types.DOUBLE,
+                Types.DOUBLE,
+                Types.SMALLINT };
+        executeIntervalInsert(transaction, key, "insertMetricIntervalSql", params, types);
+    }
+
+    private void executeIntervalInsert(ISqlTransaction transaction, MetricKey key, String sqlKey, Object[] params, int[] types) {
         try {
-            transaction = sqlTemplate.startSqlTransaction();
-            transaction.prepareAndExecute(getSql(sqlKey), statementParams, statementTypes);
-            transaction.commit();
+            transaction.prepareAndExecute(getSql(sqlKey), params, types);
         } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
-            }
             String message = "Failed to save metric interval stats for " + key;
             log.error(message, e);
             throw new MetricsRepositoryException(message, e);
-        } finally {
-            close(transaction);
         }
-        log.info("Saved metric interval stats for {}, Interval.start={}", key, intervalStats.getStartEpoch());
     }
 
     private MetricKey saveMetricKeyInternal(MetricKey metricKeyRec) {
