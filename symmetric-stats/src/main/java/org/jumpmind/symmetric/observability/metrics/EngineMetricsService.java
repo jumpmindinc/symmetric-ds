@@ -130,7 +130,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                 repo = createMetricsRepository();
                 repository.set(repo);
                 initializeDefaultMetrics();
-                initializeDefaultContexts();
+                initializeDefaultContexts(repo);
                 initializeStatsWorksetsForAllMetrics(repo);
             }
         }
@@ -155,8 +155,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     /**
      * Initializes default metrics, to have consistent IDs for default context entries across all installations.
      */
-    protected void initializeDefaultContexts() {
-        MetricsRepository repo = getOrInitRepository();
+    protected void initializeDefaultContexts(MetricsRepository repo) {
         List<ContextDefinition> defs = metricsManager.getMetricDefinitionFactory().getDefaultContexts();
         int count = 0;
         for (ContextDefinition def : defs) {
