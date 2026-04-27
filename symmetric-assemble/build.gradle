@@ -98,6 +98,7 @@ jacoco {
 }
 
 task codeCoverageReport(type: JacocoReport) {
+<<<<<<< HEAD
 	dependsOn ':symmetric-client:compileTestJava'
 	dependsOn ':symmetric-client:integrationTest'
 	dependsOn ':symmetric-client:test'
@@ -147,6 +148,48 @@ task codeCoverageReport(type: JacocoReport) {
     }.findAll { it.exists() }
 	)
 	
+=======
+    dependsOn ':symmetric-client:compileTestJava'
+    dependsOn ':symmetric-client:test'
+    dependsOn ':symmetric-client:jacocoTestReport'
+    dependsOn ':symmetric-client:processTestResources'
+    dependsOn ':symmetric-core:compileTestJava'
+    dependsOn ':symmetric-core:test'
+    dependsOn ':symmetric-core:jacocoTestReport'
+    dependsOn ':symmetric-core:processTestResources'
+    dependsOn ':symmetric-csv:test'
+    dependsOn ':symmetric-db:compileTestJava'
+    dependsOn ':symmetric-db:test'
+    dependsOn ':symmetric-db:jacocoTestReport'
+    dependsOn ':symmetric-db:processTestResources'
+    dependsOn ':symmetric-io:compileTestJava'
+    dependsOn ':symmetric-io:test'
+    dependsOn ':symmetric-io:jacocoTestReport'
+    dependsOn ':symmetric-io:processTestResources'
+    dependsOn ':symmetric-jdbc:compileTestJava'
+    dependsOn ':symmetric-jdbc:test'
+    dependsOn ':symmetric-jdbc:jacocoTestReport'
+    dependsOn ':symmetric-jdbc:processTestResources'
+    dependsOn ':symmetric-server:compileTestJava'
+    dependsOn ':symmetric-server:test'
+    dependsOn ':symmetric-server:jacocoTestReport'
+    dependsOn ':symmetric-server:processTestResources'
+    dependsOn ':symmetric-sqlexplorer:test'
+    dependsOn ':symmetric-util:compileTestJava'
+    dependsOn ':symmetric-util:test'
+    dependsOn ':symmetric-util:jacocoTestReport'
+    dependsOn ':symmetric-util:processTestResources'
+    dependsOn ':symmetric-wrapper:test'
+    dependsOn ':test'
+    // Gather execution data from all subprojects. The closure defers evaluation to execution time
+    // (after tests run), so .exists() correctly finds the .exec files produced by each test task.
+    executionData = files({
+        subprojects.collect { subproject ->
+            file("${subproject.buildDir}/jacoco/test.exec")
+        }.findAll { it.exists() }
+    })
+    
+>>>>>>> 1bf952489 (SYM-7540: lazily read files after the other tasks run. (#746))
     allprojects.each {
         sourceSets it.sourceSets.main
     }
