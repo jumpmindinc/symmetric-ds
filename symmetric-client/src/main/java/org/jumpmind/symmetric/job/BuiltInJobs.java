@@ -48,6 +48,7 @@ public class BuiltInJobs {
         builtInJobs.add(new OutgoingPurgeJob(engine, taskScheduler));
         builtInJobs.add(new IncomingPurgeJob(engine, taskScheduler));
         builtInJobs.add(new StatisticFlushJob(engine, taskScheduler));
+        builtInJobs.add(new PurgeMetricStatsJob(engine, taskScheduler));
         builtInJobs.add(new SyncTriggersJob(engine, taskScheduler));
         builtInJobs.add(new HeartbeatJob(engine, taskScheduler));
         builtInJobs.add(new WatchdogJob(engine, taskScheduler));

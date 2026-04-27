@@ -34,6 +34,7 @@ public class ClusterConstants {
     public static final String PURGE_OUTGOING = "Purge Outgoing";
     public static final String PURGE_INCOMING = "Purge Incoming";
     public static final String PURGE_STATISTICS = "Purge Statistics";
+    public static final String PURGE_METRIC_STATS = "Purge Metric Stats";
     public static final String REPORT_STATUS = "Report Status";
     public static final String PURGE_DATA_GAPS = "Purge Data Gaps";
     public static final String HEARTBEAT = "Heartbeat";

@@ -83,6 +83,17 @@ public class MetricsRepositorySqlMap extends AbstractSqlMap {
         putSql("selectMetricContextByHashSql",
             "SELECT context_id, attributes_hash, attr1_name, attr1_value, attr2_name, attr2_value, attr3_name, attr3_value" +
             " FROM $(metric_context) WHERE attributes_hash = ?");
+
+        putSql("purgeMetricStatsFloat64Sql",
+            "delete from $(metric_stats_float64) where interval_start_time < ?");
+
+        putSql("purgeMetricStatsInt64Sql",
+            "delete from $(metric_stats_int64) where interval_start_time < ?");
+
+        putSql("purgeOrphanedMetricContextsSql",
+            "delete from $(metric_context) where context_id not in" +
+            " (select context_id from $(metric_stats_float64)" +
+            "  union select context_id from $(metric_stats_int64))");
         // @formatter:on
     }
 }

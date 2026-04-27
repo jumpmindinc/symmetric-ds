@@ -62,4 +62,10 @@ public interface IEngineMetricsService extends IMetricsService {
      * Drains all completed intervals from this metric's queue into permanent storage (database).
      */
     void saveCompletedIntervalStats();
+
+    /**
+     * Deletes metric interval stats older than the configured retention period and removes any metric_context rows that are no longer referenced by any
+     * remaining stats rows.
+     */
+    void purgeMetricStats(boolean force);
 }

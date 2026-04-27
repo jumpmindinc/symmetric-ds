@@ -764,6 +764,26 @@ public class MetricsRepository extends AbstractService {
         return saveMetricKeyToDatabase(metricKeyRec);
     }
 
+    public int purgeIntervalStats(java.util.Date cutoff) {
+        int count = 0;
+        try {
+            count += sqlTemplate.update(getSql("purgeMetricStatsFloat64Sql"), cutoff);
+        } catch (Exception e) {
+            log.warn("Failed to purge metric_stats_float64", e);
+        }
+        try {
+            count += sqlTemplate.update(getSql("purgeMetricStatsInt64Sql"), cutoff);
+        } catch (Exception e) {
+            log.warn("Failed to purge metric_stats_int64", e);
+        }
+        try {
+            count += sqlTemplate.update(getSql("purgeOrphanedMetricContextsSql"));
+        } catch (Exception e) {
+            log.warn("Failed to purge orphaned metric_context rows", e);
+        }
+        return count;
+    }
+
     static class MetricKeySqlRowMapper implements ISqlRowMapper<MetricKey> {
         @Override
         public MetricKey mapRow(Row row) {

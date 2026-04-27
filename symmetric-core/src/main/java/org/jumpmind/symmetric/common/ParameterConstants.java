@@ -312,6 +312,7 @@ final public class ParameterConstants {
     public static final String PURGE_EXTRACT_REQUESTS_RETENTION_MINUTES = "purge.extract.request.retention.minutes";
     public static final String PURGE_REGISTRATION_REQUEST_RETENTION_MINUTES = "purge.registration.request.retention.minutes";
     public static final String PURGE_STATS_RETENTION_MINUTES = "purge.stats.retention.minutes";
+    public static final String PURGE_METRIC_STATS_RETENTION_MINUTES = "purge.metric.stats.retention.minutes";
     public static final String PURGE_TRIGGER_HIST_RETENTION_MINUTES = "purge.trigger.hist.retention.minutes";
     public static final String PURGE_EXPIRED_DATA_GAP_RETENTION_MINUTES = "purge.expired.data.gap.retention.minutes";
     public static final String PURGE_STRANDED_DATA_RECAPTURE_ENABLED = "job.purge.recapture.stranded.data";
