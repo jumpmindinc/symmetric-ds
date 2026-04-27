@@ -10,12 +10,12 @@ In-process metric collection and aggregation for SymmetricDS nodes. Spans two Gr
 ```
 symmetric-core / org.jumpmind.symmetric.observability.interfaces/
 ├── IMetricsService, IEngineMetricsService   – service contracts
-├── IUpDownCounter, ISymDoubleGauge          – instrument interfaces
+├── IUpDownCounter, IIncreasingCounter, ISymDoubleGauge, ISymLongGauge  – instrument interfaces
 ├── ISymMetric, ISymMetricDefinition         – metric/definition contracts
 ├── ISymObservation, ISymIntervalStats       – data contracts
 ├── IStatsAccumulator, IPrimaryMetricAggregator
 ├── InvalidMetricDataException
-└── SymMetricConstants                       – stable metric ID and unit constants
+└── SymMetricConstants                       – stable metric ID, unit, and InstrumentType constants
 
 symmetric-stats / org.jumpmind.symmetric.observability/
 ├── metrics/     – instruments, service layer, MetricsManager, MetricDefinitionFactory
@@ -28,15 +28,15 @@ symmetric-stats / org.jumpmind.symmetric.observability/
 
 | Type | Module / Package | Role |
 |------|-----------------|------|
-| `SymMetricConstants` | core / interfaces | Stable metric ID and unit string constants (`METRIC_ID_*`, `METRIC_UNIT_*`) |
+| `SymMetricConstants` | core / interfaces | Stable metric ID and unit string constants (`METRIC_ID_*`, `METRIC_UNIT_*`); also owns `InstrumentType` enum |
 | `ISymMetricDefinition` | core / interfaces | Interface for metric metadata: `id()`, `description()`, `unit()` |
-| `SymMetricDefinition` | stats / metrics | Record implementing `ISymMetricDefinition`; carries `InstrumentType` (COUNTER, GAUGE) |
+| `SymMetricDefinition` | stats / metrics | Record implementing `ISymMetricDefinition`; carries `InstrumentType` (UPDOWN_COUNTER, COUNTER, GAUGE, LONG_GAUGE, HISTOGRAM) |
 | `IMetricDefinitionFactory` | stats / metrics | Interface for definition registry + `initializeMetrics()` |
 | `MetricDefinitionFactory` | stats / metrics | Default registry; pre-populated from `defaultMetrics` list (parallel to `defaultContexts`); `registerDefaultMetric()` adds to list and registers; `getDefaultMetrics()` returns unmodifiable view |
 | `MetricsManager` | stats / metrics | Singleton; owns OTel `Meter`, `MetricDefinitionFactory`, registered services, aggregator lifecycle |
 | `EngineMetricsService` | stats / metrics | Engine-scoped service; owns instruments, persists intervals via `MetricsRepository`; `getStatisticManager()` returns engine's `StatisticManager` |
 | `HostMetricsService` | stats / metrics | Host-scoped service for system-level metrics |
-| `UpDownCounter` / `SymDoubleGauge` | stats / metrics | Instruments; each update enqueues an `ObservationLong` / `ObservationDouble` |
+| `UpDownCounter` / `IncreasingCounter` / `SymDoubleGauge` / `SymLongGauge` | stats / metrics | Instruments; each update enqueues an `ObservationLong` / `ObservationDouble` |
 | `MetricKey` | stats / models | Composite identity: `hostname + engineName + metricId` |
 | `MetricIntervalStats` | stats / models | Immutable stats for one closed window: avg, min, max, stdDev, count, isOutlier |
 | `MetricSeries` | stats / models | Ordered series of interval stats for a single metric key |
@@ -54,8 +54,8 @@ MetricsManager()
 EngineMetricsService.initRepository()
   └── initializeDefaultMetrics()
         └── metricsManager.getMetricDefinitionFactory().initializeMetrics(this)
-              └── service.registerUpDownCounter(def) / registerGauge(def)
-                    └── UpDownCounter / SymDoubleGauge created, stored in AbstractMetricsService
+              └── service.registerUpDownCounter(def) / registerIncreasingCounter(def) / registerDoubleGauge(def) / registerLongGauge(def)
+                    └── UpDownCounter / IncreasingCounter / SymDoubleGauge / SymLongGauge created, stored in AbstractMetricsService (single Map<String, ISymMetric>)
 ```
 
 Callers (e.g. `ConcurrentConnectionManager`) look up materialized instruments by ID:
@@ -93,7 +93,7 @@ App thread  →  instrument.add()  →  ObservationsQueue (per metric)
 
 | Table | Purpose |
 |-------|---------|
-| `{prefix}_metric_key` | Dimension — maps surrogate `metric_key` to `hostname`, `engine_name`, `metric_id` |
+| `{prefix}_metric_key` | Dimension — maps surrogate `metric_key` to `hostname`, `engine_name`, `metric_id`, `fact_type`, `metric_type` |
 | `{prefix}_metric_context` | Optional attribute context for a metric observation (up to 3 key-value pairs) |
 | `{prefix}_metric_stats_float64` | Fact — aggregated float64 interval stats (avg, min, max, std_dev, count) |
 | `{prefix}_metric_stats_int64` | Fact — aggregated int64 interval stats (same shape, integer types) |

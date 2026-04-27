@@ -53,6 +53,7 @@ import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.CHANNEL;
@@ -304,7 +305,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
-        setChannelGauge(METRIC_ID_DATA_UNROUTED_CHANNEL, channelId, count);
+        setChannelDoubleGauge(METRIC_ID_DATA_UNROUTED_CHANNEL, channelId, count);
     }
 
     public void incrementDataExtracted(String channelId, long count) {
@@ -471,7 +472,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
-        setChannelGauge(METRIC_ID_DATA_CREATE_TIME_MIN, channelId, minCreateTime.getTime());
+        setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, channelId, minCreateTime.getTime());
     }
 
     public void updateDataMaxCreateTime(String channelId, Date maxCreateTime) {
@@ -481,7 +482,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
-        setChannelGauge(METRIC_ID_DATA_CREATE_TIME_MAX, channelId, maxCreateTime.getTime());
+        setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MAX, channelId, maxCreateTime.getTime());
     }
 
     public void incrementRestart() {
@@ -683,7 +684,7 @@ public class StatisticManager implements IStatisticManager {
                 hostStatsLock.release();
             }
         }
-        setEngineGauge(METRIC_ID_DATA_GAP_COUNT, count);
+        setEngineDoubleGauge(METRIC_ID_DATA_GAP_COUNT, count);
     }
 
     @Override
@@ -695,7 +696,7 @@ public class StatisticManager implements IStatisticManager {
                 hostStatsLock.release();
             }
         }
-        setEngineGauge(METRIC_ID_DATA_UNROUTED_TOTAL, count);
+        setEngineDoubleGauge(METRIC_ID_DATA_UNROUTED_TOTAL, count);
     }
 
     protected void saveAdditionalStats(Date endTime, ChannelStats stats) {
@@ -932,12 +933,25 @@ public class StatisticManager implements IStatisticManager {
         }
     }
 
-    private void setChannelGauge(String metricId, String channelId, double value) {
+    private void setChannelDoubleGauge(String metricId, String channelId, double value) {
         try {
             IEngineMetricsService svc = engine.getMetricsService();
             if (svc == null)
                 return;
-            ISymDoubleGauge g = svc.getGauge(metricId, List.of(new MetricAttribute(CHANNEL, channelId)));
+            ISymDoubleGauge g = svc.getDoubleGauge(metricId, List.of(new MetricAttribute(CHANNEL, channelId)));
+            if (g != null)
+                g.setValue(value);
+        } catch (Exception e) {
+            log.debug("Failed to record channel metric {}@{}", metricId, channelId, e);
+        }
+    }
+
+    private void setChannelLongGauge(String metricId, String channelId, long value) {
+        try {
+            IEngineMetricsService svc = engine.getMetricsService();
+            if (svc == null)
+                return;
+            ISymLongGauge g = svc.getLongGauge(metricId, List.of(new MetricAttribute(CHANNEL, channelId)));
             if (g != null)
                 g.setValue(value);
         } catch (Exception e) {
@@ -958,12 +972,12 @@ public class StatisticManager implements IStatisticManager {
         }
     }
 
-    private void setEngineGauge(String metricId, double value) {
+    private void setEngineDoubleGauge(String metricId, double value) {
         try {
             IEngineMetricsService svc = engine.getMetricsService();
             if (svc == null)
                 return;
-            ISymDoubleGauge g = svc.getGauge(metricId);
+            ISymDoubleGauge g = svc.getDoubleGauge(metricId);
             if (g != null)
                 g.setValue(value);
         } catch (Exception e) {
@@ -1012,11 +1026,11 @@ public class StatisticManager implements IStatisticManager {
             if (svc == null) {
                 return;
             }
-            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_ACTIVE, invokeIntMethod(ds, "getNumActive"));
-            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_IDLE, invokeIntMethod(ds, "getNumIdle"));
-            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_MAX, invokeIntMethod(ds, "getMaxTotal"));
-            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_WAITERS, invokeIntMethod(ds, "getNumWaiters"));
-            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN, invokeLongMethod(ds, "getMeanBorrowWaitTimeMillis"));
+            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_ACTIVE, invokeIntMethod(ds, "getNumActive"));
+            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_IDLE, invokeIntMethod(ds, "getNumIdle"));
+            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_MAX, invokeIntMethod(ds, "getMaxTotal"));
+            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_WAITERS, invokeIntMethod(ds, "getNumWaiters"));
+            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN, invokeLongMethod(ds, "getMeanBorrowWaitTimeMillis"));
         } catch (Exception e) {
             log.debug("Troble measuring database pool utilization for built-in metrics!", e);
         }
@@ -1030,15 +1044,15 @@ public class StatisticManager implements IStatisticManager {
         return (long) obj.getClass().getMethod(methodName).invoke(obj);
     }
 
-    private void setGaugeIfPresent(IEngineMetricsService svc, String metricId, int value) {
-        ISymDoubleGauge g = svc.getGauge(metricId);
+    private void setDoubleGaugeIfPresent(IEngineMetricsService svc, String metricId, int value) {
+        ISymDoubleGauge g = svc.getDoubleGauge(metricId);
         if (g != null) {
             g.setValue(value);
         }
     }
 
-    private void setGaugeIfPresent(IEngineMetricsService svc, String metricId, long value) {
-        ISymDoubleGauge g = svc.getGauge(metricId);
+    private void setDoubleGaugeIfPresent(IEngineMetricsService svc, String metricId, long value) {
+        ISymDoubleGauge g = svc.getDoubleGauge(metricId);
         if (g != null) {
             g.setValue(value);
         }

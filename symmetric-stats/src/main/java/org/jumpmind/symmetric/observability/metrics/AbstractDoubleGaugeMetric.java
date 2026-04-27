@@ -25,15 +25,16 @@ import java.util.concurrent.atomic.DoubleAdder;
 
 import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.models.ObservationDouble;
 
 import io.opentelemetry.api.common.Attributes;
 
-public abstract class AbstractGaugeMetric extends AbstractQueuedMetric {
+public abstract class AbstractDoubleGaugeMetric extends AbstractQueuedMetric {
     protected final DoubleAdder currentValue = new DoubleAdder();
 
-    AbstractGaugeMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        super(metricId, attributes, metricAttributes, MetricFactType.FLOAT64);
+    AbstractDoubleGaugeMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(metricId, attributes, metricAttributes, MetricFactType.FLOAT64, InstrumentType.DOUBLE_GAUGE);
     }
 
     public double getValue() {

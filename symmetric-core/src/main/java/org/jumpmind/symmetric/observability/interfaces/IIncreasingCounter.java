@@ -18,11 +18,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.observability.metrics;
+package org.jumpmind.symmetric.observability.interfaces;
 
-import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
-import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
+public interface IIncreasingCounter {
+    void add(long delta);
 
-/** Describes a single metric instrument: its identity, human-readable metadata, and instrument type. */
-public record SymMetricDefinition(String id, String description, String unit, InstrumentType type) implements ISymMetricDefinition {
+    void increment();
+
+    long getValue();
 }

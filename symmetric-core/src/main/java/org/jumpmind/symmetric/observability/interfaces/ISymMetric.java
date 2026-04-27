@@ -66,5 +66,7 @@ public interface ISymMetric {
 
     MetricFactType getFactType();
 
+    SymMetricConstants.InstrumentType getMetricType();
+
     List<ISymIntervalStats> exportCompletedIntervals();
 }

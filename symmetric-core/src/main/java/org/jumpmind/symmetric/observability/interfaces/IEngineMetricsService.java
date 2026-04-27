@@ -43,22 +43,50 @@ public interface IEngineMetricsService extends IMetricsService {
     IUpDownCounter getUpDownCounter(String metricId, List<MetricAttribute> attrs);
 
     /**
-     * Returns the gauge registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
+     * Returns the double gauge registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
      */
-    ISymDoubleGauge getGauge(String metricId);
+    ISymDoubleGauge getDoubleGauge(String metricId);
 
     /**
-     * Returns the gauge registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
+     * Returns the double gauge registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
      */
-    ISymDoubleGauge getGauge(String metricId, List<MetricAttribute> attrs);
+    ISymDoubleGauge getDoubleGauge(String metricId, List<MetricAttribute> attrs);
 
     IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition);
 
     IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition, List<MetricAttribute> attrs);
 
-    ISymDoubleGauge registerGauge(ISymMetricDefinition definition);
+    /**
+     * Returns the monotonic counter registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
+     */
+    IIncreasingCounter getIncreasingCounter(String metricId);
 
-    ISymDoubleGauge registerGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs);
+    /**
+     * Returns the monotonic counter registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
+     */
+    IIncreasingCounter getIncreasingCounter(String metricId, List<MetricAttribute> attrs);
+
+    IIncreasingCounter registerIncreasingCounter(ISymMetricDefinition definition);
+
+    IIncreasingCounter registerIncreasingCounter(ISymMetricDefinition definition, List<MetricAttribute> attrs);
+
+    ISymDoubleGauge registerDoubleGauge(ISymMetricDefinition definition);
+
+    ISymDoubleGauge registerDoubleGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs);
+
+    /**
+     * Returns the long gauge registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
+     */
+    ISymLongGauge getLongGauge(String metricId);
+
+    /**
+     * Returns the long gauge registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
+     */
+    ISymLongGauge getLongGauge(String metricId, List<MetricAttribute> attrs);
+
+    ISymLongGauge registerLongGauge(ISymMetricDefinition definition);
+
+    ISymLongGauge registerLongGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs);
 
     Collection<ISymMetric> getAllMetrics();
 

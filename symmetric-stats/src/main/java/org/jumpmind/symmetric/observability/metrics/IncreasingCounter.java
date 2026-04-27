@@ -22,7 +22,9 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.observability.interfaces.IIncreasingCounter;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableLongCounter;
@@ -31,21 +33,24 @@ import io.opentelemetry.api.metrics.ObservableLongCounter;
  * Monotonically increasing counter. Rejects negative deltas with {@link IllegalArgumentException}. The OTel SDK pulls the cumulative total via callback; call
  * {@link #close()} on shutdown to unregister it.
  */
-public class IncreasingCounter extends AbstractCounterMetric {
-    protected final ObservableLongCounter otelCounter;
+public class IncreasingCounter extends AbstractCounterMetric implements IIncreasingCounter {
+    private ObservableLongCounter otelHandle;
 
-    IncreasingCounter(String metricId, ObservableLongCounter otelCounter, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        super(metricId, attributes, metricAttributes);
-        this.otelCounter = otelCounter;
+    IncreasingCounter(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(metricId, attributes, metricAttributes, InstrumentType.COUNTER);
+    }
+
+    void setOtelHandle(ObservableLongCounter handle) {
+        this.otelHandle = handle;
     }
 
     @Override
     public void close() {
-        if (otelCounter != null) {
+        if (otelHandle != null) {
             try {
-                otelCounter.close();
+                otelHandle.close();
             } catch (Exception e) {
-                log.warn("Failed to close OTel counter for {}", getMetricId(), e);
+                log.warn("Failed to close OTel handle for {}", getMetricId(), e);
             }
         }
         super.close();

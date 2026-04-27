@@ -45,6 +45,7 @@ import io.opentelemetry.api.metrics.DoubleHistogram;
 import io.opentelemetry.api.metrics.Meter;
 import io.opentelemetry.api.metrics.ObservableDoubleGauge;
 import io.opentelemetry.api.metrics.ObservableLongCounter;
+import io.opentelemetry.api.metrics.ObservableLongGauge;
 import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
@@ -141,10 +142,10 @@ public class MetricsManager {
     }
 
     /**
-     * Registers a callback-based observable gauge. The OTel SDK pulls the current value from {@code valueSupplier} on each export cycle rather than blocking
-     * the instrumented thread. The returned handle is {@link AutoCloseable}; close it to unregister the callback.
+     * Registers a callback-based observable double gauge. The OTel SDK pulls the current value from {@code valueSupplier} on each export cycle rather than
+     * blocking the instrumented thread. The returned handle is {@link AutoCloseable}; close it to unregister the callback.
      */
-    public ObservableDoubleGauge createGauge(String metricId, String description, String unitOfMeasurement,
+    public ObservableDoubleGauge createDoubleGauge(String metricId, String description, String unitOfMeasurement,
             DoubleSupplier valueSupplier, Attributes attributes) {
         return otelMeter.gaugeBuilder(metricId)
                 .setDescription(description)
@@ -153,15 +154,41 @@ public class MetricsManager {
     }
 
     /**
-     * Registers a callback-based observable gauge with a {@link Supplier}{@code <Double>} for callers that already hold a boxed-double supplier reference. The
-     * returned handle is {@link AutoCloseable}; close it to unregister the callback.
+     * Registers a callback-based observable double gauge with no extra attributes. The returned handle is {@link AutoCloseable}; close it to unregister the
+     * callback.
      */
-    public ObservableDoubleGauge createObservableGauge(String metricId, String description, String unitOfMeasurement,
+    public ObservableDoubleGauge createObservableDoubleGauge(String metricId, String description, String unitOfMeasurement,
             DoubleSupplier valueSupplier) {
         return otelMeter.gaugeBuilder(metricId)
                 .setDescription(description)
                 .setUnit(unitOfMeasurement)
                 .buildWithCallback(measurement -> measurement.record(valueSupplier.getAsDouble()));
+    }
+
+    /**
+     * Registers a callback-based observable long gauge. The OTel SDK pulls the current value from {@code valueSupplier} on each export cycle rather than
+     * blocking the instrumented thread. The returned handle is {@link AutoCloseable}; close it to unregister the callback.
+     */
+    public ObservableLongGauge createLongGauge(String metricId, String description, String unitOfMeasurement,
+            LongSupplier valueSupplier, Attributes attributes) {
+        return otelMeter.gaugeBuilder(metricId)
+                .setDescription(description)
+                .setUnit(unitOfMeasurement)
+                .ofLongs()
+                .buildWithCallback(measurement -> measurement.record(valueSupplier.getAsLong(), attributes));
+    }
+
+    /**
+     * Registers a callback-based observable long gauge with no extra attributes. The returned handle is {@link AutoCloseable}; close it to unregister the
+     * callback.
+     */
+    public ObservableLongGauge createObservableLongGauge(String metricId, String description, String unitOfMeasurement,
+            LongSupplier valueSupplier) {
+        return otelMeter.gaugeBuilder(metricId)
+                .setDescription(description)
+                .setUnit(unitOfMeasurement)
+                .ofLongs()
+                .buildWithCallback(measurement -> measurement.record(valueSupplier.getAsLong()));
     }
 
     /**

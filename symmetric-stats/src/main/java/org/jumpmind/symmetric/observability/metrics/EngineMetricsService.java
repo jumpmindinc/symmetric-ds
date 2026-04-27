@@ -93,7 +93,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             }
             try {
                 metric.closeCompletedIntervals();
-                MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.isEnabled());
+                MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.getMetricType(), metric.isEnabled());
                 long contextId = getOrAssignContextId(metric, repo);
                 for (ISymIntervalStats interval : metric.exportCompletedIntervals()) {
                     newlyCompleted.add(new MetricIntervalStatsRecord(key, contextId, interval));
@@ -214,7 +214,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
 
     private int initWorksetForMetric(AbstractQueuedMetric metric, MetricsRepository repo) {
         try {
-            MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.isEnabled());
+            MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.getMetricType(), metric.isEnabled());
             if (key.isEnabled()) {
                 List<ISymIntervalStats> history = repo.loadRecentIntervalsForKeyFromDatabase(key);
                 metric.seedWorkset(history);

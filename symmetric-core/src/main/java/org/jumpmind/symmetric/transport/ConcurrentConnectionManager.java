@@ -57,7 +57,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     private void registerMetrics(IEngineMetricsService metricsService) {
         if (metricsService != null) {
             connectionsCounter = metricsService.getUpDownCounter(SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS);
-            utilizationGauge = metricsService.getGauge(SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_UTILIZATION);
+            utilizationGauge = metricsService.getDoubleGauge(SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_UTILIZATION);
         }
     }
 

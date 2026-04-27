@@ -1022,6 +1022,7 @@
         <column name="engine_name" type="VARCHAR" size="255" required="true" description="Name of the engine that produced the metric." />
         <column name="metric_id" type="VARCHAR" size="255" required="true" description="Identifier of the metric instrument." />
         <column name="fact_type" type="VARCHAR" size="10" required="true" description="Statistics precision type: FLOAT64 (gauges) or INT64 (counters)." />
+        <column name="metric_type" type="VARCHAR" size="20" required="false" description="Instrument kind discriminator: COUNTER, UPDOWN_COUNTER, GAUGE, LONG_GAUGE, or HISTOGRAM." />
         <column name="hostname" type="VARCHAR" size="255" required="true" description="Hostname of the SymmetricDS node that produced the metric." />
         <column name="create_time" type="TIMESTAMP" required="true"  description="Timestamp when this entry was created." />
         <column name="last_update_time" type="TIMESTAMP" required="true"  description="Timestamp when this entry was last updated." />

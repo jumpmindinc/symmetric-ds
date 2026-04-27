@@ -21,29 +21,22 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
+import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
-import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 
 import io.opentelemetry.api.common.Attributes;
 
-/**
- * Tracks a current value of long type.
- */
-public abstract class AbstractCounterMetric extends AbstractQueuedMetric {
-    protected final AtomicLong currentValue = new AtomicLong(0);
+public abstract class AbstractLongGaugeMetric extends AbstractQueuedMetric {
+    protected final LongAdder currentValue = new LongAdder();
 
-    AbstractCounterMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        this(metricId, attributes, metricAttributes, InstrumentType.UPDOWN_COUNTER);
-    }
-
-    AbstractCounterMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes, InstrumentType instrumentType) {
-        super(metricId, attributes, metricAttributes, MetricFactType.INT64, instrumentType);
+    AbstractLongGaugeMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(metricId, attributes, metricAttributes, MetricFactType.INT64, InstrumentType.LONG_GAUGE);
     }
 
     @Override
@@ -51,29 +44,22 @@ public abstract class AbstractCounterMetric extends AbstractQueuedMetric {
         return new Int64StatsAccumulator(intervalStart);
     }
 
-    /**
-     * Returns the current value of the counter (can change quickly in a highly concurrent environment)
-     */
     public long getValue() {
-        return currentValue.get();
+        return this.currentValue.sum();
     }
 
-    /**
-     * Adds to the current value in an atomic operation and records time of change in a new observation
-     */
-    public void add(long delta) {
-        if (delta == 0) {
-            return;
-        }
+    public void setValue(long newValue) {
+        this.currentValue.reset();
+        this.currentValue.add(newValue - this.currentValue.sum());
         long now = System.currentTimeMillis();
         this.lastModified = now;
-        addObservation(new ObservationLong(this.currentValue.addAndGet(delta), now));
+        addObservation(new ObservationLong(this.currentValue.sum(), now));
     }
 
-    /**
-     * Increments the current value in an atomic operation and records time of change in a new observation
-     */
-    public void increment() {
-        add(1);
+    public void add(long delta) {
+        this.currentValue.add(delta);
+        long now = System.currentTimeMillis();
+        this.lastModified = now;
+        addObservation(new ObservationLong(this.currentValue.sum(), now));
     }
 }

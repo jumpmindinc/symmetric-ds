@@ -22,12 +22,15 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.jumpmind.symmetric.observability.interfaces.IIncreasingCounter;
 import org.jumpmind.symmetric.observability.interfaces.IMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
@@ -39,6 +42,8 @@ import org.slf4j.LoggerFactory;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
+import io.opentelemetry.api.metrics.ObservableLongCounter;
+import io.opentelemetry.api.metrics.ObservableLongGauge;
 
 /**
  * Base class which owns multiple metrics (counters, gauges). Subclasses supply the attributes that identify the metric's scope (e.g. engine name, host).
@@ -48,8 +53,7 @@ abstract class AbstractMetricsService implements IMetricsService {
     protected final MetricsManager metricsManager;
     protected static String hostname = AppUtils.getHostName();
     protected final Attributes attributes;
-    private final Map<String, UpDownCounter> upDownCounters = new ConcurrentHashMap<>();
-    private final Map<String, SymDoubleGauge> gauges = new ConcurrentHashMap<>();
+    private final Map<String, ISymMetric> metrics = new ConcurrentHashMap<>();
     private final boolean isOtelPublishingEnabled;
     private final List<AutoCloseable> otelHandles = new ArrayList<>();
 
@@ -72,8 +76,8 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     public IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
-        return upDownCounters.computeIfAbsent(instrumentKey(definition.id(), attrs),
-                k -> createUpDownCounterInternal(definition, attrs));
+        ISymMetric m = metrics.computeIfAbsent(instrumentKey(definition.id(), attrs), k -> createUpDownCounterInternal(definition, attrs));
+        return m instanceof IUpDownCounter c ? c : null;
     }
 
     private UpDownCounter createUpDownCounterInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
@@ -104,33 +108,94 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     public IUpDownCounter getUpDownCounter(String metricId, List<MetricAttribute> attrs) {
-        return upDownCounters.get(instrumentKey(metricId, attrs));
+        ISymMetric m = metrics.get(instrumentKey(metricId, attrs));
+        return m instanceof IUpDownCounter c ? c : null;
     }
 
-    public ISymDoubleGauge registerGauge(ISymMetricDefinition definition) {
-        return registerGauge(definition, List.of());
+    public IIncreasingCounter registerIncreasingCounter(ISymMetricDefinition definition) {
+        return registerIncreasingCounter(definition, List.of());
     }
 
-    public ISymDoubleGauge registerGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
-        return gauges.computeIfAbsent(instrumentKey(definition.id(), attrs), k -> createGaugeInternal(definition, attrs));
+    public IIncreasingCounter registerIncreasingCounter(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+        ISymMetric m = metrics.computeIfAbsent(instrumentKey(definition.id(), attrs), k -> createIncreasingCounterInternal(definition, attrs));
+        return m instanceof IIncreasingCounter c ? c : null;
     }
 
-    private SymDoubleGauge createGaugeInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+    private IncreasingCounter createIncreasingCounterInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+        IncreasingCounter counter = new IncreasingCounter(definition.id(), this.attributes, attrs);
+        if (isOtelPublishingEnabled) {
+            Attributes instrAttrs = buildInstrumentAttributes(attrs);
+            ObservableLongCounter handle = metricsManager.createIncreasingCounter(
+                    definition.id(), definition.description(), definition.unit(), counter::getValue, instrAttrs);
+            counter.setOtelHandle(handle);
+        }
+        return counter;
+    }
+
+    public IIncreasingCounter getIncreasingCounter(String metricId) {
+        return getIncreasingCounter(metricId, List.of());
+    }
+
+    public IIncreasingCounter getIncreasingCounter(String metricId, List<MetricAttribute> attrs) {
+        ISymMetric m = metrics.get(instrumentKey(metricId, attrs));
+        return m instanceof IIncreasingCounter c ? c : null;
+    }
+
+    public ISymDoubleGauge registerDoubleGauge(ISymMetricDefinition definition) {
+        return registerDoubleGauge(definition, List.of());
+    }
+
+    public ISymDoubleGauge registerDoubleGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+        ISymMetric m = metrics.computeIfAbsent(instrumentKey(definition.id(), attrs), k -> createDoubleGaugeInternal(definition, attrs));
+        return m instanceof ISymDoubleGauge g ? g : null;
+    }
+
+    private SymDoubleGauge createDoubleGaugeInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
         SymDoubleGauge gauge = new SymDoubleGauge(definition.id(), this.attributes, attrs);
         if (isOtelPublishingEnabled) {
             Attributes instrAttrs = buildInstrumentAttributes(attrs);
-            otelHandles.add(metricsManager.createGauge(
+            otelHandles.add(metricsManager.createDoubleGauge(
                     definition.id(), definition.description(), definition.unit(), gauge::getValue, instrAttrs));
         }
         return gauge;
     }
 
-    public ISymDoubleGauge getGauge(String metricId) {
-        return getGauge(metricId, List.of());
+    public ISymDoubleGauge getDoubleGauge(String metricId) {
+        return getDoubleGauge(metricId, List.of());
     }
 
-    public ISymDoubleGauge getGauge(String metricId, List<MetricAttribute> attrs) {
-        return gauges.get(instrumentKey(metricId, attrs));
+    public ISymDoubleGauge getDoubleGauge(String metricId, List<MetricAttribute> attrs) {
+        ISymMetric m = metrics.get(instrumentKey(metricId, attrs));
+        return m instanceof ISymDoubleGauge g ? g : null;
+    }
+
+    public ISymLongGauge registerLongGauge(ISymMetricDefinition definition) {
+        return registerLongGauge(definition, List.of());
+    }
+
+    public ISymLongGauge registerLongGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+        ISymMetric m = metrics.computeIfAbsent(instrumentKey(definition.id(), attrs), k -> createLongGaugeInternal(definition, attrs));
+        return m instanceof ISymLongGauge g ? g : null;
+    }
+
+    private SymLongGauge createLongGaugeInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
+        SymLongGauge gauge = new SymLongGauge(definition.id(), this.attributes, attrs);
+        if (isOtelPublishingEnabled) {
+            Attributes instrAttrs = buildInstrumentAttributes(attrs);
+            ObservableLongGauge handle = metricsManager.createLongGauge(
+                    definition.id(), definition.description(), definition.unit(), gauge::getValue, instrAttrs);
+            gauge.setOtelHandle(handle);
+        }
+        return gauge;
+    }
+
+    public ISymLongGauge getLongGauge(String metricId) {
+        return getLongGauge(metricId, List.of());
+    }
+
+    public ISymLongGauge getLongGauge(String metricId, List<MetricAttribute> attrs) {
+        ISymMetric m = metrics.get(instrumentKey(metricId, attrs));
+        return m instanceof ISymLongGauge g ? g : null;
     }
 
     private static String instrumentKey(String metricId, List<MetricAttribute> attrs) {
@@ -145,40 +210,21 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     public Collection<ISymMetric> getAllMetrics() {
-        List<ISymMetric> all = new ArrayList<>(upDownCounters.values());
-        all.addAll(gauges.values());
-        return all;
+        return Collections.unmodifiableCollection(metrics.values());
     }
 
     @Override
     public void shutdown() {
-        closeAllCounters();
-        closeAllGauges();
+        for (ISymMetric metric : metrics.values()) {
+            try {
+                metric.close();
+                metric.removeAllObservations();
+            } catch (Exception e) {
+                log.warn("Failed to close metric {}", metric.getMetricId(), e);
+            }
+        }
+        metrics.clear();
         closeAllOtelHandles();
-    }
-
-    private void closeAllCounters() {
-        for (UpDownCounter metric : upDownCounters.values()) {
-            try {
-                metric.close();
-                metric.removeAllObservations();
-            } catch (Exception e) {
-                log.warn("Failed to close counter metric" + metric.getMetricId(), e);
-            }
-        }
-        upDownCounters.clear();
-    }
-
-    private void closeAllGauges() {
-        for (SymDoubleGauge metric : gauges.values()) {
-            try {
-                metric.close();
-                metric.removeAllObservations();
-            } catch (Exception e) {
-                log.warn("Failed to close gauge metric" + metric.getMetricId(), e);
-            }
-        }
-        gauges.clear();
     }
 
     private void closeAllOtelHandles() {

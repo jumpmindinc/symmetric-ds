@@ -21,12 +21,14 @@
 package org.jumpmind.symmetric.observability.models;
 
 import org.jumpmind.symmetric.model.MetricFactType;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.repository.SurrogateLongKeyBuffer;
 
 /**
- * Uniquely identifies a metric time-series by host, engine, metric name, and fact type.
+ * Uniquely identifies a metric time-series by host, engine, metric name, fact type, and instrument kind.
  */
-public record MetricKey(long key, String hostname, String engineName, String metricId, MetricFactType factType, boolean isEnabled) {
+public record MetricKey(long key, String hostname, String engineName, String metricId, MetricFactType factType, InstrumentType metricType,
+        boolean isEnabled) {
     public boolean isSurrogateKeyMissing() {
         return (key == SurrogateLongKeyBuffer.SURROGATE_KEY_UNASSIGNED);
     }

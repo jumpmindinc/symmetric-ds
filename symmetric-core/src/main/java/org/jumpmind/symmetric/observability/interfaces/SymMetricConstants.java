@@ -20,9 +20,22 @@
  */
 package org.jumpmind.symmetric.observability.interfaces;
 
-/** Metric ID constants. Referenced by callers that register or look up pre-registered metrics by ID. */
+/** Metric ID and instrument type constants. Referenced by callers that register or look up pre-registered metrics by ID. */
 public final class SymMetricConstants {
     private SymMetricConstants() {
+    }
+
+    public enum InstrumentType {
+        /** Monotonic counter — value only increases. Maps to an OTel observable counter. */
+        COUNTER,
+        /** Up-down counter — value can increase or decrease. Maps to an OTel observable up-down counter. */
+        UPDOWN_COUNTER,
+        /** Gauge tracking a floating-point value. Maps to an OTel observable double gauge. */
+        DOUBLE_GAUGE,
+        /** Gauge tracking a long integer value. Maps to an OTel observable long gauge. */
+        LONG_GAUGE,
+        /** Histogram for recording distributions. Maps to an OTel histogram. */
+        HISTOGRAM
     }
 
     public static final String OTEL_SCOPE = "symmetricds";
@@ -39,6 +52,7 @@ public final class SymMetricConstants {
     public static final String METRIC_UNIT_ROWS = "rows";
     public static final String METRIC_UNIT_NODES = "nodes";
     public static final String METRIC_UNIT_TRIGGERS = "triggers";
+    // Incoming client connection counters (ConcurrentConnectionManager)
     public static final String METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS = OTEL_SCOPE + ".server.reservations.count";
     public static final String METRIC_ID_SERVER_CONNECTIONS_UTILIZATION = OTEL_SCOPE + ".server.connections.utilization";
     // Channel-scoped data counters (StatisticManager)

@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
@@ -49,6 +50,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     protected final Attributes attributes;
     private final List<MetricAttribute> metricAttributes;
     private final MetricFactType factType;
+    private final InstrumentType metricType;
     private final AtomicReference<ISymMetricContext> contextRef = new AtomicReference<>();
     protected volatile long lastModified = System.currentTimeMillis();
     protected volatile boolean isMetricEnabled = true;
@@ -58,11 +60,13 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     protected MetricIntervalStatsQueue completedIntervals = new MetricIntervalStatsQueue();
     protected MetricSeriesSlidingWorkset workset = new MetricSeriesSlidingWorkset();
 
-    AbstractQueuedMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes, MetricFactType factType) {
+    AbstractQueuedMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes, MetricFactType factType,
+            InstrumentType metricType) {
         this.metricId = metricId;
         this.attributes = attributes;
         this.metricAttributes = metricAttributes != null ? List.copyOf(metricAttributes) : List.of();
         this.factType = factType;
+        this.metricType = metricType;
         this.currentIntervalAccumulator = null;
     }
 
@@ -95,6 +99,11 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     @Override
     public MetricFactType getFactType() {
         return factType;
+    }
+
+    @Override
+    public InstrumentType getMetricType() {
+        return metricType;
     }
 
     /**

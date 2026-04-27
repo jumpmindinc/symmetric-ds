@@ -22,25 +22,25 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.List;
 
-import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.metrics.ObservableDoubleGauge;
+import io.opentelemetry.api.metrics.ObservableLongGauge;
 
 /**
- * Tracks a double value. The OTel SDK reads the current value via a callback (registered in {@link AbstractMetricsService}) rather than receiving a push on
- * every {@link #setValue} or {@link #add} call, so no OTel work happens on the instrumented thread. The {@link ObservableDoubleGauge} handle is held here so it
- * can be closed (unregistering the callback) during service shutdown.
+ * Tracks a long integer value. The OTel SDK reads the current value via a callback (registered in {@link AbstractMetricsService}) rather than receiving a push
+ * on every {@link #setValue} or {@link #add} call, so no OTel work happens on the instrumented thread. The {@link ObservableLongGauge} handle is held here so
+ * it can be closed (unregistering the callback) during service shutdown.
  */
-public class SymDoubleGauge extends AbstractDoubleGaugeMetric implements ISymDoubleGauge {
-    private ObservableDoubleGauge otelHandle;
+public class SymLongGauge extends AbstractLongGaugeMetric implements ISymLongGauge {
+    private ObservableLongGauge otelHandle;
 
-    SymDoubleGauge(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
+    SymLongGauge(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
         super(metricId, attributes, metricAttributes);
     }
 
-    void setOtelHandle(ObservableDoubleGauge handle) {
+    void setOtelHandle(ObservableLongGauge handle) {
         this.otelHandle = handle;
     }
 
