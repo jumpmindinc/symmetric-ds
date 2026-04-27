@@ -1095,11 +1095,7 @@ public class NodeService extends AbstractService implements INodeService {
         if (myNode != null && !myNode.equals(node)) {
             String myNodeId = myNode.getNodeId();
             if (myNodeId.equals(node.getCreatedAtNodeId())) {
-                if (okToUnregisterNode(node)) {
-                    listener.clientNodeOffline(node);
-                } else {
-                    offlineNodesNotUnregistered.put(node.getNodeId(), node);
-                }
+                processUnregisterRequest(node, listener, offlineNodesNotUnregistered);
             } else {
                 NodeSecurity security = findNodeSecurity(node.getNodeId());
                 if (security != null && myNodeId.equals(security.getCreatedAtNodeId())) {
