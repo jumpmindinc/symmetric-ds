@@ -556,27 +556,18 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
     }
 
     public String getColumnName(String dbTableName, String dbColumnName, Object bean) {
-        if (tableColumnCache.containsKey(dbColumnName) && tableColumnCache.get(dbTableName).containsKey(dbColumnName)) {
+        if (tableColumnCache.containsKey(dbTableName) && tableColumnCache.get(dbTableName).containsKey(dbColumnName)) {
             return tableColumnCache.get(dbTableName).get(dbColumnName);
-        } else {
-            String columnName = null;
-            if (!tableColumnCache.containsKey(dbColumnName)) {
-                tableColumnCache.put(dbTableName, new HashMap<String, String>());
-            }
-            String dbColumnNameSimple = dbColumnName.toLowerCase().replaceAll("[^a-z0-9]", "");
-            for (PropertyDescriptor pd : PropertyUtils.getPropertyDescriptors(bean)) {
-                if (pd.getName().toLowerCase().equals(dbColumnNameSimple)) {
-                    columnName = pd.getName();
-                    break;
-                }
-            }
-            if (columnName != null) {
-                tableColumnCache.get(dbTableName).put(dbColumnName, columnName);
-                return columnName;
-            } else {
-                return null;
+        }
+        Map<String, String> columnMap = tableColumnCache.computeIfAbsent(dbTableName, k -> new HashMap<>());
+        String dbColumnNameSimple = dbColumnName.toLowerCase().replaceAll("[^a-z0-9]", "");
+        for (PropertyDescriptor pd : PropertyUtils.getPropertyDescriptors(bean)) {
+            if (pd.getName().toLowerCase().equals(dbColumnNameSimple)) {
+                columnMap.put(dbColumnName, pd.getName());
+                return pd.getName();
             }
         }
+        return null;
     }
 
     public void sendKafkaMessage(ProducerRecord<String, Object> record) {
