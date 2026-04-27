@@ -1015,8 +1015,10 @@ public class StatisticManager implements IStatisticManager {
             setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_ACTIVE, invokeIntMethod(ds, "getNumActive"));
             setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_IDLE, invokeIntMethod(ds, "getNumIdle"));
             setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_MAX, invokeIntMethod(ds, "getMaxTotal"));
+            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_WAITERS, invokeIntMethod(ds, "getNumWaiters"));
+            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN, invokeLongMethod(ds, "getMeanBorrowWaitTimeMillis"));
         } catch (Exception e) {
-            log.debug("Failed to collect DB pool metrics", e);
+            log.debug("Troble measuring database pool utilization for built-in metrics!", e);
         }
     }
 
@@ -1024,7 +1026,18 @@ public class StatisticManager implements IStatisticManager {
         return (int) obj.getClass().getMethod(methodName).invoke(obj);
     }
 
+    private long invokeLongMethod(Object obj, String methodName) throws Exception {
+        return (long) obj.getClass().getMethod(methodName).invoke(obj);
+    }
+
     private void setGaugeIfPresent(IEngineMetricsService svc, String metricId, int value) {
+        ISymDoubleGauge g = svc.getGauge(metricId);
+        if (g != null) {
+            g.setValue(value);
+        }
+    }
+
+    private void setGaugeIfPresent(IEngineMetricsService svc, String metricId, long value) {
         ISymDoubleGauge g = svc.getGauge(metricId);
         if (g != null) {
             g.setValue(value);

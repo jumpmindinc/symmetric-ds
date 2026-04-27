@@ -46,14 +46,10 @@ public class StatisticFlushJob extends AbstractJob {
 
     @Override
     public void doJob(boolean force) throws Exception {
+        engine.getStatisticManager().updateDbPoolMetrics();
         engine.getStatisticManager().flush();
-        updateDbPoolMetrics();
         engine.getPurgeService().purgeStats(force);
         purgeLogSummaryAppender();
-    }
-
-    private void updateDbPoolMetrics() {
-        engine.getStatisticManager().updateDbPoolMetrics();
     }
 
     protected void purgeLogSummaryAppender() {
