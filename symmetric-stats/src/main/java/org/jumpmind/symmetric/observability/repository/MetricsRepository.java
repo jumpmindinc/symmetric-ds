@@ -96,14 +96,18 @@ public class MetricsRepository extends AbstractService {
 
     private void ensureMetricKeyCacheLoaded() {
         if (!cacheLoaded) {
-            List<MetricKey> metricKeys = loadAllMetricKeysForHostnameFromDatabase();
-            if (metricKeys != null && !metricKeys.isEmpty()) {
-                populateSurrogateKeyBuffer(metricKeys);
-                populateMetricKeyCache(metricKeys);
-            } else {
-                log.warn("Found no metric keys in database! hostname={}, engine_name={}", hostname, engineName);
+            synchronized (this) {
+                if (!cacheLoaded) {
+                    List<MetricKey> metricKeys = loadAllMetricKeysForHostnameFromDatabase();
+                    if (metricKeys != null && !metricKeys.isEmpty()) {
+                        populateSurrogateKeyBuffer(metricKeys);
+                        populateMetricKeyCache(metricKeys);
+                    } else {
+                        log.warn("Found no metric keys in database! hostname={}, engine_name={}", hostname, engineName);
+                    }
+                    cacheLoaded = true;
+                }
             }
-            cacheLoaded = true;
         }
     }
 
@@ -440,17 +444,10 @@ public class MetricsRepository extends AbstractService {
         if (cached != null) {
             return cached;
         }
-        MetricContext ctx;
-        try {
+        int hash = MetricContext.computeHash(attrs);
+        MetricContext ctx = loadContextByAttrsFromDatabase(hash, attrs);
+        if (ctx == null) {
             ctx = insertContextToDatabase(def.contextId(), attrs);
-        } catch (Exception e) {
-            if (!isCausedByUniqueKeyViolation(e)) {
-                throw new MetricsRepositoryException("Failed to insert seed context id=" + def.contextId(), e);
-            }
-            ctx = loadContextByAttrsFromDatabase(MetricContext.computeHash(attrs), attrs);
-            if (ctx == null) {
-                throw new MetricsRepositoryException("Context not found after UniqueKeyException for id=" + def.contextId());
-            }
         }
         putToContextCache(cacheKey, ctx);
         return ctx;
