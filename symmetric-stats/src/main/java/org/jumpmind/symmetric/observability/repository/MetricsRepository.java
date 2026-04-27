@@ -519,18 +519,18 @@ public class MetricsRepository extends AbstractService {
     private MetricContext insertContextToDatabase(long contextId, List<MetricAttribute> attrs) {
         Object[] params = packageSqlParamForContextToDatabase(contextId, attrs);
         int[] types = { Types.BIGINT, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
-        ISqlTransaction tx = null;
+        ISqlTransaction transaction = null;
         try {
-            tx = sqlTemplate.startSqlTransaction();
-            tx.prepareAndExecute(getSql("insertMetricContextSql"), params, types);
-            tx.commit();
+            transaction = sqlTemplate.startSqlTransaction();
+            transaction.prepareAndExecute(getSql("insertMetricContextSql"), params, types);
+            transaction.commit();
         } catch (Exception e) {
-            if (tx != null) {
-                tx.rollback();
+            if (transaction != null) {
+                transaction.rollback();
             }
             throw e;
         } finally {
-            close(tx);
+            close(transaction);
         }
         log.debug("Inserted metric context id={}, hash={}, attr1={}, value1={}", contextId, params[1], params[2], params[3]);
         return new MetricContext(contextId, List.copyOf(attrs));
@@ -558,22 +558,22 @@ public class MetricsRepository extends AbstractService {
         int[] types = { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                 Types.VARCHAR };
         for (int attempt = 1; attempt <= CONTEXT_SURROGATE_MAX_RETRIES; attempt++) {
-            ISqlTransaction tx = null;
+            ISqlTransaction transaction = null;
             try {
-                tx = sqlTemplate.startSqlTransaction();
-                tx.prepareAndExecute(getSql("generateContextSurrogateSql"), params, types);
-                tx.commit();
+                transaction = sqlTemplate.startSqlTransaction();
+                transaction.prepareAndExecute(getSql("generateContextSurrogateSql"), params, types);
+                transaction.commit();
                 break;
             } catch (Exception e) {
-                if (tx != null) {
-                    tx.rollback();
+                if (transaction != null) {
+                    transaction.rollback();
                 }
                 if (!isCausedByUniqueKeyViolation(e) || attempt >= CONTEXT_SURROGATE_MAX_RETRIES) {
                     throw new MetricsRepositoryException("Failed to generate context surrogate after " + attempt + " attempts", e);
                 }
                 log.warn("Context surrogate collision (attempt {}/{}), retrying", attempt, CONTEXT_SURROGATE_MAX_RETRIES);
             } finally {
-                close(tx);
+                close(transaction);
             }
         }
         MetricContext ctx = loadContextByAttrsFromDatabase(hash, attrs);
