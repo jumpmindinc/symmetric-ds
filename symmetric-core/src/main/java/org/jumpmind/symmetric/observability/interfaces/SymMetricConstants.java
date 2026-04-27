@@ -65,6 +65,10 @@ public final class SymMetricConstants {
     // Global gauges (StatisticManager)
     public static final String METRIC_ID_DATA_GAP_COUNT = OTEL_SCOPE + ".data.gap.count";
     public static final String METRIC_ID_DATA_UNROUTED_TOTAL = OTEL_SCOPE + ".data.unrouted.total";
+    // Runtime DB connection pool gauges (StatisticManager)
+    public static final String METRIC_ID_RUNTIME_DBPOOL_ACTIVE = OTEL_SCOPE + ".runtime.dbpool.active.count";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_IDLE = OTEL_SCOPE + ".runtime.dbpool.idle.count";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_MAX = OTEL_SCOPE + ".runtime.dbpool.max.count";
     // Engine / node counters (StatisticManager)
     public static final String METRIC_ID_ENGINE_RESTARTS = OTEL_SCOPE + ".engine.restarts";
     public static final String METRIC_ID_NODES_PULLED = OTEL_SCOPE + ".nodes.pulled.count";
@@ -111,6 +115,9 @@ public final class SymMetricConstants {
             METRIC_ID_DATA_CREATE_TIME_MAX,
             METRIC_ID_DATA_GAP_COUNT,
             METRIC_ID_DATA_UNROUTED_TOTAL,
+            METRIC_ID_RUNTIME_DBPOOL_ACTIVE,
+            METRIC_ID_RUNTIME_DBPOOL_IDLE,
+            METRIC_ID_RUNTIME_DBPOOL_MAX,
             METRIC_ID_ENGINE_RESTARTS,
             METRIC_ID_NODES_PULLED,
             METRIC_ID_NODES_PUSHED,

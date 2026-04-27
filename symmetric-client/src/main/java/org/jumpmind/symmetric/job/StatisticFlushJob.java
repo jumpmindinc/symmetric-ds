@@ -21,9 +21,15 @@
 package org.jumpmind.symmetric.job;
 
 import static org.jumpmind.symmetric.job.JobDefaults.EVERY_5_MINUTES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_ACTIVE;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_IDLE;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_MAX;
 
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.util.LogSummaryAppenderUtils;
 import org.jumpmind.util.LogSummaryAppender;
@@ -47,8 +53,33 @@ public class StatisticFlushJob extends AbstractJob {
     @Override
     public void doJob(boolean force) throws Exception {
         engine.getStatisticManager().flush();
+        updateDbPoolMetrics();
         engine.getPurgeService().purgeStats(force);
         purgeLogSummaryAppender();
+    }
+
+    private void updateDbPoolMetrics() {
+        try {
+            BasicDataSource ds = engine.getSymmetricDialect().getPlatform().getDataSource();
+            if (ds == null) {
+                return;
+            }
+            IEngineMetricsService svc = engine.getMetricsService();
+            if (svc == null) {
+                return;
+            }
+            ISymDoubleGauge g = svc.getGauge(METRIC_ID_RUNTIME_DBPOOL_ACTIVE);
+            if (g != null)
+                g.setValue(ds.getNumActive());
+            g = svc.getGauge(METRIC_ID_RUNTIME_DBPOOL_IDLE);
+            if (g != null)
+                g.setValue(ds.getNumIdle());
+            g = svc.getGauge(METRIC_ID_RUNTIME_DBPOOL_MAX);
+            if (g != null)
+                g.setValue(ds.getMaxTotal());
+        } catch (Exception e) {
+            log.debug("Failed to collect DB pool metrics", e);
+        }
     }
 
     protected void purgeLogSummaryAppender() {
