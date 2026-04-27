@@ -23,8 +23,12 @@ package org.jumpmind.symmetric.observability.interfaces;
 import java.util.Collection;
 import java.util.List;
 
+import org.jumpmind.symmetric.statistic.IStatisticManager;
+
 public interface IEngineMetricsService extends IMetricsService {
     String getEngineName();
+
+    IStatisticManager getStatisticManager();
 
     boolean isOtelPublishingEnabled();
 

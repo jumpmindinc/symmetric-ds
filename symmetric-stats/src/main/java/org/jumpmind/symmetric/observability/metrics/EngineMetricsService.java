@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.jumpmind.symmetric.common.ParameterConstants;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
@@ -58,6 +59,11 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     @Override
     public String getEngineName() {
         return engine.getEngineName();
+    }
+
+    @Override
+    public IStatisticManager getStatisticManager() {
+        return engine.getStatisticManager();
     }
 
     @Override

@@ -165,4 +165,6 @@ public interface IStatisticManager {
     public Map<String, Long> getLastDataLoadedRowsMap();
 
     public Map<String, Long> getLastDataLoadedBytesMap();
+
+    public void updateDbPoolMetrics();
 }

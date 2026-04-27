@@ -1000,4 +1000,34 @@ public class StatisticManager implements IStatisticManager {
             return Objects.equals(sourceNodeId, other.sourceNodeId) && Objects.equals(targetNodeId, other.targetNodeId);
         }
     }
+
+    @Override
+    public void updateDbPoolMetrics() {
+        try {
+            Object ds = engine.getSymmetricDialect().getPlatform().getDataSource();
+            if (ds == null) {
+                return;
+            }
+            IEngineMetricsService svc = engine.getMetricsService();
+            if (svc == null) {
+                return;
+            }
+            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_ACTIVE, invokeIntMethod(ds, "getNumActive"));
+            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_IDLE, invokeIntMethod(ds, "getNumIdle"));
+            setGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_MAX, invokeIntMethod(ds, "getMaxTotal"));
+        } catch (Exception e) {
+            log.debug("Failed to collect DB pool metrics", e);
+        }
+    }
+
+    private int invokeIntMethod(Object obj, String methodName) throws Exception {
+        return (int) obj.getClass().getMethod(methodName).invoke(obj);
+    }
+
+    private void setGaugeIfPresent(IEngineMetricsService svc, String metricId, int value) {
+        ISymDoubleGauge g = svc.getGauge(metricId);
+        if (g != null) {
+            g.setValue(value);
+        }
+    }
 }

@@ -46,7 +46,77 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
     private static final Logger log = LoggerFactory.getLogger(MetricDefinitionFactory.class);
     public static final long ATTR_DEFAULT_IDS_END = 19999999999L;
     private final Map<String, SymMetricDefinition> registry = new LinkedHashMap<>();
-    private final Set<String> channelScopedMetricIds = new LinkedHashSet<>();
+    private final Set<String> channelScopedMetricIds = new LinkedHashSet<>(List.of(
+            METRIC_ID_DATA_ROUTED, METRIC_ID_DATA_EXTRACTED, METRIC_ID_DATA_EXTRACTED_BYTES,
+            METRIC_ID_DATA_EXTRACTED_ERRORS, METRIC_ID_DATA_EVENTS_INSERTED,
+            METRIC_ID_DATA_SENT, METRIC_ID_DATA_SENT_BYTES, METRIC_ID_DATA_SENT_ERRORS,
+            METRIC_ID_DATA_RECEIVED, METRIC_ID_DATA_RECEIVED_BYTES,
+            METRIC_ID_DATA_LOADED, METRIC_ID_DATA_LOADED_BYTES, METRIC_ID_DATA_LOADED_ERRORS,
+            METRIC_ID_DATA_LOADED_OUTGOING, METRIC_ID_DATA_LOADED_OUTGOING_BYTES,
+            METRIC_ID_DATA_LOADED_OUTGOING_ERRORS,
+            METRIC_ID_DATA_UNROUTED_CHANNEL, METRIC_ID_DATA_CREATE_TIME_MIN, METRIC_ID_DATA_CREATE_TIME_MAX));
+    private final List<SymMetricDefinition> defaultMetrics = new ArrayList<>(List.of(
+            // Server connection metrics
+            new SymMetricDefinition(METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS, "Active connection reservations to this server from other nodes",
+                    METRIC_UNIT_CONNECTIONS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_SERVER_CONNECTIONS_UTILIZATION, "Active connection as a percentage of max concurrent workers",
+                    METRIC_UNIT_PERCENT, InstrumentType.GAUGE),
+            // Channel-scoped data counters
+            new SymMetricDefinition(METRIC_ID_DATA_ROUTED, "Data rows routed per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_EXTRACTED, "Data rows extracted per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_EXTRACTED_BYTES, "Data bytes extracted per channel", METRIC_UNIT_BYTES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_EXTRACTED_ERRORS, "Data extraction errors per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_EVENTS_INSERTED, "Data events inserted per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_SENT, "Data rows sent per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_SENT_BYTES, "Data bytes sent per channel", METRIC_UNIT_BYTES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_SENT_ERRORS, "Data send errors per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_RECEIVED, "Data rows received per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_RECEIVED_BYTES, "Data bytes received per channel", METRIC_UNIT_BYTES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_LOADED, "Data rows loaded per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_LOADED_BYTES, "Data bytes loaded per channel", METRIC_UNIT_BYTES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_LOADED_ERRORS, "Data load errors per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_LOADED_OUTGOING, "Outgoing data rows loaded per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_LOADED_OUTGOING_BYTES, "Outgoing data bytes loaded per channel", METRIC_UNIT_BYTES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_DATA_LOADED_OUTGOING_ERRORS, "Outgoing data load errors per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            // Channel-scoped gauges
+            new SymMetricDefinition(METRIC_ID_DATA_UNROUTED_CHANNEL, "Unrouted data rows per channel", METRIC_UNIT_ROWS, InstrumentType.GAUGE),
+            new SymMetricDefinition(METRIC_ID_DATA_CREATE_TIME_MIN, "Minimum data create time per channel (epoch ms)", METRIC_UNIT_MILLIS,
+                    InstrumentType.GAUGE),
+            new SymMetricDefinition(METRIC_ID_DATA_CREATE_TIME_MAX, "Maximum data create time per channel (epoch ms)", METRIC_UNIT_MILLIS,
+                    InstrumentType.GAUGE),
+            // Routing and CDC gauges
+            new SymMetricDefinition(METRIC_ID_DATA_GAP_COUNT, "Total open data gaps", METRIC_UNIT_ROWS, InstrumentType.GAUGE),
+            new SymMetricDefinition(METRIC_ID_DATA_UNROUTED_TOTAL, "Total unrouted data rows", METRIC_UNIT_ROWS, InstrumentType.GAUGE),
+            // Runtime DB connection pool gauges
+            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_ACTIVE, "DB connection pool active connections", METRIC_UNIT_CONNECTIONS, InstrumentType.GAUGE),
+            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_IDLE, "DB connection pool idle connections", METRIC_UNIT_CONNECTIONS, InstrumentType.GAUGE),
+            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_MAX, "DB connection pool max size", METRIC_UNIT_CONNECTIONS, InstrumentType.GAUGE),
+            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_WAITERS, "DB connection pool user threads waiting for a connection", METRIC_UNIT_CONNECTIONS,
+                    InstrumentType.GAUGE),
+            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN, "DB connection pool user threads mean wait time", METRIC_UNIT_MILLIS,
+                    InstrumentType.GAUGE),
+            // Engine / node counters
+            new SymMetricDefinition(METRIC_ID_ENGINE_RESTARTS, "Engine restart count", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_NODES_PULLED, "Nodes pulled from", METRIC_UNIT_NODES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_NODES_PUSHED, "Nodes pushed to", METRIC_UNIT_NODES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_NODES_PULLED_TIME, "Total elapsed time for node pull operations", METRIC_UNIT_MILLIS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_NODES_PUSHED_TIME, "Total elapsed time for node push operations", METRIC_UNIT_MILLIS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_NODES_REJECTED, "Nodes rejected", METRIC_UNIT_NODES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_NODES_REGISTERED, "Nodes registered", METRIC_UNIT_NODES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_NODES_LOADED, "Nodes loaded", METRIC_UNIT_NODES, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_NODES_DISABLED, "Nodes disabled", METRIC_UNIT_NODES, InstrumentType.COUNTER),
+            // Purge counters
+            new SymMetricDefinition(METRIC_ID_PURGE_BATCH_INCOMING_ROWS, "Purged incoming batch rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_PURGE_BATCH_OUTGOING_ROWS, "Purged outgoing batch rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_PURGE_DATA_ROWS, "Purged data rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_PURGE_DATA_EVENT_ROWS, "Purged data event rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_PURGE_STRANDED_DATA_ROWS, "Purged stranded data rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_PURGE_STRANDED_DATA_EVENT_ROWS, "Purged stranded data event rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_PURGE_EXPIRED_DATA_ROWS, "Purged expired data rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER),
+            // Trigger counters
+            new SymMetricDefinition(METRIC_ID_TRIGGERS_REMOVED, "Triggers removed", METRIC_UNIT_TRIGGERS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_TRIGGERS_REBUILT, "Triggers rebuilt", METRIC_UNIT_TRIGGERS, InstrumentType.COUNTER),
+            new SymMetricDefinition(METRIC_ID_TRIGGERS_CREATED, "Triggers created", METRIC_UNIT_TRIGGERS, InstrumentType.COUNTER)));
     private final List<ContextDefinition> defaultContexts = new ArrayList<>(List.of(
             new ContextDefinition(MetricContext.UNDEFINED, List.of(new MetricAttribute("UNDEFINED", "UNDEFINED"))), // sentinel for attribute-less metrics
             new ContextDefinition(10000102009L, List.of(new MetricAttribute(CHANNEL, "default"))), // SymmetricDS default channels
@@ -146,84 +216,23 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             new ContextDefinition(ATTR_DEFAULT_IDS_END, List.of(new MetricAttribute("system", "specific")))));
 
     MetricDefinitionFactory() {
-        register(new SymMetricDefinition(
-                METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS,
-                "Active connection reservations to this server from other nodes",
-                METRIC_UNIT_CONNECTIONS,
-                InstrumentType.COUNTER));
-        register(new SymMetricDefinition(
-                METRIC_ID_SERVER_CONNECTIONS_UTILIZATION,
-                "Active connection as a percentage of max concurrent workers",
-                METRIC_UNIT_PERCENT,
-                InstrumentType.GAUGE));
-        // Channel-scoped data counters
-        register(new SymMetricDefinition(METRIC_ID_DATA_ROUTED, "Data rows routed per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_EXTRACTED, "Data rows extracted per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_EXTRACTED_BYTES, "Data bytes extracted per channel", METRIC_UNIT_BYTES, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_EXTRACTED_ERRORS, "Data extraction errors per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_EVENTS_INSERTED, "Data events inserted per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_SENT, "Data rows sent per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_SENT_BYTES, "Data bytes sent per channel", METRIC_UNIT_BYTES, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_SENT_ERRORS, "Data send errors per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_RECEIVED, "Data rows received per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_RECEIVED_BYTES, "Data bytes received per channel", METRIC_UNIT_BYTES, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_LOADED, "Data rows loaded per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_LOADED_BYTES, "Data bytes loaded per channel", METRIC_UNIT_BYTES, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_LOADED_ERRORS, "Data load errors per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_LOADED_OUTGOING, "Outgoing data rows loaded per channel", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_LOADED_OUTGOING_BYTES, "Outgoing data bytes loaded per channel", METRIC_UNIT_BYTES,
-                InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_DATA_LOADED_OUTGOING_ERRORS, "Outgoing data load errors per channel", METRIC_UNIT_ROWS,
-                InstrumentType.COUNTER));
-        // Channel-scoped gauges
-        register(new SymMetricDefinition(METRIC_ID_DATA_UNROUTED_CHANNEL, "Unrouted data rows per channel", METRIC_UNIT_ROWS, InstrumentType.GAUGE));
-        register(new SymMetricDefinition(METRIC_ID_DATA_CREATE_TIME_MIN, "Minimum data create time per channel (epoch ms)", METRIC_UNIT_MILLIS,
-                InstrumentType.GAUGE));
-        register(new SymMetricDefinition(METRIC_ID_DATA_CREATE_TIME_MAX, "Maximum data create time per channel (epoch ms)", METRIC_UNIT_MILLIS,
-                InstrumentType.GAUGE));
-        // Mark all channel-scoped metric IDs for per-channel pre-registration
-        channelScopedMetricIds.addAll(List.of(
-                METRIC_ID_DATA_ROUTED, METRIC_ID_DATA_EXTRACTED, METRIC_ID_DATA_EXTRACTED_BYTES,
-                METRIC_ID_DATA_EXTRACTED_ERRORS, METRIC_ID_DATA_EVENTS_INSERTED,
-                METRIC_ID_DATA_SENT, METRIC_ID_DATA_SENT_BYTES, METRIC_ID_DATA_SENT_ERRORS,
-                METRIC_ID_DATA_RECEIVED, METRIC_ID_DATA_RECEIVED_BYTES,
-                METRIC_ID_DATA_LOADED, METRIC_ID_DATA_LOADED_BYTES, METRIC_ID_DATA_LOADED_ERRORS,
-                METRIC_ID_DATA_LOADED_OUTGOING, METRIC_ID_DATA_LOADED_OUTGOING_BYTES,
-                METRIC_ID_DATA_LOADED_OUTGOING_ERRORS,
-                METRIC_ID_DATA_UNROUTED_CHANNEL, METRIC_ID_DATA_CREATE_TIME_MIN, METRIC_ID_DATA_CREATE_TIME_MAX));
-        // Global gauges
-        register(new SymMetricDefinition(METRIC_ID_DATA_GAP_COUNT, "Total open data gaps", METRIC_UNIT_ROWS, InstrumentType.GAUGE));
-        register(new SymMetricDefinition(METRIC_ID_DATA_UNROUTED_TOTAL, "Total unrouted data rows", METRIC_UNIT_ROWS, InstrumentType.GAUGE));
-        // Runtime DB connection pool gauges
-        register(new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_ACTIVE, "DB connection pool active connections", METRIC_UNIT_CONNECTIONS,
-                InstrumentType.GAUGE));
-        register(new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_IDLE, "DB connection pool idle connections", METRIC_UNIT_CONNECTIONS, InstrumentType.GAUGE));
-        register(new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_MAX, "DB connection pool max size", METRIC_UNIT_CONNECTIONS, InstrumentType.GAUGE));
-        // Engine / node counters
-        register(new SymMetricDefinition(METRIC_ID_ENGINE_RESTARTS, "Engine restart count", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_NODES_PULLED, "Nodes pulled from", METRIC_UNIT_NODES, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_NODES_PUSHED, "Nodes pushed to", METRIC_UNIT_NODES, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_NODES_PULLED_TIME, "Total elapsed time for node pull operations", METRIC_UNIT_MILLIS,
-                InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_NODES_PUSHED_TIME, "Total elapsed time for node push operations", METRIC_UNIT_MILLIS,
-                InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_NODES_REJECTED, "Nodes rejected", METRIC_UNIT_NODES, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_NODES_REGISTERED, "Nodes registered", METRIC_UNIT_NODES, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_NODES_LOADED, "Nodes loaded", METRIC_UNIT_NODES, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_NODES_DISABLED, "Nodes disabled", METRIC_UNIT_NODES, InstrumentType.COUNTER));
-        // Purge counters
-        register(new SymMetricDefinition(METRIC_ID_PURGE_BATCH_INCOMING_ROWS, "Purged incoming batch rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_PURGE_BATCH_OUTGOING_ROWS, "Purged outgoing batch rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_PURGE_DATA_ROWS, "Purged data rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_PURGE_DATA_EVENT_ROWS, "Purged data event rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_PURGE_STRANDED_DATA_ROWS, "Purged stranded data rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_PURGE_STRANDED_DATA_EVENT_ROWS, "Purged stranded data event rows", METRIC_UNIT_ROWS,
-                InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_PURGE_EXPIRED_DATA_ROWS, "Purged expired data rows", METRIC_UNIT_ROWS, InstrumentType.COUNTER));
-        // Trigger counters
-        register(new SymMetricDefinition(METRIC_ID_TRIGGERS_REMOVED, "Triggers removed", METRIC_UNIT_TRIGGERS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_TRIGGERS_REBUILT, "Triggers rebuilt", METRIC_UNIT_TRIGGERS, InstrumentType.COUNTER));
-        register(new SymMetricDefinition(METRIC_ID_TRIGGERS_CREATED, "Triggers created", METRIC_UNIT_TRIGGERS, InstrumentType.COUNTER));
+        defaultMetrics.forEach(this::register);
+    }
+
+    public void registerDefaultMetric(SymMetricDefinition... definitions) {
+        if (definitions == null || definitions.length == 0) {
+            return;
+        }
+        for (SymMetricDefinition def : definitions) {
+            if (def != null) {
+                defaultMetrics.add(def);
+                register(def);
+            }
+        }
+    }
+
+    public List<SymMetricDefinition> getDefaultMetrics() {
+        return Collections.unmodifiableList(defaultMetrics);
     }
 
     public void registerDefaultContext(ContextDefinition... definitions) {
