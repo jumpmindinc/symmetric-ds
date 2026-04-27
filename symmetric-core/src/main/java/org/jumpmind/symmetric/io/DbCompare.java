@@ -702,7 +702,8 @@ public class DbCompare {
             targetNodeGroupId = targetEngine.getNodeService().findIdentity().getNodeGroupId();
         }
         List<TransformTableNodeGroupLink> transforms = sourceEngine.getTransformService().findTransformsFor(
-                sourceNodeGroupId, targetNodeGroupId, sourceTable.getName());
+                sourceNodeGroupId, targetNodeGroupId, sourceTable.getName(),
+                sourceTable.getSchema(), sourceTable.getCatalog());
         if (!CollectionUtils.isEmpty(transforms)) {
             TransformTableNodeGroupLink transform = transforms.get(0); // Only can operate on a single table transform for now.
             if (!StringUtils.isEmpty(transform.getFullyQualifiedTargetTableName())) {

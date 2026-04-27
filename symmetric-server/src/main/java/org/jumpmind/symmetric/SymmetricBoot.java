@@ -32,6 +32,7 @@ import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
 import org.jumpmind.symmetric.util.SymmetricUtils;
+import org.jumpmind.symmetric.web.HealthServlet;
 import org.jumpmind.symmetric.web.HttpMethodFilter;
 import org.jumpmind.symmetric.web.SymmetricContextListener;
 import org.jumpmind.symmetric.web.SymmetricServlet;
@@ -86,6 +87,13 @@ public class SymmetricBoot extends SpringBootServletInitializer {
     ServletRegistrationBean<SymmetricServlet> symmetricServlet() {
         ServletRegistrationBean<SymmetricServlet> bean = new ServletRegistrationBean<>(new SymmetricServlet(),
                 "/sync/*");
+        bean.setLoadOnStartup(1);
+        return bean;
+    }
+
+    @Bean
+    ServletRegistrationBean<HealthServlet> healthServlet() {
+        ServletRegistrationBean<HealthServlet> bean = new ServletRegistrationBean<>(new HealthServlet(), "/health/*");
         bean.setLoadOnStartup(1);
         return bean;
     }

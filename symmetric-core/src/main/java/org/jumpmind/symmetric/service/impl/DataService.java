@@ -2075,8 +2075,11 @@ public class DataService extends AbstractService implements IDataService {
             TriggerRouter triggerRouter, TriggerHistory triggerHistory, boolean isLoad,
             String overrideDeleteStatement, long loadId, String createBy, Status outgoingBatchStatus) {
         Node sourceNode = engine.getNodeService().findIdentity();
+        IDatabasePlatform platform = engine.getTargetDialect().getPlatform();
         List<TransformTableNodeGroupLink> transforms = this.engine.getTransformService().findTransformsFor(
-                sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), triggerRouter.getTargetTable(triggerHistory));
+                sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), triggerRouter.getTargetTable(triggerHistory),
+                triggerRouter.getTargetSchema(platform.getDefaultSchema(), triggerHistory),
+                triggerRouter.getTargetCatalog(platform.getDefaultCatalog(), triggerHistory));
         if (StringUtils.isNotBlank(overrideDeleteStatement)) {
             List<String> sqlStatements = resolveTargetTables(overrideDeleteStatement, triggerRouter, triggerHistory, targetNode);
             for (String sql : sqlStatements) {
@@ -2104,13 +2107,16 @@ public class DataService extends AbstractService implements IDataService {
         if (sql == null) {
             return null;
         }
+        IDatabasePlatform platform = engine.getTargetDialect().getPlatform();
         List<String> sqlStatements = new ArrayList<String>();
         if (sql != null && sql.contains("%s")) {
             Set<String> tableNames = new HashSet<String>();
             Node sourceNode = engine.getNodeService().findIdentity();
             String sourceTableName = triggerRouter.qualifiedTargetTableName(triggerHistory);
             List<TransformTableNodeGroupLink> transforms = this.engine.getTransformService().findTransformsFor(
-                    sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), triggerRouter.getTargetTable(triggerHistory));
+                    sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), triggerRouter.getTargetTable(triggerHistory),
+                    triggerRouter.getTargetSchema(platform.getDefaultSchema(), triggerHistory),
+                    triggerRouter.getTargetCatalog(platform.getDefaultCatalog(), triggerHistory));
             if (transforms != null) {
                 for (TransformTableNodeGroupLink transform : transforms) {
                     tableNames.add(transform.getFullyQualifiedTargetTableName());
