@@ -32,15 +32,15 @@ symmetric-stats / org.jumpmind.symmetric.observability/
 | `ISymMetricDefinition` | core / interfaces | Interface for metric metadata: `id()`, `description()`, `unit()` |
 | `SymMetricDefinition` | stats / metrics | Record implementing `ISymMetricDefinition`; carries `InstrumentType` (COUNTER, GAUGE) |
 | `IMetricDefinitionFactory` | stats / metrics | Interface for definition registry + `initializeMetrics()` |
-| `MetricDefinitionFactory` | stats / metrics | Default registry; pre-populated with default engine metrics; owned by `MetricsManager` |
+| `MetricDefinitionFactory` | stats / metrics | Default registry; pre-populated from `defaultMetrics` list (parallel to `defaultContexts`); `registerDefaultMetric()` adds to list and registers; `getDefaultMetrics()` returns unmodifiable view |
 | `MetricsManager` | stats / metrics | Singleton; owns OTel `Meter`, `MetricDefinitionFactory`, registered services, aggregator lifecycle |
-| `EngineMetricsService` | stats / metrics | Engine-scoped service; owns instruments, persists intervals via `MetricsRepository` |
+| `EngineMetricsService` | stats / metrics | Engine-scoped service; owns instruments, persists intervals via `MetricsRepository`; `getStatisticManager()` returns engine's `StatisticManager` |
 | `HostMetricsService` | stats / metrics | Host-scoped service for system-level metrics |
 | `UpDownCounter` / `SymDoubleGauge` | stats / metrics | Instruments; each update enqueues an `ObservationLong` / `ObservationDouble` |
 | `MetricKey` | stats / models | Composite identity: `hostname + engineName + metricId` |
 | `MetricIntervalStats` | stats / models | Immutable stats for one closed window: avg, min, max, stdDev, count, isOutlier |
 | `MetricSeries` | stats / models | Ordered series of interval stats for a single metric key |
-| `MetricsRepository` | stats / repository | DB access for `sym_metric_key` and `sym_metric_interval`; caches surrogate keys in-memory |
+| `MetricsRepository` | stats / repository | DB access for `metric_key`, `metric_context`, `metric_stats_float64`, `metric_stats_int64`; caches surrogate keys in-memory |
 | `PrimaryMetricAggregator` | stats / stats | Daemon thread; drains observation queues, closes intervals, triggers persistence |
 | `AbstractStatsAccumulator` | stats / stats | Mutable accumulator for one open time window; subclassed by `Float64StatsAccumulator` and `Int64StatsAccumulator` |
 | `MetricSeriesSlidingWorkset` | stats / stats | Sliding window of recent intervals for IQR-based outlier detection |
@@ -49,10 +49,10 @@ symmetric-stats / org.jumpmind.symmetric.observability/
 
 ```
 MetricsManager()
-  └── new MetricDefinitionFactory()          ← pre-registers default metric definitions
+  └── new MetricDefinitionFactory()          ← pre-registers default metric definitions from defaultMetrics list
 
 EngineMetricsService.initRepository()
-  └── initializeImportantMetrics()
+  └── initializeDefaultMetrics()
         └── metricsManager.getMetricDefinitionFactory().initializeMetrics(this)
               └── service.registerUpDownCounter(def) / registerGauge(def)
                     └── UpDownCounter / SymDoubleGauge created, stored in AbstractMetricsService
@@ -62,6 +62,17 @@ Callers (e.g. `ConcurrentConnectionManager`) look up materialized instruments by
 ```
 metricsService.getUpDownCounter(SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS)
 ```
+
+## DB pool metrics
+
+`StatisticManager.updateDbPoolMetrics()` (called by `StatisticFlushJob` every 5 min) probes the datasource via reflection and sets 5 gauges:
+- `symmetricds.runtime.dbpool.active.count` — active connections
+- `symmetricds.runtime.dbpool.idle.count` — idle connections
+- `symmetricds.runtime.dbpool.max.count` — pool max size
+- `symmetricds.runtime.dbpool.waiters.count` — threads waiting for a connection
+- `symmetricds.runtime.dbpool.waiters.delay.mean` — mean borrow wait time (ms)
+
+Reflection is used because `commons-dbcp2` (`BasicDataSource`) is only available in `symmetric-jdbc`, not `symmetric-core`.
 
 ## Data flow (high level)
 
@@ -74,12 +85,15 @@ App thread  →  instrument.add()  →  ObservationsQueue (per metric)
                                             ↓
                               MetricsRepository.saveIntervals()
                                             ↓
-                              sym_metric_key / sym_metric_interval (DB)
+                    {prefix}_metric_key / {prefix}_metric_context /
+                    {prefix}_metric_stats_float64 / {prefix}_metric_stats_int64
 ```
 
 ## DB tables
 
-| Table | Key columns |
-|-------|-------------|
-| `{prefix}_metric_key` | `metric_key` (PK), `hostname`, `engine_name`, `metric_id` |
-| `{prefix}_metric_interval` | `metric_key` (FK), `interval_start`, `interval_end`, `avg`, `min`, `max`, `std_dev`, `observation_count`, `created_time` |
+| Table | Purpose |
+|-------|---------|
+| `{prefix}_metric_key` | Dimension — maps surrogate `metric_key` to `hostname`, `engine_name`, `metric_id` |
+| `{prefix}_metric_context` | Optional attribute context for a metric observation (up to 3 key-value pairs) |
+| `{prefix}_metric_stats_float64` | Fact — aggregated float64 interval stats (avg, min, max, std_dev, count) |
+| `{prefix}_metric_stats_int64` | Fact — aggregated int64 interval stats (same shape, integer types) |
