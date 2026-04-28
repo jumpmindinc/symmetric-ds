@@ -55,7 +55,7 @@ public class SurrogateLongKeyBuffer {
     }
 
     public static long roundUpToNextBufferStart(long value) {
-        return SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE - value % SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
+        return roundDownToBufferStart(value) + SURROGATE_KEY_BUFFER_SIZE;
     }
 
     public long size() {

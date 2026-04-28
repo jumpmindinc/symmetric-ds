@@ -67,64 +67,71 @@ class SurrogateLongKeyBufferTest {
 
     @ParameterizedTest(name = "roundUp({0}) == {1}")
     @CsvSource({
-            "0,  10", // on boundary → full span away
-            "1,   9",
-            "5,   5", // mid-span
-            "9,   1", // one step from next boundary
-            "10, 10", // on boundary again → full span away
-            "11,  9",
-            "20, 10" // another boundary
+            "0,  10", // on boundary → next buffer starts at 10
+            "1,  10",
+            "5,  10", // mid-span
+            "9,  10", // one step from next boundary
+            "10, 20", // on boundary → next buffer starts at 20
+            "11, 20",
+            "20, 30", // another boundary
+            "77, 80" // key from dup-key regression: must not shrink nextAvailableValue
     })
     void roundUp_parametrized(long input, long expected) {
         assertEquals(expected, SurrogateLongKeyBuffer.roundUpToNextBufferStart(input));
     }
 
     @Test
-    void roundUp_boundaryValuesReturnFullSpan() {
+    void roundUp_boundaryValuesReturnNextBoundary() {
         assertEquals(SURROGATE_KEY_BUFFER_SIZE,
                 SurrogateLongKeyBuffer.roundUpToNextBufferStart(0));
-        assertEquals(SURROGATE_KEY_BUFFER_SIZE,
+        assertEquals(2 * SURROGATE_KEY_BUFFER_SIZE,
                 SurrogateLongKeyBuffer.roundUpToNextBufferStart(SURROGATE_KEY_BUFFER_SIZE));
-        assertEquals(SURROGATE_KEY_BUFFER_SIZE,
+        assertEquals(3 * SURROGATE_KEY_BUFFER_SIZE,
                 SurrogateLongKeyBuffer.roundUpToNextBufferStart(2 * SURROGATE_KEY_BUFFER_SIZE));
     }
 
     @Test
-    void roundUp_oneBelowBoundaryReturnsOne() {
-        assertEquals(1L,
+    void roundUp_oneBelowBoundaryReturnsNextBoundary() {
+        assertEquals(SURROGATE_KEY_BUFFER_SIZE,
                 SurrogateLongKeyBuffer.roundUpToNextBufferStart(SURROGATE_KEY_BUFFER_SIZE - 1));
     }
 
     @Test
-    void roundUp_oneAboveBoundaryReturnsSpanMinusOne() {
-        assertEquals(SURROGATE_KEY_BUFFER_SIZE - 1,
+    void roundUp_oneAboveBoundaryReturnsNextNextBoundary() {
+        assertEquals(2 * SURROGATE_KEY_BUFFER_SIZE,
                 SurrogateLongKeyBuffer.roundUpToNextBufferStart(SURROGATE_KEY_BUFFER_SIZE + 1));
     }
 
-    @ParameterizedTest(name = "roundDown(value={0} + roundUp(value)) == {1}")
+    @ParameterizedTest(name = "roundUp({0}) == {1}")
     @CsvSource({
-            "0,  10", // on boundary → next boundary is SPAN away
+            "0,  10",
             "1,  10",
-            "5,  10", // mid-span
-            "9,  10", // one step from boundary
-            "10, 20", // on next boundary → jumps to the one after
+            "5,  10",
+            "9,  10",
+            "10, 20",
             "15, 20",
             "19, 20",
             "20, 30"
     })
-    void roundDown_of_valuePlusRoundUp_equalsNextBoundary(long value, long expectedNextBoundary) {
-        long offset = SurrogateLongKeyBuffer.roundUpToNextBufferStart(value);
-        long nextBoundary = SurrogateLongKeyBuffer.roundDownToBufferStart(value + offset);
-        assertEquals(expectedNextBoundary, nextBoundary);
+    void roundUp_returnsAbsoluteNextBoundary(long value, long expectedNextBoundary) {
+        assertEquals(expectedNextBoundary, SurrogateLongKeyBuffer.roundUpToNextBufferStart(value));
     }
 
     @Test
-    void roundDown_of_valuePlusRoundUp_isAlwaysMultipleOfSpan() {
+    void roundUp_isAlwaysAlignedToSpan() {
         for (long v = 0; v < 3 * SURROGATE_KEY_BUFFER_SIZE; v++) {
-            long offset = SurrogateLongKeyBuffer.roundUpToNextBufferStart(v);
-            long nextBoundary = SurrogateLongKeyBuffer.roundDownToBufferStart(v + offset);
+            long nextBoundary = SurrogateLongKeyBuffer.roundUpToNextBufferStart(v);
             assertEquals(0, nextBoundary % SURROGATE_KEY_BUFFER_SIZE,
                     "Expected multiple of SPAN for value=" + v);
+        }
+    }
+
+    @Test
+    void roundUp_isAlwaysGreaterThanInput() {
+        for (long v = 0; v < 3 * SURROGATE_KEY_BUFFER_SIZE; v++) {
+            long nextBoundary = SurrogateLongKeyBuffer.roundUpToNextBufferStart(v);
+            assertEquals(true, nextBoundary > v,
+                    "Expected roundUp(" + v + ")=" + nextBoundary + " to be greater than input");
         }
     }
 }
