@@ -171,6 +171,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     protected int initializeDefaultMetrics() {
         try {
             int count = metricsManager.getMetricDefinitionFactory().initializeMetrics(this);
+            resetGaugesToZero();
             log.debug("Initialized repository with {} default metrics for engine {}", count, engine.getEngineName());
             return count;
         } catch (Exception ex) {

@@ -213,6 +213,16 @@ abstract class AbstractMetricsService implements IMetricsService {
         return Collections.unmodifiableCollection(metrics.values());
     }
 
+    protected void resetGaugesToZero() {
+        for (ISymMetric metric : metrics.values()) {
+            if (metric instanceof ISymDoubleGauge g) {
+                g.setValue(0.0);
+            } else if (metric instanceof ISymLongGauge g) {
+                g.setValue(0L);
+            }
+        }
+    }
+
     @Override
     public void shutdown() {
         for (ISymMetric metric : metrics.values()) {
