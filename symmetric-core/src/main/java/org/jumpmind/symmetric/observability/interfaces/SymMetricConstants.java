@@ -80,11 +80,11 @@ public final class SymMetricConstants {
     public static final String METRIC_ID_DATA_GAP_COUNT = OTEL_SCOPE + ".data.gap.count";
     public static final String METRIC_ID_DATA_UNROUTED_TOTAL = OTEL_SCOPE + ".data.unrouted.total";
     // Database connection pool gauges (StatisticManager)
-    public static final String METRIC_ID_RUNTIME_DBPOOL_ACTIVE = OTEL_SCOPE + ".runtime.dbpool.active.count";
-    public static final String METRIC_ID_RUNTIME_DBPOOL_IDLE = OTEL_SCOPE + ".runtime.dbpool.idle.count";
-    public static final String METRIC_ID_RUNTIME_DBPOOL_MAX = OTEL_SCOPE + ".runtime.dbpool.max.count";
-    public static final String METRIC_ID_RUNTIME_DBPOOL_WAITERS = OTEL_SCOPE + ".runtime.dbpool.waiters.count";
-    public static final String METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN = OTEL_SCOPE + ".runtime.dbpool.waiters.delay.mean";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_ACTIVE = OTEL_SCOPE + ".dbpool.active.count";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_IDLE = OTEL_SCOPE + ".dbpool.idle.count";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_MAX = OTEL_SCOPE + ".dbpool.max.count";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_WAITERS = OTEL_SCOPE + ".dbpool.waiters.count";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN = OTEL_SCOPE + ".dbpool.waiters.delay.mean";
     // Engine / node counters (StatisticManager)
     public static final String METRIC_ID_ENGINE_RESTARTS = OTEL_SCOPE + ".engine.restarts";
     public static final String METRIC_ID_NODES_PULLED = OTEL_SCOPE + ".nodes.pulled.count";

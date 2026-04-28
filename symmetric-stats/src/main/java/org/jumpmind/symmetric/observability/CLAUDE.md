@@ -63,17 +63,6 @@ Callers (e.g. `ConcurrentConnectionManager`) look up materialized instruments by
 metricsService.getUpDownCounter(SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS)
 ```
 
-## DB pool metrics
-
-`StatisticManager.updateDbPoolMetrics()` (called by `StatisticFlushJob` every 5 min) probes the datasource via reflection and sets 5 gauges:
-- `symmetricds.runtime.dbpool.active.count` — active connections
-- `symmetricds.runtime.dbpool.idle.count` — idle connections
-- `symmetricds.runtime.dbpool.max.count` — pool max size
-- `symmetricds.runtime.dbpool.waiters.count` — threads waiting for a connection
-- `symmetricds.runtime.dbpool.waiters.delay.mean` — mean borrow wait time (ms)
-
-Reflection is used because `commons-dbcp2` (`BasicDataSource`) is only available in `symmetric-jdbc`, not `symmetric-core`.
-
 ## Data flow (high level)
 
 ```
