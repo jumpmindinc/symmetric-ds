@@ -215,7 +215,7 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
         } else if (typeName != null && typeName.equalsIgnoreCase("UUID") && type == Types.OTHER) {
             return Types.VARCHAR;
         } else if (typeName != null && typeName.equalsIgnoreCase("CITEXT")) {
-            return Types.LONGVARCHAR;    
+            return Types.LONGVARCHAR;
         } else if (type != null && (type == Types.STRUCT || type == Types.OTHER)) {
             return Types.LONGVARCHAR;
         } else if (typeName != null && typeName.equalsIgnoreCase("BIT")) {
