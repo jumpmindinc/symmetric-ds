@@ -91,10 +91,12 @@ public class NodeService extends AbstractService implements INodeService {
         setSqlMap(new NodeServiceSqlMap(symmetricDialect.getPlatform(), createSqlReplacementTokens()));
     }
 
+    @Override
     public String findSymmetricVersion() {
         return (String) sqlTemplate.queryForObject(getSql("findSymmetricVersionSql"), String.class);
     }
 
+    @Override
     public String findIdentityNodeId() {
         Node node = findIdentity();
         return node != null ? node.getNodeId() : null;
@@ -110,10 +112,12 @@ public class NodeService extends AbstractService implements INodeService {
         return externalId;
     }
 
+    @Override
     public Collection<Node> findEnabledNodesFromNodeGroup(String nodeGroupId) {
         return cacheManager.getNodesByGroup(nodeGroupId);
     }
 
+    @Override
     public Collection<Node> getEnabledNodesFromDatabase() {
         return sqlTemplate.query(getSql(SELECT_NODE_PREFIX_SQL, "findEnabledNodes"), new NodeRowMapper());
     }
@@ -122,10 +126,12 @@ public class NodeService extends AbstractService implements INodeService {
         return findNodesThatOriginatedFromNodeId(originalNodeId, true);
     }
 
+    @Override
     public Collection<Node> findNodesWithOpenRegistration() {
         return sqlTemplate.query(getSql(SELECT_NODE_PREFIX_SQL, "findNodesWithOpenRegistrationSql"), new NodeRowMapper());
     }
 
+    @Override
     public Set<Node> findNodesThatOriginatedFromNodeId(String originalNodeId, boolean recursive) {
         Set<Node> all = new HashSet<>();
         List<Node> list = sqlTemplate.query(getSql(SELECT_NODE_PREFIX_SQL, "findNodesCreatedByMeSql"), new NodeRowMapper(), originalNodeId);
@@ -143,15 +149,18 @@ public class NodeService extends AbstractService implements INodeService {
     /**
      * Lookup a node in the database, which contains information for syncing with it.
      */
+    @Override
     public Node findNode(String id) {
         List<Node> list = sqlTemplate.query(getSql(SELECT_NODE_PREFIX_SQL, "findNodeSql"), new NodeRowMapper(), id);
         return (Node) getFirstEntry(list);
     }
 
+    @Override
     public Node findNodeInCacheOnly(String id) {
         return nodeCache.get(id);
     }
 
+    @Override
     public Node findNode(String id, boolean useCache) {
         if (useCache) {
             long cacheTimeoutInMs = parameterService.getLong(ParameterConstants.CACHE_TIMEOUT_NODE_IN_MS);
@@ -165,44 +174,46 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public void flushNodeCache() {
         nodeCacheTime = 0;
     }
 
+    @Override
     public Node findNodeByExternalId(String nodeGroupId, String externalId) {
         List<Node> list = sqlTemplate.query(getSql(SELECT_NODE_PREFIX_SQL, "findNodeByExternalIdSql"), new NodeRowMapper(), nodeGroupId,
                 externalId);
         return (Node) getFirstEntry(list);
     }
 
+    @Override
     public void ignoreNodeChannelForExternalId(boolean enabled, String channelId, String nodeGroupId, String externalId,
             String targetNodeGroupId, String targetExternalId) {
         Node node = findNodeByExternalId(nodeGroupId, externalId);
-<<<<<<< HEAD
         Node targetNode = findNodeByExternalId(targetNodeGroupId, targetExternalId);
         if (sqlTemplate.update(getSql("nodeChannelControlIgnoreSql"),
-                new Object[] { enabled ? 1 : 0, node.getNodeId(), targetNode.getNodeId(), channelId }) <= 0) {
+                enabled ? 1 : 0, node.getNodeId(), targetNode.getNodeId(), channelId) <= 0) {
             sqlTemplate.update(getSql("insertNodeChannelControlSql"),
-                    new Object[] { node.getNodeId(), targetNode.getNodeId(), channelId, enabled ? 1 : 0, 0 });
-=======
-        if (sqlTemplate.update(getSql("nodeChannelControlIgnoreSql"), enabled ? 1 : 0, node.getNodeId(), channelId) <= 0) {
-            sqlTemplate.update(getSql("insertNodeChannelControlSql"), node.getNodeId(), channelId, enabled ? 1 : 0, 0);
->>>>>>> b9f11ad4d (SYM-7542: Watchdog should not unregister nodes in certain cases (#750))
+                    node.getNodeId(), targetNode.getNodeId(), channelId, enabled ? 1 : 0, 0);
         }
     }
 
+    @Override
     public List<NodeHost> findNodeHosts(String nodeId) {
         return sqlTemplate.query(getSql("selectNodeHostPrefixSql", "selectNodeHostByNodeIdSql"), new NodeHostRowMapper(), nodeId);
     }
 
+    @Override
     public void deleteNodeHost(String nodeId) {
         platform.getSqlTemplate().update(getSql("deleteNodeHostSql"), nodeId);
     }
 
+    @Override
     public void deleteNodeHostInstance(String nodeId, String instanceId) {
         platform.getSqlTemplate().update(getSql("deleteNodeHostInstanceSql"), nodeId, instanceId);
     }
 
+    @Override
     public void updateNodeHost(NodeHost nodeHost) {
         if (sqlTemplate.update(getSql("updateNodeHostSql"),
                 nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getOsUser(),
@@ -223,6 +234,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public void updateNodeHostForCurrentNode() {
         if (nodeHostForCurrentNode == null) {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
@@ -244,34 +256,12 @@ public class NodeService extends AbstractService implements INodeService {
             ISqlTransaction transaction = null;
             try {
                 transaction = sqlTemplate.startSqlTransaction();
-<<<<<<< HEAD
-                if (!syncChange) {
-                    symmetricDialect.disableSyncTriggers(transaction, nodeId);
-                }
-                String myNode = findIdentityNodeId();
-                if (StringUtils.isNotBlank(myNode) && myNode.equals(nodeId)) {
-                    transaction.prepareAndExecute(getSql("deleteNodeIdentitySql"));
-                    cachedNodeIdentity = null;
-                }
-                transaction.prepareAndExecute(getSql("deleteNodeSecuritySql"), new Object[] { nodeId });
-                transaction.prepareAndExecute(getSql("deleteNodeHostSql"), new Object[] { nodeId });
-                transaction.prepareAndExecute(getSql("deleteNodeSql"), new Object[] { nodeId });
-                transaction.prepareAndExecute(getSql("deleteNodeChannelCtlSql"), new Object[] { nodeId, nodeId });
-                transaction.prepareAndExecute(getSql("deleteIncomingErrorSql"), new Object[] { StringUtils.isNotBlank(targetNodeId) ? targetNodeId : nodeId });
-                transaction.prepareAndExecute(getSql("deleteExtractRequestSql"), new Object[] { nodeId, nodeId });
-                transaction.prepareAndExecute(getSql("deleteNodeCommunicationSql"), new Object[] { StringUtils.isNotBlank(targetNodeId) ? targetNodeId
-                        : nodeId });
-                transaction.prepareAndExecute(getSql("deleteTableReloadRequestSql"), new Object[] { nodeId, nodeId });
-                transaction.prepareAndExecute(getSql("cancelTableReloadStatusSql"), new Object[] { new Date(), new Date(), nodeId, nodeId });
-                transaction.prepareAndExecute(getSql("setOutgoingBatchOkSql"), new Object[] { StringUtils.isNotBlank(targetNodeId) ? targetNodeId : nodeId });
-                transaction.prepareAndExecute(getSql("deleteIncomingBatchSql"), new Object[] { StringUtils.isNotBlank(targetNodeId) ? targetNodeId : nodeId });
-=======
                 enableDisableSync(syncChange, false, nodeId, transaction);
                 deleteNodeIdentity(nodeId, transaction);
                 transaction.prepareAndExecute(getSql("deleteNodeSecuritySql"), nodeId);
                 transaction.prepareAndExecute(getSql("deleteNodeHostSql"), nodeId);
                 transaction.prepareAndExecute(getSql("deleteNodeSql"), nodeId);
-                transaction.prepareAndExecute(getSql("deleteNodeChannelCtlSql"), nodeId);
+                transaction.prepareAndExecute(getSql("deleteNodeChannelCtlSql"), nodeId, nodeId);
                 transaction.prepareAndExecute(getSql("deleteIncomingErrorSql"), StringUtils.isNotBlank(targetNodeId) ? targetNodeId : nodeId);
                 transaction.prepareAndExecute(getSql("deleteExtractRequestSql"), nodeId, nodeId);
                 transaction.prepareAndExecute(getSql("deleteNodeCommunicationSql"), StringUtils.isNotBlank(targetNodeId) ? targetNodeId : nodeId);
@@ -279,7 +269,6 @@ public class NodeService extends AbstractService implements INodeService {
                 transaction.prepareAndExecute(getSql("cancelTableReloadStatusSql"), new Date(), new Date(), nodeId, nodeId);
                 transaction.prepareAndExecute(getSql("setOutgoingBatchOkSql"), StringUtils.isNotBlank(targetNodeId) ? targetNodeId : nodeId);
                 transaction.prepareAndExecute(getSql("deleteIncomingBatchSql"), StringUtils.isNotBlank(targetNodeId) ? targetNodeId : nodeId);
->>>>>>> b9f11ad4d (SYM-7542: Watchdog should not unregister nodes in certain cases (#750))
                 transaction.commit();
             } catch (Error | RuntimeException ex) {
                 if (transaction != null) {
@@ -321,10 +310,12 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public void insertNodeIdentity(String nodeId) {
         sqlTemplate.update(getSql("insertNodeIdentitySql"), nodeId);
     }
 
+    @Override
     public boolean deleteIdentity() {
         boolean successful = false;
         try {
@@ -338,12 +329,14 @@ public class NodeService extends AbstractService implements INodeService {
         return successful;
     }
 
+    @Override
     public void insertNodeGroup(String groupId, String description) {
         if (sqlTemplate.queryForInt(getSql("doesNodeGroupExistSql"), groupId) == 0) {
             sqlTemplate.update(getSql("insertNodeGroupSql"), description, groupId);
         }
     }
 
+    @Override
     public void save(Node node) {
         if (!updateNode(node)) {
             sqlTemplate.update(
@@ -407,18 +400,22 @@ public class NodeService extends AbstractService implements INodeService {
         return null;
     }
 
+    @Override
     public Node getCachedIdentity() {
         return cachedNodeIdentity;
     }
 
+    @Override
     public Node findIdentity() {
         return findIdentity(true);
     }
 
+    @Override
     public Node findIdentity(boolean useCache) {
         return findIdentity(useCache, true);
     }
 
+    @Override
     public Node findIdentity(boolean useCache, boolean logSqlError) {
         if (cachedNodeIdentity == null || !useCache) {
             try {
@@ -434,22 +431,27 @@ public class NodeService extends AbstractService implements INodeService {
         return cachedNodeIdentity;
     }
 
+    @Override
     public List<Node> findNodesToPull() {
         return findSourceNodesFor(NodeGroupLinkAction.W);
     }
 
+    @Override
     public List<Node> findNodesWhoPushToMe() {
         return findSourceNodesFor(NodeGroupLinkAction.P);
     }
 
+    @Override
     public List<Node> findNodesToPushTo() {
         return findTargetNodesFor(NodeGroupLinkAction.P);
     }
 
+    @Override
     public List<Node> findNodesWhoPullFromMe() {
         return findTargetNodesFor(NodeGroupLinkAction.W);
     }
 
+    @Override
     public List<Node> findSourceNodesFor(NodeGroupLinkAction eventAction) {
         Node node = findIdentity();
         if (node != null) {
@@ -459,6 +461,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public List<Node> getSourceNodesFromDatabase(NodeGroupLinkAction eventAction, Node node) {
         if (node != null) {
             return sqlTemplate.query(getSql(SELECT_NODE_PREFIX_SQL, "findNodesWhoTargetMeSql"),
@@ -468,6 +471,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public List<Node> findTargetNodesFor(NodeGroupLinkAction eventAction) {
         Node node = findIdentity();
         if (node != null) {
@@ -477,6 +481,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public List<Node> getTargetNodesFromDatabase(NodeGroupLinkAction eventAction, Node node) {
         if (node != null) {
             return sqlTemplate.query(getSql(SELECT_NODE_PREFIX_SQL, "findNodesWhoITargetSql"),
@@ -486,19 +491,23 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public void flushNodeGroupCache() {
         cacheManager.flushSourceNodesCache();
         cacheManager.flushTargetNodesCache();
     }
 
+    @Override
     public List<String> findAllExternalIds() {
         return sqlTemplate.query(getSql("selectExternalIdsSql"), new StringMapper());
     }
 
+    @Override
     public List<Node> findAllNodes() {
         return sqlTemplate.query(getSql(SELECT_NODE_PREFIX_SQL), new NodeRowMapper());
     }
 
+    @Override
     public List<Node> findAllNodes(boolean useCache) {
         if (useCache) {
             findNode(findIdentityNodeId(), true);
@@ -508,6 +517,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public Map<String, Node> findAllNodesAsMap() {
         List<Node> nodes = findAllNodes();
         Map<String, Node> nodeMap = new HashMap<>(nodes.size());
@@ -517,6 +527,7 @@ public class NodeService extends AbstractService implements INodeService {
         return nodeMap;
     }
 
+    @Override
     public List<Node> findFilteredNodesWithLimit(int offset, int limit, List<FilterCriterion> filter,
             String orderColumn, String orderDirection) {
         String where = filter != null ? buildWhere(filter) : null;
@@ -560,6 +571,7 @@ public class NodeService extends AbstractService implements INodeService {
         return nodeList;
     }
 
+    @Override
     public int countFilteredNodes(List<FilterCriterion> filter) {
         String where = filter != null ? buildWhere(filter) : null;
         Map<String, Object> params = filter != null ? buildParams(filter) : new HashMap<>();
@@ -617,6 +629,7 @@ public class NodeService extends AbstractService implements INodeService {
         return orderBy;
     }
 
+    @Override
     public NetworkedNode getRootNetworkedNode() {
         Map<String, Node> nodes = findAllNodesAsMap();
         Map<String, NetworkedNode> leaves = new HashMap<>(nodes.size());
@@ -639,6 +652,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public Node findRootNode() {
         List<Node> nodeList = sqlTemplate.query(getSql(SELECT_NODE_PREFIX_SQL, "findRootNodeSql"), new NodeRowMapper());
         if (!nodeList.isEmpty()) {
@@ -650,10 +664,12 @@ public class NodeService extends AbstractService implements INodeService {
     /**
      * Lookup a node_security in the database, which contains private information used to authenticate.
      */
+    @Override
     public NodeSecurity findNodeSecurity(String id) {
         return findNodeSecurity(id, false);
     }
 
+    @Override
     public NodeSecurity findNodeSecurity(String nodeId, boolean useCache) {
         if (!parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) && useCache) {
             Map<String, NodeSecurity> nodeSecurities = findAllNodeSecurity(true);
@@ -665,6 +681,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public NodeSecurity findOrCreateNodeSecurity(String nodeId) {
         try {
             if (nodeId != null) {
@@ -684,6 +701,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public boolean isRegistrationEnabled(String nodeId) {
         NodeSecurity nodeSecurity = findNodeSecurity(nodeId);
         if (nodeSecurity != null) {
@@ -699,11 +717,13 @@ public class NodeService extends AbstractService implements INodeService {
         flushNodeAuthorizedCache();
     }
 
+    @Override
     public void deleteNodeSecurity(String nodeId) {
         sqlTemplate.update(getSql("deleteNodeSecuritySql"), nodeId);
         flushNodeAuthorizedCache();
     }
 
+    @Override
     public List<NodeSecurity> findNodeSecurityWithLoadEnabled() {
         if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
             return sqlTemplate.query(getSql(SELECT_NODE_SECURITY_PREFIX_SQL, "findNodeSecurityWithLoadEnabledSql"), new NodeSecurityRowMapper());
@@ -718,6 +738,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public synchronized Map<String, NodeSecurity> findAllNodeSecurity(boolean useCache) {
         long maxSecurityCacheTime = parameterService.getLong(ParameterConstants.CACHE_TIMEOUT_NODE_SECURITY_IN_MS);
         Map<String, NodeSecurity> all = securityCache;
@@ -733,6 +754,7 @@ public class NodeService extends AbstractService implements INodeService {
     /**
      * Check that the given node and password match in the node_security table. A node must authenticate before it's allowed to sync data.
      */
+    @Override
     public boolean isNodeAuthorized(String nodeId, String password) {
         int maxFailedLogins = parameterService.getInt(ParameterConstants.NODE_PASSWORD_FAILED_ATTEMPTS);
         Map<String, NodeSecurity> nodeSecurities = findAllNodeSecurity(true);
@@ -759,10 +781,12 @@ public class NodeService extends AbstractService implements INodeService {
         return nodeSecurity != null && nodeSecurity.getNodePassword() == null;
     }
 
+    @Override
     public void flushNodeAuthorizedCache() {
         securityCacheTime = 0;
     }
 
+    @Override
     public boolean updateNodeSecurity(NodeSecurity security) {
         ISqlTransaction transaction = null;
         try {
@@ -780,6 +804,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public boolean updateNodeSecurity(ISqlTransaction transaction, NodeSecurity security) {
         security.setNodePassword(filterPasswordOnSaveIfNeeded(security.getNodePassword(), security.getNodeId()));
         String sql = getSql("updateNodeSecuritySql");
@@ -806,6 +831,7 @@ public class NodeService extends AbstractService implements INodeService {
         return (updateCount == 1);
     }
 
+    @Override
     public boolean setInitialLoadEnabled(ISqlTransaction transaction, String nodeId, boolean initialLoadEnabled, boolean syncChange,
             long loadId, String createBy) {
         try {
@@ -833,6 +859,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public boolean setInitialLoadEnabled(String nodeId, boolean initialLoadEnabled, boolean syncChange, long loadId, String createBy) {
         ISqlTransaction transaction = null;
         try {
@@ -850,6 +877,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public boolean setInitialLoadEnded(ISqlTransaction transaction, String nodeId) {
         boolean isAutoCommit = false;
         try {
@@ -879,6 +907,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public boolean setPartialLoadStarted(ISqlTransaction transaction, String nodeId, long loadId, String createBy) {
         NodeSecurity nodeSecurity = findOrCreateNodeSecurity(nodeId);
         if (nodeSecurity != null) {
@@ -891,6 +920,7 @@ public class NodeService extends AbstractService implements INodeService {
         return false;
     }
 
+    @Override
     public boolean setPartialLoadEnded(ISqlTransaction transaction, String nodeId) {
         boolean isAutoCommit = false;
         try {
@@ -920,6 +950,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public boolean setReverseInitialLoadEnabled(ISqlTransaction transaction, String nodeId, boolean initialLoadEnabled, boolean syncChange,
             long loadId, String createBy) {
         try {
@@ -946,6 +977,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public boolean setReverseInitialLoadEnabled(String nodeId, boolean initialLoadEnabled, boolean syncChange, long loadId, String createBy) {
         ISqlTransaction transaction = null;
         try {
@@ -963,34 +995,42 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public boolean isExternalIdRegistered(String nodeGroupId, String externalId) {
         return sqlTemplate.queryForInt(getSql("isNodeRegisteredSql"), nodeGroupId, externalId) > 0;
     }
 
+    @Override
     public boolean isDataLoadCompleted() {
         return getNodeStatus() == NodeStatus.DATA_LOAD_COMPLETED;
     }
 
+    @Override
     public boolean isDataLoadCompleted(String nodeId) {
         return getNodeStatus(nodeId) == NodeStatus.DATA_LOAD_COMPLETED;
     }
 
+    @Override
     public boolean isDataLoadStarted() {
         return getNodeStatus() == NodeStatus.DATA_LOAD_STARTED;
     }
 
+    @Override
     public boolean isDataLoadStarted(String nodeId) {
         return getNodeStatus(nodeId) == NodeStatus.DATA_LOAD_STARTED;
     }
 
+    @Override
     public boolean isRegistrationServer() {
         return parameterService.isRegistrationServer();
     }
 
+    @Override
     public NodeStatus getNodeStatus() {
         return getNodeStatus(findIdentityNodeId());
     }
 
+    @Override
     public NodeStatus getNodeStatus(String nodeId) {
         long ts = System.currentTimeMillis();
         try {
@@ -1021,6 +1061,7 @@ public class NodeService extends AbstractService implements INodeService {
         return s;
     }
 
+    @Override
     public void checkForOfflineNodes() {
         long offlineNodeDetectionMinutes = parameterService.getLong(ParameterConstants.OFFLINE_NODE_DETECTION_PERIOD_MINUTES);
         List<IOfflineServerListener> offlineServerListeners = extensionService.getExtensionPointList(IOfflineServerListener.class);
@@ -1035,10 +1076,12 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public List<Node> findOfflineNodes() {
         return findOfflineNodes(parameterService.getLong(ParameterConstants.OFFLINE_NODE_DETECTION_PERIOD_MINUTES));
     }
 
+    @Override
     public List<Node> findOfflineNodes(long minutesOffline) {
         List<Node> offlineNodeList = new ArrayList<>();
         Node myNode = findIdentity();
@@ -1068,6 +1111,7 @@ public class NodeService extends AbstractService implements INodeService {
         return offlineNodeList;
     }
 
+    @Override
     public Map<String, Date> findLastHeartbeats() {
         Map<String, Date> dates = new HashMap<>();
         Node myNode = findIdentity();
@@ -1082,6 +1126,7 @@ public class NodeService extends AbstractService implements INodeService {
         return dates;
     }
 
+    @Override
     public List<String> findOfflineNodeIds(long minutesOffline) {
         List<String> offlineNodeList = new ArrayList<>();
         Node myNode = findIdentity();
@@ -1169,6 +1214,7 @@ public class NodeService extends AbstractService implements INodeService {
     }
 
     public static class NodeRowMapper implements ISqlRowMapper<Node> {
+        @Override
         public Node mapRow(Row rs) {
             Node node = new Node();
             node.setNodeId(rs.getString(NODE_ID));
@@ -1199,6 +1245,7 @@ public class NodeService extends AbstractService implements INodeService {
     }
 
     class NodeSecurityRowMapper implements ISqlRowMapper<NodeSecurity> {
+        @Override
         public NodeSecurity mapRow(Row rs) {
             NodeSecurity nodeSecurity = new NodeSecurity();
             nodeSecurity.setNodeId(rs.getString(NODE_ID));
@@ -1237,6 +1284,7 @@ public class NodeService extends AbstractService implements INodeService {
     }
 
     static class NodeHostRowMapper implements ISqlRowMapper<NodeHost> {
+        @Override
         public NodeHost mapRow(Row rs) {
             NodeHost nodeHost = new NodeHost();
             nodeHost.setNodeId(rs.getString(NODE_ID));
@@ -1263,6 +1311,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public AuthenticationStatus getAuthenticationStatus(String nodeId, String securityToken) {
         AuthenticationStatus retVal = AuthenticationStatus.ACCEPTED;
         Node node = findNode(nodeId, true);
@@ -1289,6 +1338,7 @@ public class NodeService extends AbstractService implements INodeService {
         return retVal;
     }
 
+    @Override
     public void resetNodeFailedLogins(String nodeId) {
         if (parameterService.getInt(ParameterConstants.NODE_PASSWORD_FAILED_ATTEMPTS) >= 0) {
             Map<String, NodeSecurity> nodeSecurities = findAllNodeSecurity(true);
@@ -1304,6 +1354,7 @@ public class NodeService extends AbstractService implements INodeService {
         }
     }
 
+    @Override
     public void incrementNodeFailedLogins(String nodeId) {
         int maxFailedAttempts = parameterService.getInt(ParameterConstants.NODE_PASSWORD_FAILED_ATTEMPTS);
         if (maxFailedAttempts >= 0) {
