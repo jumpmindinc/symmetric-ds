@@ -539,7 +539,7 @@ Date Format:: Determines what format dates are displayed in. Options include YYY
 
 Time Format:: Determines whether to display times in a 12-hour or 24-hour clock format.
 
-Time Zone:: Determines what time zone dates and times are displayed in. Options include the system's time zone, the browser's time zone, and specific time zone offsets. In order to access this setting, the JVM's time zone must be set to GMT or UTC. The JVM's time zone is determined by the `user.timezone` property, which can be set in `conf/sym_service.conf`.
+Time Zone:: Determines what time zone dates and times are displayed in. Options include the system's time zone, the browser's time zone, and specific time zone offsets. In order to access this setting, the JVM's time zone must be set to GMT or UTC. The JVM's time zone is determined by the `user.timezone` property, which can be set in `conf/sym_service.conf`. Note that reports under the Analytics tab aren't affected by this setting. Instead, they're displayed in the time zone specified by the `analytics.report.time.zone` parameter.
 
 endif::pro[]
 
