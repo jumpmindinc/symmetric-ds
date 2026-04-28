@@ -185,7 +185,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                 return convertTextToLob ? Types.BLOB : Types.LONGVARCHAR;
             }
             return super.mapUnknownJdbcTypeForColumn(values);
-        } else if (type != null && type == Types.OTHER && "UUID".equalsIgnoreCase("UUID")) {
+        } else if (type != null && type == Types.OTHER && typeName != null && typeName.equalsIgnoreCase("UUID")) {
             return Types.VARCHAR;
         } else if (type != null && type == Types.OTHER) {
             return Types.LONGVARCHAR;
