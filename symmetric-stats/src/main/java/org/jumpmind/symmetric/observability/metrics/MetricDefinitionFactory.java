@@ -92,12 +92,13 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             // Runtime DB connection pool gauges
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_ACTIVE, "DB connection pool active connections", METRIC_UNIT_CONNECTIONS,
                     InstrumentType.DOUBLE_GAUGE),
-            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_IDLE, "DB connection pool idle connections", METRIC_UNIT_CONNECTIONS, InstrumentType.DOUBLE_GAUGE),
-            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_MAX, "DB connection pool max size", METRIC_UNIT_CONNECTIONS, InstrumentType.DOUBLE_GAUGE),
+            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_IDLE, "DB connection pool idle connections", METRIC_UNIT_CONNECTIONS, InstrumentType.LONG_GAUGE),
+            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_UTILIZATION, "DB connection pool utilization as a percentage of max", METRIC_UNIT_PERCENT,
+                    InstrumentType.DOUBLE_GAUGE),
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_WAITERS, "DB connection pool user threads waiting for a connection", METRIC_UNIT_CONNECTIONS,
-                    InstrumentType.DOUBLE_GAUGE),
+                    InstrumentType.LONG_GAUGE),
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN, "DB connection pool user threads mean wait time", METRIC_UNIT_MILLIS,
-                    InstrumentType.DOUBLE_GAUGE),
+                    InstrumentType.LONG_GAUGE),
             // Engine / node counters
             new SymMetricDefinition(METRIC_ID_ENGINE_RESTARTS, "Engine restart count", METRIC_UNIT_ROWS, InstrumentType.UPDOWN_COUNTER),
             new SymMetricDefinition(METRIC_ID_NODES_PULLED, "Nodes pulled from", METRIC_UNIT_NODES, InstrumentType.UPDOWN_COUNTER),

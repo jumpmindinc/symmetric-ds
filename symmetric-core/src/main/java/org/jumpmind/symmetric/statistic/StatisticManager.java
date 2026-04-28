@@ -1014,47 +1014,4 @@ public class StatisticManager implements IStatisticManager {
             return Objects.equals(sourceNodeId, other.sourceNodeId) && Objects.equals(targetNodeId, other.targetNodeId);
         }
     }
-
-    @Override
-    public void updateDbPoolMetrics() {
-        try {
-            Object ds = engine.getSymmetricDialect().getPlatform().getDataSource();
-            if (ds == null) {
-                return;
-            }
-            IEngineMetricsService svc = engine.getMetricsService();
-            if (svc == null) {
-                return;
-            }
-            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_ACTIVE, invokeIntMethod(ds, "getNumActive"));
-            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_IDLE, invokeIntMethod(ds, "getNumIdle"));
-            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_MAX, invokeIntMethod(ds, "getMaxTotal"));
-            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_WAITERS, invokeIntMethod(ds, "getNumWaiters"));
-            setDoubleGaugeIfPresent(svc, METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN, invokeLongMethod(ds, "getMeanBorrowWaitTimeMillis"));
-        } catch (Exception e) {
-            log.debug("Troble measuring database pool utilization for built-in metrics!", e);
-        }
-    }
-
-    private int invokeIntMethod(Object obj, String methodName) throws Exception {
-        return (int) obj.getClass().getMethod(methodName).invoke(obj);
-    }
-
-    private long invokeLongMethod(Object obj, String methodName) throws Exception {
-        return (long) obj.getClass().getMethod(methodName).invoke(obj);
-    }
-
-    private void setDoubleGaugeIfPresent(IEngineMetricsService svc, String metricId, int value) {
-        ISymDoubleGauge g = svc.getDoubleGauge(metricId);
-        if (g != null) {
-            g.setValue(value);
-        }
-    }
-
-    private void setDoubleGaugeIfPresent(IEngineMetricsService svc, String metricId, long value) {
-        ISymDoubleGauge g = svc.getDoubleGauge(metricId);
-        if (g != null) {
-            g.setValue(value);
-        }
-    }
 }

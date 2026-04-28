@@ -271,8 +271,4 @@ public class MockStatisticManager implements IStatisticManager {
     public Map<String, Long> getLastDataLoadedBytesMap() {
         return null;
     }
-
-    @Override
-    public void updateDbPoolMetrics() {
-    }
 }

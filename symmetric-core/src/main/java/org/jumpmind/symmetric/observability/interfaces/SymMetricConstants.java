@@ -82,7 +82,7 @@ public final class SymMetricConstants {
     // Database connection pool gauges (StatisticManager)
     public static final String METRIC_ID_RUNTIME_DBPOOL_ACTIVE = OTEL_SCOPE + ".dbpool.active.count";
     public static final String METRIC_ID_RUNTIME_DBPOOL_IDLE = OTEL_SCOPE + ".dbpool.idle.count";
-    public static final String METRIC_ID_RUNTIME_DBPOOL_MAX = OTEL_SCOPE + ".dbpool.max.count";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_UTILIZATION = OTEL_SCOPE + ".dbpool.connections.utilization";
     public static final String METRIC_ID_RUNTIME_DBPOOL_WAITERS = OTEL_SCOPE + ".dbpool.waiters.count";
     public static final String METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN = OTEL_SCOPE + ".dbpool.waiters.delay.mean";
     // Engine / node counters (StatisticManager)
@@ -133,7 +133,7 @@ public final class SymMetricConstants {
             METRIC_ID_DATA_UNROUTED_TOTAL,
             METRIC_ID_RUNTIME_DBPOOL_ACTIVE,
             METRIC_ID_RUNTIME_DBPOOL_IDLE,
-            METRIC_ID_RUNTIME_DBPOOL_MAX,
+            METRIC_ID_RUNTIME_DBPOOL_UTILIZATION,
             METRIC_ID_RUNTIME_DBPOOL_WAITERS,
             METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN,
             METRIC_ID_ENGINE_RESTARTS,
