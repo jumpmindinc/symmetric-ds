@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -145,5 +146,42 @@ class MetricDefinitionFactoryTest {
         int sizeBefore = factory.getDefaultContexts().size();
         factory.registerDefaultContext((ContextDefinition[]) null);
         assertEquals(sizeBefore, factory.getDefaultContexts().size());
+    }
+
+    @Test
+    void registerDefaultContext_emptyArgs_isNoOp() {
+        int sizeBefore = factory.getDefaultContexts().size();
+        factory.registerDefaultContext();
+        assertEquals(sizeBefore, factory.getDefaultContexts().size());
+    }
+
+    @Test
+    void registerDefaultMetric_nullElementInArray_skipsNull() {
+        int sizeBefore = factory.getDefaultMetrics().size();
+        SymMetricDefinition valid = new SymMetricDefinition("m.valid", "desc", "rows", InstrumentType.COUNTER);
+        factory.registerDefaultMetric(valid, null);
+        assertEquals(sizeBefore + 1, factory.getDefaultMetrics().size());
+        assertNotNull(factory.getDefinition("m.valid"));
+    }
+
+    // ── initializeMetrics ─────────────────────────────────────────────────────
+
+    @Test
+    void initializeMetrics_registersMetricsOnService() {
+        MetricsManager svcManager = TestMetricsManagerFactory.create();
+        HostMetricsService service = new HostMetricsService(svcManager, false);
+        int count = factory.initializeMetrics(service);
+        assertTrue(count > 0);
+        assertFalse(service.getAllMetrics().isEmpty());
+    }
+
+    @Test
+    void initializeMetrics_histogramType_isSkippedGracefully() {
+        // HISTOGRAM type hits the "default ->" switch case (log warn + continue); no exception.
+        factory.register(new SymMetricDefinition("test.histogram", "hist", "ms", InstrumentType.HISTOGRAM));
+        MetricsManager svcManager = TestMetricsManagerFactory.create();
+        HostMetricsService service = new HostMetricsService(svcManager, false);
+        int count = factory.initializeMetrics(service);
+        assertTrue(count > 0); // other (non-histogram) metrics still registered
     }
 }

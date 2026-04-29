@@ -20,14 +20,21 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
+import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
 import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
 import org.junit.jupiter.api.Test;
@@ -203,5 +210,90 @@ class AbstractQueuedMetricTest {
         UpDownCounter m = newCounter();
         m.close();
         assertFalse(m.isEnabled());
+    }
+
+    // ── getAttributes ─────────────────────────────────────────────────────────
+
+    @Test
+    void getAttributes_returnsEmptyList() {
+        UpDownCounter m = newCounter();
+        assertNotNull(m.getAttributes());
+        assertTrue(m.getAttributes().isEmpty());
+    }
+
+    // ── getContext / setContext ───────────────────────────────────────────────
+
+    @Test
+    void getContext_initiallyNull() {
+        UpDownCounter m = newCounter();
+        assertNull(m.getContext());
+    }
+
+    @Test
+    void setContext_setsContext() {
+        UpDownCounter m = newCounter();
+        ISymMetricContext ctx = mock(ISymMetricContext.class);
+        m.setContext(ctx);
+        assertEquals(ctx, m.getContext());
+    }
+
+    @Test
+    void setContext_calledTwice_firstValueWins() {
+        UpDownCounter m = newCounter();
+        ISymMetricContext first = mock(ISymMetricContext.class);
+        ISymMetricContext second = mock(ISymMetricContext.class);
+        m.setContext(first);
+        m.setContext(second); // compareAndSet will not replace first
+        assertEquals(first, m.getContext());
+    }
+
+    // ── getLastModified ───────────────────────────────────────────────────────
+
+    @Test
+    void getLastModified_returnsTimestamp() {
+        UpDownCounter m = newCounter();
+        assertTrue(m.getLastModified() > 0);
+    }
+
+    // ── getFactType / getMetricType ───────────────────────────────────────────
+
+    @Test
+    void getFactType_returnsCorrectType() {
+        UpDownCounter m = newCounter();
+        assertEquals(MetricFactType.INT64, m.getFactType());
+    }
+
+    @Test
+    void getMetricType_returnsCorrectType() {
+        UpDownCounter m = newCounter();
+        assertEquals(InstrumentType.UPDOWN_COUNTER, m.getMetricType());
+    }
+
+    // ── processAllObservations ────────────────────────────────────────────────
+
+    @Test
+    void processAllObservations_withObservations_processesAll() {
+        UpDownCounter m = newCounter();
+        m.addObservation(obs(1L, T));
+        m.addObservation(obs(2L, T + 1));
+        m.processAllObservations();
+        assertEquals(0, m.getObservationsCountEstimate());
+    }
+
+    // ── processAllObservationsAndRefreshInterval ──────────────────────────────
+
+    @Test
+    void processAllObservationsAndRefreshInterval_doesNotThrow() {
+        UpDownCounter m = newCounter();
+        m.addObservation(obs(5L, T));
+        assertDoesNotThrow(m::processAllObservationsAndRefreshInterval);
+    }
+
+    // ── closeCompletedIntervals ───────────────────────────────────────────────
+
+    @Test
+    void closeCompletedIntervals_withNoAccumulator_doesNotThrow() {
+        UpDownCounter m = newCounter();
+        assertDoesNotThrow(m::closeCompletedIntervals);
     }
 }

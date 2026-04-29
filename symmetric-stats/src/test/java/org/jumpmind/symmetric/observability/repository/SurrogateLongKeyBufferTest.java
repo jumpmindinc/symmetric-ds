@@ -26,6 +26,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.jumpmind.symmetric.observability.repository.SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SurrogateLongKeyBufferTest {
     @ParameterizedTest(name = "roundDown({0}) == {1}")
@@ -133,5 +136,172 @@ class SurrogateLongKeyBufferTest {
             assertEquals(true, nextBoundary > v,
                     "Expected roundUp(" + v + ")=" + nextBoundary + " to be greater than input");
         }
+    }
+
+    // ── default constructor ───────────────────────────────────────────────────
+
+    @Test
+    void defaultConstructor_isAvailableReturnsFalse() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
+        assertFalse(buf.isAvailable());
+    }
+
+    @Test
+    void defaultConstructor_capacityIsTen() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
+        assertEquals(SURROGATE_KEY_BUFFER_SIZE, buf.capacity());
+    }
+
+    // ── single-arg constructor ────────────────────────────────────────────────
+
+    @Test
+    void startConstructor_isAvailableReturnsTrue() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(100L);
+        assertTrue(buf.isAvailable());
+    }
+
+    @Test
+    void startConstructor_peekNextValueEqualsStart() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(100L);
+        assertEquals(100L, buf.peekNextValue());
+    }
+
+    @Test
+    void startConstructor_sizeEqualsBufferSize() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(100L);
+        assertEquals(SURROGATE_KEY_BUFFER_SIZE, buf.size());
+    }
+
+    // ── two-arg constructor ───────────────────────────────────────────────────
+
+    @Test
+    void twoArgConstructor_peekNextValueEqualsNextKey() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(100L, 105L);
+        assertEquals(105L, buf.peekNextValue());
+    }
+
+    // ── capacity ──────────────────────────────────────────────────────────────
+
+    @Test
+    void capacity_alwaysReturnsBufferSize() {
+        assertEquals(SURROGATE_KEY_BUFFER_SIZE, new SurrogateLongKeyBuffer().capacity());
+        assertEquals(SURROGATE_KEY_BUFFER_SIZE, new SurrogateLongKeyBuffer(0L).capacity());
+        assertEquals(SURROGATE_KEY_BUFFER_SIZE, new SurrogateLongKeyBuffer(50L, 55L).capacity());
+    }
+
+    // ── size ──────────────────────────────────────────────────────────────────
+
+    @Test
+    void size_fullBuffer_equalsBufferSize() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(20L);
+        assertEquals(SURROGATE_KEY_BUFFER_SIZE, buf.size());
+    }
+
+    @Test
+    void size_decreasesAfterGetNextValue() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(20L);
+        buf.getNextValue();
+        assertEquals(SURROGATE_KEY_BUFFER_SIZE - 1, buf.size());
+    }
+
+    // ── getNextValue ──────────────────────────────────────────────────────────
+
+    @Test
+    void getNextValue_returnsSequentialValuesFromStart() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(50L);
+        assertEquals(50L, buf.getNextValue());
+        assertEquals(51L, buf.getNextValue());
+        assertEquals(52L, buf.getNextValue());
+    }
+
+    @Test
+    void getNextValue_uninitializedBuffer_throwsExceptionInInitializerError() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
+        assertThrows(ExceptionInInitializerError.class, buf::getNextValue);
+    }
+
+    @Test
+    void getNextValue_exhaustedBuffer_throwsIllegalStateException() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(0L);
+        // drain all 10 keys
+        for (int i = 0; i < SURROGATE_KEY_BUFFER_SIZE; i++) {
+            buf.getNextValue();
+        }
+        assertThrows(IllegalStateException.class, buf::getNextValue);
+    }
+
+    // ── peekNextValue ─────────────────────────────────────────────────────────
+
+    @Test
+    void peekNextValue_doesNotAdvancePointer() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(30L);
+        long first = buf.peekNextValue();
+        long second = buf.peekNextValue();
+        assertEquals(first, second);
+        assertEquals(30L, first);
+    }
+
+    @Test
+    void peekNextValue_uninitializedBuffer_throwsExceptionInInitializerError() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
+        assertThrows(ExceptionInInitializerError.class, buf::peekNextValue);
+    }
+
+    // ── isAvailable ───────────────────────────────────────────────────────────
+
+    @Test
+    void isAvailable_uninitialized_returnsFalse() {
+        assertFalse(new SurrogateLongKeyBuffer().isAvailable());
+    }
+
+    @Test
+    void isAvailable_initialized_returnsTrue() {
+        assertTrue(new SurrogateLongKeyBuffer(10L).isAvailable());
+    }
+
+    @Test
+    void isAvailable_fullyExhausted_returnsFalse() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(0L);
+        for (int i = 0; i < SURROGATE_KEY_BUFFER_SIZE; i++) {
+            buf.getNextValue();
+        }
+        assertFalse(buf.isAvailable());
+    }
+
+    // ── moveTo ────────────────────────────────────────────────────────────────
+
+    @Test
+    void moveTo_happyPath_setsValuesCorrectly() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
+        buf.moveTo(10L, 15L);
+        assertEquals(15L, buf.peekNextValue());
+        assertTrue(buf.isAvailable());
+    }
+
+    @Test
+    void moveTo_nextKeyEqualsEndPlusOne_validFullyExhausted() {
+        // nextKey == start + SURROGATE_KEY_BUFFER_SIZE means the buffer is fully exhausted — valid
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
+        buf.moveTo(0L, SURROGATE_KEY_BUFFER_SIZE); // 10 == 0+10, exactly at end+1
+        assertFalse(buf.isAvailable()); // exhausted, but not illegal
+    }
+
+    @Test
+    void moveTo_negativeStart_throwsExceptionInInitializerError() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
+        assertThrows(ExceptionInInitializerError.class, () -> buf.moveTo(-1L, -1L));
+    }
+
+    @Test
+    void moveTo_nextKeyBeyondEndPlusOne_throwsExceptionInInitializerError() {
+        // end = 0 + 10 - 1 = 9; end+1 = 10; nextKey=11 > 10 → illegal
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
+        assertThrows(ExceptionInInitializerError.class, () -> buf.moveTo(0L, 11L));
+    }
+
+    @Test
+    void moveTo_nextKeyBelowStart_throwsExceptionInInitializerError() {
+        SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
+        assertThrows(ExceptionInInitializerError.class, () -> buf.moveTo(10L, 5L));
     }
 }

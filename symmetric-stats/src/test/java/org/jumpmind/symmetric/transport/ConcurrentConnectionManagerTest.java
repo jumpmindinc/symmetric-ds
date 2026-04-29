@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -182,5 +184,127 @@ public class ConcurrentConnectionManagerTest {
         mgr.addToWhitelist("node1");
         mgr.removeFromWhiteList("node1");
         assertEquals(0, mgr.getWhiteList().length);
+    }
+
+    // ── releaseConnection(nodeId, poolId) — 2-arg overload ────────────────────
+
+    @Test
+    public void releaseConnection_byNodeId_found_returnsTrue() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        // Reserve with default channel "0" so the reservation key is just the nodeId
+        mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
+        // 2-arg release uses nodeId as the direct map key
+        assertTrue(mgr.releaseConnection("node1", "push"));
+    }
+
+    @Test
+    public void releaseConnection_byNodeId_notFound_returnsFalse() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        assertFalse(mgr.releaseConnection("node99", "push"));
+    }
+
+    // ── getReservationCount ───────────────────────────────────────────────────
+
+    @Test
+    public void getReservationCount_empty_returnsZero() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        assertEquals(0, mgr.getReservationCount("push"));
+    }
+
+    @Test
+    public void getReservationCount_afterReservation_returnsOne() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
+        assertEquals(1, mgr.getReservationCount("push"));
+    }
+
+    // ── getPullReservationsByNodeId ────────────────────────────────────────────
+
+    @Test
+    public void getPullReservationsByNodeId_emptyMap_returnsEmptyMap() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        assertTrue(mgr.getPullReservationsByNodeId().isEmpty());
+    }
+
+    // ── getPushReservationsByNodeId ────────────────────────────────────────────
+
+    @Test
+    public void getPushReservationsByNodeId_afterHardReservation_containsNode() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
+        assertTrue(mgr.getPushReservationsByNodeId().containsKey("node1"));
+    }
+
+    // ── getNodeConnectionStatisticsByPoolByNodeId ─────────────────────────────
+
+    @Test
+    public void getNodeConnectionStatisticsByPoolByNodeId_returnsStats() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        assertNotNull(mgr.getNodeConnectionStatisticsByPoolByNodeId());
+    }
+
+    // ── Reservation inner class ───────────────────────────────────────────────
+
+    @Test
+    public void Reservation_getChannelId_returnsDefaultZero() {
+        Reservation r = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
+        assertEquals("0", r.getChannelId());
+    }
+
+    @Test
+    public void Reservation_withChannelId_constructor() {
+        Reservation r = new Reservation("node1", "ch1", System.currentTimeMillis() + 10000, ReservationType.HARD);
+        assertEquals("node1", r.getNodeId());
+    }
+
+    @Test
+    public void Reservation_getNodeId_returnsNodeId() {
+        Reservation r = new Reservation("myNode", System.currentTimeMillis() + 10000, ReservationType.HARD);
+        assertEquals("myNode", r.getNodeId());
+    }
+
+    @Test
+    public void Reservation_getTimeToLiveInMs_returnsValue() {
+        long ttl = System.currentTimeMillis() + 10000;
+        Reservation r = new Reservation("node1", ttl, ReservationType.HARD);
+        assertEquals(ttl, r.getTimeToLiveInMs());
+    }
+
+    @Test
+    public void Reservation_getCreateTime_returnsPositive() {
+        Reservation r = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
+        assertTrue(r.getCreateTime() > 0);
+    }
+
+    @Test
+    public void Reservation_hashCode_usesNodeId() {
+        Reservation r = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
+        assertEquals("node1".hashCode(), r.hashCode());
+    }
+
+    @Test
+    public void Reservation_equals_sameNodeId_returnsTrue() {
+        Reservation a = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
+        Reservation b = new Reservation("node1", System.currentTimeMillis() + 20000, ReservationType.SOFT);
+        assertEquals(a, b);
+    }
+
+    @Test
+    public void Reservation_equals_differentNodeId_returnsFalse() {
+        Reservation a = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
+        Reservation b = new Reservation("node2", System.currentTimeMillis() + 10000, ReservationType.HARD);
+        assertNotEquals(a, b);
+    }
+
+    @Test
+    public void Reservation_getIdentifier_defaultChannel_returnsNodeId() {
+        Reservation r = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
+        assertEquals("node1", r.getIdentifier());
+    }
+
+    @Test
+    public void Reservation_getIdentifier_nonDefaultChannel() {
+        // Using getReservationIdentifier directly to test non-default channel formatting
+        assertEquals("node1-ch1", ConcurrentConnectionManager.getReservationIdentifier("node1", "ch1"));
     }
 }

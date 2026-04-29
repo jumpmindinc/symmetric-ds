@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
@@ -127,5 +128,12 @@ class IncreasingCounterTest {
         c.close();
         c.add(10L); // atomic value updates but observation is NOT queued (metric disabled)
         assertEquals(1, c.getObservationsCountEstimate());
+    }
+
+    @Test
+    void close_withNoOtelHandle_disablesMetric() {
+        IncreasingCounter c = counter();
+        c.close();
+        assertFalse(c.isEnabled());
     }
 }

@@ -23,7 +23,13 @@ package org.jumpmind.symmetric.observability.stats;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
+
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.observability.metrics.TestMetricsManagerFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -38,10 +44,11 @@ import org.junit.jupiter.api.Test;
  */
 class PrimaryMetricAggregatorTest {
     private PrimaryMetricAggregator aggregator;
+    private MetricsManager metricsManager;
 
     @BeforeEach
     void setUp() {
-        MetricsManager metricsManager = TestMetricsManagerFactory.create();
+        metricsManager = TestMetricsManagerFactory.create();
         aggregator = new PrimaryMetricAggregator(metricsManager, "test-host");
     }
 
@@ -100,5 +107,29 @@ class PrimaryMetricAggregatorTest {
     @Test
     void closeAll_withEmptyMetricsManager_doesNotThrow() {
         assertDoesNotThrow(() -> aggregator.closeAll());
+    }
+
+    // ── processAll with a registered service ──────────────────────────────────
+
+    @Test
+    void processAll_withRegisteredService_callsMetricProcessing() {
+        IEngineMetricsService svc = mock(IEngineMetricsService.class);
+        when(svc.getEngineName()).thenReturn("test-engine");
+        when(svc.getAllMetrics()).thenReturn(List.of());
+        metricsManager.register(svc);
+        aggregator.processAll();
+        verify(svc).getAllMetrics();
+        verify(svc).saveCompletedIntervalStats();
+    }
+
+    // ── closeAll with a registered service ───────────────────────────────────
+
+    @Test
+    void closeAll_withRegisteredService_callsShutdown() {
+        IEngineMetricsService svc = mock(IEngineMetricsService.class);
+        when(svc.getEngineName()).thenReturn("test-engine");
+        metricsManager.register(svc);
+        aggregator.closeAll();
+        verify(svc).shutdown();
     }
 }

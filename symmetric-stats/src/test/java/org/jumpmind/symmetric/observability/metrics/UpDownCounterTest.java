@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.List;
 
@@ -82,5 +83,14 @@ class UpDownCounterTest {
         c.add(2L);
         c.decrement();
         assertEquals(8L, c.getValue());
+    }
+
+    // ── close ─────────────────────────────────────────────────────────────────
+
+    @Test
+    void close_disablesMetric() {
+        UpDownCounter c = counter();
+        c.close();
+        assertFalse(c.isEnabled());
     }
 }

@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
+import static org.jumpmind.symmetric.observability.repository.SurrogateLongKeyBuffer.SURROGATE_KEY_UNASSIGNED;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -113,5 +114,19 @@ class MetricKeyTest {
         MetricKey a = new MetricKey(KEY_A, "host1", "engine1", null, FLOAT64, GAUGE, true);
         MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64, GAUGE, true);
         assertFalse(a.equalsOnCompositeKey(b));
+    }
+
+    // ── isSurrogateKeyMissing ─────────────────────────────────────────────────
+
+    @Test
+    void isSurrogateKeyMissing_whenKeyIsUnassigned_returnsTrue() {
+        MetricKey key = new MetricKey(SURROGATE_KEY_UNASSIGNED, "host1", "engine1", "metric1", FLOAT64, GAUGE, true);
+        assertTrue(key.isSurrogateKeyMissing());
+    }
+
+    @Test
+    void isSurrogateKeyMissing_whenKeyIsPositive_returnsFalse() {
+        MetricKey key = new MetricKey(1L, "host1", "engine1", "metric1", FLOAT64, GAUGE, true);
+        assertFalse(key.isSurrogateKeyMissing());
     }
 }

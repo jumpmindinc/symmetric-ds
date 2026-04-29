@@ -21,6 +21,8 @@
 package org.jumpmind.symmetric.observability.models;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -89,5 +91,85 @@ class MetricIntervalStatsTest {
         assertEquals(longerSameEnd, sorted.get(1), "longer interval should precede shorter when end times match");
         assertEquals(shorterSameEnd, sorted.get(2));
         assertEquals(late, sorted.get(3), "latest end should be last");
+    }
+
+    // ── helper for new tests ──────────────────────────────────────────────────
+
+    private static MetricIntervalStats fullInterval() {
+        return new MetricIntervalStats(T_2023, T_2023 + D, 3.0, 1.0, 5.0, 0.5, 10, 2.5, false);
+    }
+
+    // ── getDurationMillis ─────────────────────────────────────────────────────
+
+    @Test
+    void getDurationMillis_returnsEndMinusStart() {
+        assertEquals(D, fullInterval().getDurationMillis());
+    }
+
+    // ── getDurationSeconds ────────────────────────────────────────────────────
+
+    @Test
+    void getDurationSeconds_returnsDurationDividedBy1000() {
+        assertEquals(D / 1000, fullInterval().getDurationSeconds());
+    }
+
+    // ── getStartTimeUtc ───────────────────────────────────────────────────────
+
+    @Test
+    void getStartTimeUtc_returnsDateForIntervalStart() {
+        assertNotNull(fullInterval().getStartTimeUtc());
+        assertEquals(T_2023, fullInterval().getStartTimeUtc().getTime());
+    }
+
+    // ── cloneOutlier ──────────────────────────────────────────────────────────
+
+    @Test
+    void cloneOutlier_true_returnsNewInstanceWithOutlierTrue() {
+        MetricIntervalStats cloned = fullInterval().cloneOutlier(true);
+        assertTrue(cloned.isOutlier());
+    }
+
+    @Test
+    void cloneOutlier_false_returnsNewInstanceWithOutlierFalse() {
+        MetricIntervalStats base = new MetricIntervalStats(T_2023, T_2023 + D, 3.0, 1.0, 5.0, 0.5, 10, 2.5, true);
+        MetricIntervalStats cloned = base.cloneOutlier(false);
+        assertFalse(cloned.isOutlier());
+    }
+
+    // ── accessors ─────────────────────────────────────────────────────────────
+
+    @Test
+    void getAvg_returnsConstructorValue() {
+        assertEquals(3.0, fullInterval().getAvg(), 1e-9);
+    }
+
+    @Test
+    void getMin_returnsConstructorValue() {
+        assertEquals(1.0, fullInterval().getMin(), 1e-9);
+    }
+
+    @Test
+    void max_returnsConstructorValue() {
+        assertEquals(5.0, fullInterval().max(), 1e-9);
+    }
+
+    @Test
+    void getStdDeviation_returnsConstructorValue() {
+        assertEquals(0.5, fullInterval().getStdDeviation(), 1e-9);
+    }
+
+    @Test
+    void getObservationCount_returnsConstructorValue() {
+        assertEquals(10, fullInterval().getObservationCount());
+    }
+
+    @Test
+    void mean_returnsConstructorValue() {
+        assertEquals(2.5, fullInterval().mean(), 1e-9);
+    }
+
+    @Test
+    void isOutlier_returnsFalseByDefault() {
+        assertFalse(fullInterval().isOutlier());
     }
 }

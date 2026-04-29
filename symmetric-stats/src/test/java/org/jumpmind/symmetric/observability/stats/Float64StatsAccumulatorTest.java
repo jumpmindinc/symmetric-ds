@@ -235,4 +235,35 @@ class Float64StatsAccumulatorTest {
         Float64StatsAccumulator acc = new Float64StatsAccumulator(T);
         assertThrows(IllegalArgumentException.class, () -> acc.closeAtObservation(T + D + 1));
     }
+
+    @Test
+    void closeAtObservation_withNonZeroCarryForward_includesLastValueInWeightedAvg() {
+        // Carry-forward = 4.0; closeAtObservation at intervalEnd covers the inner
+        // "if (lastValue != INTERVAL_VALUE_DEFAULT)" branch in closeAtObservation.
+        Float64StatsAccumulator acc = new Float64StatsAccumulator(T, 4.0);
+        acc.closeAtObservation(T + D);
+        assertEquals(4.0, acc.computeAvg(), 1e-9);
+    }
+
+    @Test
+    void close_afterCloseAtObservation_zeroDelta_doesNotDoubleCount() {
+        // closeAtObservation sets lastTimestamp = intervalEnd; subsequent close()
+        // sees delta = 0 and skips the weighted-sum update entirely.
+        Float64StatsAccumulator acc = new Float64StatsAccumulator(T, 6.0);
+        acc.closeAtObservation(T + D);
+        long ts = acc.close();
+        assertEquals(T + D, ts);
+        // avg should still reflect the original close-at-observation weight only
+        assertEquals(6.0, acc.computeAvg(), 1e-9);
+    }
+    // ── noArg constructor ─────────────────────────────────────────────────────
+
+    @Test
+    void noArgConstructor_createsAccumulatorAtCurrentIntervalBoundary() {
+        long before = AbstractStatsAccumulator.calculateIntervalStart(System.currentTimeMillis());
+        Float64StatsAccumulator acc = new Float64StatsAccumulator();
+        long after = AbstractStatsAccumulator.calculateIntervalStart(System.currentTimeMillis());
+        assertTrue(acc.getIntervalStart() >= before && acc.getIntervalStart() <= after);
+        assertEquals(0.0, acc.getLastValueAsDouble(), 1e-9);
+    }
 }

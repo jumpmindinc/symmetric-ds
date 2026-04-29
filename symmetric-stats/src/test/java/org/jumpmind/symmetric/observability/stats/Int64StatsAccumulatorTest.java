@@ -125,4 +125,23 @@ class Int64StatsAccumulatorTest {
         assertTrue(third instanceof Int64StatsAccumulator);
         assertEquals(99L, ((Int64StatsAccumulator) third).getLastValueAsLong());
     }
+    // ── noArg constructor ─────────────────────────────────────────────────────
+
+    @Test
+    void noArgConstructor_createsAccumulatorAtCurrentIntervalBoundary() {
+        long before = AbstractStatsAccumulator.calculateIntervalStart(System.currentTimeMillis());
+        Int64StatsAccumulator acc = new Int64StatsAccumulator();
+        long after = AbstractStatsAccumulator.calculateIntervalStart(System.currentTimeMillis());
+        assertTrue(acc.getIntervalStart() >= before && acc.getIntervalStart() <= after);
+        assertEquals(0L, acc.getLastValueAsLong());
+    }
+
+    @Test
+    void closeAtObservation_withNonZeroCarryForward_includesLastValueInWeightedAvg() {
+        // Carry-forward = 10L; closeAtObservation at intervalEnd covers the inner
+        // "if (lastValue != INTERVAL_VALUE_DEFAULT)" branch.
+        Int64StatsAccumulator acc = new Int64StatsAccumulator(T, 10L);
+        acc.closeAtObservation(T + D);
+        assertEquals(10.0, acc.computeAvg(), 1e-9);
+    }
 }
