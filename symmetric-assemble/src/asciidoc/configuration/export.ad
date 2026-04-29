@@ -11,4 +11,4 @@ NOTE: Group identifiers (node_group_id) are significant in the SymmetricDS confi
 
 In contrast, server hostnames, database connection strings and other startup parameters are not included in configuration export file at all. 
 
-NOTE: Consider setting the *topbar.system.text*=YOUR_ENRIONMENT_NAME parameter in the engine properties file to help visually separate environments with identical configuration.
+NOTE: Consider setting the *topbar.system.text*=YOUR_ENVIRONMENT_NAME parameter in the engine properties file to help visually separate environments with identical configuration.

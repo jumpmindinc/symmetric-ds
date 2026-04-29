@@ -45,7 +45,7 @@ Driver Class::
 This will be populated by default by a class in the uploaded JDBC jar that implements the java.sql.Driver interface.
 
 Example Url::
-An exmaple jdbc connection url for this driver so that when it is selected in the future a template will provided.  
+An example jdbc connection url for this driver so that when it is selected in the future a template will provided.  
 
 * Click Save and the database setup screen will now be populated with your new driver information.
 
@@ -53,7 +53,7 @@ An exmaple jdbc connection url for this driver so that when it is selected in th
 
 NOTE: Uploading a jar file is only available in the standalone installation of SymmetricDS, NOT with the deployed war file setup.  For a web container (war) based deployment you would need to add the driver jar to the web servers classpath and restart.  Then provide the driver class and url manually as explained in steps 4 and 5 below.
 
-NOTE: If the driver is already a supported database by SymmetricDA and the driver jar file was packaged with SymmetricDS (in the /lib folder) or has already been uploaded for another node there is no need to upload anything here.  
+NOTE: If the driver is already a supported database by SymmetricDS and the driver jar file was packaged with SymmetricDS (in the /lib folder) or has already been uploaded for another node there is no need to upload anything here.  
 
 
 endif::pro[]
