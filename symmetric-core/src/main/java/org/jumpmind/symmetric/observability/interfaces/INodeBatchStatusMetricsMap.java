@@ -54,8 +54,8 @@ public interface INodeBatchStatusMetricsMap {
     void addRowCount(String nodeId, String batchStatus, long delta);
 
     /**
-     * Snapshot update from a batch summary list: sets values for all gauges (nodeId+status). 
-     * Either from  {@code summaries} or zeros for any previously-seen pair (specific to current hostname/cluster member).
+     * Snapshot update from a batch summary list: sets values for all gauges (nodeId+status). Either from {@code summaries} or zeros for any previously-seen
+     * pair (specific to current hostname/cluster member).
      */
     void setAllMetrics(List<OutgoingBatchSummary> summaries);
 

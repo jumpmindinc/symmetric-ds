@@ -23,8 +23,8 @@ package org.jumpmind.symmetric.model;
 import java.util.Date;
 
 /**
- * One row from {@code selectOutgoingBatchSummaryByNodeBriefStatsSql}: batch and data-row counts
- * grouped by node, status, and batch date. Results are ordered by {@code (node_id, status, batch_date)}.
+ * One row from {@code selectOutgoingBatchSummaryByNodeBriefStatsSql}: batch and data-row counts grouped by node, status, and batch date. Results are ordered by
+ * {@code (node_id, status, batch_date)}.
  */
 public record OutgoingBatchSummaryByNodeBriefStats(String nodeId, String status, Date batchDate, long batchCount,
         long dataRows) {
