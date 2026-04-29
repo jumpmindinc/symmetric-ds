@@ -25,6 +25,7 @@ import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants
 
 import java.util.List;
 
+import org.jumpmind.extension.IExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.OutgoingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusMetricsMap;
@@ -98,6 +99,18 @@ public class RefreshBacklogReportJob extends AbstractJob {
     }
 
     private void populateNodeOutgoingBacklogReport(List<OutgoingBatchSummaryByNodeBriefStats> stats) {
-        // TODO: generate Node Outgoing Backlog report
+        try {
+            @SuppressWarnings("unchecked")
+            Class<IExtensionPoint> saverClass = (Class<IExtensionPoint>) Class.forName(
+                    "com.jumpmind.symmetric.console.service.INodeBatchBacklogReportSaver");
+            IExtensionPoint saver = engine.getExtensionService().getExtensionPoint(saverClass);
+            if (saver != null) {
+                saverClass.getMethod("saveReport", List.class).invoke(saver, stats);
+            }
+        } catch (ClassNotFoundException e) {
+            log.debug("Backlog report saver not available");
+        } catch (ReflectiveOperationException e) {
+            log.warn("Failed to save outgoing backlog report", e);
+        }
     }
 }
