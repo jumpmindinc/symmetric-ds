@@ -55,12 +55,24 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             METRIC_ID_DATA_LOADED_OUTGOING, METRIC_ID_DATA_LOADED_OUTGOING_BYTES,
             METRIC_ID_DATA_LOADED_OUTGOING_ERRORS,
             METRIC_ID_DATA_UNROUTED_CHANNEL, METRIC_ID_DATA_CREATE_TIME_MIN, METRIC_ID_DATA_CREATE_TIME_MAX));
+    private final Set<String> nodeScopedMetricIds = new LinkedHashSet<>(List.of(
+            METRIC_ID_BATCHES_OUTGOING, METRIC_ID_DATA_OUTGOING,
+            METRIC_ID_BATCHES_INCOMING, METRIC_ID_DATA_INCOMING));
     private final List<SymMetricDefinition> defaultMetrics = new ArrayList<>(List.of(
             // Server connection metrics
             new SymMetricDefinition(METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS, "Active connection reservations to this server from other nodes",
                     METRIC_UNIT_CONNECTIONS, InstrumentType.UPDOWN_COUNTER),
             new SymMetricDefinition(METRIC_ID_SERVER_CONNECTIONS_UTILIZATION, "Active connection as a percentage of max concurrent workers",
                     METRIC_UNIT_PERCENT, InstrumentType.DOUBLE_GAUGE),
+            // Node-scoped batch gauges
+            new SymMetricDefinition(METRIC_ID_BATCHES_OUTGOING, "Outgoing batches per node and status", METRIC_UNIT_BATCHES,
+                    InstrumentType.LONG_GAUGE),
+            new SymMetricDefinition(METRIC_ID_DATA_OUTGOING, "Outgoing data rows per node and status", METRIC_UNIT_ROWS,
+                    InstrumentType.LONG_GAUGE),
+            new SymMetricDefinition(METRIC_ID_BATCHES_INCOMING, "Incoming batches per node and status", METRIC_UNIT_BATCHES,
+                    InstrumentType.LONG_GAUGE),
+            new SymMetricDefinition(METRIC_ID_DATA_INCOMING, "Incoming data rows per node and status", METRIC_UNIT_ROWS,
+                    InstrumentType.LONG_GAUGE),
             // Channel-scoped data counters
             new SymMetricDefinition(METRIC_ID_DATA_ROUTED, "Data rows routed per channel", METRIC_UNIT_ROWS, InstrumentType.UPDOWN_COUNTER),
             new SymMetricDefinition(METRIC_ID_DATA_EXTRACTED, "Data rows extracted per channel", METRIC_UNIT_ROWS, InstrumentType.UPDOWN_COUNTER),
@@ -291,7 +303,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
         for (SymMetricDefinition def : registry.values()) {
             if (StringUtils.isBlank(def.id())) {
                 log.warn("Skipping metric definition with a blank id! {}", def);
-            } else if (!channelScopedMetricIds.contains(def.id())) {
+            } else if (!channelScopedMetricIds.contains(def.id()) && !nodeScopedMetricIds.contains(def.id())) {
                 try {
                     switch (def.type()) {
                         case UPDOWN_COUNTER -> service.registerUpDownCounter(def);

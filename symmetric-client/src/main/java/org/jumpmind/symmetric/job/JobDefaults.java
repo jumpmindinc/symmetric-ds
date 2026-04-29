@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.job;
 
 public class JobDefaults {
+    public static final String EVERY_3_MINUTES = "0 0/3 * * * *";
     public static final String EVERY_5_MINUTES = "0 0/5 * * * *";
     public static final String EVERY_10_SECONDS = "10000";
     public static final String EVERY_30_SECONDS = "30000";

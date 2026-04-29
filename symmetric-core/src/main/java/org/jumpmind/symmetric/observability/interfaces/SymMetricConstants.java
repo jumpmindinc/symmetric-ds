@@ -49,9 +49,15 @@ public final class SymMetricConstants {
     public static final String METRIC_UNIT_HOURS = "hours";
     public static final String METRIC_UNIT_DAYS = "days";
     public static final String METRIC_UNIT_MONTHS = "months";
+    public static final String METRIC_UNIT_BATCHES = "batches";
     public static final String METRIC_UNIT_ROWS = "rows";
     public static final String METRIC_UNIT_NODES = "nodes";
     public static final String METRIC_UNIT_TRIGGERS = "triggers";
+    // Node-scoped gauges (OutgoingBatchService)
+    public static final String METRIC_ID_BATCHES_OUTGOING = OTEL_SCOPE + ".batches.outgoing.count";
+    public static final String METRIC_ID_DATA_OUTGOING = OTEL_SCOPE + ".data.outgoing.count";
+    public static final String METRIC_ID_BATCHES_INCOMING = OTEL_SCOPE + ".batches.incoming.count";
+    public static final String METRIC_ID_DATA_INCOMING = OTEL_SCOPE + ".data.incoming.count";
     // Incoming client connection counters (ConcurrentConnectionManager)
     public static final String METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS = OTEL_SCOPE + ".server.reservations.count";
     public static final String METRIC_ID_SERVER_CONNECTIONS_UTILIZATION = OTEL_SCOPE + ".server.connections.utilization";

@@ -169,6 +169,13 @@
             <index-column name="source_node_id"/>
             <index-column name="status"/>
         </index>
+        <index name="idx_er_nd_ld_src_sb">
+            <index-column name="node_id"/>
+            <index-column name="load_id"/>
+            <index-column name="source_node_id"/>
+            <index-column name="start_batch_id"/>
+            <include-column name="end_batch_id"/>
+        </index>
     </table>
 
     <table name="file_incoming" description="As files are loaded from another node the file and source node are captured here for file sync to use to prevent file ping backs in bidirectional file synchronization.">
@@ -703,6 +710,7 @@
         </index>
         <index name="idx_ob_status">
             <index-column name="status" />
+            <include-column name="error_flag" />
         </index>
         <index name="idx_ob_in_error">
             <index-column name="error_flag" />
@@ -1026,7 +1034,7 @@
         <column name="hostname" type="VARCHAR" size="255" required="true" description="Hostname of the SymmetricDS node that produced the metric." />
         <column name="create_time" type="TIMESTAMP" required="true"  description="Timestamp when this entry was created." />
         <column name="last_update_time" type="TIMESTAMP" required="true"  description="Timestamp when this entry was last updated." />
-        <column name="enabled" type="SMALLINT" required="true" defaultValue="1" description="Whether this metric key is active. 1=enabled, 0=disabled." />
+        <column name="enabled" type="SMALLINT" required="true" default="1" description="Whether this metric key is active. 1=enabled, 0=disabled." />
         <index name="idx_metric_key_lookup">
             <index-column name="metric_id" />
             <index-column name="engine_name" />

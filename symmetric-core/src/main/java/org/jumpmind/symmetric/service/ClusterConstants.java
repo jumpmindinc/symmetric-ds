@@ -52,6 +52,7 @@ public class ClusterConstants {
     public static final String DATA_REFRESH = "Data Refresh";
     public static final String LOG_MINER = "Log Miner";
     public static final String REFRESH_ANALYTICS = "Refresh Analytics";
+    public static final String REFRESH_BACKLOG_REPORT = "Refresh Backlog Report";
     public static final String FILE_SYNC_SHARED = "FILE_SYNC_SHARED";
     public static final String TYPE_CLUSTER = "CLUSTER";
     public static final String TYPE_EXCLUSIVE = "EXCLUSIVE";

@@ -31,6 +31,7 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusMetricsMap;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.models.MetricContext;
@@ -203,8 +204,10 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     private int initializeStatsWorksetsForAllMetrics(MetricsRepository repo) {
         int metricsInitialized = 0;
         try {
-            for (AbstractQueuedMetric metric : (java.util.Collection<AbstractQueuedMetric>) (java.util.Collection<?>) getAllMetrics()) {
-                metricsInitialized += initWorksetForMetric(metric, repo);
+            for (ISymMetric m : getAllMetrics()) {
+                if (m instanceof AbstractQueuedMetric metric) {
+                    metricsInitialized += initWorksetForMetric(metric, repo);
+                }
             }
             log.debug("Initialized {} metrics in repository for engine {}", metricsInitialized, engine.getEngineName());
         } catch (Exception ex) {
@@ -227,5 +230,10 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             log.warn("Failed to pre-warm workset for metric=" + metric.getMetricId(), e);
         }
         return 0;
+    }
+
+    @Override
+    public INodeBatchStatusMetricsMap createNodeBatchStatusMetricsMap(String batchesMetricId, String rowsMetricId) {
+        return new NodeBatchStatusMetricsMap(this, batchesMetricId, rowsMetricId);
     }
 }

@@ -694,13 +694,12 @@ public class MetricsRepository extends AbstractService {
             log.error(message);
             throw new MetricsRepositoryException(message);
         }
-        log.debug("Saving metric interval stats for key... {}", key);
+                 
         if (key.factType() == MetricFactType.INT64) {
             saveMetricIntervalInt64(transaction, key, contextId, intervalStats);
         } else {
             saveMetricIntervalFloat64(transaction, key, contextId, intervalStats);
         }
-        log.debug("Queued metric interval stats for {}, Interval.start={}", key, intervalStats.getStartEpoch());
     }
 
     private void saveMetricIntervalInt64(ISqlTransaction transaction, MetricKey key, long contextId, ISymIntervalStats intervalStats) {
@@ -723,6 +722,9 @@ public class MetricsRepository extends AbstractService {
                 Types.DOUBLE,
                 Types.SMALLINT };
         executeIntervalInsert(transaction, key, "insertMetricIntervalInt64Sql", params, types);
+        if(log.isDebugEnabled()){
+            log.debug("Saved metric stats entry for interval starting on {}. {}", intervalStartTime, key);
+        }
     }
 
     private void saveMetricIntervalFloat64(ISqlTransaction transaction, MetricKey key, long contextId, ISymIntervalStats intervalStats) {
@@ -745,6 +747,9 @@ public class MetricsRepository extends AbstractService {
                 Types.DOUBLE,
                 Types.SMALLINT };
         executeIntervalInsert(transaction, key, "insertMetricIntervalFloat64Sql", params, types);
+        if(log.isDebugEnabled()){
+            log.debug("Saved metric stats entry for interval starting on {}. {}", intervalStartTime, key);
+        }
     }
 
     private void executeIntervalInsert(ISqlTransaction transaction, MetricKey key, String sqlKey, Object[] params, int[] types) {
@@ -771,23 +776,31 @@ public class MetricsRepository extends AbstractService {
     }
 
     public int purgeIntervalStats(java.util.Date cutoff) {
-        int count = 0;
+        int totalCount = 0;
+        int recordsPurged = 0;
         try {
-            count += sqlTemplate.update(getSql("purgeMetricStatsFloat64Sql"), cutoff);
+            recordsPurged = sqlTemplate.update(getSql("purgeMetricStatsFloat64Sql"), cutoff);
+            totalCount += recordsPurged;
+            log.debug("Purged {} rows of Float64 metric stats older than cutoff date={}", recordsPurged, cutoff);
         } catch (Exception e) {
             log.warn("Failed to purge metric_stats_float64", e);
         }
         try {
-            count += sqlTemplate.update(getSql("purgeMetricStatsInt64Sql"), cutoff);
+            recordsPurged += sqlTemplate.update(getSql("purgeMetricStatsInt64Sql"), cutoff);
+            totalCount += recordsPurged;
+            log.debug("Purged {} rows of Int64 metric stats older than cutoff date={}", recordsPurged, cutoff);
         } catch (Exception e) {
             log.warn("Failed to purge metric_stats_int64", e);
         }
         try {
-            count += sqlTemplate.update(getSql("purgeOrphanedMetricContextsSql"));
+            recordsPurged += sqlTemplate.update(getSql("purgeOrphanedMetricContextsSql"));
+            totalCount += recordsPurged;
+            log.debug("Purged {} orphaned metric context rows (float64) older than cutoff date={}", recordsPurged, cutoff);
         } catch (Exception e) {
             log.warn("Failed to purge orphaned metric_context rows", e);
         }
-        return count;
+        log.info("Purged {} metric fact and context rows older than cutoff date={}", totalCount, cutoff);
+        return totalCount;
     }
 
     static class MetricKeySqlRowMapper implements ISqlRowMapper<MetricKey> {

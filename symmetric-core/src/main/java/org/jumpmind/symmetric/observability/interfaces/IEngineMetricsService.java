@@ -88,6 +88,19 @@ public interface IEngineMetricsService extends IMetricsService {
 
     ISymLongGauge registerLongGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs);
 
+    /**
+     * Registers (or returns the existing) long gauge for {@code metricId} with the given attributes. The definition must already be registered in
+     * {@code MetricDefinitionFactory}; throws {@code InvalidMetricDataException} if it is not. Never pass an inline definition — all built-in metric
+     * definitions must be declared and registered exclusively in {@code MetricDefinitionFactory}.
+     */
+    ISymLongGauge registerLongGauge(String metricId, List<MetricAttribute> attrs);
+
+    /**
+     * Creates a new {@link INodeBatchStatusMetricsMap} backed by this service. {@code batchesMetricId} and {@code rowsMetricId} must already be registered
+     * in {@code MetricDefinitionFactory}; throws {@code InvalidMetricDataException} if either is not.
+     */
+    INodeBatchStatusMetricsMap createNodeBatchStatusMetricsMap(String batchesMetricId, String rowsMetricId);
+
     Collection<ISymMetric> getAllMetrics();
 
     /**

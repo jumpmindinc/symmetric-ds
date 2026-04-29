@@ -25,6 +25,7 @@ public final class MetricAttributeConstants {
     private MetricAttributeConstants() {
     }
 
+    public static final String BATCH_STATUS = "batch_status";
     public static final String BUSINESS_DATE = "business_date";
     public static final String CDC_EVENT = "cdc_event_type";
     public static final String CHANNEL = "channel";
@@ -34,6 +35,7 @@ public final class MetricAttributeConstants {
     public static final String HTTP_METHOD = "http_method";
     public static final String JOB = "job";
     public static final String NODE_GROUP = "node_group";
+    public static final String NODE_ID = "node_id";
     public static final String NODE_NAME = "node_name";
     public static final String SERVER_ADDRESS = "server_address";
     public static final String SERVER_PORT = "server_port";

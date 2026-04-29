@@ -45,6 +45,24 @@ symmetric-stats / org.jumpmind.symmetric.observability/
 | `AbstractStatsAccumulator` | stats / stats | Mutable accumulator for one open time window; subclassed by `Float64StatsAccumulator` and `Int64StatsAccumulator` |
 | `MetricSeriesSlidingWorkset` | stats / stats | Sliding window of recent intervals for IQR-based outlier detection |
 
+## Metric definition ownership
+
+All built-in metric definitions must be declared in `MetricDefinitionFactory.defaultMetrics` and registered there at engine startup. **Never create metric definitions inline** (e.g. anonymous `ISymMetricDefinition` implementations or ad-hoc `SymMetricDefinition` instances) in callers — `MetricDefinitionFactory` is the single source of truth for all metric metadata.
+
+Callers register attribute-scoped instrument instances using only the metric ID string:
+
+```java
+// correct — definition already registered in MetricDefinitionFactory
+metricsService.registerLongGauge(METRIC_ID_BATCHES_OUTGOING, List.of(new MetricAttribute(NODE_ID, nodeId)));
+
+// wrong — never define metrics inline at the call site
+metricsService.registerLongGauge(new SymMetricDefinition("my.metric", "desc", "rows", LONG_GAUGE), attrs);
+```
+
+If the metric ID has not been registered in `MetricDefinitionFactory`, the call throws `InvalidMetricDataException`. This is intentional — a missing definition is a programming error that must surface at startup, not be silently swallowed.
+
+To add a new built-in metric: add a `SymMetricDefinition` entry to `MetricDefinitionFactory.defaultMetrics` and declare its ID constant in `SymMetricConstants`. No other changes are needed for the definition to be available to callers.
+
 ## Metric registration flow
 
 ```
@@ -86,3 +104,21 @@ App thread  →  instrument.add()  →  ObservationsQueue (per metric)
 | `{prefix}_metric_context` | Optional attribute context for a metric observation (up to 3 key-value pairs) |
 | `{prefix}_metric_stats_float64` | Fact — aggregated float64 interval stats (avg, min, max, std_dev, count) |
 | `{prefix}_metric_stats_int64` | Fact — aggregated int64 interval stats (same shape, integer types) |
+
+### Database query to report int64-typed recorded stats (counters and integer gauges):
+select k.metric_id, s.context_id , s.interval_start_time, s.min, s.avg , s.max, s.observation_count, s.outlier 
+from sym_metric_key as k
+join sym_metric_stats_int64 as s on s.metric_key=k.metric_key
+where k.metric_id like '%.dbpool.%' -- Filter on database connection pool-specific metrics
+order by s.interval_start_time desc limit 100;
+
+### Database query to report float64-typed recorded stats (double gauges and histograms):
+select k.metric_id, f.context_id , f.interval_start_time, f.min, f.avg , f.max, f.observation_count, f.outlier 
+from sym_metric_key as k
+join sym_metric_stats_float64 as f on f.metric_key=k.metric_key
+where k.metric_id like '%.dbpool.%' -- Filter on database connection pool-specific metrics
+order by f.interval_start_time desc limit 100;
+
+
+## Purge of record
+Purge is implemented in MetricsRepository.purgeIntervalStats

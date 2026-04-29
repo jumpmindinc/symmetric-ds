@@ -54,6 +54,7 @@ import org.jumpmind.symmetric.model.NodeHost;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.OutgoingBatchSummary;
+import org.jumpmind.symmetric.model.OutgoingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.model.OutgoingBatches;
 import org.jumpmind.symmetric.model.ReadyChannels;
 import org.jumpmind.symmetric.service.FilterCriterion;
@@ -68,9 +69,6 @@ import org.jumpmind.symmetric.util.QueueThread;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.FormatUtils;
 
-/**
- * @see IOutgoingBatchService
- */
 public class OutgoingBatchService extends AbstractService implements IOutgoingBatchService {
     private INodeService nodeService;
     private IConfigurationService configurationService;
@@ -441,9 +439,13 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
     }
 
     @Override
-    public int countOutgoingBatchesUnsentOfflineNodes(String minsBeforeOfflineParam) {
+    public List<OutgoingBatchSummaryByNodeBriefStats> findOutgoingBatchSummaryByNodeBriefStats() {
+        return sqlTemplateDirty.query(getSql("selectOutgoingBatchSummaryByNodeBriefStatsSql"),
+                new OutgoingBatchSummaryByNodeBriefStatsMapper());
+    }
+
+    public int countOutgoingBatchesUnsentOfflineNodes(int minutesBeforeOffline) {
         int unsentBatchCount = 0;
-        int minutesBeforeOffline = parameterService.getInt(minsBeforeOfflineParam);
         if (minutesBeforeOffline < 0) {
             return unsentBatchCount;
         }
@@ -1064,6 +1066,18 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
             summary.setByteCount(row.getLong("byte_count"));
             summary.setRowCount(row.getLong("rows_count"));
             return summary;
+        }
+    }
+
+    static class OutgoingBatchSummaryByNodeBriefStatsMapper implements ISqlRowMapper<OutgoingBatchSummaryByNodeBriefStats> {
+        @Override
+        public OutgoingBatchSummaryByNodeBriefStats mapRow(Row row) {
+            return new OutgoingBatchSummaryByNodeBriefStats(
+                    row.getString("node_id"),
+                    row.getString("status"),
+                    row.getDateTime("batch_date"),
+                    row.getLong("batches"),
+                    row.getLong("data_rows"));
         }
     }
 }

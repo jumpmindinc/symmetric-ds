@@ -31,6 +31,7 @@ import org.jumpmind.symmetric.model.BacklogSummary;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.OutgoingBatchSummary;
+import org.jumpmind.symmetric.model.OutgoingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.model.OutgoingBatches;
 import org.jumpmind.symmetric.model.ReadyChannels;
 
@@ -111,7 +112,9 @@ public interface IOutgoingBatchService {
 
     public int countOutgoingBatchesUnsent();
 
-    public int countOutgoingBatchesUnsentOfflineNodes(String minsBeforeOfflineParam);
+    public int countOutgoingBatchesUnsentOfflineNodes(int minutesBeforeOffline);
+
+    public List<OutgoingBatchSummaryByNodeBriefStats> findOutgoingBatchSummaryByNodeBriefStats();
 
     public int[] countOutgoingNonSystemBatchesRowsUnsent();
 
