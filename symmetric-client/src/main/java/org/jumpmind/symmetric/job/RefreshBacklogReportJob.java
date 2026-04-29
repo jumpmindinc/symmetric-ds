@@ -20,12 +20,12 @@
  */
 package org.jumpmind.symmetric.job;
 
+import static org.jumpmind.symmetric.job.JobDefaults.EVERY_FIFTEEN_MINUTES;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_BATCHES_OUTGOING;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_OUTGOING;
 
 import java.util.List;
 
-import org.jumpmind.extension.IExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.OutgoingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusMetricsMap;
@@ -44,18 +44,27 @@ public class RefreshBacklogReportJob extends AbstractJob {
     @Override
     public JobDefaults getDefaults() {
         return new JobDefaults()
-                .schedule(JobDefaults.EVERY_3_MINUTES)
+                .schedule(EVERY_FIFTEEN_MINUTES)
                 .description("Refresh outgoing backlog report and update batch metrics gauges");
+    }
+
+    @Override
+    protected long getMinSchedulePeriodMs() {
+        return Long.parseLong(EVERY_FIFTEEN_MINUTES);
+    }
+
+    @Override
+    public boolean isRateLimited() {
+        return true;
     }
 
     @Override
     public void doJob(boolean force) throws Exception {
         List<OutgoingBatchSummaryByNodeBriefStats> stats = engine.getOutgoingBatchService().findOutgoingBatchSummaryByNodeBriefStats();
         populateNodeMetrics(stats);
-        populateNodeOutgoingBacklogReport(stats);
     }
 
-    private void populateNodeMetrics(List<OutgoingBatchSummaryByNodeBriefStats> stats) {
+    protected void populateNodeMetrics(List<OutgoingBatchSummaryByNodeBriefStats> stats) {
         if (outgoingBatchMetrics == null) {
             outgoingBatchMetrics = engine.getMetricsService()
                     .createNodeBatchStatusMetricsMap(METRIC_ID_BATCHES_OUTGOING, METRIC_ID_DATA_OUTGOING);
@@ -96,21 +105,5 @@ public class RefreshBacklogReportJob extends AbstractJob {
             outgoingBatchMetrics.setBatchAndRowCounts(currentNodeId, currentStatus, totalBatches, totalDataRows);
         }
         log.info("Processed {} node-batch-date entries to populate metrics.", processedEntriesCount);
-    }
-
-    private void populateNodeOutgoingBacklogReport(List<OutgoingBatchSummaryByNodeBriefStats> stats) {
-        try {
-            @SuppressWarnings("unchecked")
-            Class<IExtensionPoint> saverClass = (Class<IExtensionPoint>) Class.forName(
-                    "com.jumpmind.symmetric.console.service.INodeBatchBacklogReportSaver");
-            IExtensionPoint saver = engine.getExtensionService().getExtensionPoint(saverClass);
-            if (saver != null) {
-                saverClass.getMethod("saveReport", List.class).invoke(saver, stats);
-            }
-        } catch (ClassNotFoundException e) {
-            log.debug("Backlog report saver not available");
-        } catch (ReflectiveOperationException e) {
-            log.warn("Failed to save outgoing backlog report", e);
-        }
     }
 }
