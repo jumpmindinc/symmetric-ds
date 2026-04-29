@@ -212,6 +212,8 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
             return ColumnTypes.TIMETZ;
         } else if (PostgreSqlDatabasePlatform.isBlobStoredByReference(typeName)) {
             return Types.BLOB;
+        } else if (typeName != null && typeName.equalsIgnoreCase("UUID") && type == Types.OTHER) {
+            return Types.VARCHAR;
         } else if (type != null && (type == Types.STRUCT || type == Types.OTHER)) {
             return Types.LONGVARCHAR;
         } else if (typeName != null && typeName.equalsIgnoreCase("BIT")) {
