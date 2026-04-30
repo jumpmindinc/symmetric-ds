@@ -185,7 +185,6 @@ public class ConcurrentConnectionManagerTest {
         mgr.removeFromWhiteList("node1");
         assertEquals(0, mgr.getWhiteList().length);
     }
-
     // ── releaseConnection(nodeId, poolId) — 2-arg overload ────────────────────
 
     @Test
@@ -202,7 +201,6 @@ public class ConcurrentConnectionManagerTest {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertFalse(mgr.releaseConnection("node99", "push"));
     }
-
     // ── getReservationCount ───────────────────────────────────────────────────
 
     @Test
@@ -217,7 +215,6 @@ public class ConcurrentConnectionManagerTest {
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         assertEquals(1, mgr.getReservationCount("push"));
     }
-
     // ── getPullReservationsByNodeId ────────────────────────────────────────────
 
     @Test
@@ -225,7 +222,6 @@ public class ConcurrentConnectionManagerTest {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertTrue(mgr.getPullReservationsByNodeId().isEmpty());
     }
-
     // ── getPushReservationsByNodeId ────────────────────────────────────────────
 
     @Test
@@ -234,7 +230,6 @@ public class ConcurrentConnectionManagerTest {
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         assertTrue(mgr.getPushReservationsByNodeId().containsKey("node1"));
     }
-
     // ── getNodeConnectionStatisticsByPoolByNodeId ─────────────────────────────
 
     @Test
@@ -242,7 +237,6 @@ public class ConcurrentConnectionManagerTest {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertNotNull(mgr.getNodeConnectionStatisticsByPoolByNodeId());
     }
-
     // ── Reservation inner class ───────────────────────────────────────────────
 
     @Test

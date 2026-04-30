@@ -79,7 +79,6 @@ class HostMetricsServiceTest {
         HostMetricsService service = new HostMetricsService(manager, false);
         assertDoesNotThrow(service::shutdown);
     }
-
     // ── registerUpDownCounter / getUpDownCounter ──────────────────────────────
 
     @Test
@@ -103,7 +102,6 @@ class HostMetricsServiceTest {
         IUpDownCounter registered = service.registerUpDownCounter(def);
         assertSame(registered, service.getUpDownCounter("test.ud2"));
     }
-
     // ── registerIncreasingCounter / getIncreasingCounter ──────────────────────
 
     @Test
@@ -127,7 +125,6 @@ class HostMetricsServiceTest {
         IIncreasingCounter registered = service.registerIncreasingCounter(def);
         assertSame(registered, service.getIncreasingCounter("test.ic2"));
     }
-
     // ── registerDoubleGauge / getDoubleGauge ──────────────────────────────────
 
     @Test
@@ -151,7 +148,6 @@ class HostMetricsServiceTest {
         ISymDoubleGauge registered = service.registerDoubleGauge(def);
         assertSame(registered, service.getDoubleGauge("test.dg2"));
     }
-
     // ── registerLongGauge / getLongGauge ──────────────────────────────────────
 
     @Test
@@ -184,7 +180,6 @@ class HostMetricsServiceTest {
                 org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_IDLE, List.of());
         assertNotNull(gauge);
     }
-
     // ── getAllMetrics ─────────────────────────────────────────────────────────
 
     @Test
@@ -200,7 +195,6 @@ class HostMetricsServiceTest {
         HostMetricsService service = new HostMetricsService(manager, false);
         assertTrue(service.getAllMetrics().isEmpty());
     }
-
     // ── resetGaugesToZero ─────────────────────────────────────────────────────
 
     @Test
@@ -222,7 +216,6 @@ class HostMetricsServiceTest {
         service.resetGaugesToZero();
         assertTrue(gauge.getValue() == 0L);
     }
-
     // ── attribute-scoped instrument key ───────────────────────────────────────
 
     @Test
@@ -235,5 +228,123 @@ class HostMetricsServiceTest {
         ISymLongGauge gaugeB = service.registerLongGauge(def, attrsB);
         assertFalse(gaugeA == gaugeB);
         assertTrue(service.getAllMetrics().size() >= 2);
+    }
+    // ── createUpDownCounterInternal (otelEnabled path) ────────────────────────
+
+    @Test
+    void registerUpDownCounter_otelEnabled_createsOtelHandle() {
+        HostMetricsService service = new HostMetricsService(manager, true);
+        SymMetricDefinition def = new SymMetricDefinition("otel.ud", "desc", "rows", InstrumentType.UPDOWN_COUNTER);
+        assertNotNull(service.registerUpDownCounter(def));
+    }
+
+    @Test
+    void registerUpDownCounter_withAttrs_createsEntryRetrievableWithSameAttrs() {
+        HostMetricsService service = new HostMetricsService(manager, false);
+        SymMetricDefinition def = new SymMetricDefinition("test.ud.attrs", "desc", "rows", InstrumentType.UPDOWN_COUNTER);
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        IUpDownCounter counter = service.registerUpDownCounter(def, attrs);
+        assertNotNull(counter);
+        assertSame(counter, service.getUpDownCounter("test.ud.attrs", attrs));
+    }
+    // ── registerIncreasingCounter (attrs overload) / createIncreasingCounterInternal ─
+
+    @Test
+    void registerIncreasingCounter_withAttrs_createsEntryRetrievableWithSameAttrs() {
+        HostMetricsService service = new HostMetricsService(manager, false);
+        SymMetricDefinition def = new SymMetricDefinition("test.ic.attrs", "desc", "rows", InstrumentType.COUNTER);
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        IIncreasingCounter counter = service.registerIncreasingCounter(def, attrs);
+        assertNotNull(counter);
+        assertSame(counter, service.getIncreasingCounter("test.ic.attrs", attrs));
+    }
+
+    @Test
+    void registerIncreasingCounter_otelEnabled_createsOtelHandle() {
+        HostMetricsService service = new HostMetricsService(manager, true);
+        SymMetricDefinition def = new SymMetricDefinition("otel.ic", "desc", "rows", InstrumentType.COUNTER);
+        assertNotNull(service.registerIncreasingCounter(def));
+    }
+
+    @Test
+    void getIncreasingCounter_withAttrs_beforeRegistration_returnsNull() {
+        HostMetricsService service = new HostMetricsService(manager, false);
+        assertNull(service.getIncreasingCounter("test.ic.absent", List.of(new MetricAttribute("channel", "x"))));
+    }
+    // ── createDoubleGaugeInternal (otelEnabled path) ──────────────────────────
+
+    @Test
+    void registerDoubleGauge_withAttrs_createsEntryRetrievableWithSameAttrs() {
+        HostMetricsService service = new HostMetricsService(manager, false);
+        SymMetricDefinition def = new SymMetricDefinition("test.dg.attrs", "desc", "percent", InstrumentType.DOUBLE_GAUGE);
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        ISymDoubleGauge gauge = service.registerDoubleGauge(def, attrs);
+        assertNotNull(gauge);
+        assertSame(gauge, service.getDoubleGauge("test.dg.attrs", attrs));
+    }
+
+    @Test
+    void registerDoubleGauge_otelEnabled_createsOtelHandle() {
+        HostMetricsService service = new HostMetricsService(manager, true);
+        SymMetricDefinition def = new SymMetricDefinition("otel.dg", "desc", "percent", InstrumentType.DOUBLE_GAUGE);
+        assertNotNull(service.registerDoubleGauge(def));
+    }
+    // ── registerLongGauge (attrs overload) / createLongGaugeInternal ─────────
+
+    @Test
+    void registerLongGauge_withAttrs_createsEntryRetrievableWithSameAttrs() {
+        HostMetricsService service = new HostMetricsService(manager, false);
+        SymMetricDefinition def = new SymMetricDefinition("test.lg.attrs2", "desc", "connections", InstrumentType.LONG_GAUGE);
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        ISymLongGauge gauge = service.registerLongGauge(def, attrs);
+        assertNotNull(gauge);
+        assertSame(gauge, service.getLongGauge("test.lg.attrs2", attrs));
+    }
+
+    @Test
+    void registerLongGauge_otelEnabled_createsOtelHandle() {
+        HostMetricsService service = new HostMetricsService(manager, true);
+        SymMetricDefinition def = new SymMetricDefinition("otel.lg", "desc", "connections", InstrumentType.LONG_GAUGE);
+        assertNotNull(service.registerLongGauge(def));
+    }
+
+    @Test
+    void getLongGauge_withAttrs_beforeRegistration_returnsNull() {
+        HostMetricsService service = new HostMetricsService(manager, false);
+        assertNull(service.getLongGauge("test.lg.absent", List.of(new MetricAttribute("channel", "x"))));
+    }
+    // ── instrumentKey (null name / null value branches) ───────────────────────
+
+    @Test
+    void instrumentKey_attrWithNullName_usesEmptyStringInKey() {
+        HostMetricsService service = new HostMetricsService(manager, false);
+        SymMetricDefinition def = new SymMetricDefinition("test.nullname", "desc", "rows", InstrumentType.LONG_GAUGE);
+        List<MetricAttribute> attrs = List.of(new MetricAttribute(null, "val"));
+        assertNotNull(service.registerLongGauge(def, attrs));
+    }
+
+    @Test
+    void instrumentKey_attrWithNullValue_usesEmptyStringInKey() {
+        HostMetricsService service = new HostMetricsService(manager, false);
+        SymMetricDefinition def = new SymMetricDefinition("test.nullval", "desc", "rows", InstrumentType.LONG_GAUGE);
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", null));
+        assertNotNull(service.registerLongGauge(def, attrs));
+    }
+    // ── buildInstrumentAttributes ─────────────────────────────────────────────
+
+    @Test
+    void buildInstrumentAttributes_withNonEmptyAttrs_mergesAttributesForOtelHandle() {
+        HostMetricsService service = new HostMetricsService(manager, true);
+        SymMetricDefinition def = new SymMetricDefinition("otel.ud.merge", "desc", "rows", InstrumentType.UPDOWN_COUNTER);
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        assertNotNull(service.registerUpDownCounter(def, attrs));
+    }
+
+    @Test
+    void buildInstrumentAttributes_attrWithNullNameOrValue_isSkippedFromOtelAttributes() {
+        HostMetricsService service = new HostMetricsService(manager, true);
+        SymMetricDefinition def = new SymMetricDefinition("otel.ud.nullattr", "desc", "rows", InstrumentType.UPDOWN_COUNTER);
+        List<MetricAttribute> attrs = List.of(new MetricAttribute(null, null));
+        assertNotNull(service.registerUpDownCounter(def, attrs));
     }
 }

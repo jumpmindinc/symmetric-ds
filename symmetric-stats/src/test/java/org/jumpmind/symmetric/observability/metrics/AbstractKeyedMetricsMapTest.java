@@ -152,7 +152,7 @@ class AbstractKeyedMetricsMapTest {
 
     @Test
     void getOrCreate_factoryCalledOnceForSameKey() {
-        int[] callCount = {0};
+        int[] callCount = { 0 };
         map.getOrCreate("once", () -> {
             callCount[0]++;
             return "once";

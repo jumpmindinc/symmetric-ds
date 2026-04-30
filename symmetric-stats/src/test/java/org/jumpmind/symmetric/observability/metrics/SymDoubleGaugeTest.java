@@ -22,12 +22,17 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.ObservableDoubleGauge;
 
 /**
  * Tests {@link AbstractDoubleGaugeMetric} behaviour via the package-private {@link SymDoubleGauge} constructor.
@@ -36,14 +41,12 @@ class SymDoubleGaugeTest {
     private static SymDoubleGauge gauge() {
         return new SymDoubleGauge("test.double.gauge", Attributes.empty(), List.of());
     }
-
     // ── initial value ─────────────────────────────────────────────────────────
 
     @Test
     void getValue_initiallyZero() {
         assertEquals(0.0, gauge().getValue(), 1e-9);
     }
-
     // ── setValue ──────────────────────────────────────────────────────────────
 
     @Test
@@ -59,7 +62,6 @@ class SymDoubleGaugeTest {
         g.setValue(1.5);
         assertEquals(1, g.getObservationsCountEstimate());
     }
-
     // ── add ───────────────────────────────────────────────────────────────────
 
     @Test
@@ -76,12 +78,39 @@ class SymDoubleGaugeTest {
         g.add(0.5);
         assertEquals(1, g.getObservationsCountEstimate());
     }
-
     // ── close ─────────────────────────────────────────────────────────────────
 
     @Test
     void close_withNoOtelHandle_doesNotThrow() {
         SymDoubleGauge g = gauge();
         assertDoesNotThrow(g::close);
+    }
+    // ── setOtelHandle / close with handle ─────────────────────────────────────
+
+    @Test
+    void setOtelHandle_close_invokesHandleClose() throws Exception {
+        SymDoubleGauge g = gauge();
+        ObservableDoubleGauge handle = mock(ObservableDoubleGauge.class);
+        g.setOtelHandle(handle);
+        g.close();
+        verify(handle).close();
+    }
+
+    @Test
+    void close_withOtelHandle_disablesMetric() {
+        SymDoubleGauge g = gauge();
+        g.setOtelHandle(mock(ObservableDoubleGauge.class));
+        g.close();
+        assertFalse(g.isEnabled());
+    }
+
+    @Test
+    void close_whenOtelHandleThrows_doesNotPropagateAndStillDisablesMetric() {
+        SymDoubleGauge g = gauge();
+        ObservableDoubleGauge handle = mock(ObservableDoubleGauge.class);
+        doThrow(new RuntimeException("otel close failed")).when(handle).close();
+        g.setOtelHandle(handle);
+        assertDoesNotThrow(g::close);
+        assertFalse(g.isEnabled());
     }
 }

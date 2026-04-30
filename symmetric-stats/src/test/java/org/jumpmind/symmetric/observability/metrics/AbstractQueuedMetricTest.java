@@ -23,20 +23,26 @@ package org.jumpmind.symmetric.observability.metrics;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jumpmind.symmetric.model.MetricFactType;
+import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
+import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
 import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
+import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 import org.junit.jupiter.api.Test;
 
 import io.opentelemetry.api.common.Attributes;
@@ -52,6 +58,10 @@ class AbstractQueuedMetricTest {
 
     private static UpDownCounter newCounter() {
         return new UpDownCounter("test.metric", Attributes.empty(), List.of());
+    }
+
+    private static UpDownCounter newCounterWithAttrs(List<MetricAttribute> attrs) {
+        return new UpDownCounter("test.metric", Attributes.empty(), attrs);
     }
 
     private static ObservationLong obs(long value, long timestamp) {
@@ -211,7 +221,6 @@ class AbstractQueuedMetricTest {
         m.close();
         assertFalse(m.isEnabled());
     }
-
     // ── getAttributes ─────────────────────────────────────────────────────────
 
     @Test
@@ -220,7 +229,6 @@ class AbstractQueuedMetricTest {
         assertNotNull(m.getAttributes());
         assertTrue(m.getAttributes().isEmpty());
     }
-
     // ── getContext / setContext ───────────────────────────────────────────────
 
     @Test
@@ -246,7 +254,6 @@ class AbstractQueuedMetricTest {
         m.setContext(second); // compareAndSet will not replace first
         assertEquals(first, m.getContext());
     }
-
     // ── getLastModified ───────────────────────────────────────────────────────
 
     @Test
@@ -254,7 +261,6 @@ class AbstractQueuedMetricTest {
         UpDownCounter m = newCounter();
         assertTrue(m.getLastModified() > 0);
     }
-
     // ── getFactType / getMetricType ───────────────────────────────────────────
 
     @Test
@@ -268,7 +274,6 @@ class AbstractQueuedMetricTest {
         UpDownCounter m = newCounter();
         assertEquals(InstrumentType.UPDOWN_COUNTER, m.getMetricType());
     }
-
     // ── processAllObservations ────────────────────────────────────────────────
 
     @Test
@@ -279,7 +284,6 @@ class AbstractQueuedMetricTest {
         m.processAllObservations();
         assertEquals(0, m.getObservationsCountEstimate());
     }
-
     // ── processAllObservationsAndRefreshInterval ──────────────────────────────
 
     @Test
@@ -288,12 +292,108 @@ class AbstractQueuedMetricTest {
         m.addObservation(obs(5L, T));
         assertDoesNotThrow(m::processAllObservationsAndRefreshInterval);
     }
-
     // ── closeCompletedIntervals ───────────────────────────────────────────────
 
     @Test
     void closeCompletedIntervals_withNoAccumulator_doesNotThrow() {
         UpDownCounter m = newCounter();
         assertDoesNotThrow(m::closeCompletedIntervals);
+    }
+
+    @Test
+    void closeCompletedIntervals_withExpiredAccumulator_closesInterval() {
+        UpDownCounter m = newCounter();
+        m.processObservation(obs(5L, T)); // opens window at T (epoch 2020) — already expired
+        m.closeCompletedIntervals(); // System.currentTimeMillis() >> T+D, so window closes
+        assertFalse(m.exportCompletedIntervals().isEmpty());
+    }
+    // ── processObservations (list overload) ───────────────────────────────────
+
+    @Test
+    void processObservations_emptyList_returnsZero() {
+        UpDownCounter m = newCounter();
+        assertEquals(0, m.processObservations(List.of()));
+    }
+
+    @Test
+    void processObservations_singleObs_returnsOne() {
+        UpDownCounter m = newCounter();
+        assertEquals(1, m.processObservations(List.of(obs(5L, T))));
+    }
+
+    @Test
+    void processObservations_multipleObs_returnsTotalProcessedCount() {
+        UpDownCounter m = newCounter();
+        List<ISymObservation> list = List.of(obs(1L, T), obs(2L, T + 1000), obs(3L, T + 2000));
+        assertEquals(3, m.processObservations(list));
+    }
+
+    @Test
+    void processObservations_delinquentMixed_returnsOnlyValidCount() {
+        UpDownCounter m = newCounter();
+        m.processObservation(obs(10L, T + D)); // open window at T+D
+        // obs at T is delinquent (before current window), obs at T+D+1 is in window
+        List<ISymObservation> list = List.of(obs(1L, T), obs(5L, T + D + 1000));
+        assertEquals(1, m.processObservations(list));
+    }
+    // ── processAllObservations (empty queue path) ─────────────────────────────
+
+    @Test
+    void processAllObservations_emptyQueue_doesNotThrow() {
+        UpDownCounter m = newCounter();
+        assertDoesNotThrow(m::processAllObservations);
+        assertEquals(0, m.getObservationsCountEstimate());
+    }
+    // ── createAccumulator ─────────────────────────────────────────────────────
+
+    @Test
+    void createAccumulator_returnsInt64AccumulatorWithCorrectStart() {
+        UpDownCounter m = newCounter();
+        IStatsAccumulator acc = m.createAccumulator(T);
+        assertInstanceOf(Int64StatsAccumulator.class, acc);
+        assertEquals(T, acc.getIntervalStart());
+    }
+    // ── getAttributes (non-empty) ─────────────────────────────────────────────
+
+    @Test
+    void getAttributes_nonEmptyList_returnsProvidedAttributes() {
+        MetricAttribute attr = new MetricAttribute("channel", "default");
+        UpDownCounter m = newCounterWithAttrs(List.of(attr));
+        List<MetricAttribute> attrs = m.getAttributes();
+        assertEquals(1, attrs.size());
+        assertEquals(attr, attrs.get(0));
+    }
+    // ── getLastModified (updates after addObservation) ────────────────────────
+
+    @Test
+    void getLastModified_updatesAfterAddObservation() throws InterruptedException {
+        UpDownCounter m = newCounter();
+        long before = m.getLastModified();
+        Thread.sleep(2);
+        m.addObservation(obs(1L, T));
+        assertTrue(m.getLastModified() >= before);
+    }
+    // ── seedWorkset ───────────────────────────────────────────────────────────
+
+    @Test
+    void seedWorkset_belowMinIntervals_doesNotThrowAndCallsSeed() {
+        UpDownCounter m = newCounter();
+        List<ISymIntervalStats> history = List.of(
+                new MetricIntervalStats(T, T + D, 1.0, 0.0, 2.0, 0.0, 1, 1.0, false),
+                new MetricIntervalStats(T + D, T + 2 * D, 2.0, 1.0, 3.0, 0.5, 2, 2.0, false));
+        assertDoesNotThrow(() -> m.seedWorkset(history));
+        // subsequent observation processing still works
+        assertEquals(1, m.processObservation(obs(5L, T)));
+    }
+
+    @Test
+    void seedWorkset_sufficientIntervals_primedWorkset() {
+        UpDownCounter m = newCounter();
+        List<ISymIntervalStats> history = new ArrayList<>();
+        for (int i = 0; i < 300; i++) {
+            history.add(new MetricIntervalStats(T + (long) i * D, T + (long) (i + 1) * D,
+                    1.0, 0.0, 2.0, 0.0, 1, 1.0, false));
+        }
+        assertDoesNotThrow(() -> m.seedWorkset(history));
     }
 }

@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 
 class InvalidMetricDataExceptionTest {
     // ── message-only constructor ──────────────────────────────────────────────
-
     @Test
     void messageConstructor_isRuntimeException() {
         InvalidMetricDataException ex = new InvalidMetricDataException("test message");
@@ -46,7 +45,6 @@ class InvalidMetricDataExceptionTest {
         InvalidMetricDataException ex = new InvalidMetricDataException("test message");
         assertEquals(null, ex.getCause());
     }
-
     // ── message-and-cause constructor ─────────────────────────────────────────
 
     @Test

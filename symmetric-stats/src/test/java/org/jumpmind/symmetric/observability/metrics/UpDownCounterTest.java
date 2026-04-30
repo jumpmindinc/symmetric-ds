@@ -20,14 +20,19 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 
 class UpDownCounterTest {
     private static UpDownCounter counter() {
@@ -84,13 +89,40 @@ class UpDownCounterTest {
         c.decrement();
         assertEquals(8L, c.getValue());
     }
-
     // ── close ─────────────────────────────────────────────────────────────────
 
     @Test
     void close_disablesMetric() {
         UpDownCounter c = counter();
         c.close();
+        assertFalse(c.isEnabled());
+    }
+    // ── setOtelHandle / close with handle ─────────────────────────────────────
+
+    @Test
+    void setOtelHandle_close_invokesHandleClose() throws Exception {
+        UpDownCounter c = counter();
+        ObservableLongUpDownCounter handle = mock(ObservableLongUpDownCounter.class);
+        c.setOtelHandle(handle);
+        c.close();
+        verify(handle).close();
+    }
+
+    @Test
+    void close_withOtelHandle_disablesMetric() {
+        UpDownCounter c = counter();
+        c.setOtelHandle(mock(ObservableLongUpDownCounter.class));
+        c.close();
+        assertFalse(c.isEnabled());
+    }
+
+    @Test
+    void close_whenOtelHandleThrows_doesNotPropagateAndStillDisablesMetric() {
+        UpDownCounter c = counter();
+        ObservableLongUpDownCounter handle = mock(ObservableLongUpDownCounter.class);
+        doThrow(new RuntimeException("otel close failed")).when(handle).close();
+        c.setOtelHandle(handle);
+        assertDoesNotThrow(c::close);
         assertFalse(c.isEnabled());
     }
 }

@@ -43,7 +43,6 @@ import org.junit.jupiter.api.Test;
 class NodeBatchStatusMetricsMapTest {
     private static final String BATCHES_METRIC = "sym.batches.outgoing.count";
     private static final String ROWS_METRIC = "sym.rows.outgoing.count";
-
     private IEngineMetricsService metricsService;
     private NodeBatchStatusMetricsMap map;
 
@@ -82,7 +81,6 @@ class NodeBatchStatusMetricsMapTest {
         s.setDataCount(dataCount);
         return s;
     }
-
     // ── getOrCreate ───────────────────────────────────────────────────────────
 
     @Test
@@ -107,7 +105,6 @@ class NodeBatchStatusMetricsMapTest {
         assertFalse(ok == err);
         assertEquals(2, map.size());
     }
-
     // ── getBatchCount / getRowCount ───────────────────────────────────────────
 
     @Test
@@ -131,7 +128,6 @@ class NodeBatchStatusMetricsMapTest {
         map.setRowCount("n1", "OK", 100L);
         assertEquals(100L, map.getRowCount("n1", "OK"));
     }
-
     // ── setBatchAndRowCounts ──────────────────────────────────────────────────
 
     @Test
@@ -147,7 +143,6 @@ class NodeBatchStatusMetricsMapTest {
         map.setBatchAndRowCounts("n3", "NE", 1L, 10L);
         assertTrue(map.contains("n3" + NodeBatchStatusMetricsMap.ENTRY_KEY_DELIMITER + "NE"));
     }
-
     // ── setBatchCount / setRowCount ───────────────────────────────────────────
 
     @Test
@@ -163,7 +158,6 @@ class NodeBatchStatusMetricsMapTest {
         map.setRowCount("n4", "OK", 75L);
         assertEquals(75L, map.getRowCount("n4", "OK"));
     }
-
     // ── addBatchCount / addRowCount ───────────────────────────────────────────
 
     @Test
@@ -179,7 +173,6 @@ class NodeBatchStatusMetricsMapTest {
         map.addRowCount("n5", "OK", 50L);
         assertEquals(150L, map.getRowCount("n5", "OK"));
     }
-
     // ── setAllMetrics ─────────────────────────────────────────────────────────
 
     @Test
@@ -208,7 +201,6 @@ class NodeBatchStatusMetricsMapTest {
         assertEquals(1L, map.getBatchCount("n8", "OK"));
         assertEquals(2L, map.getBatchCount("n9", "ER"));
     }
-
     // ── setSpecifiedMetrics ───────────────────────────────────────────────────
 
     @Test
@@ -221,7 +213,6 @@ class NodeBatchStatusMetricsMapTest {
         // n11 untouched
         assertEquals(3L, map.getBatchCount("n11", "ER"));
     }
-
     // ── gaugesForNode ─────────────────────────────────────────────────────────
 
     @Test
@@ -240,7 +231,6 @@ class NodeBatchStatusMetricsMapTest {
         List<NodeBatchStatusGauge> result = map.gaugesForNode("n99");
         assertTrue(result.isEmpty());
     }
-
     // ── keys ─────────────────────────────────────────────────────────────────
 
     @Test

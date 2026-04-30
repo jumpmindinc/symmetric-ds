@@ -52,14 +52,12 @@ class PurgeMetricStatsJobTest {
     private PurgeMetricStatsJob newJob() {
         return new PurgeMetricStatsJob(engine, taskScheduler);
     }
-
     // ── getDefaults ───────────────────────────────────────────────────────────
 
     @Test
     void getDefaults_returnsNonNull() {
         assertNotNull(newJob().getDefaults());
     }
-
     // ── doJob ─────────────────────────────────────────────────────────────────
 
     @Test

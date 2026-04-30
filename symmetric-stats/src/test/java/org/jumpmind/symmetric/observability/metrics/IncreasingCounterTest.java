@@ -20,15 +20,20 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.ObservableLongCounter;
 
 class IncreasingCounterTest {
     private static IncreasingCounter counter() {
@@ -134,6 +139,34 @@ class IncreasingCounterTest {
     void close_withNoOtelHandle_disablesMetric() {
         IncreasingCounter c = counter();
         c.close();
+        assertFalse(c.isEnabled());
+    }
+    // ── setOtelHandle / close with handle ─────────────────────────────────────
+
+    @Test
+    void setOtelHandle_close_invokesHandleClose() throws Exception {
+        IncreasingCounter c = counter();
+        ObservableLongCounter handle = mock(ObservableLongCounter.class);
+        c.setOtelHandle(handle);
+        c.close();
+        verify(handle).close();
+    }
+
+    @Test
+    void close_withOtelHandle_disablesMetric() {
+        IncreasingCounter c = counter();
+        c.setOtelHandle(mock(ObservableLongCounter.class));
+        c.close();
+        assertFalse(c.isEnabled());
+    }
+
+    @Test
+    void close_whenOtelHandleThrows_doesNotPropagateAndStillDisablesMetric() {
+        IncreasingCounter c = counter();
+        ObservableLongCounter handle = mock(ObservableLongCounter.class);
+        doThrow(new RuntimeException("otel close failed")).when(handle).close();
+        c.setOtelHandle(handle);
+        assertDoesNotThrow(c::close);
         assertFalse(c.isEnabled());
     }
 }

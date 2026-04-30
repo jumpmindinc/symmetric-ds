@@ -22,6 +22,10 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
@@ -29,6 +33,7 @@ import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 import org.junit.jupiter.api.Test;
 
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.ObservableLongGauge;
 
 /**
  * Tests {@link AbstractLongGaugeMetric} behaviour via the package-private {@link SymLongGauge} constructor.
@@ -37,14 +42,12 @@ class SymLongGaugeTest {
     private static SymLongGauge gauge() {
         return new SymLongGauge("test.long.gauge", Attributes.empty(), List.of());
     }
-
     // ── initial value ─────────────────────────────────────────────────────────
 
     @Test
     void getValue_initiallyZero() {
         assertEquals(0L, gauge().getValue());
     }
-
     // ── setValue ──────────────────────────────────────────────────────────────
 
     @Test
@@ -60,7 +63,6 @@ class SymLongGaugeTest {
         g.setValue(10L);
         assertEquals(1, g.getObservationsCountEstimate());
     }
-
     // ── add ───────────────────────────────────────────────────────────────────
 
     @Test
@@ -77,7 +79,6 @@ class SymLongGaugeTest {
         g.add(7L);
         assertEquals(1, g.getObservationsCountEstimate());
     }
-
     // ── createAccumulator ─────────────────────────────────────────────────────
 
     @Test
@@ -85,12 +86,39 @@ class SymLongGaugeTest {
         SymLongGauge g = gauge();
         assertEquals(Int64StatsAccumulator.class, g.createAccumulator(0L).getClass());
     }
-
     // ── close ─────────────────────────────────────────────────────────────────
 
     @Test
     void close_withNoOtelHandle_doesNotThrow() {
         SymLongGauge g = gauge();
         assertDoesNotThrow(g::close);
+    }
+    // ── setOtelHandle / close with handle ─────────────────────────────────────
+
+    @Test
+    void setOtelHandle_close_invokesHandleClose() throws Exception {
+        SymLongGauge g = gauge();
+        ObservableLongGauge handle = mock(ObservableLongGauge.class);
+        g.setOtelHandle(handle);
+        g.close();
+        verify(handle).close();
+    }
+
+    @Test
+    void close_withOtelHandle_disablesMetric() {
+        SymLongGauge g = gauge();
+        g.setOtelHandle(mock(ObservableLongGauge.class));
+        g.close();
+        assertFalse(g.isEnabled());
+    }
+
+    @Test
+    void close_whenOtelHandleThrows_doesNotPropagateAndStillDisablesMetric() {
+        SymLongGauge g = gauge();
+        ObservableLongGauge handle = mock(ObservableLongGauge.class);
+        doThrow(new RuntimeException("otel close failed")).when(handle).close();
+        g.setOtelHandle(handle);
+        assertDoesNotThrow(g::close);
+        assertFalse(g.isEnabled());
     }
 }
