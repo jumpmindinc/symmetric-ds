@@ -62,7 +62,7 @@ import org.jumpmind.db.platform.PermissionType;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlTemplateSettings;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.db.util.BinaryEncoding;
 
 /*
@@ -95,7 +95,7 @@ public class AseDatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     protected AseDdlBuilder createDdlBuilder() {
-        String dbUrl = settings.getProperties().get(BasicDataSourcePropertyConstants.DB_POOL_URL);
+        String dbUrl = settings.getProperties().get(DataSourceProperties.DB_POOL_URL);
         usingJtds = dbUrl != null && dbUrl.startsWith("jdbc:jtds");
         AseDdlBuilder ddlBuilder = new AseDdlBuilder();
         ddlBuilder.setUsingJtds(usingJtds);

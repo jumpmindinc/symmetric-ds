@@ -16,7 +16,7 @@ import javax.sql.DataSource;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.SqlTemplateSettings;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.properties.TypedProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +43,7 @@ public class AseDatabasePlatformTest {
         sqlTemplateSettings = mock(SqlTemplateSettings.class);
         typedProperties = mock(TypedProperties.class);
         when(sqlTemplateSettings.getProperties()).thenReturn(typedProperties);
-        when(typedProperties.get(BasicDataSourcePropertyConstants.DB_POOL_URL)).thenReturn(databaseUrl);
+        when(typedProperties.get(DataSourceProperties.DB_POOL_URL)).thenReturn(databaseUrl);
         platform = new AseDatabasePlatform(dataSource, sqlTemplateSettings);
     }
 
