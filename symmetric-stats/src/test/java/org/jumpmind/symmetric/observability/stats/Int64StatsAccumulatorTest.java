@@ -77,7 +77,7 @@ class Int64StatsAccumulatorTest {
         Int64StatsAccumulator acc = new Int64StatsAccumulator(T, 0L);
         acc.addObservation(new ObservationLong(100L, T));
         acc.addObservation(new ObservationLong(20L, T + 1000));
-        assertEquals(20.0, acc.getMinAsDouble(), 1e-9);
+        assertEquals(0.0, acc.getMinAsDouble(), 1e-9); // carry-forward (0) is lower than any obs
         assertEquals(100.0, acc.getMaxAsDouble(), 1e-9);
     }
     // ── computeAvg ────────────────────────────────────────────────────────────

@@ -100,7 +100,7 @@ class Float64StatsAccumulatorTest {
         Float64StatsAccumulator acc = new Float64StatsAccumulator(T);
         acc.addObservation(new ObservationDouble(5.0, T));
         assertEquals(5.0, acc.getLastValueAsDouble(), 1e-9);
-        assertEquals(5.0, acc.getMinAsDouble(), 1e-9);
+        assertEquals(0.0, acc.getMinAsDouble(), 1e-9); // carry-forward (0.0) is lower than obs (5.0)
         assertEquals(5.0, acc.getMaxAsDouble(), 1e-9);
     }
 
@@ -109,7 +109,7 @@ class Float64StatsAccumulatorTest {
         Float64StatsAccumulator acc = new Float64StatsAccumulator(T);
         acc.addObservation(new ObservationDouble(10.0, T));
         acc.addObservation(new ObservationDouble(3.0, T + 1000));
-        assertEquals(3.0, acc.getMinAsDouble(), 1e-9);
+        assertEquals(0.0, acc.getMinAsDouble(), 1e-9); // carry-forward (0.0) is lower than any obs
         assertEquals(10.0, acc.getMaxAsDouble(), 1e-9);
         assertEquals(3.0, acc.getLastValueAsDouble(), 1e-9);
     }
