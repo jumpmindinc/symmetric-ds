@@ -109,6 +109,7 @@ endif::pro[]
 |Timestamp, Date, Time, Interval|Yes
 |Enum|No
 |Point, Lseg, Box, Path, Polygon, Circle|Yes
+|CITEXT (PostgreSQL 8.4+)|Yes *SymmetricDS will attempt to install the citext extension on the target database if it is missing and DDL requires it. The database user must have CREATE privilege.
 |===
 
 
