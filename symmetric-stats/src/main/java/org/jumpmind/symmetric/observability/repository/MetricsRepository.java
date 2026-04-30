@@ -678,7 +678,7 @@ public class MetricsRepository extends AbstractService {
         java.sql.Timestamp oneDayAgo = new java.sql.Timestamp(System.currentTimeMillis() - java.util.concurrent.TimeUnit.DAYS.toMillis(1));
         String sqlKey = key.factType() == MetricFactType.INT64 ? "selectRecentIntervalsInt64Sql" : "selectRecentIntervalsSql";
         List<ISymIntervalStats> rows = sqlTemplate.query(
-                getSql(sqlKey), MetricSeriesSlidingWorkset.IQR_INTERVALS_MIN, new DoubleStatsSqlRowMapper(), key.key(), oneDayAgo);
+                getSql(sqlKey), MetricSeriesSlidingWorkset.IQR_INTERVALS_MAX, new DoubleStatsSqlRowMapper(), key.key(), oneDayAgo);
         log.info("Loaded {} historical intervals for metric {}", rows.size(), key);
         return rows;
     }

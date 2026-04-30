@@ -27,13 +27,15 @@ import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
  * {@code double} to {@code long} on arrival. Weighted-sum arithmetic remains {@code double} internally. Used for counter-type metrics.
  */
 public class Int64StatsAccumulator extends AbstractStatsAccumulator {
-    private long min = Long.MAX_VALUE;
-    private long max = Long.MIN_VALUE;
+    private long min;
+    private long max;
     private long lastValue;
 
     public Int64StatsAccumulator(long intervalStart, long carryForwardValue) {
         super(intervalStart, carryForwardValue);
         this.lastValue = carryForwardValue;
+        this.min = carryForwardValue;
+        this.max = carryForwardValue;
     }
 
     public Int64StatsAccumulator(long intervalStart) {

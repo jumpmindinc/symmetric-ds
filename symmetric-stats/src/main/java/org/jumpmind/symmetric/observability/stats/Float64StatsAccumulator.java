@@ -26,13 +26,15 @@ import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
  * {@code double}-precision accumulator. Tracks {@code min}, {@code max}, and {@code lastValue} as {@code double}. Used for gauge-type metrics.
  */
 public class Float64StatsAccumulator extends AbstractStatsAccumulator {
-    private double min = Double.MAX_VALUE;
-    private double max = -Double.MAX_VALUE;
+    private double min;
+    private double max;
     private double lastValue;
 
     public Float64StatsAccumulator(long intervalStart, double carryForwardValue) {
         super(intervalStart, carryForwardValue);
         this.lastValue = carryForwardValue;
+        this.min = carryForwardValue;
+        this.max = carryForwardValue;
     }
 
     public Float64StatsAccumulator(long intervalStart) {

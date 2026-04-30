@@ -37,8 +37,8 @@ public class MetricSeriesSlidingWorkset {
     public static final int IQR_OUTLIERS_MAX = 10; // Maximum number of outlier intervals deferred for later adoption into workset (should be less than
                                                    // IQR_INTERVALS_MIN).
     public static final int EXPIRE_OUTLIERS_RATIO = 7; // Multiplier (* time window size) for discarding an outlier (should be less than IQR_OUTLIERS_MAX).
-    public static final int IQR_INTERVALS_MIN = 300; // Minimum number of intervals required before IQR and outlier detection are active
-    public static final int IQR_INTERVALS_MAX = 900; // Maximum number of intervals retained; oldest is evicted when this is reached.
+    public static final int IQR_INTERVALS_MIN = 100; // Minimum number of intervals required before IQR and outlier detection are active
+    public static final int IQR_INTERVALS_MAX = 200; // Maximum number of intervals retained; oldest is evicted when this is reached.
     public static final double IQR_Q1_MULTIPLIER = 0.25; // Quartile of the smallest values
     public static final double IQR_Q2_MULTIPLIER = 0.5; // Quartile of the ordinary median
     public static final double IQR_Q3_MULTIPLIER = 0.75; // Quartile of the largest values
