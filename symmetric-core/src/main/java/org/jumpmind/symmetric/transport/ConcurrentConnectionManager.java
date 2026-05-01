@@ -61,7 +61,10 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         }
     }
 
-    private void updateUtilizationGauge() {
+    private void addConnectionAndUpdateUtilizationGauge(int connectionChange) {
+        if (connectionsCounter != null) {
+            connectionsCounter.add(connectionChange);
+        }
         if (utilizationGauge != null) {
             utilizationGauge.setValue(calculateReservationPercentage());
         }
@@ -112,10 +115,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         Reservation reservation = reservations.remove(reservationId);
         if (reservation != null) {
             logConnectedTimePeriod(reservationId, reservation.createTime, System.currentTimeMillis(), poolId);
-            if (connectionsCounter != null) {
-                connectionsCounter.add(-1);
-            }
-            updateUtilizationGauge();
+            addConnectionAndUpdateUtilizationGauge(-1);
             return true;
         } else {
             return false;
@@ -128,10 +128,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         Reservation reservation = reservations.remove(nodeId);
         if (reservation != null) {
             logConnectedTimePeriod(nodeId, reservation.createTime, System.currentTimeMillis(), poolId);
-            if (connectionsCounter != null) {
-                connectionsCounter.add(-1);
-            }
-            updateUtilizationGauge();
+            addConnectionAndUpdateUtilizationGauge(-1);
             return true;
         } else {
             return false;
@@ -184,10 +181,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
                 }
                 reservations.put(reservationId, new Reservation(reservationId, reservationExpiration, reservationRequest));
                 transportErrorTimeByNode.remove(nodeId);
-                if (connectionsCounter != null) {
-                    connectionsCounter.add(1);
-                }
-                updateUtilizationGauge();
+                addConnectionAndUpdateUtilizationGauge(1);
                 return ReservationStatus.ACCEPTED;
             } else {
                 String message = "Node '{}' Channel '{}' requested a {} connection, but was rejected because it already has one";
@@ -239,10 +233,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
                 Reservation reservation = reservations.get(key);
                 if (reservation.timeToLiveInMs < currentTime) {
                     reservations.remove(key);
-                    if (connectionsCounter != null) {
-                        connectionsCounter.add(-1);
-                    }
-                    updateUtilizationGauge();
+                    addConnectionAndUpdateUtilizationGauge(-1);
                 }
             }
         }
