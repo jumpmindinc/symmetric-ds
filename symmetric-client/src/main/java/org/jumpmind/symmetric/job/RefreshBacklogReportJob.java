@@ -27,6 +27,7 @@ import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants
 import java.util.List;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.model.OutgoingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusMetricsMap;
 import org.jumpmind.symmetric.service.ClusterConstants;
@@ -79,14 +80,14 @@ public class RefreshBacklogReportJob extends AbstractJob {
         for (OutgoingBatchSummaryByNodeBriefStats row : stats) {
             String entryNodeId = row.nodeId();
             String entryStatus = row.status();
-            if (StringUtils.isBlank(entryNodeId) || StringUtils.isBlank(entryStatus) || entryNodeId.equals("-1")) {
+            if (StringUtils.isBlank(entryNodeId) || StringUtils.isBlank(entryStatus) || Constants.UNROUTED_NODE_ID.equals(entryNodeId)) {
                 continue;
             }
             if (!entryNodeId.equals(currentNodeId) || !entryStatus.equals(currentStatus)) {
                 if (currentNodeId != null) {
                     outgoingBatchMetrics.setBatchAndRowCounts(currentNodeId, currentStatus, totalBatches, totalDataRows);
                     if (log.isDebugEnabled()) {
-                        log.debug("Recorded backlog dobservation. Node={}, Batch.status={}, batches={}, rows={}, entries={}",
+                        log.debug("Recorded backlog observation. Node={}, Batch.status={}, batches={}, rows={}, entries={}",
                                 entryNodeId, entryStatus, totalBatches, totalDataRows, currentEntriesCount);
                     }
                     currentEntriesCount = 0;
