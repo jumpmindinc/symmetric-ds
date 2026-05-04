@@ -113,7 +113,7 @@ public class NodeServiceSqlMap extends AbstractSqlMap {
         putSql("selectNodeHostPrefixSql",
                 ""
                         + "select node_id, host_name, instance_id, ip_address, os_user, os_name, os_arch, os_version, available_processors,        "
-                        + "  free_memory_bytes, total_memory_bytes, max_memory_bytes, java_version, java_vendor, jdbc_version, symmetric_version,   "
+                        + "  free_memory_bytes, total_memory_bytes, max_memory_bytes, java_version, java_vendor, security_mode, jdbc_version, symmetric_version,   "
                         + "  timezone_offset, heartbeat_time, last_restart_time, create_time from $(node_host) h");
         putSql("selectNodeHostByNodeIdSql", "where node_id=? order by heartbeat_time desc");
         putSql("selectNodePrefixSql",
@@ -136,13 +136,13 @@ public class NodeServiceSqlMap extends AbstractSqlMap {
                         + "insert into $(node_security) (node_id, node_password, created_at_node_id) values (?, ?, ?)   ");
         putSql("insertNodeHostSql",
                 "insert into $(node_host)                                                                                                                                                                                                                                            "
-                        + "  (ip_address, instance_id, os_user, os_name, os_arch, os_version, available_processors, free_memory_bytes, total_memory_bytes, max_memory_bytes, java_version, java_vendor, jdbc_version, symmetric_version, timezone_offset, heartbeat_time, last_restart_time, create_time, node_id, host_name)"
-                        + "  values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                        + "  (ip_address, instance_id, os_user, os_name, os_arch, os_version, available_processors, free_memory_bytes, total_memory_bytes, max_memory_bytes, java_version, java_vendor, security_mode, jdbc_version, symmetric_version, timezone_offset, heartbeat_time, last_restart_time, create_time, node_id, host_name)"
+                        + "  values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
         putSql("updateNodeHostSql",
                 ""
                         + "update $(node_host) set                                                                                                          "
                         + "  ip_address=?, instance_id=?, os_user=?, os_name=?, os_arch=?, os_version=?, available_processors=?, free_memory_bytes=?,                            "
-                        + "  total_memory_bytes=?, max_memory_bytes=?, java_version=?, java_vendor=?, jdbc_version=?, symmetric_version=?, timezone_offset=?, heartbeat_time=?,   "
+                        + "  total_memory_bytes=?, max_memory_bytes=?, java_version=?, java_vendor=?, security_mode=?, jdbc_version=?, symmetric_version=?, timezone_offset=?, heartbeat_time=?,   "
                         + "  last_restart_time=? where node_id=? and host_name=?                                                                                  ");
         putSql("findNodeHeartbeatsSql",
                 "select h.node_id, h.heartbeat_time, h.timezone_offset from $(node_host) h inner join $(node) n on h.node_id=n.node_id"

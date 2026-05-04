@@ -221,7 +221,7 @@ public class NodeService extends AbstractService implements INodeService {
                 nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
                 nodeHost.getAvailableProcessors(), nodeHost.getFreeMemoryBytes(),
                 nodeHost.getTotalMemoryBytes(), nodeHost.getMaxMemoryBytes(), nodeHost.getJavaVersion(),
-                nodeHost.getJavaVendor(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
+                nodeHost.getJavaVendor(), nodeHost.getSecurityMode(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
                 nodeHost.getTimezoneOffset(), nodeHost.getHeartbeatTime(), nodeHost.getLastRestartTime(),
                 nodeHost.getNodeId(), nodeHost.getHostName()) <= 0) {
             sqlTemplate.update(getSql("insertNodeHostSql"),
@@ -229,7 +229,7 @@ public class NodeService extends AbstractService implements INodeService {
                     nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
                     nodeHost.getAvailableProcessors(), nodeHost.getFreeMemoryBytes(),
                     nodeHost.getTotalMemoryBytes(), nodeHost.getMaxMemoryBytes(), nodeHost.getJavaVersion(),
-                    nodeHost.getJavaVendor(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
+                    nodeHost.getJavaVendor(), nodeHost.getSecurityMode(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
                     nodeHost.getTimezoneOffset(), nodeHost.getHeartbeatTime(), nodeHost.getLastRestartTime(),
                     new Date(), nodeHost.getNodeId(), nodeHost.getHostName());
         }
@@ -1302,6 +1302,7 @@ public class NodeService extends AbstractService implements INodeService {
             nodeHost.setMaxMemoryBytes(rs.getLong("max_memory_bytes"));
             nodeHost.setJavaVersion(rs.getString("java_version"));
             nodeHost.setJavaVendor(rs.getString("java_vendor"));
+            nodeHost.setSecurityMode(rs.getString("security_mode"));
             nodeHost.setJdbcVersion(rs.getString("jdbc_version"));
             nodeHost.setSymmetricVersion(rs.getString("symmetric_version"));
             nodeHost.setTimezoneOffset(rs.getString(TIMEZONE_OFFSET));

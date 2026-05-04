@@ -96,6 +96,11 @@ public class ExtensionService extends AbstractService implements IExtensionServi
     protected void registerExtension(Extension extension) {
         if (extension.getExtensionText() != null) {
             if (extension.getExtensionType().equalsIgnoreCase(Extension.EXTENSION_TYPE_JAVA)) {
+                if (!SimpleClassCompiler.isJdkAvailable()) {
+                    log.warn("Skipping Java extension '{}': Java compilation is not available in restricted security mode (JRE only).",
+                            extension.getExtensionId());
+                    return;
+                }
                 try {
                     Object ext = simpleClassCompiler.getCompiledClass(extension.getExtensionText());
                     registerExtension(extension.getExtensionId(), (IExtensionPoint) ext);

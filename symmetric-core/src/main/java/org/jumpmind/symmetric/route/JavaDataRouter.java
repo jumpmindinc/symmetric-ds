@@ -30,6 +30,8 @@ import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.TriggerRouter;
+import org.jumpmind.util.SimpleClassCompiler;
+import org.jumpmind.util.SimpleClassCompilerException;
 
 /**
  * This java data router is invoked when the router_type is 'java'. The router_expression is Java code for the routeToNodes() method of a class that extends the
@@ -71,6 +73,10 @@ public class JavaDataRouter extends AbstractDataRouter implements IBuiltInExtens
     }
 
     protected IDataRouter getCompiledClass(SimpleRouterContext context, Router router) throws Exception {
+        if (!SimpleClassCompiler.isJdkAvailable()) {
+            throw new SimpleClassCompilerException("Java router '" + router.getRouterId()
+                    + "' cannot run in restricted security mode (JRE only). Configure a BSH router instead.");
+        }
         IDataRouter javaRouter = (IDataRouter) context.getContextCache().get(ROUTER_KEY);
         if (javaRouter == null) {
             long ts = System.currentTimeMillis();
