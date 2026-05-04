@@ -652,8 +652,9 @@ public class MetricsRepository extends AbstractService {
             if (transaction != null) {
                 transaction.rollback();
             }
-            log.error("Failed to save {} metric interval stats records", records.size(), e);
-            throw new MetricsRepositoryException("Failed to save metric interval stats batch of " + records.size(), e);
+            String message = String.format("Failed to save metric interval stats batch of %s", records.size());
+            log.error(message, e);
+            throw new MetricsRepositoryException(message, e);
         } finally {
             close(transaction);
         }
