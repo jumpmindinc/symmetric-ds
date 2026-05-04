@@ -90,7 +90,6 @@ public final class SymMetricConstants {
     public static final String METRIC_ID_RUNTIME_DBPOOL_IDLE = OTEL_SCOPE + ".dbpool.idle.count";
     public static final String METRIC_ID_RUNTIME_DBPOOL_UTILIZATION = OTEL_SCOPE + ".dbpool.connections.utilization";
     public static final String METRIC_ID_RUNTIME_DBPOOL_WAITERS = OTEL_SCOPE + ".dbpool.waiters.count";
-    public static final String METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN = OTEL_SCOPE + ".dbpool.waiters.delay.mean";
     // Engine / node counters (StatisticManager)
     public static final String METRIC_ID_ENGINE_RESTARTS = OTEL_SCOPE + ".engine.restarts";
     public static final String METRIC_ID_NODES_PULLED = OTEL_SCOPE + ".nodes.pulled.count";
@@ -141,7 +140,6 @@ public final class SymMetricConstants {
             METRIC_ID_RUNTIME_DBPOOL_IDLE,
             METRIC_ID_RUNTIME_DBPOOL_UTILIZATION,
             METRIC_ID_RUNTIME_DBPOOL_WAITERS,
-            METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN,
             METRIC_ID_ENGINE_RESTARTS,
             METRIC_ID_NODES_PULLED,
             METRIC_ID_NODES_PUSHED,

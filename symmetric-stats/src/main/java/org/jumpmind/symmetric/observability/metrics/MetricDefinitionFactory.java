@@ -69,7 +69,6 @@ import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_IDLE;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_UTILIZATION;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_WAITERS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_UTILIZATION;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_TRIGGERS_CREATED;
@@ -171,8 +170,6 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_UTILIZATION, "DB connection pool utilization as a percentage of max", METRIC_UNIT_PERCENT,
                     InstrumentType.DOUBLE_GAUGE),
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_WAITERS, "DB connection pool user threads waiting for a connection", METRIC_UNIT_CONNECTIONS,
-                    InstrumentType.LONG_GAUGE),
-            new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN, "DB connection pool user threads mean wait time", METRIC_UNIT_MILLIS,
                     InstrumentType.LONG_GAUGE),
             // Engine / node counters
             new SymMetricDefinition(METRIC_ID_ENGINE_RESTARTS, "Engine restart count", METRIC_UNIT_ROWS, InstrumentType.UPDOWN_COUNTER),
