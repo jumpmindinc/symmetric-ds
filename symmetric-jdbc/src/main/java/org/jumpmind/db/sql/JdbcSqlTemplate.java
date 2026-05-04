@@ -1281,7 +1281,9 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
     }
 
     protected int verifyArgType(Object arg, int argType) {
-        if (argType == ORACLE_TIMESTAMPTZ || argType == ORACLE_TIMESTAMPLTZ || argType == Types.OTHER || argType == ColumnTypes.MSSQL_SQL_VARIANT) {
+        if (argType == ORACLE_TIMESTAMPTZ || argType == ORACLE_TIMESTAMPLTZ) {
+            return Types.VARCHAR;
+        } else if (argType == Types.OTHER || argType == ColumnTypes.MSSQL_SQL_VARIANT) {
             return SqlTypeValue.TYPE_UNKNOWN;
         } else if ((argType == Types.INTEGER && arg instanceof BigInteger) ||
                 (argType == Types.BIGINT && arg instanceof BigDecimal)) {

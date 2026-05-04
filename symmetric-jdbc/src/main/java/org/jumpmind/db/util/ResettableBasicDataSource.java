@@ -30,7 +30,7 @@ import org.apache.commons.dbcp2.BasicDataSource;
  * A subclass of {@link BasicDataSource} which allows for a data source to be closed (all underlying connections are closed) and then allows new connections to
  * be created.
  */
-public class ResettableBasicDataSource extends BasicDataSource {
+public class ResettableBasicDataSource extends BasicDataSource implements IPooledDataSource {
     protected boolean closed;
 
     public ResettableBasicDataSource() {

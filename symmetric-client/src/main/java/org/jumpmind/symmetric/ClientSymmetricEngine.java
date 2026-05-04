@@ -29,7 +29,6 @@ import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -43,6 +42,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.jumpmind.db.util.DataSourceUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -52,8 +52,8 @@ import org.jumpmind.db.platform.generic.GenericJdbcDatabasePlatform;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.LogSqlBuilder;
 import org.jumpmind.db.sql.SqlTemplateSettings;
-import org.jumpmind.db.util.BasicDataSourceFactory;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceFactory;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.extension.IProgressListener;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.SecurityServiceFactory;
@@ -272,9 +272,17 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         super.stop();
     }
 
-    public static BasicDataSource createBasicDataSource(File propsFile) {
+    public static DataSource createDataSource(File propsFile) {
         TypedProperties properties = PropertiesUtil.createTypedPropertiesFactory(propsFile, null).reload();
-        return BasicDataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
+        return DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
+    }
+
+    /**
+     * @deprecated Use {@link #createDataSource(File)} that returns a {@link javax.sql.DataSource}.
+     */
+    @Deprecated(forRemoval = true)
+    public static BasicDataSource createBasicDataSource(File propsFile) {
+        return (BasicDataSource) createDataSource(propsFile);
     }
 
     @Override
@@ -288,7 +296,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             TypedProperties properties = new TypedProperties();
             String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
             boolean targetDelimitedIdentifierMode = parameterService.is(ParameterConstants.TARGET_DB_DELIMITED_IDENTIFIER_MODE, true);
-            copyProperties(properties, prefix, BasicDataSourcePropertyConstants.ALL_PROPS);
+            copyProperties(properties, prefix, DataSourceProperties.ALL_PROPS);
             copyProperties(properties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_KAFKA_PARAMS);
             copyProperties(properties, "", ParameterConstants.ALL_GOOGLE_BIG_QUERY_PARAMS);
@@ -315,9 +323,8 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
 
     @Override
     protected IDatabasePlatform createDatabasePlatform(TypedProperties properties) {
-        IDatabasePlatform platform = createDatabasePlatform(springContext, properties, dataSource,
+        return createDatabasePlatform(springContext, properties, dataSource,
                 Boolean.parseBoolean(System.getProperty(SystemConstants.SYSPROP_WAIT_FOR_DATABASE, "true")));
-        return platform;
     }
 
     public static IDatabasePlatform createDatabasePlatform(ApplicationContext springContext, TypedProperties properties,
@@ -353,9 +360,9 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
                 log.info("Using datasource from spring.  The spring bean name is {}", springBeanName);
                 dataSource = (DataSource) springContext.getBean(springBeanName);
             }
-            String dbUrl = properties.get(BasicDataSourcePropertyConstants.DB_POOL_URL);
+            String dbUrl = properties.get(DataSourceProperties.DB_POOL_URL);
             if (dataSource == null && JdbcDatabasePlatformFactory.isJdbcUrl(dbUrl)) {
-                dataSource = BasicDataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
+                dataSource = DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
             }
         }
         if (waitOnAvailableDatabase && dataSource != null) {
@@ -481,12 +488,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         if (platform != null) {
             platform.shutdown();
         }
-        if (dataSource != null && dataSource instanceof BasicDataSource) {
-            try {
-                ((BasicDataSource) dataSource).close();
-            } catch (SQLException e) {
-            }
-        }
+        DataSourceUtils.closeQuietly(dataSource);
     }
 
     @Override
