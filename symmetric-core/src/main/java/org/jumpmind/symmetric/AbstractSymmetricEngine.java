@@ -277,49 +277,93 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     protected abstract SecurityServiceType getSecurityServiceType();
 
-    protected void init() {
-        if (propertiesFactory == null) {
-            this.propertiesFactory = createTypedPropertiesFactory();
-        }
-        if (securityService == null) {
-            this.securityService = SecurityServiceFactory.create(getSecurityServiceType(),
-                    propertiesFactory.reload());
-        }
-        TypedProperties properties = this.propertiesFactory.reload();
-        registerSymDSDriver(properties);
-        String engineName = properties.get(ParameterConstants.ENGINE_NAME);
+
+    private String initEngineNameAndLoggingContext(TypedProperties engineProperties) {
+        String engineName = engineProperties.get(ParameterConstants.ENGINE_NAME);
         if (!Strings.CS.contains(engineName, "`") && !Strings.CS.contains(engineName, "(")) {
             MDC.put("engineName", engineName);
         }
-        this.platform = createDatabasePlatform(properties);
-        this.parameterService = new ParameterService(platform, propertiesFactory,
-                properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym"));
+        return engineName;
+    }
+
+    private void initEngineParametersFromDatabase(TypedProperties engineProperties) {
+        this.parameterService = new ParameterService(this.platform, propertiesFactory,
+                engineProperties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym"));
         Table paramTable = this.platform.readTableFromDatabase(null, null,
-                TableConstants.getTableName(properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER));
+                TableConstants.getTableName(engineProperties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER));
         if (paramTable != null) {
             log.debug("Reading parameters because found {}", paramTable.getFullyQualifiedTableName());
             this.parameterService.setDatabaseHasBeenInitialized(true);
             this.parameterService.rereadParameters();
         }
-        // So that the key properties are initialized in a predictable order
+        // Request key properties, so that they are initialized in a predictable order:
         parameterService.getNodeGroupId();
         parameterService.getExternalId();
         parameterService.getEngineName();
         parameterService.getSyncUrl();
         parameterService.getRegistrationUrl();
-        MDC.put("engineName", parameterService.getEngineName());
-        this.platform.setMetadataIgnoreCase(this.parameterService
-                .is(ParameterConstants.DB_METADATA_IGNORE_CASE));
-        this.platform.setClearCacheModelTimeoutInMs(parameterService
-                .getLong(ParameterConstants.CACHE_TIMEOUT_TABLES_IN_MS));
-        this.symmetricDialect = createSymmetricDialect();
-        this.symmetricDialect.setTargetDialect(createTargetDialect());
+    }
+
+    private void updatePlatformWithParametersFromDatabase() {
+        this.platform.setMetadataIgnoreCase(parameterService.is(ParameterConstants.DB_METADATA_IGNORE_CASE));
+        this.platform.setClearCacheModelTimeoutInMs(parameterService.getLong(ParameterConstants.CACHE_TIMEOUT_TABLES_IN_MS));
+    }
+
+    private void ensurePropertiesFactoryIsCreated() {
+        if (propertiesFactory == null) {
+            this.propertiesFactory = createTypedPropertiesFactory();
+        }
+    }
+
+    private void ensureSecurityServiceIsCreated() {
+        if (securityService == null) {
+            this.securityService = SecurityServiceFactory.create(getSecurityServiceType(),
+                    propertiesFactory.reload());
+        }
+    }
+
+    private void ensureMetricsServiceIsCreated() {
         this.metricsService = createMetricsService();
-        this.metricsService.initRepository();
+        if (this.metricsService != null) {
+            this.metricsService.initRepository();
+        }
+    }
+
+    private void ensureUpdateServiceIsCreated(TypedProperties engineProperties) {
+        String updateServiceClassName = engineProperties.get(ParameterConstants.UPDATE_SERVICE_CLASS);
+        if (updateServiceClassName == null) {
+            this.updateService = new UpdateService(this);
+        } else {
+            try {
+                Constructor<?> cons = Class.forName(updateServiceClassName).getConstructor(ISymmetricEngine.class);
+                this.updateService = (IUpdateService) cons.newInstance(this);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private void ensureExtensionServiceIsCreated() {
         this.extensionService = createExtensionService();
         this.extensionService.refresh();
         this.symmetricDialect.setExtensionService(extensionService);
         this.parameterService.setExtensionService(extensionService);
+    }
+
+    protected void init() {
+        ensurePropertiesFactoryIsCreated();
+        ensureSecurityServiceIsCreated();
+        TypedProperties properties = this.propertiesFactory.reload();
+        registerSymDSDriver(properties);
+        initEngineNameAndLoggingContext(properties);
+        this.platform = createDatabasePlatform(properties);
+        initEngineParametersFromDatabase(properties);
+        MDC.put("engineName", parameterService.getEngineName());
+        updatePlatformWithParametersFromDatabase();
+        this.symmetricDialect = createSymmetricDialect();
+        this.symmetricDialect.setTargetDialect(createTargetDialect());
+        ensureMetricsServiceIsCreated();
+        ensureExtensionServiceIsCreated();
         this.cacheManager = new CacheManager(this);
         this.contextService = new ContextService(parameterService, symmetricDialect);
         this.bandwidthService = new BandwidthService(this);
@@ -360,17 +404,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 configurationService, extensionService, offlineTransportManager);
         this.fileSyncService = buildFileSyncService();
         this.fileSyncExtractorService = new FileSyncExtractorService(this);
-        String updateServiceClassName = properties.get(ParameterConstants.UPDATE_SERVICE_CLASS);
-        if (updateServiceClassName == null) {
-            this.updateService = new UpdateService(this);
-        } else {
-            try {
-                Constructor<?> cons = Class.forName(updateServiceClassName).getConstructor(ISymmetricEngine.class);
-                this.updateService = (IUpdateService) cons.newInstance(this);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
+        ensureUpdateServiceIsCreated(properties);
         this.jobManager = createJobManager();
         extensionService.addExtensionPoint(new DefaultOfflineServerListener(
                 statisticManager, nodeService, outgoingBatchService));
@@ -394,10 +428,12 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     protected IEngineMetricsService createMetricsService() {
+        log.warn("EngineMetricsService is not implemented.");
         return null;
     }
 
     protected void startMetricsAggregation() {
+        log.warn("MetricsAggregation is not implemented.");
     }
 
     protected IClusterService createClusterService() {
