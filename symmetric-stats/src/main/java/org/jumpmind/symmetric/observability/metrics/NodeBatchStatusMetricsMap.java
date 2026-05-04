@@ -26,7 +26,6 @@ import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeCon
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.jumpmind.symmetric.model.OutgoingBatchSummary;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
@@ -146,6 +145,6 @@ public class NodeBatchStatusMetricsMap extends AbstractKeyedMetricsMap<NodeBatch
     public List<NodeBatchStatusGauge> gaugesForNode(String nodeId) {
         return all().stream()
                 .filter(g -> nodeId.equals(g.getNodeId()))
-                .collect(Collectors.toList());
+                .toList();
     }
 }
