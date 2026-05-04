@@ -277,7 +277,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     protected abstract SecurityServiceType getSecurityServiceType();
 
-
     private String initEngineNameAndLoggingContext(TypedProperties engineProperties) {
         String engineName = engineProperties.get(ParameterConstants.ENGINE_NAME);
         if (!Strings.CS.contains(engineName, "`") && !Strings.CS.contains(engineName, "(")) {

@@ -59,7 +59,6 @@ import org.junit.jupiter.api.Test;
 class MetricsRepositoryTest {
     private static final String TEST_ENGINE = "test-engine";
     private static final String TEST_HOST = "test-host";
-
     private ISymmetricEngine engine;
     private IParameterService parameterService;
     private ISymmetricDialect dialect;
@@ -110,18 +109,15 @@ class MetricsRepositoryTest {
         dialect = mock(ISymmetricDialect.class);
         platform = mock(IDatabasePlatform.class);
         sqlTemplate = mock(ISqlTemplate.class);
-
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getSymmetricDialect()).thenReturn(dialect);
         when(engine.getEngineName()).thenReturn(TEST_ENGINE);
-
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(dialect.getPlatform()).thenReturn(platform);
         when(dialect.getSqlReplacementTokens()).thenReturn(Map.of());
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
         when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
         when(platform.scrubSql(anyString())).thenAnswer(inv -> inv.getArgument(0));
-
         repo = new MetricsRepository(engine, TEST_HOST);
         // Bypass cache loading so most tests don't need to stub
         // loadAllMetricKeysForHostnameFromDatabase
@@ -369,9 +365,8 @@ class MetricsRepositoryTest {
                 .thenThrow(new RuntimeException("db error"));
         MetricKey dbRec = key(5L, "m1", TEST_ENGINE, TEST_HOST);
         MetricKey newKey = key(99L, "m1", TEST_ENGINE, TEST_HOST);
-        assertThrows(MetricsRepositoryException.class, () ->
-                invokePrivate(repo, "updateMetricKeyInDatabase",
-                        new Class<?>[] { MetricKey.class, MetricKey.class }, newKey, dbRec));
+        assertThrows(MetricsRepositoryException.class, () -> invokePrivate(repo, "updateMetricKeyInDatabase",
+                new Class<?>[] { MetricKey.class, MetricKey.class }, newKey, dbRec));
     }
 
     @Test
@@ -416,19 +411,17 @@ class MetricsRepositoryTest {
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
         when(txn.prepareAndExecute(anyString(), any(Object[].class), any(int[].class)))
                 .thenThrow(new RuntimeException("non-unique error"));
-        assertThrows(MetricsRepositoryException.class, () ->
-                invokePrivate(repo,
-                        "generateSurrogateKeyAndSaveMetricKeyToDatabase",
-                        new Class<?>[] { String.class, String.class, String.class,
-                                MetricFactType.class, InstrumentType.class, boolean.class },
-                        "m1", TEST_ENGINE, TEST_HOST, MetricFactType.FLOAT64, InstrumentType.DOUBLE_GAUGE, true));
+        assertThrows(MetricsRepositoryException.class, () -> invokePrivate(repo,
+                "generateSurrogateKeyAndSaveMetricKeyToDatabase",
+                new Class<?>[] { String.class, String.class, String.class,
+                        MetricFactType.class, InstrumentType.class, boolean.class },
+                "m1", TEST_ENGINE, TEST_HOST, MetricFactType.FLOAT64, InstrumentType.DOUBLE_GAUGE, true));
     }
 
     @Test
     void saveMetricKeyInternal_nullKey_throwsMetricsRepositoryException() {
-        assertThrows(MetricsRepositoryException.class, () ->
-                invokePrivate(repo, "saveMetricKeyInternal",
-                        new Class<?>[] { MetricKey.class }, (Object) null));
+        assertThrows(MetricsRepositoryException.class, () -> invokePrivate(repo, "saveMetricKeyInternal",
+                new Class<?>[] { MetricKey.class }, (Object) null));
     }
 
     @Test
@@ -603,7 +596,7 @@ class MetricsRepositoryTest {
         // First call: loadContextByAttrsFromDatabase returns empty (before insert)
         // Second call after generateContextSurrogateAndInsert: returns inserted context
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), (Object[]) any()))
-                .thenReturn(List.of())           // first probe: not found
+                .thenReturn(List.of()) // first probe: not found
                 .thenReturn(List.of(insertedCtx)); // second probe: after insert
         ISqlTransaction txn = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
