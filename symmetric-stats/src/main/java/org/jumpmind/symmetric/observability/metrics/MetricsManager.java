@@ -51,7 +51,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 
 /**
- * The singular and central point of managin both embedded and OpenTelemetry metrics.
+ * The singular and central point of managing both embedded metrics and OpenTelemetry (if configured).
  */
 public class MetricsManager {
     private static final Logger log = LoggerFactory.getLogger(MetricsManager.class);
