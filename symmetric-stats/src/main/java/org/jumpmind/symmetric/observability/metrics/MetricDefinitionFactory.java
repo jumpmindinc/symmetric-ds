@@ -20,6 +20,70 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
+import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.CHANNEL;
+import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.HTTP_METHOD;
+import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.JOB;
+import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.NODE_GROUP;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_BATCHES_INCOMING;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_BATCHES_OUTGOING;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_CREATE_TIME_MAX;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_CREATE_TIME_MIN;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_EVENTS_INSERTED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_EXTRACTED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_EXTRACTED_BYTES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_EXTRACTED_ERRORS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_GAP_COUNT;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_INCOMING;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_BYTES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_ERRORS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_OUTGOING;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_OUTGOING_BYTES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_OUTGOING_ERRORS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_OUTGOING;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_RECEIVED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_RECEIVED_BYTES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_ROUTED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_SENT;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_SENT_BYTES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_SENT_ERRORS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_UNROUTED_CHANNEL;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_UNROUTED_TOTAL;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_ENGINE_RESTARTS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_DISABLED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_LOADED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_PULLED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_PULLED_TIME;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_PUSHED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_PUSHED_TIME;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_REGISTERED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_REJECTED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_BATCH_INCOMING_ROWS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_BATCH_OUTGOING_ROWS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_DATA_EVENT_ROWS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_DATA_ROWS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_EXPIRED_DATA_ROWS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_STRANDED_DATA_EVENT_ROWS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_STRANDED_DATA_ROWS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_ACTIVE;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_IDLE;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_UTILIZATION;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_WAITERS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_WAITERS_DELAY_MEAN;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_UTILIZATION;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_TRIGGERS_CREATED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_TRIGGERS_REBUILT;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_TRIGGERS_REMOVED;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_BATCHES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_BYTES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_CONNECTIONS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_MILLIS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_NODES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_PERCENT;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_ROWS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_TRIGGERS;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -29,12 +93,11 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.InvalidMetricDataException;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
-import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.*;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.*;
-import org.jumpmind.symmetric.observability.models.MetricContext;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
+import org.jumpmind.symmetric.observability.models.MetricContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,15 +201,15 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             new SymMetricDefinition(METRIC_ID_TRIGGERS_CREATED, "Triggers created", METRIC_UNIT_TRIGGERS, InstrumentType.UPDOWN_COUNTER)));
     private final List<ContextDefinition> defaultContexts = new ArrayList<>(List.of(
             new ContextDefinition(MetricContext.UNDEFINED, List.of(new MetricAttribute("UNDEFINED", "UNDEFINED"))), // sentinel for attribute-less metrics
-            new ContextDefinition(10000102009L, List.of(new MetricAttribute(CHANNEL, "default"))), // SymmetricDS default channels
-            new ContextDefinition(10000112009L, List.of(new MetricAttribute(CHANNEL, "config"))),
-            new ContextDefinition(10000122009L, List.of(new MetricAttribute(CHANNEL, "system"))),
-            new ContextDefinition(10000132009L, List.of(new MetricAttribute(CHANNEL, "reload"))),
-            new ContextDefinition(10000142009L, List.of(new MetricAttribute(CHANNEL, "heartbeat"))),
-            new ContextDefinition(10000152009L, List.of(new MetricAttribute(CHANNEL, "monitor"))),
-            new ContextDefinition(10000162009L, List.of(new MetricAttribute(CHANNEL, "dynamic"))),
-            new ContextDefinition(10000172009L, List.of(new MetricAttribute(CHANNEL, "filesync"))),
-            new ContextDefinition(10000182009L, List.of(new MetricAttribute(CHANNEL, "filesync_reload"))),
+            new ContextDefinition(10000102009L, List.of(new MetricAttribute(CHANNEL, Constants.CHANNEL_DEFAULT))), // SymmetricDS default channels
+            new ContextDefinition(10000112009L, List.of(new MetricAttribute(CHANNEL, Constants.CHANNEL_CONFIG))),
+            new ContextDefinition(10000122009L, List.of(new MetricAttribute(CHANNEL, Constants.CHANNEL_SYSTEM))),
+            new ContextDefinition(10000132009L, List.of(new MetricAttribute(CHANNEL, Constants.CHANNEL_RELOAD))),
+            new ContextDefinition(10000142009L, List.of(new MetricAttribute(CHANNEL, Constants.CHANNEL_HEARTBEAT))),
+            new ContextDefinition(10000152009L, List.of(new MetricAttribute(CHANNEL, Constants.CHANNEL_MONITOR))),
+            new ContextDefinition(10000162009L, List.of(new MetricAttribute(CHANNEL, Constants.CHANNEL_DYNAMIC))),
+            new ContextDefinition(10000172009L, List.of(new MetricAttribute(CHANNEL, Constants.CHANNEL_FILESYNC))),
+            new ContextDefinition(10000182009L, List.of(new MetricAttribute(CHANNEL, Constants.CHANNEL_FILESYNC_RELOAD))),
             new ContextDefinition(12000102020L, List.of(new MetricAttribute(CHANNEL, "business_unit"))), // JMC channels
             new ContextDefinition(12000112020L, List.of(new MetricAttribute(CHANNEL, "carrier"))),
             new ContextDefinition(12000122020L, List.of(new MetricAttribute(CHANNEL, "ctx"))),
@@ -254,6 +317,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
         return Collections.unmodifiableList(defaultMetrics);
     }
 
+    @Override
     public void registerDefaultContext(ContextDefinition... definitions) {
         if (definitions == null || definitions.length == 0) {
             return;
@@ -265,10 +329,12 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
         }
     }
 
+    @Override
     public List<ContextDefinition> getDefaultContexts() {
         return Collections.unmodifiableList(defaultContexts);
     }
 
+    @Override
     public void register(SymMetricDefinition definition) {
         if (definition == null) {
             String message = "Metric definition cannot be null!";
@@ -278,6 +344,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
         registry.put(definition.id(), definition);
     }
 
+    @Override
     public SymMetricDefinition getDefinition(String metricId) {
         SymMetricDefinition def = registry.get(metricId);
         if (def == null) {
@@ -292,6 +359,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
      * Materializes all registered definitions on {@code service}. Returns the number of metrics successfully registered. Channel-scoped metrics are also
      * pre-registered for every built-in channel context to ensure consistent instrument keys at startup.
      */
+    @Override
     public int initializeMetrics(AbstractMetricsService service) {
         int count = preRegisterBuiltInNonChannelMetrics(service);
         count += preRegisterBuiltInChannelMetrics(service);
@@ -347,7 +415,8 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
                         }
                         count++;
                     } catch (Exception e) {
-                        log.warn("Failed to pre-register channel-scoped metric {} for channel {}", metricId, channelId, e);
+                        String message = String.format("Failed to pre-register channel-scoped metric %s for channel %s", metricId, channelId);
+                        log.warn(message, e);
                     }
                 }
             }
