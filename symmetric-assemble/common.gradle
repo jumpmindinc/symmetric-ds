@@ -330,7 +330,11 @@ subprojects { subproject ->
         guavaVersion = '33.2.0-android'
         junitVersion = '5.13.3'
         spotBugsVersion = '4.8.5'
+<<<<<<< HEAD
         logbackVersion = '1.5.32'
+=======
+        log4jVersion = '2.25.4'
+>>>>>>> 076aa9d9d (SYM-7563: upgrade log4j dependencies. (#769))
         slf4jVersion = '2.0.17'
         mockitoVersion = '5.11.0'
         powerMockVersion = '2.0.9'
