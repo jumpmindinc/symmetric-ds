@@ -246,8 +246,8 @@ subprojects { subproject ->
             version.set("${project.version}")
             componentType.set("java")
             publishingType.set("AUTOMATIC")
-            username.set(findProperty("sonatypeUser"))
-            password.set(findProperty("sonatypePassword"))
+            username.set(getProperty("sonatypeUser"))
+            password.set(getProperty("sonatypePassword"))
             pom {
                 name.set("${project.name}")
                 description.set("Data replication")
