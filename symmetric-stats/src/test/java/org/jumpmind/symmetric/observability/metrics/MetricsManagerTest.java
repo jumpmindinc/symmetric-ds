@@ -31,6 +31,7 @@ import static org.mockito.Mockito.mock;
 import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.IPrimaryMetricAggregator;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,19 +47,16 @@ class MetricsManagerTest {
     void setUp() {
         manager = TestMetricsManagerFactory.create();
     }
-    // ── getMetricDefinitionFactory ────────────────────────────────────────────
 
     @Test
     void getMetricDefinitionFactory_returnsNonNull() {
         assertNotNull(manager.getMetricDefinitionFactory());
     }
-    // ── getEngineMetricsServices ──────────────────────────────────────────────
 
     @Test
     void getEngineMetricsServices_initiallyEmpty() {
         assertTrue(manager.getEngineMetricsServices().isEmpty());
     }
-    // ── register / unregister ─────────────────────────────────────────────────
 
     @Test
     void register_addsService_getEngineMetricsServices_containsIt() {
@@ -74,7 +72,6 @@ class MetricsManagerTest {
         manager.unregister(svc);
         assertTrue(manager.getEngineMetricsServices().isEmpty());
     }
-    // ── getHostMetricsService ─────────────────────────────────────────────────
 
     @Test
     void getHostMetricsService_returnsHostMetricsService() {
@@ -87,13 +84,11 @@ class MetricsManagerTest {
         HostMetricsService second = manager.getHostMetricsService();
         assertSame(first, second);
     }
-    // ── getAggregator ─────────────────────────────────────────────────────────
 
     @Test
     void getAggregator_initiallyNull() {
         assertNull(manager.getAggregator());
     }
-    // ── shutdown ──────────────────────────────────────────────────────────────
 
     @Test
     void shutdown_whenAggregatorIsNull_doesNotThrow() {
@@ -106,7 +101,6 @@ class MetricsManagerTest {
         MetricsManager freshManager = TestMetricsManagerFactory.create();
         assertDoesNotThrow(() -> freshManager.shutdown());
     }
-    // ── noop constructor ──────────────────────────────────────────────────────
 
     @Test
     void constructor_withNoopOpenTelemetry_createsUsableManager() {
@@ -114,37 +108,35 @@ class MetricsManagerTest {
         assertNotNull(m);
         assertNotNull(m.getMetricDefinitionFactory());
     }
-    // ── isSystemPropertyOtelPublishingEnabled (via host service) ──────────────
 
     @Test
     void isOtelPublishingEnabled_propertyAbsent_defaultsToTrue() {
-        System.clearProperty("metrics.opentelemetry.enabled");
+        System.clearProperty(ParameterConstants.OTEL_METRICS_ENABLED);
         MetricsManager m = new MetricsManager(OpenTelemetry.noop());
         assertTrue(m.getHostMetricsService().isOtelPublishingEnabled());
     }
 
     @Test
     void isOtelPublishingEnabled_propertySetToFalse_returnsFalse() {
-        System.setProperty("metrics.opentelemetry.enabled", "false");
+        System.setProperty(ParameterConstants.OTEL_METRICS_ENABLED, "false");
         try {
             MetricsManager m = new MetricsManager(OpenTelemetry.noop());
             assertFalse(m.getHostMetricsService().isOtelPublishingEnabled());
         } finally {
-            System.clearProperty("metrics.opentelemetry.enabled");
+            System.clearProperty(ParameterConstants.OTEL_METRICS_ENABLED);
         }
     }
 
     @Test
     void isOtelPublishingEnabled_propertySetToTrue_returnsTrue() {
-        System.setProperty("metrics.opentelemetry.enabled", "true");
+        System.setProperty(ParameterConstants.OTEL_METRICS_ENABLED, "true");
         try {
             MetricsManager m = new MetricsManager(OpenTelemetry.noop());
             assertTrue(m.getHostMetricsService().isOtelPublishingEnabled());
         } finally {
-            System.clearProperty("metrics.opentelemetry.enabled");
+            System.clearProperty(ParameterConstants.OTEL_METRICS_ENABLED);
         }
     }
-    // ── getGlobalInstance ─────────────────────────────────────────────────────
 
     @Test
     @SuppressWarnings("unchecked")
@@ -162,7 +154,6 @@ class MetricsManagerTest {
             ref.set(prev);
         }
     }
-    // ── getOpenTelemetry ──────────────────────────────────────────────────────
 
     @Test
     void getOpenTelemetry_returnsNonNull() {
@@ -174,7 +165,6 @@ class MetricsManagerTest {
         manager.shutdown();
         assertNull(manager.getOpenTelemetry());
     }
-    // ── getOtelMeter ──────────────────────────────────────────────────────────
 
     @Test
     void getOtelMeter_returnsNonNull() {
@@ -186,49 +176,41 @@ class MetricsManagerTest {
         manager.shutdown();
         assertNull(manager.getOtelMeter());
     }
-    // ── createDoubleGauge ─────────────────────────────────────────────────────
 
     @Test
     void createDoubleGauge_returnsNonNull() {
         assertNotNull(manager.createDoubleGauge("t.dg", "desc", "rows", () -> 1.0, Attributes.empty()));
     }
-    // ── createObservableDoubleGauge ───────────────────────────────────────────
 
     @Test
     void createObservableDoubleGauge_returnsNonNull() {
         assertNotNull(manager.createObservableDoubleGauge("t.odg", "desc", "rows", () -> 1.0));
     }
-    // ── createLongGauge (with attributes) ────────────────────────────────────
 
     @Test
     void createLongGauge_withAttributes_returnsNonNull() {
         assertNotNull(manager.createLongGauge("t.lg", "desc", "rows", () -> 1L, Attributes.empty()));
     }
-    // ── createObservableLongGauge (no attributes) ─────────────────────────────
 
     @Test
     void createObservableLongGauge_returnsNonNull() {
         assertNotNull(manager.createObservableLongGauge("t.olg", "desc", "rows", () -> 1L));
     }
-    // ── createIncreasingCounter ───────────────────────────────────────────────
 
     @Test
     void createIncreasingCounter_returnsNonNull() {
         assertNotNull(manager.createIncreasingCounter("t.ic", "desc", "rows", () -> 1L, Attributes.empty()));
     }
-    // ── createUpDownCounter ───────────────────────────────────────────────────
 
     @Test
     void createUpDownCounter_returnsNonNull() {
         assertNotNull(manager.createUpDownCounter("t.udc", "desc", "rows", () -> 1L, Attributes.empty()));
     }
-    // ── createHistogram ───────────────────────────────────────────────────────
 
     @Test
     void createHistogram_returnsNonNull() {
         assertNotNull(manager.createHistogram("t.hist", "desc", "ms"));
     }
-    // ── startAggregation / getAggregator / resolveHostname ────────────────────
 
     @Test
     void startAggregation_createsAggregator() {
@@ -251,7 +233,6 @@ class MetricsManagerTest {
             manager.shutdown();
         }
     }
-    // ── shutdown (with aggregator / with host service) ────────────────────────
 
     @Test
     void shutdown_withActiveAggregator_stopsItAndSetsNull() {
