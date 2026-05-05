@@ -247,4 +247,22 @@ class MetricsManagerTest {
         manager.getHostMetricsService();
         assertDoesNotThrow(() -> manager.shutdown());
     }
+
+    @Test
+    void unregister_serviceNotRegistered_isNoOp() {
+        IEngineMetricsService svc = mock(IEngineMetricsService.class);
+        assertDoesNotThrow(() -> manager.unregister(svc));
+        assertTrue(manager.getEngineMetricsServices().isEmpty());
+    }
+
+    @Test
+    void isOtelPublishingEnabled_uppercaseTrueProperty_returnsTrue() {
+        System.setProperty(ParameterConstants.OTEL_METRICS_ENABLED, "TRUE");
+        try {
+            MetricsManager m = new MetricsManager(OpenTelemetry.noop());
+            assertTrue(m.getHostMetricsService().isOtelPublishingEnabled());
+        } finally {
+            System.clearProperty(ParameterConstants.OTEL_METRICS_ENABLED);
+        }
+    }
 }
