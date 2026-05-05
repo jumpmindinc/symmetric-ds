@@ -50,7 +50,6 @@ class MetricIntervalStatsQueueTest {
     private static MetricIntervalStats stats(long start) {
         return new MetricIntervalStats(start, start + D, 1.0, 0.0, 2.0, 0.0, 1, 1.0, false);
     }
-    // ── basic queue operations ────────────────────────────────────────────────
 
     @Test
     void isEmpty_newQueue_returnsTrue() {
@@ -135,7 +134,6 @@ class MetricIntervalStatsQueueTest {
         assertEquals(0, queue.size());
         assertTrue(queue.isEmpty());
     }
-    // ── contains / containsAll ────────────────────────────────────────────────
 
     @Test
     void contains_presentItem_returnsTrue() {
@@ -165,7 +163,6 @@ class MetricIntervalStatsQueueTest {
         queue.offer(a);
         assertFalse(queue.containsAll(List.of(a, stats(T + D))));
     }
-    // ── addAll / removeAll / retainAll ────────────────────────────────────────
 
     @Test
     void addAll_addsAllItems() {
@@ -229,7 +226,6 @@ class MetricIntervalStatsQueueTest {
         assertFalse(queue.retainAll(List.of(a, b)));
         assertEquals(2, queue.size());
     }
-    // ── iterator ─────────────────────────────────────────────────────────────
 
     @Test
     void iterator_remove_decrementsSize() {
@@ -240,7 +236,6 @@ class MetricIntervalStatsQueueTest {
         it.remove();
         assertEquals(1, queue.size());
     }
-    // ── toArray ───────────────────────────────────────────────────────────────
 
     @Test
     void toArray_returnsAllItems() {
@@ -257,7 +252,6 @@ class MetricIntervalStatsQueueTest {
         assertEquals(1, arr.length);
         assertEquals(s, arr[0]);
     }
-    // ── exportAll ─────────────────────────────────────────────────────────────
 
     @Test
     void exportAll_drains_returnsAll() {
@@ -292,7 +286,6 @@ class MetricIntervalStatsQueueTest {
         queue.offer(stats(T + D));
         assertEquals(1, queue.size());
     }
-    // ── peekBetween ───────────────────────────────────────────────────────────
 
     @Test
     void peekBetween_returnsMatchingItems_withoutRemoving() {
@@ -322,7 +315,6 @@ class MetricIntervalStatsQueueTest {
         assertEquals(0, result.length);
         assertEquals(1, queue.size());
     }
-    // ── removeAllBetween ──────────────────────────────────────────────────────
 
     @Test
     void removeAllBetween_removesAndReturnsMatchingItems() {
@@ -364,7 +356,6 @@ class MetricIntervalStatsQueueTest {
         assertNotNull(queue.peek());
         assertEquals(T + 2 * D, queue.peek().getStartEpoch());
     }
-    // ── offer eviction loop ───────────────────────────────────────────────────
 
     @Test
     void offer_whenApproximateSizeAtMaxCapacity_evictsRealItemAndAddsNew() {

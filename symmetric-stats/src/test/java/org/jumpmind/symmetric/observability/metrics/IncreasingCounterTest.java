@@ -39,7 +39,6 @@ class IncreasingCounterTest {
     private static IncreasingCounter counter() {
         return new IncreasingCounter("test.increasing", Attributes.empty(), List.of());
     }
-    // ── positive add ─────────────────────────────────────────────────────────
 
     @Test
     void add_positiveValue_accumulatesInValue() {
@@ -62,7 +61,6 @@ class IncreasingCounterTest {
         c.add(5L);
         assertEquals(1, c.getObservationsCountEstimate());
     }
-    // ── rejection of negative deltas ─────────────────────────────────────────
 
     @Test
     void add_negativeValue_throwsIllegalArgument() {
@@ -90,7 +88,6 @@ class IncreasingCounterTest {
         }
         assertEquals(0, c.getObservationsCountEstimate());
     }
-    // ── zero delta ────────────────────────────────────────────────────────────
 
     @Test
     void add_zero_isNoOp_noObservationEnqueued() {
@@ -100,7 +97,6 @@ class IncreasingCounterTest {
         assertEquals(5L, c.getValue());
         assertEquals(1, c.getObservationsCountEstimate()); // only first add enqueued
     }
-    // ── increment ─────────────────────────────────────────────────────────────
 
     @Test
     void increment_addsOne() {
@@ -124,7 +120,6 @@ class IncreasingCounterTest {
         c.increment();
         assertEquals(1, c.getObservationsCountEstimate());
     }
-    // ── close ─────────────────────────────────────────────────────────────────
 
     @Test
     void close_stopsObservationsFromBeingQueued() {
@@ -141,7 +136,6 @@ class IncreasingCounterTest {
         c.close();
         assertFalse(c.isEnabled());
     }
-    // ── setOtelHandle / close with handle ─────────────────────────────────────
 
     @Test
     void setOtelHandle_close_invokesHandleClose() throws Exception {

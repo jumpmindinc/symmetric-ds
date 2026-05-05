@@ -81,7 +81,6 @@ class NodeBatchStatusMetricsMapTest {
         s.setDataCount(dataCount);
         return s;
     }
-    // ── getOrCreate ───────────────────────────────────────────────────────────
 
     @Test
     void getOrCreate_newPair_createsEntry() {
@@ -105,7 +104,6 @@ class NodeBatchStatusMetricsMapTest {
         assertFalse(ok == err);
         assertEquals(2, map.size());
     }
-    // ── getBatchCount / getRowCount ───────────────────────────────────────────
 
     @Test
     void getBatchCount_absentKey_returnsZero() {
@@ -128,7 +126,6 @@ class NodeBatchStatusMetricsMapTest {
         map.setRowCount("n1", "OK", 100L);
         assertEquals(100L, map.getRowCount("n1", "OK"));
     }
-    // ── setBatchAndRowCounts ──────────────────────────────────────────────────
 
     @Test
     void setBatchAndRowCounts_setsGaugesToSuppliedValues() {
@@ -143,7 +140,6 @@ class NodeBatchStatusMetricsMapTest {
         map.setBatchAndRowCounts("n3", "NE", 1L, 10L);
         assertTrue(map.contains("n3" + NodeBatchStatusMetricsMap.ENTRY_KEY_DELIMITER + "NE"));
     }
-    // ── setBatchCount / setRowCount ───────────────────────────────────────────
 
     @Test
     void setBatchCount_overwritesPreviousValue() {
@@ -158,7 +154,6 @@ class NodeBatchStatusMetricsMapTest {
         map.setRowCount("n4", "OK", 75L);
         assertEquals(75L, map.getRowCount("n4", "OK"));
     }
-    // ── addBatchCount / addRowCount ───────────────────────────────────────────
 
     @Test
     void addBatchCount_accumulatesDeltas() {
@@ -173,7 +168,6 @@ class NodeBatchStatusMetricsMapTest {
         map.addRowCount("n5", "OK", 50L);
         assertEquals(150L, map.getRowCount("n5", "OK"));
     }
-    // ── setAllMetrics ─────────────────────────────────────────────────────────
 
     @Test
     void setAllMetrics_updatesPresentSummaries() {
@@ -201,7 +195,6 @@ class NodeBatchStatusMetricsMapTest {
         assertEquals(1L, map.getBatchCount("n8", "OK"));
         assertEquals(2L, map.getBatchCount("n9", "ER"));
     }
-    // ── setSpecifiedMetrics ───────────────────────────────────────────────────
 
     @Test
     void setSpecifiedMetrics_updatesOnlySpecifiedSummaries() {
@@ -213,7 +206,6 @@ class NodeBatchStatusMetricsMapTest {
         // n11 untouched
         assertEquals(3L, map.getBatchCount("n11", "ER"));
     }
-    // ── gaugesForNode ─────────────────────────────────────────────────────────
 
     @Test
     void gaugesForNode_returnsOnlyMatchingNodeEntries() {
@@ -231,7 +223,6 @@ class NodeBatchStatusMetricsMapTest {
         List<NodeBatchStatusGauge> result = map.gaugesForNode("n99");
         assertTrue(result.isEmpty());
     }
-    // ── keys ─────────────────────────────────────────────────────────────────
 
     @Test
     void compositeKey_usesDelimiter() {

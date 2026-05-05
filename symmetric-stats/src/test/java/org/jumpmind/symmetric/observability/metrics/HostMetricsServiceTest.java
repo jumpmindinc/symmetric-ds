@@ -79,7 +79,6 @@ class HostMetricsServiceTest {
         HostMetricsService service = new HostMetricsService(manager, false);
         assertDoesNotThrow(service::shutdown);
     }
-    // ── registerUpDownCounter / getUpDownCounter ──────────────────────────────
 
     @Test
     void registerUpDownCounter_createsAndCachesEntry() {
@@ -102,7 +101,6 @@ class HostMetricsServiceTest {
         IUpDownCounter registered = service.registerUpDownCounter(def);
         assertSame(registered, service.getUpDownCounter("test.ud2"));
     }
-    // ── registerIncreasingCounter / getIncreasingCounter ──────────────────────
 
     @Test
     void registerIncreasingCounter_createsEntry() {
@@ -125,7 +123,6 @@ class HostMetricsServiceTest {
         IIncreasingCounter registered = service.registerIncreasingCounter(def);
         assertSame(registered, service.getIncreasingCounter("test.ic2"));
     }
-    // ── registerDoubleGauge / getDoubleGauge ──────────────────────────────────
 
     @Test
     void registerDoubleGauge_createsEntry() {
@@ -148,7 +145,6 @@ class HostMetricsServiceTest {
         ISymDoubleGauge registered = service.registerDoubleGauge(def);
         assertSame(registered, service.getDoubleGauge("test.dg2"));
     }
-    // ── registerLongGauge / getLongGauge ──────────────────────────────────────
 
     @Test
     void registerLongGauge_byDefinition_createsEntry() {
@@ -180,7 +176,6 @@ class HostMetricsServiceTest {
                 org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_IDLE, List.of());
         assertNotNull(gauge);
     }
-    // ── getAllMetrics ─────────────────────────────────────────────────────────
 
     @Test
     void getAllMetrics_afterRegistrations_containsAllRegistered() {
@@ -195,7 +190,6 @@ class HostMetricsServiceTest {
         HostMetricsService service = new HostMetricsService(manager, false);
         assertTrue(service.getAllMetrics().isEmpty());
     }
-    // ── resetGaugesToZero ─────────────────────────────────────────────────────
 
     @Test
     void resetGaugesToZero_setsDoubleGaugesToZero() {
@@ -216,7 +210,6 @@ class HostMetricsServiceTest {
         service.resetGaugesToZero();
         assertTrue(gauge.getValue() == 0L);
     }
-    // ── attribute-scoped instrument key ───────────────────────────────────────
 
     @Test
     void attributeScopedRegistration_differentAttrs_createsDistinctEntries() {
@@ -229,7 +222,6 @@ class HostMetricsServiceTest {
         assertFalse(gaugeA == gaugeB);
         assertTrue(service.getAllMetrics().size() >= 2);
     }
-    // ── createUpDownCounterInternal (otelEnabled path) ────────────────────────
 
     @Test
     void registerUpDownCounter_otelEnabled_createsOtelHandle() {
@@ -247,7 +239,6 @@ class HostMetricsServiceTest {
         assertNotNull(counter);
         assertSame(counter, service.getUpDownCounter("test.ud.attrs", attrs));
     }
-    // ── registerIncreasingCounter (attrs overload) / createIncreasingCounterInternal ─
 
     @Test
     void registerIncreasingCounter_withAttrs_createsEntryRetrievableWithSameAttrs() {
@@ -271,7 +262,6 @@ class HostMetricsServiceTest {
         HostMetricsService service = new HostMetricsService(manager, false);
         assertNull(service.getIncreasingCounter("test.ic.absent", List.of(new MetricAttribute("channel", "x"))));
     }
-    // ── createDoubleGaugeInternal (otelEnabled path) ──────────────────────────
 
     @Test
     void registerDoubleGauge_withAttrs_createsEntryRetrievableWithSameAttrs() {
@@ -289,7 +279,6 @@ class HostMetricsServiceTest {
         SymMetricDefinition def = new SymMetricDefinition("otel.dg", "desc", "percent", InstrumentType.DOUBLE_GAUGE);
         assertNotNull(service.registerDoubleGauge(def));
     }
-    // ── registerLongGauge (attrs overload) / createLongGaugeInternal ─────────
 
     @Test
     void registerLongGauge_withAttrs_createsEntryRetrievableWithSameAttrs() {
@@ -313,7 +302,6 @@ class HostMetricsServiceTest {
         HostMetricsService service = new HostMetricsService(manager, false);
         assertNull(service.getLongGauge("test.lg.absent", List.of(new MetricAttribute("channel", "x"))));
     }
-    // ── instrumentKey (null name / null value branches) ───────────────────────
 
     @Test
     void instrumentKey_attrWithNullName_usesEmptyStringInKey() {
@@ -330,7 +318,6 @@ class HostMetricsServiceTest {
         List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", null));
         assertNotNull(service.registerLongGauge(def, attrs));
     }
-    // ── buildInstrumentAttributes ─────────────────────────────────────────────
 
     @Test
     void buildInstrumentAttributes_withNonEmptyAttrs_mergesAttributesForOtelHandle() {

@@ -50,7 +50,6 @@ class MetricDefinitionFactoryTest {
     void setUp() {
         factory = new MetricDefinitionFactory();
     }
-    // ── getDefinition ─────────────────────────────────────────────────────────
 
     @Test
     void getDefinition_knownMetricId_returnsDefinition() {
@@ -70,7 +69,6 @@ class MetricDefinitionFactoryTest {
     void getDefinition_unknownMetricId_throwsInvalidMetricDataException() {
         assertThrows(InvalidMetricDataException.class, () -> factory.getDefinition("no.such.metric"));
     }
-    // ── register ─────────────────────────────────────────────────────────────
 
     @Test
     void register_null_throwsInvalidMetricDataException() {
@@ -83,7 +81,6 @@ class MetricDefinitionFactoryTest {
         factory.register(custom);
         assertEquals("custom.metric", factory.getDefinition("custom.metric").id());
     }
-    // ── registerDefaultMetric ─────────────────────────────────────────────────
 
     @Test
     void registerDefaultMetric_addsToRegistryAndDefaultList() {
@@ -107,7 +104,6 @@ class MetricDefinitionFactoryTest {
         factory.registerDefaultMetric();
         assertEquals(sizeBefore, factory.getDefaultMetrics().size());
     }
-    // ── getDefaultMetrics ─────────────────────────────────────────────────────
 
     @Test
     void getDefaultMetrics_isNotEmpty() {
@@ -128,7 +124,6 @@ class MetricDefinitionFactoryTest {
             assertEquals(def.id(), retrieved.id());
         }
     }
-    // ── getDefaultContexts / registerDefaultContext ───────────────────────────
 
     @Test
     void getDefaultContexts_isNotEmpty() {
@@ -171,7 +166,6 @@ class MetricDefinitionFactoryTest {
         assertEquals(sizeBefore + 1, factory.getDefaultMetrics().size());
         assertNotNull(factory.getDefinition("m.valid"));
     }
-    // ── initializeMetrics ─────────────────────────────────────────────────────
 
     @Test
     void initializeMetrics_registersMetricsOnService() {
@@ -191,7 +185,6 @@ class MetricDefinitionFactoryTest {
         int count = factory.initializeMetrics(service);
         assertTrue(count > 0); // other (non-histogram) metrics still registered
     }
-    // ── preRegisterBuiltInNonChannelMetrics (via initializeMetrics) ───────────
 
     @Test
     void initializeMetrics_updownCounterNonChannel_isRegisteredOnService() {
@@ -238,7 +231,6 @@ class MetricDefinitionFactoryTest {
         factory.initializeMetrics(service);
         assertNull(service.getLongGauge(METRIC_ID_BATCHES_OUTGOING));
     }
-    // ── preRegisterBuiltInChannelMetrics (via initializeMetrics) ─────────────
 
     @Test
     void initializeMetrics_updownCounterChannel_registeredPerChannel() {

@@ -42,13 +42,11 @@ class SymLongGaugeTest {
     private static SymLongGauge gauge() {
         return new SymLongGauge("test.long.gauge", Attributes.empty(), List.of());
     }
-    // ── initial value ─────────────────────────────────────────────────────────
 
     @Test
     void getValue_initiallyZero() {
         assertEquals(0L, gauge().getValue());
     }
-    // ── setValue ──────────────────────────────────────────────────────────────
 
     @Test
     void setValue_changesValue() {
@@ -63,7 +61,6 @@ class SymLongGaugeTest {
         g.setValue(10L);
         assertEquals(1, g.getObservationsCountEstimate());
     }
-    // ── add ───────────────────────────────────────────────────────────────────
 
     @Test
     void add_accumulatesValue() {
@@ -79,21 +76,18 @@ class SymLongGaugeTest {
         g.add(7L);
         assertEquals(1, g.getObservationsCountEstimate());
     }
-    // ── createAccumulator ─────────────────────────────────────────────────────
 
     @Test
     void createAccumulator_returnsInt64StatsAccumulator() {
         SymLongGauge g = gauge();
         assertEquals(Int64StatsAccumulator.class, g.createAccumulator(0L).getClass());
     }
-    // ── close ─────────────────────────────────────────────────────────────────
 
     @Test
     void close_withNoOtelHandle_doesNotThrow() {
         SymLongGauge g = gauge();
         assertDoesNotThrow(g::close);
     }
-    // ── setOtelHandle / close with handle ─────────────────────────────────────
 
     @Test
     void setOtelHandle_close_invokesHandleClose() throws Exception {

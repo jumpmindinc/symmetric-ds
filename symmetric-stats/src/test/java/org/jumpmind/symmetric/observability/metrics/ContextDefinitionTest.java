@@ -31,7 +31,6 @@ import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.junit.jupiter.api.Test;
 
 class ContextDefinitionTest {
-    // ── constructor with non-null attributes ──────────────────────────────────
     @Test
     void constructor_nonNullAttributes_contextIdIsSet() {
         List<MetricAttribute> attrs = List.of(new MetricAttribute("key", "value"));
@@ -49,7 +48,6 @@ class ContextDefinitionTest {
         assertEquals("key1", def.attributes().get(0).name());
         assertEquals("value2", def.attributes().get(1).value());
     }
-    // ── constructor with null attributes ──────────────────────────────────────
 
     @Test
     void constructor_nullAttributes_returnsEmptyList() {
@@ -57,7 +55,6 @@ class ContextDefinitionTest {
         assertNotNull(def.attributes());
         assertTrue(def.attributes().isEmpty());
     }
-    // ── unmodifiable list ─────────────────────────────────────────────────────
 
     @Test
     void constructor_withAttributes_returnedListIsUnmodifiable() {

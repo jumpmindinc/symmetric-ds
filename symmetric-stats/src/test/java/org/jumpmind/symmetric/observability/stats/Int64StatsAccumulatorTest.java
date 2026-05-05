@@ -32,7 +32,6 @@ class Int64StatsAccumulatorTest {
     // Jan 1 2020 00:00:00 UTC — aligned to 5-minute boundary
     private static final long T = 1_577_836_800_000L;
     private static final long D = AbstractStatsAccumulator.INTERVAL_DURATION_MS;
-    // ── carry-forward ─────────────────────────────────────────────────────────
 
     @Test
     void constructor_carryForwardLong_usedAsLastValue() {
@@ -46,7 +45,6 @@ class Int64StatsAccumulatorTest {
         Int64StatsAccumulator acc = new Int64StatsAccumulator(T);
         assertEquals(0L, acc.getLastValueAsLong());
     }
-    // ── addObservation truncation ─────────────────────────────────────────────
 
     @Test
     void addObservation_doubleValueTruncatedToLong() {
@@ -70,7 +68,6 @@ class Int64StatsAccumulatorTest {
         acc.addObservation(new ObservationLong(exactValue, T));
         assertEquals(exactValue, acc.getLastValueAsLong());
     }
-    // ── min / max tracking ────────────────────────────────────────────────────
 
     @Test
     void addObservation_tracksMinMaxAsLong() {
@@ -80,7 +77,6 @@ class Int64StatsAccumulatorTest {
         assertEquals(0.0, acc.getMinAsDouble(), 1e-9); // carry-forward (0) is lower than any obs
         assertEquals(100.0, acc.getMaxAsDouble(), 1e-9);
     }
-    // ── computeAvg ────────────────────────────────────────────────────────────
 
     @Test
     void computeAvg_singleObsAtIntervalStart_equalsObsValue() {
@@ -96,7 +92,6 @@ class Int64StatsAccumulatorTest {
         acc.close();
         assertEquals(7.0, acc.computeAvg(), 1e-9);
     }
-    // ── createNext ────────────────────────────────────────────────────────────
 
     @Test
     void createNext_carriesLongValueWithoutDoubleRoundtrip() {
@@ -125,7 +120,6 @@ class Int64StatsAccumulatorTest {
         assertTrue(third instanceof Int64StatsAccumulator);
         assertEquals(99L, ((Int64StatsAccumulator) third).getLastValueAsLong());
     }
-    // ── noArg constructor ─────────────────────────────────────────────────────
 
     @Test
     void noArgConstructor_createsAccumulatorAtCurrentIntervalBoundary() {

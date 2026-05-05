@@ -41,13 +41,11 @@ class SymDoubleGaugeTest {
     private static SymDoubleGauge gauge() {
         return new SymDoubleGauge("test.double.gauge", Attributes.empty(), List.of());
     }
-    // ── initial value ─────────────────────────────────────────────────────────
 
     @Test
     void getValue_initiallyZero() {
         assertEquals(0.0, gauge().getValue(), 1e-9);
     }
-    // ── setValue ──────────────────────────────────────────────────────────────
 
     @Test
     void setValue_changesValue() {
@@ -62,7 +60,6 @@ class SymDoubleGaugeTest {
         g.setValue(1.5);
         assertEquals(1, g.getObservationsCountEstimate());
     }
-    // ── add ───────────────────────────────────────────────────────────────────
 
     @Test
     void add_accumulatesValue() {
@@ -78,14 +75,12 @@ class SymDoubleGaugeTest {
         g.add(0.5);
         assertEquals(1, g.getObservationsCountEstimate());
     }
-    // ── close ─────────────────────────────────────────────────────────────────
 
     @Test
     void close_withNoOtelHandle_doesNotThrow() {
         SymDoubleGauge g = gauge();
         assertDoesNotThrow(g::close);
     }
-    // ── setOtelHandle / close with handle ─────────────────────────────────────
 
     @Test
     void setOtelHandle_close_invokesHandleClose() throws Exception {

@@ -38,7 +38,6 @@ class UpDownCounterTest {
     private static UpDownCounter counter() {
         return new UpDownCounter("test.updown", Attributes.empty(), List.of());
     }
-    // ── add (negative allowed) ────────────────────────────────────────────────
 
     @Test
     void add_negativeDelta_isAllowed() {
@@ -62,7 +61,6 @@ class UpDownCounterTest {
         c.add(-5L);
         assertEquals(-5L, c.getValue());
     }
-    // ── decrement ─────────────────────────────────────────────────────────────
 
     @Test
     void decrement_subtractsOne() {
@@ -78,7 +76,6 @@ class UpDownCounterTest {
         c.decrement();
         assertEquals(1, c.getObservationsCountEstimate());
     }
-    // ── combined arithmetic ───────────────────────────────────────────────────
 
     @Test
     void add_positiveAndNegativeCombined_netResult() {
@@ -89,7 +86,6 @@ class UpDownCounterTest {
         c.decrement();
         assertEquals(8L, c.getValue());
     }
-    // ── close ─────────────────────────────────────────────────────────────────
 
     @Test
     void close_disablesMetric() {
@@ -97,7 +93,6 @@ class UpDownCounterTest {
         c.close();
         assertFalse(c.isEnabled());
     }
-    // ── setOtelHandle / close with handle ─────────────────────────────────────
 
     @Test
     void setOtelHandle_close_invokesHandleClose() throws Exception {
