@@ -34,21 +34,20 @@ import org.jumpmind.symmetric.observability.models.MetricSeriesInterquartileRang
  * See also: https://en.wikipedia.org/wiki/Interquartile_range
  */
 public class MetricSeriesSlidingWorkset {
-    public static final int IQR_OUTLIERS_MAX = 10; // Maximum number of outlier intervals deferred for later adoption into workset (should be less than
-                                                   // IQR_INTERVALS_MIN).
-    public static final int EXPIRE_OUTLIERS_RATIO = 7; // Multiplier (* time window size) for discarding an outlier (should be less than IQR_OUTLIERS_MAX).
-    public static final int IQR_INTERVALS_MIN = 100; // Minimum number of intervals required before IQR and outlier detection are active
-    public static final int IQR_INTERVALS_MAX = 200; // Maximum number of intervals retained; oldest is evicted when this is reached.
-    public static final double IQR_Q1_MULTIPLIER = 0.25; // Quartile of the smallest values
-    public static final double IQR_Q2_MULTIPLIER = 0.5; // Quartile of the ordinary median
-    public static final double IQR_Q3_MULTIPLIER = 0.75; // Quartile of the largest values
+    protected static final int IQR_OUTLIERS_MAX = 10; // Maximum number of outlier intervals deferred for adoption into workset (should be < IQR_INTERVALS_MIN).
+    protected static final int EXPIRE_OUTLIERS_RATIO = 7; // Multiplier (* time window size) for discarding an outlier (should be less than IQR_OUTLIERS_MAX).
+    protected static final int IQR_INTERVALS_MIN = 100; // Minimum number of intervals required before IQR and outlier detection are active
+    protected static final int IQR_INTERVALS_MAX = 200; // Maximum number of intervals retained; oldest is evicted when this is reached.
+    protected static final double IQR_Q1_MULTIPLIER = 0.25; // Quartile of the smallest values
+    protected static final double IQR_Q2_MULTIPLIER = 0.5; // Quartile of the ordinary median
+    protected static final double IQR_Q3_MULTIPLIER = 0.75; // Quartile of the largest values
     /**
      * Multiplier applied to IQR to form Tukey's outer fences. Values beyond the outer fences are considered "significant" outliers. Values between the inner
      * and outer fences are considered "mild" outliers.
      */
-    public static final double INNER_FENCE_MULTIPLIER = 1.5;
-    public static final double OUTER_FENCE_MULTIPLIER = 3.0;
-    public static final double IQR_ZERO_FLAT_TOLERANCE = 0.05; // Dead-band fraction of Q2 applied when IQR=0; prevents flagging changes smaller than 5% of the
+    protected static final double INNER_FENCE_MULTIPLIER = 1.5;
+    protected static final double OUTER_FENCE_MULTIPLIER = 3.0;
+    protected static final double IQR_ZERO_FLAT_TOLERANCE = 0.05; // Dead-band fraction of Q2 applied when IQR=0; prevents flagging changes smaller than 5% of the
                                                                // median.
     private final ArrayDeque<ISymIntervalStats> intervals = new ArrayDeque<>(IQR_INTERVALS_MAX); // FILO: Oldest time window at the end of queue, newest first
     private final ArrayDeque<ISymIntervalStats> outliers = new ArrayDeque<>(IQR_OUTLIERS_MAX);
