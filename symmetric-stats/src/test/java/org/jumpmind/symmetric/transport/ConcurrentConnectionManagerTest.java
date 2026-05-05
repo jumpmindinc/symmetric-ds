@@ -61,7 +61,6 @@ public class ConcurrentConnectionManagerTest {
         mgr.removeTimedOutReservations(reservations);
         assertEquals(1, reservations.size());
     }
-    // ── helpers ───────────────────────────────────────────────────────────────
 
     private ConcurrentConnectionManager newMgr(int maxWorkers) {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
@@ -71,7 +70,6 @@ public class ConcurrentConnectionManagerTest {
         when(ps.getLong(ParameterConstants.CONCURRENT_RESERVATION_TIMEOUT)).thenReturn(30_000L);
         return new ConcurrentConnectionManager(ps, new EngineMetricsService(engine, TestMetricsManagerFactory.create(), false));
     }
-    // ── reserveConnection ─────────────────────────────────────────────────────
 
     @Test
     public void testReserveConnection_underLimit_returnsAccepted() {
@@ -127,7 +125,6 @@ public class ConcurrentConnectionManagerTest {
         ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, true);
         assertEquals(ReservationStatus.ACCEPTED, status);
     }
-    // ── releaseConnection ─────────────────────────────────────────────────────
 
     @Test
     public void testReleaseConnection_found_returnsTrue() {
@@ -151,7 +148,6 @@ public class ConcurrentConnectionManagerTest {
         ReservationStatus status = mgr.reserveConnection("node2", "0", "push", ReservationType.HARD, false);
         assertEquals(ReservationStatus.ACCEPTED, status);
     }
-    // ── getReservationIdentifier ──────────────────────────────────────────────
 
     @Test
     public void testGetReservationIdentifier_defaultChannel_returnsNodeIdOnly() {
@@ -167,7 +163,6 @@ public class ConcurrentConnectionManagerTest {
     public void testGetReservationIdentifier_nonDefaultChannel_returnsNodeIdDashChannel() {
         assertEquals("node1-channel1", ConcurrentConnectionManager.getReservationIdentifier("node1", "channel1"));
     }
-    // ── whitelist ─────────────────────────────────────────────────────────────
 
     @Test
     public void testWhitelist_addAndGet() {
@@ -185,7 +180,6 @@ public class ConcurrentConnectionManagerTest {
         mgr.removeFromWhiteList("node1");
         assertEquals(0, mgr.getWhiteList().length);
     }
-    // ── releaseConnection(nodeId, poolId) — 2-arg overload ────────────────────
 
     @Test
     public void releaseConnection_byNodeId_found_returnsTrue() {
@@ -201,7 +195,6 @@ public class ConcurrentConnectionManagerTest {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertFalse(mgr.releaseConnection("node99", "push"));
     }
-    // ── getReservationCount ───────────────────────────────────────────────────
 
     @Test
     public void getReservationCount_empty_returnsZero() {
@@ -215,14 +208,12 @@ public class ConcurrentConnectionManagerTest {
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         assertEquals(1, mgr.getReservationCount("push"));
     }
-    // ── getPullReservationsByNodeId ────────────────────────────────────────────
 
     @Test
     public void getPullReservationsByNodeId_emptyMap_returnsEmptyMap() {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertTrue(mgr.getPullReservationsByNodeId().isEmpty());
     }
-    // ── getPushReservationsByNodeId ────────────────────────────────────────────
 
     @Test
     public void getPushReservationsByNodeId_afterHardReservation_containsNode() {
@@ -230,14 +221,12 @@ public class ConcurrentConnectionManagerTest {
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         assertTrue(mgr.getPushReservationsByNodeId().containsKey("node1"));
     }
-    // ── getNodeConnectionStatisticsByPoolByNodeId ─────────────────────────────
 
     @Test
     public void getNodeConnectionStatisticsByPoolByNodeId_returnsStats() {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertNotNull(mgr.getNodeConnectionStatisticsByPoolByNodeId());
     }
-    // ── Reservation inner class ───────────────────────────────────────────────
 
     @Test
     public void Reservation_getChannelId_returnsDefaultZero() {
