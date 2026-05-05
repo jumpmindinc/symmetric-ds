@@ -330,7 +330,7 @@ subprojects { subproject ->
         guavaVersion = '33.2.0-android'
         junitVersion = '5.13.3'
         spotBugsVersion = '4.8.5'
-        log4jVersion = '2.23.1'
+        log4jVersion = '2.25.4'
         slf4jVersion = '2.0.17'
         mockitoVersion = '5.11.0'
         powerMockVersion = '2.0.9'
