@@ -34,7 +34,6 @@ class Float64StatsAccumulatorTest {
     // Jan 1 2020 00:00:00 UTC — already aligned to a 5-minute boundary
     private static final long T = 1_577_836_800_000L;
     private static final long D = AbstractStatsAccumulator.INTERVAL_DURATION_MS; // 300_000
-    // ── calculateIntervalStart ────────────────────────────────────────────────
 
     @Test
     void calculateIntervalStart_alignedTimestamp_returnsSame() {
@@ -55,7 +54,6 @@ class Float64StatsAccumulatorTest {
     void calculateIntervalStart_atNextBoundary_startsNextWindow() {
         assertEquals(T + D, AbstractStatsAccumulator.calculateIntervalStart(T + D));
     }
-    // ── isInScope ─────────────────────────────────────────────────────────────
 
     @Test
     void isInScope_timestampAtStart_returnsTrue() {
@@ -80,7 +78,6 @@ class Float64StatsAccumulatorTest {
         Float64StatsAccumulator acc = new Float64StatsAccumulator(T);
         assertFalse(acc.isInScope(T - 1));
     }
-    // ── constructor carry-forward ─────────────────────────────────────────────
 
     @Test
     void constructor_carryForwardValue_usedAsLastValue() {
@@ -93,7 +90,6 @@ class Float64StatsAccumulatorTest {
         Float64StatsAccumulator acc = new Float64StatsAccumulator(T);
         assertEquals(0.0, acc.getLastValueAsDouble(), 1e-9);
     }
-    // ── addObservation ────────────────────────────────────────────────────────
 
     @Test
     void addObservation_singleObs_updatesMinMaxLastValue() {
@@ -113,7 +109,6 @@ class Float64StatsAccumulatorTest {
         assertEquals(10.0, acc.getMaxAsDouble(), 1e-9);
         assertEquals(3.0, acc.getLastValueAsDouble(), 1e-9);
     }
-    // ── computeAvg ────────────────────────────────────────────────────────────
 
     @Test
     void computeAvg_singleObsAtIntervalStart_equalsObsValue() {
@@ -150,7 +145,6 @@ class Float64StatsAccumulatorTest {
         acc.close();
         assertEquals(7.5, acc.computeAvg(), 1e-9);
     }
-    // ── stdDev ────────────────────────────────────────────────────────────────
 
     @Test
     void stdDev_constantValue_isZero() {
@@ -169,7 +163,6 @@ class Float64StatsAccumulatorTest {
         acc.close();
         assertEquals(2.5, acc.toStats().getStdDeviation(), 1e-9);
     }
-    // ── createNext ────────────────────────────────────────────────────────────
 
     @Test
     void createNext_carriesLastValueForward() {
@@ -193,7 +186,6 @@ class Float64StatsAccumulatorTest {
         IStatsAccumulator next = acc.createNext();
         assertTrue(next instanceof Float64StatsAccumulator);
     }
-    // ── toStats ───────────────────────────────────────────────────────────────
 
     @Test
     void toStats_countMatchesObservationCount() {
@@ -222,7 +214,6 @@ class Float64StatsAccumulatorTest {
         assertEquals(T, stats.getStartEpoch());
         assertEquals(T + D, stats.getEndEpoch());
     }
-    // ── closeAtObservation ────────────────────────────────────────────────────
 
     @Test
     void closeAtObservation_atIntervalEnd_doesNotThrow() {
@@ -256,7 +247,6 @@ class Float64StatsAccumulatorTest {
         // avg should still reflect the original close-at-observation weight only
         assertEquals(6.0, acc.computeAvg(), 1e-9);
     }
-    // ── noArg constructor ─────────────────────────────────────────────────────
 
     @Test
     void noArgConstructor_createsAccumulatorAtCurrentIntervalBoundary() {
