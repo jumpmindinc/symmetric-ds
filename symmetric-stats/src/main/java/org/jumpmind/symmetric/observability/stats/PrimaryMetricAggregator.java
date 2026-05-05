@@ -100,7 +100,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
             iterationTargetStart = System.currentTimeMillis() + AGGREGATOR_PROCESSING_INTERVAL_MS;
             try {
                 if (remainingMs > 0) {
-                    log.trace("Sleeping {} thread for {} milliseconds. ThreadId={} ....", remainingMs, AGGREGATOR_PROCESSING_THREAD);
+                    log.trace("Sleeping {} thread for {} milliseconds. ThreadId={} ....", AGGREGATOR_PROCESSING_THREAD, remainingMs, Thread.currentThread().getId());
                     Thread.sleep(remainingMs);
                 }
                 processAll();
