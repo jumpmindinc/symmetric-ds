@@ -61,6 +61,7 @@ import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
+import org.jumpmind.db.platform.IAlterDatabaseInterceptor;
 import org.jumpmind.db.platform.PermissionResult;
 import org.jumpmind.db.platform.PermissionResult.Status;
 import org.jumpmind.db.platform.PermissionType;
@@ -70,7 +71,7 @@ import org.jumpmind.db.sql.SqlConstants;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.jumpmind.db.sql.SymmetricLobHandler;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.db.util.BinaryEncoding;
 
 /*
@@ -91,7 +92,7 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
     public PostgreSqlDatabasePlatform(DataSource dataSource, SqlTemplateSettings settings) {
         super(dataSource, overrideSettings(settings));
         getDatabaseInfo().setInfinityDateAllowed(!settings.getProperties().is(SqlConstants.POSTGRES_CONVERT_INFINITY_DATE_TO_NULL, true));
-        String dbUrl = settings.getProperties().get(BasicDataSourcePropertyConstants.DB_POOL_URL);
+        String dbUrl = settings.getProperties().get(DataSourceProperties.DB_POOL_URL);
         if (dbUrl != null && dbUrl.contains("autosave=always")) {
             log.info("Detected driver is using auto savepoints");
             getDatabaseInfo().setRequiresSavePointsInTransaction(false);
@@ -505,5 +506,30 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
         } else {
             return getDatabaseInfo().isInfinityDateAllowed() ? NEG_INFINITY : null;
         }
+    }
+
+    @Override
+    public void alterTables(boolean continueOnError, boolean createTableIncludeApplicationTriggers, String triggerPrefix,
+            IAlterDatabaseInterceptor[] interceptors, Table... desiredTables) {
+        try {
+            super.alterTables(continueOnError, createTableIncludeApplicationTriggers, triggerPrefix, interceptors, desiredTables);
+        } catch (Exception ex) {
+            if (isMissingCitextExtensionError(ex)) {
+                log.info("Installing citext extension and retrying because a table contains a citext column");
+                getSqlTemplate().update("CREATE EXTENSION IF NOT EXISTS citext");
+                super.alterTables(continueOnError, createTableIncludeApplicationTriggers, triggerPrefix, interceptors, desiredTables);
+            } else {
+                throw ex;
+            }
+        }
+    }
+
+    protected boolean isMissingCitextExtensionError(Exception ex) {
+        String message = ex.getMessage();
+        if (message != null) {
+            String messageLower = message.toLowerCase();
+            return messageLower.contains("citext") && messageLower.contains("does not exist");
+        }
+        return false;
     }
 }

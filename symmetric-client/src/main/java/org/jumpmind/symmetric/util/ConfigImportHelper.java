@@ -29,7 +29,7 @@ import java.util.UUID;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.sql.SqlScript;
 import org.jumpmind.db.sql.SqlScriptReader;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ClientSymmetricEngine;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -50,13 +50,13 @@ public class ConfigImportHelper implements AutoCloseable {
         String uuid = UUID.randomUUID().toString();
         engineName = "import-" + uuid;
         TypedProperties engineProperties = new TypedProperties();
-        engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_DRIVER, "org.h2.Driver");
-        engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_URL,
+        engineProperties.setProperty(DataSourceProperties.DB_POOL_DRIVER, "org.h2.Driver");
+        engineProperties.setProperty(DataSourceProperties.DB_POOL_URL,
                 "jdbc:h2:mem:" + engineName + ";DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");
-        engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_VALIDATION_QUERY, "select 1");
-        engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_INIT_SQL, "SET MODE LEGACY");
-        engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_USER, "");
-        engineProperties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_PASSWORD, "");
+        engineProperties.setProperty(DataSourceProperties.DB_POOL_VALIDATION_QUERY, "select 1");
+        engineProperties.setProperty(DataSourceProperties.DB_POOL_INIT_SQL, "SET MODE LEGACY");
+        engineProperties.setProperty(DataSourceProperties.DB_POOL_USER, "");
+        engineProperties.setProperty(DataSourceProperties.DB_POOL_PASSWORD, "");
         engineProperties.setProperty(ParameterConstants.NODE_GROUP_ID, engineName);
         engineProperties.setProperty(ParameterConstants.EXTERNAL_ID, engineName);
         engineProperties.setProperty(ParameterConstants.ENGINE_NAME, engineName);

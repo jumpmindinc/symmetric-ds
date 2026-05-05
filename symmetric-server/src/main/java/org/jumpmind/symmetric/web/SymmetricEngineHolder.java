@@ -42,7 +42,7 @@ import java.util.concurrent.Executors;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.properties.SortedProperties;
 import org.jumpmind.properties.TypedProperties;
@@ -207,21 +207,21 @@ public class SymmetricEngineHolder {
             boolean createConfig) throws Exception {
         ITypedPropertiesFactory factory = PropertiesUtil.createTypedPropertiesFactory(null, passedInProperties);
         TypedProperties properties = factory.reload(passedInProperties);
-        String password = properties.getProperty(BasicDataSourcePropertyConstants.DB_POOL_PASSWORD);
+        String password = properties.getProperty(DataSourceProperties.DB_POOL_PASSWORD);
         if (StringUtils.isNotBlank(password) && !password.startsWith(SecurityConstants.PREFIX_ENC)) {
             try {
                 ISecurityService service = SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties);
-                properties.setProperty(BasicDataSourcePropertyConstants.DB_POOL_PASSWORD,
+                properties.setProperty(DataSourceProperties.DB_POOL_PASSWORD,
                         SecurityConstants.PREFIX_ENC + service.encrypt(password));
             } catch (Exception ex) {
                 log.warn("Could not encrypt password", ex);
             }
         }
-        String loadOnlyPassword = properties.getProperty(ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + BasicDataSourcePropertyConstants.DB_POOL_PASSWORD);
+        String loadOnlyPassword = properties.getProperty(ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_PASSWORD);
         if (StringUtils.isNotBlank(loadOnlyPassword) && !loadOnlyPassword.startsWith(SecurityConstants.PREFIX_ENC)) {
             try {
                 ISecurityService service = SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties);
-                properties.setProperty(ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + BasicDataSourcePropertyConstants.DB_POOL_PASSWORD,
+                properties.setProperty(ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_PASSWORD,
                         SecurityConstants.PREFIX_ENC + service.encrypt(loadOnlyPassword));
             } catch (Exception ex) {
                 log.warn("Could not encrypt load-only password", ex);
@@ -383,11 +383,11 @@ public class SymmetricEngineHolder {
                 try (InputStream fileInputStream = new FileInputStream(file.getAbsolutePath())) {
                     properties.load(fileInputStream);
                     final String userUrl = String.format("%s@%s",
-                            properties.getProperty(BasicDataSourcePropertyConstants.DB_POOL_USER, ""),
-                            properties.getProperty(BasicDataSourcePropertyConstants.DB_POOL_URL, ""));
+                            properties.getProperty(DataSourceProperties.DB_POOL_USER, ""),
+                            properties.getProperty(DataSourceProperties.DB_POOL_URL, ""));
                     final String KEY = String.format("%s@%s",
-                            BasicDataSourcePropertyConstants.DB_POOL_USER,
-                            BasicDataSourcePropertyConstants.DB_POOL_URL);
+                            DataSourceProperties.DB_POOL_USER,
+                            DataSourceProperties.DB_POOL_URL);
                     checkDuplicate(userUrl, KEY, dbToPropertyFiles, file);
                 } catch (Exception ex) {
                     if (ex instanceof SymmetricException) {
@@ -453,17 +453,17 @@ public class SymmetricEngineHolder {
             log.debug("Defaulting node {} sync.url to {}", externalId, defaultValue);
             properties.setProperty(ParameterConstants.SYNC_URL, defaultValue);
         }
-        if (StringUtils.isBlank(properties.getProperty(BasicDataSourcePropertyConstants.DB_POOL_DRIVER))) {
-            throw new IllegalStateException("Missing property " + BasicDataSourcePropertyConstants.DB_POOL_DRIVER);
+        if (StringUtils.isBlank(properties.getProperty(DataSourceProperties.DB_POOL_DRIVER))) {
+            throw new IllegalStateException("Missing property " + DataSourceProperties.DB_POOL_DRIVER);
         }
-        if (StringUtils.isBlank(properties.getProperty(BasicDataSourcePropertyConstants.DB_POOL_URL))) {
-            throw new IllegalStateException("Missing property " + BasicDataSourcePropertyConstants.DB_POOL_URL);
+        if (StringUtils.isBlank(properties.getProperty(DataSourceProperties.DB_POOL_URL))) {
+            throw new IllegalStateException("Missing property " + DataSourceProperties.DB_POOL_URL);
         }
-        if (!properties.containsKey(BasicDataSourcePropertyConstants.DB_POOL_USER)) {
-            throw new IllegalStateException("Missing property " + BasicDataSourcePropertyConstants.DB_POOL_USER);
+        if (!properties.containsKey(DataSourceProperties.DB_POOL_USER)) {
+            throw new IllegalStateException("Missing property " + DataSourceProperties.DB_POOL_USER);
         }
-        if (!properties.containsKey(BasicDataSourcePropertyConstants.DB_POOL_PASSWORD)) {
-            throw new IllegalStateException("Missing property " + BasicDataSourcePropertyConstants.DB_POOL_PASSWORD);
+        if (!properties.containsKey(DataSourceProperties.DB_POOL_PASSWORD)) {
+            throw new IllegalStateException("Missing property " + DataSourceProperties.DB_POOL_PASSWORD);
         }
         if (!properties.containsKey(ParameterConstants.REGISTRATION_URL)) {
             properties.setProperty(ParameterConstants.REGISTRATION_URL, "");
