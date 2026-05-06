@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 
 public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
-    public static final int MAX_QUEUE_SIZE = 10000000;
+    protected static final int MAX_QUEUE_SIZE = 1000000;
     protected static final long serialVersionUID = 1L;
     protected final AtomicInteger approximateSize = new AtomicInteger(0);
     protected final AtomicReference<ConcurrentLinkedQueue<ISymIntervalStats>> queue = new AtomicReference<>(new ConcurrentLinkedQueue<>());
@@ -41,15 +41,11 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
     public MetricIntervalStatsQueue() {
         super();
     }
-
-    private ConcurrentLinkedQueue<ISymIntervalStats> q() {
-        return queue.get();
-    }
-
+ 
     @Override
-    public boolean addAll(Collection<? extends ISymIntervalStats> c) {
+    public boolean addAll(Collection<? extends ISymIntervalStats> collection) {
         boolean changed = false;
-        for (ISymIntervalStats item : c) {
+        for (ISymIntervalStats item : collection) {
             if (offer(item)) {
                 changed = true;
             }
@@ -59,23 +55,23 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
 
     @Override
     public void clear() {
-        q().clear();
+        queue.get().clear();
         approximateSize.set(0);
     }
 
     @Override
-    public boolean contains(Object o) {
-        return q().contains(o);
+    public boolean contains(Object entry) {
+        return queue.get().contains(entry);
     }
 
     @Override
-    public boolean containsAll(Collection<?> c) {
-        return q().containsAll(c);
+    public boolean containsAll(Collection<?> collection) {
+        return queue.get().containsAll(collection);
     }
 
     @Override
     public boolean isEmpty() {
-        if (q().isEmpty()) {
+        if (queue.get().isEmpty()) {
             approximateSize.set(0);
             return true;
         }
@@ -84,7 +80,7 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
 
     @Override
     public Iterator<ISymIntervalStats> iterator() {
-        Iterator<ISymIntervalStats> delegate = q().iterator();
+        Iterator<ISymIntervalStats> delegate = queue.get().iterator();
         return new Iterator<ISymIntervalStats>() {
             @Override
             public boolean hasNext() {
@@ -105,8 +101,8 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
     }
 
     @Override
-    public boolean remove(Object o) {
-        boolean removed = q().remove(o);
+    public boolean remove(Object entry) {
+        boolean removed = queue.get().remove(entry);
         if (removed) {
             approximateSize.decrementAndGet();
         }
@@ -114,10 +110,10 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
     }
 
     @Override
-    public boolean removeAll(Collection<?> c) {
+    public boolean removeAll(Collection<?> collection) {
         boolean changed = false;
-        for (Object o : c) {
-            if (remove(o)) {
+        for (Object entry : collection) {
+            if (remove(entry)) {
                 changed = true;
             }
         }
@@ -125,12 +121,12 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
     }
 
     @Override
-    public boolean retainAll(Collection<?> c) {
-        Iterator<ISymIntervalStats> it = q().iterator();
+    public boolean retainAll(Collection<?> collection) {
+        Iterator<ISymIntervalStats> it = queue.get().iterator();
         boolean changed = false;
         while (it.hasNext()) {
             ISymIntervalStats item = it.next();
-            if (!c.contains(item)) {
+            if (!collection.contains(item)) {
                 it.remove();
                 approximateSize.decrementAndGet();
                 changed = true;
@@ -146,12 +142,12 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
 
     @Override
     public Object[] toArray() {
-        return q().toArray();
+        return queue.get().toArray();
     }
 
     @Override
     public <E> E[] toArray(E[] arg0) {
-        return q().toArray(arg0);
+        return queue.get().toArray(arg0);
     }
 
     @Override
@@ -161,20 +157,20 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
 
     @Override
     public ISymIntervalStats element() {
-        return q().element();
+        return queue.get().element();
     }
 
     @Override
     public boolean offer(ISymIntervalStats arg0) {
         while (approximateSize.get() >= MAX_QUEUE_SIZE) {
-            ISymIntervalStats removed = q().poll();
+            ISymIntervalStats removed = queue.get().poll();
             if (removed != null) {
                 approximateSize.decrementAndGet();
             } else {
                 break;
             }
         }
-        boolean added = q().offer(arg0);
+        boolean added = queue.get().offer(arg0);
         if (added) {
             approximateSize.incrementAndGet();
         }
@@ -183,12 +179,12 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
 
     @Override
     public ISymIntervalStats peek() {
-        return q().peek();
+        return queue.get().peek();
     }
 
     @Override
     public ISymIntervalStats poll() {
-        ISymIntervalStats item = q().poll();
+        ISymIntervalStats item = queue.get().poll();
         if (item != null) {
             approximateSize.decrementAndGet();
         }
@@ -197,7 +193,7 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
 
     @Override
     public ISymIntervalStats remove() {
-        ISymIntervalStats item = q().remove();
+        ISymIntervalStats item = queue.get().remove();
         approximateSize.decrementAndGet();
         return item;
     }
@@ -207,7 +203,7 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
      */
     public ISymIntervalStats[] peekBetween(long start, long end) {
         List<ISymIntervalStats> result = new ArrayList<>();
-        for (ISymIntervalStats item : q()) {
+        for (ISymIntervalStats item : queue.get()) {
             long ts = item.getStartEpoch();
             if (ts >= start && ts <= end) {
                 result.add(item);
