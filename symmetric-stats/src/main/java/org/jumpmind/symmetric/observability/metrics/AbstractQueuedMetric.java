@@ -127,7 +127,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     }
 
     @Override
-    public void open(AutoCloseable externalMetricHandle) {
+    public synchronized void open(AutoCloseable externalMetricHandle) {
         if (!isMetricEnabled) {
             String message = String.format("Cannot open a disabled metric %s", metricId);
             log.warn(message);
@@ -139,7 +139,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         lastModified = System.currentTimeMillis();
         isMetricOpen = false;
         if (externalTelemetryHandle != null) {
