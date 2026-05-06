@@ -386,9 +386,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                     ts = System.currentTimeMillis();
                     long loadId = 0;
                     List<TableReloadStatus> l = dataService.getActiveOutgoingTableReloadStatusByTargetNodeId(targetNode.getNodeId());
-                    for (TableReloadStatus status : l) {
-                        loadId = status.getLoadId();
-                        break;
+                    if (!l.isEmpty()) {
+                        loadId = l.get(0).getLoadId();
                     }
                     duration = System.currentTimeMillis() - ts;
                     logQueryDuration("Get active reload status took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
