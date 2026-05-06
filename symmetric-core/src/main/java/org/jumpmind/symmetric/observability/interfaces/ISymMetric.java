@@ -38,7 +38,7 @@ public interface ISymMetric {
 
     /**
      * Return system time (epoch) from when this metric was last modified (either value or state).
-    */
+     */
     long getLastModified();
 
     /**
