@@ -28,6 +28,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.util.AppUtils;
+import org.jumpmind.util.SimpleClassCompiler;
 
 /**
  * 
@@ -35,6 +36,8 @@ import org.jumpmind.util.AppUtils;
 public class NodeHost implements Serializable {
     private static final long serialVersionUID = 1L;
     public static Date LAST_RESTART_TIME = new Date();
+    public static final String SECURITY_MODE_STANDARD = "standard";
+    public static final String SECURITY_MODE_RESTRICTED = "restricted";
     protected final static int MAX_IP_ADDRESS_SIZE = 50;
     private String nodeId;
     private String hostName;
@@ -50,6 +53,7 @@ public class NodeHost implements Serializable {
     private long maxMemoryBytes;
     private String javaVersion;
     private String javaVendor;
+    private String securityMode;
     private String jdbcVersion;
     private String symmetricVersion;
     private String timezoneOffset;
@@ -81,6 +85,7 @@ public class NodeHost implements Serializable {
         this.maxMemoryBytes = Runtime.getRuntime().maxMemory();
         this.javaVersion = System.getProperty("java.version");
         this.javaVendor = System.getProperty("java.vendor");
+        this.securityMode = SimpleClassCompiler.isJdkAvailable() ? SECURITY_MODE_STANDARD : SECURITY_MODE_RESTRICTED;
         this.jdbcVersion = platform.getSqlTemplate().getDriverVersion();
         this.symmetricVersion = Version.version();
         this.timezoneOffset = AppUtils.getTimezoneOffset();
@@ -199,6 +204,14 @@ public class NodeHost implements Serializable {
 
     public void setJavaVendor(String javaVendor) {
         this.javaVendor = javaVendor;
+    }
+
+    public String getSecurityMode() {
+        return securityMode;
+    }
+
+    public void setSecurityMode(String securityMode) {
+        this.securityMode = securityMode;
     }
 
     public void setJdbcVersion(String jdbcVersion) {

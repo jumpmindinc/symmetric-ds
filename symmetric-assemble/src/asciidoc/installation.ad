@@ -307,6 +307,38 @@ endif::pro[]
 
 ifdef::pro[]
 See the https://hub.docker.com/r/jumpmind/symmetricds-pro[SymmetricDS Pro Docker Hub page] for more information about using Docker to run SymmetricDS Pro as a container.
+
+==== Hardened Image
+
+A hardened variant of the SymmetricDS Pro image is available with a `-hardened` tag suffix (e.g., `jumpmind/symmetricds-pro:3.18.0-hardened`).
+The hardened image uses a JRE-only runtime, which reduces attack surface by excluding the Java compiler toolchain.
+As a consequence, features that compile Java code at runtime (Java jobs, Java routers, Java transforms, and Java extensions) are not available in the hardened image.
+Use BeanShell scripting alternatives for these features.
+
+The hardened image is only as secure as the host OS, because containers share the host kernel.
+
+To verify the image's provenance:
+
+[source,bash]
+----
+cosign verify jumpmind/symmetricds-pro:<version>-hardened \
+  --certificate-identity-regexp="https://github.com/jumpmind/.*" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com"
+----
+
+To retrieve and inspect the attached SBOM via cosign:
+
+[source,bash]
+----
+cosign download attestation jumpmind/symmetricds-pro:<version>-hardened | jq -r '.payload | @base64d | fromjson | .predicate'
+----
+
+To inspect the SBOM using Docker's built-in tooling:
+
+[source,bash]
+----
+docker buildx imagetools inspect jumpmind/symmetricds-pro:<version>-hardened --format '{{ json .SBOM }}'
+----
 endif::pro[]
 
 ==== Health Endpoints

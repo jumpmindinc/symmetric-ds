@@ -8,8 +8,10 @@ Column routers are configured by setting the router_type column on the ROUTER ta
 the router_expression column to an equality expression that represents the expected value of the column.
 endif::pro[]
 
-The first part of the expression is always the column name. The column name should always be defined in upper case. 
+The first part of the expression is typically a column name, defined in upper case.
 The upper case column name prefixed by OLD_ can be used for a comparison being done with the old column data value.
+The virtual column tokens :SOURCE_SCHEMA and :SOURCE_CATALOG can also be used in place of a column name to match
+against the source schema or catalog from the trigger history.
 
 The second part of the expression can be a constant value, a token that represents another column, or a token that 
 represents some other SymmetricDS concept. Token values always begin with a colon (:).
@@ -70,6 +72,14 @@ endif::pro[]
 * :NODE_GROUP_ID
 * :SOURCE_NODE_GROUP_ID
 * :REDIRECT_NODE
+====
+
+[TIP]
+.Virtual columns that resolve from trigger history
+====
+
+* :SOURCE_SCHEMA
+* :SOURCE_CATALOG
 ====
 
 . Consider a table that needs to be routed to only nodes in the target group whose STORE_ID column matches the external id of a node. 
@@ -163,6 +173,29 @@ insert into SYM_ROUTER (router_id,
 	('corp-2-store-multiple-matches','corp', 'store', 'column',
 	'STORE_ID=NULL or STORE_ID=:EXTERNAL_ID', current_timestamp,
 	current_timestamp); 
+----
+endif::pro[]
+
+. Consider a table captured with a wildcard schema trigger (source_schema_name=*) that needs to route to nodes whose external id matches the source schema name.
+
+ifdef::pro[]
+.Router Expression
+
+----
+:SOURCE_SCHEMA=:EXTERNAL_ID
+----
+endif::pro[]
+
+ifndef::pro[]
+.The following SQL statement will insert a column router to accomplish that.
+[source, SQL]
+----
+insert into SYM_ROUTER (router_id,
+	source_node_group_id, target_node_group_id, router_type,
+	router_expression, create_time, last_update_time) values
+	('corp-2-store-by-schema','corp', 'store', 'column',
+	':SOURCE_SCHEMA=:EXTERNAL_ID', current_timestamp,
+	current_timestamp);
 ----
 endif::pro[]
 

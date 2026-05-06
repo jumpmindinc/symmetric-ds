@@ -25,6 +25,8 @@ import java.util.Map;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.service.IExtensionService;
+import org.jumpmind.util.SimpleClassCompiler;
+import org.jumpmind.util.SimpleClassCompilerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +79,10 @@ public class JavaColumnTransform extends AbstractColumnTransform implements ISin
     }
 
     protected ISingleValueColumnTransform getCompiledClass(DataContext context, TransformColumn column) throws Exception {
+        if (!SimpleClassCompiler.isJdkAvailable()) {
+            throw new SimpleClassCompilerException("Java transform for column '" + column.getTargetColumnName()
+                    + "' cannot run in restricted security mode (JRE only). Configure a BSH transform instead.");
+        }
         String columnKey = TRANSFORM_KEY + "." + column.getTransformId() + "." + column.getTargetColumnName() + "." + column.getIncludeOn();
         ISingleValueColumnTransform colTransform = (ISingleValueColumnTransform) context.get(columnKey);
         if (colTransform == null) {
