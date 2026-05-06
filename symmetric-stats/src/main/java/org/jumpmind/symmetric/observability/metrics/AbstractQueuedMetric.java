@@ -162,9 +162,10 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
      * Add new observation to an internal collection. Silently ignored when the metric is closed.
      */
     public void addObservation(ISymObservation observation) {
-        if (!isMetricEnabled) {
+        if (!isMetricOpen || !isMetricEnabled) {
             if (log.isDebugEnabled()) {
-                log.debug("Metric is not accepting new observations. MetricId={}", metricId);
+                log.debug("Metric is not accepting new observations. MetricId={}, isOpen={}, isEnabled={}", 
+                    metricId, isMetricOpen, isMetricEnabled);
             }
             return;
         }

@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.observability.stats;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -218,7 +219,7 @@ class Float64StatsAccumulatorTest {
     @Test
     void closeAtObservation_atIntervalEnd_doesNotThrow() {
         Float64StatsAccumulator acc = new Float64StatsAccumulator(T);
-        acc.closeAtObservation(T + D); // exactly at end: OK
+        assertDoesNotThrow(() -> acc.closeAtObservation(T + D));
     }
 
     @Test
