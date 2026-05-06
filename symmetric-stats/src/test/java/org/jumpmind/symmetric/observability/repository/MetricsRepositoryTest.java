@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.observability.repository;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -38,33 +39,20 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.sql.ISqlRowMapper;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.sql.ISqlTemplate;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.sql.ISqlTransaction;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.sql.UniqueKeyException;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.model.MetricFactType;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.metrics.ContextDefinition;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.MetricContext;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.MetricKey;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -620,5 +608,127 @@ class MetricsRepositoryTest {
         Map<String, MetricContext> dynCache = getField(repo, "dynamicContextCache");
         String cacheKey = MetricsRepository.contextCacheKey(attrs);
         assertNotNull(dynCache.get(cacheKey));
+    }
+
+    @Test
+    void validateAttributes_nullList_throwsWithMinMessage() {
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class }, (Object) null));
+        assertTrue(ex.getMessage().contains(String.valueOf(MetricsRepository.ATTR_MIN_VALUES)));
+    }
+
+    @Test
+    void validateAttributes_emptyList_throwsWithMinMessage() {
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class }, List.of()));
+        assertTrue(ex.getMessage().contains(String.valueOf(MetricsRepository.ATTR_MIN_VALUES)));
+    }
+
+    @Test
+    void validateAttributes_singleValidAttr_doesNotThrow() {
+        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT))));
+    }
+
+    @Test
+    void validateAttributes_maxValidAttrs_doesNotThrow() {
+        var attrs = List.of(
+                new MetricAttribute("a", "1"),
+                new MetricAttribute("b", "2"),
+                new MetricAttribute("c", "3"));
+        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class }, attrs));
+    }
+
+    @Test
+    void validateAttributes_fourthAttrInvalid_doesNotThrow() {
+        var attrs = List.of(
+                new MetricAttribute("a", "1"),
+                new MetricAttribute("b", "2"),
+                new MetricAttribute("c", "3"),
+                new MetricAttribute("", "bad"));
+        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class }, attrs));
+    }
+
+    @Test
+    void validateAttributes_nullName_throwsWithIndexAndNameMessage() {
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                        List.of(new MetricAttribute(null, "value"))));
+        assertEquals("MetricAttribute at index 0 has null or empty name", ex.getMessage());
+    }
+
+    @Test
+    void validateAttributes_emptyName_throwsWithIndexAndNameMessage() {
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                        List.of(new MetricAttribute("", "value"))));
+        assertEquals("MetricAttribute at index 0 has null or empty name", ex.getMessage());
+    }
+
+    @Test
+    void validateAttributes_nameTooLong_throwsWithIndexAndLengthMessage() {
+        String longName = "x".repeat(MetricsRepository.ATTR_MAX_LENGTH + 1);
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                        List.of(new MetricAttribute(longName, "value"))));
+        assertEquals("MetricAttribute at index 0 name exceeds " + MetricsRepository.ATTR_MAX_LENGTH + " characters", ex.getMessage());
+    }
+
+    @Test
+    void validateAttributes_nameAtMaxLength_doesNotThrow() {
+        String maxName = "x".repeat(MetricsRepository.ATTR_MAX_LENGTH);
+        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                List.of(new MetricAttribute(maxName, "value"))));
+    }
+
+    @Test
+    void validateAttributes_nullValue_throwsWithIndexAndValueMessage() {
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                        List.of(new MetricAttribute("name", null))));
+        assertEquals("MetricAttribute at index 0 has null or empty value", ex.getMessage());
+    }
+
+    @Test
+    void validateAttributes_emptyValue_throwsWithIndexAndValueMessage() {
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                        List.of(new MetricAttribute("name", ""))));
+        assertEquals("MetricAttribute at index 0 has null or empty value", ex.getMessage());
+    }
+
+    @Test
+    void validateAttributes_valueTooLong_throwsWithIndexAndLengthMessage() {
+        String longValue = "x".repeat(MetricsRepository.ATTR_MAX_LENGTH + 1);
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                        List.of(new MetricAttribute("name", longValue))));
+        assertEquals("MetricAttribute at index 0 value exceeds " + MetricsRepository.ATTR_MAX_LENGTH + " characters", ex.getMessage());
+    }
+
+    @Test
+    void validateAttributes_valueAtMaxLength_doesNotThrow() {
+        String maxValue = "x".repeat(MetricsRepository.ATTR_MAX_LENGTH);
+        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                List.of(new MetricAttribute("name", maxValue))));
+    }
+
+    @Test
+    void validateAttributes_invalidAttrAtIndex1_throwsWithCorrectIndex() {
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                        List.of(new MetricAttribute("a", "1"), new MetricAttribute("", "v"))));
+        assertTrue(ex.getMessage().contains("index 1"));
+    }
+
+    @Test
+    void validateAttributes_invalidAttrAtIndex2_throwsWithCorrectIndex() {
+        MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { List.class },
+                        List.of(
+                                new MetricAttribute("a", "1"),
+                                new MetricAttribute("b", "2"),
+                                new MetricAttribute("", "v"))));
+        assertTrue(ex.getMessage().contains("index 2"));
     }
 }
