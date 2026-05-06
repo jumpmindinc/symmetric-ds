@@ -161,7 +161,7 @@ class StatisticManagerTest {
         ProcessInfoKey k = key("src", "tgt", ProcessType.PUSH_JOB_EXTRACT);
         ProcessInfo p = manager.newProcessInfo(k);
         p.setCurrentTableName("user_orders");
-        p.setCurrentChannelId("default");
+        p.setCurrentChannelId(Constants.CHANNEL_DEFAULT);
         List<ProcessInfo> result = manager.getMostRecentUserProcessInfos(ProcessType.PUSH_JOB_EXTRACT);
         assertFalse(result.isEmpty());
     }
@@ -172,10 +172,10 @@ class StatisticManagerTest {
         ProcessInfo first = manager.newProcessInfo(k);
         first.setCurrentDataCount(5);
         first.setCurrentTableName("user_orders");
-        first.setCurrentChannelId("default");
+        first.setCurrentChannelId(Constants.CHANNEL_DEFAULT);
         ProcessInfo second = manager.newProcessInfo(k); // first goes to userLastWorkDoneMap
         second.setCurrentTableName("user_orders");
-        second.setCurrentChannelId("default");
+        second.setCurrentChannelId(Constants.CHANNEL_DEFAULT);
         second.setStatus(ProcessStatus.OK);
         List<ProcessInfo> result = manager.getMostRecentUserProcessInfos(ProcessType.PUSH_JOB_EXTRACT);
         assertTrue(result.stream().anyMatch(p -> p.getCurrentDataCount() == 5));
@@ -185,7 +185,7 @@ class StatisticManagerTest {
     void isUserProcessInfo_userTableAndDefaultChannel_returnsTrue() {
         ProcessInfo p = manager.newProcessInfo(key("src", "tgt", ProcessType.PUSH_JOB_EXTRACT));
         p.setCurrentTableName("user_orders");
-        p.setCurrentChannelId("default");
+        p.setCurrentChannelId(Constants.CHANNEL_DEFAULT);
         assertTrue(manager.isUserProcessInfo(p));
     }
 
@@ -193,7 +193,7 @@ class StatisticManagerTest {
     void isUserProcessInfo_tableNameStartsWithPrefix_returnsFalse() {
         ProcessInfo p = manager.newProcessInfo(key("src", "tgt", ProcessType.PUSH_JOB_EXTRACT));
         p.setCurrentTableName("sym_data");
-        p.setCurrentChannelId("default");
+        p.setCurrentChannelId(Constants.CHANNEL_DEFAULT);
         assertFalse(manager.isUserProcessInfo(p));
     }
 
@@ -210,7 +210,7 @@ class StatisticManagerTest {
         ProcessInfoKey k = new ProcessInfoKey("src", Constants.QUEUE_SYSTEM, "tgt", ProcessType.PUSH_JOB_EXTRACT);
         ProcessInfo p = manager.newProcessInfo(k);
         p.setCurrentTableName("user_orders");
-        p.setCurrentChannelId("default");
+        p.setCurrentChannelId(Constants.CHANNEL_DEFAULT);
         assertFalse(manager.isUserProcessInfo(p));
     }
 
@@ -281,27 +281,27 @@ class StatisticManagerTest {
 
     @Test
     void incrementDataRouted_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.incrementDataRouted("default", 5L));
+        assertDoesNotThrow(() -> manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 5L));
     }
 
     @Test
     void setDataUnRouted_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.setDataUnRouted("default", 10L));
+        assertDoesNotThrow(() -> manager.setDataUnRouted(Constants.CHANNEL_DEFAULT, 10L));
     }
 
     @Test
     void incrementDataExtracted_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.incrementDataExtracted("default", 3L));
+        assertDoesNotThrow(() -> manager.incrementDataExtracted(Constants.CHANNEL_DEFAULT, 3L));
     }
 
     @Test
     void incrementDataBytesExtracted_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.incrementDataBytesExtracted("default", 100L));
+        assertDoesNotThrow(() -> manager.incrementDataBytesExtracted(Constants.CHANNEL_DEFAULT, 100L));
     }
 
     @Test
     void incrementDataLoaded_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.incrementDataLoaded("default", 7L));
+        assertDoesNotThrow(() -> manager.incrementDataLoaded(Constants.CHANNEL_DEFAULT, 7L));
     }
 
     @Test
@@ -311,7 +311,7 @@ class StatisticManagerTest {
 
     @Test
     void incrementDataLoadedOutgoing_nonSystemChannel_updatesLastDataSyncMaps() {
-        manager.incrementDataLoadedOutgoing("default", 10L, "node1");
+        manager.incrementDataLoadedOutgoing(Constants.CHANNEL_DEFAULT, 10L, "node1");
         assertNotNull(manager.getLastDataLoadedTimeMap().get("node1"));
         assertEquals(10L, manager.getLastDataLoadedRowsMap().get("node1"));
     }
@@ -324,7 +324,7 @@ class StatisticManagerTest {
 
     @Test
     void incrementDataBytesLoadedOutgoing_nonSystemChannel_updatesLastDataSyncBytesMap() {
-        manager.incrementDataBytesLoadedOutgoing("default", 200L, "node1");
+        manager.incrementDataBytesLoadedOutgoing(Constants.CHANNEL_DEFAULT, 200L, "node1");
         assertEquals(200L, manager.getLastDataLoadedBytesMap().get("node1"));
     }
 
@@ -351,7 +351,7 @@ class StatisticManagerTest {
     @Test
     void getChannelStats_whenNodeIdentityIsNull_doesNotThrow() {
         when(nodeService.getCachedIdentity()).thenReturn(null);
-        assertDoesNotThrow(() -> manager.incrementDataRouted("default", 1L));
+        assertDoesNotThrow(() -> manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 1L));
     }
 
     @Test
@@ -366,7 +366,7 @@ class StatisticManagerTest {
         when(parameterService.is(anyString(), anyBoolean())).thenReturn(false);
         when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
-        manager.incrementDataRouted("default", 5L);
+        manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 5L);
         manager.flush();
         verify(statisticService, never()).save(any(ChannelStats.class));
     }
@@ -376,7 +376,7 @@ class StatisticManagerTest {
         when(parameterService.is(anyString(), anyBoolean())).thenReturn(true);
         when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
-        manager.incrementDataRouted("default", 5L);
+        manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 5L);
         manager.flush();
         verify(statisticService, atLeastOnce()).save(any(ChannelStats.class));
     }
