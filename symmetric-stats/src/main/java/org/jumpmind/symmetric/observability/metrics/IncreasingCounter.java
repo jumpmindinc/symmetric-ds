@@ -35,22 +35,18 @@ import io.opentelemetry.api.metrics.ObservableLongCounter;
  * {@link #close()} on shutdown to unregister it.
  */
 public class IncreasingCounter extends AbstractCounterMetric implements IIncreasingCounter {
-    private ObservableLongCounter otelHandle;
 
     IncreasingCounter(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
         super(definition, attributes, metricAttributes, InstrumentType.COUNTER);
     }
-
-    void setOtelHandle(ObservableLongCounter handle) {
-        this.otelHandle = handle;
-    }
-
+ 
     @Override
     public void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableLongCounter)) {
             String message = String.format("Expected ObservableLongCounter, got %s", handle.getClass().getName());
             throw new IllegalArgumentException(message);
         }
+        super.open(handle);  
     }
 
     @Override
