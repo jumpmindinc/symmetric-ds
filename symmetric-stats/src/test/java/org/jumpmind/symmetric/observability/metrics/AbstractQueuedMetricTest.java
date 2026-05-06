@@ -64,11 +64,15 @@ class AbstractQueuedMetricTest {
     private static final long D = AbstractStatsAccumulator.INTERVAL_DURATION_MS; // 300_000
 
     private static UpDownCounter newCounter() {
-        return new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        metric.open(null);
+        return metric;
     }
 
     private static UpDownCounter newCounterWithAttrs(List<MetricAttribute> attrs) {
-        return new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), attrs);
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), attrs);
+        metric.open(null);
+        return metric;
     }
 
     private static ObservationLong obs(long value, long timestamp) {
@@ -216,10 +220,10 @@ class AbstractQueuedMetricTest {
     }
 
     @Test
-    void isEnabled_afterClose_returnsFalse() {
-        UpDownCounter m = newCounter();
-        m.close();
-        assertFalse(m.isEnabled());
+    void isOpen_afterClose_returnsFalse() {
+        UpDownCounter metric = newCounter();
+        metric.close();
+        assertFalse(metric.isOpen());
     }
 
     @Test

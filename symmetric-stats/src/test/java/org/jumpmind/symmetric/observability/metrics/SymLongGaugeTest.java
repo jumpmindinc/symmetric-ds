@@ -41,7 +41,9 @@ import io.opentelemetry.api.metrics.ObservableLongGauge;
  */
 class SymLongGaugeTest {
     private static SymLongGauge gauge() {
-        return new SymLongGauge(new SymMetricDefinition("test.long.gauge", "", "", InstrumentType.LONG_GAUGE), Attributes.empty(), List.of());
+        SymLongGauge gauge = new SymLongGauge(new SymMetricDefinition("test.long.gauge", "", "", InstrumentType.LONG_GAUGE), Attributes.empty(), List.of());
+        gauge.open(null);
+        return gauge;
     }
 
     @Test
@@ -51,69 +53,69 @@ class SymLongGaugeTest {
 
     @Test
     void setValue_changesValue() {
-        SymLongGauge g = gauge();
-        g.setValue(42L);
-        assertEquals(42L, g.getValue());
+        SymLongGauge gauge = gauge();
+        gauge.setValue(42L);
+        assertEquals(42L, gauge.getValue());
     }
 
     @Test
     void setValue_enqueuessObservation() {
-        SymLongGauge g = gauge();
-        g.setValue(10L);
-        assertEquals(1, g.getObservationsCountEstimate());
+        SymLongGauge gauge = gauge();
+        gauge.setValue(10L);
+        assertEquals(1, gauge.getObservationsCountEstimate());
     }
 
     @Test
     void add_accumulatesValue() {
-        SymLongGauge g = gauge();
-        g.add(5L);
-        g.add(3L);
-        assertEquals(8L, g.getValue());
+        SymLongGauge gauge = gauge();
+        gauge.add(5L);
+        gauge.add(3L);
+        assertEquals(8L, gauge.getValue());
     }
 
     @Test
     void add_enqueuessObservation() {
-        SymLongGauge g = gauge();
-        g.add(7L);
-        assertEquals(1, g.getObservationsCountEstimate());
+        SymLongGauge gauge = gauge();
+        gauge.add(7L);
+        assertEquals(1, gauge.getObservationsCountEstimate());
     }
 
     @Test
     void createAccumulator_returnsInt64StatsAccumulator() {
-        SymLongGauge g = gauge();
-        assertEquals(Int64StatsAccumulator.class, g.createAccumulator(0L).getClass());
+        SymLongGauge gauge = gauge();
+        assertEquals(Int64StatsAccumulator.class, gauge.createAccumulator(0L).getClass());
     }
 
     @Test
     void close_withNoOtelHandle_doesNotThrow() {
-        SymLongGauge g = gauge();
-        assertDoesNotThrow(g::close);
+        SymLongGauge gauge = gauge();
+        assertDoesNotThrow(gauge::close);
     }
 
     @Test
     void open_close_invokesHandleClose() throws Exception {
-        SymLongGauge g = gauge();
+        SymLongGauge gauge = gauge();
         ObservableLongGauge handle = mock(ObservableLongGauge.class);
-        g.open(handle);
-        g.close();
+        gauge.open(handle);
+        gauge.close();
         verify(handle).close();
     }
 
     @Test
-    void close_withOtelHandle_closesMetric() {
-        SymLongGauge g = gauge();
-        g.open(mock(ObservableLongGauge.class));
-        g.close();
-        assertFalse(g.isOpen());
+    void close_withOtelHandle_isOpenReturnsFalse() {
+        SymLongGauge gauge = gauge();
+        gauge.open(mock(ObservableLongGauge.class));
+        gauge.close();
+        assertFalse(gauge.isOpen());
     }
 
     @Test
-    void close_whenOtelHandleThrows_doesNotPropagateAndStillClosesMetric() {
-        SymLongGauge g = gauge();
+    void close_whenOtelHandleThrows_doesNotPropagateAndIsOpenReturnsFalse() {
+        SymLongGauge gauge = gauge();
         ObservableLongGauge handle = mock(ObservableLongGauge.class);
         doThrow(new RuntimeException("otel close failed")).when(handle).close();
-        g.open(handle);
-        assertDoesNotThrow(g::close);
-        assertFalse(g.isOpen());
+        gauge.open(handle);
+        assertDoesNotThrow(gauge::close);
+        assertFalse(gauge.isOpen());
     }
 }

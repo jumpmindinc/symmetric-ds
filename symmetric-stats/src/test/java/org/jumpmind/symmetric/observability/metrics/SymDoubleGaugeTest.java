@@ -40,7 +40,10 @@ import io.opentelemetry.api.metrics.ObservableDoubleGauge;
  */
 class SymDoubleGaugeTest {
     private static SymDoubleGauge gauge() {
-        return new SymDoubleGauge(new SymMetricDefinition("test.double.gauge", "", "", InstrumentType.DOUBLE_GAUGE), Attributes.empty(), List.of());
+        SymDoubleGauge gauge = new SymDoubleGauge(new SymMetricDefinition("test.double.gauge", "", "", InstrumentType.DOUBLE_GAUGE), Attributes.empty(), List
+                .of());
+        gauge.open(null);
+        return gauge;
     }
 
     @Test
@@ -50,63 +53,63 @@ class SymDoubleGaugeTest {
 
     @Test
     void setValue_changesValue() {
-        SymDoubleGauge g = gauge();
-        g.setValue(3.14);
-        assertEquals(3.14, g.getValue(), 1e-9);
+        SymDoubleGauge gauge = gauge();
+        gauge.setValue(3.14);
+        assertEquals(3.14, gauge.getValue(), 1e-9);
     }
 
     @Test
     void setValue_enqueuessObservation() {
-        SymDoubleGauge g = gauge();
-        g.setValue(1.5);
-        assertEquals(1, g.getObservationsCountEstimate());
+        SymDoubleGauge gauge = gauge();
+        gauge.setValue(1.5);
+        assertEquals(1, gauge.getObservationsCountEstimate());
     }
 
     @Test
     void add_accumulatesValue() {
-        SymDoubleGauge g = gauge();
-        g.add(1.1);
-        g.add(2.2);
-        assertEquals(3.3, g.getValue(), 1e-9);
+        SymDoubleGauge gauge = gauge();
+        gauge.add(1.1);
+        gauge.add(2.2);
+        assertEquals(3.3, gauge.getValue(), 1e-9);
     }
 
     @Test
     void add_enqueuessObservation() {
-        SymDoubleGauge g = gauge();
-        g.add(0.5);
-        assertEquals(1, g.getObservationsCountEstimate());
+        SymDoubleGauge gauge = gauge();
+        gauge.add(0.5);
+        assertEquals(1, gauge.getObservationsCountEstimate());
     }
 
     @Test
     void close_withNoOtelHandle_doesNotThrow() {
-        SymDoubleGauge g = gauge();
-        assertDoesNotThrow(g::close);
+        SymDoubleGauge gauge = gauge();
+        assertDoesNotThrow(gauge::close);
     }
 
     @Test
-    void setOtelHandle_close_invokesHandleClose() throws Exception {
-        SymDoubleGauge g = gauge();
+    void open_close_invokesHandleClose() throws Exception {
+        SymDoubleGauge gauge = gauge();
         ObservableDoubleGauge handle = mock(ObservableDoubleGauge.class);
-        g.setOtelHandle(handle);
-        g.close();
+        gauge.open(handle);
+        gauge.close();
         verify(handle).close();
     }
 
     @Test
-    void close_withOtelHandle_disablesMetric() {
-        SymDoubleGauge g = gauge();
-        g.setOtelHandle(mock(ObservableDoubleGauge.class));
-        g.close();
-        assertFalse(g.isEnabled());
+    void close_withOtelHandle_isOpenReturnsFalse() {
+        SymDoubleGauge gauge = gauge();
+        gauge.open(mock(ObservableDoubleGauge.class));
+        gauge.close();
+        assertFalse(gauge.isOpen());
     }
 
     @Test
-    void close_whenOtelHandleThrows_doesNotPropagateAndStillDisablesMetric() {
-        SymDoubleGauge g = gauge();
+    void close_whenOtelHandleThrows_doesNotPropagateAndIsOpenReturnsFalse() {
+        SymDoubleGauge gauge = gauge();
         ObservableDoubleGauge handle = mock(ObservableDoubleGauge.class);
         doThrow(new RuntimeException("otel close failed")).when(handle).close();
-        g.setOtelHandle(handle);
-        assertDoesNotThrow(g::close);
-        assertFalse(g.isEnabled());
+        gauge.open(handle);
+        assertDoesNotThrow(gauge::close);
+        assertFalse(gauge.isOpen());
     }
 }

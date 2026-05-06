@@ -35,19 +35,18 @@ import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
  * {@link AbstractMetricsService}) rather than receiving a push on every {@link #add} call, so no OTel work happens on the instrumented thread. The
  * {@link ObservableLongUpDownCounter} handle is held here so it can be closed (unregistering the callback) during service shutdown.
  */
-public class UpDownCounter extends AbstractCounterMetric implements IUpDownCounter { 
-
+public class UpDownCounter extends AbstractCounterMetric implements IUpDownCounter {
     UpDownCounter(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
         super(definition, attributes, metricAttributes, InstrumentType.UPDOWN_COUNTER);
     }
- 
+
     @Override
     public void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableLongUpDownCounter)) {
             String message = String.format("Expected ObservableLongUpDownCounter, got %s", handle.getClass().getName());
             throw new IllegalArgumentException(message);
         }
-        super.open(handle);  
+        super.open(handle);
     }
 
     /**

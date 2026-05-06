@@ -37,88 +37,90 @@ import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 
 class UpDownCounterTest {
     private static UpDownCounter counter() {
-        return new UpDownCounter(new SymMetricDefinition("test.updown", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        UpDownCounter counter = new UpDownCounter(new SymMetricDefinition("test.updown", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        counter.open(null);
+        return counter;
     }
 
     @Test
     void add_negativeDelta_isAllowed() {
-        UpDownCounter c = counter();
-        c.add(10L);
-        c.add(-3L);
-        assertEquals(7L, c.getValue());
+        UpDownCounter counter = counter();
+        counter.add(10L);
+        counter.add(-3L);
+        assertEquals(7L, counter.getValue());
     }
 
     @Test
     void add_negativeDelta_enqueuessObservation() {
-        UpDownCounter c = counter();
-        c.add(5L);
-        c.add(-2L);
-        assertEquals(2, c.getObservationsCountEstimate());
+        UpDownCounter counter = counter();
+        counter.add(5L);
+        counter.add(-2L);
+        assertEquals(2, counter.getObservationsCountEstimate());
     }
 
     @Test
     void add_belowZero_isAllowed() {
-        UpDownCounter c = counter();
-        c.add(-5L);
-        assertEquals(-5L, c.getValue());
+        UpDownCounter counter = counter();
+        counter.add(-5L);
+        assertEquals(-5L, counter.getValue());
     }
 
     @Test
     void decrement_subtractsOne() {
-        UpDownCounter c = counter();
-        c.add(5L);
-        c.decrement();
-        assertEquals(4L, c.getValue());
+        UpDownCounter counter = counter();
+        counter.add(5L);
+        counter.decrement();
+        assertEquals(4L, counter.getValue());
     }
 
     @Test
     void decrement_enqueuessObservation() {
-        UpDownCounter c = counter();
-        c.decrement();
-        assertEquals(1, c.getObservationsCountEstimate());
+        UpDownCounter counter = counter();
+        counter.decrement();
+        assertEquals(1, counter.getObservationsCountEstimate());
     }
 
     @Test
     void add_positiveAndNegativeCombined_netResult() {
-        UpDownCounter c = counter();
-        c.add(10L);
-        c.add(-3L);
-        c.add(2L);
-        c.decrement();
-        assertEquals(8L, c.getValue());
+        UpDownCounter counter = counter();
+        counter.add(10L);
+        counter.add(-3L);
+        counter.add(2L);
+        counter.decrement();
+        assertEquals(8L, counter.getValue());
     }
 
     @Test
-    void close_disablesMetric() {
-        UpDownCounter c = counter();
-        c.close();
-        assertFalse(c.isEnabled());
+    void close_isOpenReturnsFalse() {
+        UpDownCounter counter = counter();
+        counter.close();
+        assertFalse(counter.isOpen());
     }
 
     @Test
-    void setOtelHandle_close_invokesHandleClose() throws Exception {
-        UpDownCounter c = counter();
+    void open_close_invokesHandleClose() throws Exception {
+        UpDownCounter counter = counter();
         ObservableLongUpDownCounter handle = mock(ObservableLongUpDownCounter.class);
-        c.setOtelHandle(handle);
-        c.close();
+        counter.open(handle);
+        counter.close();
         verify(handle).close();
     }
 
     @Test
-    void close_withOtelHandle_disablesMetric() {
-        UpDownCounter c = counter();
-        c.setOtelHandle(mock(ObservableLongUpDownCounter.class));
-        c.close();
-        assertFalse(c.isEnabled());
+    void close_withOtelHandle_isOpenReturnsFalse() {
+        UpDownCounter counter = counter();
+        counter.open(mock(ObservableLongUpDownCounter.class));
+        counter.close();
+        assertFalse(counter.isOpen());
     }
 
     @Test
-    void close_whenOtelHandleThrows_doesNotPropagateAndStillDisablesMetric() {
-        UpDownCounter c = counter();
+    void close_whenOtelHandleThrows_doesNotPropagateAndIsOpenReturnsFalse() {
+        UpDownCounter counter = counter();
         ObservableLongUpDownCounter handle = mock(ObservableLongUpDownCounter.class);
         doThrow(new RuntimeException("otel close failed")).when(handle).close();
-        c.setOtelHandle(handle);
-        assertDoesNotThrow(c::close);
-        assertFalse(c.isEnabled());
+        counter.open(handle);
+        assertDoesNotThrow(counter::close);
+        assertFalse(counter.isOpen());
     }
 }

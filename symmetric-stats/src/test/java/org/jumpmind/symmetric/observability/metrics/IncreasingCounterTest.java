@@ -38,130 +38,133 @@ import io.opentelemetry.api.metrics.ObservableLongCounter;
 
 class IncreasingCounterTest {
     private static IncreasingCounter counter() {
-        return new IncreasingCounter(new SymMetricDefinition("test.increasing", "", "", InstrumentType.COUNTER), Attributes.empty(), List.of());
+        IncreasingCounter counter = new IncreasingCounter(new SymMetricDefinition("test.increasing", "", "", InstrumentType.COUNTER), Attributes.empty(), List
+                .of());
+        counter.open(null);
+        return counter;
     }
 
     @Test
     void add_positiveValue_accumulatesInValue() {
-        IncreasingCounter c = counter();
-        c.add(10L);
-        assertEquals(10L, c.getValue());
+        IncreasingCounter counter = counter();
+        counter.add(10L);
+        assertEquals(10L, counter.getValue());
     }
 
     @Test
     void add_multipleTimes_accumulates() {
-        IncreasingCounter c = counter();
-        c.add(3L);
-        c.add(7L);
-        assertEquals(10L, c.getValue());
+        IncreasingCounter counter = counter();
+        counter.add(3L);
+        counter.add(7L);
+        assertEquals(10L, counter.getValue());
     }
 
     @Test
     void add_positiveValue_enqueuessObservation() {
-        IncreasingCounter c = counter();
-        c.add(5L);
-        assertEquals(1, c.getObservationsCountEstimate());
+        IncreasingCounter counter = counter();
+        counter.add(5L);
+        assertEquals(1, counter.getObservationsCountEstimate());
     }
 
     @Test
     void add_negativeValue_throwsIllegalArgument() {
-        IncreasingCounter c = counter();
-        assertThrows(IllegalArgumentException.class, () -> c.add(-1L));
+        IncreasingCounter counter = counter();
+        assertThrows(IllegalArgumentException.class, () -> counter.add(-1L));
     }
 
     @Test
     void add_negativeValue_doesNotChangeValue() {
-        IncreasingCounter c = counter();
-        c.add(5L);
+        IncreasingCounter counter = counter();
+        counter.add(5L);
         try {
-            c.add(-2L);
+            counter.add(-2L);
         } catch (IllegalArgumentException ignored) {
         }
-        assertEquals(5L, c.getValue());
+        assertEquals(5L, counter.getValue());
     }
 
     @Test
     void add_negativeValue_doesNotEnqueueObservation() {
-        IncreasingCounter c = counter();
+        IncreasingCounter counter = counter();
         try {
-            c.add(-1L);
+            counter.add(-1L);
         } catch (IllegalArgumentException ignored) {
         }
-        assertEquals(0, c.getObservationsCountEstimate());
+        assertEquals(0, counter.getObservationsCountEstimate());
     }
 
     @Test
     void add_zero_isNoOp_noObservationEnqueued() {
-        IncreasingCounter c = counter();
-        c.add(5L);
-        c.add(0L);
-        assertEquals(5L, c.getValue());
-        assertEquals(1, c.getObservationsCountEstimate()); // only first add enqueued
+        IncreasingCounter counter = counter();
+        counter.add(5L);
+        counter.add(0L);
+        assertEquals(5L, counter.getValue());
+        assertEquals(1, counter.getObservationsCountEstimate());
     }
 
     @Test
     void increment_addsOne() {
-        IncreasingCounter c = counter();
-        c.increment();
-        assertEquals(1L, c.getValue());
+        IncreasingCounter counter = counter();
+        counter.increment();
+        assertEquals(1L, counter.getValue());
     }
 
     @Test
     void increment_multiple_accumulates() {
-        IncreasingCounter c = counter();
-        c.increment();
-        c.increment();
-        c.increment();
-        assertEquals(3L, c.getValue());
+        IncreasingCounter counter = counter();
+        counter.increment();
+        counter.increment();
+        counter.increment();
+        assertEquals(3L, counter.getValue());
     }
 
     @Test
     void increment_enqueuessObservation() {
-        IncreasingCounter c = counter();
-        c.increment();
-        assertEquals(1, c.getObservationsCountEstimate());
+        IncreasingCounter counter = counter();
+        counter.increment();
+        assertEquals(1, counter.getObservationsCountEstimate());
     }
 
     @Test
     void close_stopsObservationsFromBeingQueued() {
-        IncreasingCounter c = counter();
-        c.add(5L); // queues 1 observation
-        c.close();
-        c.add(10L); // atomic value updates but observation is NOT queued (metric disabled)
-        assertEquals(1, c.getObservationsCountEstimate());
+        IncreasingCounter counter = counter();
+        counter.add(5L);
+        counter.close();
+        counter.add(10L);
+        assertEquals(1, counter.getObservationsCountEstimate());
     }
 
     @Test
-    void close_withNoOtelHandle_disablesMetric() {
-        IncreasingCounter c = counter();
-        c.close();
-        assertFalse(c.isEnabled());
+    void close_withNoOtelHandle_isOpenReturnsFalse() {
+        IncreasingCounter counter = counter();
+        counter.close();
+        assertFalse(counter.isOpen());
     }
 
     @Test
-    void setOtelHandle_close_invokesHandleClose() throws Exception {
-        IncreasingCounter c = counter();
+    void open_close_invokesHandleClose() throws Exception {
+        IncreasingCounter counter = counter();
         ObservableLongCounter handle = mock(ObservableLongCounter.class);
-        c.setOtelHandle(handle);
-        c.close();
+        counter.open(handle);
+        counter.close();
         verify(handle).close();
     }
 
     @Test
-    void close_withOtelHandle_disablesMetric() {
-        IncreasingCounter c = counter();
-        c.setOtelHandle(mock(ObservableLongCounter.class));
-        c.close();
-        assertFalse(c.isEnabled());
+    void close_withOtelHandle_isOpenReturnsFalse() {
+        IncreasingCounter counter = counter();
+        counter.open(mock(ObservableLongCounter.class));
+        counter.close();
+        assertFalse(counter.isOpen());
     }
 
     @Test
-    void close_whenOtelHandleThrows_doesNotPropagateAndStillDisablesMetric() {
-        IncreasingCounter c = counter();
+    void close_whenOtelHandleThrows_doesNotPropagateAndIsOpenReturnsFalse() {
+        IncreasingCounter counter = counter();
         ObservableLongCounter handle = mock(ObservableLongCounter.class);
         doThrow(new RuntimeException("otel close failed")).when(handle).close();
-        c.setOtelHandle(handle);
-        assertDoesNotThrow(c::close);
-        assertFalse(c.isEnabled());
+        counter.open(handle);
+        assertDoesNotThrow(counter::close);
+        assertFalse(counter.isOpen());
     }
 }

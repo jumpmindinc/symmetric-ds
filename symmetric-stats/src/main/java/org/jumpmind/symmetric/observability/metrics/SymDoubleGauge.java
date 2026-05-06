@@ -34,18 +34,17 @@ import io.opentelemetry.api.metrics.ObservableDoubleGauge;
  * every {@link #setValue} or {@link #add} call, so no OTel work happens on the instrumented thread. The {@link ObservableDoubleGauge} handle is held here so it
  * can be closed (unregistering the callback) during service shutdown.
  */
-public class SymDoubleGauge extends AbstractDoubleGaugeMetric implements ISymDoubleGauge { 
-
+public class SymDoubleGauge extends AbstractDoubleGaugeMetric implements ISymDoubleGauge {
     SymDoubleGauge(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
         super(definition, attributes, metricAttributes);
     }
- 
+
     @Override
     public void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableDoubleGauge)) {
             String message = String.format("Expected ObservableDoubleGauge, got %s", handle.getClass().getName());
             throw new IllegalArgumentException(message);
         }
-        super.open(handle);  
+        super.open(handle);
     }
 }
