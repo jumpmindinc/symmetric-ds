@@ -27,18 +27,16 @@ import java.util.concurrent.atomic.AtomicLong;
  * into permanent storage.
  */
 public class SurrogateLongKeyBuffer {
-    public static final long SURROGATE_KEY_UNASSIGNED = -1l;
-    public static final long SURROGATE_KEY_BUFFER_SIZE = 10l;
-    private long start = SURROGATE_KEY_UNASSIGNED;
-    private long end = SURROGATE_KEY_UNASSIGNED;
-    private final AtomicLong nextKey = new AtomicLong(SURROGATE_KEY_UNASSIGNED);
+    private long start = SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED;
+    private long end = SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED;
+    private final AtomicLong nextKey = new AtomicLong(SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED);
 
     public SurrogateLongKeyBuffer() {
     }
 
     public SurrogateLongKeyBuffer(long start) {
         this.start = start;
-        this.end = start + SURROGATE_KEY_BUFFER_SIZE - 1;
+        this.end = start + SurrogateKeyConstants.SURROGATE_KEY_BUFFER_SIZE - 1;
         this.nextKey.set(start);
     }
 
@@ -47,15 +45,15 @@ public class SurrogateLongKeyBuffer {
     }
 
     public long capacity() {
-        return SURROGATE_KEY_BUFFER_SIZE;
+        return SurrogateKeyConstants.SURROGATE_KEY_BUFFER_SIZE;
     }
 
     public static long roundDownToBufferStart(long value) {
-        return SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE * (value / SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE);
+        return SurrogateKeyConstants.SURROGATE_KEY_BUFFER_SIZE * (value / SurrogateKeyConstants.SURROGATE_KEY_BUFFER_SIZE);
     }
 
     public static long roundUpToNextBufferStart(long value) {
-        return roundDownToBufferStart(value) + SURROGATE_KEY_BUFFER_SIZE;
+        return roundDownToBufferStart(value) + SurrogateKeyConstants.SURROGATE_KEY_BUFFER_SIZE;
     }
 
     public long size() {
@@ -67,7 +65,7 @@ public class SurrogateLongKeyBuffer {
      */
     public long getNextValue() {
         long currentValue = this.nextKey.get();
-        if (currentValue == SURROGATE_KEY_UNASSIGNED) {
+        if (currentValue == SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED) {
             throw new ExceptionInInitializerError("Surrogate keys buffer has not been initialized");
         }
         if (currentValue > this.end) {
@@ -79,7 +77,7 @@ public class SurrogateLongKeyBuffer {
 
     public long peekNextValue() {
         long currentValue = this.nextKey.get();
-        if (currentValue == SURROGATE_KEY_UNASSIGNED) {
+        if (currentValue == SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED) {
             throw new ExceptionInInitializerError("Surrogate keys buffer has not been initialized");
         }
         return currentValue;
@@ -87,12 +85,12 @@ public class SurrogateLongKeyBuffer {
 
     public boolean isAvailable() {
         long currentValue = this.nextKey.get();
-        return (currentValue != SURROGATE_KEY_UNASSIGNED && currentValue <= this.end);
+        return (currentValue != SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED && currentValue <= this.end);
     }
 
     public void moveTo(long start, long nextKey) {
         this.start = start;
-        this.end = start + SURROGATE_KEY_BUFFER_SIZE - 1;
+        this.end = start + SurrogateKeyConstants.SURROGATE_KEY_BUFFER_SIZE - 1;
         this.nextKey.set(nextKey);
         if (start < 0) {
             throw new ExceptionInInitializerError(String.format("Value for start cannot be negative for surrogate keys buffer. start=%d, nextKey=%d", start,

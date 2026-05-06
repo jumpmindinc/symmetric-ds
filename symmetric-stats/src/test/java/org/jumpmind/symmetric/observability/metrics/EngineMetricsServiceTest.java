@@ -38,16 +38,27 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.model.MetricFactType;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusMetricsMap;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.MetricContext;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.MetricKey;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.repository.MetricsRepository;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -94,8 +105,7 @@ class EngineMetricsServiceTest {
     @Test
     void shutdown_clearsRegisteredMetrics() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
-        service.registerUpDownCounter(new SymMetricDefinition("s.ud", "d", "r",
-                org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType.UPDOWN_COUNTER));
+        service.registerUpDownCounter(new SymMetricDefinition("s.ud", "d", "r", InstrumentType.UPDOWN_COUNTER));
         assertFalse(service.getAllMetrics().isEmpty());
         service.shutdown();
         assertTrue(service.getAllMetrics().isEmpty());
@@ -141,7 +151,7 @@ class EngineMetricsServiceTest {
     @Test
     void getOrAssignContextId_withAttributesAndRepo_registersContextAndReturns() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
-        MetricAttribute attr = new MetricAttribute("channel", "default");
+        MetricAttribute attr = new MetricAttribute("channel", Constants.CHANNEL_DEFAULT);
         UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), io.opentelemetry.api.common.Attributes
                 .empty(), List.of(attr));
         MetricsRepository repo = mock(MetricsRepository.class);
@@ -154,7 +164,7 @@ class EngineMetricsServiceTest {
     @Test
     void getOrAssignContextId_withAttributesButNullRepo_returnsUndefined() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
-        MetricAttribute attr = new MetricAttribute("channel", "default");
+        MetricAttribute attr = new MetricAttribute("channel", Constants.CHANNEL_DEFAULT);
         UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), io.opentelemetry.api.common.Attributes
                 .empty(), List.of(attr));
         assertEquals(MetricContext.UNDEFINED, service.getOrAssignContextId(metric, null));

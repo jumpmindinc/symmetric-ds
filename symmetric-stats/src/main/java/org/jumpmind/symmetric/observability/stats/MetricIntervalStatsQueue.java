@@ -41,7 +41,7 @@ public class MetricIntervalStatsQueue implements Queue<ISymIntervalStats> {
     public MetricIntervalStatsQueue() {
         super();
     }
- 
+
     @Override
     public boolean addAll(Collection<? extends ISymIntervalStats> collection) {
         boolean changed = false;

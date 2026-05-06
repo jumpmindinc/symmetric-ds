@@ -229,7 +229,7 @@ public class MetricsRepository extends AbstractService {
     private MetricKey generateSurrogateKeyAndSaveMetricKeyToDatabase(String metricId, String engineName, String hostname, MetricFactType factType,
             InstrumentType metricType, boolean isEnabled) {
         String keyInfo = String.format(" metricId=%s, engine=%s, hostname=%s, factType=%s", metricId, engineName, hostname, factType);
-        long surrogateKeyBufferSize = SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
+        long surrogateKeyBufferSize = SurrogateKeyConstants.SURROGATE_KEY_BUFFER_SIZE;
         log.debug("Saving metric key and determining new surrogate key ... {}", keyInfo);
         for (int attempt = 1; attempt <= SURROGATE_KEY_MAX_RETRIES; attempt++) {
             ISqlTransaction transaction = null;
@@ -559,7 +559,7 @@ public class MetricsRepository extends AbstractService {
         validateAttributes(attrs);
         int hash = MetricContext.computeHash(attrs);
         String[] av = attrValues(attrs);
-        long bufferSize = SurrogateLongKeyBuffer.SURROGATE_KEY_BUFFER_SIZE;
+        long bufferSize = SurrogateKeyConstants.SURROGATE_KEY_BUFFER_SIZE;
         Object[] params = { bufferSize, bufferSize, bufferSize, hash, av[0], av[1], av[2], av[3], av[4], av[5] };
         int[] types = { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                 Types.VARCHAR };

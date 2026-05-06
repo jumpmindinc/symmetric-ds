@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
-import static org.jumpmind.symmetric.observability.repository.SurrogateLongKeyBuffer.SURROGATE_KEY_UNASSIGNED;
+import static org.jumpmind.symmetric.observability.repository.SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 

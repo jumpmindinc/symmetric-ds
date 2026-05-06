@@ -80,14 +80,14 @@ public class MetricSeriesSlidingWorkset {
     /** Adds to the outliers collection. If the outliers buffer is full, then moves all to the current workset (adopts all outliers as new trend). */
     private void addToOutliers(ISymIntervalStats interval) {
         outliers.add(interval);
-        adoptOutliersIfBufferFull();       
+        adoptOutliersIfBufferFull();
     }
-                                                                                                                       
-    private void adoptOutliersIfBufferFull() {                                                                                
-       if (outliers.size() >= IQR_OUTLIERS_MAX) {
+
+    private void adoptOutliersIfBufferFull() {
+        if (outliers.size() >= IQR_OUTLIERS_MAX) {
             moveOutliersToWorkset();
-        }                                                                                   
-    }    
+        }
+    }
 
     private ISymIntervalStats markAsOutlier(ISymIntervalStats interval) {
         if (interval.isOutlier()) {

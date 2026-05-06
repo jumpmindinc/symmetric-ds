@@ -38,19 +38,33 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.sql.ISqlRowMapper;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.sql.ISqlTemplate;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.sql.ISqlTransaction;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.db.sql.UniqueKeyException;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.model.MetricFactType;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.metrics.ContextDefinition;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.MetricContext;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.MetricKey;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -331,7 +345,7 @@ class MetricsRepositoryTest {
     void updateMetricKeyInDatabase_surrogateKeyMissing_returnsDbRecord() {
         MetricKey dbRec = key(10L, "m1", TEST_ENGINE, TEST_HOST);
         // isSurrogateKeyMissing() → key == SURROGATE_KEY_UNASSIGNED (-1)
-        MetricKey keyMissing = key(SurrogateLongKeyBuffer.SURROGATE_KEY_UNASSIGNED, "m1", TEST_ENGINE, TEST_HOST);
+        MetricKey keyMissing = key(SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED, "m1", TEST_ENGINE, TEST_HOST);
         MetricKey result = invokePrivate(repo, "updateMetricKeyInDatabase",
                 new Class<?>[] { MetricKey.class, MetricKey.class }, keyMissing, dbRec);
         assertSame(dbRec, result);
@@ -432,7 +446,7 @@ class MetricsRepositoryTest {
         MetricKey loaded = key(60L, "m1", MetricsRepository.METRIC_SHARED_ENGINE, TEST_HOST);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
                 .thenReturn(List.of(loaded));
-        MetricKey missing = key(SurrogateLongKeyBuffer.SURROGATE_KEY_UNASSIGNED,
+        MetricKey missing = key(SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED,
                 "m1", MetricsRepository.METRIC_SHARED_ENGINE, TEST_HOST);
         // isSurrogateKeyMissing() == true → delegates to String overload → shared engine: generate path
         MetricKey result = invokePrivate(repo, "saveMetricKeyInternal",
@@ -520,7 +534,7 @@ class MetricsRepositoryTest {
 
     @Test
     void getOrRegisterContext_def_inSeedCache_returnsCached() {
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         MetricContext ctx = new MetricContext(1L, attrs);
         String cacheKey = MetricsRepository.contextCacheKey(attrs);
         Map<String, MetricContext> seedCache = getField(repo, "seedContextCache");
@@ -532,7 +546,7 @@ class MetricsRepositoryTest {
 
     @Test
     void getOrRegisterContext_def_notInCacheFoundInDb_cachesAndReturns() throws Exception {
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "reload"));
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_RELOAD));
         MetricContext dbCtx = new MetricContext(2L, attrs);
         // loadContextByAttrsFromDatabase: sqlTemplate.query (varargs form) returns dbCtx
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), (Object[]) any()))

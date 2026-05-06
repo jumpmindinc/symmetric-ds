@@ -29,6 +29,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -68,7 +69,7 @@ class MetricsRepositoryValidateAttributesTest {
 
     @Test
     void singleValidAttr_doesNotThrow() {
-        assertDoesNotThrow(() -> invoke(List.of(new MetricAttribute("channel", "default"))));
+        assertDoesNotThrow(() -> invoke(List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT))));
     }
 
     @Test

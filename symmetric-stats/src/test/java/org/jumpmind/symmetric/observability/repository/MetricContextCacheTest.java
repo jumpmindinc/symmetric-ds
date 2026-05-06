@@ -27,7 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.MetricContext;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -49,13 +51,13 @@ class MetricContextCacheTest {
 
     @Test
     void cacheKey_singleAttr_containsName() {
-        String key = MetricsRepository.contextCacheKey(List.of(new MetricAttribute("channel", "default")));
+        String key = MetricsRepository.contextCacheKey(List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT)));
         assertTrue(key.startsWith("channel="), "Key should start with attr name");
     }
 
     @Test
     void cacheKey_twoAttrs_namesJoinedByPlus() {
-        var attrs = List.of(new MetricAttribute("channel", "default"), new MetricAttribute("node_group", "store"));
+        var attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT), new MetricAttribute("node_group", "store"));
         String key = MetricsRepository.contextCacheKey(attrs);
         assertTrue(key.startsWith("channel+node_group="));
     }
@@ -80,14 +82,14 @@ class MetricContextCacheTest {
 
     @Test
     void cacheKey_sameAttrs_isRepeatable() {
-        var attrs = List.of(new MetricAttribute("channel", "default"));
+        var attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         assertEquals(MetricsRepository.contextCacheKey(attrs), MetricsRepository.contextCacheKey(attrs));
     }
 
     @Test
     void cacheKey_differentValues_produceDifferentKeys() {
-        var a = List.of(new MetricAttribute("channel", "default"));
-        var b = List.of(new MetricAttribute("channel", "reload"));
+        var a = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
+        var b = List.of(new MetricAttribute("channel", Constants.CHANNEL_RELOAD));
         assertNotEquals(MetricsRepository.contextCacheKey(a), MetricsRepository.contextCacheKey(b));
     }
 
@@ -109,22 +111,22 @@ class MetricContextCacheTest {
 
     @Test
     void attributesMatch_sameAttrs_returnsTrue() {
-        var attrs = List.of(new MetricAttribute("channel", "default"));
+        var attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         MetricContext ctx = new MetricContext(1L, attrs);
         assertTrue(MetricsRepository.attributesMatch(ctx, attrs));
     }
 
     @Test
     void attributesMatch_differentValue_returnsFalse() {
-        var ctxAttrs = List.of(new MetricAttribute("channel", "default"));
-        var queryAttrs = List.of(new MetricAttribute("channel", "reload"));
+        var ctxAttrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
+        var queryAttrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_RELOAD));
         MetricContext ctx = new MetricContext(1L, ctxAttrs);
         assertFalse(MetricsRepository.attributesMatch(ctx, queryAttrs));
     }
 
     @Test
     void attributesMatch_differentName_returnsFalse() {
-        var ctxAttrs = List.of(new MetricAttribute("channel", "default"));
+        var ctxAttrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         var queryAttrs = List.of(new MetricAttribute("node_group", "default"));
         MetricContext ctx = new MetricContext(1L, ctxAttrs);
         assertFalse(MetricsRepository.attributesMatch(ctx, queryAttrs));
@@ -139,7 +141,7 @@ class MetricContextCacheTest {
     @Test
     void attributesMatch_emptyVsNonEmpty_returnsFalse() {
         MetricContext ctx = new MetricContext(1L, List.of());
-        assertFalse(MetricsRepository.attributesMatch(ctx, List.of(new MetricAttribute("channel", "default"))));
+        assertFalse(MetricsRepository.attributesMatch(ctx, List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT))));
     }
 
     @Test

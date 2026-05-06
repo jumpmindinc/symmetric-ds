@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.junit.jupiter.api.Test;
 
@@ -67,7 +68,7 @@ class MetricContextTest {
 
     @Test
     void getAttributes_returnsConstructorValue() {
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         MetricContext ctx = new MetricContext(1L, attrs);
         assertEquals(attrs, ctx.getAttributes());
         assertEquals(attrs, ctx.attributes());
@@ -124,20 +125,20 @@ class MetricContextTest {
 
     @Test
     void computeHash_singleAttr_isRepeatable() {
-        var attrs = List.of(new MetricAttribute("channel", "default"));
+        var attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         assertEquals(MetricContext.computeHash(attrs), MetricContext.computeHash(attrs));
     }
 
     @Test
     void computeHash_differentValues_produceDifferentHashes() {
-        var a = List.of(new MetricAttribute("channel", "default"));
-        var b = List.of(new MetricAttribute("channel", "reload"));
+        var a = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
+        var b = List.of(new MetricAttribute("channel", Constants.CHANNEL_RELOAD));
         assertNotEquals(MetricContext.computeHash(a), MetricContext.computeHash(b));
     }
 
     @Test
     void computeHash_differentNames_produceDifferentHashes() {
-        var a = List.of(new MetricAttribute("channel", "default"));
+        var a = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         var b = List.of(new MetricAttribute("node_group", "default"));
         assertNotEquals(MetricContext.computeHash(a), MetricContext.computeHash(b));
     }

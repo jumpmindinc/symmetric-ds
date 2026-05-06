@@ -29,11 +29,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.IIncreasingCounter;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -234,7 +240,7 @@ class HostMetricsServiceTest {
     void registerUpDownCounter_withAttrs_createsEntryRetrievableWithSameAttrs() {
         HostMetricsService service = new HostMetricsService(manager, false);
         SymMetricDefinition def = new SymMetricDefinition("test.ud.attrs", "desc", "rows", InstrumentType.UPDOWN_COUNTER);
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         IUpDownCounter counter = service.registerUpDownCounter(def, attrs);
         assertNotNull(counter);
         assertSame(counter, service.getUpDownCounter("test.ud.attrs", attrs));
@@ -244,7 +250,7 @@ class HostMetricsServiceTest {
     void registerIncreasingCounter_withAttrs_createsEntryRetrievableWithSameAttrs() {
         HostMetricsService service = new HostMetricsService(manager, false);
         SymMetricDefinition def = new SymMetricDefinition("test.ic.attrs", "desc", "rows", InstrumentType.COUNTER);
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         IIncreasingCounter counter = service.registerIncreasingCounter(def, attrs);
         assertNotNull(counter);
         assertSame(counter, service.getIncreasingCounter("test.ic.attrs", attrs));
@@ -267,7 +273,7 @@ class HostMetricsServiceTest {
     void registerDoubleGauge_withAttrs_createsEntryRetrievableWithSameAttrs() {
         HostMetricsService service = new HostMetricsService(manager, false);
         SymMetricDefinition def = new SymMetricDefinition("test.dg.attrs", "desc", "percent", InstrumentType.DOUBLE_GAUGE);
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         ISymDoubleGauge gauge = service.registerDoubleGauge(def, attrs);
         assertNotNull(gauge);
         assertSame(gauge, service.getDoubleGauge("test.dg.attrs", attrs));
@@ -284,7 +290,7 @@ class HostMetricsServiceTest {
     void registerLongGauge_withAttrs_createsEntryRetrievableWithSameAttrs() {
         HostMetricsService service = new HostMetricsService(manager, false);
         SymMetricDefinition def = new SymMetricDefinition("test.lg.attrs2", "desc", "connections", InstrumentType.LONG_GAUGE);
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         ISymLongGauge gauge = service.registerLongGauge(def, attrs);
         assertNotNull(gauge);
         assertSame(gauge, service.getLongGauge("test.lg.attrs2", attrs));
@@ -323,7 +329,7 @@ class HostMetricsServiceTest {
     void buildInstrumentAttributes_withNonEmptyAttrs_mergesAttributesForOtelHandle() {
         HostMetricsService service = new HostMetricsService(manager, true);
         SymMetricDefinition def = new SymMetricDefinition("otel.ud.merge", "desc", "rows", InstrumentType.UPDOWN_COUNTER);
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", "default"));
+        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         assertNotNull(service.registerUpDownCounter(def, attrs));
     }
 

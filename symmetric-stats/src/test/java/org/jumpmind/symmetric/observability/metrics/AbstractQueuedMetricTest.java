@@ -32,16 +32,27 @@ import static org.mockito.Mockito.mock;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.model.MetricFactType;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 import org.junit.jupiter.api.Test;
 
@@ -335,7 +346,7 @@ class AbstractQueuedMetricTest {
 
     @Test
     void getAttributes_nonEmptyList_returnsProvidedAttributes() {
-        MetricAttribute attr = new MetricAttribute("channel", "default");
+        MetricAttribute attr = new MetricAttribute("channel", Constants.CHANNEL_DEFAULT);
         UpDownCounter m = newCounterWithAttrs(List.of(attr));
         List<MetricAttribute> attrs = m.getAttributes();
         assertEquals(1, attrs.size());
