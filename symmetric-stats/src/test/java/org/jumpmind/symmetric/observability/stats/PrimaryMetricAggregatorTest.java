@@ -101,12 +101,12 @@ class PrimaryMetricAggregatorTest {
 
     @Test
     void processAll_withEmptyMetricsManager_doesNotThrow() {
-        assertDoesNotThrow(() -> aggregator.processAll());
+        assertDoesNotThrow(() -> aggregator.processAllMetrics());
     }
 
     @Test
     void closeAll_withEmptyMetricsManager_doesNotThrow() {
-        assertDoesNotThrow(() -> aggregator.closeAll());
+        assertDoesNotThrow(() -> aggregator.closeAllMetrics());
     }
     // ── processAll with a registered service ──────────────────────────────────
 
@@ -116,7 +116,7 @@ class PrimaryMetricAggregatorTest {
         when(svc.getEngineName()).thenReturn("test-engine");
         when(svc.getAllMetrics()).thenReturn(List.of());
         metricsManager.register(svc);
-        aggregator.processAll();
+        aggregator.processAllMetrics();
         verify(svc).getAllMetrics();
         verify(svc).saveCompletedIntervalStats();
     }
@@ -127,7 +127,7 @@ class PrimaryMetricAggregatorTest {
         IEngineMetricsService svc = mock(IEngineMetricsService.class);
         when(svc.getEngineName()).thenReturn("test-engine");
         metricsManager.register(svc);
-        aggregator.closeAll();
+        aggregator.closeAllMetrics();
         verify(svc).shutdown();
     }
 }

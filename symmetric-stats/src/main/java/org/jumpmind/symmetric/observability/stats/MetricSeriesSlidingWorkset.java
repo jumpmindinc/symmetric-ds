@@ -52,6 +52,10 @@ public class MetricSeriesSlidingWorkset {
     private final ArrayDeque<ISymIntervalStats> intervals = new ArrayDeque<>(IQR_INTERVALS_MAX); // FILO: Oldest time window at the end of queue, newest first
     private final ArrayDeque<ISymIntervalStats> outliers = new ArrayDeque<>(IQR_OUTLIERS_MAX);
 
+    public static int getMinIntervalsForOutlierDetection(){
+        return IQR_INTERVALS_MIN;
+    }
+
     /**
      * Adds an interval directly to the workset, bypassing outlier detection. Intended for seed data for outlier detection from historical entries at startup.
      */

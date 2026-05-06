@@ -678,8 +678,9 @@ public class MetricsRepository extends AbstractService {
         log.debug("Loading metric intervals from database for key... {}", key);
         java.sql.Timestamp oneDayAgo = new java.sql.Timestamp(System.currentTimeMillis() - java.util.concurrent.TimeUnit.DAYS.toMillis(1));
         String sqlKey = key.factType() == MetricFactType.INT64 ? "selectRecentIntervalsInt64Sql" : "selectRecentIntervalsSql";
+        int limitRecords = MetricSeriesSlidingWorkset.getMinIntervalsForOutlierDetection();
         List<ISymIntervalStats> rows = sqlTemplate.query(
-                getSql(sqlKey), MetricSeriesSlidingWorkset.IQR_INTERVALS_MAX, new DoubleStatsSqlRowMapper(), key.key(), oneDayAgo);
+                getSql(sqlKey), limitRecords, new DoubleStatsSqlRowMapper(), key.key(), oneDayAgo);
         log.info("Loaded {} historical intervals for metric {}", rows.size(), key);
         return rows;
     }

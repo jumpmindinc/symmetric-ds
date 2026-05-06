@@ -53,11 +53,11 @@ class AbstractQueuedMetricTest {
     private static final long D = AbstractStatsAccumulator.INTERVAL_DURATION_MS; // 300_000
 
     private static UpDownCounter newCounter() {
-        return new UpDownCounter("test.metric", Attributes.empty(), List.of());
+        return new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
     }
 
     private static UpDownCounter newCounterWithAttrs(List<MetricAttribute> attrs) {
-        return new UpDownCounter("test.metric", Attributes.empty(), attrs);
+        return new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), attrs);
     }
 
     private static ObservationLong obs(long value, long timestamp) {

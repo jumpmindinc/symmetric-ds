@@ -179,8 +179,7 @@ public class MetricsManager {
     }
 
     /**
-     * Registers a callback-based observable long gauge with no extra attributes. The returned handle is {@link AutoCloseable}; close it to unregister the
-     * callback.
+     * Registers a callback-based observable long gauge with no extra attributes.
      */
     public ObservableLongGauge createObservableLongGauge(String metricId, String description, String unitOfMeasurement,
             LongSupplier valueSupplier) {

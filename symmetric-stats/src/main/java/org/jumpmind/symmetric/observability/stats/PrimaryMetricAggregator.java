@@ -103,32 +103,35 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
                     log.trace("Sleeping {} thread for {} milliseconds. ThreadId={} ....", AGGREGATOR_PROCESSING_THREAD, remainingMs, Thread.currentThread().getId());
                     Thread.sleep(remainingMs);
                 }
-                processAll();
+                processAllMetrics();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 log.warn("Thread interrupted " + AGGREGATOR_PROCESSING_THREAD, e);
-                closeAll(); // Interruptions require immediate exit, without delay from processing observations!
+                closeAllMetrics(); // Interruptions require immediate exit, so discard all unprocessed observations!
                 return;
-            } catch (Exception e) {
-                log.error("Error during metrics processing", e);
+            } catch (Exception ex) {
+                log.error("Error during metrics processing", ex);
             }
         }
-        processAll(); // Final processing before exit
-        closeAll(); // Close all open accumulators and metrics before exit
+        processAllMetrics(); // Final processing before exit
+        closeAllMetrics();
         log.info("Exited metrics processing gracefully.");
     }
 
-    void closeAll() {
+    void closeAllMetrics() {
         for (IEngineMetricsService svc : metricsManager.getEngineMetricsServices()) {
+            MDC.put("engineName", svc.getEngineName());
             try {
                 svc.shutdown();
             } catch (Exception e) {
                 log.error("Failed to close metrics service for engine " + svc.getEngineName(), e);
+            } finally {
+                MDC.remove("engineName");
             }
         }
     }
 
-    void processAll() {
+    void processAllMetrics() {
         for (IEngineMetricsService svc : metricsManager.getEngineMetricsServices()) {
             MDC.put("engineName", svc.getEngineName());
             try {

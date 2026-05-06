@@ -20,7 +20,6 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -42,8 +41,10 @@ import org.slf4j.LoggerFactory;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.common.AttributesBuilder;
+import io.opentelemetry.api.metrics.ObservableDoubleGauge;
 import io.opentelemetry.api.metrics.ObservableLongCounter;
 import io.opentelemetry.api.metrics.ObservableLongGauge;
+import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 
 /**
  * Base class which owns multiple metrics (counters, gauges). Subclasses supply the attributes that identify the metric's scope (e.g. engine name, host).
@@ -55,7 +56,6 @@ abstract class AbstractMetricsService implements IMetricsService {
     protected final Attributes attributes;
     private final Map<String, ISymMetric> metrics = new ConcurrentHashMap<>();
     private final boolean isOtelPublishingEnabled;
-    private final List<AutoCloseable> otelHandles = new ArrayList<>();
 
     protected AbstractMetricsService(MetricsManager metricsManager, Attributes attributes, boolean isOtelPublishingEnabled) {
         this.metricsManager = metricsManager;
@@ -81,11 +81,16 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     private UpDownCounter createUpDownCounterInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
-        UpDownCounter counter = new UpDownCounter(definition.id(), this.attributes, attrs);
-        if (isOtelPublishingEnabled) {
-            Attributes instrAttrs = buildInstrumentAttributes(attrs);
-            otelHandles.add(metricsManager.createUpDownCounter(
-                    definition.id(), definition.description(), definition.unit(), counter::getValue, instrAttrs));
+        UpDownCounter counter = new UpDownCounter(definition, this.attributes, attrs);
+        if(counter.isEnabled()){
+            if (isOtelPublishingEnabled) {
+                Attributes instrAttrs = buildInstrumentAttributes(attrs);
+                ObservableLongUpDownCounter otelHandle = metricsManager.createUpDownCounter(
+                        definition.id(), definition.description(), definition.unit(), counter::getValue, instrAttrs);
+                counter.open(otelHandle);
+            } else {
+                counter.open(null);
+            }
         }
         return counter;
     }
@@ -122,12 +127,16 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     private IncreasingCounter createIncreasingCounterInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
-        IncreasingCounter counter = new IncreasingCounter(definition.id(), this.attributes, attrs);
-        if (isOtelPublishingEnabled) {
-            Attributes instrAttrs = buildInstrumentAttributes(attrs);
-            ObservableLongCounter handle = metricsManager.createIncreasingCounter(
-                    definition.id(), definition.description(), definition.unit(), counter::getValue, instrAttrs);
-            counter.setOtelHandle(handle);
+        IncreasingCounter counter = new IncreasingCounter(definition, this.attributes, attrs);
+        if(counter.isEnabled()){
+            if (isOtelPublishingEnabled) {
+                Attributes instrAttrs = buildInstrumentAttributes(attrs);
+                ObservableLongCounter handle = metricsManager.createIncreasingCounter(
+                        definition.id(), definition.description(), definition.unit(), counter::getValue, instrAttrs);
+                counter.open(handle);
+            } else {
+                counter.open(null);
+            }
         }
         return counter;
     }
@@ -151,11 +160,16 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     private SymDoubleGauge createDoubleGaugeInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
-        SymDoubleGauge gauge = new SymDoubleGauge(definition.id(), this.attributes, attrs);
-        if (isOtelPublishingEnabled) {
-            Attributes instrAttrs = buildInstrumentAttributes(attrs);
-            otelHandles.add(metricsManager.createDoubleGauge(
-                    definition.id(), definition.description(), definition.unit(), gauge::getValue, instrAttrs));
+        SymDoubleGauge gauge = new SymDoubleGauge(definition, this.attributes, attrs);
+        if(gauge.isEnabled()){
+            if (isOtelPublishingEnabled) {
+                Attributes instrAttrs = buildInstrumentAttributes(attrs);
+                ObservableDoubleGauge otelHandle = metricsManager.createDoubleGauge(
+                        definition.id(), definition.description(), definition.unit(), gauge::getValue, instrAttrs);
+                gauge.open(otelHandle);
+            } else {
+                gauge.open(null);
+            }
         }
         return gauge;
     }
@@ -183,12 +197,16 @@ abstract class AbstractMetricsService implements IMetricsService {
     }
 
     private SymLongGauge createLongGaugeInternal(ISymMetricDefinition definition, List<MetricAttribute> attrs) {
-        SymLongGauge gauge = new SymLongGauge(definition.id(), this.attributes, attrs);
-        if (isOtelPublishingEnabled) {
-            Attributes instrAttrs = buildInstrumentAttributes(attrs);
-            ObservableLongGauge handle = metricsManager.createLongGauge(
-                    definition.id(), definition.description(), definition.unit(), gauge::getValue, instrAttrs);
-            gauge.setOtelHandle(handle);
+        SymLongGauge gauge = new SymLongGauge(definition, this.attributes, attrs);
+        if(gauge.isEnabled()){
+            if (isOtelPublishingEnabled) {
+                Attributes instrAttrs = buildInstrumentAttributes(attrs);
+                ObservableLongGauge otelHandle = metricsManager.createLongGauge(
+                        definition.id(), definition.description(), definition.unit(), gauge::getValue, instrAttrs);
+                gauge.open(otelHandle);
+            } else {
+                gauge.open(null);
+            }
         }
         return gauge;
     }
@@ -219,6 +237,9 @@ abstract class AbstractMetricsService implements IMetricsService {
 
     protected void resetGaugesToZero() {
         for (ISymMetric metric : metrics.values()) {
+            if(!metric.isEnabled()){
+                continue;
+            }
             if (metric instanceof ISymDoubleGauge g) {
                 g.setValue(0.0);
             } else if (metric instanceof ISymLongGauge g) {
@@ -229,26 +250,22 @@ abstract class AbstractMetricsService implements IMetricsService {
 
     @Override
     public void shutdown() {
+        closeAllMetrics();        
+        metrics.clear();
+    }
+
+    protected void closeAllMetrics() {
         for (ISymMetric metric : metrics.values()) {
+            if(!metric.isOpen()) {
+                continue;
+            }
             try {
                 metric.close();
                 metric.removeAllObservations();
-            } catch (Exception e) {
-                log.warn("Failed to close metric {}", metric.getMetricId(), e);
+                log.debug("Closed metric {}", metric.getMetricId());
+            } catch (Exception ex) {
+                log.warn("Failed to close metric "+ metric.getMetricId(), ex);
             }
         }
-        metrics.clear();
-        closeAllOtelHandles();
-    }
-
-    private void closeAllOtelHandles() {
-        for (AutoCloseable handle : otelHandles) {
-            try {
-                handle.close();
-            } catch (Exception e) {
-                log.warn("Failed to close OTel instrument handle", e);
-            }
-        }
-        otelHandles.clear();
     }
 }

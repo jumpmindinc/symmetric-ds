@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.observability.metrics;
 import java.util.List;
 
 import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 
 import io.opentelemetry.api.common.Attributes;
@@ -34,25 +35,16 @@ import io.opentelemetry.api.metrics.ObservableLongGauge;
  * it can be closed (unregistering the callback) during service shutdown.
  */
 public class SymLongGauge extends AbstractLongGaugeMetric implements ISymLongGauge {
-    private ObservableLongGauge otelHandle;
-
-    SymLongGauge(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        super(metricId, attributes, metricAttributes);
-    }
-
-    void setOtelHandle(ObservableLongGauge handle) {
-        this.otelHandle = handle;
+    SymLongGauge(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(definition, attributes, metricAttributes);
     }
 
     @Override
-    public void close() {
-        if (otelHandle != null) {
-            try {
-                otelHandle.close();
-            } catch (Exception e) {
-                log.warn("Failed to close OTel handle for {}", getMetricId(), e);
-            }
+    public void open(AutoCloseable handle) {
+        if(handle != null && !(handle instanceof ObservableLongGauge)){
+            String message = String.format("Expected ObservableLongGauge, got %s" , handle.getClass().getName());
+            throw new IllegalArgumentException(message);
         }
-        super.close();
+        super.open(handle);
     }
 }

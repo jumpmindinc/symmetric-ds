@@ -22,8 +22,10 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
@@ -36,8 +38,8 @@ import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 public class UpDownCounter extends AbstractCounterMetric implements IUpDownCounter {
     private ObservableLongUpDownCounter otelHandle;
 
-    UpDownCounter(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        super(metricId, attributes, metricAttributes);
+    UpDownCounter(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(definition, attributes, metricAttributes, InstrumentType.UPDOWN_COUNTER);
     }
 
     void setOtelHandle(ObservableLongUpDownCounter handle) {
@@ -45,15 +47,11 @@ public class UpDownCounter extends AbstractCounterMetric implements IUpDownCount
     }
 
     @Override
-    public void close() {
-        if (otelHandle != null) {
-            try {
-                otelHandle.close();
-            } catch (Exception e) {
-                log.warn("Failed to close OTel handle for {}", getMetricId(), e);
-            }
-        }
-        super.close();
+    public void open(AutoCloseable handle) {
+        if(handle != null && !(handle instanceof ObservableLongUpDownCounter)){
+            String message = String.format("Expected ObservableLongUpDownCounter, got %s" , handle.getClass().getName());
+            throw new IllegalArgumentException(message);
+        } 
     }
 
     /**

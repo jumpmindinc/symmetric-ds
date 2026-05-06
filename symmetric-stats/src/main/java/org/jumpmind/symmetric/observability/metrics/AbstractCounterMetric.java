@@ -23,11 +23,12 @@ package org.jumpmind.symmetric.observability.metrics;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
+import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
-import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 
 import io.opentelemetry.api.common.Attributes;
@@ -38,12 +39,12 @@ import io.opentelemetry.api.common.Attributes;
 public abstract class AbstractCounterMetric extends AbstractQueuedMetric {
     protected final AtomicLong currentValue = new AtomicLong(0);
 
-    AbstractCounterMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        this(metricId, attributes, metricAttributes, InstrumentType.UPDOWN_COUNTER);
-    }
+    // AbstractCounterMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
+    // this(metricId, attributes, metricAttributes, InstrumentType.UPDOWN_COUNTER);
+    // }
 
-    AbstractCounterMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes, InstrumentType instrumentType) {
-        super(metricId, attributes, metricAttributes, MetricFactType.INT64, instrumentType);
+    AbstractCounterMetric(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes, InstrumentType instrumentType) {
+        super(definition, attributes, metricAttributes, MetricFactType.INT64, instrumentType);
     }
 
     @Override

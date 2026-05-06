@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.observability.metrics;
 import java.util.List;
 
 import org.jumpmind.symmetric.observability.interfaces.IIncreasingCounter;
+import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 
@@ -36,24 +37,21 @@ import io.opentelemetry.api.metrics.ObservableLongCounter;
 public class IncreasingCounter extends AbstractCounterMetric implements IIncreasingCounter {
     private ObservableLongCounter otelHandle;
 
-    IncreasingCounter(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        super(metricId, attributes, metricAttributes, InstrumentType.COUNTER);
+    IncreasingCounter(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(definition, attributes, metricAttributes, InstrumentType.COUNTER);
     }
 
     void setOtelHandle(ObservableLongCounter handle) {
         this.otelHandle = handle;
     }
 
+
     @Override
-    public void close() {
-        if (otelHandle != null) {
-            try {
-                otelHandle.close();
-            } catch (Exception e) {
-                log.warn("Failed to close OTel handle for {}", getMetricId(), e);
-            }
-        }
-        super.close();
+    public void open(AutoCloseable handle) {
+        if(handle != null && !(handle instanceof ObservableLongCounter)){
+            String message = String.format("Expected ObservableLongCounter, got %s" , handle.getClass().getName());
+            throw new IllegalArgumentException(message);
+        } 
     }
 
     @Override

@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +41,7 @@ import io.opentelemetry.api.metrics.ObservableLongGauge;
  */
 class SymLongGaugeTest {
     private static SymLongGauge gauge() {
-        return new SymLongGauge("test.long.gauge", Attributes.empty(), List.of());
+        return new SymLongGauge(new SymMetricDefinition("test.long.gauge", "", "", InstrumentType.LONG_GAUGE), Attributes.empty(), List.of());
     }
 
     @Test
@@ -90,29 +91,29 @@ class SymLongGaugeTest {
     }
 
     @Test
-    void setOtelHandle_close_invokesHandleClose() throws Exception {
+    void open_close_invokesHandleClose() throws Exception {
         SymLongGauge g = gauge();
         ObservableLongGauge handle = mock(ObservableLongGauge.class);
-        g.setOtelHandle(handle);
+        g.open(handle);
         g.close();
         verify(handle).close();
     }
 
     @Test
-    void close_withOtelHandle_disablesMetric() {
+    void close_withOtelHandle_closesMetric() {
         SymLongGauge g = gauge();
-        g.setOtelHandle(mock(ObservableLongGauge.class));
+        g.open(mock(ObservableLongGauge.class));
         g.close();
-        assertFalse(g.isEnabled());
+        assertFalse(g.isOpen());
     }
 
     @Test
-    void close_whenOtelHandleThrows_doesNotPropagateAndStillDisablesMetric() {
+    void close_whenOtelHandleThrows_doesNotPropagateAndStillClosesMetric() {
         SymLongGauge g = gauge();
         ObservableLongGauge handle = mock(ObservableLongGauge.class);
         doThrow(new RuntimeException("otel close failed")).when(handle).close();
-        g.setOtelHandle(handle);
+        g.open(handle);
         assertDoesNotThrow(g::close);
-        assertFalse(g.isEnabled());
+        assertFalse(g.isOpen());
     }
 }

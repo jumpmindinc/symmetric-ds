@@ -27,16 +27,24 @@ import org.jumpmind.symmetric.model.MetricFactType;
 public interface ISymMetric {
     String getMetricId();
 
-    /** Returns the metric context, or {@code null} if not yet assigned by the repository. */
+    /** Returns the metric context (equivalent to OpenTelemetry attributes), or null if not yet assigned by the repository. */
     ISymMetricContext getContext();
 
     /** Write-once: ignored if a context has already been set. */
     void setContext(ISymMetricContext context);
 
-    /** Returns the attribute list supplied at instrument creation (0–3 elements, never null). */
+    /** Returns the attribute list supplied at creation time (0–3 elements, never null). */
     List<MetricAttribute> getAttributes();
 
+    /**
+     * Return system time (epoch) from when this metric was last modified (either value or state).
+    */
     long getLastModified();
+
+    /**
+     * Opens this metric for new observations. Also registers a callback if an external (optional) OpenTelemetry is specified.
+     */
+    void open(AutoCloseable externalMetricHandle);
 
     /**
      * Drains all completed intervals from this metric's queue into permanent storage (database).
@@ -44,14 +52,22 @@ public interface ISymMetric {
     void closeCompletedIntervals();
 
     /**
-     * Closes this metric, preventing any further observations from being recorded. Also unregisters the associated OTel callback if one is present.
+     * Closes this metric, preventing any further observations from being accepted. Also closes an exernal OpenTelemetry handle, if present.
      */
     void close();
 
+    /**
+     * Operational state: whether this metric accepts new observations. Depends on isEnabled=true (user configuration).
+     */
+    boolean isOpen();
+
+    /**
+     * User configuration for this metric: enabled by default, user can override this in database.
+     */
     boolean isEnabled();
 
     /**
-     * Creates the first accumulator for this metric. Called once when no prior interval exists. Implementations return the type appropriate for this metric
+     * Creates initial accumulator for this metric. Called once when no prior interval exists. Implementations return the type appropriate for this metric
      * ({@link org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator} for gauges,
      * {@link org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator} for counters). Carry-forward for subsequent windows uses
      * {@link org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator#createNext}.

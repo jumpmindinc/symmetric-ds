@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.observability.metrics;
 import java.util.List;
 
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 
 import io.opentelemetry.api.common.Attributes;
@@ -36,8 +37,8 @@ import io.opentelemetry.api.metrics.ObservableDoubleGauge;
 public class SymDoubleGauge extends AbstractDoubleGaugeMetric implements ISymDoubleGauge {
     private ObservableDoubleGauge otelHandle;
 
-    SymDoubleGauge(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-        super(metricId, attributes, metricAttributes);
+    SymDoubleGauge(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
+        super(definition, attributes, metricAttributes);
     }
 
     void setOtelHandle(ObservableDoubleGauge handle) {
@@ -45,14 +46,10 @@ public class SymDoubleGauge extends AbstractDoubleGaugeMetric implements ISymDou
     }
 
     @Override
-    public void close() {
-        if (otelHandle != null) {
-            try {
-                otelHandle.close();
-            } catch (Exception e) {
-                log.warn("Failed to close OTel handle for {}", getMetricId(), e);
-            }
-        }
-        super.close();
+    public void open(AutoCloseable handle) {
+        if(handle != null && !(handle instanceof ObservableDoubleGauge)){
+            String message = String.format("Expected ObservableDoubleGauge, got %s" , handle.getClass().getName());
+            throw new IllegalArgumentException(message);
+        } 
     }
 }

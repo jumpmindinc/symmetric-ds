@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.junit.jupiter.api.Test;
 
 import io.opentelemetry.api.common.Attributes;
@@ -39,7 +40,7 @@ import io.opentelemetry.api.metrics.ObservableDoubleGauge;
  */
 class SymDoubleGaugeTest {
     private static SymDoubleGauge gauge() {
-        return new SymDoubleGauge("test.double.gauge", Attributes.empty(), List.of());
+        return new SymDoubleGauge(new SymMetricDefinition("test.double.gauge", "", "", InstrumentType.DOUBLE_GAUGE), Attributes.empty(), List.of());
     }
 
     @Test

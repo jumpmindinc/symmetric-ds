@@ -133,7 +133,7 @@ class EngineMetricsServiceTest {
     @Test
     void getOrAssignContextId_noContextNoAttributes_returnsUndefined() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
-        UpDownCounter metric = new UpDownCounter("m", io.opentelemetry.api.common.Attributes.empty(), List.of());
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), io.opentelemetry.api.common.Attributes.empty(), List.of());
         assertEquals(MetricContext.UNDEFINED, service.getOrAssignContextId(metric, null));
     }
 
@@ -141,7 +141,7 @@ class EngineMetricsServiceTest {
     void getOrAssignContextId_withAttributesAndRepo_registersContextAndReturns() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
         MetricAttribute attr = new MetricAttribute("channel", "default");
-        UpDownCounter metric = new UpDownCounter("m", io.opentelemetry.api.common.Attributes.empty(), List.of(attr));
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), io.opentelemetry.api.common.Attributes.empty(), List.of(attr));
         MetricsRepository repo = mock(MetricsRepository.class);
         MetricContext ctx = new MetricContext(77L, List.of(attr));
         when(repo.getOrRegisterContext(any(List.class))).thenReturn(ctx);
@@ -153,7 +153,7 @@ class EngineMetricsServiceTest {
     void getOrAssignContextId_withAttributesButNullRepo_returnsUndefined() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
         MetricAttribute attr = new MetricAttribute("channel", "default");
-        UpDownCounter metric = new UpDownCounter("m", io.opentelemetry.api.common.Attributes.empty(), List.of(attr));
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), io.opentelemetry.api.common.Attributes.empty(), List.of(attr));
         assertEquals(MetricContext.UNDEFINED, service.getOrAssignContextId(metric, null));
         assertNull(metric.getContext());
     }
