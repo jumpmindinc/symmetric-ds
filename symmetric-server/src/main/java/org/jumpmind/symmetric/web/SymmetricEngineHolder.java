@@ -290,7 +290,6 @@ public class SymmetricEngineHolder {
                         IRegistrationService registrationService = currentEngine.getRegistrationService();
                         if (!registrationService.isAutoRegistration() && !registrationService.isRegistrationOpen(clientNodeGroupId, externalId)) {
                             Node node = new Node(properties);
-                            node.setSyncUrl(null);
                             if (TableConstants.getTables("").contains(TableConstants.SYM_CONSOLE_USER)) {
                                 node.setDeploymentType(Constants.DEPLOYMENT_TYPE_PROFESSIONAL);
                             }
