@@ -43,7 +43,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
-public class PushHeartbeatListenerTest {
+class PushHeartbeatListenerTest {
     private static final String EXTERNAL_ID = "external-1";
     private static final String NODE_GROUP_ID = "test-group";
     private static final String SCHEMA_VERSION = "v1";
