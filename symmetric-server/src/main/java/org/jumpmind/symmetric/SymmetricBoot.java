@@ -37,7 +37,6 @@ import org.jumpmind.symmetric.web.HttpMethodFilter;
 import org.jumpmind.symmetric.web.SymmetricContextListener;
 import org.jumpmind.symmetric.web.SymmetricServlet;
 import org.jumpmind.symmetric.web.WebConstants;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.Banner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -55,8 +54,11 @@ import jakarta.servlet.ServletException;
 
 @SpringBootApplication(scanBasePackages = { "org.jumpmind.symmetric", "com.jumpmind.symmetric" })
 public class SymmetricBoot extends SpringBootServletInitializer {
-    @Autowired
-    private Environment env;
+    private final Environment env;
+
+    public SymmetricBoot(Environment env) {
+        this.env = env;
+    }
 
     @Bean
     ServletContextInitializer servletContextInitializer() {

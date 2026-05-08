@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.job;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -110,6 +111,6 @@ class BuiltInJobsTest {
     void testSyncBuiltInJobs_returnsSameListInstance() {
         List<JobDefinition> existingJobs = new ArrayList<>();
         List<JobDefinition> result = builtInJobs.syncBuiltInJobs(existingJobs, engine, taskScheduler);
-        assertTrue(existingJobs == result, "Should return the same list instance");
+        assertSame(existingJobs, result, "Should return the same list instance");
     }
 }
