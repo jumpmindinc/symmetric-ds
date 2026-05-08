@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -50,16 +49,16 @@ import org.slf4j.LoggerFactory;
 public class PushHeartbeatListener implements IHeartbeatListener, IBuiltInExtensionPoint {
     protected final Logger log = LoggerFactory.getLogger(getClass());
     private ISymmetricEngine engine;
+    private IParameterService parameterService;
 
     public PushHeartbeatListener(ISymmetricEngine engine) {
         this.engine = engine;
+        this.parameterService = engine.getParameterService();
     }
 
     public void heartbeat(Node me) {
-        IParameterService parameterService = engine.getParameterService();
         if (parameterService.is(ParameterConstants.HEARTBEAT_ENABLED)) {
             ISymmetricDialect symmetricDialect = engine.getSymmetricDialect();
-            boolean updateWithBatchStatus = parameterService.is(ParameterConstants.HEARTBEAT_UPDATE_NODE_WITH_BATCH_STATUS, false);
             int batchInErrorCount = -1;
             int outgoingUnsentCount = -1;
             int outgoingUnsentRowCount = -1;
@@ -74,7 +73,7 @@ public class PushHeartbeatListener implements IHeartbeatListener, IBuiltInExtens
             long routingAveragetMs = -1;
             Date routingLastRun = null;
             long symDataSize = -1;
-            if (updateWithBatchStatus) {
+            if (hasUpdateNodeWithBatchStatus()) {
                 batchInErrorCount = engine.getOutgoingBatchService().countOutgoingBatchesInError();
                 batchInErrorCount += engine.getIncomingBatchService().countIncomingBatchesInError();
                 int[] batchesRowsUnsent = engine.getOutgoingBatchService().countOutgoingNonSystemBatchesRowsUnsent();
@@ -117,10 +116,10 @@ public class PushHeartbeatListener implements IHeartbeatListener, IBuiltInExtens
                     || (engine.getDeploymentType() != null && !engine.getDeploymentType().equals(me.getDeploymentType()))
                     || (engine.getDeploymentSubType() != null && !engine.getDeploymentSubType().equals(me.getDeploymentSubType()))
                     || !Version.version().equals(me.getSymmetricVersion())
-                    || (engine.getParameterService().isRegistrationServer() && !Version.version().equals(me.getConfigVersion()))
+                    || (parameterService.isRegistrationServer() && !Version.version().equals(me.getConfigVersion()))
                     || !symmetricDialect.getName().equals(me.getDatabaseType())
                     || !symmetricDialect.getVersion().equals(me.getDatabaseVersion())
-                    || (updateWithBatchStatus && (me.getBatchInErrorCount() != batchInErrorCount
+                    || (hasUpdateNodeWithBatchStatus() && (me.getBatchInErrorCount() != batchInErrorCount
                             || me.getBatchToSendCount() != outgoingUnsentCount
                             || me.getLastSuccessfulSyncDate() != lastSuccessfulSyncTime
                             || me.getMostRecentActiveTableSynced() != mostRecentActiveTableSynced
@@ -153,7 +152,7 @@ public class PushHeartbeatListener implements IHeartbeatListener, IBuiltInExtens
                 me.setRoutingLastMs(routingLastMs);
                 me.setSymDataSize(symDataSize);
                 me.setSchemaVersion(parameterService.getString(ParameterConstants.SCHEMA_VERSION));
-                if (engine.getParameterService().isRegistrationServer()) {
+                if (parameterService.isRegistrationServer()) {
                     me.setConfigVersion(Version.version());
                 }
                 if (parameterService.is(ParameterConstants.AUTO_UPDATE_NODE_VALUES)) {
@@ -166,14 +165,8 @@ public class PushHeartbeatListener implements IHeartbeatListener, IBuiltInExtens
                 }
                 engine.getNodeService().save(me);
             }
-            log.debug("Updating my node info");
-            Set<Node> targetNodes = new HashSet<Node>();
-            targetNodes.addAll(engine.getNodeService().findNodesWhoPullFromMe());
-            targetNodes.addAll(engine.getNodeService().findNodesToPushTo());
-            if (engine.getOutgoingBatchService().countOutgoingBatchesUnsentHeartbeat() < targetNodes.size() || targetNodes.size() == 0) {
-                engine.getNodeService().updateNodeHostForCurrentNode();
-            }
-            log.debug("Done updating my node info");
+            engine.getOutgoingBatchService().cancelStaleHeartbeatBatches();
+            engine.getNodeService().updateNodeHostForCurrentNode();
             if (!engine.getNodeService().isRegistrationServer()) {
                 if (!symmetricDialect.getPlatform().getDatabaseInfo().isTriggersSupported()) {
                     engine.getDataService().insertHeartbeatEvent(me, false);
@@ -211,7 +204,7 @@ public class PushHeartbeatListener implements IHeartbeatListener, IBuiltInExtens
                     return;
                 }
                 log.info("Removing configuration built by professional edition");
-                engine.getParameterService().deleteAllParameters();
+                parameterService.deleteAllParameters();
                 engine.getTriggerRouterService().deleteAllTriggerRouters();
                 engine.getTriggerRouterService().deleteAllTriggers();
                 engine.getFileSyncService().deleteAllFileTriggerRouters();
@@ -233,7 +226,11 @@ public class PushHeartbeatListener implements IHeartbeatListener, IBuiltInExtens
     }
 
     public long getTimeBetweenHeartbeatsInSeconds() {
-        return engine.getParameterService().getLong(
+        return parameterService.getLong(
                 ParameterConstants.HEARTBEAT_SYNC_ON_PUSH_PERIOD_SEC);
+    }
+
+    private boolean hasUpdateNodeWithBatchStatus() {
+        return parameterService.is(ParameterConstants.HEARTBEAT_UPDATE_NODE_WITH_BATCH_STATUS, false);
     }
 }
