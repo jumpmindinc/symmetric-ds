@@ -78,6 +78,7 @@ public class RegistrationServerRouter extends AbstractDataRouter implements IBui
 
     @Override
     public void completeBatch(SimpleRouterContext context, OutgoingBatch batch) {
+        // complete batch silently
     }
 
     @Override
