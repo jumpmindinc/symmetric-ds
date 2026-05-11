@@ -222,10 +222,10 @@ public class PushService extends AbstractOfflineDetectorService implements IPush
                 List<BatchAck> batchAcks = readAcks(extractedBatches, transport, transportManager, acknowledgeService, dataExtractorService);
                 status.updateOutgoingStatus(extractedBatches, batchAcks);
                 if (CollectionUtils.isEmpty(batchAcks)) {
-                    log.debug("Received {} acknowlegements for {} batches pushed to node {}",
+                    log.debug("Received {} acknowledgements for {} batches pushed to node {}",
                             batchAcks.size(), extractedBatches.size(), remote.getNodeId());
                 } else {
-                    log.warn("No acknowlegements were received for {} batches pushed to node {}",
+                    log.warn("No acknowledgements were received for {} batches pushed to node {}",
                             extractedBatches.size(), remote.getNodeId());
                 }
             } else {
