@@ -110,6 +110,19 @@ class RegistrationServerRouterTest {
     }
 
     @Test
+    void testRouteToNodes_selfReferentialCreatedAtNodeIdReturnsEmpty() {
+        Node identity = node("server", "server");
+        identity.setCreatedAtNodeId("server");
+        IDataRouter router = buildRouter(identity, false);
+        Set<Node> targets = new HashSet<Node>();
+        targets.add(node("client1", "client"));
+        Set<String> nodeIds = router.routeToNodes(new SimpleRouterContext(),
+                buildDataMetaData(), targets, false, false, null);
+        assertNotNull(nodeIds);
+        assertTrue(nodeIds.isEmpty());
+    }
+
+    @Test
     void testHasSomewhereToRoute_falseWhenRegistrationServer() {
         RegistrationServerRouter router = (RegistrationServerRouter) buildRouter(node("server", "server"), true);
         Node identity = node("server", "server");
@@ -137,6 +150,14 @@ class RegistrationServerRouterTest {
         Node identity = node("client1", "client");
         identity.setCreatedAtNodeId("server");
         assertTrue(router.hasSomewhereToRoute(identity));
+    }
+
+    @Test
+    void testHasSomewhereToRoute_falseWhenCreatedAtNodeIdEqualsNodeId() {
+        RegistrationServerRouter router = (RegistrationServerRouter) buildRouter(null, false);
+        Node identity = node("server", "server");
+        identity.setCreatedAtNodeId("server");
+        assertFalse(router.hasSomewhereToRoute(identity));
     }
 
     @Test

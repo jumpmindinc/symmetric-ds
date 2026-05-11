@@ -65,7 +65,8 @@ public class RegistrationServerRouter extends AbstractDataRouter implements IBui
     protected boolean hasSomewhereToRoute(Node identity) {
         return !isRegistrationServer()
                 && identity != null
-                && identity.getCreatedAtNodeId() != null;
+                && identity.getCreatedAtNodeId() != null
+                && !identity.getCreatedAtNodeId().equals(identity.getNodeId());
     }
 
     protected boolean isRegistrationServer() {
