@@ -66,6 +66,9 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
         if (batch.getBatchId() == Constants.VIRTUAL_BATCH_FOR_REGISTRATION) {
             if (batch.isOk()) {
                 registrationService.markNodeAsRegistered(batch.getNodeId());
+            } else {
+                log.warn("Registration batch had failed for node {} ! Error line={}, SQL message={}",
+                        batch.getNodeId(), batch.getErrorLine(), batch.getSqlMessage());
             }
         } else if (batch.getBatchId() != Constants.BATCH_ID_MISSING) {
             OutgoingBatch outgoingBatch = outgoingBatchService.findOutgoingBatch(batch.getBatchId(), batch.getNodeId());

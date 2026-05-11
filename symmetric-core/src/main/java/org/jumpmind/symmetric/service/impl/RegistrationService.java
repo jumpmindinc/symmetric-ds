@@ -121,6 +121,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
                 createSqlReplacementTokens()));
     }
 
+    @Override
     public Node registerPullOnlyNode(String externalId, String nodeGroupId,
             String databaseType, String databaseVersion, String databaseName)
             throws IOException {
@@ -140,6 +141,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return node;
     }
 
+    @Override
     public boolean registerNode(Node preRegisteredNode, OutputStream out, boolean isRequestedRegistration)
             throws IOException {
         return registerNode(preRegisteredNode, null, null, out, null, null, isRequestedRegistration);
@@ -199,6 +201,8 @@ public class RegistrationService extends AbstractService implements IRegistratio
                 saveRegistrationRequest(new RegistrationRequest(nodePriorToRegistration,
                         RegistrationStatus.RR, remoteHost, remoteAddress));
                 throw new RegistrationRedirectException(redirectUrl);
+            } else {
+                log.debug("No redirect in place for registering node {}", nodePriorToRegistration.getNodeId());
             }
             if (StringUtils.isBlank(nodePriorToRegistration.getNodeGroupId())) {
                 RegistrationRequest req = new RegistrationRequest(nodePriorToRegistration, RegistrationStatus.ER, remoteHost, remoteAddress);
@@ -238,6 +242,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
             }
             if ((foundNode == null || security == null || !security.isRegistrationEnabled() || !security.isRegistrationAllowedNow())
                     && (parameterService.is(ParameterConstants.AUTO_REGISTER_ENABLED) || isRegistrationAuthenticated)) {
+                log.debug("Did not find record for node {}. Opening new automatic registration.", nodePriorToRegistration.getNodeId());
                 openRegistration(nodePriorToRegistration, remoteHost, remoteAddress, null, null);
                 nodeId = StringUtils.isBlank(nodePriorToRegistration.getNodeId()) ? extensionService.getExtensionPoint(INodeIdCreator.class).selectNodeId(
                         nodePriorToRegistration, remoteHost,
@@ -245,6 +250,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
                 security = nodeService.findNodeSecurity(nodeId);
                 foundNode = nodeService.findNode(nodeId);
             } else if (foundNode == null || security == null || !security.isRegistrationEnabled() || !security.isRegistrationAllowedNow()) {
+                log.debug("Did not find record for node {}. Opening new manual registration.", nodePriorToRegistration.getNodeId());
                 saveRegistrationRequest(new RegistrationRequest(nodePriorToRegistration,
                         RegistrationStatus.RQ, remoteHost, remoteAddress));
                 return processedNode;
@@ -277,7 +283,8 @@ public class RegistrationService extends AbstractService implements IRegistratio
             foundNode.setDatabaseName(nodePriorToRegistration.getDatabaseName());
             foundNode.setConfigVersion(Version.version());
             nodeService.save(foundNode);
-            log.info("Registered node " + foundNode + " in my database, but pending acknowledgement");
+            log.info("Registered node {} in my database, but pending acknowledgement. Created_at={}, Last_successful_sync={}",
+                    foundNode, foundNode.getCreatedAtNodeId(), foundNode.getLastSuccessfulSyncDate());
             /**
              * Only send automatic initial load once or if the client is really re-registering
              */
@@ -309,6 +316,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
      * @see IRegistrationService#registerNode(Node, OutputStream, boolean)
      */
     // Called when node connects using pull registration URL
+    @Override
     public boolean registerNode(Node nodePriorToRegistration, String remoteHost,
             String remoteAddress, OutputStream out, String userId, String password, boolean isRequestedRegistration)
             throws IOException {
@@ -340,6 +348,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return processedNode.isSyncEnabled();
     }
 
+    @Override
     public List<RegistrationRequest> getRegistrationRequests(boolean includeNodesWithOpenRegistrations, boolean includeRejects) {
         String sql = getSql("selectRegistrationRequestSql");
         if (includeRejects) {
@@ -350,7 +359,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
             Collection<Node> nodes = nodeService.findNodesWithOpenRegistration();
             Iterator<RegistrationRequest> i = requests.iterator();
             while (i.hasNext()) {
-                RegistrationRequest registrationRequest = (RegistrationRequest) i.next();
+                RegistrationRequest registrationRequest = i.next();
                 for (Node node : nodes) {
                     if (node.getNodeGroupId().equals(registrationRequest.getNodeGroupId())
                             && node.getExternalId().equals(registrationRequest.getExternalId())) {
@@ -362,6 +371,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return requests;
     }
 
+    @Override
     public boolean deleteRegistrationRequest(RegistrationRequest request) {
         String externalId = request.getExternalId() == null ? "" : request.getExternalId();
         String nodeGroupId = request.getNodeGroupId() == null ? "" : request.getNodeGroupId();
@@ -369,6 +379,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
                 nodeGroupId, externalId, request.getHostName(), request.getStatus().name() });
     }
 
+    @Override
     public void saveRegistrationRequest(RegistrationRequest request) {
         /**
          * Lookup existing registration requests to update the attempt count. We previously did this in SQL on the update, but as400 v5 didn't like that
@@ -410,6 +421,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         }
     }
 
+    @Override
     public String getRedirectionUrlFor(String externalId) {
         List<String> list = sqlTemplate.query(getSql("getRegistrationRedirectUrlSql"),
                 new StringMapper(), new Object[] { externalId }, new int[] { Types.VARCHAR });
@@ -420,6 +432,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         }
     }
 
+    @Override
     public void saveRegistrationRedirect(String externalIdToRedirect, String nodeIdToRedirectTo) {
         int count = sqlTemplate.update(getSql("updateRegistrationRedirectUrlSql"), new Object[] {
                 nodeIdToRedirectTo, externalIdToRedirect }, new int[] { Types.VARCHAR,
@@ -434,6 +447,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
     /**
      * @see IRegistrationService#markNodeAsRegistered(Node)
      */
+    @Override
     public void markNodeAsRegistered(String nodeId) {
         sqlTemplate.update(getSql("registerNodeSecuritySql"), new Object[] { new Date(), nodeId });
         nodeService.flushNodeAuthorizedCache();
@@ -488,6 +502,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         AppUtils.sleep(sleepTimeInMs);
     }
 
+    @Override
     public boolean isRegisteredWithServer() {
         return nodeService.findIdentity() != null;
     }
@@ -495,6 +510,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
     /**
      * @see IRegistrationService#registerWithServer()
      */
+    @Override
     public boolean registerWithServer() {
         boolean wasRegistered = isRegisteredWithServer();
         boolean registered = wasRegistered;
@@ -515,6 +531,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return registered != wasRegistered;
     }
 
+    @Override
     public synchronized boolean attemptToRegisterWithServer(int maxNumberOfAttempts) {
         List<INodeRegistrationListener> registrationListeners = extensionService.getExtensionPointList(INodeRegistrationListener.class);
         boolean registered = isRegisteredWithServer();
@@ -622,6 +639,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return registered;
     }
 
+    @Override
     public List<OutgoingBatch> registerWithClient(Node remote, IOutgoingWithResponseTransport transport) {
         List<OutgoingBatch> extractedBatches = new ArrayList<OutgoingBatch>();
         Node identity = nodeService.findIdentity();
@@ -668,6 +686,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return extractedBatches;
     }
 
+    @Override
     public boolean writeRegistrationProperties(OutputStream os) {
         try {
             Node local = new Node(parameterService, symmetricDialect, engine.getDatabasePlatform().getName());
@@ -681,6 +700,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return true;
     }
 
+    @Override
     public boolean loadRegistrationBatch(Node node, InputStream is, OutputStream os) {
         try {
             dataLoaderService.loadDataFromPush(node, Constants.CHANNEL_DEFAULT, is, os);
@@ -694,10 +714,12 @@ public class RegistrationService extends AbstractService implements IRegistratio
     /**
      * @see IRegistrationService#reOpenRegistration(String)
      */
+    @Override
     public synchronized void reOpenRegistration(String nodeId) {
         reOpenRegistration(nodeId, null, null, null, null, false);
     }
 
+    @Override
     public synchronized void reOpenRegistration(String nodeId, boolean forceNewPassword) {
         reOpenRegistration(nodeId, null, null, null, null, forceNewPassword);
     }
@@ -750,6 +772,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
      * @see IRegistrationService#openRegistration(String, String)
      * @return The nodeId of the registered node
      */
+    @Override
     public synchronized String openRegistration(String nodeGroup, String externalId) {
         Node node = new Node();
         node.setExternalId(externalId);
@@ -757,6 +780,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return openRegistration(node);
     }
 
+    @Override
     public synchronized String openRegistration(String nodeGroup, String externalId, String syncUrl, Date notBefore, Date notAfter) {
         Node node = new Node();
         node.setExternalId(externalId);
@@ -765,6 +789,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return openRegistration(node, null, null, notBefore, notAfter);
     }
 
+    @Override
     public synchronized String openRegistration(String nodeGroup, String externalId, String remoteHost, String remoteAddress) {
         Node node = new Node();
         node.setExternalId(externalId);
@@ -772,6 +797,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return openRegistration(node, remoteHost, remoteAddress, null, null);
     }
 
+    @Override
     public synchronized String openRegistration(Node node) {
         return openRegistration(node, null, null, null, null);
     }
@@ -811,9 +837,8 @@ public class RegistrationService extends AbstractService implements IRegistratio
                 nodeService.flushNodeCache();
                 nodeService.insertNodeGroup(node.getNodeGroupId(), null);
                 nodeService.flushNodeGroupCache();
-                log.info(
-                        "Just opened registration for external id of {} and a node group of {} and a node id of {}",
-                        new Object[] { node.getExternalId(), node.getNodeGroupId(), nodeId });
+                log.info("Just opened registration for external id of {} and a node group of {} and a node id of {} created_at={}",
+                        new Object[] { node.getExternalId(), node.getNodeGroupId(), nodeId, node.getCreatedAtNodeId() });
             } else {
                 reOpenRegistration(nodeId, remoteHost, remoteAddress, notBefore, notAfter, false);
             }
@@ -824,6 +849,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         }
     }
 
+    @Override
     public boolean isAutoRegistration() {
         return parameterService.is(ParameterConstants.AUTO_REGISTER_ENABLED);
     }
@@ -837,6 +863,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return s;
     }
 
+    @Override
     public boolean isRegistrationOpen(String nodeGroupId, String externalId) {
         Node node = nodeService.findNodeByExternalId(nodeGroupId, externalId);
         if (node != null) {
@@ -846,6 +873,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return false;
     }
 
+    @Override
     public boolean isRegistrationOpen() {
         Node node = nodeService.findIdentity();
         NodeSecurity nodeSecurity = null;
@@ -855,6 +883,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return nodeSecurity != null && nodeSecurity.isRegistrationEnabled() && nodeSecurity.isRegistrationAllowedNow();
     }
 
+    @Override
     public void requestNodeCopy() {
         Node copyFrom = nodeService.findIdentity();
         if (copyFrom == null) {
@@ -896,11 +925,13 @@ public class RegistrationService extends AbstractService implements IRegistratio
         }
     }
 
+    @Override
     public void setAllowClientRegistration(boolean enabled) {
         this.allowClientRegistration = enabled;
     }
 
     static class RegistrationRequestMapper implements ISqlRowMapper<RegistrationRequest> {
+        @Override
         public RegistrationRequest mapRow(Row rs) {
             RegistrationRequest request = new RegistrationRequest();
             request.setNodeGroupId(rs.getString("node_group_id"));
