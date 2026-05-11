@@ -319,7 +319,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
                         .selectNodeId(
                                 nodePriorToRegistration, remoteHost, remoteAddress) : nodePriorToRegistration.getNodeId();
                 NodeSecurity nodeSecurity = nodeService.findNodeSecurity(nodeId);
-                if (nodeSecurity != null && nodeSecurity.isRegistrationEnabled()) {
+                if (nodeSecurity != null && nodeSecurity.isRegistrationEnabled() && nodeSecurity.getRegistrationTime() != null) {
                     // Make sure sync URL is set before skipping this registration request
                     Node node = nodeService.findNode(nodeId);
                     if (node != null && node.getSyncUrl() != null && node.getSyncUrl().length() > 0) {

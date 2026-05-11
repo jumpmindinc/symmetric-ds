@@ -192,26 +192,26 @@ public class PushService extends AbstractOfflineDetectorService implements IPush
 
     private void pushToNode(Node remote, RemoteNodeStatus status) {
         Node identity = nodeService.findIdentity();
-        NodeSecurity identitySecurity = nodeService.findNodeSecurity(identity.getNodeId(), true);
+        String identityNodeId = identity.getNodeId();
+        NodeSecurity identitySecurity = nodeService.findNodeSecurity(identityNodeId, true);
         NodeSecurity nodeSecurity = nodeService.findNodeSecurity(remote.getNodeId(), true);
         IOutgoingWithResponseTransport transport = null;
-        ProcessInfo processInfo = statisticManager.newProcessInfo(new ProcessInfoKey(identity
-                .getNodeId(), status.getQueue(), remote.getNodeId(), ProcessType.PUSH_JOB_EXTRACT));
+        String queue = status.getQueue();
+        ProcessInfo processInfo = statisticManager.newProcessInfo(new ProcessInfoKey(identityNodeId,
+                queue, remote.getNodeId(), ProcessType.PUSH_JOB_EXTRACT));
         Map<String, String> requestProperties = new HashMap<String, String>();
-        requestProperties.put(WebConstants.CHANNEL_QUEUE, status.getQueue());
+        requestProperties.put(WebConstants.CHANNEL_QUEUE, queue);
         try {
             List<OutgoingBatch> extractedBatches = null;
             if (nodeSecurity != null && nodeSecurity.isRegistrationEnabled()) {
-                if (identity.getNodeId().equals(nodeSecurity.getCreatedAtNodeId()) && nodeSecurity.isRegistrationAllowedNow() &&
-                        parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED) &&
-                        (status.getQueue() == null || status.getQueue().equals(Constants.CHANNEL_DEFAULT))) {
+                if (shouldPushRegistrationToNode(identityNodeId, nodeSecurity, queue)) {
                     transport = transportManager.getRegisterPushTransport(remote, identity);
                     extractedBatches = registrationService.registerWithClient(remote, transport);
                 }
             } else {
                 transport = transportManager.getPushTransport(remote, identity,
                         identitySecurity.getNodePassword(), requestProperties, parameterService.getRegistrationUrl());
-                extractedBatches = dataExtractorService.extract(processInfo, remote, status.getQueue(), transport);
+                extractedBatches = dataExtractorService.extract(processInfo, remote, queue, transport);
             }
             if (extractedBatches != null && extractedBatches.size() > 0) {
                 log.info("Push data sent to {}", remote);
@@ -242,5 +242,11 @@ public class PushService extends AbstractOfflineDetectorService implements IPush
             } catch (Exception e) {
             }
         }
+    }
+
+    private boolean shouldPushRegistrationToNode(String identityNodeId, NodeSecurity remoteNodeSecurity, String queue) {
+        return identityNodeId.equals(remoteNodeSecurity.getCreatedAtNodeId()) && remoteNodeSecurity.isRegistrationAllowedNow()
+                && parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)
+                && (queue == null || queue.equals(Constants.QUEUE_DEFAULT));
     }
 }
