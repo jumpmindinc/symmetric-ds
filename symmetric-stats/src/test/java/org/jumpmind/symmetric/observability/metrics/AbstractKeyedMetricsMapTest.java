@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.observability.metrics;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
@@ -116,8 +117,7 @@ class AbstractKeyedMetricsMapTest {
     @Test
     void all_isUnmodifiable() {
         map.put("x");
-        org.junit.jupiter.api.Assertions.assertThrows(UnsupportedOperationException.class,
-                () -> map.all().add("y"));
+        assertThrows(UnsupportedOperationException.class, map.all()::clear);
     }
 
     @Test

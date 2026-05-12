@@ -20,14 +20,16 @@
  */
 package org.jumpmind.symmetric.transport;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.junit.Assert.*;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -39,7 +41,7 @@ import org.jumpmind.symmetric.transport.IConcurrentConnectionManager.Reservation
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager.ReservationType;
 import org.junit.jupiter.api.Test;
 
-public class ConcurrentConnectionManagerTest {
+class ConcurrentConnectionManagerTest {
     @Test
     public void testRemoveTimedOutReservations() {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);

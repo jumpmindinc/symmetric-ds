@@ -422,6 +422,7 @@ class EngineMetricsServiceTest {
 
         @Override
         protected void initializeDefaultContexts(MetricsRepository repo) {
+            // NO-OP
         }
     }
 

@@ -55,12 +55,8 @@ class PrimaryMetricAggregatorTest {
     @AfterEach
     void tearDown() throws InterruptedException {
         aggregator.stop();
-        long deadline = System.currentTimeMillis() + 2000;
-        while (aggregator.isRunning() && System.currentTimeMillis() < deadline) {
-            Thread.sleep(10);
-        }
+        aggregator.awaitStop(2000);
     }
-    // ── isRunning ─────────────────────────────────────────────────────────────
 
     @Test
     void isRunning_beforeStart_returnsFalse() {
@@ -72,7 +68,6 @@ class PrimaryMetricAggregatorTest {
         aggregator.start();
         assertTrue(aggregator.isRunning());
     }
-    // ── start ─────────────────────────────────────────────────────────────────
 
     @Test
     void start_calledTwice_isNoOp_stillRunning() {
@@ -80,7 +75,6 @@ class PrimaryMetricAggregatorTest {
         aggregator.start(); // second call must be ignored
         assertTrue(aggregator.isRunning());
     }
-    // ── stop ──────────────────────────────────────────────────────────────────
 
     @Test
     void stop_whenNotRunning_doesNotThrow() {
@@ -91,10 +85,7 @@ class PrimaryMetricAggregatorTest {
     void stop_afterStart_eventuallyStopsRunning() throws InterruptedException {
         aggregator.start();
         aggregator.stop();
-        long deadline = System.currentTimeMillis() + 2000;
-        while (aggregator.isRunning() && System.currentTimeMillis() < deadline) {
-            Thread.sleep(10);
-        }
+        aggregator.awaitStop(2000);
         assertFalse(aggregator.isRunning());
     }
     // ── processAll / closeAll ─────────────────────────────────────────────────

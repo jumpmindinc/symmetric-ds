@@ -74,6 +74,13 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
         log.info("Started {} thread. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t.getId());
     }
 
+    void awaitStop(long timeoutMs) throws InterruptedException {
+        Thread t = thread.get();
+        if (t != null) {
+            t.join(timeoutMs);
+        }
+    }
+
     @Override
     public void stop() {
         if (!isRunning()) {
