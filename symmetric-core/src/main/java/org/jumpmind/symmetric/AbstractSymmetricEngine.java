@@ -27,7 +27,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
+import java.net.URI;
 import java.net.URL;
 import java.security.UnrecoverableKeyException;
 import java.sql.SQLException;
@@ -1163,11 +1163,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             }
             try {
                 String syncUrl = transportManager.resolveURL(parameterService.getSyncUrl(), parameterService.getRegistrationUrl());
-                new URL(syncUrl).toURI();
-            } catch (MalformedURLException e) {
+                URI.create(syncUrl);
+            } catch (IllegalArgumentException e) {
                 errorMessage = String.format("The %s property is not a valid URL: %s", ParameterConstants.SYNC_URL, parameterService.getSyncUrl());
-            } catch (URISyntaxException e) {
-                errorMessage = String.format("The %s property is not a valid URI: %s", ParameterConstants.SYNC_URL, parameterService.getSyncUrl());
             }
             configurationValid = (errorMessage == null);
         }

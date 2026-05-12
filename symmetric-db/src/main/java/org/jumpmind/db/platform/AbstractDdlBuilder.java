@@ -208,11 +208,11 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
             if (language != null) {
                 Locale locale = null;
                 if (variant != null) {
-                    locale = new Locale(language, country, variant);
+                    locale = Locale.of(language, country, variant);
                 } else if (country != null) {
-                    locale = new Locale(language, country);
+                    locale = Locale.of(language, country);
                 } else {
-                    locale = new Locale(language);
+                    locale = Locale.of(language);
                 }
                 valueLocale = localeStr;
                 setValueDateFormat(DateFormat.getDateInstance(DateFormat.SHORT, locale));

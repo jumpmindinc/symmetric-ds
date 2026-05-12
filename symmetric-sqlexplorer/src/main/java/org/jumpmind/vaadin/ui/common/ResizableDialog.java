@@ -34,6 +34,7 @@ import com.vaadin.flow.component.ShortcutRegistration;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.UI;
@@ -58,7 +59,7 @@ public class ResizableDialog extends Dialog {
     }
 
     public ResizableDialog(String caption, boolean addEscapeShortcut, boolean addCloseIcon) {
-        setModal(true);
+        setModality(ModalityMode.STRICT);
         setResizable(true);
         VerticalLayout content = new VerticalLayout();
         content.setSizeFull();
@@ -155,7 +156,7 @@ public class ResizableDialog extends Dialog {
     }
 
     public void showAtSize(double percentOfBrowserSize) {
-        UI.getCurrent().getPage().retrieveExtendedClientDetails(details -> {
+        UI.getCurrent().getPage().getExtendedClientDetails().refresh(details -> {
             setHeight((details.getWindowInnerHeight() * percentOfBrowserSize) + "px");
             setWidth((details.getWindowInnerWidth() * percentOfBrowserSize) + "px");
         });

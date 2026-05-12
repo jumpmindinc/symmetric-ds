@@ -14,7 +14,7 @@ Standard Edition (SE).
 Most major operating systems and databases are supported.  See the list of supported databases in the <<databases-compatibility>> section.
 The minimum operating system requirements are:
 
-* Java SE Runtime Environment 17 or newer
+* Java SE Runtime Environment 21 or newer
 * Memory - 64 (MB) available
 * Disk - 256 (MB) available
 
