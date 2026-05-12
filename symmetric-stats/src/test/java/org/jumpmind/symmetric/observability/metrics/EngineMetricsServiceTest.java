@@ -223,7 +223,7 @@ class EngineMetricsServiceTest {
     void initializeDefaultContexts_whenRepoThrows_doesNotPropagateException() {
         MetricsRepository repo = mock(MetricsRepository.class);
         doThrow(new RuntimeException("db error")).when(repo).getOrRegisterContext(any(ContextDefinition.class));
-        MockRepoEngineMetricsService service = new MockRepoEngineMetricsService(engine, manager, repo);
+        EngineMetricsService service = new EngineMetricsService(engine, manager, false);
         assertDoesNotThrow(() -> service.initializeDefaultContexts(repo));
     }
 
