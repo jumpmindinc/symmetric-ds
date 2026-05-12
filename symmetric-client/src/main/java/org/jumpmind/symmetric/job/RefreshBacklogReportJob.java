@@ -71,10 +71,7 @@ public class RefreshBacklogReportJob extends AbstractJob {
                     .createNodeBatchStatusMetricsMap(METRIC_ID_BATCHES_OUTGOING, METRIC_ID_DATA_OUTGOING);
         }
         // Results are ORDER BY node_id, status, batch_date — accumulate totals per (node_id, status) group - in one pass!
-        String currentNodeId = null;
-        String currentStatus = null;
-        long totalBatches = 0;
-        long totalDataRows = 0;
+        NodeBatchGroup current = null;
         long processedEntriesCount = 0;
         long currentEntriesCount = 0;
         for (OutgoingBatchSummaryByNodeBriefStats row : stats) {
@@ -83,28 +80,31 @@ public class RefreshBacklogReportJob extends AbstractJob {
             if (StringUtils.isBlank(entryNodeId) || StringUtils.isBlank(entryStatus) || Constants.UNROUTED_NODE_ID.equals(entryNodeId)) {
                 continue;
             }
-            if (!entryNodeId.equals(currentNodeId) || !entryStatus.equals(currentStatus)) {
-                if (currentNodeId != null) {
-                    outgoingBatchMetrics.setBatchAndRowCounts(currentNodeId, currentStatus, totalBatches, totalDataRows);
-                    if (log.isDebugEnabled()) {
-                        log.debug("Recorded backlog observation. Node={}, Batch.status={}, batches={}, rows={}, entries={}",
-                                entryNodeId, entryStatus, totalBatches, totalDataRows, currentEntriesCount);
-                    }
-                    currentEntriesCount = 0;
+            if (current != null && (!entryNodeId.equals(current.nodeId()) || !entryStatus.equals(current.batchStatus()))) {
+                outgoingBatchMetrics.setBatchAndRowCounts(current.nodeId(), current.batchStatus(), current.totalBatches(), current.totalDataRows());
+                if (log.isDebugEnabled()) {
+                    log.debug("Recorded backlog observation. Node={}, Batch.status={}, batches={}, rows={}, entries={}",
+                            entryNodeId, entryStatus, current.totalBatches(), current.totalDataRows(), currentEntriesCount);
                 }
-                currentNodeId = entryNodeId;
-                currentStatus = entryStatus;
-                totalBatches = 0;
-                totalDataRows = 0;
+                currentEntriesCount = 0;
+                current = null;
             }
-            totalBatches += row.batchCount();
-            totalDataRows += row.dataRows();
+            if (current == null) {
+                current = new NodeBatchGroup(entryNodeId, entryStatus, 0, 0);
+            }
+            current = current.accumulate(row.batchCount(), row.dataRows());
             processedEntriesCount++;
             currentEntriesCount++;
         }
-        if (!StringUtils.isBlank(currentNodeId)) {
-            outgoingBatchMetrics.setBatchAndRowCounts(currentNodeId, currentStatus, totalBatches, totalDataRows);
+        if (current != null) {
+            outgoingBatchMetrics.setBatchAndRowCounts(current.nodeId(), current.batchStatus(), current.totalBatches(), current.totalDataRows());
         }
         log.info("Processed {} node-batch-date entries to populate metrics.", processedEntriesCount);
+    }
+
+    private record NodeBatchGroup(String nodeId, String batchStatus, long totalBatches, long totalDataRows) {
+        NodeBatchGroup accumulate(long batches, long rows) {
+            return new NodeBatchGroup(nodeId, batchStatus, totalBatches + batches, totalDataRows + rows);
+        }
     }
 }

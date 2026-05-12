@@ -212,7 +212,7 @@ class NodeBatchStatusMetricsMapTest {
         map.getOrCreate("n12", "OK");
         map.getOrCreate("n12", "ER");
         map.getOrCreate("n13", "OK");
-        List<NodeBatchStatusGauge> result = map.gaugesForNode("n12");
+        List<INodeBatchStatusGauge> result = map.gaugesForNode("n12");
         assertEquals(2, result.size());
         assertTrue(result.stream().allMatch(g -> "n12".equals(g.getNodeId())));
     }
@@ -220,7 +220,7 @@ class NodeBatchStatusMetricsMapTest {
     @Test
     void gaugesForNode_noMatchingNode_returnsEmptyList() {
         map.getOrCreate("n14", "OK");
-        List<NodeBatchStatusGauge> result = map.gaugesForNode("n99");
+        List<INodeBatchStatusGauge> result = map.gaugesForNode("n99");
         assertTrue(result.isEmpty());
     }
 

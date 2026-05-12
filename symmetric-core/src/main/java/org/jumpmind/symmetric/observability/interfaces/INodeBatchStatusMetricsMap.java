@@ -65,5 +65,5 @@ public interface INodeBatchStatusMetricsMap {
     void setSpecifiedMetrics(List<OutgoingBatchSummary> summaries);
 
     /** Returns all gauge entries whose nodeId matches the given value. */
-    List<? extends INodeBatchStatusGauge> gaugesForNode(String nodeId);
+    List<INodeBatchStatusGauge> gaugesForNode(String nodeId);
 }
