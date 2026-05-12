@@ -70,6 +70,8 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
             if (batch.isOk()) {
                 registrationService.markNodeAsRegistered(batch.getNodeId());
             } else if (batch.getSqlCode() != 0 || batch.getSqlMessage() != null) {
+                log.warn("Registration batch had failed for node {} ! Error line={}, SQL.code={}, SQL message={}",
+                        batch.getNodeId(), batch.getErrorLine(), batch.getSqlCode(), batch.getSqlMessage());
                 Node requestingNode = engine.getNodeService().findNode(batch.getNodeId());
                 if (requestingNode != null) {
                     RegistrationRequest request = registrationService.getLatestRegistrationRequest(

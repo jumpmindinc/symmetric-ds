@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.model;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -31,6 +32,9 @@ public class RegistrationRequest implements Serializable {
     public static enum RegistrationStatus {
         OK, RQ, RJ, RR, ER
     };
+
+    // This set should be coordinated with the updateRegistrationRequestSql in RegistrationServiceSqlMap:
+    private static final Set<RegistrationStatus> incompleteStatuses = Set.of(RegistrationStatus.ER, RegistrationStatus.RJ, RegistrationStatus.RQ);
 
     private String nodeGroupId;
     private String externalId;
@@ -190,5 +194,14 @@ public class RegistrationRequest implements Serializable {
             return false;
         }
         return true;
+    }
+
+    public void sumAttemptsAndSetLatestMessage(RegistrationRequest priorRequest) {
+        this.attemptCount += priorRequest.attemptCount;
+        this.errorMessage = StringUtils.defaultIfEmpty(this.errorMessage, priorRequest.errorMessage);
+    }
+
+    public boolean isIncomplete() {
+        return incompleteStatuses.contains(this.status);
     }
 }
