@@ -893,7 +893,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
                 nodeService.insertNodeGroup(node.getNodeGroupId(), null);
                 nodeService.flushNodeGroupCache();
                 log.info("Just opened registration for external id of {} and a node group of {} and a node id of {} created_at={}",
-                        new Object[] { node.getExternalId(), node.getNodeGroupId(), nodeId, node.getCreatedAtNodeId() });
+                        node.getExternalId(), node.getNodeGroupId(), nodeId, node.getCreatedAtNodeId());
             } else {
                 reOpenRegistration(nodeId, remoteHost, remoteAddress, notBefore, notAfter, false);
             }
