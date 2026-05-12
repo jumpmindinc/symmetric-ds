@@ -66,6 +66,8 @@ import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.opentelemetry.api.common.Attributes;
+
 class EngineMetricsServiceTest {
     private static final long MOCK_CONTEXT_ID = 42L;
     private static final long REGISTERED_CONTEXT_ID = 77L;
@@ -150,7 +152,7 @@ class EngineMetricsServiceTest {
     @Test
     void getOrAssignContextId_noContextNoAttributes_returnsUndefined() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
-        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), io.opentelemetry.api.common.Attributes
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), Attributes
                 .empty(), List.of());
         assertEquals(MetricContext.UNDEFINED, service.getOrAssignContextId(metric, null));
     }
@@ -159,7 +161,7 @@ class EngineMetricsServiceTest {
     void getOrAssignContextId_withAttributesAndRepo_registersContextAndReturns() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
         MetricAttribute attr = new MetricAttribute("channel", Constants.CHANNEL_DEFAULT);
-        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), io.opentelemetry.api.common.Attributes
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), Attributes
                 .empty(), List.of(attr));
         MetricsRepository repo = mock(MetricsRepository.class);
         MetricContext ctx = new MetricContext(REGISTERED_CONTEXT_ID, List.of(attr));
@@ -172,7 +174,7 @@ class EngineMetricsServiceTest {
     void getOrAssignContextId_withAttributesButNullRepo_returnsUndefined() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
         MetricAttribute attr = new MetricAttribute("channel", Constants.CHANNEL_DEFAULT);
-        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), io.opentelemetry.api.common.Attributes
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), Attributes
                 .empty(), List.of(attr));
         assertEquals(MetricContext.UNDEFINED, service.getOrAssignContextId(metric, null));
         assertNull(metric.getContext());
