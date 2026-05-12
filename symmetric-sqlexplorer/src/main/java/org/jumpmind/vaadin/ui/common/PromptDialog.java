@@ -29,6 +29,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -42,7 +43,7 @@ public class PromptDialog extends Dialog {
 
     public PromptDialog(String caption, String text, String defaultValue,
             final IPromptListener promptListener) {
-        setModal(true);
+        setModality(ModalityMode.STRICT);
         setResizable(false);
         setSizeUndefined();
         setCloseOnEsc(false);

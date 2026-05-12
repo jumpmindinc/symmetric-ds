@@ -22,7 +22,7 @@ package org.jumpmind.symmetric;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.URL;
+import java.net.URI;
 import java.util.List;
 
 import org.jumpmind.db.model.Table;
@@ -62,7 +62,7 @@ public class SymmetricPushClient {
 
     public void open() {
         try {
-            transport = new HttpOutgoingTransport(new HttpTransportManager(), new URL(buildUrl()), 30000, 30000, true, 0, -1, null,
+            transport = new HttpOutgoingTransport(new HttpTransportManager(), URI.create(buildUrl()).toURL(), 30000, 30000, true, 0, -1, null,
                     null, false, -1, false);
             writer = new ProtocolDataWriter(nodeId, transport.openWriter(), false, false, false);
             writer.start(batch);

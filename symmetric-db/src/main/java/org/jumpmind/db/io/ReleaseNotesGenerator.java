@@ -32,6 +32,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.sql.Types;
@@ -155,7 +156,7 @@ public class ReleaseNotesGenerator {
         if (nextPageToken != null) {
             uriBuilder.queryParam("nextPageToken", nextPageToken);
         }
-        URL jiraApi = new URL(uriBuilder.build().toUriString());
+        URL jiraApi = uriBuilder.build().toUri().toURL();
         HttpURLConnection connection = (HttpURLConnection) jiraApi.openConnection();
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("Content-Type", "application/json");

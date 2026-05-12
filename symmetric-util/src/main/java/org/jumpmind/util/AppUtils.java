@@ -172,7 +172,7 @@ public class AppUtils {
     public static String fetchHostNameFromOsCommand() {
         try {
             // Note: This requires permissions to run an external process and capture it's output.
-            String osHostName = IOUtils.toString(Runtime.getRuntime().exec(OS_COMMAND_HOSTNAME).getInputStream(), Charset.defaultCharset());
+            String osHostName = IOUtils.toString(new ProcessBuilder(OS_COMMAND_HOSTNAME).start().getInputStream(), Charset.defaultCharset());
             if (isBlank(osHostName)) {
                 log.warn("Got blank hostname value from the {} OS command!", OS_COMMAND_HOSTNAME);
             } else {

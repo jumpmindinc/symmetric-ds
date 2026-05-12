@@ -24,6 +24,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.Map;
 import java.util.TreeMap;
@@ -198,7 +199,7 @@ public class HttpIncomingTransport implements IIncomingTransport {
                 redirectionUrl = connection.getHeaderField("Location");
                 URL target = null;
                 if (redirectionUrl != null) {
-                    target = new URL(base, redirectionUrl);
+                    target = URI.create(base.toExternalForm()).resolve(redirectionUrl).toURL();
                 }
                 connection.disconnect();
                 // Redirection should be allowed only for HTTP and HTTPS
