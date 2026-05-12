@@ -393,7 +393,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
                 nodeGroupId, externalId, request.getHostName(), request.getStatus().name() });
     }
 
-    private int reconcileRegistrationRequestWithPriorEntry(RegistrationRequest request, RegistrationRequest priorRequest) {
+    int reconcileRegistrationRequestWithPriorEntry(RegistrationRequest request, RegistrationRequest priorRequest) {
         int recordsChanged = 0;
         if (priorRequest == null) {
             return recordsChanged;
@@ -403,7 +403,11 @@ public class RegistrationService extends AbstractService implements IRegistratio
                 || priorRequest.getStatus().equals(RegistrationStatus.ER) && request.getStatus().equals(RegistrationStatus.OK)) {
             // When registration request exists, combine the attempt count. We previously did this in update SQL, but AS400 v5 didn't like that.
             request.setStatus(priorRequest.getStatus());
-            request.sumAttemptsAndSetLatestMessage(priorRequest);
+            request.incrementAttemptsAndSetLatestMessage(priorRequest);
+            return updateIncompleteRegistrationRequestInDatabase(request);
+        }
+        if (priorRequest.isIncomplete() && request.getStatus().equals(RegistrationStatus.OK)) {
+            request.incrementAttemptsAndSetLatestMessage(priorRequest);
             return updateIncompleteRegistrationRequestInDatabase(request);
         }
         return recordsChanged;

@@ -196,8 +196,8 @@ public class RegistrationRequest implements Serializable {
         return true;
     }
 
-    public void sumAttemptsAndSetLatestMessage(RegistrationRequest priorRequest) {
-        this.attemptCount += priorRequest.attemptCount;
+    public void incrementAttemptsAndSetLatestMessage(RegistrationRequest priorRequest) {
+        this.attemptCount = 1 + priorRequest.attemptCount;
         this.errorMessage = StringUtils.defaultIfEmpty(this.errorMessage, priorRequest.errorMessage);
     }
 
