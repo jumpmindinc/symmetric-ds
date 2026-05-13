@@ -708,7 +708,6 @@ class StatisticManagerTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void getWorkingChannelStats_whenNullChannelStats_returnsEmptyMap() throws Exception {
         Field field = StatisticManager.class.getDeclaredField("channelStats");
         field.setAccessible(true);
