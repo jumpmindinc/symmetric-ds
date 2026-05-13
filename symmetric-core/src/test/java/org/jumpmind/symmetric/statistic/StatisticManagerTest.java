@@ -37,6 +37,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.mockito.ArgumentCaptor;
+
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.Date;
@@ -75,7 +77,7 @@ class StatisticManagerTest {
     private IStatisticService statisticService;
     private IClusterService clusterService;
     private IDataService dataService;
-    private StatisticManager manager;
+    private StatisticManagerUnderTest manager;
 
     @BeforeEach
     void setUp() {
@@ -96,7 +98,7 @@ class StatisticManagerTest {
         when(clusterService.getServerId()).thenReturn("server-1");
         when(engine.getMetricsService()).thenReturn(null);
         when(engine.getTablePrefix()).thenReturn("sym_");
-        manager = new StatisticManager(engine);
+        manager = new StatisticManagerUnderTest(engine);
     }
 
     private static ProcessInfoKey key(String src, String tgt, ProcessType type) {
@@ -289,32 +291,43 @@ class StatisticManagerTest {
 
     @Test
     void incrementDataRouted_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 5L));
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 5L);
+        assertEquals(5L, manager.getWorkingChannelStats().get(Constants.CHANNEL_DEFAULT).getDataRouted());
     }
 
     @Test
     void setDataUnRouted_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.setDataUnRouted(Constants.CHANNEL_DEFAULT, 10L));
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.setDataUnRouted(Constants.CHANNEL_DEFAULT, 10L);
+        assertEquals(10L, manager.getWorkingChannelStats().get(Constants.CHANNEL_DEFAULT).getDataUnRouted());
     }
 
     @Test
     void incrementDataExtracted_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.incrementDataExtracted(Constants.CHANNEL_DEFAULT, 3L));
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataExtracted(Constants.CHANNEL_DEFAULT, 3L);
+        assertEquals(3L, manager.getWorkingChannelStats().get(Constants.CHANNEL_DEFAULT).getDataExtracted());
     }
 
     @Test
     void incrementDataBytesExtracted_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.incrementDataBytesExtracted(Constants.CHANNEL_DEFAULT, 100L));
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataBytesExtracted(Constants.CHANNEL_DEFAULT, 100L);
+        assertEquals(100L, manager.getWorkingChannelStats().get(Constants.CHANNEL_DEFAULT).getDataBytesExtracted());
     }
 
     @Test
     void incrementDataLoaded_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.incrementDataLoaded(Constants.CHANNEL_DEFAULT, 7L));
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataLoaded(Constants.CHANNEL_DEFAULT, 7L);
+        assertEquals(7L, manager.getWorkingChannelStats().get(Constants.CHANNEL_DEFAULT).getDataLoaded());
     }
 
     @Test
     void incrementRestart_nullMetricsService_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.incrementRestart());
+        manager.incrementRestart();
+        assertEquals(1L, manager.getWorkingHostStats().getRestarted());
     }
 
     @Test
@@ -347,19 +360,22 @@ class StatisticManagerTest {
         when(parameterService.is(anyString(), anyBoolean())).thenReturn(true);
         when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
         manager.setDataGapCount(5L);
+        assertEquals(5L, manager.peekHostStats().getDataGapCount());
         manager.flush();
         verify(dataService, never()).countDataGaps();
     }
 
     @Test
     void setDataUnroutedCount_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.setDataUnroutedCount(3L));
+        manager.setDataUnroutedCount(3L);
+        assertEquals(3L, manager.peekHostStats().getDataUnroutedCount());
     }
 
     @Test
     void getChannelStats_whenNodeIdentityIsNull_doesNotThrow() {
         when(nodeService.getCachedIdentity()).thenReturn(null);
-        assertDoesNotThrow(() -> manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 1L));
+        manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 1L);
+        assertTrue(manager.getWorkingChannelStats().isEmpty());
     }
 
     @Test
@@ -375,6 +391,7 @@ class StatisticManagerTest {
         when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 5L);
+        assertEquals(5L, manager.getWorkingChannelStats().get(Constants.CHANNEL_DEFAULT).getDataRouted());
         manager.flush();
         verify(statisticService, never()).save(any(ChannelStats.class));
     }
@@ -385,6 +402,7 @@ class StatisticManagerTest {
         when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.incrementDataRouted(Constants.CHANNEL_DEFAULT, 5L);
+        assertEquals(5L, manager.getWorkingChannelStats().get(Constants.CHANNEL_DEFAULT).getDataRouted());
         manager.flush();
         verify(statisticService, atLeastOnce()).save(any(ChannelStats.class));
     }
@@ -436,7 +454,7 @@ class StatisticManagerTest {
 
     @Test
     void getProcessInfos_sortThrowsIllegalArgument_fallsBackToDeepCopiedList() {
-        TestableStatisticManager testManager = new TestableStatisticManager(engine);
+        StatisticManagerUnderTest testManager = new StatisticManagerUnderTest(engine);
         ProcessInfoKey k1 = new ProcessInfoKey("src1", "tgt1", ProcessType.PUSH_JOB_EXTRACT);
         ProcessInfoKey k2 = new ProcessInfoKey("src2", "tgt2", ProcessType.PUSH_JOB_EXTRACT);
         testManager.injectProcessInfo(k1, new ThrowingProcessInfo(k1));
@@ -642,6 +660,9 @@ class StatisticManagerTest {
         unknownStats.incrementDataRouted(1);
         csMap.put("chan1", unknownStats);
         manager.flush();
+        ArgumentCaptor<ChannelStats> captor = ArgumentCaptor.forClass(ChannelStats.class);
+        verify(statisticService, atLeastOnce()).save(captor.capture());
+        assertEquals("node1", captor.getValue().getNodeId());
     }
 
     @Test
@@ -650,7 +671,8 @@ class StatisticManagerTest {
         when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.incrementDataSent(Constants.CHANNEL_DEFAULT, 10L);
-        assertDoesNotThrow(() -> manager.flush());
+        assertEquals(10L, manager.getWorkingChannelStats().get(Constants.CHANNEL_DEFAULT).getDataSent());
+        manager.flush();
     }
 
     @Test
@@ -659,7 +681,11 @@ class StatisticManagerTest {
         when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
         when(nodeService.getCachedIdentity()).thenReturn(null, node("node1"));
         manager.incrementRestart();
+        assertEquals("Unknown", manager.getWorkingHostStats().getNodeId());
         manager.flush();
+        ArgumentCaptor<HostStats> captor = ArgumentCaptor.forClass(HostStats.class);
+        verify(statisticService, atLeastOnce()).save(captor.capture());
+        assertEquals("node1", captor.getValue().getNodeId());
     }
 
     @Test
@@ -669,6 +695,7 @@ class StatisticManagerTest {
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         when(dataService.countDataGaps()).thenReturn(42L);
         manager.incrementRestart();
+        assertNull(manager.getWorkingHostStats().getDataGapCount());
         manager.flush();
         verify(dataService, atLeastOnce()).countDataGaps();
     }
@@ -682,6 +709,7 @@ class StatisticManagerTest {
         when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.incrementRestart();
+        assertNull(manager.getWorkingHostStats().getDataUnroutedCount());
         manager.flush();
         verify(routerService, atLeastOnce()).getUnroutedDataCount();
     }
@@ -692,6 +720,7 @@ class StatisticManagerTest {
         when(parameterService.getLong(anyString(), anyLong())).thenReturn(0L);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.addJobStats("Job1", 0L, 100L, 10L);
+        assertEquals("Job1", manager.getWorkingJobStats().get(0).getJobName());
         manager.flush();
         verify(statisticService, atLeastOnce()).save(any(JobStats.class));
     }
@@ -757,6 +786,7 @@ class StatisticManagerTest {
         when(metricsService.getUpDownCounter(anyString(), any())).thenReturn(counter);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.incrementDataSent("chan1", 5L);
+        assertEquals(5L, manager.getWorkingChannelStats().get("chan1").getDataSent());
         verify(counter).add(5L);
     }
 
@@ -766,7 +796,9 @@ class StatisticManagerTest {
         ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
         when(metricsService.getDoubleGauge(anyString(), any())).thenReturn(gauge);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.setDataUnRouted("chan1", 10L);
+        assertEquals(10L, manager.getWorkingChannelStats().get("chan1").getDataUnRouted());
         verify(gauge).setValue(10.0);
     }
 
@@ -775,7 +807,10 @@ class StatisticManagerTest {
         IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
         when(metricsService.getLongGauge(anyString(), any())).thenReturn(null);
-        assertDoesNotThrow(() -> manager.updateDataMinCreateTime("chan1", new Date()));
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        Date minTime = new Date();
+        manager.updateDataMinCreateTime("chan1", minTime);
+        assertEquals(minTime, manager.getWorkingChannelStats().get("chan1").getDataMinCreateTime());
     }
 
     @Test
@@ -785,6 +820,7 @@ class StatisticManagerTest {
         when(engine.getMetricsService()).thenReturn(metricsService);
         when(metricsService.getUpDownCounter(anyString())).thenReturn(counter);
         manager.incrementRestart();
+        assertEquals(1L, manager.getWorkingHostStats().getRestarted());
         verify(counter).add(1L);
     }
 
@@ -795,6 +831,7 @@ class StatisticManagerTest {
         when(engine.getMetricsService()).thenReturn(metricsService);
         when(metricsService.getDoubleGauge(anyString())).thenReturn(gauge);
         manager.setDataGapCount(5L);
+        assertEquals(5L, manager.peekHostStats().getDataGapCount());
         verify(gauge).setValue(5.0);
     }
 
@@ -827,13 +864,17 @@ class StatisticManagerTest {
         }
     }
 
-    private static class TestableStatisticManager extends StatisticManager {
-        TestableStatisticManager(ISymmetricEngine engine) {
+    private static class StatisticManagerUnderTest extends StatisticManager {
+        StatisticManagerUnderTest(ISymmetricEngine engine) {
             super(engine);
         }
 
         void injectProcessInfo(ProcessInfoKey key, ProcessInfo info) {
             processInfos.put(key, info);
+        }
+
+        HostStats peekHostStats() {
+            return getHostStats();
         }
     }
 }
