@@ -280,7 +280,6 @@ class MetricSeriesSlidingWorksetTest {
         workset.add(outlier); // 10th outlier triggers promotion
         assertEquals(IQR_INTERVALS_MIN + IQR_OUTLIERS_MAX, workset.size());
     }
-    // ── add — below minimum data ──────────────────────────────────────────────
 
     @Test
     void add_belowMinData_doesNotDetectOutlier_addsToWorkset() {
@@ -289,7 +288,6 @@ class MetricSeriesSlidingWorksetTest {
         workset.add(stats);
         assertEquals(1, workset.size());
     }
-    // ── size ──────────────────────────────────────────────────────────────────
 
     @Test
     void size_afterAddingIntervals_returnsCorrectCount() {
@@ -299,7 +297,6 @@ class MetricSeriesSlidingWorksetTest {
         workset.add(interval(2.0, 2.0, 2.0));
         assertEquals(2, workset.size());
     }
-    // ── add — outlier goes to buffer when enough data ─────────────────────────
 
     @Test
     void add_outlier_goesToOutliersBuffer_notToWorkset() {

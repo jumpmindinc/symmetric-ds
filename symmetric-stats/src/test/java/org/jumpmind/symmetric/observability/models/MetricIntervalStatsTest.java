@@ -92,31 +92,26 @@ class MetricIntervalStatsTest {
         assertEquals(shorterSameEnd, sorted.get(2));
         assertEquals(late, sorted.get(3), "latest end should be last");
     }
-    // ── helper for new tests ──────────────────────────────────────────────────
 
     private static MetricIntervalStats fullInterval() {
         return new MetricIntervalStats(T_2023, T_2023 + D, 3.0, 1.0, 5.0, 0.5, 10, 2.5, false);
     }
-    // ── getDurationMillis ─────────────────────────────────────────────────────
 
     @Test
     void getDurationMillis_returnsEndMinusStart() {
         assertEquals(D, fullInterval().getDurationMillis());
     }
-    // ── getDurationSeconds ────────────────────────────────────────────────────
 
     @Test
     void getDurationSeconds_returnsDurationDividedBy1000() {
         assertEquals(D / 1000, fullInterval().getDurationSeconds());
     }
-    // ── getStartTimeUtc ───────────────────────────────────────────────────────
 
     @Test
     void getStartTimeUtc_returnsDateForIntervalStart() {
         assertNotNull(fullInterval().getStartTimeUtc());
         assertEquals(T_2023, fullInterval().getStartTimeUtc().getTime());
     }
-    // ── cloneOutlier ──────────────────────────────────────────────────────────
 
     @Test
     void cloneOutlier_true_returnsNewInstanceWithOutlierTrue() {
@@ -130,7 +125,6 @@ class MetricIntervalStatsTest {
         MetricIntervalStats cloned = base.cloneOutlier(false);
         assertFalse(cloned.isOutlier());
     }
-    // ── accessors ─────────────────────────────────────────────────────────────
 
     @Test
     void getAvg_returnsConstructorValue() {

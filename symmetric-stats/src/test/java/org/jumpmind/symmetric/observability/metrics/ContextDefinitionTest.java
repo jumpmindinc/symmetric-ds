@@ -66,6 +66,6 @@ class ContextDefinitionTest {
     @Test
     void constructor_nullAttributes_returnedListIsUnmodifiable() {
         ContextDefinition def = new ContextDefinition(1L, null);
-        assertThrows(UnsupportedOperationException.class, () -> def.attributes().add(new MetricAttribute("x", "y")));
+        assertThrows(UnsupportedOperationException.class, def.attributes()::clear);
     }
 }

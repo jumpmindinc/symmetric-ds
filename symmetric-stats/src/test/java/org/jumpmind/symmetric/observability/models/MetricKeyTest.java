@@ -115,7 +115,6 @@ class MetricKeyTest {
         MetricKey b = new MetricKey(KEY_A, "host1", "engine1", "metric1", FLOAT64, GAUGE, true);
         assertFalse(a.equalsOnCompositeKey(b));
     }
-    // ── isSurrogateKeyMissing ─────────────────────────────────────────────────
 
     @Test
     void isSurrogateKeyMissing_whenKeyIsUnassigned_returnsTrue() {

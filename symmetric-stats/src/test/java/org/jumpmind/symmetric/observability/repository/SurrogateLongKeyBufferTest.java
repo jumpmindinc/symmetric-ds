@@ -137,7 +137,6 @@ class SurrogateLongKeyBufferTest {
                     "Expected roundUp(" + v + ")=" + nextBoundary + " to be greater than input");
         }
     }
-    // ── default constructor ───────────────────────────────────────────────────
 
     @Test
     void defaultConstructor_isAvailableReturnsFalse() {
@@ -150,7 +149,6 @@ class SurrogateLongKeyBufferTest {
         SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
         assertEquals(SURROGATE_KEY_BUFFER_SIZE, buf.capacity());
     }
-    // ── single-arg constructor ────────────────────────────────────────────────
 
     @Test
     void startConstructor_isAvailableReturnsTrue() {
@@ -169,14 +167,12 @@ class SurrogateLongKeyBufferTest {
         SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(100L);
         assertEquals(SURROGATE_KEY_BUFFER_SIZE, buf.size());
     }
-    // ── two-arg constructor ───────────────────────────────────────────────────
 
     @Test
     void twoArgConstructor_peekNextValueEqualsNextKey() {
         SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(100L, 105L);
         assertEquals(105L, buf.peekNextValue());
     }
-    // ── capacity ──────────────────────────────────────────────────────────────
 
     @Test
     void capacity_alwaysReturnsBufferSize() {
@@ -184,7 +180,6 @@ class SurrogateLongKeyBufferTest {
         assertEquals(SURROGATE_KEY_BUFFER_SIZE, new SurrogateLongKeyBuffer(0L).capacity());
         assertEquals(SURROGATE_KEY_BUFFER_SIZE, new SurrogateLongKeyBuffer(50L, 55L).capacity());
     }
-    // ── size ──────────────────────────────────────────────────────────────────
 
     @Test
     void size_fullBuffer_equalsBufferSize() {
@@ -198,7 +193,6 @@ class SurrogateLongKeyBufferTest {
         buf.getNextValue();
         assertEquals(SURROGATE_KEY_BUFFER_SIZE - 1, buf.size());
     }
-    // ── getNextValue ──────────────────────────────────────────────────────────
 
     @Test
     void getNextValue_returnsSequentialValuesFromStart() {
@@ -223,7 +217,6 @@ class SurrogateLongKeyBufferTest {
         }
         assertThrows(IllegalStateException.class, buf::getNextValue);
     }
-    // ── peekNextValue ─────────────────────────────────────────────────────────
 
     @Test
     void peekNextValue_doesNotAdvancePointer() {
@@ -239,7 +232,6 @@ class SurrogateLongKeyBufferTest {
         SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer();
         assertThrows(ExceptionInInitializerError.class, buf::peekNextValue);
     }
-    // ── isAvailable ───────────────────────────────────────────────────────────
 
     @Test
     void isAvailable_uninitialized_returnsFalse() {
@@ -259,7 +251,6 @@ class SurrogateLongKeyBufferTest {
         }
         assertFalse(buf.isAvailable());
     }
-    // ── moveTo ────────────────────────────────────────────────────────────────
 
     @Test
     void moveTo_happyPath_setsValuesCorrectly() {

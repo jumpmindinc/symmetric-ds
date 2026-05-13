@@ -88,7 +88,6 @@ class PrimaryMetricAggregatorTest {
         aggregator.awaitStop(2000);
         assertFalse(aggregator.isRunning());
     }
-    // ── processAll / closeAll ─────────────────────────────────────────────────
 
     @Test
     void processAll_withEmptyMetricsManager_doesNotThrow() {
@@ -99,7 +98,6 @@ class PrimaryMetricAggregatorTest {
     void closeAll_withEmptyMetricsManager_doesNotThrow() {
         assertDoesNotThrow(() -> aggregator.closeAllMetrics());
     }
-    // ── processAll with a registered service ──────────────────────────────────
 
     @Test
     void processAll_withRegisteredService_callsMetricProcessing() {
@@ -111,7 +109,6 @@ class PrimaryMetricAggregatorTest {
         verify(svc).getAllMetrics();
         verify(svc).saveCompletedIntervalStats();
     }
-    // ── closeAll with a registered service ───────────────────────────────────
 
     @Test
     void closeAll_withRegisteredService_callsShutdown() {
