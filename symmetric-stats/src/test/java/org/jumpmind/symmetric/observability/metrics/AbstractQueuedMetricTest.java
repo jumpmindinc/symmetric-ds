@@ -48,10 +48,10 @@ import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 import io.opentelemetry.api.common.Attributes;
 
@@ -452,16 +452,21 @@ class AbstractQueuedMetricTest {
 
     @Test
     void addObservation_whenClosedWithDebugEnabled_logsAndIgnores() {
-        Logger logger = (Logger) LoggerFactory.getLogger(AbstractQueuedMetric.class);
-        Level original = logger.getLevel();
-        logger.setLevel(Level.DEBUG);
+        Logger raw = LoggerFactory.getLogger(AbstractQueuedMetric.class);
+        ch.qos.logback.classic.Logger logbackLogger = (raw instanceof ch.qos.logback.classic.Logger) ? (ch.qos.logback.classic.Logger) raw : null;
+        Level original = logbackLogger != null ? logbackLogger.getLevel() : null;
+        if (logbackLogger != null) {
+            logbackLogger.setLevel(Level.DEBUG);
+        }
         try {
             UpDownCounter m = newCounter();
             m.close();
             m.addObservation(obs(5L, T));
             assertEquals(0, m.getObservationsCountEstimate());
         } finally {
-            logger.setLevel(original);
+            if (logbackLogger != null) {
+                logbackLogger.setLevel(original);
+            }
         }
     }
 
