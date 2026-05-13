@@ -41,7 +41,7 @@ public class UpDownCounter extends AbstractCounterMetric implements IUpDownCount
     }
 
     @Override
-    public void open(AutoCloseable handle) {
+    public synchronized void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableLongUpDownCounter)) {
             String message = String.format("Expected ObservableLongUpDownCounter, got %s", handle.getClass().getName());
             throw new IllegalArgumentException(message);

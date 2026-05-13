@@ -40,7 +40,7 @@ public class SymLongGauge extends AbstractLongGaugeMetric implements ISymLongGau
     }
 
     @Override
-    public void open(AutoCloseable handle) {
+    public synchronized void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableLongGauge)) {
             String message = String.format("Expected ObservableLongGauge, got %s", handle.getClass().getName());
             throw new IllegalArgumentException(message);

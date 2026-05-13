@@ -48,7 +48,7 @@ import io.opentelemetry.api.common.Attributes;
 public abstract class AbstractQueuedMetric implements ISymMetric {
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
     private final String metricId;
-    protected volatile AutoCloseable externalTelemetryHandle = null;
+    protected AutoCloseable externalTelemetryHandle = null;
     protected final Attributes attributes;
     private final List<MetricAttribute> metricAttributes;
     private final MetricFactType factType;

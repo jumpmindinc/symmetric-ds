@@ -40,7 +40,7 @@ public class SymDoubleGauge extends AbstractDoubleGaugeMetric implements ISymDou
     }
 
     @Override
-    public void open(AutoCloseable handle) {
+    public synchronized void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableDoubleGauge)) {
             String message = String.format("Expected ObservableDoubleGauge, got %s", handle.getClass().getName());
             throw new IllegalArgumentException(message);

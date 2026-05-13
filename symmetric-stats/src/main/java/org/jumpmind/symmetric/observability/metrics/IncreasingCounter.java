@@ -40,7 +40,7 @@ public class IncreasingCounter extends AbstractCounterMetric implements IIncreas
     }
 
     @Override
-    public void open(AutoCloseable handle) {
+    public synchronized void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableLongCounter)) {
             String message = String.format("Expected ObservableLongCounter, got %s", handle.getClass().getName());
             throw new IllegalArgumentException(message);
