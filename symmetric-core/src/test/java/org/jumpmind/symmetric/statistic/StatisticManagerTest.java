@@ -37,7 +37,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,19 +47,25 @@ import java.util.Set;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.ProcessType;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.service.IRouterService;
 import org.jumpmind.symmetric.service.IStatisticService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import static org.mockito.ArgumentMatchers.anyInt;
 
 class StatisticManagerTest {
     private ISymmetricEngine engine;
@@ -424,5 +432,409 @@ class StatisticManagerTest {
     @Test
     void getLastDataLoadedBytesMap_initiallyEmpty() {
         assertTrue(manager.getLastDataLoadedBytesMap().isEmpty());
+    }
+
+    @Test
+    void getProcessInfos_sortThrowsIllegalArgument_fallsBackToDeepCopiedList() {
+        TestableStatisticManager testManager = new TestableStatisticManager(engine);
+        ProcessInfoKey k1 = new ProcessInfoKey("src1", "tgt1", ProcessType.PUSH_JOB_EXTRACT);
+        ProcessInfoKey k2 = new ProcessInfoKey("src2", "tgt2", ProcessType.PUSH_JOB_EXTRACT);
+        testManager.injectProcessInfo(k1, new ThrowingProcessInfo(k1));
+        testManager.injectProcessInfo(k2, new ThrowingProcessInfo(k2));
+        List<ProcessInfo> result = testManager.getProcessInfos();
+        assertNotNull(result);
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void incrementDataSent_updatesChannelStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataSent("chan1", 3L);
+        assertEquals(3L, manager.getWorkingChannelStats().get("chan1").getDataSent());
+    }
+
+    @Test
+    void incrementDataBytesSent_updatesChannelStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataBytesSent("chan1", 100L);
+        assertEquals(100L, manager.getWorkingChannelStats().get("chan1").getDataBytesSent());
+    }
+
+    @Test
+    void incrementDataSentErrors_updatesChannelStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataSentErrors("chan1", 2L);
+        assertEquals(2L, manager.getWorkingChannelStats().get("chan1").getDataSentErrors());
+    }
+
+    @Test
+    void incrementDataReceived_updatesChannelStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataReceived("chan1", 4L);
+        assertEquals(4L, manager.getWorkingChannelStats().get("chan1").getDataReceived());
+    }
+
+    @Test
+    void incrementDataBytesReceived_updatesChannelStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataBytesReceived("chan1", 200L);
+        assertEquals(200L, manager.getWorkingChannelStats().get("chan1").getDataBytesReceived());
+    }
+
+    @Test
+    void incrementDataBytesLoaded_updatesChannelStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataBytesLoaded("chan1", 50L);
+        assertEquals(50L, manager.getWorkingChannelStats().get("chan1").getDataBytesLoaded());
+    }
+
+    @Test
+    void incrementDataLoadedErrors_updatesChannelStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataLoadedErrors("chan1", 1L);
+        assertEquals(1L, manager.getWorkingChannelStats().get("chan1").getDataLoadedErrors());
+    }
+
+    @Test
+    void incrementDataLoadedOutgoingErrors_updatesChannelStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataLoadedOutgoingErrors("chan1", 2L);
+        assertEquals(2L, manager.getWorkingChannelStats().get("chan1").getDataLoadedOutgoingErrors());
+    }
+
+    @Test
+    void updateDataMaxCreateTime_updatesChannelStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        Date maxTime = new Date();
+        manager.updateDataMaxCreateTime("chan1", maxTime);
+        assertEquals(maxTime, manager.getWorkingChannelStats().get("chan1").getDataMaxCreateTime());
+    }
+
+    @Test
+    void incrementNodesPulled_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementNodesPulled(3L);
+        assertEquals(3L, manager.getWorkingHostStats().getNodesPulled());
+    }
+
+    @Test
+    void incrementTotalNodesPulledTime_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementTotalNodesPulledTime(100L);
+        assertEquals(100L, manager.getWorkingHostStats().getTotalNodesPullTime());
+    }
+
+    @Test
+    void incrementTotalNodesPushedTime_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementTotalNodesPushedTime(200L);
+        assertEquals(200L, manager.getWorkingHostStats().getTotalNodesPushTime());
+    }
+
+    @Test
+    void incrementNodesRejected_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementNodesRejected(1L);
+        assertEquals(1L, manager.getWorkingHostStats().getNodesRejected());
+    }
+
+    @Test
+    void incrementNodesRegistered_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementNodesRegistered(2L);
+        assertEquals(2L, manager.getWorkingHostStats().getNodesRegistered());
+    }
+
+    @Test
+    void incrementNodesLoaded_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementNodesLoaded(4L);
+        assertEquals(4L, manager.getWorkingHostStats().getNodesLoaded());
+    }
+
+    @Test
+    void incrementNodesDisabled_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementNodesDisabled(1L);
+        assertEquals(1L, manager.getWorkingHostStats().getNodesDisabled());
+    }
+
+    @Test
+    void incrementPurgedBatchIncomingRows_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementPurgedBatchIncomingRows(10L);
+        assertEquals(10L, manager.getWorkingHostStats().getPurgedBatchIncomingRows());
+    }
+
+    @Test
+    void incrementPurgedBatchOutgoingRows_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementPurgedBatchOutgoingRows(5L);
+        assertEquals(5L, manager.getWorkingHostStats().getPurgedBatchOutgoingRows());
+    }
+
+    @Test
+    void incrementPurgedDataRows_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementPurgedDataRows(20L);
+        assertEquals(20L, manager.getWorkingHostStats().getPurgedDataRows());
+    }
+
+    @Test
+    void incrementPurgedDataEventRows_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementPurgedDataEventRows(15L);
+        assertEquals(15L, manager.getWorkingHostStats().getPurgedDataEventRows());
+    }
+
+    @Test
+    void incrementPurgedStrandedDataRows_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementPurgedStrandedDataRows(7L);
+        assertEquals(7L, manager.getWorkingHostStats().getPurgedStrandedDataRows());
+    }
+
+    @Test
+    void incrementPurgedStrandedDataEventRows_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementPurgedStrandedDataEventRows(3L);
+        assertEquals(3L, manager.getWorkingHostStats().getPurgedStrandedDataEventRows());
+    }
+
+    @Test
+    void incrementPurgedExpiredDataRows_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementPurgedExpiredDataRows(8L);
+        assertEquals(8L, manager.getWorkingHostStats().getPurgedExpiredDataRows());
+    }
+
+    @Test
+    void incrementTriggersRemovedCount_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementTriggersRemovedCount(2L);
+        assertEquals(2L, manager.getWorkingHostStats().getTriggersRemovedCount());
+    }
+
+    @Test
+    void incrementTriggersRebuiltCount_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementTriggersRebuiltCount(4L);
+        assertEquals(4L, manager.getWorkingHostStats().getTriggersRebuiltCount());
+    }
+
+    @Test
+    void incrementTriggersCreatedCount_updatesHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementTriggersCreatedCount(6L);
+        assertEquals(6L, manager.getWorkingHostStats().getTriggersCreatedCount());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void flush_channelStatsWithUnknownNodeId_updatesToResolvedNodeId() throws Exception {
+        when(parameterService.is(anyString(), anyBoolean())).thenReturn(true);
+        when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        Field field = StatisticManager.class.getDeclaredField("channelStats");
+        field.setAccessible(true);
+        Map<String, ChannelStats> csMap = (Map<String, ChannelStats>) field.get(manager);
+        ChannelStats unknownStats = new ChannelStats("Unknown", "server-1", new Date(), null, "chan1");
+        unknownStats.incrementDataRouted(1);
+        csMap.put("chan1", unknownStats);
+        manager.flush();
+    }
+
+    @Test
+    void flush_debugLoggingEnabled_logsPeriodicStats() {
+        when(parameterService.is(anyString(), anyBoolean())).thenReturn(true);
+        when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataSent(Constants.CHANNEL_DEFAULT, 10L);
+        assertDoesNotThrow(() -> manager.flush());
+    }
+
+    @Test
+    void flush_hostStatsWithUnknownNodeId_updatesToResolvedNodeId() {
+        when(parameterService.is(anyString(), anyBoolean())).thenReturn(true);
+        when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
+        when(nodeService.getCachedIdentity()).thenReturn(null, node("node1"));
+        manager.incrementRestart();
+        manager.flush();
+    }
+
+    @Test
+    void flush_hostStatsDataGapCountNull_queriesDataService() {
+        when(parameterService.is(anyString(), anyBoolean())).thenReturn(true);
+        when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        when(dataService.countDataGaps()).thenReturn(42L);
+        manager.incrementRestart();
+        manager.flush();
+        verify(dataService, atLeastOnce()).countDataGaps();
+    }
+
+    @Test
+    void flush_hostStatsDataUnroutedCountNull_queriesRouterService() {
+        IRouterService routerService = mock(IRouterService.class);
+        when(routerService.getUnroutedDataCount()).thenReturn(7L);
+        when(engine.getRouterService()).thenReturn(routerService);
+        when(parameterService.is(anyString(), anyBoolean())).thenReturn(true);
+        when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementRestart();
+        manager.flush();
+        verify(routerService, atLeastOnce()).getUnroutedDataCount();
+    }
+
+    @Test
+    void flush_jobStatsAboveThreshold_savesJobStats() {
+        when(parameterService.is(anyString(), anyBoolean())).thenReturn(true);
+        when(parameterService.getLong(anyString(), anyLong())).thenReturn(0L);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.addJobStats("Job1", 0L, 100L, 10L);
+        manager.flush();
+        verify(statisticService, atLeastOnce()).save(any(JobStats.class));
+    }
+
+    @Test
+    void getNodeStatsForPeriod_withCurrentChannelStats_includesCurrentStats() {
+        Date start = new Date(System.currentTimeMillis() - 60000);
+        Date end = new Date();
+        NodeStatsByPeriodMap periodMap = new NodeStatsByPeriodMap(start, end, Collections.emptyList(), 1);
+        when(statisticService.getNodeStatsForPeriod(any(), any(), any(), anyInt())).thenReturn(periodMap);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataRouted("chan1", 1L);
+        assertDoesNotThrow(() -> manager.getNodeStatsForPeriod(start, end, "node1", 1));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getWorkingChannelStats_whenNullChannelStats_returnsEmptyMap() throws Exception {
+        Field field = StatisticManager.class.getDeclaredField("channelStats");
+        field.setAccessible(true);
+        field.set(manager, null);
+        Map<String, ChannelStats> result = manager.getWorkingChannelStats();
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getWorkingJobStats_whenNullJobStats_returnsEmptyList() throws Exception {
+        Field field = StatisticManager.class.getDeclaredField("jobStats");
+        field.setAccessible(true);
+        field.set(manager, null);
+        List<JobStats> result = manager.getWorkingJobStats();
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getWorkingHostStats_whenNullHostStats_returnsDefaultHostStats() {
+        HostStats result = manager.getWorkingHostStats();
+        assertNotNull(result);
+        assertEquals(0L, result.getRestarted());
+    }
+
+    @Test
+    void resetChannelStats_withConfiguredChannels_initializesChannelEntry() {
+        when(configurationService.getNodeChannels(false)).thenReturn(Collections.singletonList(new NodeChannel("chan1")));
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        when(parameterService.is(anyString(), anyBoolean())).thenReturn(false);
+        when(parameterService.getLong(anyString(), anyLong())).thenReturn(-1L);
+        manager.flush();
+        assertTrue(manager.getWorkingChannelStats().containsKey("chan1"));
+    }
+
+    @Test
+    void incrementNodesPushed_withKnownNode_setsNodeIdOnHostStats() {
+        when(nodeService.getCachedIdentity()).thenReturn(node("node42"));
+        manager.incrementNodesPushed(1L);
+        assertEquals("node42", manager.getWorkingHostStats().getNodeId());
+    }
+
+    @Test
+    void incrementDataSent_withNonNullMetricsCounter_invokesCounterAdd() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        IUpDownCounter counter = mock(IUpDownCounter.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.getUpDownCounter(anyString(), any())).thenReturn(counter);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.incrementDataSent("chan1", 5L);
+        verify(counter).add(5L);
+    }
+
+    @Test
+    void setDataUnRouted_withNonNullMetricsGauge_invokesGaugeSetValue() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.getDoubleGauge(anyString(), any())).thenReturn(gauge);
+        manager.setDataUnRouted("chan1", 10L);
+        verify(gauge).setValue(10.0);
+    }
+
+    @Test
+    void updateDataMinCreateTime_withNonNullMetricsService_reachesGaugeNullCheck() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.getLongGauge(anyString(), any())).thenReturn(null);
+        assertDoesNotThrow(() -> manager.updateDataMinCreateTime("chan1", new Date()));
+    }
+
+    @Test
+    void incrementRestart_withNonNullMetricsCounter_invokesCounterAdd() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        IUpDownCounter counter = mock(IUpDownCounter.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.getUpDownCounter(anyString())).thenReturn(counter);
+        manager.incrementRestart();
+        verify(counter).add(1L);
+    }
+
+    @Test
+    void setDataGapCount_withNonNullMetricsGauge_invokesGaugeSetValue() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.getDoubleGauge(anyString())).thenReturn(gauge);
+        manager.setDataGapCount(5L);
+        verify(gauge).setValue(5.0);
+    }
+
+    @Test
+    void getMostRecentUserDataSyncProcessInfo_afterEntryStored_returnsStoredProcess() {
+        ProcessInfoKey k = new ProcessInfoKey("src1", "tgt1", ProcessType.PUSH_JOB_EXTRACT);
+        ProcessInfo first = manager.newProcessInfo(k);
+        first.setCurrentDataCount(10);
+        first.setCurrentTableName("user_orders");
+        first.setCurrentChannelId(Constants.CHANNEL_DEFAULT);
+        manager.newProcessInfo(k);
+        ProcessInfo result = manager.getMostRecentUserDataSyncProcessInfo("src1", "tgt1");
+        assertNotNull(result);
+        assertEquals(10L, result.getCurrentDataCount());
+    }
+
+    private static class ThrowingProcessInfo extends ProcessInfo {
+        ThrowingProcessInfo(ProcessInfoKey k) {
+            super(k);
+        }
+
+        @Override
+        public int compareTo(ProcessInfo o) {
+            throw new IllegalArgumentException("Simulated comparator failure");
+        }
+
+        @Override
+        protected Object clone() throws CloneNotSupportedException {
+            return new ProcessInfo(getKey());
+        }
+    }
+
+    private static class TestableStatisticManager extends StatisticManager {
+        TestableStatisticManager(ISymmetricEngine engine) {
+            super(engine);
+        }
+
+        void injectProcessInfo(ProcessInfoKey key, ProcessInfo info) {
+            processInfos.put(key, info);
+        }
     }
 }
