@@ -145,6 +145,7 @@ public class NodeBatchStatusMetricsMap extends AbstractKeyedMetricsMap<NodeBatch
     public List<INodeBatchStatusGauge> gaugesForNode(String nodeId) {
         return all().stream()
                 .filter(g -> nodeId.equals(g.getNodeId()))
+                .<INodeBatchStatusGauge>map(g -> g)
                 .toList();
     }
 }
