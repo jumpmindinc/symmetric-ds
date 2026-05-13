@@ -28,6 +28,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -295,7 +296,7 @@ public class UpdateService extends AbstractService implements IUpdateService {
     }
 
     protected URL getUpdateUrl() throws MalformedURLException {
-        return new URL("https://status.symmetricds.org/api/getlatest.php");
+        return URI.create("https://status.symmetricds.org/api/getlatest.php").toURL();
     }
 
     public boolean isNewVersionAvailable() {

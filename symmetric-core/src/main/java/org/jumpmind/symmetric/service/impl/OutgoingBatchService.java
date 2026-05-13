@@ -470,8 +470,17 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
     }
 
     @Override
+    @Deprecated(forRemoval = true)
     public int countOutgoingBatchesUnsentHeartbeat() {
         return sqlTemplateDirty.queryForInt(getSql("countOutgoingBatchesUnsentHeartbeat"));
+    }
+
+    @Override
+    public void cancelStaleHeartbeatBatches() {
+        int cancelled = sqlTemplate.update(getSql("cancelStaleHeartbeatBatchesSql"));
+        if (cancelled > 0 && log.isDebugEnabled()) {
+            log.debug("Cancelled {} stale heartbeat batch(es)", cancelled);
+        }
     }
 
     @Override

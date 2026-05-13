@@ -122,7 +122,13 @@ public interface IOutgoingBatchService {
 
     public int countOutgoingBatchesUnsent(String channelId);
 
+    /**
+     * Replaced by {@link #cancelStaleHeartbeatBatches()}.
+     */
+    @Deprecated(forRemoval = true)
     public int countOutgoingBatchesUnsentHeartbeat();
+
+    public void cancelStaleHeartbeatBatches();
 
     public Map<String, Integer> countOutgoingBatchesPendingByChannel(String nodeId);
 

@@ -107,7 +107,7 @@ public class SqlRunner extends Thread {
 
     public SqlRunner(String sqlText, boolean runAsScript, String user, IDb db, Settings settings, SqlExplorer explorer, ISqlRunnerListener listener,
             QueryPanel queryPanel, boolean isInQueryGeneralResults) {
-        this.setName("sql-runner-" + getId());
+        this.setName("sql-runner-" + threadId());
         this.sqlText = sqlText;
         this.runAsScript = runAsScript;
         this.db = db;

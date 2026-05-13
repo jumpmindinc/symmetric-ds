@@ -38,6 +38,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.locks.LockSupport;
+import java.util.stream.Stream;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.JobDefinition;
@@ -50,6 +52,9 @@ import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
 
@@ -210,38 +215,20 @@ class AbstractJobTest {
         assertEquals(60000L, testJob.getTimeBetweenRunsInMsPublic());
     }
 
-    @Test
-    void testGetTimeBetweenRunsInMs_zeroPeriod_returnsNegative() {
-        when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule("0");
-        assertEquals(-1L, testJob.getTimeBetweenRunsInMsPublic());
+    static Stream<Arguments> invalidScheduleProvider() {
+        return Stream.of(
+                Arguments.of("0"),
+                Arguments.of("-1000"),
+                Arguments.of("not-a-number"),
+                Arguments.of(""),
+                Arguments.of((Object) null));
     }
 
-    @Test
-    void testGetTimeBetweenRunsInMs_negativePeriod_returnsNegative() {
+    @ParameterizedTest
+    @MethodSource("invalidScheduleProvider")
+    void testGetTimeBetweenRunsInMs_invalidSchedule_returnsNegative(String schedule) {
         when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule("-1000");
-        assertEquals(-1L, testJob.getTimeBetweenRunsInMsPublic());
-    }
-
-    @Test
-    void testGetTimeBetweenRunsInMs_invalidFormat_returnsNegative() {
-        when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule("not-a-number");
-        assertEquals(-1L, testJob.getTimeBetweenRunsInMsPublic());
-    }
-
-    @Test
-    void testGetTimeBetweenRunsInMs_emptySchedule_returnsNegative() {
-        when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule("");
-        assertEquals(-1L, testJob.getTimeBetweenRunsInMsPublic());
-    }
-
-    @Test
-    void testGetTimeBetweenRunsInMs_nullSchedule_returnsNegative() {
-        when(parameterService.getString(anyString())).thenReturn(null);
-        jobDefinition.setDefaultSchedule(null);
+        jobDefinition.setDefaultSchedule(schedule);
         assertEquals(-1L, testJob.getTimeBetweenRunsInMsPublic());
     }
 
@@ -620,7 +607,7 @@ class AbstractJobTest {
         @Override
         protected void doJob(boolean force) throws Exception {
             if (doJobSleepMs > 0) {
-                Thread.sleep(doJobSleepMs);
+                LockSupport.parkNanos(doJobSleepMs * 1_000_000L);
             }
             if (throwException) {
                 throw new RuntimeException("Test exception");

@@ -81,6 +81,7 @@ import org.jumpmind.symmetric.model.TriggerReBuildReason;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.route.ConfigurationChangedDataRouter;
 import org.jumpmind.symmetric.route.FileSyncDataRouter;
+import org.jumpmind.symmetric.route.RegistrationServerRouter;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
@@ -673,6 +674,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         if (TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_SNAPSHOT).equals(
                 trigger.getSourceTableName())) {
             router.setRouterType(FileSyncDataRouter.ROUTER_TYPE);
+        } else if (TableConstants.getTableName(tablePrefix, TableConstants.SYM_MONITOR_EVENT).equals(
+                trigger.getSourceTableName())) {
+            router.setRouterType(RegistrationServerRouter.ROUTER_TYPE);
         } else {
             router.setRouterType(ConfigurationChangedDataRouter.ROUTER_TYPE);
         }

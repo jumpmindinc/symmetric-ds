@@ -56,3 +56,10 @@ SymmetricDS 3.17 significantly expands the statistics available for monitoring a
 --
 The node_channel_control table now includes a target_node_id column, making it possible to suspend or ignore synchronization between two specific nodes in an individual direction. For ease of use and increased visibility, SymmetricDS now synchronizes this table between nodes via the config channel. In addition, the behavior of this table is more consistent and no longer affected by the group link's data event action. When upgrading to 3.17, all rows will be deleted from the node_channel_control table.
 --
+
+=== Monitor Events No Longer Broadcast Across the Network
+--
+Monitor events are now routed only upstream to the registration server, instead of being broadcast across every group link. Previously, monitor cycles on the registration server enqueued a batch on the `monitor` channel for every registered client — including offline ones — which caused outgoing batches to grow steadily until offline nodes reconnected. Monitor events generated on the registration server now stay local, and events generated downstream travel directly to their registration parent. No configuration is required; the new routing behavior is applied automatically on upgrade.
+
+Any monitor batches already pending for an offline client at the time of upgrade will flush and purge automatically the next time that client reconnects. After upgrade no new batches accumulate, so no manual cleanup is needed.
+--

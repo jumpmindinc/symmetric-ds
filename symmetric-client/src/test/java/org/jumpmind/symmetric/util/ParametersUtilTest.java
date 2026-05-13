@@ -28,7 +28,7 @@ import java.util.Properties;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.junit.jupiter.api.Test;
 
-public class ParametersUtilTest {
+class ParametersUtilTest {
     @Test
     void deepCopyTest() {
         Properties originalParameters = new Properties();
