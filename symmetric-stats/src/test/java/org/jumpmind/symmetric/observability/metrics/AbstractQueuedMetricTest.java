@@ -26,35 +26,32 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.model.MetricFactType;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
-import org.jumpmind.symmetric.common.Constants;
+import org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 
 import io.opentelemetry.api.common.Attributes;
 
@@ -77,6 +74,28 @@ class AbstractQueuedMetricTest {
 
     private static ObservationLong obs(long value, long timestamp) {
         return new ObservationLong(value, timestamp);
+    }
+
+    private static class BrokenProcessingMetric extends UpDownCounter {
+        BrokenProcessingMetric() {
+            super(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        }
+
+        @Override
+        public int processObservations(List<ISymObservation> obs) {
+            throw new RuntimeException("simulated processing failure");
+        }
+    }
+
+    private static class FailingCloseMetric extends UpDownCounter {
+        FailingCloseMetric() {
+            super(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        }
+
+        @Override
+        public void closeExpiredAccumulatorIfNeeded(long epochMillis) {
+            throw new RuntimeException("simulated close failure");
+        }
     }
 
     @Test
@@ -413,5 +432,62 @@ class AbstractQueuedMetricTest {
         List<ISymIntervalStats> completed = m.exportCompletedIntervals();
         assertFalse(completed.isEmpty());
         assertTrue(completed.stream().anyMatch(ISymIntervalStats::isOutlier));
+    }
+
+    @Test
+    void open_whenDisabled_throwsRuntimeException() {
+        UpDownCounter m = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        m.isMetricEnabled = false;
+        assertThrows(RuntimeException.class, () -> m.open(null));
+    }
+
+    @Test
+    void createAccumulator_doubleGauge_returnsFloat64AccumulatorWithCorrectStart() {
+        SymDoubleGauge m = new SymDoubleGauge(new SymMetricDefinition("test.double", "", "", InstrumentType.DOUBLE_GAUGE), Attributes.empty(), List.of());
+        m.open(null);
+        IStatsAccumulator acc = m.createAccumulator(T);
+        assertInstanceOf(Float64StatsAccumulator.class, acc);
+        assertEquals(T, acc.getIntervalStart());
+    }
+
+    @Test
+    void addObservation_whenClosedWithDebugEnabled_logsAndIgnores() {
+        Logger logger = (Logger) LoggerFactory.getLogger(AbstractQueuedMetric.class);
+        Level original = logger.getLevel();
+        logger.setLevel(Level.DEBUG);
+        try {
+            UpDownCounter m = newCounter();
+            m.close();
+            m.addObservation(obs(5L, T));
+            assertEquals(0, m.getObservationsCountEstimate());
+        } finally {
+            logger.setLevel(original);
+        }
+    }
+
+    @Test
+    void processAllObservations_whenProcessingThrows_swallowsException() {
+        BrokenProcessingMetric m = new BrokenProcessingMetric();
+        m.open(null);
+        m.addObservation(obs(5L, T));
+        assertDoesNotThrow(m::processAllObservations);
+    }
+
+    @Test
+    void closeAccumulatorAndOpenNewOne_nullAccumulator_initializesNewAccumulator() throws Exception {
+        UpDownCounter m = newCounter();
+        m.currentIntervalAccumulator = null;
+        Method method = AbstractQueuedMetric.class.getDeclaredMethod("closeAccumulatorAndOpenNewOne");
+        method.setAccessible(true);
+        method.invoke(m);
+        assertNotNull(m.currentIntervalAccumulator);
+    }
+
+    @Test
+    void closeCompletedIntervals_whenCloseThrows_recoversWithNewAccumulator() {
+        FailingCloseMetric m = new FailingCloseMetric();
+        m.open(null);
+        assertDoesNotThrow(m::closeCompletedIntervals);
+        assertNotNull(m.currentIntervalAccumulator);
     }
 }
