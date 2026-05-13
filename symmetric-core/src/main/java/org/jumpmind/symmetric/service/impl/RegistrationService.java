@@ -417,7 +417,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
     public void saveRegistrationRequest(RegistrationRequest request) {
         String externalId = StringUtils.defaultIfEmpty(request.getExternalId(), "");
         String nodeGroupId = StringUtils.defaultIfEmpty(request.getNodeGroupId(), "");
-        RegistrationRequest priorRequest = getLatestRegistrationRequest(externalId, nodeGroupId);
+        RegistrationRequest priorRequest = getLatestRegistrationRequest(nodeGroupId, externalId);
         int recordsChanged = reconcileRegistrationRequestWithPriorEntry(request, priorRequest);
         if (recordsChanged < 1) {
             insertRegistrationRequestIntoDatabase(request);
