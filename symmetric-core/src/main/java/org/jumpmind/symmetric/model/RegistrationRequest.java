@@ -33,8 +33,9 @@ public class RegistrationRequest implements Serializable {
         OK, RQ, RJ, RR, ER
     };
 
-    // This set should be coordinated with the updateRegistrationRequestSql in RegistrationServiceSqlMap:
-    private static final Set<RegistrationStatus> incompleteStatuses = Set.of(RegistrationStatus.ER, RegistrationStatus.RJ, RegistrationStatus.RQ);
+    public static final RegistrationStatus[] incompleteStatuses = { 
+        RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ };
+
     private String nodeGroupId;
     private String externalId;
     private RegistrationStatus status;

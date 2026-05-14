@@ -23,11 +23,19 @@ package org.jumpmind.symmetric.service.impl;
 import java.util.Map;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.symmetric.model.RegistrationRequest;
 
 public class RegistrationServiceSqlMap extends AbstractSqlMap {
     public RegistrationServiceSqlMap(IDatabasePlatform platform,
             Map<String, String> replacementTokens) {
         super(platform, replacementTokens);
+        StringBuilder incompleteStatusList = new StringBuilder();
+        for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.incompleteStatuses) {
+            if (incompleteStatusList.length() > 0) {
+                incompleteStatusList.append(",");
+            }
+            incompleteStatusList.append("'").append(statusName.name()).append("'");
+        }
         putSql("findNodeToRegisterSql",
                 ""
                         + "select min(c.node_id) from $(node) c inner join                                "
@@ -75,6 +83,6 @@ public class RegistrationServiceSqlMap extends AbstractSqlMap {
         putSql("whereNodeGroupIdAndExternalIdSql", "where node_group_id=? and external_id=?");
         putSql("wherePkSql", "where node_group_id=? and external_id=? and create_time=?");
         putSql("whereNodeGroupIdExternalIdHostNameStatusSql",
-                "where node_group_id=? and external_id=? and host_name=? and status in ('RQ','ER','RJ')");
+                "where node_group_id=? and external_id=? and host_name=? and status in (" + incompleteStatusList + ")");
     }
 }
