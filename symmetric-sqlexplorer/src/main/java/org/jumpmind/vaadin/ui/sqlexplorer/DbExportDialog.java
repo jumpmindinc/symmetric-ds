@@ -361,7 +361,7 @@ public class DbExportDialog extends ResizableDialog {
         if (fileDownloader != null) {
             fileDownloader.remove();
         }
-        fileDownloader = new Anchor(createDownloadHandler(), null);
+        fileDownloader = new Anchor(createDownloadHandler(), (String) null);
         fileDownloader.getElement().setAttribute("download", true);
         fileDownloader.add(exportFileButton);
         fileDownloader.setVisible(exportFormatOptionGroup.getValue().equals(EXPORT_AS_A_FILE));

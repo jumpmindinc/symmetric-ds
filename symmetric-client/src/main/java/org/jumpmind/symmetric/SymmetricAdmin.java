@@ -32,7 +32,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -1235,7 +1235,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         HttpURLConnection snapshotHttpUrlConnection = null;
         boolean success = false;
         try {
-            URLConnection snapshotUrlConnection = new URL(snapshotUrl).openConnection();
+            URLConnection snapshotUrlConnection = URI.create(snapshotUrl).toURL().openConnection();
             if (snapshotUrlConnection instanceof HttpURLConnection) {
                 snapshotHttpUrlConnection = (HttpURLConnection) snapshotUrlConnection;
                 snapshotHttpUrlConnection.setDoInput(true);

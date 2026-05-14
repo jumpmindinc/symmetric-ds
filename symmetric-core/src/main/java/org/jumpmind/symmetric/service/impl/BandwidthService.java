@@ -24,6 +24,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -88,7 +89,7 @@ public class BandwidthService implements IBandwidthService {
             long maxTestDuration) throws IOException {
         byte[] buffer = new byte[1024];
         BandwidthTestResults bw = new BandwidthTestResults();
-        URL u = new URL(String.format("%s/bandwidth?direction=pull&sampleSize=%s", syncUrl, sampleSize));
+        URL u = URI.create(String.format("%s/bandwidth?direction=pull&sampleSize=%s", syncUrl, sampleSize)).toURL();
         bw.start();
         try (HttpConnection conn = new HttpConnection(u)) {
             try (InputStream is = conn.getInputStream()) {

@@ -221,7 +221,7 @@ public class ReadOnlyTextAreaDialog extends ResizableDialog {
         if (lobData != null) {
             DownloadHandler downloadHandler = DownloadHandler.fromInputStream(
                     event -> new DownloadResponse(new ByteArrayInputStream(lobData), title, null, lobData.length));
-            Anchor fileDownloader = new Anchor(downloadHandler, null);
+            Anchor fileDownloader = new Anchor(downloadHandler, (String) null);
             fileDownloader.add(downloadButton);
             long fileSize = lobData.length;
             String sizeText = fileSize + " Bytes";

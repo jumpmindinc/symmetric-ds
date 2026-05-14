@@ -44,6 +44,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.orderedlayout.Scroller.ScrollDirection;
 
 public class DbFillDialog extends ResizableDialog {
@@ -80,7 +81,7 @@ public class DbFillDialog extends ResizableDialog {
     public DbFillDialog(IDatabasePlatform databasePlatform, Set<Table> selectedTableSet,
             QueryPanel queryPanel, String excludeTablesRegex) {
         super("Database Fill", false);
-        setModal(true);
+        setModality(ModalityMode.STRICT);
         setHeight("500px");
         setWidth("605px");
         this.databasePlatform = databasePlatform;

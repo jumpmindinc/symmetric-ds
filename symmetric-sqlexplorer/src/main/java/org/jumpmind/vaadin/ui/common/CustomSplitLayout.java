@@ -50,8 +50,8 @@ public class CustomSplitLayout extends SplitLayout {
 
     private void init() {
         getElement().addEventListener("splitter-dragend", e -> {
-            this.primarySizePixel = e.getEventData().getNumber(PRIMARY_SIZE);
-            this.secondarySizePixel = e.getEventData().getNumber(SECONDARY_SIZE);
+            this.primarySizePixel = e.getEventData().get(PRIMARY_SIZE).asDouble();
+            this.secondarySizePixel = e.getEventData().get(SECONDARY_SIZE).asDouble();
             double totalSize = this.primarySizePixel + this.secondarySizePixel;
             this.splitterPosition = Math.round((this.primarySizePixel / totalSize) * 100.0);
         }).addEventData(PRIMARY_OFFSET_WIDTH).addEventData(PRIMARY_OFFSET_HEIGHT)
