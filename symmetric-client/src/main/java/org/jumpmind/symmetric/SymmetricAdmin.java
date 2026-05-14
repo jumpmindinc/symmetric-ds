@@ -693,26 +693,18 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         }
         try (FileInputStream finput = new FileInputStream(filename); ZipInputStream zip = new ZipInputStream(finput)) {
             ZipEntry entry = null;
-            String canonicalSymHome = new File(AppUtils.getSymHome()).getCanonicalPath() + File.separator;
+            File symHome = new File(AppUtils.getSymHome());
             for (entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
                 if (entry.isDirectory()) {
                     continue;
                 }
                 System.out.println("Restoring " + entry.getName());
-                File fileToOpen = null;
-                File file = new File(entry.getName());
-                if (file.isAbsolute()) {
-                    String canonicalPath = file.getCanonicalPath();
-                    if (!canonicalPath.equals(file.getAbsolutePath())) {
-                        throw new IoException("Zip Slip attack detected in entry: " + entry.getName());
-                    }
-                    file.getParentFile().mkdirs();
-                    fileToOpen = file;
+                File fileToOpen;
+                if (new File(entry.getName()).isAbsolute()) {
+                    fileToOpen = AppUtils.resolveZipEntry(entry);
+                    fileToOpen.getParentFile().mkdirs();
                 } else {
-                    fileToOpen = new File(AppUtils.getSymHome(), entry.getName());
-                    if (!fileToOpen.getCanonicalPath().startsWith(canonicalSymHome)) {
-                        throw new IoException("Zip Slip attack detected in entry: " + entry.getName());
-                    }
+                    fileToOpen = AppUtils.resolveZipEntry(symHome, entry);
                 }
                 try (FileOutputStream foutput = new FileOutputStream(fileToOpen)) {
                     final byte buffer[] = new byte[4096];
