@@ -21,8 +21,9 @@
 package org.jumpmind.symmetric.model;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Date;
-import java.util.Set;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -33,8 +34,8 @@ public class RegistrationRequest implements Serializable {
         OK, RQ, RJ, RR, ER
     };
 
-    public static final RegistrationStatus[] incompleteStatuses = { 
-        RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ };
+    public static final List<RegistrationStatus> incompleteStatuses = Arrays.asList(
+            RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ);
 
     private String nodeGroupId;
     private String externalId;
