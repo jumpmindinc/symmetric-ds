@@ -1021,7 +1021,7 @@ class MetricsRepositoryTest {
         MetricKey k = key(10L, "m1", TEST_ENGINE, TEST_HOST);
         invokePrivate(repo, "populateMetricKeyCache", new Class<?>[] { List.class }, List.of(k));
         MetricIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
-        when(sqlTemplate.query(anyString(), anyInt(), any(ISqlRowMapper.class), (Object[]) any()))
+        when(sqlTemplate.query(anyString(), anyInt(), any(ISqlRowMapper.class), any(), any()))
                 .thenReturn(List.of(stats));
         List<ISymIntervalStats> result = repo.loadRecentIntervalsForKeyFromDatabase(k);
         assertEquals(1, result.size());
