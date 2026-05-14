@@ -64,13 +64,28 @@ class AppUtilsTest {
 
     @Test
     void testResolveZipEntry_absoluteValidEntry() throws IOException {
-        File resolved = AppUtils.resolveZipEntry(new ZipEntry("/usr/local/sym/engines/node.properties"));
-        assertEquals(new File("/usr/local/sym/engines/node.properties").getAbsolutePath(), resolved.getAbsolutePath());
+        File tmp = File.createTempFile("zip-entry-test", ".tmp");
+        tmp.deleteOnExit();
+        try {
+            String canonicalPath = tmp.getCanonicalPath();
+            File resolved = AppUtils.resolveZipEntry(new ZipEntry(canonicalPath));
+            assertEquals(canonicalPath, resolved.getCanonicalPath());
+        } finally {
+            tmp.delete();
+        }
     }
 
     @Test
-    void testResolveZipEntry_absoluteTraversal() {
-        assertThrows(IOException.class, () -> AppUtils.resolveZipEntry(new ZipEntry("/usr/local/../etc/passwd")));
+    void testResolveZipEntry_absoluteTraversal() throws IOException {
+        File tmp = File.createTempFile("zip-entry-test", ".tmp");
+        tmp.deleteOnExit();
+        try {
+            String traversalName = tmp.getParentFile().getCanonicalPath()
+                    + File.separator + "subdir" + File.separator + ".." + File.separator + tmp.getName();
+            assertThrows(IOException.class, () -> AppUtils.resolveZipEntry(new ZipEntry(traversalName)));
+        } finally {
+            tmp.delete();
+        }
     }
 
     @Test
