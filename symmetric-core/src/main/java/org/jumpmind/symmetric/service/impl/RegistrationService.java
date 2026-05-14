@@ -437,7 +437,6 @@ public class RegistrationService extends AbstractService implements IRegistratio
                                 Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP });
     }
 
-    /** Checks for matching host_name and status in ('RQ','ER','RJ') */
     private int updateIncompleteRegistrationRequestInDatabase(RegistrationRequest request) {
         String externalId = StringUtils.defaultIfEmpty(request.getExternalId(), "");
         String nodeGroupId = StringUtils.defaultIfEmpty(request.getNodeGroupId(), "");
