@@ -702,7 +702,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                 File fileToOpen;
                 if (new File(entry.getName()).isAbsolute()) {
                     fileToOpen = AppUtils.resolveZipEntry(entry);
-                    fileToOpen.getCanonicalFile().getParentFile().mkdirs();
+                    fileToOpen.getParentFile().mkdirs();
                 } else {
                     fileToOpen = AppUtils.resolveZipEntry(symHome, entry);
                 }

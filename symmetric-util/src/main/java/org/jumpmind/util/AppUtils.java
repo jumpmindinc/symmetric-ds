@@ -312,12 +312,12 @@ public class AppUtils {
     }
 
     public static File resolveZipEntry(ZipEntry entry) throws IOException {
-        Path original = Path.of(entry.getName());
-        Path normalized = original.normalize();
-        if (!normalized.equals(original)) {
-            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+        File file = new File(entry.getName());
+        String canonical = file.getCanonicalPath();
+        if (canonical.equals(file.getAbsolutePath())) {
+            return new File(canonical);
         }
-        return normalized.toFile();
+        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
     }
 
     public static void unzip(InputStream in, File toDir) {
