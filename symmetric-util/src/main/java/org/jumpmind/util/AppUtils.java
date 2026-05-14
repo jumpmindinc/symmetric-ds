@@ -304,6 +304,7 @@ public class AppUtils {
 
     public static void unzip(InputStream in, File toDir) {
         try {
+            String canonicalToDir = toDir.getCanonicalPath() + File.separator;
             ZipInputStream is = new ZipInputStream(in);
             ZipEntry entry = null;
             do {
@@ -311,10 +312,16 @@ public class AppUtils {
                 if (entry != null) {
                     if (entry.isDirectory()) {
                         File dir = new File(toDir, entry.getName());
+                        if (!dir.getCanonicalPath().startsWith(canonicalToDir)) {
+                            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+                        }
                         dir.mkdirs();
                         dir.setLastModified(entry.getTime());
                     } else {
                         File file = new File(toDir, entry.getName());
+                        if (!file.getCanonicalPath().startsWith(canonicalToDir)) {
+                            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+                        }
                         if (!file.getParentFile().exists()) {
                             file.getParentFile().mkdirs();
                             file.getParentFile().setLastModified(entry.getTime());
