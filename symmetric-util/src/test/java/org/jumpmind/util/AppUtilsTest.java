@@ -37,44 +37,44 @@ class AppUtilsTest {
     Path tempDir;
 
     @Test
-    public void testResolveZipEntry_validEntry() throws IOException {
+    void testResolveZipEntry_validEntry() throws IOException {
         File toDir = tempDir.toFile();
         File resolved = AppUtils.resolveZipEntry(toDir, new ZipEntry("subdir/file.txt"));
         assertTrue(resolved.getCanonicalPath().startsWith(toDir.getCanonicalPath() + File.separator));
     }
 
     @Test
-    public void testResolveZipEntry_nestedValidEntry() throws IOException {
+    void testResolveZipEntry_nestedValidEntry() throws IOException {
         File toDir = tempDir.toFile();
         File resolved = AppUtils.resolveZipEntry(toDir, new ZipEntry("a/b/c/file.txt"));
         assertTrue(resolved.getCanonicalPath().startsWith(toDir.getCanonicalPath() + File.separator));
     }
 
     @Test
-    public void testResolveZipEntry_pathTraversal() {
+    void testResolveZipEntry_pathTraversal() {
         File toDir = tempDir.toFile();
         assertThrows(IOException.class, () -> AppUtils.resolveZipEntry(toDir, new ZipEntry("../../etc/passwd")));
     }
 
     @Test
-    public void testResolveZipEntry_singleLevelTraversal() {
+    void testResolveZipEntry_singleLevelTraversal() {
         File toDir = tempDir.toFile();
         assertThrows(IOException.class, () -> AppUtils.resolveZipEntry(toDir, new ZipEntry("../sibling.txt")));
     }
 
     @Test
-    public void testResolveZipEntry_absoluteValidEntry() throws IOException {
+    void testResolveZipEntry_absoluteValidEntry() throws IOException {
         File resolved = AppUtils.resolveZipEntry(new ZipEntry("/usr/local/sym/engines/node.properties"));
         assertEquals(new File("/usr/local/sym/engines/node.properties").getAbsolutePath(), resolved.getAbsolutePath());
     }
 
     @Test
-    public void testResolveZipEntry_absoluteTraversal() {
+    void testResolveZipEntry_absoluteTraversal() {
         assertThrows(IOException.class, () -> AppUtils.resolveZipEntry(new ZipEntry("/usr/local/../etc/passwd")));
     }
 
     @Test
-    public void testGetLocalDateForOffset() {
+    void testGetLocalDateForOffset() {
         Date gmt = AppUtils.getLocalDateForOffset("+00:00");
         Date plusFour = AppUtils.getLocalDateForOffset("+04:00");
         Date minusFour = AppUtils.getLocalDateForOffset("-04:00");
