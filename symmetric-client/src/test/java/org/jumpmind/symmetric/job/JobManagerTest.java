@@ -1,6 +1,8 @@
 package org.jumpmind.symmetric.job;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -12,9 +14,11 @@ import static org.mockito.Mockito.when;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.JobDefinition;
 import org.jumpmind.symmetric.model.JobDefinition.JobType;
+import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
@@ -143,5 +147,91 @@ class JobManagerTest {
         when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         jobManager.saveJob(job);
         verify(clusterService, times(0)).addLock(anyString(), anyString());
+    }
+
+    @Test
+    void testSaveJob_withRefreshJob_addsClusterLock() {
+        JobDefinition job = new JobDefinition();
+        job.setJobName(ClusterConstants.DATA_REFRESH_DAILY_MIDNIGHT);
+        job.setJobType(JobType.REFRESH);
+        job.setDefaultSchedule("0 0 0 * * *");
+        job.setClustered(false);
+        job.setCreateBy("SymmetricDS");
+        job.setLastUpdateBy("SymmetricDS");
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        jobManager.saveJob(job);
+        verify(clusterService, times(1)).addLock(eq(ClusterConstants.DATA_REFRESH_DAILY_MIDNIGHT), anyString());
+    }
+
+    @Test
+    void testIsAutoStartConfigured_trueViaDeprecatedParameter() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setJobName(ClusterConstants.ROUTE);
+        when(job.getDeprecatedStartParameter()).thenReturn("start.route.job.38");
+        when(job.getSharedStartParameter()).thenReturn(null);
+        when(job.getJobDefinition()).thenReturn(def);
+        when(parameterService.getString("start.route.job.38")).thenReturn("true");
+        assertTrue(jobManager.isAutoStartConfigured(job));
+    }
+
+    @Test
+    void testIsAutoStartConfigured_trueViaSharedParameter() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setJobName(ClusterConstants.DATA_REFRESH_DAILY_MIDNIGHT);
+        when(job.getDeprecatedStartParameter()).thenReturn(null);
+        when(job.getSharedStartParameter()).thenReturn("start.data.refresh.job");
+        when(job.getJobDefinition()).thenReturn(def);
+        when(parameterService.getString("start.data.refresh.job")).thenReturn("true");
+        assertTrue(jobManager.isAutoStartConfigured(job));
+    }
+
+    @Test
+    void testIsAutoStartConfigured_falseViaSharedParameter() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setJobName(ClusterConstants.DATA_REFRESH_HOURLY);
+        when(job.getDeprecatedStartParameter()).thenReturn(null);
+        when(job.getSharedStartParameter()).thenReturn("start.data.refresh.job");
+        when(job.getJobDefinition()).thenReturn(def);
+        when(parameterService.getString("start.data.refresh.job")).thenReturn("false");
+        assertFalse(jobManager.isAutoStartConfigured(job));
+    }
+
+    @Test
+    void testIsAutoStartConfigured_trueViaNamedStartParameter() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setJobName(ClusterConstants.PUSH);
+        when(job.getDeprecatedStartParameter()).thenReturn(null);
+        when(job.getSharedStartParameter()).thenReturn(null);
+        when(job.getJobDefinition()).thenReturn(def);
+        when(parameterService.getString(ParameterConstants.START_PUSH_JOB)).thenReturn("1");
+        assertTrue(jobManager.isAutoStartConfigured(job));
+    }
+
+    @Test
+    void testIsAutoStartConfigured_trueViaDefaultAutomaticStartup() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setJobName(ClusterConstants.HEARTBEAT);
+        def.setDefaultAutomaticStartup(true);
+        when(job.getDeprecatedStartParameter()).thenReturn(null);
+        when(job.getSharedStartParameter()).thenReturn(null);
+        when(job.getJobDefinition()).thenReturn(def);
+        assertTrue(jobManager.isAutoStartConfigured(job));
+    }
+
+    @Test
+    void testIsAutoStartConfigured_falseViaDefaultAutomaticStartup() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setJobName(ClusterConstants.DATA_REFRESH_DAILY_MIDNIGHT);
+        def.setDefaultAutomaticStartup(false);
+        when(job.getDeprecatedStartParameter()).thenReturn(null);
+        when(job.getSharedStartParameter()).thenReturn(null);
+        when(job.getJobDefinition()).thenReturn(def);
+        assertFalse(jobManager.isAutoStartConfigured(job));
     }
 }

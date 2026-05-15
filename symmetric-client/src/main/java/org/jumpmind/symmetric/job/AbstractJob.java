@@ -522,6 +522,11 @@ abstract public class AbstractJob implements Runnable, IJob {
         return null;
     }
 
+    @Override
+    public String getSharedStartParameter() {
+        return null;
+    }
+
     public IParameterService getParameterService() {
         return parameterService;
     }

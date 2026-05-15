@@ -67,4 +67,6 @@ public interface IJob extends IExtensionPoint {
     public boolean isRateLimited();
 
     public String getDeprecatedStartParameter();
+
+    public String getSharedStartParameter();
 }

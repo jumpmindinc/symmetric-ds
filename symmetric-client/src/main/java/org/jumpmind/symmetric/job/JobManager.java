@@ -133,6 +133,9 @@ public class JobManager extends AbstractService implements IJobManager {
         if (job.getDeprecatedStartParameter() != null) {
             autoStartValue = engine.getParameterService().getString(job.getDeprecatedStartParameter());
         }
+        if (StringUtils.isEmpty(autoStartValue) && job.getSharedStartParameter() != null) {
+            autoStartValue = engine.getParameterService().getString(job.getSharedStartParameter());
+        }
         if (StringUtils.isEmpty(autoStartValue)) {
             autoStartValue = engine.getParameterService().getString(job.getJobDefinition().getStartParameter());
             if (StringUtils.isEmpty(autoStartValue)) {
@@ -219,7 +222,8 @@ public class JobManager extends AbstractService implements IJobManager {
                             job.getCreateBy(), new Date(), job.getLastUpdateBy(), new Date(), job.getJobName() });
         }
         if (job.isClustered() || job.getJobType() == JobDefinition.JobType.BSH
-                || job.getJobType() == JobDefinition.JobType.JAVA || job.getJobType() == JobDefinition.JobType.SQL) {
+                || job.getJobType() == JobDefinition.JobType.JAVA || job.getJobType() == JobDefinition.JobType.SQL
+                || job.getJobType() == JobDefinition.JobType.REFRESH) {
             engine.getClusterService().addLock(job.getJobName(), ClusterConstants.TYPE_CLUSTER);
         }
     }

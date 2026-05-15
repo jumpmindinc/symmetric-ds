@@ -29,7 +29,7 @@ public class JobDefinition implements IModelObject {
     private static final long serialVersionUID = 1L;
 
     public enum JobType {
-        BUILT_IN, BSH, JAVA, SQL
+        BUILT_IN, BSH, JAVA, SQL, REFRESH
     }
 
     private String jobName;

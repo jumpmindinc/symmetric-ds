@@ -12,17 +12,20 @@ Job Name:: The Job Name is a unique identifier to refer to the job
 
 Job Type:: The type of job. Possible types are listed below.
 
-[cols="<2,^1,<9", options="header"]
+[cols="<2,<9", options="header"]
 |===
 |Type
-|Provided
 |Description
 
-|BSH|x|A job that will compile and run a beanshell script.
+|BSH|A job that will compile and run a beanshell script.
 
-|JAVA|x| A job that will compile and run a java script.
+|JAVA|A job that will compile and run a java script.
 
-|SQL|x| A job that will compile and run a sql script.
+|SQL|A job that will compile and run a sql script.
+
+ifdef::pro[]
+|REFRESH|A Data Refresh job that processes <<Table Routing>> assigned to it.
+endif::pro[]
 
 |===
 
@@ -40,7 +43,11 @@ Schedule:: Specifies how often this job should run.  If the schedule is just a n
 * Every night at midnight: 0 0 0 * * *
 * Every ten minutes at the 1 o'clock hour: 0 0/10 1 * * *
 
-Note that parameter values will be created for the schedule, in the form of job.<name>.cron OR job.<name>.period.time.ms, depending on if a cron of period of time was entered.  If both the cron and period parameters are present, the cron will take precedence. 
+For BSH, JAVA, and SQL jobs, the schedule is stored in parameters, in the form of `job.<name>.cron` OR `job.<name>.period.time.ms` depending on if a cron of period of time was entered. If both are present, the cron takes precedence.
+
+For Data Refresh (REFRESH) jobs, the schedule is stored directly in `sym_job.default_schedule` and is
+not represented as a parameter. The `start.data.refresh.job` parameter controls whether all Data Refresh
+jobs are enabled to auto-start (default false).
 
 endif::pro[]
 
