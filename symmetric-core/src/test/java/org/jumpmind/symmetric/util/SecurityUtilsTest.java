@@ -1,15 +1,14 @@
 package org.jumpmind.symmetric.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
 class SecurityUtilsTest {
     @Test
-    void testSanitizeForLoggingNullReturnsNull() {
-        assertNull(SecurityUtils.sanitizeForLogging(null));
+    void testSanitizeForLoggingNullReturnsNullString() {
+        assertEquals("null", SecurityUtils.sanitizeForLogging(null));
     }
 
     @Test
@@ -24,32 +23,32 @@ class SecurityUtilsTest {
 
     @Test
     void testSanitizeForLoggingNewlineReplaced() {
-        assertEquals("line1_line2", SecurityUtils.sanitizeForLogging("line1\nline2"));
+        assertEquals("line1 line2", SecurityUtils.sanitizeForLogging("line1\nline2"));
     }
 
     @Test
     void testSanitizeForLoggingCarriageReturnReplaced() {
-        assertEquals("line1_line2", SecurityUtils.sanitizeForLogging("line1\rline2"));
+        assertEquals("line1 line2", SecurityUtils.sanitizeForLogging("line1\rline2"));
     }
 
     @Test
     void testSanitizeForLoggingTabReplaced() {
-        assertEquals("col1_col2", SecurityUtils.sanitizeForLogging("col1\tcol2"));
+        assertEquals("col1 col2", SecurityUtils.sanitizeForLogging("col1\tcol2"));
     }
 
     @Test
     void testSanitizeForLoggingMixedSpecialCharsAllReplaced() {
-        assertEquals("a_b_c_d", SecurityUtils.sanitizeForLogging("a\nb\rc\td"));
+        assertEquals("a b c d", SecurityUtils.sanitizeForLogging("a\nb\rc\td"));
     }
 
     @Test
     void testSanitizeForLoggingMultipleConsecutiveSpecialChars() {
-        assertEquals("a___b", SecurityUtils.sanitizeForLogging("a\n\r\tb"));
+        assertEquals("a   b", SecurityUtils.sanitizeForLogging("a\n\r\tb"));
     }
 
     @Test
     void testSanitizeForLoggingLeadingAndTrailingNewlinesReplaced() {
-        assertEquals("_hello_", SecurityUtils.sanitizeForLogging("\nhello\n"));
+        assertEquals(" hello ", SecurityUtils.sanitizeForLogging("\nhello\n"));
     }
 
     @Test
@@ -63,82 +62,82 @@ class SecurityUtilsTest {
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankNullThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank(null));
+    void testSanitizeInternalIdentifierNullThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(null));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankEmptyThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank(""));
+    void testSanitizeInternalIdentifierEmptyThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(""));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankAlphanumericReturnsInput() {
-        assertEquals("node001", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node001"));
+    void testSanitizeInternalIdentifierAlphanumericReturnsInput() {
+        assertEquals("node001", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node001"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankHyphenAllowed() {
-        assertEquals("server-001", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("server-001"));
+    void testSanitizeInternalIdentifierHyphenAllowed() {
+        assertEquals("server-001", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("server-001"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankUnderscoreAllowed() {
-        assertEquals("channel_default", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("channel_default"));
+    void testSanitizeInternalIdentifierUnderscoreAllowed() {
+        assertEquals("channel_default", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("channel_default"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankDotAllowed() {
-        assertEquals("myschema.mytable", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("myschema.mytable"));
+    void testSanitizeInternalIdentifierDotAllowed() {
+        assertEquals("myschema.mytable", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("myschema.mytable"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankSingleQuoteThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node'; DROP TABLE sym_node; --"));
+    void testSanitizeInternalIdentifierSingleQuoteThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node'; DROP TABLE sym_node; --"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankSpaceThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node id"));
+    void testSanitizeInternalIdentifierSpaceThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node id"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankNewlineThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node\ninjection"));
+    void testSanitizeInternalIdentifierNewlineThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node\ninjection"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankSemicolonThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node;other"));
+    void testSanitizeInternalIdentifierSemicolonThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node;other"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankMixedValidCharsReturnsInput() {
-        assertEquals("corp-A.users_v2", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("corp-A.users_v2"));
+    void testSanitizeInternalIdentifierMixedValidCharsReturnsInput() {
+        assertEquals("corp-A.users_v2", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("corp-A.users_v2"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankDigitsOnlyAllowed() {
-        assertEquals("12345", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("12345"));
+    void testSanitizeInternalIdentifierDigitsOnlyAllowed() {
+        assertEquals("12345", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("12345"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankUppercaseAllowed() {
-        assertEquals("GROUPNAME", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("GROUPNAME"));
+    void testSanitizeInternalIdentifierUppercaseAllowed() {
+        assertEquals("GROUPNAME", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("GROUPNAME"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankBlockCommentThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node/*comment*/"));
+    void testSanitizeInternalIdentifierBlockCommentThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node/*comment*/"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankBackslashThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node\\path"));
+    void testSanitizeInternalIdentifierBackslashThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node\\path"));
     }
 
     @Test
-    void testsanitizeInternalIdentifierOrLeaveBlankHashThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node#comment"));
+    void testSanitizeInternalIdentifierHashThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node#comment"));
     }
 }

@@ -31,7 +31,7 @@ public class SecurityUtils {
 
     public static String sanitizeForLogging(String input) {
         if (input == null) {
-            return null;
+            return "null";
         }
         return input.replaceAll(REPLACE_LOG_WHITESPACE_CHARS, " ");
     }
