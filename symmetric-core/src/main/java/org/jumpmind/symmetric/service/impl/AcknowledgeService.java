@@ -46,8 +46,8 @@ import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.statistic.RouterStats;
 import org.jumpmind.symmetric.transport.IAcknowledgeEventListener;
-import org.jumpmind.symmetric.util.SecurityUtils;
-;
+import org.jumpmind.symmetric.util.SecurityUtils;;
+
 /**
  * @see IAcknowledgeService
  */
@@ -74,7 +74,7 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
             } else if (batch.getSqlCode() != 0 || batch.getSqlMessage() != null) {
                 String sanitizedSqlMessage = SecurityUtils.sanitizeForLogging(batch.getSqlMessage());
                 log.warn("Registration batch had failed for node {} ! Error line={}, SQL.code={}, SQL message={}",
-                        batch.getNodeId(), batch.getErrorLine(), batch.getSqlCode(),  sanitizedSqlMessage);
+                        batch.getNodeId(), batch.getErrorLine(), batch.getSqlCode(), sanitizedSqlMessage);
                 Node requestingNode = engine.getNodeService().findNode(batch.getNodeId());
                 if (requestingNode != null) {
                     RegistrationRequest request = registrationService.getLatestRegistrationRequest(

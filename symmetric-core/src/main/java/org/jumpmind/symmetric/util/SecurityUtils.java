@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 
 public class SecurityUtils {
     private static final Pattern SAFE_IDENTIFIER_PATTERN = Pattern.compile("^[a-zA-Z0-9._\\-]+$");
-    private static final Pattern REPLACE_LOG_WHITESPACE_PATTERN = Pattern.compile("[\\n\\r\\t]");
+    private static final String REPLACE_LOG_WHITESPACE_CHARS = "[\\n\\r\\t]";
 
     private SecurityUtils() {
     }
@@ -33,10 +33,10 @@ public class SecurityUtils {
         if (input == null) {
             return null;
         }
-        return input.replaceAll(REPLACE_LOG_WHITESPACE_PATTERN, " ");
+        return input.replaceAll(REPLACE_LOG_WHITESPACE_CHARS, " ");
     }
 
-    public static String sanitizeInternalIdentifierOrLeaveBlank(String input) {
+    public static String sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(String input) {
         if (input == null) {
             throw new IllegalArgumentException("Identifier must not be null");
         }
@@ -50,20 +50,20 @@ public class SecurityUtils {
         if (input == null || input.isEmpty()) {
             throw new IllegalArgumentException("GroupName must not be null or empty");
         }
-        return sanitizeInternalIdentifier(input);
+        return sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(input);
     }
 
     public static String sanitizeNodeId(String input) {
         if (input == null || input.isEmpty()) {
             throw new IllegalArgumentException("NodeId must not be null or empty");
         }
-        return sanitizeInternalIdentifier(input);
+        return sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(input);
     }
 
     public static String sanitizeExternalId(String input) {
         if (input == null || input.isEmpty()) {
             throw new IllegalArgumentException("ExternalId must not be null or empty");
         }
-        return sanitizeInternalIdentifier(input);
+        return sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(input);
     }
 }

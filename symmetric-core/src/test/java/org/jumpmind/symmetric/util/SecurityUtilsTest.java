@@ -63,82 +63,82 @@ class SecurityUtilsTest {
     }
 
     @Test
-    void testSanitizeInternalIdentifierNullThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier(null));
+    void testsanitizeInternalIdentifierOrLeaveBlankNullThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank(null));
     }
 
     @Test
-    void testSanitizeInternalIdentifierEmptyThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier(""));
+    void testsanitizeInternalIdentifierOrLeaveBlankEmptyThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank(""));
     }
 
     @Test
-    void testSanitizeInternalIdentifierAlphanumericReturnsInput() {
-        assertEquals("node001", SecurityUtils.sanitizeInternalIdentifier("node001"));
+    void testsanitizeInternalIdentifierOrLeaveBlankAlphanumericReturnsInput() {
+        assertEquals("node001", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node001"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierHyphenAllowed() {
-        assertEquals("server-001", SecurityUtils.sanitizeInternalIdentifier("server-001"));
+    void testsanitizeInternalIdentifierOrLeaveBlankHyphenAllowed() {
+        assertEquals("server-001", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("server-001"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierUnderscoreAllowed() {
-        assertEquals("channel_default", SecurityUtils.sanitizeInternalIdentifier("channel_default"));
+    void testsanitizeInternalIdentifierOrLeaveBlankUnderscoreAllowed() {
+        assertEquals("channel_default", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("channel_default"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierDotAllowed() {
-        assertEquals("myschema.mytable", SecurityUtils.sanitizeInternalIdentifier("myschema.mytable"));
+    void testsanitizeInternalIdentifierOrLeaveBlankDotAllowed() {
+        assertEquals("myschema.mytable", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("myschema.mytable"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierSingleQuoteThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node'; DROP TABLE sym_node; --"));
+    void testsanitizeInternalIdentifierOrLeaveBlankSingleQuoteThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node'; DROP TABLE sym_node; --"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierSpaceThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node id"));
+    void testsanitizeInternalIdentifierOrLeaveBlankSpaceThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node id"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierNewlineThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node\ninjection"));
+    void testsanitizeInternalIdentifierOrLeaveBlankNewlineThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node\ninjection"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierSemicolonThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node;other"));
+    void testsanitizeInternalIdentifierOrLeaveBlankSemicolonThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node;other"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierMixedValidCharsReturnsInput() {
-        assertEquals("corp-A.users_v2", SecurityUtils.sanitizeInternalIdentifier("corp-A.users_v2"));
+    void testsanitizeInternalIdentifierOrLeaveBlankMixedValidCharsReturnsInput() {
+        assertEquals("corp-A.users_v2", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("corp-A.users_v2"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierDigitsOnlyAllowed() {
-        assertEquals("12345", SecurityUtils.sanitizeInternalIdentifier("12345"));
+    void testsanitizeInternalIdentifierOrLeaveBlankDigitsOnlyAllowed() {
+        assertEquals("12345", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("12345"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierUppercaseAllowed() {
-        assertEquals("GROUPNAME", SecurityUtils.sanitizeInternalIdentifier("GROUPNAME"));
+    void testsanitizeInternalIdentifierOrLeaveBlankUppercaseAllowed() {
+        assertEquals("GROUPNAME", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("GROUPNAME"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierBlockCommentThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node/*comment*/"));
+    void testsanitizeInternalIdentifierOrLeaveBlankBlockCommentThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node/*comment*/"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierBackslashThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node\\path"));
+    void testsanitizeInternalIdentifierOrLeaveBlankBackslashThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node\\path"));
     }
 
     @Test
-    void testSanitizeInternalIdentifierHashThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node#comment"));
+    void testsanitizeInternalIdentifierOrLeaveBlankHashThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlank("node#comment"));
     }
 }
