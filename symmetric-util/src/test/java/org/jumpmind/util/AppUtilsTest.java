@@ -20,15 +20,76 @@
  */
 package org.jumpmind.util;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Date;
+import java.util.zip.ZipEntry;
 
 import org.apache.commons.lang3.time.DateUtils;
 import static org.junit.Assert.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class AppUtilsTest {
+class AppUtilsTest {
+    @TempDir
+    Path tempDir;
+
     @Test
-    public void testGetLocalDateForOffset() {
+    void testResolveZipEntry_validEntry() throws IOException {
+        File toDir = tempDir.toFile();
+        File resolved = AppUtils.resolveZipEntry(toDir, new ZipEntry("subdir/file.txt"));
+        assertTrue(resolved.getCanonicalPath().startsWith(toDir.getCanonicalPath() + File.separator));
+    }
+
+    @Test
+    void testResolveZipEntry_nestedValidEntry() throws IOException {
+        File toDir = tempDir.toFile();
+        File resolved = AppUtils.resolveZipEntry(toDir, new ZipEntry("a/b/c/file.txt"));
+        assertTrue(resolved.getCanonicalPath().startsWith(toDir.getCanonicalPath() + File.separator));
+    }
+
+    @Test
+    void testResolveZipEntry_pathTraversal() {
+        File toDir = tempDir.toFile();
+        assertThrows(IOException.class, () -> AppUtils.resolveZipEntry(toDir, new ZipEntry("../../etc/passwd")));
+    }
+
+    @Test
+    void testResolveZipEntry_singleLevelTraversal() {
+        File toDir = tempDir.toFile();
+        assertThrows(IOException.class, () -> AppUtils.resolveZipEntry(toDir, new ZipEntry("../sibling.txt")));
+    }
+
+    @Test
+    void testResolveZipEntry_absoluteValidEntry() throws IOException {
+        File tmp = File.createTempFile("zip-entry-test", ".tmp");
+        tmp.deleteOnExit();
+        try {
+            String canonicalPath = tmp.getCanonicalPath();
+            File resolved = AppUtils.resolveZipEntry(new ZipEntry(canonicalPath));
+            assertEquals(canonicalPath, resolved.getCanonicalPath());
+        } finally {
+            tmp.delete();
+        }
+    }
+
+    @Test
+    void testResolveZipEntry_absoluteTraversal() throws IOException {
+        File tmp = File.createTempFile("zip-entry-test", ".tmp");
+        tmp.deleteOnExit();
+        try {
+            String traversalName = tmp.getParentFile().getCanonicalPath()
+                    + File.separator + "subdir" + File.separator + ".." + File.separator + tmp.getName();
+            assertThrows(IOException.class, () -> AppUtils.resolveZipEntry(new ZipEntry(traversalName)));
+        } finally {
+            tmp.delete();
+        }
+    }
+
+    @Test
+    void testGetLocalDateForOffset() {
         Date gmt = AppUtils.getLocalDateForOffset("+00:00");
         Date plusFour = AppUtils.getLocalDateForOffset("+04:00");
         Date minusFour = AppUtils.getLocalDateForOffset("-04:00");
