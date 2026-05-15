@@ -63,81 +63,81 @@ class SecurityUtilsTest {
 
     @Test
     void testSanitizeInternalIdentifierNullThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(null));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier(null));
     }
 
     @Test
     void testSanitizeInternalIdentifierEmptyThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(""));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier(""));
     }
 
     @Test
     void testSanitizeInternalIdentifierAlphanumericReturnsInput() {
-        assertEquals("node001", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node001"));
+        assertEquals("node001", SecurityUtils.sanitizeInternalIdentifier("node001"));
     }
 
     @Test
     void testSanitizeInternalIdentifierHyphenAllowed() {
-        assertEquals("server-001", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("server-001"));
+        assertEquals("server-001", SecurityUtils.sanitizeInternalIdentifier("server-001"));
     }
 
     @Test
     void testSanitizeInternalIdentifierUnderscoreAllowed() {
-        assertEquals("channel_default", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("channel_default"));
+        assertEquals("channel_default", SecurityUtils.sanitizeInternalIdentifier("channel_default"));
     }
 
     @Test
     void testSanitizeInternalIdentifierDotAllowed() {
-        assertEquals("myschema.mytable", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("myschema.mytable"));
+        assertEquals("myschema.mytable", SecurityUtils.sanitizeInternalIdentifier("myschema.mytable"));
     }
 
     @Test
     void testSanitizeInternalIdentifierSingleQuoteThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node'; DROP TABLE sym_node; --"));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node'; DROP TABLE sym_node; --"));
     }
 
     @Test
     void testSanitizeInternalIdentifierSpaceThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node id"));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node id"));
     }
 
     @Test
     void testSanitizeInternalIdentifierNewlineThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node\ninjection"));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node\ninjection"));
     }
 
     @Test
     void testSanitizeInternalIdentifierSemicolonThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node;other"));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node;other"));
     }
 
     @Test
     void testSanitizeInternalIdentifierMixedValidCharsReturnsInput() {
-        assertEquals("corp-A.users_v2", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("corp-A.users_v2"));
+        assertEquals("corp-A.users_v2", SecurityUtils.sanitizeInternalIdentifier("corp-A.users_v2"));
     }
 
     @Test
     void testSanitizeInternalIdentifierDigitsOnlyAllowed() {
-        assertEquals("12345", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("12345"));
+        assertEquals("12345", SecurityUtils.sanitizeInternalIdentifier("12345"));
     }
 
     @Test
     void testSanitizeInternalIdentifierUppercaseAllowed() {
-        assertEquals("GROUPNAME", SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("GROUPNAME"));
+        assertEquals("GROUPNAME", SecurityUtils.sanitizeInternalIdentifier("GROUPNAME"));
     }
 
     @Test
     void testSanitizeInternalIdentifierBlockCommentThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node/*comment*/"));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node/*comment*/"));
     }
 
     @Test
     void testSanitizeInternalIdentifierBackslashThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node\\path"));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node\\path"));
     }
 
     @Test
     void testSanitizeInternalIdentifierHashThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank("node#comment"));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node#comment"));
     }
 }

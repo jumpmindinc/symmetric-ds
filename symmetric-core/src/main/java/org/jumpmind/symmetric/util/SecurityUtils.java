@@ -36,9 +36,9 @@ public class SecurityUtils {
         return input.replaceAll(REPLACE_LOG_WHITESPACE_CHARS, " ");
     }
 
-    public static String sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(String input) {
-        if (input == null) {
-            throw new IllegalArgumentException("Identifier must not be null");
+    public static String sanitizeInternalIdentifier(String input) {
+        if (input == null || input.isEmpty()) {
+            throw new IllegalArgumentException("Identifier must not be null or empty");
         }
         if (!SAFE_IDENTIFIER_PATTERN.matcher(input).matches()) {
             throw new IllegalArgumentException("Identifier contains invalid characters: " + sanitizeForLogging(input));
@@ -50,20 +50,20 @@ public class SecurityUtils {
         if (input == null || input.isEmpty()) {
             throw new IllegalArgumentException("GroupName must not be null or empty");
         }
-        return sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(input);
+        return sanitizeInternalIdentifier(input);
     }
 
     public static String sanitizeNodeId(String input) {
         if (input == null || input.isEmpty()) {
             throw new IllegalArgumentException("NodeId must not be null or empty");
         }
-        return sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(input);
+        return sanitizeInternalIdentifier(input);
     }
 
     public static String sanitizeExternalId(String input) {
         if (input == null || input.isEmpty()) {
             throw new IllegalArgumentException("ExternalId must not be null or empty");
         }
-        return sanitizeInternalIdentifierOrLeaveBlankOrLeaveBlank(input);
+        return sanitizeInternalIdentifier(input);
     }
 }
