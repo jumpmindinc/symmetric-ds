@@ -32,7 +32,6 @@ import java.net.NetworkInterface;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
-import java.nio.file.Path;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Properties;
@@ -305,10 +304,10 @@ public class AppUtils {
 
     public static File resolveZipEntry(File toDir, ZipEntry entry) throws IOException {
         File file = new File(toDir, entry.getName());
-        if (!file.getCanonicalPath().startsWith(toDir.getCanonicalPath() + File.separator)) {
-            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+        if (file.getCanonicalPath().startsWith(toDir.getCanonicalPath() + File.separator)) {
+            return file;
         }
-        return file;
+        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
     }
 
     public static File resolveZipEntry(ZipEntry entry) throws IOException {
