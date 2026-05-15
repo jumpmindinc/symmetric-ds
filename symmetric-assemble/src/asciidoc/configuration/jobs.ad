@@ -43,11 +43,9 @@ Schedule:: Specifies how often this job should run.  If the schedule is just a n
 * Every night at midnight: 0 0 0 * * *
 * Every ten minutes at the 1 o'clock hour: 0 0/10 1 * * *
 
-For BSH, JAVA, and SQL jobs, the schedule is stored in parameters, in the form of `job.<name>.cron` OR `job.<name>.period.time.ms` depending on if a cron of period of time was entered. If both are present, the cron takes precedence.
+For all custom job types (BSH, JAVA, SQL, and REFRESH), the schedule is stored as a parameter, in the form of `job.<name>.cron` OR `job.<name>.period.time.ms` depending on whether a cron expression or period of time was entered. If both are present, the cron takes precedence. Each job also has its own auto-start parameter in the form of `start.<name>.job`.
 
-For Data Refresh (REFRESH) jobs, the schedule is stored directly in `sym_job.default_schedule` and is
-not represented as a parameter. The `start.data.refresh.job` parameter controls whether all Data Refresh
-jobs are enabled to auto-start (default false).
+In addition to the user-configurable Data Refresh jobs above, there is a built-in "Data Refresh" job that is always present. It is controlled by the `start.data.refresh.job` parameter (default false).
 
 endif::pro[]
 

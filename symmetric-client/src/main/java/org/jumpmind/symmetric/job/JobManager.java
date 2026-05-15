@@ -133,9 +133,6 @@ public class JobManager extends AbstractService implements IJobManager {
         if (job.getDeprecatedStartParameter() != null) {
             autoStartValue = engine.getParameterService().getString(job.getDeprecatedStartParameter());
         }
-        if (StringUtils.isEmpty(autoStartValue) && job.getSharedStartParameter() != null) {
-            autoStartValue = engine.getParameterService().getString(job.getSharedStartParameter());
-        }
         if (StringUtils.isEmpty(autoStartValue)) {
             autoStartValue = engine.getParameterService().getString(job.getJobDefinition().getStartParameter());
             if (StringUtils.isEmpty(autoStartValue)) {

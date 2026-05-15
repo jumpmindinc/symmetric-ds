@@ -50,7 +50,6 @@ public class ClusterConstants {
     public static final String COMPARE = "Compare";
     public static final String DATA_REFRESH = "Data Refresh";
     public static final String DATA_REFRESH_DAILY_MIDNIGHT = "Data Refresh - Daily at Midnight";
-    public static final String DATA_REFRESH_LEGACY = "Data Refresh - Before 3.18 upgrade";
     public static final String DATA_REFRESH_HOURLY = "Data Refresh - Hourly";
     public static final String DATA_REFRESH_DAILY_6AM = "Data Refresh - Daily at 6 AM";
     public static final String DATA_REFRESH_DAILY_NOON = "Data Refresh - Daily at 12 noon";

@@ -169,34 +169,9 @@ class JobManagerTest {
         JobDefinition def = new JobDefinition();
         def.setJobName(ClusterConstants.ROUTE);
         when(job.getDeprecatedStartParameter()).thenReturn("start.route.job.38");
-        when(job.getSharedStartParameter()).thenReturn(null);
         when(job.getJobDefinition()).thenReturn(def);
         when(parameterService.getString("start.route.job.38")).thenReturn("true");
         assertTrue(jobManager.isAutoStartConfigured(job));
-    }
-
-    @Test
-    void testIsAutoStartConfigured_trueViaSharedParameter() {
-        IJob job = mock(IJob.class);
-        JobDefinition def = new JobDefinition();
-        def.setJobName(ClusterConstants.DATA_REFRESH_DAILY_MIDNIGHT);
-        when(job.getDeprecatedStartParameter()).thenReturn(null);
-        when(job.getSharedStartParameter()).thenReturn("start.data.refresh.job");
-        when(job.getJobDefinition()).thenReturn(def);
-        when(parameterService.getString("start.data.refresh.job")).thenReturn("true");
-        assertTrue(jobManager.isAutoStartConfigured(job));
-    }
-
-    @Test
-    void testIsAutoStartConfigured_falseViaSharedParameter() {
-        IJob job = mock(IJob.class);
-        JobDefinition def = new JobDefinition();
-        def.setJobName(ClusterConstants.DATA_REFRESH_HOURLY);
-        when(job.getDeprecatedStartParameter()).thenReturn(null);
-        when(job.getSharedStartParameter()).thenReturn("start.data.refresh.job");
-        when(job.getJobDefinition()).thenReturn(def);
-        when(parameterService.getString("start.data.refresh.job")).thenReturn("false");
-        assertFalse(jobManager.isAutoStartConfigured(job));
     }
 
     @Test
@@ -205,7 +180,6 @@ class JobManagerTest {
         JobDefinition def = new JobDefinition();
         def.setJobName(ClusterConstants.PUSH);
         when(job.getDeprecatedStartParameter()).thenReturn(null);
-        when(job.getSharedStartParameter()).thenReturn(null);
         when(job.getJobDefinition()).thenReturn(def);
         when(parameterService.getString(ParameterConstants.START_PUSH_JOB)).thenReturn("1");
         assertTrue(jobManager.isAutoStartConfigured(job));
@@ -218,7 +192,6 @@ class JobManagerTest {
         def.setJobName(ClusterConstants.HEARTBEAT);
         def.setDefaultAutomaticStartup(true);
         when(job.getDeprecatedStartParameter()).thenReturn(null);
-        when(job.getSharedStartParameter()).thenReturn(null);
         when(job.getJobDefinition()).thenReturn(def);
         assertTrue(jobManager.isAutoStartConfigured(job));
     }
@@ -230,7 +203,6 @@ class JobManagerTest {
         def.setJobName(ClusterConstants.DATA_REFRESH_DAILY_MIDNIGHT);
         def.setDefaultAutomaticStartup(false);
         when(job.getDeprecatedStartParameter()).thenReturn(null);
-        when(job.getSharedStartParameter()).thenReturn(null);
         when(job.getJobDefinition()).thenReturn(def);
         assertFalse(jobManager.isAutoStartConfigured(job));
     }

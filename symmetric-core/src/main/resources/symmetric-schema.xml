@@ -350,7 +350,7 @@
         <column name="requires_registration" type="BOOLEANINT" size="1" required="true" default="1"  description="Does the engine need to be registered for this job to run?" />
         <column name="job_expression" type="LONGVARCHAR" description="The payload of the job.  For bsh (beanshell) jobs, this should be bsh script.  For Java jobs, this should be Java code of a class which implements the IJob interface. For SQL jobs, this should be a sql script. For REFRESH jobs, this has no effect." />
         <column name="description" type="VARCHAR" size="255"   description="An optional description of the job for users of the system." />
-        <column name="default_schedule" type="VARCHAR" size="50" description="The schedule to use if no schedule parameter is found. For non-REFRESH jobs, overridden by job.jobname.period.time.ms or job.jobname.cron." />
+        <column name="default_schedule" type="VARCHAR" size="50" description="The schedule to use if no schedule parameter is found. Overridden by job.jobname.period.time.ms or job.jobname.cron." />
         <column name="default_auto_start" type="BOOLEANINT" size="1" required="true" default="1"  description="Determine if this job should auto start. Overridden by start.jobname.job." />
         <column name="node_group_id" type="VARCHAR" size="50" required="true" description="Target the job at a specific node group id. To target all groups, use the value of 'ALL'." />
         <column name="is_clustered" type="BOOLEANINT" size="1" required="true" default="0"  description="Whether to acquire a cluster lock or not." />
