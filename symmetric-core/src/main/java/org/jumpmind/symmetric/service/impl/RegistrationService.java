@@ -82,6 +82,7 @@ import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.ServiceUnavailableException;
 import org.jumpmind.symmetric.transport.TransportUtils;
+import org.jumpmind.symmetric.util.SecurityUtils;
 import org.jumpmind.symmetric.web.WebConstants;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.RandomTimeSlot;
@@ -828,6 +829,8 @@ public class RegistrationService extends AbstractService implements IRegistratio
      */
     @Override
     public synchronized String openRegistration(String nodeGroup, String externalId) {
+        nodeGroup = SecurityUtils.sanitizeGroupName(nodeGroup);
+        externalId = SecurityUtils.sanitizeExternalId(externalId);
         Node node = new Node();
         node.setExternalId(externalId);
         node.setNodeGroupId(nodeGroup);
@@ -836,6 +839,8 @@ public class RegistrationService extends AbstractService implements IRegistratio
 
     @Override
     public synchronized String openRegistration(String nodeGroup, String externalId, String syncUrl, Date notBefore, Date notAfter) {
+        nodeGroup = SecurityUtils.sanitizeGroupName(nodeGroup);
+        externalId = SecurityUtils.sanitizeExternalId(externalId);
         Node node = new Node();
         node.setExternalId(externalId);
         node.setNodeGroupId(nodeGroup);
@@ -845,6 +850,8 @@ public class RegistrationService extends AbstractService implements IRegistratio
 
     @Override
     public synchronized String openRegistration(String nodeGroup, String externalId, String remoteHost, String remoteAddress) {
+        nodeGroup = SecurityUtils.sanitizeGroupName(nodeGroup);
+        externalId = SecurityUtils.sanitizeExternalId(externalId);
         Node node = new Node();
         node.setExternalId(externalId);
         node.setNodeGroupId(nodeGroup);
