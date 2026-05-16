@@ -143,6 +143,66 @@ class SecurityUtilsTest {
     }
 
     @Test
+    void testSanitizeGroupNameNullThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeGroupName(null));
+    }
+
+    @Test
+    void testSanitizeGroupNameEmptyThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeGroupName(""));
+    }
+
+    @Test
+    void testSanitizeGroupNameValidReturnsInput() {
+        assertEquals("corp-west", SecurityUtils.sanitizeGroupName("corp-west"));
+    }
+
+    @Test
+    void testSanitizeGroupNameInvalidThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeGroupName("group name"));
+    }
+
+    @Test
+    void testSanitizeNodeIdNullThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeNodeId(null));
+    }
+
+    @Test
+    void testSanitizeNodeIdEmptyThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeNodeId(""));
+    }
+
+    @Test
+    void testSanitizeNodeIdValidReturnsInput() {
+        assertEquals("node-001", SecurityUtils.sanitizeNodeId("node-001"));
+    }
+
+    @Test
+    void testSanitizeNodeIdInvalidThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeNodeId("node;drop"));
+    }
+
+    @Test
+    void testSanitizeExternalIdNullThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeExternalId(null));
+    }
+
+    @Test
+    void testSanitizeExternalIdEmptyThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeExternalId(""));
+    }
+
+    @Test
+    void testSanitizeExternalIdValidReturnsInput() {
+        assertEquals("client-001", SecurityUtils.sanitizeExternalId("client-001"));
+    }
+
+    @Test
+    void testSanitizeExternalIdInvalidThrows() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeExternalId("ext id"));
+    }
+
+    @Test
     void testSanitizeLogArgumentsNoArgs() {
         assertArrayEquals(new Object[0], SecurityUtils.sanitizeLogArguments());
     }
