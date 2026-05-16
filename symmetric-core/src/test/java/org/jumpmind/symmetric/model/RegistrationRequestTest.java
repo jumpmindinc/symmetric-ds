@@ -20,8 +20,13 @@
  */
 package org.jumpmind.symmetric.model;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Date;
 
 import org.junit.jupiter.api.Test;
 
@@ -73,6 +78,110 @@ class RegistrationRequestTest {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
         request.incrementAttemptsAndSetLatestMessage(prior);
         assertNull(request.getErrorMessage());
+    }
+
+    @Test
+    void setRegisteredNodeIdStoresValue() {
+        RegistrationRequest req = new RegistrationRequest();
+        req.setRegisteredNodeId("node-42");
+        assertEquals("node-42", req.getRegisteredNodeId());
+    }
+
+    @Test
+    void setCreateTimeStoresValue() {
+        RegistrationRequest req = new RegistrationRequest();
+        Date date = new Date(1000L);
+        req.setCreateTime(date);
+        assertEquals(date, req.getCreateTime());
+    }
+
+    @Test
+    void setLastUpdateByStoresValue() {
+        RegistrationRequest req = new RegistrationRequest();
+        req.setLastUpdateBy("admin");
+        assertEquals("admin", req.getLastUpdateBy());
+    }
+
+    @Test
+    void hashCodeDiffersWhenCreateTimeDiffers() {
+        RegistrationRequest a = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        a.setCreateTime(new Date(1000L));
+        RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        b.setCreateTime(new Date(2000L));
+        assertNotEquals(a.hashCode(), b.hashCode());
+    }
+
+    @Test
+    void hashCodeSameWhenCreateTimeNull() {
+        RegistrationRequest a = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        a.setCreateTime(null);
+        RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        b.setCreateTime(null);
+        assertEquals(a.hashCode(), b.hashCode());
+    }
+
+    @Test
+    void equalsReturnsTrueForSameInstance() {
+        RegistrationRequest req = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        assertTrue(req.equals(req));
+    }
+
+    @Test
+    void equalsReturnsFalseForNull() {
+        RegistrationRequest req = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        assertFalse(req.equals(null));
+    }
+
+    @Test
+    void equalsReturnsFalseForDifferentClass() {
+        RegistrationRequest req = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        assertFalse(req.equals("not a RegistrationRequest"));
+    }
+
+    @Test
+    void equalsReturnsFalseWhenCreateTimeDiffers() {
+        RegistrationRequest a = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        a.setCreateTime(new Date(1000L));
+        RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        b.setCreateTime(new Date(2000L));
+        assertFalse(a.equals(b));
+    }
+
+    @Test
+    void equalsReturnsFalseWhenThisCreateTimeNullOtherNot() {
+        RegistrationRequest a = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        a.setCreateTime(null);
+        RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        b.setCreateTime(new Date(1000L));
+        assertFalse(a.equals(b));
+    }
+
+    @Test
+    void equalsReturnsFalseWhenExternalIdNullInThisButNotOther() {
+        RegistrationRequest a = buildRequest(TEST_CLIENT_GROUP_NAME, null);
+        a.setCreateTime(new Date(1000L));
+        RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        b.setCreateTime(new Date(1000L));
+        assertFalse(a.equals(b));
+    }
+
+    @Test
+    void equalsReturnsFalseWhenExternalIdDiffers() {
+        RegistrationRequest a = buildRequest(TEST_CLIENT_GROUP_NAME, "ext-1");
+        a.setCreateTime(new Date(1000L));
+        RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, "ext-2");
+        b.setCreateTime(new Date(1000L));
+        assertFalse(a.equals(b));
+    }
+
+    @Test
+    void equalsReturnsTrueWhenAllFieldsMatch() {
+        Date date = new Date(1000L);
+        RegistrationRequest a = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        a.setCreateTime(date);
+        RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        b.setCreateTime(date);
+        assertTrue(a.equals(b));
     }
 
     private RegistrationRequest buildRequest(String groupName, String externalId) {

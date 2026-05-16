@@ -36,7 +36,6 @@ public class RegistrationRequest implements Serializable {
 
     protected static final List<RegistrationStatus> incompleteStatuses = Arrays.asList(
             RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ);
-
     private String nodeGroupId;
     private String externalId;
     private RegistrationStatus status;
