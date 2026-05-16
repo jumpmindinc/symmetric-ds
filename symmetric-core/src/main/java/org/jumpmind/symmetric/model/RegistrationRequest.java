@@ -34,8 +34,9 @@ public class RegistrationRequest implements Serializable {
         OK, RQ, RJ, RR, ER
     };
 
-    public static final List<RegistrationStatus> incompleteStatuses = Arrays.asList(
+    protected static final List<RegistrationStatus> incompleteStatuses = Arrays.asList(
             RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ);
+
     private String nodeGroupId;
     private String externalId;
     private RegistrationStatus status;
