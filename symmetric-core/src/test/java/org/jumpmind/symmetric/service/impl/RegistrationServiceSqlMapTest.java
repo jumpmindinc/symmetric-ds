@@ -30,16 +30,7 @@ class RegistrationServiceSqlMapTest {
     public void testWhereNodeGroupIdExternalIdHostNameStatusSql_Matches_IncompleteStatuses() {
         RegistrationServiceSqlMap sqlMap = new RegistrationServiceSqlMap(null, (java.util.Map<String, String>) null);
         String sql = sqlMap.getSql("whereNodeGroupIdExternalIdHostNameStatusSql");
-        StringBuilder statuses = new StringBuilder();
-        for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.incompleteStatuses) {
-            if (!statuses.isEmpty()) {
-                statuses.append(",");
-            }
-            statuses.append("'");
-            statuses.append(statusName.name());
-            statuses.append("'");
-        }
-        String expectedList = " status in (" + statuses + ")";
+        String expectedList = " status in (" + RegistrationRequest.getIncompleteStatusListQuoted("'") + ")";
         assertTrue(sql.endsWith(expectedList),
                 "SQL should contain string=" + expectedList + " ! Actual=" + sql);
     }
