@@ -32,7 +32,7 @@ public class RegistrationServiceSqlMapTest {
         String sql = sqlMap.getSql("whereNodeGroupIdExternalIdHostNameStatusSql");
         StringBuilder statuses = new StringBuilder();
         for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.incompleteStatuses) {
-            if (statuses.length() > 0) {
+            if (!statuses.isEmpty()) {
                 statuses.append(",");
             }
             statuses.append("'");

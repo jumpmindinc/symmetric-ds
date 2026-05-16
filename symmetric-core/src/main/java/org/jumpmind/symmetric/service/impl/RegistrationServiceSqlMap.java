@@ -31,7 +31,7 @@ public class RegistrationServiceSqlMap extends AbstractSqlMap {
         super(platform, replacementTokens);
         StringBuilder incompleteStatusList = new StringBuilder();
         for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.incompleteStatuses) {
-            if (incompleteStatusList.length() > 0) {
+            if (!incompleteStatusList.isEmpty()) {
                 incompleteStatusList.append(",");
             }
             incompleteStatusList.append("'").append(statusName.name()).append("'");
