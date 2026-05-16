@@ -204,4 +204,15 @@ public class RegistrationRequest implements Serializable {
     public boolean isIncomplete() {
         return incompleteStatuses.contains(this.status);
     }
+
+    public static String getIncompleteStatusListQuoted(String quote) {
+        StringBuilder incompleteStatusList = new StringBuilder();
+        for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.incompleteStatuses) {
+            if (!incompleteStatusList.isEmpty()) {
+                incompleteStatusList.append(",");
+            }
+            incompleteStatusList.append(quote).append(statusName.name()).append(quote);
+        }
+        return incompleteStatusList.toString();
+    }
 }

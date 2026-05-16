@@ -81,6 +81,21 @@ class RegistrationRequestTest {
     }
 
     @Test
+    void incompleteStatusListQuotedWithSingleQuote() {
+        assertEquals("'RQ','ER','RJ'", RegistrationRequest.getIncompleteStatusListQuoted("'"));
+    }
+
+    @Test
+    void incompleteStatusListQuotedWithDoubleQuote() {
+        assertEquals("\"RQ\",\"ER\",\"RJ\"", RegistrationRequest.getIncompleteStatusListQuoted("\""));
+    }
+
+    @Test
+    void incompleteStatusListQuotedWithEmptyQuote() {
+        assertEquals("RQ,ER,RJ", RegistrationRequest.getIncompleteStatusListQuoted(""));
+    }
+
+    @Test
     void setRegisteredNodeIdStoresValue() {
         RegistrationRequest req = new RegistrationRequest();
         req.setRegisteredNodeId("node-42");
