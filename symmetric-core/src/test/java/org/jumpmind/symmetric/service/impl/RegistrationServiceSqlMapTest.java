@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.jumpmind.symmetric.model.RegistrationRequest;
 import org.junit.jupiter.api.Test;
 
-public class RegistrationServiceSqlMapTest {
+class RegistrationServiceSqlMapTest {
     @Test
     public void testWhereNodeGroupIdExternalIdHostNameStatusSql_Matches_IncompleteStatuses() {
         RegistrationServiceSqlMap sqlMap = new RegistrationServiceSqlMap(null, (java.util.Map<String, String>) null);

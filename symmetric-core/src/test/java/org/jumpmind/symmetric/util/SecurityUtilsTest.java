@@ -1,5 +1,6 @@
 package org.jumpmind.symmetric.util;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -139,5 +140,55 @@ class SecurityUtilsTest {
     @Test
     void testSanitizeInternalIdentifierHashThrows() {
         assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeInternalIdentifier("node#comment"));
+    }
+
+    @Test
+    void testSanitizeLogArgumentsNoArgs() {
+        assertArrayEquals(new String[0], SecurityUtils.sanitizeLogArguments());
+    }
+
+    @Test
+    void testSanitizeLogArgumentsSingleString() {
+        assertArrayEquals(new String[]{"hello"}, SecurityUtils.sanitizeLogArguments("hello"));
+    }
+
+    @Test
+    void testSanitizeLogArgumentsNullArg() {
+        assertArrayEquals(new String[]{"null"}, SecurityUtils.sanitizeLogArguments((Object) null));
+    }
+
+    @Test
+    void testSanitizeLogArgumentsMultipleArgs() {
+        assertArrayEquals(new String[]{"nodeA", "channelB", "42"}, SecurityUtils.sanitizeLogArguments("nodeA", "channelB", 42));
+    }
+
+    @Test
+    void testSanitizeLogArgumentsStripsNewlines() {
+        assertArrayEquals(new String[]{"line1 line2"}, SecurityUtils.sanitizeLogArguments("line1\nline2"));
+    }
+
+    @Test
+    void testSanitizeLogArgumentsStripsCarriageReturn() {
+        assertArrayEquals(new String[]{"a b"}, SecurityUtils.sanitizeLogArguments("a\rb"));
+    }
+
+    @Test
+    void testSanitizeLogArgumentsStripsTab() {
+        assertArrayEquals(new String[]{"col1 col2"}, SecurityUtils.sanitizeLogArguments("col1\tcol2"));
+    }
+
+    @Test
+    void testSanitizeLogArgumentsMixedTypesConverted() {
+        assertArrayEquals(new String[]{"true", "3.14", "99"}, SecurityUtils.sanitizeLogArguments(true, 3.14, 99L));
+    }
+
+    @Test
+    void testSanitizeLogArgumentsNullAmongOthers() {
+        assertArrayEquals(new String[]{"a", "null", "b"}, SecurityUtils.sanitizeLogArguments("a", null, "b"));
+    }
+
+    @Test
+    void testSanitizeLogArgumentsSanitizesEachArg() {
+        assertArrayEquals(new String[]{"a b", "c d"}, SecurityUtils.sanitizeLogArguments("a\nb", "c\td"));
     }
 }

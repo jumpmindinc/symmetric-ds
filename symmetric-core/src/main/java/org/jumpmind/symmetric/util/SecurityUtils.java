@@ -25,13 +25,26 @@ import java.util.regex.Pattern;
 public class SecurityUtils {
     private static final Pattern SAFE_IDENTIFIER_PATTERN = Pattern.compile("^[a-zA-Z0-9._\\-]+$");
     private static final String REPLACE_LOG_WHITESPACE_CHARS = "[\\n\\r\\t]";
+    private static final String REPLACE_NULL_IN_LOGS = "null";
 
     private SecurityUtils() {
     }
 
+    public static Object[] sanitizeLogArguments(Object... originalLogArguments) {
+        String[] resultLogArguments = new String[originalLogArguments.length];
+        for (int i = 0; i < originalLogArguments.length; i++) {
+            if(originalLogArguments[i] == null ){
+                resultLogArguments[i] = REPLACE_NULL_IN_LOGS;
+            } else {
+                resultLogArguments[i] = sanitizeForLogging(args[i].toString());
+            }            
+        }
+        return resultLogArguments;
+    }
+
     public static String sanitizeForLogging(String input) {
         if (input == null) {
-            return "null";
+            return REPLACE_NULL_IN_LOGS;
         }
         return input.replaceAll(REPLACE_LOG_WHITESPACE_CHARS, " ");
     }
