@@ -52,6 +52,7 @@ import org.jumpmind.symmetric.model.RegistrationRequest;
 import org.jumpmind.symmetric.model.RegistrationRequest.RegistrationStatus;
 import org.jumpmind.symmetric.service.IDataExtractorService;
 import org.jumpmind.symmetric.service.IExtensionService;
+import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
@@ -78,6 +79,7 @@ class AcknowledgeServiceTest {
     private IStagingManager stagingManager;
     private IExtensionService extensionService;
     private IDataExtractorService dataExtractorService;
+    private IConfigurationService configurationService;
     private AcknowledgeService service;
 
     @BeforeEach
@@ -96,6 +98,7 @@ class AcknowledgeServiceTest {
         stagingManager = mock(IStagingManager.class);
         extensionService = mock(IExtensionService.class);
         dataExtractorService = mock(IDataExtractorService.class);
+        configurationService = mock(IConfigurationService.class);
 
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
@@ -106,6 +109,8 @@ class AcknowledgeServiceTest {
         when(engine.getStagingManager()).thenReturn(stagingManager);
         when(engine.getExtensionService()).thenReturn(extensionService);
         when(engine.getDataExtractorService()).thenReturn(dataExtractorService);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        when(configurationService.getChannel(anyString())).thenReturn(null);
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
         when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
@@ -195,15 +200,15 @@ class AcknowledgeServiceTest {
         verify(outgoingBatchService).findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID);
     }
 
-    // Lines 94/95: batch with status IG receiving OK is kept as IG
+    // Lines 94/95: batch with status IG receiving OK is acknowledged as OK (log says "Ignoring batch")
     @Test
-    void outgoingBatchIgnoredStatusKeptWhenAckedOk() {
+    void outgoingBatchIgnoredStatusAckedOkBecomesOk() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
         OutgoingBatch ob = outgoingBatch(Status.IG);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
         verify(outgoingBatchService).updateOutgoingBatch(any(), any());
-        assertTrue(ob.getStatus() == Status.IG);
+        assertTrue(ob.getStatus() == Status.OK);
     }
 
     // Line 97: status overridden to IG when outgoing was OK but new status is not OK
@@ -331,12 +336,9 @@ class AcknowledgeServiceTest {
         batch.setErrorLine(1);
         batch.setSqlCode(ErrorConstants.FK_VIOLATION_CODE);
         OutgoingBatch ob = outgoingBatch(Status.SE);
-        ob.setSqlCode(ErrorConstants.FK_VIOLATION_CODE);
         ob.setLoadFlag(true);
-        ob.setFailedLineNumber(0);
-        List<Number> ids = Arrays.asList(55L);
+        ob.setSentCount(1);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
-        when(sqlTemplateDirty.query(anyString(), any(NumberMapper.class), anyLong())).thenReturn(ids);
         when(parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION_REVERSE_RELOAD)).thenReturn(true);
         service.ack(batch);
         assertFalse(ob.isErrorFlag());
@@ -347,9 +349,9 @@ class AcknowledgeServiceTest {
     @Test
     void protocolViolationLoadBatchLogsInfoWithoutDeletingStaging() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
+        batch.setSqlCode(ErrorConstants.PROTOCOL_VIOLATION_CODE);
+        batch.setSqlState(ErrorConstants.PROTOCOL_VIOLATION_STATE);
         OutgoingBatch ob = outgoingBatch(Status.SE);
-        ob.setSqlCode(ErrorConstants.PROTOCOL_VIOLATION_CODE);
-        ob.setSqlState(ErrorConstants.PROTOCOL_VIOLATION_STATE);
         ob.setLoadFlag(true);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
@@ -360,9 +362,9 @@ class AcknowledgeServiceTest {
     @Test
     void protocolViolationNonLoadBatchLooksUpStagingResource() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
+        batch.setSqlCode(ErrorConstants.PROTOCOL_VIOLATION_CODE);
+        batch.setSqlState(ErrorConstants.PROTOCOL_VIOLATION_STATE);
         OutgoingBatch ob = outgoingBatch(Status.SE);
-        ob.setSqlCode(ErrorConstants.PROTOCOL_VIOLATION_CODE);
-        ob.setSqlState(ErrorConstants.PROTOCOL_VIOLATION_STATE);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
         verify(stagingManager).find(anyString(), anyString(), anyLong());
@@ -373,9 +375,9 @@ class AcknowledgeServiceTest {
     void suppressedErrorClearsErrorFlagAndSetsStatusLd() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
         batch.setErrorLine(1);
+        batch.setSqlCode(ErrorConstants.DEADLOCK_CODE);
         OutgoingBatch ob = outgoingBatch(Status.SE);
         ob.setFailedLineNumber(0);
-        ob.setSqlCode(ErrorConstants.DEADLOCK_CODE);
         List<Number> ids = Arrays.asList(55L);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         when(sqlTemplateDirty.query(anyString(), any(NumberMapper.class), anyLong())).thenReturn(ids);
