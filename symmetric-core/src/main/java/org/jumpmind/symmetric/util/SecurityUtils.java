@@ -33,11 +33,11 @@ public class SecurityUtils {
     public static Object[] sanitizeLogArguments(Object... originalLogArguments) {
         String[] resultLogArguments = new String[originalLogArguments.length];
         for (int i = 0; i < originalLogArguments.length; i++) {
-            if(originalLogArguments[i] == null ){
+            if (originalLogArguments[i] == null) {
                 resultLogArguments[i] = REPLACE_NULL_IN_LOGS;
             } else {
-                resultLogArguments[i] = sanitizeForLogging(args[i].toString());
-            }            
+                resultLogArguments[i] = sanitizeForLogging(originalLogArguments[i].toString());
+            }
         }
         return resultLogArguments;
     }

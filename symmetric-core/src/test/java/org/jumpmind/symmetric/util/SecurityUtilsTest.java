@@ -144,51 +144,51 @@ class SecurityUtilsTest {
 
     @Test
     void testSanitizeLogArgumentsNoArgs() {
-        assertArrayEquals(new String[0], SecurityUtils.sanitizeLogArguments());
+        assertArrayEquals(new Object[0], SecurityUtils.sanitizeLogArguments());
     }
 
     @Test
     void testSanitizeLogArgumentsSingleString() {
-        assertArrayEquals(new String[]{"hello"}, SecurityUtils.sanitizeLogArguments("hello"));
+        assertArrayEquals(new Object[] { "hello" }, SecurityUtils.sanitizeLogArguments("hello"));
     }
 
     @Test
     void testSanitizeLogArgumentsNullArg() {
-        assertArrayEquals(new String[]{"null"}, SecurityUtils.sanitizeLogArguments((Object) null));
+        assertArrayEquals(new Object[] { "null" }, SecurityUtils.sanitizeLogArguments((Object) null));
     }
 
     @Test
     void testSanitizeLogArgumentsMultipleArgs() {
-        assertArrayEquals(new String[]{"nodeA", "channelB", "42"}, SecurityUtils.sanitizeLogArguments("nodeA", "channelB", 42));
+        assertArrayEquals(new Object[] { "nodeA", "channelB", "42" }, SecurityUtils.sanitizeLogArguments("nodeA", "channelB", 42));
     }
 
     @Test
     void testSanitizeLogArgumentsStripsNewlines() {
-        assertArrayEquals(new String[]{"line1 line2"}, SecurityUtils.sanitizeLogArguments("line1\nline2"));
+        assertArrayEquals(new Object[] { "line1 line2" }, SecurityUtils.sanitizeLogArguments("line1\nline2"));
     }
 
     @Test
     void testSanitizeLogArgumentsStripsCarriageReturn() {
-        assertArrayEquals(new String[]{"a b"}, SecurityUtils.sanitizeLogArguments("a\rb"));
+        assertArrayEquals(new Object[] { "a b" }, SecurityUtils.sanitizeLogArguments("a\rb"));
     }
 
     @Test
     void testSanitizeLogArgumentsStripsTab() {
-        assertArrayEquals(new String[]{"col1 col2"}, SecurityUtils.sanitizeLogArguments("col1\tcol2"));
+        assertArrayEquals(new Object[] { "col1 col2" }, SecurityUtils.sanitizeLogArguments("col1\tcol2"));
     }
 
     @Test
     void testSanitizeLogArgumentsMixedTypesConverted() {
-        assertArrayEquals(new String[]{"true", "3.14", "99"}, SecurityUtils.sanitizeLogArguments(true, 3.14, 99L));
+        assertArrayEquals(new Object[] { "true", "3.14", "99" }, SecurityUtils.sanitizeLogArguments(true, 3.14, 99L));
     }
 
     @Test
     void testSanitizeLogArgumentsNullAmongOthers() {
-        assertArrayEquals(new String[]{"a", "null", "b"}, SecurityUtils.sanitizeLogArguments("a", null, "b"));
+        assertArrayEquals(new Object[] { "a", "null", "b" }, SecurityUtils.sanitizeLogArguments("a", null, "b"));
     }
 
     @Test
     void testSanitizeLogArgumentsSanitizesEachArg() {
-        assertArrayEquals(new String[]{"a b", "c d"}, SecurityUtils.sanitizeLogArguments("a\nb", "c\td"));
+        assertArrayEquals(new Object[] { "a b", "c d" }, SecurityUtils.sanitizeLogArguments("a\nb", "c\td"));
     }
 }
