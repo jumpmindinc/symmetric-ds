@@ -24,9 +24,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -38,6 +41,7 @@ import static org.mockito.Mockito.when;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -73,10 +77,13 @@ import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
+import org.jumpmind.symmetric.service.RegistrationNotOpenException;
+import org.jumpmind.symmetric.service.RegistrationRedirectException;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 @SuppressWarnings("unchecked")
 class RegistrationServiceTest {
@@ -404,6 +411,128 @@ class RegistrationServiceTest {
         int result = service.reconcileRegistrationRequestWithPriorEntry(request, prior);
         assertEquals(0, result);
         verify(sqlTemplate, never()).update(anyString(), any(Object[].class), any(int[].class));
+    }
+
+    @Test
+    void processRegistrationCallsCustomRedirectExtensionWhenRegistered() throws IOException {
+        when(nodeService.findIdentity()).thenReturn(buildIdentityNode());
+        when(nodeService.isRegistrationServer()).thenReturn(true);
+        IRegistrationRedirect redirectExtension = mock(IRegistrationRedirect.class);
+        when(extensionService.getExtensionPoint(IRegistrationRedirect.class)).thenReturn(redirectExtension);
+        when(redirectExtension.getRedirectionUrlFor(TEST_CLIENT_EXTERNAL_ID, TEST_CLIENT_GROUP_NAME)).thenReturn("http://redirect");
+        assertThrows(RegistrationRedirectException.class,
+                () -> service.registerPullOnlyNode(TEST_CLIENT_EXTERNAL_ID, TEST_CLIENT_GROUP_NAME, "H2", "1.0", "testdb"));
+        verify(redirectExtension).getRedirectionUrlFor(TEST_CLIENT_EXTERNAL_ID, TEST_CLIENT_GROUP_NAME);
+    }
+
+    @Test
+    void processRegistrationThrowsRedirectExceptionWhenBuiltInRedirectFound() throws IOException {
+        when(nodeService.findIdentity()).thenReturn(buildIdentityNode());
+        when(nodeService.isRegistrationServer()).thenReturn(true);
+        when(sqlTemplate.query(
+                argThat(sql -> sql != null && sql.contains("registration_redirect")),
+                any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
+                .thenReturn(Collections.singletonList("http://redirect"));
+        when(transportManager.resolveURL("http://redirect", "http://registration")).thenReturn("http://redirect");
+        assertThrows(RegistrationRedirectException.class,
+                () -> service.registerPullOnlyNode(TEST_CLIENT_EXTERNAL_ID, TEST_CLIENT_GROUP_NAME, "H2", "1.0", "testdb"));
+    }
+
+    @Test
+    void processRegistrationReturnsNotSyncedWhenNodeGroupIdBlank() throws IOException {
+        when(nodeService.findIdentity()).thenReturn(buildIdentityNode());
+        when(nodeService.isRegistrationServer()).thenReturn(true);
+        Node result = service.registerPullOnlyNode(TEST_CLIENT_EXTERNAL_ID, "", "H2", "1.0", "testdb");
+        assertFalse(result.isSyncEnabled());
+    }
+
+    @Test
+    void processRegistrationChecksAuthenticatorsWhenCredentialsProvided() throws IOException {
+        setupHappyPath();
+        INodeRegistrationAuthenticator authenticator = mock(INodeRegistrationAuthenticator.class);
+        when(extensionService.getExtensionPointList(INodeRegistrationAuthenticator.class))
+                .thenReturn(Collections.singletonList(authenticator));
+        when(authenticator.authenticate(anyString(), anyString())).thenReturn(false);
+        service.registerNode(buildClientNode(), null, null, new ByteArrayOutputStream(), "user", "pass", false);
+        verify(authenticator).authenticate("user", "pass");
+    }
+
+    @Test
+    void processRegistrationSavesRequestAndReturnsFalseWhenManualRegistrationRequired() throws IOException {
+        when(nodeService.findIdentity()).thenReturn(buildIdentityNode());
+        when(nodeService.isRegistrationServer()).thenReturn(true);
+        when(configurationService.getNodeGroupLinkFor(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME, false))
+                .thenReturn(new NodeGroupLink(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME));
+        when(nodeService.findNode(TEST_CLIENT_EXTERNAL_ID)).thenReturn(null);
+        when(nodeService.findNodeSecurity(TEST_CLIENT_EXTERNAL_ID)).thenReturn(null);
+        Node result = service.registerPullOnlyNode(TEST_CLIENT_EXTERNAL_ID, TEST_CLIENT_GROUP_NAME, "H2", "1.0", "testdb");
+        assertFalse(result.isSyncEnabled());
+    }
+
+    @Test
+    void processRegistrationWithReverseReloadEnabledCallsReverseInitialLoad() throws IOException {
+        setupHappyPath();
+        when(parameterService.is(ParameterConstants.AUTO_RELOAD_REVERSE_ENABLED)).thenReturn(true);
+        Node result = service.registerPullOnlyNode(TEST_CLIENT_EXTERNAL_ID, TEST_CLIENT_GROUP_NAME, "H2", "1.0", "testdb");
+        assertTrue(result.isSyncEnabled());
+        verify(nodeService).setReverseInitialLoadEnabled(TEST_CLIENT_EXTERNAL_ID, true, false, -1, "registration");
+    }
+
+    @Test
+    void processRegistrationReturnsNotSyncedWhenRegistrationNotOpen() throws IOException {
+        when(nodeService.findIdentity()).thenReturn(buildIdentityNode());
+        when(nodeService.isRegistrationServer()).thenReturn(true);
+        when(nodeIdCreator.selectNodeId(any(), any(), any()))
+                .thenThrow(new RegistrationNotOpenException("registration not open"));
+        Node result = service.registerPullOnlyNode(TEST_CLIENT_EXTERNAL_ID, TEST_CLIENT_GROUP_NAME, "H2", "1.0", "testdb");
+        assertFalse(result.isSyncEnabled());
+    }
+
+    @Test
+    void registerNodePushConfigCallsSelectNodeIdWhenNodeIdBlank() throws IOException {
+        when(parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)).thenReturn(true);
+        when(parameterService.getNodeGroupId()).thenReturn(TEST_SERVER_GROUP);
+        NodeGroupLink pushLink = new NodeGroupLink(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME);
+        pushLink.setDataEventAction(NodeGroupLinkAction.P);
+        when(configurationService.getNodeGroupLinkFor(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME, false)).thenReturn(pushLink);
+        NodeSecurity registeredSecurity = buildClientSecurity();
+        registeredSecurity.setRegistrationTime(new Date());
+        when(nodeService.findNodeSecurity(TEST_CLIENT_EXTERNAL_ID)).thenReturn(registeredSecurity);
+        Node foundNode = buildClientNode();
+        foundNode.setSyncUrl("http://client/sync");
+        when(nodeService.findNode(TEST_CLIENT_EXTERNAL_ID)).thenReturn(foundNode);
+        Node clientNode = new Node();
+        clientNode.setNodeGroupId(TEST_CLIENT_GROUP_NAME);
+        boolean result = service.registerNode(clientNode, null, null, new ByteArrayOutputStream(), null, null, false);
+        assertTrue(result);
+        verify(nodeIdCreator).selectNodeId(any(), any(), any());
+    }
+
+    @Test
+    void getRegistrationRequestsIncludesRejectsInSqlWhenFlagTrue() {
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        doReturn(Collections.emptyList()).when(sqlTemplate).query(anyString(), any(ISqlRowMapper.class));
+        service.getRegistrationRequests(true, true);
+        verify(sqlTemplate).query(sqlCaptor.capture(), any(ISqlRowMapper.class));
+        assertTrue(sqlCaptor.getValue().contains("'RJ'"));
+    }
+
+    @Test
+    void getLatestRegistrationRequestReturnsNewestRequest() {
+        RegistrationRequest older = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        older.setCreateTime(new Date(1000L));
+        RegistrationRequest newer = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
+        newer.setCreateTime(new Date(2000L));
+        when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
+                .thenReturn(Arrays.asList(older, newer));
+        RegistrationRequest result = service.getLatestRegistrationRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
+        assertEquals(newer, result);
+    }
+
+    @Test
+    void deleteRegistrationRedirectsByNodeIdCallsSqlUpdate() {
+        service.deleteRegistrationRedirectsByNodeId("node-42");
+        verify(sqlTemplate).update(anyString(), eq("node-42"));
     }
 
     private void setupHappyPath() {

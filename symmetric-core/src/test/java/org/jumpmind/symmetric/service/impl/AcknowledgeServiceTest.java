@@ -64,7 +64,6 @@ import org.junit.jupiter.api.Test;
 class AcknowledgeServiceTest {
     private static final String NODE_ID = "node-001";
     private static final long NORMAL_BATCH_ID = 100L;
-
     private ISymmetricEngine engine;
     private IParameterService parameterService;
     private ISymmetricDialect symmetricDialect;
@@ -99,7 +98,6 @@ class AcknowledgeServiceTest {
         extensionService = mock(IExtensionService.class);
         dataExtractorService = mock(IDataExtractorService.class);
         configurationService = mock(IConfigurationService.class);
-
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getRegistrationService()).thenReturn(registrationService);
@@ -118,7 +116,6 @@ class AcknowledgeServiceTest {
         when(parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)).thenReturn(true);
         when(extensionService.getExtensionPointList(any())).thenReturn(Collections.emptyList());
         when(sqlTemplate.startSqlTransaction()).thenReturn(sqlTransaction);
-
         service = new AcknowledgeService(engine);
     }
 
