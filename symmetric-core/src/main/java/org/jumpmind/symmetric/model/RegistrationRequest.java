@@ -32,9 +32,8 @@ public class RegistrationRequest implements Serializable {
         OK, RQ, RJ, RR, ER
     };
 
-    public static final RegistrationStatus[] incompleteStatuses = { 
-        RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ };
-
+    public static final RegistrationStatus[] incompleteStatuses = {
+            RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ };
     private String nodeGroupId;
     private String externalId;
     private RegistrationStatus status;
