@@ -142,7 +142,7 @@ class RegistrationRequestTest {
     @Test
     void equalsReturnsFalseForNull() {
         RegistrationRequest req = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
-        assertNotEquals(req, null);
+        assertNotEquals(null, req);
     }
 
     @Test
