@@ -414,7 +414,7 @@ class RegistrationServiceTest {
     }
 
     @Test
-    void processRegistrationCallsCustomRedirectExtensionWhenRegistered() throws IOException {
+    void processRegistrationCallsCustomRedirectExtensionWhenRegistered() {
         when(nodeService.findIdentity()).thenReturn(buildIdentityNode());
         when(nodeService.isRegistrationServer()).thenReturn(true);
         IRegistrationRedirect redirectExtension = mock(IRegistrationRedirect.class);
