@@ -693,18 +693,18 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         }
         try (FileInputStream finput = new FileInputStream(filename); ZipInputStream zip = new ZipInputStream(finput)) {
             ZipEntry entry = null;
+            File symHome = new File(AppUtils.getSymHome());
             for (entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
                 if (entry.isDirectory()) {
                     continue;
                 }
                 System.out.println("Restoring " + entry.getName());
-                File fileToOpen = null;
-                File f = new File(entry.getName());
-                if (f.isAbsolute()) {
-                    f.getParentFile().mkdirs();
-                    fileToOpen = f;
+                File fileToOpen;
+                if (new File(entry.getName()).isAbsolute()) {
+                    fileToOpen = AppUtils.resolveZipEntry(entry);
+                    fileToOpen.getParentFile().mkdirs();
                 } else {
-                    fileToOpen = new File(AppUtils.getSymHome(), entry.getName());
+                    fileToOpen = AppUtils.resolveZipEntry(symHome, entry);
                 }
                 try (FileOutputStream foutput = new FileOutputStream(fileToOpen)) {
                     final byte buffer[] = new byte[4096];

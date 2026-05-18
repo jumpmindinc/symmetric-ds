@@ -1317,7 +1317,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
 
     protected int[] getTriggerRouterSqlTypes() {
         return new int[] { Types.NUMERIC, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT, Types.TIMESTAMP, Types.VARCHAR,
-                Types.TIMESTAMP, Types.SMALLINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+                Types.TIMESTAMP, Types.SMALLINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
     }
 
     protected Object[] getTriggerRouterSqlValues(TriggerRouter triggerRouter) {
@@ -1325,11 +1325,17 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 triggerRouter.getInitialLoadDeleteStmt(), triggerRouter.isPingBackEnabled() ? 1 : 0,
                 triggerRouter.getCreateTime(), triggerRouter.getLastUpdateBy(), triggerRouter.getLastUpdateTime(),
                 triggerRouter.isEnabled() ? 1 : 0, triggerRouter.getDescription(), triggerRouter.getDataRefreshType(),
+                triggerRouter.getDataRefreshJobName(),
                 triggerRouter.getTrigger().getTriggerId(), triggerRouter.getRouter().getRouterId() };
     }
 
     protected void resetTriggerRouterCacheByNodeGroupId() {
         cacheManager.flushTriggerRoutersByNodeGroupId();
+    }
+
+    @Override
+    public void updateDataRefreshJobName(String oldJobName, String newJobName) {
+        sqlTemplate.update(getSql("updateDataRefreshJobNameSql"), newJobName, oldJobName);
     }
 
     public void saveRouter(Router router) {
@@ -3002,6 +3008,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             triggerRouter.setDescription(rs.getString("description"));
             if (rs.containsKey("data_refresh_type")) {
                 triggerRouter.setDataRefreshType(rs.getString("data_refresh_type"));
+            }
+            if (rs.containsKey("data_refresh_job_name")) {
+                triggerRouter.setDataRefreshJobName(rs.getString("data_refresh_job_name"));
             }
             return triggerRouter;
         }
