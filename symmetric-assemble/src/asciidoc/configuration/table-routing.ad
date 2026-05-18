@@ -97,8 +97,12 @@ Ping Back Enabled:: When enabled, synchronized rows with the Sync On Incoming op
 the data is not routed back to the source node (to prevent endless loops of data changes). A reason to turn this option on is when a transform changes
 some of the data and the transformed data needs to be returned to the source node.
 
-Data Refresh Type:: When the data refresh jobs runs (overnight by default), this control how to refresh data in the table.
-Blank means exclude the table from the data refresh.
-Auto chooses between full reload or compare and repair.  Full uses a table reload request with delete first option.
-Differences uses a compare and repair request.
+Data Refresh Type:: When the assigned Data Refresh job runs, this controls how to refresh data in the table.
+Auto chooses between full reload or compare and repair. Full (or leaving this field blank) uses a table reload request with delete first option.
+Differences uses a compare and repair request. This field is disabled when the Data Refresh Job is set to "CDC".
+
+Data Refresh Job:: Assigns this table routing to a specific Data Refresh job. The default value is "CDC", which means the table
+uses change data capture and will not be processed by any Data Refresh job. Select a Data Refresh job name to have
+that job periodically refresh this table. Tables with CDC triggers enabled (sync on insert, update, or delete) are always
+ignored by Data Refresh jobs regardless of this setting.
 
