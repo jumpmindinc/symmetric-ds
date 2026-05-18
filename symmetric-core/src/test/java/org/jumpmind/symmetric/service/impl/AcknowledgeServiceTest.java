@@ -50,6 +50,7 @@ import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.RegistrationRequest;
 import org.jumpmind.symmetric.model.RegistrationRequest.RegistrationStatus;
 import org.jumpmind.symmetric.service.IDataExtractorService;
+import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.INodeService;
@@ -285,7 +286,7 @@ class AcknowledgeServiceTest {
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         when(sqlTemplateDirty.query(anyString(), any(NumberMapper.class), anyLong())).thenReturn(ids);
         when(parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION)).thenReturn(true);
-        when(engine.getDataService()).thenReturn(mock(org.jumpmind.symmetric.service.IDataService.class));
+        when(engine.getDataService()).thenReturn(mock(IDataService.class));
         when(engine.getDataService().reloadMissingForeignKeyRows(anyLong(), anyString(), anyLong(), anyLong())).thenReturn(true);
         service.ack(batch);
         verify(engine.getDataService()).reloadMissingForeignKeyRows(anyLong(), anyString(), anyLong(), anyLong());
@@ -303,7 +304,7 @@ class AcknowledgeServiceTest {
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         when(sqlTemplateDirty.query(anyString(), any(NumberMapper.class), anyLong())).thenReturn(ids);
         when(parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION)).thenReturn(true);
-        org.jumpmind.symmetric.service.IDataService dataService = mock(org.jumpmind.symmetric.service.IDataService.class);
+        IDataService dataService = mock(IDataService.class);
         when(engine.getDataService()).thenReturn(dataService);
         when(dataService.reloadMissingForeignKeyRows(anyLong(), anyString(), anyLong(), anyLong())).thenReturn(false);
         service.ack(batch);
