@@ -38,7 +38,7 @@ public final class LogUtils {
      */
     public static void setTreadLogContext(String contextId, String value) {
         if(StringUtils.isBlank(value)){
-            removeLogContext(contextId);
+            removeTreadLogContext(contextId);
             log.debug("Removed logging context due to empty value: {}", contextId);
         }
         MDC.put(contextId, value);

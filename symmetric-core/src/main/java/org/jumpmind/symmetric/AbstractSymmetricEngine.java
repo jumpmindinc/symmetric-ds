@@ -66,6 +66,7 @@ import org.jumpmind.symmetric.cache.CacheManager;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ContextConstants;
+import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.config.INodeIdCreator;
@@ -153,13 +154,13 @@ import org.jumpmind.symmetric.transport.ConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
+import org.jumpmind.symmetric.util.LogUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.ExceptionUtils;
 import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     private static Map<String, ISymmetricEngine> registeredEnginesByUrl = new ConcurrentHashMap<String, ISymmetricEngine>();
@@ -280,7 +281,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     private String initEngineNameAndLoggingContext(TypedProperties engineProperties) {
         String engineName = engineProperties.get(ParameterConstants.ENGINE_NAME);
         if (!Strings.CS.contains(engineName, "`") && !Strings.CS.contains(engineName, "(")) {
-            MDC.put("engineName", engineName);
+            LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, engineName);
         }
         return engineName;
     }
@@ -357,7 +358,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         initEngineNameAndLoggingContext(properties);
         this.platform = createDatabasePlatform(properties);
         initEngineParametersFromDatabase(properties);
-        MDC.put("engineName", parameterService.getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, parameterService.getEngineName());
         updatePlatformWithParametersFromDatabase();
         this.symmetricDialect = createSymmetricDialect();
         this.symmetricDialect.setTargetDialect(createTargetDialect());
@@ -1109,19 +1110,19 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public RemoteNodeStatuses push() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         return pushService.pushData(true);
     }
 
     @Override
     public boolean syncTriggers() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         return triggerRouterService.syncTriggers();
     }
 
     @Override
     public boolean forceTriggerRebuild() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         return triggerRouterService.syncTriggers(true);
     }
 
@@ -1139,19 +1140,19 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public RemoteNodeStatuses pull() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         return pullService.pullData(true);
     }
 
     @Override
     public void route() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         routerService.routeData(true);
     }
 
     @Override
     public void purge() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         purgeService.purgeOutgoing(true);
         purgeService.purgeIncoming(true);
     }
@@ -1228,13 +1229,13 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public void heartbeat(boolean force) {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         dataService.heartbeat(force);
     }
 
     @Override
     public void openRegistration(String nodeGroupId, String externalId) {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         registrationService.openRegistration(nodeGroupId, externalId);
     }
 
@@ -1256,7 +1257,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public void reOpenRegistration(String nodeId) {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         registrationService.reOpenRegistration(nodeId);
     }
 

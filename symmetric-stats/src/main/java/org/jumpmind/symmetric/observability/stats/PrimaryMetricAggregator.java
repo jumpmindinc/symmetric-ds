@@ -23,14 +23,15 @@ package org.jumpmind.symmetric.observability.stats;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.IPrimaryMetricAggregator;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
+import org.jumpmind.symmetric.util.LogUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 /**
  * Periodically drains observation queues from all registered {@link IEngineMetricsService} instances, assigns observations to an interval (time window) via
@@ -128,20 +129,20 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
 
     void closeAllMetrics() {
         for (IEngineMetricsService svc : metricsManager.getEngineMetricsServices()) {
-            MDC.put("engineName", svc.getEngineName());
+            LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, svc.getEngineName());
             try {
                 svc.shutdown();
             } catch (Exception e) {
                 log.error("Failed to close metrics service for engine " + svc.getEngineName(), e);
             } finally {
-                MDC.remove("engineName");
+                LogUtils.removeTreadLogContext(LoggingConstants.CONTEXT_ENGINE);
             }
         }
     }
 
     void processAllMetrics() {
         for (IEngineMetricsService svc : metricsManager.getEngineMetricsServices()) {
-            MDC.put("engineName", svc.getEngineName());
+            LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, svc.getEngineName());
             try {
                 Collection<ISymMetric> allMetrics = svc.getAllMetrics();
                 for (ISymMetric metric : allMetrics) {
@@ -151,7 +152,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
             } catch (Exception ex) {
                 log.warn("Failed to process metrics for engine " + svc.getEngineName(), ex);
             } finally {
-                MDC.remove("engineName");
+                LogUtils.removeTreadLogContext(LoggingConstants.CONTEXT_ENGINE);
             }
         }
     }
