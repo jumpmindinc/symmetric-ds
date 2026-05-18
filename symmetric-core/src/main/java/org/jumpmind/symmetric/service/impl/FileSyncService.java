@@ -1015,9 +1015,13 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
 
     protected List<IncomingBatch> processZip(InputStream is, String sourceNodeId,
             ProcessInfo processInfo) throws IOException {
-        File unzipDir = new File(parameterService.getTempDirectory(), String.format(
+        File tempDir = new File(parameterService.getTempDirectory());
+        File unzipDir = new File(tempDir, String.format(
                 "filesync_incoming/%s/%s", engine.getNodeService().findIdentityNodeId(),
                 sourceNodeId));
+        if (!unzipDir.getCanonicalPath().startsWith(tempDir.getCanonicalPath() + File.separator)) {
+            throw new IOException("Potential path traversal detected in sourceNodeId: " + sourceNodeId);
+        }
         FileUtils.deleteDirectory(unzipDir);
         unzipDir.mkdirs();
         try {
