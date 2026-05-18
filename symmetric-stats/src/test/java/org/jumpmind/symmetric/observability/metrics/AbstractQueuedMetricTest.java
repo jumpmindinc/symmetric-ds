@@ -190,7 +190,7 @@ class AbstractQueuedMetricTest {
     @Test
     void closeExpiredAccumulatorIfNeeded_noAccumulator_doesNotThrow() {
         UpDownCounter m = newCounter();
-        m.closeExpiredAccumulatorIfNeeded(T + D); // accumulator is null, must not throw
+        assertDoesNotThrow(() -> m.closeExpiredAccumulatorIfNeeded(T + D));
     }
 
     @Test
