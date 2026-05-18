@@ -180,7 +180,7 @@ class AcknowledgeServiceTest {
         when(registrationService.getLatestRegistrationRequest("client", "ext-001")).thenReturn(request);
         service.ack(batch);
         verify(registrationService).updateRegistrationRequest(request);
-        assertSame(request.getStatus(), RegistrationStatus.ER);
+        assertEquals(RegistrationStatus.ER, request.getStatus());
     }
 
     @Test
@@ -199,7 +199,7 @@ class AcknowledgeServiceTest {
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
         verify(outgoingBatchService).updateOutgoingBatch(any(), any());
-        assertSame(ob.getStatus(), Status.OK);
+        assertEquals(Status.OK, ob.getStatus());
     }
 
     @Test
@@ -209,7 +209,7 @@ class AcknowledgeServiceTest {
         OutgoingBatch ob = outgoingBatch(Status.OK);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
-        assertSame(ob.getStatus(), Status.IG);
+        assertEquals(Status.IG, ob.getStatus());
     }
 
     @Test
@@ -289,6 +289,7 @@ class AcknowledgeServiceTest {
         when(engine.getDataService()).thenReturn(mock(IDataService.class));
         when(engine.getDataService().reloadMissingForeignKeyRows(anyLong(), anyString(), anyLong(), anyLong())).thenReturn(true);
         service.ack(batch);
+        assertEquals(NORMAL_BATCH_ID, batch.getBatchId());
         verify(engine.getDataService()).reloadMissingForeignKeyRows(anyLong(), anyString(), anyLong(), anyLong());
     }
 
@@ -324,7 +325,7 @@ class AcknowledgeServiceTest {
         when(parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION_REVERSE_RELOAD)).thenReturn(true);
         service.ack(batch);
         assertFalse(ob.isErrorFlag());
-        assertSame(Status.LD, ob.getStatus());
+        assertEquals(Status.LD, ob.getStatus());
     }
 
     @Test
@@ -362,7 +363,7 @@ class AcknowledgeServiceTest {
         when(sqlTemplateDirty.query(anyString(), any(NumberMapper.class), anyLong())).thenReturn(ids);
         service.ack(batch);
         assertFalse(ob.isErrorFlag());
-        assertSame(Status.LD, ob.getStatus());
+        assertEquals(Status.LD, ob.getStatus());
     }
 
     @Test
@@ -371,7 +372,7 @@ class AcknowledgeServiceTest {
         OutgoingBatch ob = outgoingBatch(Status.SE);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
-        assertSame(Status.ER, ob.getStatus());
+        assertEquals(Status.ER, ob.getStatus());
         assertTrue(ob.isErrorFlag());
     }
 

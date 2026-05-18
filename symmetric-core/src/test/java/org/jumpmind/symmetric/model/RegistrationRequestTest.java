@@ -148,7 +148,7 @@ class RegistrationRequestTest {
     @Test
     void equalsReturnsFalseForDifferentClass() {
         RegistrationRequest req = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
-        assertNotEquals(req, "not a RegistrationRequest");
+        assertNotEquals("not a RegistrationRequest", req);
     }
 
     @Test
