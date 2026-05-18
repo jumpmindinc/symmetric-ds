@@ -25,21 +25,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.jumpmind.symmetric.model.RegistrationRequest;
 import org.junit.jupiter.api.Test;
 
-public class RegistrationServiceSqlMapTest {
+class RegistrationServiceSqlMapTest {
     @Test
-    public void testWhereNodeGroupIdExternalIdHostNameStatusSql_Matches_IncompleteStatuses() {
+    void testWhereNodeGroupIdExternalIdHostNameStatusSql_Matches_IncompleteStatuses() {
         RegistrationServiceSqlMap sqlMap = new RegistrationServiceSqlMap(null, (java.util.Map<String, String>) null);
         String sql = sqlMap.getSql("whereNodeGroupIdExternalIdHostNameStatusSql");
-        StringBuilder statuses = new StringBuilder();
-        for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.incompleteStatuses) {
-            if (statuses.length() > 0) {
-                statuses.append(",");
-            }
-            statuses.append("'");
-            statuses.append(statusName.name());
-            statuses.append("'");
-        }
-        String expectedList = " status in (" + statuses + ")";
+        String expectedList = " status in (" + RegistrationRequest.getIncompleteStatusListQuoted("'") + ")";
         assertTrue(sql.endsWith(expectedList),
                 "SQL should contain string=" + expectedList + " ! Actual=" + sql);
     }

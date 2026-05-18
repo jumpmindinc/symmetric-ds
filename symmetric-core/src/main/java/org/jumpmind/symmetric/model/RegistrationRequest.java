@@ -21,7 +21,9 @@
 package org.jumpmind.symmetric.model;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -32,8 +34,8 @@ public class RegistrationRequest implements Serializable {
         OK, RQ, RJ, RR, ER
     };
 
-    public static final RegistrationStatus[] incompleteStatuses = {
-            RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ };
+    protected static final List<RegistrationStatus> incompleteStatuses = Arrays.asList(
+            RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ);
     private String nodeGroupId;
     private String externalId;
     private RegistrationStatus status;
@@ -192,5 +194,25 @@ public class RegistrationRequest implements Serializable {
             return false;
         }
         return true;
+    }
+
+    public void incrementAttemptsAndSetLatestMessage(RegistrationRequest priorRequest) {
+        this.attemptCount = 1 + priorRequest.attemptCount;
+        this.errorMessage = StringUtils.defaultIfEmpty(this.errorMessage, priorRequest.errorMessage);
+    }
+
+    public boolean isIncomplete() {
+        return incompleteStatuses.contains(this.status);
+    }
+
+    public static String getIncompleteStatusListQuoted(String quote) {
+        StringBuilder incompleteStatusList = new StringBuilder();
+        for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.incompleteStatuses) {
+            if (!incompleteStatusList.isEmpty()) {
+                incompleteStatusList.append(",");
+            }
+            incompleteStatusList.append(quote).append(statusName.name()).append(quote);
+        }
+        return incompleteStatusList.toString();
     }
 }

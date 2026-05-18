@@ -83,6 +83,6 @@ public class RegistrationServiceSqlMap extends AbstractSqlMap {
         putSql("whereNodeGroupIdAndExternalIdSql", "where node_group_id=? and external_id=?");
         putSql("wherePkSql", "where node_group_id=? and external_id=? and create_time=?");
         putSql("whereNodeGroupIdExternalIdHostNameStatusSql",
-                "where node_group_id=? and external_id=? and host_name=? and status in (" + incompleteStatusList + ")");
+                "where node_group_id=? and external_id=? and host_name=? and status in (" + RegistrationRequest.getIncompleteStatusListQuoted("'") + ")");
     }
 }

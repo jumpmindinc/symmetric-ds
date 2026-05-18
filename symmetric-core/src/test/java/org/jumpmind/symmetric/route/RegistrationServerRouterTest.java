@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.route;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -205,7 +204,7 @@ class RegistrationServerRouterTest {
         when(engine.getNodeService()).thenReturn(nodeService);
         when(nodeService.findIdentity()).thenReturn(expected);
         RegistrationServerRouter router = new RegistrationServerRouter(engine);
-        assertSame(expected, router.findIdentity());
+        assertEquals(expected, router.findIdentity());
     }
 
     @Test
