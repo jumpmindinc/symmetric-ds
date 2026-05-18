@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.SymmetricException;
@@ -90,10 +91,12 @@ public class PushService extends AbstractOfflineDetectorService implements IPush
         outgoingBatchService = engine.getOutgoingBatchService();
     }
 
+    @Override
     public Map<String, Date> getStartTimesOfNodesBeingPushedTo() {
         return new HashMap<String, Date>(startTimesOfNodesBeingPushedTo);
     }
 
+    @Override
     synchronized public RemoteNodeStatuses pushData(boolean force) {
         RemoteNodeStatuses statuses = new RemoteNodeStatuses(configurationService.getChannels(false));
         Node identity = nodeService.findIdentity();
@@ -160,6 +163,7 @@ public class PushService extends AbstractOfflineDetectorService implements IPush
         return filteredNodes;
     }
 
+    @Override
     public void execute(NodeCommunication nodeCommunication, RemoteNodeStatus status) {
         Node node = nodeCommunication.getNode();
         boolean immediatePushIfDataFound = parameterService.is(ParameterConstants.PUSH_IMMEDIATE_IF_DATA_FOUND, false);
@@ -233,10 +237,19 @@ public class PushService extends AbstractOfflineDetectorService implements IPush
                 extractedBatches = dataExtractorService.extract(processInfo, remote, queue, transport);
             }
             if (extractedBatches != null && extractedBatches.size() > 0) {
-                log.info("Push data sent to {}", remote);
-                List<BatchAck> batchAcks = readAcks(extractedBatches, remote.getNodeId(), transport, transportManager, acknowledgeService,
-                        dataExtractorService);
+                log.info("Push data sent to {}. Batches={}", remote, extractedBatches.size());
+                List<BatchAck> batchAcks = readAcks(extractedBatches, remote.getNodeId(), transport, transportManager,
+                        acknowledgeService, dataExtractorService);
                 status.updateOutgoingStatus(extractedBatches, batchAcks);
+                if (CollectionUtils.isEmpty(batchAcks)) {
+                    log.warn("No acknowledgments were received for {} batches pushed to node {}",
+                            extractedBatches.size(), remote.getNodeId());
+                } else {
+                    log.debug("Received {} acknowledgments for {} batches pushed to node {}",
+                            batchAcks.size(), extractedBatches.size(), remote.getNodeId());
+                }
+            } else {
+                log.debug("Nothing to push to node {}", remote);
             }
             if (processInfo.getStatus() != ProcessStatus.ERROR) {
                 processInfo.setStatus(ProcessStatus.OK);
