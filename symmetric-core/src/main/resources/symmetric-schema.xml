@@ -346,9 +346,9 @@
 
     <table name="job" description="Defines custom jobs that can be executed in the SymmetricDS instance.">
         <column name="job_name" type="VARCHAR" size="50" required="true" primaryKey="true" description="The unique name of the job" />
-        <column name="job_type" type="VARCHAR" size="10" required="true" description="The type of the job. Valid values are 'sql', 'java' and 'bsh'. The system exclusively uses the 'built_in' job type." />
+        <column name="job_type" type="VARCHAR" size="10" required="true" description="The type of the job. Valid values are 'REFRESH' (Pro only), 'SQL', 'JAVA', and 'BSH'. The system exclusively uses the 'BUILT_IN' job type." />
         <column name="requires_registration" type="BOOLEANINT" size="1" required="true" default="1"  description="Does the engine need to be registered for this job to run?" />
-        <column name="job_expression" type="LONGVARCHAR" description="The payload of the job.  For bsh (beanshell) jobs, this should be bsh script.  For Java jobs, this should be Java code of a class which implements the IJob interface. For SQL jobs, this should be a sql script." />
+        <column name="job_expression" type="LONGVARCHAR" description="The payload of the job.  For bsh (beanshell) jobs, this should be bsh script.  For Java jobs, this should be Java code of a class which implements the IJob interface. For SQL jobs, this should be a sql script. For REFRESH jobs, this has no effect." />
         <column name="description" type="VARCHAR" size="255"   description="An optional description of the job for users of the system." />
         <column name="default_schedule" type="VARCHAR" size="50" description="The schedule to use if no schedule parameter is found. Overridden by job.jobname.period.time.ms or job.jobname.cron." />
         <column name="default_auto_start" type="BOOLEANINT" size="1" required="true" default="1"  description="Determine if this job should auto start. Overridden by start.jobname.job." />
@@ -992,7 +992,8 @@
         <column name="last_update_by" type="VARCHAR" size="50"  description="The user who last updated this entry." />
         <column name="last_update_time" type="TIMESTAMP" required="true"  description="Timestamp when a user last updated this entry." />
         <column name="description" type="LONGVARCHAR" description="Optional notes and comments for trigger_router" />
-        <column name="data_refresh_type" type="VARCHAR" size="50" description="If this table should be refreshed when the refresh job runs.  Usually for tables where typical trigger, log, or time-based capture is not available.  Possible values are: 'auto' (attempts difference only refresh unless there are more than the threshold and will switch automatically to a full), 'differences' (Uses the compare feature to send only differences), and 'full' (remove all data at the target and fully load it again using a reload)"/>
+        <column name="data_refresh_type" type="VARCHAR" size="50" description="Controls how this table is refreshed when the data_refresh_job_name is not 'CDC'. Possible values are: 'auto' (attempts difference only refresh unless there are more than the threshold and will switch automatically to a full), 'differences' (Uses the compare feature to send only differences), and 'full' (remove all data at the target and fully load it again using a reload)"/>
+        <column name="data_refresh_job_name" type="VARCHAR" size="50" required="true" default="CDC" description="The name of the data refresh job assigned to this trigger router. Usually for tables where typical trigger, log, or time-based capture is not available. The value 'CDC' (default) indicates the table uses change data capture and is ignored by all data refresh jobs."/>
         <foreign-key foreignTable="trigger" name="fk_tr_2_trg">
             <reference local="trigger_id" foreign="trigger_id" />
         </foreign-key>
