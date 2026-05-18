@@ -20,8 +20,7 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -82,7 +81,7 @@ class AcknowledgeServiceTest {
     private AcknowledgeService service;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         engine = mock(ISymmetricEngine.class);
         parameterService = mock(IParameterService.class);
         symmetricDialect = mock(ISymmetricDialect.class);
@@ -139,7 +138,6 @@ class AcknowledgeServiceTest {
         return ob;
     }
 
-    // Line 73: markNodeAsRegistered called for virtual batch when ok
     @Test
     void registrationBatchOkMarksNodeRegistered() {
         BatchAck batch = virtualRegistrationBatch(true);
@@ -147,7 +145,6 @@ class AcknowledgeServiceTest {
         verify(registrationService).markNodeAsRegistered(NODE_ID);
     }
 
-    // Line 75: warn logged when virtual batch fails with sqlCode != 0
     @Test
     void registrationBatchFailWithSqlCodeLogsWarn() {
         BatchAck batch = virtualRegistrationBatch(false);
@@ -157,7 +154,6 @@ class AcknowledgeServiceTest {
         verify(registrationService, never()).markNodeAsRegistered(anyString());
     }
 
-    // Line 79: getLatestRegistrationRequest called when requesting node found
     @Test
     void registrationBatchFailFetchesLatestRequestWhenNodeFound() {
         BatchAck batch = virtualRegistrationBatch(false);
@@ -170,7 +166,6 @@ class AcknowledgeServiceTest {
         verify(registrationService).getLatestRegistrationRequest("client", "ext-001");
     }
 
-    // Line 82: request status set to ER when request found
     @Test
     void registrationBatchFailSetsRequestStatusToEr() {
         BatchAck batch = virtualRegistrationBatch(false);
@@ -184,10 +179,9 @@ class AcknowledgeServiceTest {
         when(registrationService.getLatestRegistrationRequest("client", "ext-001")).thenReturn(request);
         service.ack(batch);
         verify(registrationService).updateRegistrationRequest(request);
-        assertTrue(request.getStatus() == RegistrationStatus.ER);
+        assertSame(request.getStatus(), RegistrationStatus.ER);
     }
 
-    // Line 90: findOutgoingBatch called for normal (non-virtual, non-missing) batch
     @Test
     void normalBatchLookupOutgoingBatch() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
@@ -197,7 +191,6 @@ class AcknowledgeServiceTest {
         verify(outgoingBatchService).findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID);
     }
 
-    // Lines 94/95: batch with status IG receiving OK is acknowledged as OK (log says "Ignoring batch")
     @Test
     void outgoingBatchIgnoredStatusAckedOkBecomesOk() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
@@ -205,10 +198,9 @@ class AcknowledgeServiceTest {
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
         verify(outgoingBatchService).updateOutgoingBatch(any(), any());
-        assertTrue(ob.getStatus() == Status.OK);
+        assertSame(ob.getStatus(), Status.OK);
     }
 
-    // Line 97: status overridden to IG when outgoing was OK but new status is not OK
     @Test
     void outgoingBatchAlreadyOkOverridesIncomingErrorToIgnore() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
@@ -216,10 +208,9 @@ class AcknowledgeServiceTest {
         OutgoingBatch ob = outgoingBatch(Status.OK);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
-        assertTrue(ob.getStatus() == Status.IG);
+        assertSame(ob.getStatus(), Status.IG);
     }
 
-    // Line 125: incrementIgnoreCount called when batch.isIgnored()
     @Test
     void ignoredBatchIncrementsIgnoreCount() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
@@ -231,7 +222,6 @@ class AcknowledgeServiceTest {
         assertTrue(ob.getIgnoreCount() > ignoreCountBefore);
     }
 
-    // Line 128: failedDataId/failedLineNumber reset when status OK
     @Test
     void okStatusClearsFailedDataIdAndLineNumber() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
@@ -240,11 +230,10 @@ class AcknowledgeServiceTest {
         ob.setFailedLineNumber(3L);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
-        assertTrue(ob.getFailedDataId() == 0);
-        assertTrue(ob.getFailedLineNumber() == 0);
+        assertEquals(0L, ob.getFailedDataId());
+        assertEquals(0L, ob.getFailedLineNumber());
     }
 
-    // Line 133: isNewError set from sentCount when loadFlag=true and errorLine != 0
     @Test
     void errorBatchWithLoadFlagSetsIsNewErrorFromSentCount() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
@@ -257,7 +246,6 @@ class AcknowledgeServiceTest {
         verify(statisticManager).incrementDataLoadedOutgoingErrors(any(), anyLong());
     }
 
-    // Line 137: data id query executed when not loadFlag and errorLine changed
     @Test
     void errorBatchQueriesDataIdsWhenErrorLineChanged() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
@@ -269,10 +257,9 @@ class AcknowledgeServiceTest {
         when(sqlTemplateDirty.query(anyString(), any(NumberMapper.class), anyLong())).thenReturn(ids);
         service.ack(batch);
         verify(sqlTemplateDirty).query(anyString(), any(NumberMapper.class), anyLong());
-        assertTrue(ob.getFailedDataId() == 101L);
+        assertEquals(101L, ob.getFailedDataId());
     }
 
-    // Line 147: incrementDataLoadedOutgoingErrors called when isNewError
     @Test
     void newErrorIncrementsOutgoingErrorStats() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
@@ -286,7 +273,6 @@ class AcknowledgeServiceTest {
         verify(statisticManager).incrementDataLoadedOutgoingErrors(any(), anyLong());
     }
 
-    // Line 151: FK violation triggers auto-resolve attempt
     @Test
     void fkViolationTriggersAutoResolveWhenEnabled() throws Exception {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
@@ -305,9 +291,8 @@ class AcknowledgeServiceTest {
         verify(engine.getDataService()).reloadMissingForeignKeyRows(anyLong(), anyString(), anyLong(), anyLong());
     }
 
-    // Line 160: failedLineNumber/failedDataId reset when FK resolve is not definitive
     @Test
-    void fkResolveNotDefinitiveClearsErrorTracking() throws Exception {
+    void fkResolveNotDefinitiveClearsErrorTracking() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
         batch.setErrorLine(1);
         batch.setSqlCode(ErrorConstants.FK_VIOLATION_CODE);
@@ -322,11 +307,10 @@ class AcknowledgeServiceTest {
         when(engine.getDataService()).thenReturn(dataService);
         when(dataService.reloadMissingForeignKeyRows(anyLong(), anyString(), anyLong(), anyLong())).thenReturn(false);
         service.ack(batch);
-        assertTrue(ob.getFailedLineNumber() == 0);
-        assertTrue(ob.getFailedDataId() == 0);
+        assertEquals(0L, ob.getFailedLineNumber());
+        assertEquals(0L, ob.getFailedDataId());
     }
 
-    // Line 171: suppressError=true for load batch FK violation with reverse reload enabled
     @Test
     void fkViolationLoadBatchWithReverseReloadSuppressesError() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
@@ -339,10 +323,9 @@ class AcknowledgeServiceTest {
         when(parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION_REVERSE_RELOAD)).thenReturn(true);
         service.ack(batch);
         assertFalse(ob.isErrorFlag());
-        assertTrue(ob.getStatus() == Status.LD);
+        assertSame(Status.LD, ob.getStatus());
     }
 
-    // Line 177: protocol violation on load batch logs info, does not delete staging
     @Test
     void protocolViolationLoadBatchLogsInfoWithoutDeletingStaging() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
@@ -355,7 +338,6 @@ class AcknowledgeServiceTest {
         verify(stagingManager, never()).find(anyString(), anyString(), anyLong());
     }
 
-    // Line 181: staging resource looked up for protocol violation on non-load batch
     @Test
     void protocolViolationNonLoadBatchLooksUpStagingResource() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
@@ -367,7 +349,6 @@ class AcknowledgeServiceTest {
         verify(stagingManager).find(anyString(), anyString(), anyLong());
     }
 
-    // Line 195: errorFlag cleared and status set to LD when suppressError
     @Test
     void suppressedErrorClearsErrorFlagAndSetsStatusLd() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
@@ -380,23 +361,21 @@ class AcknowledgeServiceTest {
         when(sqlTemplateDirty.query(anyString(), any(NumberMapper.class), anyLong())).thenReturn(ids);
         service.ack(batch);
         assertFalse(ob.isErrorFlag());
-        assertTrue(ob.getStatus() == Status.LD);
+        assertSame(Status.LD, ob.getStatus());
     }
 
-    // Line 199: error logged when suppressError is false
     @Test
     void nonSuppressedErrorKeepsErrorStatus() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
         OutgoingBatch ob = outgoingBatch(Status.SE);
         when(outgoingBatchService.findOutgoingBatch(NORMAL_BATCH_ID, NODE_ID)).thenReturn(ob);
         service.ack(batch);
-        assertTrue(ob.getStatus() == Status.ER);
+        assertSame(Status.ER, ob.getStatus());
         assertTrue(ob.isErrorFlag());
     }
 
-    // Line 214: updateExtractRequestLoadTime called on first-time OK with loadId > 0
     @Test
-    void firstTimeOkWithLoadIdUpdatesExtractRequestLoadTime() throws Exception {
+    void firstTimeOkWithLoadIdUpdatesExtractRequestLoadTime() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
         OutgoingBatch ob = outgoingBatch(Status.SE);
         ob.setLoadId(5L);
@@ -405,9 +384,8 @@ class AcknowledgeServiceTest {
         verify(dataExtractorService).updateExtractRequestLoadTime(any(), any(), any());
     }
 
-    // Line 216: duplicate load status update logged when not first-time OK
     @Test
-    void duplicateOkWithLoadIdSkipsExtractRequestLoadTimeUpdate() throws Exception {
+    void duplicateOkWithLoadIdSkipsExtractRequestLoadTimeUpdate() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, true);
         OutgoingBatch ob = outgoingBatch(Status.OK);
         ob.setLoadId(5L);

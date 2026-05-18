@@ -426,7 +426,7 @@ class RegistrationServiceTest {
     }
 
     @Test
-    void processRegistrationThrowsRedirectExceptionWhenBuiltInRedirectFound() throws IOException {
+    void processRegistrationThrowsRedirectExceptionWhenBuiltInRedirectFound() {
         when(nodeService.findIdentity()).thenReturn(buildIdentityNode());
         when(nodeService.isRegistrationServer()).thenReturn(true);
         when(sqlTemplate.query(

@@ -21,10 +21,8 @@
 package org.jumpmind.symmetric.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Date;
 
@@ -138,19 +136,19 @@ class RegistrationRequestTest {
     @Test
     void equalsReturnsTrueForSameInstance() {
         RegistrationRequest req = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
-        assertTrue(req.equals(req));
+        assertEquals(req, req);
     }
 
     @Test
     void equalsReturnsFalseForNull() {
         RegistrationRequest req = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
-        assertFalse(req.equals(null));
+        assertNotEquals(req, null);
     }
 
     @Test
     void equalsReturnsFalseForDifferentClass() {
         RegistrationRequest req = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
-        assertFalse(req.equals("not a RegistrationRequest"));
+        assertNotEquals(req, "not a RegistrationRequest");
     }
 
     @Test
@@ -159,7 +157,7 @@ class RegistrationRequestTest {
         a.setCreateTime(new Date(1000L));
         RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
         b.setCreateTime(new Date(2000L));
-        assertFalse(a.equals(b));
+        assertNotEquals(a, b);
     }
 
     @Test
@@ -168,7 +166,7 @@ class RegistrationRequestTest {
         a.setCreateTime(null);
         RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
         b.setCreateTime(new Date(1000L));
-        assertFalse(a.equals(b));
+        assertNotEquals(a, b);
     }
 
     @Test
@@ -177,7 +175,7 @@ class RegistrationRequestTest {
         a.setCreateTime(new Date(1000L));
         RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
         b.setCreateTime(new Date(1000L));
-        assertFalse(a.equals(b));
+        assertNotEquals(a, b);
     }
 
     @Test
@@ -186,7 +184,7 @@ class RegistrationRequestTest {
         a.setCreateTime(new Date(1000L));
         RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, "ext-2");
         b.setCreateTime(new Date(1000L));
-        assertFalse(a.equals(b));
+        assertNotEquals(a, b);
     }
 
     @Test
@@ -196,7 +194,7 @@ class RegistrationRequestTest {
         a.setCreateTime(date);
         RegistrationRequest b = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID);
         b.setCreateTime(date);
-        assertTrue(a.equals(b));
+        assertEquals(a, b);
     }
 
     private RegistrationRequest buildRequest(String groupName, String externalId) {

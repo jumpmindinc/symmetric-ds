@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationServiceSqlMapTest {
     @Test
-    public void testWhereNodeGroupIdExternalIdHostNameStatusSql_Matches_IncompleteStatuses() {
+    void testWhereNodeGroupIdExternalIdHostNameStatusSql_Matches_IncompleteStatuses() {
         RegistrationServiceSqlMap sqlMap = new RegistrationServiceSqlMap(null, (java.util.Map<String, String>) null);
         String sql = sqlMap.getSql("whereNodeGroupIdExternalIdHostNameStatusSql");
         String expectedList = " status in (" + RegistrationRequest.getIncompleteStatusListQuoted("'") + ")";
