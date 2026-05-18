@@ -275,7 +275,7 @@ class AcknowledgeServiceTest {
     }
 
     @Test
-    void fkViolationTriggersAutoResolveWhenEnabled() throws Exception {
+    void fkViolationTriggersAutoResolveWhenEnabled() {
         BatchAck batch = normalBatch(NORMAL_BATCH_ID, false);
         batch.setErrorLine(1);
         batch.setSqlCode(ErrorConstants.FK_VIOLATION_CODE);
