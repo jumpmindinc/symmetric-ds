@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.List;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
@@ -157,7 +159,7 @@ class PushServiceTest {
         Node identity = newNode("node1", "group1");
         when(nodeService.findIdentity()).thenReturn(identity);
         when(clusterService.isInfiniteLocked(ClusterConstants.PUSH)).thenReturn(false);
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         when(nodeCommunicationService.list(CommunicationType.PUSH)).thenReturn(List.of(nc));
         when(nodeService.findNodeSecurity("node1", true)).thenReturn(null);
         when(nodeService.findIdentity(false)).thenReturn(identity);
@@ -171,7 +173,7 @@ class PushServiceTest {
         Node identity = newNode("node1", "group1");
         when(nodeService.findIdentity()).thenReturn(identity);
         when(clusterService.isInfiniteLocked(ClusterConstants.PUSH)).thenReturn(false);
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         when(nodeCommunicationService.list(CommunicationType.PUSH)).thenReturn(List.of(nc));
         NodeSecurity identitySecurity = newNodeSecurity("node1");
         when(nodeService.findNodeSecurity("node1", true)).thenReturn(identitySecurity);
@@ -191,7 +193,7 @@ class PushServiceTest {
         Node identity = newNode("node1", "group1");
         when(nodeService.findIdentity()).thenReturn(identity);
         when(clusterService.isInfiniteLocked(ClusterConstants.PUSH)).thenReturn(false);
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         when(nodeCommunicationService.list(CommunicationType.PUSH)).thenReturn(List.of(nc));
         NodeSecurity identitySecurity = newNodeSecurity("node1");
         when(nodeService.findNodeSecurity("node1", true)).thenReturn(identitySecurity);
@@ -209,8 +211,8 @@ class PushServiceTest {
         Node identity = newNode("node1", "group1");
         when(nodeService.findIdentity()).thenReturn(identity);
         when(clusterService.isInfiniteLocked(ClusterConstants.PUSH)).thenReturn(false);
-        NodeCommunication nc1 = newNodeCommunication("node2", "default");
-        NodeCommunication nc2 = newNodeCommunication("node3", "default");
+        NodeCommunication nc1 = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
+        NodeCommunication nc2 = newNodeCommunication("node3", Constants.QUEUE_DEFAULT);
         when(nodeCommunicationService.list(CommunicationType.PUSH)).thenReturn(List.of(nc1, nc2));
         NodeSecurity identitySecurity = newNodeSecurity("node1");
         when(nodeService.findNodeSecurity("node1", true)).thenReturn(identitySecurity);
@@ -227,7 +229,7 @@ class PushServiceTest {
         Node identity = newNode("node1", "group1");
         when(nodeService.findIdentity()).thenReturn(identity);
         when(clusterService.isInfiniteLocked(ClusterConstants.PUSH)).thenReturn(false);
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         when(nodeCommunicationService.list(CommunicationType.PUSH)).thenReturn(List.of(nc));
         NodeSecurity identitySecurity = newNodeSecurity("node1");
         when(nodeService.findNodeSecurity("node1", true)).thenReturn(identitySecurity);
@@ -235,8 +237,8 @@ class PushServiceTest {
         when(configurationService.isMasterToMaster()).thenReturn(false);
         when(parameterService.is(ParameterConstants.SYNC_USE_READY_QUEUES)).thenReturn(true);
         when(parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT)).thenReturn(false);
-        when(configurationService.getQueues(false)).thenReturn(List.of("default", "reload"));
-        when(outgoingBatchService.getReadyQueues("node2", false)).thenReturn(List.of("default"));
+        when(configurationService.getQueues(false)).thenReturn(List.of(Constants.QUEUE_DEFAULT, Constants.QUEUE_RELOAD));
+        when(outgoingBatchService.getReadyQueues("node2", false)).thenReturn(List.of(Constants.QUEUE_DEFAULT));
         when(nodeCommunicationService.execute(any(), any(), any())).thenReturn(true);
         pushService.pushData(false);
         verify(nodeCommunicationService).execute(eq(nc), any(), any());
@@ -247,7 +249,7 @@ class PushServiceTest {
         Node identity = newNode("node1", "group1");
         when(nodeService.findIdentity()).thenReturn(identity);
         when(clusterService.isInfiniteLocked(ClusterConstants.PUSH)).thenReturn(false);
-        NodeCommunication nc = newNodeCommunication("node2", "reload");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_RELOAD);
         when(nodeCommunicationService.list(CommunicationType.PUSH)).thenReturn(List.of(nc));
         NodeSecurity identitySecurity = newNodeSecurity("node1");
         when(nodeService.findNodeSecurity("node1", true)).thenReturn(identitySecurity);
@@ -255,8 +257,8 @@ class PushServiceTest {
         when(configurationService.isMasterToMaster()).thenReturn(false);
         when(parameterService.is(ParameterConstants.SYNC_USE_READY_QUEUES)).thenReturn(true);
         when(parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT)).thenReturn(false);
-        when(configurationService.getQueues(false)).thenReturn(List.of("default", "reload"));
-        when(outgoingBatchService.getReadyQueues("node2", false)).thenReturn(List.of("default"));
+        when(configurationService.getQueues(false)).thenReturn(List.of(Constants.QUEUE_DEFAULT, Constants.QUEUE_RELOAD));
+        when(outgoingBatchService.getReadyQueues("node2", false)).thenReturn(List.of(Constants.QUEUE_DEFAULT));
         pushService.pushData(false);
         verify(nodeCommunicationService, never()).execute(any(), any(), any());
     }
@@ -266,11 +268,11 @@ class PushServiceTest {
         ProcessInfo processInfo = mock(ProcessInfo.class);
         setupForExecute(processInfo);
         when(parameterService.isRegistrationServer()).thenReturn(true);
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         nc.getNode().setSyncUrl(null);
         NodeSecurity remoteSecurity = newNodeSecurity("node2");
         when(nodeService.findNodeSecurity("node2", true)).thenReturn(remoteSecurity);
-        RemoteNodeStatus status = new RemoteNodeStatus("node2", "default", Collections.emptyMap());
+        RemoteNodeStatus status = new RemoteNodeStatus("node2", Constants.QUEUE_DEFAULT, Collections.emptyMap());
         pushService.execute(nc, status);
         verify(dataExtractorService, never()).extract(any(), any(), any(), any());
     }
@@ -282,11 +284,11 @@ class PushServiceTest {
         IOutgoingWithResponseTransport transport = mock(IOutgoingWithResponseTransport.class);
         when(transport.readResponse()).thenReturn(new BufferedReader(new StringReader("")));
         when(transportManager.getPushTransport(any(), any(), any(), any(), any())).thenReturn(transport);
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         NodeSecurity remoteSecurity = newNodeSecurity("node2");
         remoteSecurity.setRegistrationEnabled(false);
         when(nodeService.findNodeSecurity("node2", true)).thenReturn(remoteSecurity);
-        RemoteNodeStatus status = new RemoteNodeStatus("node2", "default", Collections.emptyMap());
+        RemoteNodeStatus status = new RemoteNodeStatus("node2", Constants.QUEUE_DEFAULT, Collections.emptyMap());
         pushService.execute(nc, status);
         verify(transportManager).getPushTransport(any(), any(), any(), any(), any());
         verify(transportManager, never()).getRegisterPushTransport(any(), any());
@@ -301,12 +303,12 @@ class PushServiceTest {
         when(transportManager.getRegisterPushTransport(any(), any())).thenReturn(transport);
         when(registrationService.registerWithClient(any(), any())).thenReturn(Collections.emptyList());
         when(parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)).thenReturn(true);
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         NodeSecurity remoteSecurity = newNodeSecurity("node2");
         remoteSecurity.setRegistrationEnabled(true);
         remoteSecurity.setCreatedAtNodeId("node1");
         when(nodeService.findNodeSecurity("node2", true)).thenReturn(remoteSecurity);
-        RemoteNodeStatus status = new RemoteNodeStatus("node2", "default", Collections.emptyMap());
+        RemoteNodeStatus status = new RemoteNodeStatus("node2", Constants.QUEUE_DEFAULT, Collections.emptyMap());
         pushService.execute(nc, status);
         verify(transportManager).getRegisterPushTransport(any(), any());
         verify(transportManager, never()).getPushTransport(any(), any(), any(), any(), any());
@@ -320,14 +322,14 @@ class PushServiceTest {
         when(transport.readResponse()).thenReturn(new BufferedReader(new StringReader("")));
         when(transportManager.getPushTransport(any(), any(), any(), any(), any())).thenReturn(transport);
         when(transportManager.readAcknowledgement(any(), any())).thenReturn(Collections.emptyList());
-        OutgoingBatch batch = new OutgoingBatch("node2", "default", Status.NE);
+        OutgoingBatch batch = new OutgoingBatch("node2", Constants.QUEUE_DEFAULT, Status.NE);
         batch.setBatchId(1L);
         when(dataExtractorService.extract(any(), any(), any(), any())).thenReturn(List.of(batch));
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         NodeSecurity remoteSecurity = newNodeSecurity("node2");
         remoteSecurity.setRegistrationEnabled(false);
         when(nodeService.findNodeSecurity("node2", true)).thenReturn(remoteSecurity);
-        RemoteNodeStatus status = new RemoteNodeStatus("node2", "default", Collections.emptyMap());
+        RemoteNodeStatus status = new RemoteNodeStatus("node2", Constants.QUEUE_DEFAULT, Collections.emptyMap());
         pushService.execute(nc, status);
         verify(dataExtractorService).extract(any(), any(), any(), any());
         verify(transportManager).readAcknowledgement(any(), any());
@@ -341,15 +343,15 @@ class PushServiceTest {
         when(transport.readResponse()).thenReturn(new BufferedReader(new StringReader("")));
         when(transportManager.getPushTransport(any(), any(), any(), any(), any())).thenReturn(transport);
         BatchAck ack = new BatchAck(1L);
-        when(transportManager.readAcknowledgement(any(), any())).thenReturn(new java.util.ArrayList<>(List.of(ack)));
-        OutgoingBatch batch = new OutgoingBatch("node2", "default", Status.NE);
+        when(transportManager.readAcknowledgement(any(), any())).thenReturn(new ArrayList<>(List.of(ack)));
+        OutgoingBatch batch = new OutgoingBatch("node2", Constants.QUEUE_DEFAULT, Status.NE);
         batch.setBatchId(1L);
         when(dataExtractorService.extract(any(), any(), any(), any())).thenReturn(List.of(batch));
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         NodeSecurity remoteSecurity = newNodeSecurity("node2");
         remoteSecurity.setRegistrationEnabled(false);
         when(nodeService.findNodeSecurity("node2", true)).thenReturn(remoteSecurity);
-        RemoteNodeStatus status = new RemoteNodeStatus("node2", "default", Collections.emptyMap());
+        RemoteNodeStatus status = new RemoteNodeStatus("node2", Constants.QUEUE_DEFAULT, Collections.emptyMap());
         pushService.execute(nc, status);
         verify(dataExtractorService).extract(any(), any(), any(), any());
         verify(transportManager).readAcknowledgement(any(), any());
@@ -363,11 +365,11 @@ class PushServiceTest {
         IOutgoingWithResponseTransport transport = mock(IOutgoingWithResponseTransport.class);
         when(transport.readResponse()).thenReturn(new BufferedReader(new StringReader("")));
         when(transportManager.getPushTransport(any(), any(), any(), any(), any())).thenReturn(transport);
-        NodeCommunication nc = newNodeCommunication("node2", "default");
+        NodeCommunication nc = newNodeCommunication("node2", Constants.QUEUE_DEFAULT);
         NodeSecurity remoteSecurity = newNodeSecurity("node2");
         remoteSecurity.setRegistrationEnabled(false);
         when(nodeService.findNodeSecurity("node2", true)).thenReturn(remoteSecurity);
-        RemoteNodeStatus status = new RemoteNodeStatus("node2", "default", Collections.emptyMap());
+        RemoteNodeStatus status = new RemoteNodeStatus("node2", Constants.QUEUE_DEFAULT, Collections.emptyMap());
         pushService.execute(nc, status);
         verify(processInfo).setStatus(ProcessStatus.OK);
     }
