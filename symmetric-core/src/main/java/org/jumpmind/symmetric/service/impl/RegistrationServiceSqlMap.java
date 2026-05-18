@@ -29,13 +29,6 @@ public class RegistrationServiceSqlMap extends AbstractSqlMap {
     public RegistrationServiceSqlMap(IDatabasePlatform platform,
             Map<String, String> replacementTokens) {
         super(platform, replacementTokens);
-        StringBuilder incompleteStatusList = new StringBuilder();
-        for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.incompleteStatuses) {
-            if (incompleteStatusList.length() > 0) {
-                incompleteStatusList.append(",");
-            }
-            incompleteStatusList.append("'").append(statusName.name()).append("'");
-        }
         putSql("findNodeToRegisterSql",
                 ""
                         + "select min(c.node_id) from $(node) c inner join                                "
