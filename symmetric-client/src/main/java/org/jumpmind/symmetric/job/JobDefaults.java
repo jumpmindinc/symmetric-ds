@@ -29,6 +29,13 @@ public class JobDefaults {
     public static final String EVERY_HOUR = "3600000";
     public static final String EVERY_NIGHT_AT_MIDNIGHT = "0 0 0 * * *";
     public static final String EVERY_TEN_MINUTES_AT_THE_ONE_OCLOCK_HOUR = "0 0/10 1 * * *";
+    public static final String EVERY_HOUR_ON_THE_HOUR = "0 0 * * * *";
+    public static final String EVERY_DAY_AT_6AM = "0 0 6 * * *";
+    public static final String EVERY_DAY_AT_NOON = "0 0 12 * * *";
+    public static final String EVERY_DAY_AT_9PM = "0 0 21 * * *";
+    public static final String EVERY_MONDAY_AT_7AM = "0 0 7 * * MON";
+    public static final String EVERY_SUNDAY_AT_11AM = "0 0 11 * * SUN";
+    public static final String EVERY_FIRST_OF_MONTH_AT_10AM = "0 0 10 1 * *";
     private String schedule;
     private boolean requiresRegisteration = true;
     private String description;
