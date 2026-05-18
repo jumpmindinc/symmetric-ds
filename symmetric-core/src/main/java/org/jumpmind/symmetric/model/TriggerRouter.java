@@ -30,6 +30,7 @@ import org.jumpmind.symmetric.io.data.DataEventType;
  */
 public class TriggerRouter implements IModelObject, Cloneable {
     private static final long serialVersionUID = 1L;
+    public static final String DATA_REFRESH_JOB_NAME_CDC = "CDC";
     private boolean enabled = true;
     /**
      * This is the order in which the definitions will be processed.
@@ -45,6 +46,7 @@ public class TriggerRouter implements IModelObject, Cloneable {
     private boolean pingBackEnabled = false;
     private String description;
     private String dataRefreshType;
+    private String dataRefreshJobName = DATA_REFRESH_JOB_NAME_CDC;
 
     public TriggerRouter() {
         this(new Trigger(), new Router());
@@ -143,6 +145,14 @@ public class TriggerRouter implements IModelObject, Cloneable {
 
     public void setDataRefreshType(String dataRefreshType) {
         this.dataRefreshType = dataRefreshType;
+    }
+
+    public String getDataRefreshJobName() {
+        return dataRefreshJobName;
+    }
+
+    public void setDataRefreshJobName(String dataRefreshJobName) {
+        this.dataRefreshJobName = dataRefreshJobName;
     }
 
     public boolean isRouted(DataEventType event) {

@@ -219,7 +219,8 @@ public class JobManager extends AbstractService implements IJobManager {
                             job.getCreateBy(), new Date(), job.getLastUpdateBy(), new Date(), job.getJobName() });
         }
         if (job.isClustered() || job.getJobType() == JobDefinition.JobType.BSH
-                || job.getJobType() == JobDefinition.JobType.JAVA || job.getJobType() == JobDefinition.JobType.SQL) {
+                || job.getJobType() == JobDefinition.JobType.JAVA || job.getJobType() == JobDefinition.JobType.SQL
+                || job.getJobType() == JobDefinition.JobType.REFRESH) {
             engine.getClusterService().addLock(job.getJobName(), ClusterConstants.TYPE_CLUSTER);
         }
     }
