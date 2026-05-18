@@ -32,12 +32,12 @@ public final class LogUtils {
     private LogUtils() {
     }
 
-    /** 
-     * Store contextual information (like an engine name, user ID, or session ID) in a thread-local map 
-     * that logging frameworks automatically include in every log message produced by that thread.
+    /**
+     * Store contextual information (like an engine name, user ID, or session ID) in a thread-local map that logging frameworks automatically include in every
+     * log message produced by that thread.
      */
     public static void setTreadLogContext(String contextId, String value) {
-        if(StringUtils.isBlank(value)){
+        if (StringUtils.isBlank(value)) {
             removeTreadLogContext(contextId);
             log.debug("Removed logging context due to empty value: {}", contextId);
         }
@@ -45,9 +45,9 @@ public final class LogUtils {
         log.debug("Added logging context: {}={}", contextId, value);
     }
 
-    /** 
-     * Clears contextual information (like an engine name, user ID, or session ID) from the thread-local map 
-     * that logging frameworks automatically include in every log message produced by that thread.
+    /**
+     * Clears contextual information (like an engine name, user ID, or session ID) from the thread-local map that logging frameworks automatically include in
+     * every log message produced by that thread.
      */
     public static void removeTreadLogContext(String contextId) {
         MDC.remove(contextId);
