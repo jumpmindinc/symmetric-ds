@@ -186,14 +186,17 @@ public class TriggerRouterServiceSqlMap extends AbstractSqlMap {
         putSql("insertTriggerRouterSql",
                 ""
                         + "insert into $(trigger_router)                                                                                             "
-                        + "  (initial_load_order,initial_load_select,initial_load_delete_stmt,ping_back_enabled,create_time,last_update_by,last_update_time,enabled,description,data_refresh_type,trigger_id,router_id)   "
-                        + "  values(?,?,?,?,?,?,?,?,?,?,?,?)                                                                                                       ");
+                        + "  (initial_load_order,initial_load_select,initial_load_delete_stmt,ping_back_enabled,create_time,last_update_by,last_update_time,enabled,description,data_refresh_type,data_refresh_job_name,trigger_id,router_id)   "
+                        + "  values(?,?,?,?,?,?,?,?,?,?,?,?,?)                                                                                                       ");
 
         putSql("updateTriggerRouterSql",
                 ""
                         + "update $(trigger_router)                                                                             "
-                        + "  set initial_load_order=?,initial_load_select=?,initial_load_delete_stmt=?,ping_back_enabled=?,create_time=?,last_update_by=?,last_update_time=?,enabled=?,description=?,data_refresh_type=?   "
+                        + "  set initial_load_order=?,initial_load_select=?,initial_load_delete_stmt=?,ping_back_enabled=?,create_time=?,last_update_by=?,last_update_time=?,enabled=?,description=?,data_refresh_type=?,data_refresh_job_name=?   "
                         + "  where trigger_id=? and router_id=?                                                                       ");
+
+        putSql("updateDataRefreshJobNameSql",
+                "update $(trigger_router) set data_refresh_job_name=? where data_refresh_job_name=?");
 
         putSql("selectTriggerTargetSql",
                 ""

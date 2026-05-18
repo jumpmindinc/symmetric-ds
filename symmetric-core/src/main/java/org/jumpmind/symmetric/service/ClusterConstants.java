@@ -49,6 +49,14 @@ public class ClusterConstants {
     public static final String MONITOR = "Monitor";
     public static final String COMPARE = "Compare";
     public static final String DATA_REFRESH = "Data Refresh";
+    public static final String DATA_REFRESH_DAILY_MIDNIGHT = "Data Refresh - Daily at Midnight";
+    public static final String DATA_REFRESH_HOURLY = "Data Refresh - Hourly";
+    public static final String DATA_REFRESH_DAILY_6AM = "Data Refresh - Daily at 6 AM";
+    public static final String DATA_REFRESH_DAILY_NOON = "Data Refresh - Daily at 12 noon";
+    public static final String DATA_REFRESH_DAILY_9PM = "Data Refresh - Daily at 9 PM";
+    public static final String DATA_REFRESH_WEEKLY_MON_7AM = "Data Refresh - Weekly, Monday at 7 AM";
+    public static final String DATA_REFRESH_WEEKLY_SUN_11AM = "Data Refresh - Weekly, Sunday at 11 AM";
+    public static final String DATA_REFRESH_MONTHLY_1ST_10AM = "Data Refresh - Monthly, on 1st day at 10 AM";
     public static final String LOG_MINER = "Log Miner";
     public static final String REFRESH_ANALYTICS = "Refresh Analytics";
     public static final String FILE_SYNC_SHARED = "FILE_SYNC_SHARED";
