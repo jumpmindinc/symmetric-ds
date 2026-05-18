@@ -101,7 +101,7 @@ abstract public class SqlUtils {
             if (name.length() > MAX_IDENTIFIER_LENGTH) {
                 name = name.substring(0, MAX_IDENTIFIER_LENGTH);
             }
-            name = name.replaceAll("[\\.\\\"'/;]", "");
+            name = name.replaceAll("[\\\"'/;]", "");
         }
         return name;
     }
@@ -111,7 +111,7 @@ abstract public class SqlUtils {
             if (name.length() > MAX_IDENTIFIER_LENGTH) {
                 name = name.substring(0, MAX_IDENTIFIER_LENGTH);
             }
-            name = name.replaceAll("[\\.\\\"'/; ]", "");
+            name = name.replaceAll("[\\\"'/; ]", "");
         }
         return name;
     }
