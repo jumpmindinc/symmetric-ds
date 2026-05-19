@@ -63,7 +63,8 @@ class AbstractQueuedMetricTest {
     private static final long D = AbstractStatsAccumulator.INTERVAL_DURATION_MS; // 300_000
 
     private static UpDownCounter newCounter() {
-        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), MetricAttributeList.of());
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(),
+                MetricAttributeList.of());
         metric.open(null);
         return metric;
     }
@@ -438,14 +439,16 @@ class AbstractQueuedMetricTest {
 
     @Test
     void open_whenDisabled_throwsMetricConfigurationException() {
-        UpDownCounter m = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), MetricAttributeList.of());
+        UpDownCounter m = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(),
+                MetricAttributeList.of());
         m.isMetricEnabled = false;
         assertThrows(MetricConfigurationException.class, () -> m.open(null));
     }
 
     @Test
     void createAccumulator_doubleGauge_returnsFloat64AccumulatorWithCorrectStart() {
-        SymDoubleGauge m = new SymDoubleGauge(new SymMetricDefinition("test.double", "", "", InstrumentType.DOUBLE_GAUGE), Attributes.empty(), MetricAttributeList.of());
+        SymDoubleGauge m = new SymDoubleGauge(new SymMetricDefinition("test.double", "", "", InstrumentType.DOUBLE_GAUGE), Attributes.empty(),
+                MetricAttributeList.of());
         m.open(null);
         IStatsAccumulator acc = m.createAccumulator(T);
         assertInstanceOf(Float64StatsAccumulator.class, acc);

@@ -36,7 +36,8 @@ import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 
 class UpDownCounterTest {
     private static UpDownCounter counter() {
-        UpDownCounter counter = new UpDownCounter(new SymMetricDefinition("test.updown", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), MetricAttributeList.of());
+        UpDownCounter counter = new UpDownCounter(new SymMetricDefinition("test.updown", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(),
+                MetricAttributeList.of());
         counter.open(null);
         return counter;
     }

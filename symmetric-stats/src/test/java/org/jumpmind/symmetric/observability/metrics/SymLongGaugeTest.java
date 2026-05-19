@@ -40,7 +40,8 @@ import io.opentelemetry.api.metrics.ObservableLongGauge;
  */
 class SymLongGaugeTest {
     private static SymLongGauge gauge() {
-        SymLongGauge gauge = new SymLongGauge(new SymMetricDefinition("test.long.gauge", "", "", InstrumentType.LONG_GAUGE), Attributes.empty(), MetricAttributeList.of());
+        SymLongGauge gauge = new SymLongGauge(new SymMetricDefinition("test.long.gauge", "", "", InstrumentType.LONG_GAUGE), Attributes.empty(),
+                MetricAttributeList.of());
         gauge.open(null);
         return gauge;
     }
