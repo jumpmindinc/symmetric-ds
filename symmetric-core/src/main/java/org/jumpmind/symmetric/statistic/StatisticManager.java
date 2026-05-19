@@ -56,6 +56,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
 import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.CHANNEL;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.*;
 import org.jumpmind.symmetric.service.IClusterService;
@@ -925,7 +926,7 @@ public class StatisticManager implements IStatisticManager {
             IEngineMetricsService svc = engine.getMetricsService();
             if (svc == null)
                 return;
-            IUpDownCounter c = svc.getUpDownCounter(metricId, List.of(new MetricAttribute(CHANNEL, channelId)));
+            IUpDownCounter c = svc.getUpDownCounter(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
             if (c != null)
                 c.add(delta);
         } catch (Exception e) {
@@ -938,7 +939,7 @@ public class StatisticManager implements IStatisticManager {
             IEngineMetricsService svc = engine.getMetricsService();
             if (svc == null)
                 return;
-            ISymDoubleGauge g = svc.getDoubleGauge(metricId, List.of(new MetricAttribute(CHANNEL, channelId)));
+            ISymDoubleGauge g = svc.getDoubleGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
             if (g != null)
                 g.setValue(value);
         } catch (Exception e) {
@@ -951,7 +952,7 @@ public class StatisticManager implements IStatisticManager {
             IEngineMetricsService svc = engine.getMetricsService();
             if (svc == null)
                 return;
-            ISymLongGauge g = svc.getLongGauge(metricId, List.of(new MetricAttribute(CHANNEL, channelId)));
+            ISymLongGauge g = svc.getLongGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
             if (g != null)
                 g.setValue(value);
         } catch (Exception e) {

@@ -396,7 +396,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
                 .toList();
         int count = 0;
         for (String channelId : defaultChannels) {
-            List<MetricAttribute> channelAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId));
+            MetricAttributeList channelAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId));
             for (String metricId : channelScopedMetricIds) {
                 SymMetricDefinition def = registry.get(metricId);
                 if (def != null) {

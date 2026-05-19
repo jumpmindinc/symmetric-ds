@@ -20,11 +20,9 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.util.List;
-
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
-import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 
@@ -37,7 +35,7 @@ import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
  * {@link ObservableLongUpDownCounter} handle is held here so it can be closed (unregistering the callback) during service shutdown.
  */
 public class UpDownCounter extends AbstractCounterMetric implements IUpDownCounter {
-    UpDownCounter(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
+    UpDownCounter(ISymMetricDefinition definition, Attributes attributes, MetricAttributeList metricAttributes) {
         super(definition, attributes, metricAttributes, InstrumentType.UPDOWN_COUNTER);
     }
 

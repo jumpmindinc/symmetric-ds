@@ -41,6 +41,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
@@ -62,12 +63,12 @@ class AbstractQueuedMetricTest {
     private static final long D = AbstractStatsAccumulator.INTERVAL_DURATION_MS; // 300_000
 
     private static UpDownCounter newCounter() {
-        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), MetricAttributeList.of());
         metric.open(null);
         return metric;
     }
 
-    private static UpDownCounter newCounterWithAttrs(List<MetricAttribute> attrs) {
+    private static UpDownCounter newCounterWithAttrs(MetricAttributeList attrs) {
         UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), attrs);
         metric.open(null);
         return metric;
@@ -79,7 +80,7 @@ class AbstractQueuedMetricTest {
 
     private static class BrokenProcessingMetric extends UpDownCounter {
         BrokenProcessingMetric() {
-            super(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+            super(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), MetricAttributeList.of());
         }
 
         @Override
@@ -90,7 +91,7 @@ class AbstractQueuedMetricTest {
 
     private static class FailingCloseMetric extends UpDownCounter {
         FailingCloseMetric() {
-            super(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+            super(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), MetricAttributeList.of());
         }
 
         @Override
@@ -371,8 +372,8 @@ class AbstractQueuedMetricTest {
     @Test
     void getAttributes_nonEmptyList_returnsProvidedAttributes() {
         MetricAttribute attr = new MetricAttribute("channel", Constants.CHANNEL_DEFAULT);
-        UpDownCounter m = newCounterWithAttrs(List.of(attr));
-        List<MetricAttribute> attrs = m.getAttributes();
+        UpDownCounter m = newCounterWithAttrs(MetricAttributeList.of(attr));
+        MetricAttributeList attrs = m.getAttributes();
         assertEquals(1, attrs.size());
         assertEquals(attr, attrs.get(0));
     }
@@ -437,14 +438,14 @@ class AbstractQueuedMetricTest {
 
     @Test
     void open_whenDisabled_throwsMetricConfigurationException() {
-        UpDownCounter m = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        UpDownCounter m = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), MetricAttributeList.of());
         m.isMetricEnabled = false;
         assertThrows(MetricConfigurationException.class, () -> m.open(null));
     }
 
     @Test
     void createAccumulator_doubleGauge_returnsFloat64AccumulatorWithCorrectStart() {
-        SymDoubleGauge m = new SymDoubleGauge(new SymMetricDefinition("test.double", "", "", InstrumentType.DOUBLE_GAUGE), Attributes.empty(), List.of());
+        SymDoubleGauge m = new SymDoubleGauge(new SymMetricDefinition("test.double", "", "", InstrumentType.DOUBLE_GAUGE), Attributes.empty(), MetricAttributeList.of());
         m.open(null);
         IStatsAccumulator acc = m.createAccumulator(T);
         assertInstanceOf(Float64StatsAccumulator.class, acc);

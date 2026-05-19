@@ -240,7 +240,7 @@ class MetricDefinitionFactoryTest {
         MetricsManager svcManager = TestMetricsManagerFactory.create();
         HostMetricsService service = new HostMetricsService(svcManager, false);
         factory.initializeMetrics(service);
-        List<MetricAttribute> defaultAttrs = List.of(new MetricAttribute(CHANNEL, "default"));
+        MetricAttributeList defaultAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "default"));
         assertNotNull(service.getUpDownCounter(METRIC_ID_DATA_ROUTED, defaultAttrs));
     }
 
@@ -250,7 +250,7 @@ class MetricDefinitionFactoryTest {
         MetricsManager svcManager = TestMetricsManagerFactory.create();
         HostMetricsService service = new HostMetricsService(svcManager, false);
         factory.initializeMetrics(service);
-        List<MetricAttribute> configAttrs = List.of(new MetricAttribute(CHANNEL, "config"));
+        MetricAttributeList configAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "config"));
         assertNotNull(service.getLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, configAttrs));
     }
 
@@ -260,7 +260,7 @@ class MetricDefinitionFactoryTest {
         MetricsManager svcManager = TestMetricsManagerFactory.create();
         HostMetricsService service = new HostMetricsService(svcManager, false);
         factory.initializeMetrics(service);
-        List<MetricAttribute> reloadAttrs = List.of(new MetricAttribute(CHANNEL, "reload"));
+        MetricAttributeList reloadAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "reload"));
         assertNotNull(service.getDoubleGauge(METRIC_ID_DATA_UNROUTED_CHANNEL, reloadAttrs));
     }
 
@@ -270,7 +270,7 @@ class MetricDefinitionFactoryTest {
         HostMetricsService service = new HostMetricsService(svcManager, false);
         factory.initializeMetrics(service);
         // Both "default" and "heartbeat" channels should have DATA_ROUTED registered
-        List<MetricAttribute> heartbeatAttrs = List.of(new MetricAttribute(CHANNEL, "heartbeat"));
+        MetricAttributeList heartbeatAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "heartbeat"));
         assertNotNull(service.getUpDownCounter(METRIC_ID_DATA_ROUTED, heartbeatAttrs));
     }
 

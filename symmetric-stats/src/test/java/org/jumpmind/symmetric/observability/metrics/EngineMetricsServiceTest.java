@@ -153,7 +153,7 @@ class EngineMetricsServiceTest {
     void getOrAssignContextId_noContextNoAttributes_returnsUndefined() {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
         UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), Attributes
-                .empty(), List.of());
+                .empty(), MetricAttributeList.of());
         assertEquals(MetricContext.UNDEFINED, service.getOrAssignContextId(metric, null));
     }
 
@@ -162,7 +162,7 @@ class EngineMetricsServiceTest {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
         MetricAttribute attr = new MetricAttribute("channel", Constants.CHANNEL_DEFAULT);
         UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), Attributes
-                .empty(), List.of(attr));
+                .empty(), MetricAttributeList.of(attr));
         MetricsRepository repo = mock(MetricsRepository.class);
         MetricContext ctx = new MetricContext(REGISTERED_CONTEXT_ID, MetricAttributeList.of(attr));
         when(repo.getOrRegisterContext(any(MetricAttributeList.class))).thenReturn(ctx);
@@ -175,7 +175,7 @@ class EngineMetricsServiceTest {
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
         MetricAttribute attr = new MetricAttribute("channel", Constants.CHANNEL_DEFAULT);
         UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), Attributes
-                .empty(), List.of(attr));
+                .empty(), MetricAttributeList.of(attr));
         assertEquals(MetricContext.UNDEFINED, service.getOrAssignContextId(metric, null));
         assertNull(metric.getContext());
     }

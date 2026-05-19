@@ -20,11 +20,9 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.util.List;
-
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
-import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 
 import io.opentelemetry.api.common.Attributes;
@@ -36,7 +34,7 @@ import io.opentelemetry.api.metrics.ObservableDoubleGauge;
  * can be closed (unregistering the callback) during service shutdown.
  */
 public class SymDoubleGauge extends AbstractDoubleGaugeMetric implements ISymDoubleGauge {
-    SymDoubleGauge(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
+    SymDoubleGauge(ISymMetricDefinition definition, Attributes attributes, MetricAttributeList metricAttributes) {
         super(definition, attributes, metricAttributes);
     }
 

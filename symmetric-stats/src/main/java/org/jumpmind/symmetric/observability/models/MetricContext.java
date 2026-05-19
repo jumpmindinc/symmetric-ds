@@ -20,7 +20,6 @@
  */
 package org.jumpmind.symmetric.observability.models;
 
-import java.util.List;
 import java.util.Objects;
 
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
@@ -51,7 +50,7 @@ public record MetricContext(long contextId, MetricAttributeList attributes) impl
      * Computes the {@code attributes_hash} column value: {@link Objects#hash} across all six attribute fields, with {@code null} substituted by {@link #NA}.
      * Attributes beyond position 2 (0-indexed) are treated as absent.
      */
-    public static int computeHash(List<MetricAttribute> attrs) {
+    public static int computeHash(MetricAttributeList attrs) {
         String a1n = NA;
         String a1v = NA;
         String a2n = NA;

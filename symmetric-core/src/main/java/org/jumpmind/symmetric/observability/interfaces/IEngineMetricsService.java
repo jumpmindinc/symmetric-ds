@@ -21,7 +21,6 @@
 package org.jumpmind.symmetric.observability.interfaces;
 
 import java.util.Collection;
-import java.util.List;
 
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 
@@ -40,7 +39,7 @@ public interface IEngineMetricsService extends IMetricsService {
     /**
      * Returns the counter registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
      */
-    IUpDownCounter getUpDownCounter(String metricId, List<MetricAttribute> attrs);
+    IUpDownCounter getUpDownCounter(String metricId, MetricAttributeList attrs);
 
     /**
      * Returns the double gauge registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
@@ -50,11 +49,11 @@ public interface IEngineMetricsService extends IMetricsService {
     /**
      * Returns the double gauge registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
      */
-    ISymDoubleGauge getDoubleGauge(String metricId, List<MetricAttribute> attrs);
+    ISymDoubleGauge getDoubleGauge(String metricId, MetricAttributeList attrs);
 
     IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition);
 
-    IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition, List<MetricAttribute> attrs);
+    IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition, MetricAttributeList attrs);
 
     /**
      * Returns the monotonic counter registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
@@ -64,15 +63,15 @@ public interface IEngineMetricsService extends IMetricsService {
     /**
      * Returns the monotonic counter registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
      */
-    IIncreasingCounter getIncreasingCounter(String metricId, List<MetricAttribute> attrs);
+    IIncreasingCounter getIncreasingCounter(String metricId, MetricAttributeList attrs);
 
     IIncreasingCounter registerIncreasingCounter(ISymMetricDefinition definition);
 
-    IIncreasingCounter registerIncreasingCounter(ISymMetricDefinition definition, List<MetricAttribute> attrs);
+    IIncreasingCounter registerIncreasingCounter(ISymMetricDefinition definition, MetricAttributeList attrs);
 
     ISymDoubleGauge registerDoubleGauge(ISymMetricDefinition definition);
 
-    ISymDoubleGauge registerDoubleGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs);
+    ISymDoubleGauge registerDoubleGauge(ISymMetricDefinition definition, MetricAttributeList attrs);
 
     /**
      * Returns the long gauge registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
@@ -82,18 +81,18 @@ public interface IEngineMetricsService extends IMetricsService {
     /**
      * Returns the long gauge registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
      */
-    ISymLongGauge getLongGauge(String metricId, List<MetricAttribute> attrs);
+    ISymLongGauge getLongGauge(String metricId, MetricAttributeList attrs);
 
     ISymLongGauge registerLongGauge(ISymMetricDefinition definition);
 
-    ISymLongGauge registerLongGauge(ISymMetricDefinition definition, List<MetricAttribute> attrs);
+    ISymLongGauge registerLongGauge(ISymMetricDefinition definition, MetricAttributeList attrs);
 
     /**
      * Registers (or returns the existing) long gauge for {@code metricId} with the given attributes. The definition must already be registered in
      * {@code MetricDefinitionFactory}; throws {@code InvalidMetricDataException} if it is not. Never pass an inline definition — all built-in metric
      * definitions must be declared and registered exclusively in {@code MetricDefinitionFactory}.
      */
-    ISymLongGauge registerLongGauge(String metricId, List<MetricAttribute> attrs);
+    ISymLongGauge registerLongGauge(String metricId, MetricAttributeList attrs);
 
     /**
      * Creates a new {@link INodeBatchStatusMetricsMap} backed by this service. {@code batchesMetricId} and {@code rowsMetricId} must already be registered in

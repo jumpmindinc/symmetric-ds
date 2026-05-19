@@ -27,8 +27,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import java.util.List;
-
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +36,7 @@ import io.opentelemetry.api.metrics.ObservableLongUpDownCounter;
 
 class UpDownCounterTest {
     private static UpDownCounter counter() {
-        UpDownCounter counter = new UpDownCounter(new SymMetricDefinition("test.updown", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
+        UpDownCounter counter = new UpDownCounter(new SymMetricDefinition("test.updown", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), MetricAttributeList.of());
         counter.open(null);
         return counter;
     }

@@ -33,6 +33,7 @@ import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusGauge;
 import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusMetricsMap;
 import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 
 /**
  * Keyed collection of {@link NodeBatchStatusGauge} instances, one per (nodeId, batchStatus) pair. Gauge instruments are registered lazily on first access via
@@ -66,7 +67,7 @@ public class NodeBatchStatusMetricsMap extends AbstractKeyedMetricsMap<NodeBatch
     }
 
     private NodeBatchStatusGauge createEntry(String nodeId, String batchStatus) {
-        List<MetricAttribute> attrs = List.of(
+        MetricAttributeList attrs = MetricAttributeList.of(
                 new MetricAttribute(NODE_ID, nodeId),
                 new MetricAttribute(BATCH_STATUS, batchStatus));
         ISymLongGauge batchesGauge = metricsService.registerLongGauge(batchesMetricId, attrs);

@@ -24,8 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
-
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
@@ -122,69 +120,69 @@ class MetricContextTest {
 
     @Test
     void computeHash_emptyList_equalsNullList() {
-        assertEquals(MetricContext.computeHash(null), MetricContext.computeHash(List.of()));
+        assertEquals(MetricContext.computeHash(null), MetricContext.computeHash(MetricAttributeList.of()));
     }
 
     @Test
     void computeHash_singleAttr_isRepeatable() {
-        var attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
+        var attrs = MetricAttributeList.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         assertEquals(MetricContext.computeHash(attrs), MetricContext.computeHash(attrs));
     }
 
     @Test
     void computeHash_differentValues_produceDifferentHashes() {
-        var a = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
-        var b = List.of(new MetricAttribute("channel", Constants.CHANNEL_RELOAD));
+        var a = MetricAttributeList.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
+        var b = MetricAttributeList.of(new MetricAttribute("channel", Constants.CHANNEL_RELOAD));
         assertNotEquals(MetricContext.computeHash(a), MetricContext.computeHash(b));
     }
 
     @Test
     void computeHash_differentNames_produceDifferentHashes() {
-        var a = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
-        var b = List.of(new MetricAttribute("node_group", "default"));
+        var a = MetricAttributeList.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
+        var b = MetricAttributeList.of(new MetricAttribute("node_group", "default"));
         assertNotEquals(MetricContext.computeHash(a), MetricContext.computeHash(b));
     }
 
     @Test
     void computeHash_nullAttrName_substitutedWithNA() {
-        var withNull = List.of(new MetricAttribute(null, "v"));
-        var withNA = List.of(new MetricAttribute(MetricContext.NA, "v"));
+        var withNull = MetricAttributeList.of(new MetricAttribute(null, "v"));
+        var withNA = MetricAttributeList.of(new MetricAttribute(MetricContext.NA, "v"));
         assertEquals(MetricContext.computeHash(withNull), MetricContext.computeHash(withNA));
     }
 
     @Test
     void computeHash_nullAttrValue_substitutedWithNA() {
-        var withNull = List.of(new MetricAttribute("n", null));
-        var withNA = List.of(new MetricAttribute("n", MetricContext.NA));
+        var withNull = MetricAttributeList.of(new MetricAttribute("n", null));
+        var withNA = MetricAttributeList.of(new MetricAttribute("n", MetricContext.NA));
         assertEquals(MetricContext.computeHash(withNull), MetricContext.computeHash(withNA));
     }
 
     @Test
     void computeHash_orderMatters_positionOneVsTwo() {
-        var a = List.of(new MetricAttribute("k1", "v1"), new MetricAttribute("k2", "v2"));
-        var b = List.of(new MetricAttribute("k2", "v2"), new MetricAttribute("k1", "v1"));
+        var a = MetricAttributeList.of(new MetricAttribute("k1", "v1"), new MetricAttribute("k2", "v2"));
+        var b = MetricAttributeList.of(new MetricAttribute("k2", "v2"), new MetricAttribute("k1", "v1"));
         assertNotEquals(MetricContext.computeHash(a), MetricContext.computeHash(b));
     }
 
     @Test
     void computeHash_twoAttrs_differFromOneAttr() {
-        var one = List.of(new MetricAttribute("a", "1"));
-        var two = List.of(new MetricAttribute("a", "1"), new MetricAttribute("b", "2"));
+        var one = MetricAttributeList.of(new MetricAttribute("a", "1"));
+        var two = MetricAttributeList.of(new MetricAttribute("a", "1"), new MetricAttribute("b", "2"));
         assertNotEquals(MetricContext.computeHash(one), MetricContext.computeHash(two));
     }
 
     @Test
     void computeHash_threeAttrs_differFromTwoAttrs() {
-        var two = List.of(new MetricAttribute("a", "1"), new MetricAttribute("b", "2"));
-        var three = List.of(new MetricAttribute("a", "1"), new MetricAttribute("b", "2"), new MetricAttribute("c", "3"));
+        var two = MetricAttributeList.of(new MetricAttribute("a", "1"), new MetricAttribute("b", "2"));
+        var three = MetricAttributeList.of(new MetricAttribute("a", "1"), new MetricAttribute("b", "2"), new MetricAttribute("c", "3"));
         assertNotEquals(MetricContext.computeHash(two), MetricContext.computeHash(three));
     }
 
     @Test
     void computeHash_fourthAttrIgnored() {
-        var three = List.of(
+        var three = MetricAttributeList.of(
                 new MetricAttribute("a", "1"), new MetricAttribute("b", "2"), new MetricAttribute("c", "3"));
-        var four = List.of(
+        var four = MetricAttributeList.of(
                 new MetricAttribute("a", "1"), new MetricAttribute("b", "2"), new MetricAttribute("c", "3"),
                 new MetricAttribute("d", "4"));
         assertEquals(MetricContext.computeHash(three), MetricContext.computeHash(four));
@@ -192,9 +190,9 @@ class MetricContextTest {
 
     @Test
     void computeHash_thirdAttrDiffers_produceDifferentHashes() {
-        var a = List.of(
+        var a = MetricAttributeList.of(
                 new MetricAttribute("x", "1"), new MetricAttribute("y", "2"), new MetricAttribute("z", "a"));
-        var b = List.of(
+        var b = MetricAttributeList.of(
                 new MetricAttribute("x", "1"), new MetricAttribute("y", "2"), new MetricAttribute("z", "b"));
         assertNotEquals(MetricContext.computeHash(a), MetricContext.computeHash(b));
     }

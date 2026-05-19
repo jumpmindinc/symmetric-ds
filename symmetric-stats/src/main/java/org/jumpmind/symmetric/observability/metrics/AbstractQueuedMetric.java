@@ -30,7 +30,6 @@ import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
-import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
@@ -65,11 +64,11 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     protected MetricIntervalStatsQueue completedIntervals = new MetricIntervalStatsQueue();
     protected MetricSeriesSlidingWorkset workset = new MetricSeriesSlidingWorkset();
 
-    AbstractQueuedMetric(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes, MetricFactType factType,
+    AbstractQueuedMetric(ISymMetricDefinition definition, Attributes attributes, MetricAttributeList metricAttributes, MetricFactType factType,
             InstrumentType metricType) {
         this.metricId = definition.id();
         this.attributes = attributes;
-        this.metricAttributes = new MetricAttributeList(metricAttributes);
+        this.metricAttributes = metricAttributes;
         this.factType = factType;
         this.metricType = metricType;
         this.currentIntervalAccumulator = null;

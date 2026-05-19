@@ -28,8 +28,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import java.util.List;
-
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.junit.jupiter.api.Test;
 
@@ -38,8 +37,8 @@ import io.opentelemetry.api.metrics.ObservableLongCounter;
 
 class IncreasingCounterTest {
     private static IncreasingCounter counter() {
-        IncreasingCounter counter = new IncreasingCounter(new SymMetricDefinition("test.increasing", "", "", InstrumentType.COUNTER), Attributes.empty(), List
-                .of());
+        IncreasingCounter counter = new IncreasingCounter(new SymMetricDefinition("test.increasing", "", "", InstrumentType.COUNTER), Attributes.empty(),
+                MetricAttributeList.of());
         counter.open(null);
         return counter;
     }

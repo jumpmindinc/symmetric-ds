@@ -20,11 +20,9 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.util.List;
-
 import org.jumpmind.symmetric.observability.interfaces.IIncreasingCounter;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
-import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 
@@ -36,7 +34,7 @@ import io.opentelemetry.api.metrics.ObservableLongCounter;
  * {@link #close()} on shutdown to unregister it.
  */
 public class IncreasingCounter extends AbstractCounterMetric implements IIncreasingCounter {
-    IncreasingCounter(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
+    IncreasingCounter(ISymMetricDefinition definition, Attributes attributes, MetricAttributeList metricAttributes) {
         super(definition, attributes, metricAttributes, InstrumentType.COUNTER);
     }
 

@@ -27,8 +27,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import java.util.List;
-
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
 import org.junit.jupiter.api.Test;
@@ -41,7 +40,7 @@ import io.opentelemetry.api.metrics.ObservableLongGauge;
  */
 class SymLongGaugeTest {
     private static SymLongGauge gauge() {
-        SymLongGauge gauge = new SymLongGauge(new SymMetricDefinition("test.long.gauge", "", "", InstrumentType.LONG_GAUGE), Attributes.empty(), List.of());
+        SymLongGauge gauge = new SymLongGauge(new SymMetricDefinition("test.long.gauge", "", "", InstrumentType.LONG_GAUGE), Attributes.empty(), MetricAttributeList.of());
         gauge.open(null);
         return gauge;
     }

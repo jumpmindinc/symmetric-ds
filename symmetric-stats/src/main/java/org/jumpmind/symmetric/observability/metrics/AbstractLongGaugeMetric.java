@@ -20,13 +20,12 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.util.List;
 import java.util.concurrent.atomic.LongAdder;
 
 import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
-import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
 import org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator;
@@ -36,7 +35,7 @@ import io.opentelemetry.api.common.Attributes;
 public abstract class AbstractLongGaugeMetric extends AbstractQueuedMetric {
     protected final LongAdder currentValue = new LongAdder();
 
-    AbstractLongGaugeMetric(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes) {
+    AbstractLongGaugeMetric(ISymMetricDefinition definition, Attributes attributes, MetricAttributeList metricAttributes) {
         super(definition, attributes, metricAttributes, MetricFactType.INT64, InstrumentType.LONG_GAUGE);
     }
 
