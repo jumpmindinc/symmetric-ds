@@ -20,16 +20,15 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import java.util.List;
-
-import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 
 /**
  * Seed definition for a pre-assigned metric context. Used to pre-populate well-known contexts (e.g. built-in channels) at startup before any observations
  * arrive.
  */
-public record ContextDefinition(long contextId, List<MetricAttribute> attributes) {
+public record ContextDefinition(long contextId, MetricAttributeList attributes) {
     public ContextDefinition {
-        attributes = attributes != null ? List.copyOf(attributes) : List.of();
+        if (attributes == null)
+            attributes = new MetricAttributeList(3);
     }
 }

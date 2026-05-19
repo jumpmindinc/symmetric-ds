@@ -34,6 +34,7 @@ import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusMetricsMap;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.models.MetricContext;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
@@ -116,7 +117,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
         if (metric.getContext() != null) {
             contextId = metric.getContext().getContextId();
         } else if (repo != null && !metric.getAttributes().isEmpty()) {
-            MetricContext ctx = repo.getOrRegisterContext(metric.getAttributes());
+            MetricContext ctx = repo.getOrRegisterContext(new MetricAttributeList(metric.getAttributes()));
             metric.setContext(ctx);
             contextId = ctx.contextId();
         }

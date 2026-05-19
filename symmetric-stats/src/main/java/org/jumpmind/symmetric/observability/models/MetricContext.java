@@ -25,12 +25,13 @@ import java.util.Objects;
 
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 
 /**
  * Immutable identity record for one metric series. The {@code contextId} is a surrogate key in the format {@code NNNNNNNYYYY} (sequential part × 10000 +
  * current year) assigned by the repository on first persistence. Holds up to three {@link MetricAttribute} pairs.
  */
-public record MetricContext(long contextId, List<MetricAttribute> attributes) implements ISymMetricContext {
+public record MetricContext(long contextId, MetricAttributeList attributes) implements ISymMetricContext {
     public static final long UNDEFINED = -1L;
     public static final String NA = "N/A";
     /** Upper bound (inclusive) of the pre-assigned seed context ID range. IDs at or below this value are never evicted from cache. */
@@ -42,7 +43,7 @@ public record MetricContext(long contextId, List<MetricAttribute> attributes) im
     }
 
     @Override
-    public List<MetricAttribute> getAttributes() {
+    public MetricAttributeList getAttributes() {
         return attributes;
     }
 

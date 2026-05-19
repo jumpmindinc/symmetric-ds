@@ -31,6 +31,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator;
@@ -50,7 +51,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     private final String metricId;
     protected AutoCloseable externalTelemetryHandle = null;
     protected final Attributes attributes;
-    private final List<MetricAttribute> metricAttributes;
+    private final MetricAttributeList metricAttributes;
     private final MetricFactType factType;
     private final InstrumentType metricType;
     private final AtomicReference<ISymMetricContext> contextRef = new AtomicReference<>();
@@ -67,7 +68,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
             InstrumentType metricType) {
         this.metricId = definition.id();
         this.attributes = attributes;
-        this.metricAttributes = metricAttributes != null ? List.copyOf(metricAttributes) : List.of();
+        this.metricAttributes = new MetricAttributeList(metricAttributes);
         this.factType = factType;
         this.metricType = metricType;
         this.currentIntervalAccumulator = null;
@@ -89,7 +90,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
     }
 
     @Override
-    public List<MetricAttribute> getAttributes() {
+    public MetricAttributeList getAttributes() {
         return metricAttributes;
     }
 

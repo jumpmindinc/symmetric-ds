@@ -28,6 +28,8 @@ import java.util.List;
 
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
+import org.jumpmind.symmetric.observability.repository.MetricsRepository;
 import org.junit.jupiter.api.Test;
 
 class MetricContextTest {
@@ -61,14 +63,14 @@ class MetricContextTest {
 
     @Test
     void getContextId_returnsConstructorValue() {
-        MetricContext ctx = new MetricContext(42L, List.of());
+        MetricContext ctx = new MetricContext(42L, new MetricAttributeList(MetricsRepository.ATTR_MAX_VALUES));
         assertEquals(42L, ctx.getContextId());
         assertEquals(42L, ctx.contextId());
     }
 
     @Test
     void getAttributes_returnsConstructorValue() {
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
+        MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         MetricContext ctx = new MetricContext(1L, attrs);
         assertEquals(attrs, ctx.getAttributes());
         assertEquals(attrs, ctx.attributes());
@@ -76,13 +78,13 @@ class MetricContextTest {
 
     @Test
     void undefined_usedAsContextId_isAccessible() {
-        MetricContext ctx = new MetricContext(MetricContext.UNDEFINED, List.of());
+        MetricContext ctx = new MetricContext(MetricContext.UNDEFINED, new MetricAttributeList(MetricsRepository.ATTR_MAX_VALUES));
         assertEquals(MetricContext.UNDEFINED, ctx.getContextId());
     }
 
     @Test
     void equals_sameContextIdAndAttributes_areEqual() {
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("k", "v"));
+        MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("k", "v"));
         MetricContext a = new MetricContext(7L, attrs);
         MetricContext b = new MetricContext(7L, attrs);
         assertEquals(a, b);
@@ -90,7 +92,7 @@ class MetricContextTest {
 
     @Test
     void equals_differentContextId_notEqual() {
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("k", "v"));
+        MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("k", "v"));
         MetricContext a = new MetricContext(1L, attrs);
         MetricContext b = new MetricContext(2L, attrs);
         assertNotEquals(a, b);
@@ -98,14 +100,14 @@ class MetricContextTest {
 
     @Test
     void equals_differentAttributes_notEqual() {
-        MetricContext a = new MetricContext(1L, List.of(new MetricAttribute("k", "v1")));
-        MetricContext b = new MetricContext(1L, List.of(new MetricAttribute("k", "v2")));
+        MetricContext a = new MetricContext(1L, MetricAttributeList.of(new MetricAttribute("k", "v1")));
+        MetricContext b = new MetricContext(1L, MetricAttributeList.of(new MetricAttribute("k", "v2")));
         assertNotEquals(a, b);
     }
 
     @Test
     void hashCode_equalRecords_sameHashCode() {
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("k", "v"));
+        MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("k", "v"));
         MetricContext a = new MetricContext(5L, attrs);
         MetricContext b = new MetricContext(5L, attrs);
         assertEquals(a.hashCode(), b.hashCode());

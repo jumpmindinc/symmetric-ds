@@ -38,6 +38,7 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.model.MetricFactType;
 import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.metrics.ContextDefinition;
 import org.jumpmind.symmetric.observability.models.MetricContext;
@@ -57,8 +58,9 @@ import org.jumpmind.symmetric.service.impl.AbstractService;
  */
 public class MetricsRepository extends AbstractService {
     public static final String METRIC_SHARED_ENGINE = "*";
-    public static final int ATTR_MAX_VALUES = 3;
+    public static final int ATTR_MAX_LENGTH = 255;
     public static final int ATTR_MIN_VALUES = 1;
+    public static final int ATTR_MAX_VALUES = 3;
     private final String engineName;
     private final String hostname;
     /** In-memory cache of MetricKey → surrogate metric_key. Loaded lazily on first use. */
@@ -398,11 +400,9 @@ public class MetricsRepository extends AbstractService {
     }
 
     /** Generates key in format Attr1+Attr2+Attr3=hash of all 3 values, using NA as default value. */
-    static String generateContextCacheKey(List<MetricAttribute> attrs) {
-        int size = attrs != null ? Math.min(attrs.size(), ATTR_MAX_VALUES) : 0;
-        String[] names = MetricAttribute.packNamesIntoArray(attrs, ATTR_MAX_VALUES, "");
-        String[] values = MetricAttribute.packValuesIntoArray(attrs, ATTR_MAX_VALUES, MetricContext.NA);
-        return String.join("+", Arrays.copyOf(names, size)) + '=' + Arrays.hashCode(values);
+    static String generateContextCacheKey(MetricAttributeList attrs) {
+        String[] values = attrs.packValuesIntoArray(ATTR_MAX_VALUES, MetricContext.NA);
+        return attrs.concatenateNames("+", ATTR_MAX_VALUES) + '=' + Arrays.hashCode(values);
     }
 
     private MetricContext getFromContextCache(String cacheKey) {
@@ -418,7 +418,7 @@ public class MetricsRepository extends AbstractService {
         }
     }
 
-    static boolean attributesMatch(MetricContext ctx, List<MetricAttribute> attrs) {
+    static boolean attributesMatch(MetricContext ctx, MetricAttributeList attrs) {
         return generateContextCacheKey(ctx.getAttributes()).equals(generateContextCacheKey(attrs));
     }
 
@@ -426,16 +426,16 @@ public class MetricsRepository extends AbstractService {
      * Looks up or inserts a {@link MetricContext} for the given pre-assigned {@link ContextDefinition}. Used at startup to seed well-known contexts.
      */
     public MetricContext getOrRegisterContext(ContextDefinition def) {
-        List<MetricAttribute> attrs = def.attributes();
-        String cacheKey = generateContextCacheKey(attrs);
+        MetricAttributeList attributes = new MetricAttributeList(def.attributes());
+        String cacheKey = generateContextCacheKey(attributes);
         MetricContext cached = getFromContextCache(cacheKey);
         if (cached != null) {
             return cached;
         }
-        int hash = MetricContext.computeHash(attrs);
-        MetricContext ctx = loadContextByAttrsFromDatabase(hash, attrs);
+        int hash = MetricContext.computeHash(attributes);
+        MetricContext ctx = loadContextByAttrsFromDatabase(hash, attributes);
         if (ctx == null) {
-            ctx = insertContextToDatabase(def.contextId(), attrs);
+            ctx = insertContextToDatabase(def.contextId(), attributes);
         }
         putToContextCache(cacheKey, ctx);
         return ctx;
@@ -445,32 +445,30 @@ public class MetricsRepository extends AbstractService {
      * Looks up or inserts a {@link MetricContext} for the given attributes. Surrogate ID is always computed by the database to avoid ownership conflicts across
      * engines and hosts.
      */
-    public MetricContext getOrRegisterContext(List<MetricAttribute> attrs) {
-        String cacheKey = generateContextCacheKey(attrs);
+    public MetricContext getOrRegisterContext(MetricAttributeList attributes) {
+        String cacheKey = generateContextCacheKey(attributes);
         MetricContext cached = getFromContextCache(cacheKey);
         if (cached != null) {
             return cached;
         }
-        int hash = MetricContext.computeHash(attrs);
-        MetricContext found = loadContextByAttrsFromDatabase(hash, attrs);
+        int hash = MetricContext.computeHash(attributes);
+        MetricContext found = loadContextByAttrsFromDatabase(hash, attributes);
         if (found != null) {
             putToContextCache(cacheKey, found);
             return found;
         }
-        MetricContext ctx = generateContextSurrogateAndInsert(attrs);
+        MetricContext ctx = generateContextSurrogateAndInsert(attributes);
         putToContextCache(cacheKey, ctx);
         return ctx;
     }
 
-    public static final int ATTR_MAX_LENGTH = 255;
-
-    private static void validateAttributes(List<MetricAttribute> attrs) {
-        if (attrs == null || attrs.size() < ATTR_MIN_VALUES) {
+    private static void validateAttributes(MetricAttributeList attributes) {
+        if (attributes.size() < ATTR_MIN_VALUES) {
             throw new MetricsRepositoryException("MetricContext must have at least " + ATTR_MIN_VALUES + " attribute(s)");
         }
-        int size = Math.min(attrs.size(), ATTR_MAX_VALUES);
+        int size = Math.min(attributes.size(), ATTR_MAX_VALUES);
         for (int i = 0; i < size; i++) {
-            MetricAttribute a = attrs.get(i);
+            MetricAttribute a = attributes.get(i);
             if (a.name() == null || a.name().isEmpty()) {
                 throw new MetricsRepositoryException("MetricAttribute at index " + i + " has null or empty name");
             }
@@ -486,25 +484,14 @@ public class MetricsRepository extends AbstractService {
         }
     }
 
-    /** Returns [n1, v1, n2, v2, n3, v3] with null for unused attribute slots. */
-    private static String[] attrValues(List<MetricAttribute> attrs) {
-        String[] av = new String[6];
-        int size = attrs != null ? Math.min(attrs.size(), ATTR_MAX_VALUES) : 0;
-        for (int i = 0; i < size; i++) {
-            av[i * 2] = attrs.get(i).name();
-            av[i * 2 + 1] = attrs.get(i).value();
-        }
-        return av;
-    }
-
-    private Object[] packageSqlParamForContextToDatabase(long contextId, List<MetricAttribute> attrs) {
+    private Object[] packageSqlParamForContextToDatabase(long contextId, MetricAttributeList attrs) {
         validateAttributes(attrs);
         int hash = MetricContext.computeHash(attrs);
-        String[] av = attrValues(attrs);
+        String[] av = attrs.packNamesAndValuesIntoArray(ATTR_MAX_VALUES, MetricContext.NA);
         return new Object[] { contextId, hash, av[0], av[1], av[2], av[3], av[4], av[5] };
     }
 
-    private MetricContext insertContextToDatabase(long contextId, List<MetricAttribute> attrs) {
+    private MetricContext insertContextToDatabase(long contextId, MetricAttributeList attrs) {
         Object[] params = packageSqlParamForContextToDatabase(contextId, attrs);
         int[] types = { Types.BIGINT, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
         ISqlTransaction transaction = null;
@@ -521,10 +508,10 @@ public class MetricsRepository extends AbstractService {
             close(transaction);
         }
         log.debug("Inserted metric context id={}, hash={}, attr1={}, value1={}", contextId, params[1], params[2], params[3]);
-        return new MetricContext(contextId, List.copyOf(attrs));
+        return new MetricContext(contextId, attrs);
     }
 
-    private MetricContext loadContextByAttrsFromDatabase(int hash, List<MetricAttribute> attrs) {
+    private MetricContext loadContextByAttrsFromDatabase(int hash, MetricAttributeList attrs) {
         List<MetricContext> candidates = sqlTemplate.query(
                 getSql("selectMetricContextByHashSql"), new MetricContextSqlRowMapper(), hash);
         for (MetricContext context : candidates) {
@@ -537,10 +524,10 @@ public class MetricsRepository extends AbstractService {
 
     private static final int CONTEXT_SURROGATE_MAX_RETRIES = 3;
 
-    private MetricContext generateContextSurrogateAndInsert(List<MetricAttribute> attrs) {
+    private MetricContext generateContextSurrogateAndInsert(MetricAttributeList attrs) {
         validateAttributes(attrs);
         int hash = MetricContext.computeHash(attrs);
-        String[] av = attrValues(attrs);
+        String[] av = attrs.packNamesAndValuesIntoArray(ATTR_MAX_VALUES, MetricContext.NA);
         long bufferSize = SurrogateKeyConstants.SURROGATE_KEY_BUFFER_SIZE;
         Object[] params = { bufferSize, bufferSize, bufferSize, hash, av[0], av[1], av[2], av[3], av[4], av[5] };
         int[] types = { Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
@@ -805,7 +792,7 @@ public class MetricsRepository extends AbstractService {
         @Override
         public MetricContext mapRow(Row row) {
             long contextId = row.getLong("context_id");
-            List<MetricAttribute> attrs = new ArrayList<>();
+            MetricAttributeList attrs = new MetricAttributeList(ATTR_MAX_VALUES);
             String n1 = row.getString("attr1_name");
             String v1 = row.getString("attr1_value");
             if (n1 != null && !n1.isEmpty()) {

@@ -32,7 +32,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
@@ -57,6 +56,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.models.MetricContext;
 import org.jumpmind.symmetric.observability.models.MetricKey;
@@ -164,8 +164,8 @@ class EngineMetricsServiceTest {
         UpDownCounter metric = new UpDownCounter(new SymMetricDefinition("m", "", "", InstrumentType.UPDOWN_COUNTER), Attributes
                 .empty(), List.of(attr));
         MetricsRepository repo = mock(MetricsRepository.class);
-        MetricContext ctx = new MetricContext(REGISTERED_CONTEXT_ID, List.of(attr));
-        when(repo.getOrRegisterContext(anyList())).thenReturn(ctx);
+        MetricContext ctx = new MetricContext(REGISTERED_CONTEXT_ID, MetricAttributeList.of(attr));
+        when(repo.getOrRegisterContext(any(MetricAttributeList.class))).thenReturn(ctx);
         assertEquals(REGISTERED_CONTEXT_ID, service.getOrAssignContextId(metric, repo));
         assertNotNull(metric.getContext());
     }
@@ -353,7 +353,7 @@ class EngineMetricsServiceTest {
         when(metric.getMetricId()).thenReturn("t.metric");
         when(metric.getFactType()).thenReturn(MetricFactType.INT64);
         when(metric.getMetricType()).thenReturn(InstrumentType.UPDOWN_COUNTER);
-        when(metric.getAttributes()).thenReturn(List.of());
+        when(metric.getAttributes()).thenReturn(new MetricAttributeList(MetricsRepository.ATTR_MAX_VALUES));
         when(metric.getContext()).thenReturn(null);
         when(metric.exportCompletedIntervals()).thenReturn(List.of(mock(ISymIntervalStats.class)));
         metricsMap.put("t.metric", metric);

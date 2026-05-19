@@ -20,8 +20,6 @@
  */
 package org.jumpmind.symmetric.observability.interfaces;
 
-import java.util.List;
-
 /**
  * Identifies a metric series by its surrogate {@code context_id} and up to three {@link MetricAttribute} pairs. The context_id is assigned by the repository on
  * first persistence and never changes thereafter.
@@ -29,5 +27,5 @@ import java.util.List;
 public interface ISymMetricContext {
     long getContextId();
 
-    List<MetricAttribute> getAttributes();
+    MetricAttributeList getAttributes();
 }

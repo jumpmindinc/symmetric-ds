@@ -34,7 +34,7 @@ public interface ISymMetric {
     void setContext(ISymMetricContext context);
 
     /** Returns the attribute list supplied at creation time (0–3 elements, never null). */
-    List<MetricAttribute> getAttributes();
+    MetricAttributeList getAttributes();
 
     /**
      * Return system time (epoch) from when this metric was last modified (either value or state).

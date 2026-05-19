@@ -22,25 +22,23 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
-
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.junit.jupiter.api.Test;
 
 class ContextDefinitionTest {
     @Test
     void constructor_nonNullAttributes_contextIdIsSet() {
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("key", "value"));
+        MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("key", "value"));
         ContextDefinition def = new ContextDefinition(42L, attrs);
         assertEquals(42L, def.contextId());
     }
 
     @Test
     void constructor_nonNullAttributes_attributesAccessorReturnsExpected() {
-        List<MetricAttribute> attrs = List.of(
+        MetricAttributeList attrs = MetricAttributeList.of(
                 new MetricAttribute("key1", "value1"),
                 new MetricAttribute("key2", "value2"));
         ContextDefinition def = new ContextDefinition(1L, attrs);
@@ -54,18 +52,5 @@ class ContextDefinitionTest {
         ContextDefinition def = new ContextDefinition(1L, null);
         assertNotNull(def.attributes());
         assertTrue(def.attributes().isEmpty());
-    }
-
-    @Test
-    void constructor_withAttributes_returnedListIsUnmodifiable() {
-        List<MetricAttribute> attrs = List.of(new MetricAttribute("k", "v"));
-        ContextDefinition def = new ContextDefinition(1L, attrs);
-        assertThrows(UnsupportedOperationException.class, () -> def.attributes().add(new MetricAttribute("x", "y")));
-    }
-
-    @Test
-    void constructor_nullAttributes_returnedListIsUnmodifiable() {
-        ContextDefinition def = new ContextDefinition(1L, null);
-        assertThrows(UnsupportedOperationException.class, def.attributes()::clear);
     }
 }

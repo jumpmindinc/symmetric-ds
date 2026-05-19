@@ -37,11 +37,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.InvalidMetricDataException;
-import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
-import org.jumpmind.symmetric.common.Constants;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
+import org.jumpmind.symmetric.observability.repository.MetricsRepository;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -137,13 +136,13 @@ class MetricDefinitionFactoryTest {
     void getDefaultContexts_returnsUnmodifiableList() {
         List<ContextDefinition> contexts = factory.getDefaultContexts();
         assertThrows(UnsupportedOperationException.class,
-                () -> contexts.add(new ContextDefinition(1L, List.of())));
+                () -> contexts.add(new ContextDefinition(1L, new MetricAttributeList(MetricsRepository.ATTR_MAX_VALUES))));
     }
 
     @Test
     void registerDefaultContext_addsToDefaultContextList() {
         int sizeBefore = factory.getDefaultContexts().size();
-        factory.registerDefaultContext(new ContextDefinition(99_999_999_999L, List.of()));
+        factory.registerDefaultContext(new ContextDefinition(99_999_999_999L, new MetricAttributeList(MetricsRepository.ATTR_MAX_VALUES)));
         assertEquals(sizeBefore + 1, factory.getDefaultContexts().size());
     }
 
