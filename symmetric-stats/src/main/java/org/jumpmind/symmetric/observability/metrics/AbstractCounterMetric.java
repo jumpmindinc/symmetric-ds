@@ -38,9 +38,6 @@ import io.opentelemetry.api.common.Attributes;
  */
 public abstract class AbstractCounterMetric extends AbstractQueuedMetric {
     protected final AtomicLong currentValue = new AtomicLong(0);
-    // AbstractCounterMetric(String metricId, Attributes attributes, List<MetricAttribute> metricAttributes) {
-    // this(metricId, attributes, metricAttributes, InstrumentType.UPDOWN_COUNTER);
-    // }
 
     AbstractCounterMetric(ISymMetricDefinition definition, Attributes attributes, List<MetricAttribute> metricAttributes, InstrumentType instrumentType) {
         super(definition, attributes, metricAttributes, MetricFactType.INT64, instrumentType);
