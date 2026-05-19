@@ -79,19 +79,20 @@ class AbstractMetricsServiceTest {
         ISymDoubleGauge gauge = service.registerDoubleGauge(
                 new SymMetricDefinition("test.enabled.double_gauge", "d", "r", InstrumentType.DOUBLE_GAUGE));
         gauge.setValue(11.0);
-        ((AbstractQueuedMetric) gauge).isMetricEnabled = true; 
+        ((AbstractQueuedMetric) gauge).isMetricEnabled = true;
         service.resetGaugesToZero();
         assertEquals(0.0, gauge.getValue());
     }
-    
-    /** Disabled metrics are NOT reset to zero, because that would create a new observation
-    */
+
+    /**
+     * Disabled metrics are NOT reset to zero, because that would create a new observation
+     */
     @Test
     void resetGaugesToZero_withDisabledMetric_skipsIt() {
         ISymDoubleGauge gauge = service.registerDoubleGauge(
                 new SymMetricDefinition("test.disabled.double_gauge", "d", "r", InstrumentType.DOUBLE_GAUGE));
         gauge.setValue(10.0);
-        ((AbstractQueuedMetric) gauge).isMetricEnabled = false; 
+        ((AbstractQueuedMetric) gauge).isMetricEnabled = false;
         service.resetGaugesToZero();
         assertEquals(10.0, gauge.getValue());
     }

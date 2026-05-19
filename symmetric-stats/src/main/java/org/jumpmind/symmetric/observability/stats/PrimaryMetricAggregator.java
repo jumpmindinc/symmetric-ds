@@ -63,7 +63,8 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
     @Override
     public synchronized void start() {
         if (isRunning()) {
-            log.debug("{} thread is already running, skipping start. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.get().threadId());
+            log.debug("{} thread is already running, skipping start. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.get()
+                    .threadId());
             return;
         }
         log.debug("Starting {} thread... Hostname={}", AGGREGATOR_PROCESSING_THREAD, hostname);
