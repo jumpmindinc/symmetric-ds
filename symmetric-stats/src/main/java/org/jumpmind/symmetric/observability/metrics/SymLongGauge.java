@@ -25,6 +25,7 @@ import java.util.List;
 import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableLongGauge;
@@ -43,7 +44,7 @@ public class SymLongGauge extends AbstractLongGaugeMetric implements ISymLongGau
     public synchronized void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableLongGauge)) {
             String message = String.format("Expected ObservableLongGauge, got %s", handle.getClass().getName());
-            throw new IllegalArgumentException(message);
+            throw new MetricConfigurationException(message);
         }
         super.open(handle);
     }

@@ -32,6 +32,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
+import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.stats.AbstractStatsAccumulator;
 import org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator;
@@ -132,7 +133,7 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
         if (!isMetricEnabled) {
             String message = String.format("Cannot open a disabled metric %s", metricId);
             log.warn(message);
-            throw new RuntimeException(message);
+            throw new MetricConfigurationException(message);
         }
         lastModified = System.currentTimeMillis();
         externalTelemetryHandle = externalMetricHandle;

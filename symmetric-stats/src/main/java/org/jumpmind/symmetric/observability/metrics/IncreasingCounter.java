@@ -25,6 +25,7 @@ import java.util.List;
 import org.jumpmind.symmetric.observability.interfaces.IIncreasingCounter;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 
 import io.opentelemetry.api.common.Attributes;
@@ -43,7 +44,7 @@ public class IncreasingCounter extends AbstractCounterMetric implements IIncreas
     public synchronized void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableLongCounter)) {
             String message = String.format("Expected ObservableLongCounter, got %s", handle.getClass().getName());
-            throw new IllegalArgumentException(message);
+            throw new MetricConfigurationException(message);
         }
         super.open(handle);
     }

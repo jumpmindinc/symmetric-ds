@@ -25,6 +25,7 @@ import java.util.List;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 
 import io.opentelemetry.api.common.Attributes;
@@ -44,7 +45,7 @@ public class UpDownCounter extends AbstractCounterMetric implements IUpDownCount
     public synchronized void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableLongUpDownCounter)) {
             String message = String.format("Expected ObservableLongUpDownCounter, got %s", handle.getClass().getName());
-            throw new IllegalArgumentException(message);
+            throw new MetricConfigurationException(message);
         }
         super.open(handle);
     }

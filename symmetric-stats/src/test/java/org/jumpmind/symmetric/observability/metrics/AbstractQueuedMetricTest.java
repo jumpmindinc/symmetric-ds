@@ -41,6 +41,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricContext;
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.jumpmind.symmetric.observability.models.ObservationLong;
@@ -435,10 +436,10 @@ class AbstractQueuedMetricTest {
     }
 
     @Test
-    void open_whenDisabled_throwsRuntimeException() {
+    void open_whenDisabled_throwsMetricConfigurationException() {
         UpDownCounter m = new UpDownCounter(new SymMetricDefinition("test.metric", "", "", InstrumentType.UPDOWN_COUNTER), Attributes.empty(), List.of());
         m.isMetricEnabled = false;
-        assertThrows(RuntimeException.class, () -> m.open(null));
+        assertThrows(MetricConfigurationException.class, () -> m.open(null));
     }
 
     @Test

@@ -25,6 +25,7 @@ import java.util.List;
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetricDefinition;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricConfigurationException;
 
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableDoubleGauge;
@@ -43,7 +44,7 @@ public class SymDoubleGauge extends AbstractDoubleGaugeMetric implements ISymDou
     public synchronized void open(AutoCloseable handle) {
         if (handle != null && !(handle instanceof ObservableDoubleGauge)) {
             String message = String.format("Expected ObservableDoubleGauge, got %s", handle.getClass().getName());
-            throw new IllegalArgumentException(message);
+            throw new MetricConfigurationException(message);
         }
         super.open(handle);
     }
