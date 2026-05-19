@@ -270,7 +270,7 @@ class MetricsRepositoryTest {
         // contextId=1 <= SEED_IDS_END → seed cache
         List<MetricAttribute> attrs = List.of(new MetricAttribute("env", "prod"));
         MetricContext ctx = new MetricContext(1L, attrs);
-        String cacheKey = MetricsRepository.contextCacheKey(attrs);
+        String cacheKey = MetricsRepository.generateContextCacheKey(attrs);
         invokePrivate(repo, "putToContextCache",
                 new Class<?>[] { String.class, MetricContext.class }, cacheKey, ctx);
         Map<String, MetricContext> seedCache = getField(repo, "seedContextCache");
@@ -284,7 +284,7 @@ class MetricsRepositoryTest {
         // contextId = SEED_IDS_END + 1 → dynamic cache
         List<MetricAttribute> attrs = List.of(new MetricAttribute("node", "001"));
         MetricContext ctx = new MetricContext(MetricContext.SEED_IDS_END + 1L, attrs);
-        String cacheKey = MetricsRepository.contextCacheKey(attrs);
+        String cacheKey = MetricsRepository.generateContextCacheKey(attrs);
         invokePrivate(repo, "putToContextCache",
                 new Class<?>[] { String.class, MetricContext.class }, cacheKey, ctx);
         Map<String, MetricContext> seedCache = getField(repo, "seedContextCache");
@@ -531,7 +531,7 @@ class MetricsRepositoryTest {
     void getOrRegisterContext_def_inSeedCache_returnsCached() {
         List<MetricAttribute> attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         MetricContext ctx = new MetricContext(1L, attrs);
-        String cacheKey = MetricsRepository.contextCacheKey(attrs);
+        String cacheKey = MetricsRepository.generateContextCacheKey(attrs);
         Map<String, MetricContext> seedCache = getField(repo, "seedContextCache");
         seedCache.put(cacheKey, ctx);
         ContextDefinition def = new ContextDefinition(1L, attrs);
@@ -551,7 +551,7 @@ class MetricsRepositoryTest {
         assertSame(dbCtx, result);
         // Should be in seed cache (contextId=2 <= SEED_IDS_END)
         Map<String, MetricContext> seedCache = getField(repo, "seedContextCache");
-        String cacheKey = MetricsRepository.contextCacheKey(attrs);
+        String cacheKey = MetricsRepository.generateContextCacheKey(attrs);
         assertSame(dbCtx, seedCache.get(cacheKey));
     }
 
@@ -570,7 +570,7 @@ class MetricsRepositoryTest {
         assertEquals(ctxId, result.contextId());
         // Should be cached in seed cache (100 <= SEED_IDS_END)
         Map<String, MetricContext> seedCache = getField(repo, "seedContextCache");
-        String cacheKey = MetricsRepository.contextCacheKey(attrs);
+        String cacheKey = MetricsRepository.generateContextCacheKey(attrs);
         assertNotNull(seedCache.get(cacheKey));
     }
 
@@ -578,7 +578,7 @@ class MetricsRepositoryTest {
     void getOrRegisterContext_attrs_inDynamicCache_returnsCached() {
         List<MetricAttribute> attrs = List.of(new MetricAttribute("node", "001"));
         MetricContext ctx = new MetricContext(MetricContext.SEED_IDS_END + 10L, attrs);
-        String cacheKey = MetricsRepository.contextCacheKey(attrs);
+        String cacheKey = MetricsRepository.generateContextCacheKey(attrs);
         Map<String, MetricContext> dynCache = getField(repo, "dynamicContextCache");
         dynCache.put(cacheKey, ctx);
         MetricContext result = repo.getOrRegisterContext(attrs);
@@ -594,7 +594,7 @@ class MetricsRepositoryTest {
         MetricContext result = repo.getOrRegisterContext(attrs);
         assertSame(dbCtx, result);
         Map<String, MetricContext> dynCache = getField(repo, "dynamicContextCache");
-        String cacheKey = MetricsRepository.contextCacheKey(attrs);
+        String cacheKey = MetricsRepository.generateContextCacheKey(attrs);
         assertSame(dbCtx, dynCache.get(cacheKey));
     }
 
@@ -613,7 +613,7 @@ class MetricsRepositoryTest {
         assertNotNull(result);
         assertEquals(insertedCtx.contextId(), result.contextId());
         Map<String, MetricContext> dynCache = getField(repo, "dynamicContextCache");
-        String cacheKey = MetricsRepository.contextCacheKey(attrs);
+        String cacheKey = MetricsRepository.generateContextCacheKey(attrs);
         assertNotNull(dynCache.get(cacheKey));
     }
 

@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.observability.repository;
 
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -395,32 +396,13 @@ public class MetricsRepository extends AbstractService {
         log.debug("Loaded {} metric keys from database. Engine={}, hostname={}", metricKeys.size(), engineName, hostname);
         return metricKeys;
     }
-    // -----------------------------------------------------------------------
-    // MetricContext — cache, surrogate ID, DB read/write
-    // -----------------------------------------------------------------------
 
-    static String contextCacheKey(List<MetricAttribute> attrs) {
-        String v1 = MetricContext.NA;
-        String v2 = MetricContext.NA;
-        String v3 = MetricContext.NA;
-        StringBuilder names = new StringBuilder();
+    /** Generates key in format Attr1+Attr2+Attr3=hash of all 3 values, using NA as default value. */
+    static String generateContextCacheKey(List<MetricAttribute> attrs) {
         int size = attrs != null ? Math.min(attrs.size(), ATTR_MAX_VALUES) : 0;
-        for (int i = 0; i < size; i++) {
-            MetricAttribute a = attrs.get(i);
-            if (i > 0) {
-                names.append('+');
-            }
-            names.append(a.name() != null ? a.name() : "");
-            String v = a.value() != null ? a.value() : MetricContext.NA;
-            if (i == 0) {
-                v1 = v;
-            } else if (i == 1) {
-                v2 = v;
-            } else {
-                v3 = v;
-            }
-        }
-        return names.append('=').append(Objects.hash(v1, v2, v3)).toString();
+        String[] names = MetricAttribute.packNamesIntoArray(attrs, ATTR_MAX_VALUES, "");
+        String[] values = MetricAttribute.packValuesIntoArray(attrs, ATTR_MAX_VALUES, MetricContext.NA);
+        return String.join("+", Arrays.copyOf(names, size)) + '=' + Arrays.hashCode(values);
     }
 
     private MetricContext getFromContextCache(String cacheKey) {
@@ -437,7 +419,7 @@ public class MetricsRepository extends AbstractService {
     }
 
     static boolean attributesMatch(MetricContext ctx, List<MetricAttribute> attrs) {
-        return contextCacheKey(ctx.getAttributes()).equals(contextCacheKey(attrs));
+        return generateContextCacheKey(ctx.getAttributes()).equals(generateContextCacheKey(attrs));
     }
 
     /**
@@ -445,7 +427,7 @@ public class MetricsRepository extends AbstractService {
      */
     public MetricContext getOrRegisterContext(ContextDefinition def) {
         List<MetricAttribute> attrs = def.attributes();
-        String cacheKey = contextCacheKey(attrs);
+        String cacheKey = generateContextCacheKey(attrs);
         MetricContext cached = getFromContextCache(cacheKey);
         if (cached != null) {
             return cached;
@@ -464,7 +446,7 @@ public class MetricsRepository extends AbstractService {
      * engines and hosts.
      */
     public MetricContext getOrRegisterContext(List<MetricAttribute> attrs) {
-        String cacheKey = contextCacheKey(attrs);
+        String cacheKey = generateContextCacheKey(attrs);
         MetricContext cached = getFromContextCache(cacheKey);
         if (cached != null) {
             return cached;

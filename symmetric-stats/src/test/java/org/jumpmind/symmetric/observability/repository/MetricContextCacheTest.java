@@ -38,27 +38,27 @@ import org.junit.jupiter.params.provider.CsvSource;
 class MetricContextCacheTest {
     @Test
     void cacheKey_nullAttrs_returnsEmptyNamesPart() {
-        String key = MetricsRepository.contextCacheKey(null);
+        String key = MetricsRepository.generateContextCacheKey(null);
         assertTrue(key.startsWith("="), "Key with no attrs should start with '='");
     }
 
     @Test
     void cacheKey_emptyAttrs_equalsNullAttrs() {
         assertEquals(
-                MetricsRepository.contextCacheKey(null),
-                MetricsRepository.contextCacheKey(List.of()));
+                MetricsRepository.generateContextCacheKey(null),
+                MetricsRepository.generateContextCacheKey(List.of()));
     }
 
     @Test
     void cacheKey_singleAttr_containsName() {
-        String key = MetricsRepository.contextCacheKey(List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT)));
+        String key = MetricsRepository.generateContextCacheKey(List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT)));
         assertTrue(key.startsWith("channel="), "Key should start with attr name");
     }
 
     @Test
     void cacheKey_twoAttrs_namesJoinedByPlus() {
         var attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT), new MetricAttribute("node_group", "store"));
-        String key = MetricsRepository.contextCacheKey(attrs);
+        String key = MetricsRepository.generateContextCacheKey(attrs);
         assertTrue(key.startsWith("channel+node_group="));
     }
 
@@ -66,7 +66,7 @@ class MetricContextCacheTest {
     void cacheKey_threeAttrs_allNamesPresent() {
         var attrs = List.of(
                 new MetricAttribute("a", "1"), new MetricAttribute("b", "2"), new MetricAttribute("c", "3"));
-        String key = MetricsRepository.contextCacheKey(attrs);
+        String key = MetricsRepository.generateContextCacheKey(attrs);
         assertTrue(key.startsWith("a+b+c="));
     }
 
@@ -77,27 +77,27 @@ class MetricContextCacheTest {
         var four = List.of(
                 new MetricAttribute("a", "1"), new MetricAttribute("b", "2"), new MetricAttribute("c", "3"),
                 new MetricAttribute("d", "4"));
-        assertEquals(MetricsRepository.contextCacheKey(three), MetricsRepository.contextCacheKey(four));
+        assertEquals(MetricsRepository.generateContextCacheKey(three), MetricsRepository.generateContextCacheKey(four));
     }
 
     @Test
     void cacheKey_sameAttrs_isRepeatable() {
         var attrs = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
-        assertEquals(MetricsRepository.contextCacheKey(attrs), MetricsRepository.contextCacheKey(attrs));
+        assertEquals(MetricsRepository.generateContextCacheKey(attrs), MetricsRepository.generateContextCacheKey(attrs));
     }
 
     @Test
     void cacheKey_differentValues_produceDifferentKeys() {
         var a = List.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
         var b = List.of(new MetricAttribute("channel", Constants.CHANNEL_RELOAD));
-        assertNotEquals(MetricsRepository.contextCacheKey(a), MetricsRepository.contextCacheKey(b));
+        assertNotEquals(MetricsRepository.generateContextCacheKey(a), MetricsRepository.generateContextCacheKey(b));
     }
 
     @Test
     void cacheKey_differentNames_produceDifferentKeys() {
         var a = List.of(new MetricAttribute("channel", "x"));
         var b = List.of(new MetricAttribute("node_group", "x"));
-        assertNotEquals(MetricsRepository.contextCacheKey(a), MetricsRepository.contextCacheKey(b));
+        assertNotEquals(MetricsRepository.generateContextCacheKey(a), MetricsRepository.generateContextCacheKey(b));
     }
 
     @ParameterizedTest(name = "swapped order [{0},{1}] vs [{1},{0}]")
@@ -105,7 +105,7 @@ class MetricContextCacheTest {
     void cacheKey_orderMatters(String n1, String n2) {
         var ab = List.of(new MetricAttribute(n1, "v"), new MetricAttribute(n2, "v"));
         var ba = List.of(new MetricAttribute(n2, "v"), new MetricAttribute(n1, "v"));
-        assertNotEquals(MetricsRepository.contextCacheKey(ab), MetricsRepository.contextCacheKey(ba),
+        assertNotEquals(MetricsRepository.generateContextCacheKey(ab), MetricsRepository.generateContextCacheKey(ba),
                 "Key must encode position, not just name set");
     }
 
