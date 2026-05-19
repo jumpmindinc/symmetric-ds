@@ -377,6 +377,7 @@ class EngineMetricsServiceTest {
 
         @Override
         protected void initializeDefaultContexts(MetricsRepository repo) {
+            // Skip default metric contexts
         }
     }
 
@@ -398,6 +399,7 @@ class EngineMetricsServiceTest {
 
         @Override
         protected void initializeDefaultContexts(MetricsRepository repo) {
+            // Skip default metric contexts
         }
     }
 
@@ -422,7 +424,7 @@ class EngineMetricsServiceTest {
 
         @Override
         protected void initializeDefaultContexts(MetricsRepository repo) {
-            // NO-OP
+            // Skip default metric contexts
         }
     }
 
@@ -448,6 +450,7 @@ class EngineMetricsServiceTest {
 
         @Override
         protected void initializeDefaultContexts(MetricsRepository repo) {
+            // Skip default metric contexts
         }
     }
 }
