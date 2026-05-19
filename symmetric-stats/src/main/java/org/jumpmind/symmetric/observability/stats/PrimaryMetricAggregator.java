@@ -63,7 +63,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
     @Override
     public synchronized void start() {
         if (isRunning()) {
-            log.debug("{} thread is already running, skipping start. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.get().getId());
+            log.debug("{} thread is already running, skipping start. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.get().threadId());
             return;
         }
         log.debug("Starting {} thread... Hostname={}", AGGREGATOR_PROCESSING_THREAD, hostname);
@@ -72,7 +72,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
         t.setDaemon(true);
         thread.set(t);
         t.start();
-        log.info("Started {} thread. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t.getId());
+        log.info("Started {} thread. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t.threadId());
     }
 
     void awaitStop(long timeoutMs) throws InterruptedException {
@@ -89,11 +89,11 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
             return;
         }
         Thread t = thread.get();
-        log.debug("Stopping {} thread... Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t != null ? t.getId() : -1);
+        log.debug("Stopping {} thread... Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t != null ? t.threadId() : -1);
         running = false;
         if (t != null) {
             t.interrupt();
-            log.info("Stopped {} thread. Hostname={}, Thread.id={}", AGGREGATOR_PROCESSING_THREAD, hostname, t.getId());
+            log.info("Stopped {} thread. Hostname={}, Thread.id={}", AGGREGATOR_PROCESSING_THREAD, hostname, t.threadId());
         }
     }
 
@@ -109,7 +109,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
             try {
                 if (remainingMs > 0) {
                     log.trace("Sleeping {} thread for {} milliseconds. ThreadId={} ....", AGGREGATOR_PROCESSING_THREAD, remainingMs, Thread.currentThread()
-                            .getId());
+                            .threadId());
                     Thread.sleep(remainingMs);
                 }
                 processAllMetrics();
