@@ -396,10 +396,10 @@ class ObservationsQueueTest {
         queue.offer(obs(2.0, T + 100));
         queue.offer(obs(3.0, T + 200));
         queue.offer(obs(4.0, T + 300));
-        ISymObservation[] result = queue.peekBetween(T + 50, T + 250);
-        assertEquals(2, result.length);
-        assertEquals(obs(2.0, T + 100), result[0]);
-        assertEquals(obs(3.0, T + 200), result[1]);
+        List<ISymObservation> result = queue.peekBetween(T + 50, T + 250);
+        assertEquals(2, result.size());
+        assertEquals(obs(2.0, T + 100), result.get(0));
+        assertEquals(obs(3.0, T + 200), result.get(1));
         // Queue must be unchanged
         assertEquals(4, queue.size());
     }
@@ -411,15 +411,15 @@ class ObservationsQueueTest {
         queue.offer(first);
         queue.offer(obs(2.0, T + 100));
         queue.offer(last);
-        ISymObservation[] result = queue.peekBetween(T, T + 200);
-        assertEquals(3, result.length);
+        List<ISymObservation> result = queue.peekBetween(T, T + 200);
+        assertEquals(3, result.size());
     }
 
     @Test
-    void peekBetween_noMatchingItems_returnsEmptyArray() {
+    void peekBetween_noMatchingItems_returnsEmptyList() {
         queue.offer(obs(1.0, T));
-        ISymObservation[] result = queue.peekBetween(T + 1000, T + 2000);
-        assertEquals(0, result.length);
+        List<ISymObservation> result = queue.peekBetween(T + 1000, T + 2000);
+        assertEquals(0, result.size());
         assertEquals(1, queue.size());
     }
 
@@ -429,8 +429,8 @@ class ObservationsQueueTest {
         queue.offer(obs(2.0, T + 100));
         queue.offer(obs(3.0, T + 200));
         queue.offer(obs(4.0, T + 300));
-        ISymObservation[] removed = queue.removeAllBetween(T + 50, T + 250);
-        assertEquals(2, removed.length);
+        List<ISymObservation> removed = queue.removeAllBetween(T + 50, T + 250);
+        assertEquals(2, removed.size());
         assertEquals(2, queue.size());
         assertFalse(queue.contains(obs(2.0, T + 100)));
         assertFalse(queue.contains(obs(3.0, T + 200)));
@@ -444,16 +444,16 @@ class ObservationsQueueTest {
         queue.offer(boundary1);
         queue.offer(boundary2);
         queue.offer(obs(3.0, T + 300));
-        ISymObservation[] removed = queue.removeAllBetween(T + 100, T + 200);
-        assertEquals(2, removed.length);
+        List<ISymObservation> removed = queue.removeAllBetween(T + 100, T + 200);
+        assertEquals(2, removed.size());
         assertEquals(2, queue.size());
     }
 
     @Test
-    void removeAllBetween_noMatchingItems_returnsEmptyArray_sizeUnchanged() {
+    void removeAllBetween_noMatchingItems_returnsEmptyList_sizeUnchanged() {
         queue.offer(obs(1.0, T));
-        ISymObservation[] removed = queue.removeAllBetween(T + 1000, T + 2000);
-        assertEquals(0, removed.length);
+        List<ISymObservation> removed = queue.removeAllBetween(T + 1000, T + 2000);
+        assertEquals(0, removed.size());
         assertEquals(1, queue.size());
     }
 
@@ -461,8 +461,8 @@ class ObservationsQueueTest {
     void removeAllBetween_allItems_queueBecomesEmpty() {
         queue.offer(obs(1.0, T + 10));
         queue.offer(obs(2.0, T + 20));
-        ISymObservation[] removed = queue.removeAllBetween(T, T + 100);
-        assertEquals(2, removed.length);
+        List<ISymObservation> removed = queue.removeAllBetween(T, T + 100);
+        assertEquals(2, removed.size());
         assertEquals(0, queue.size());
         assertTrue(queue.isEmpty());
     }

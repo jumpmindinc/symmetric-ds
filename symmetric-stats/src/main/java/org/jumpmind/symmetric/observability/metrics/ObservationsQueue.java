@@ -1,7 +1,6 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import org.jumpmind.symmetric.observability.interfaces.ISymObservation;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -186,8 +185,7 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
     /**
      * Returns all observations whose timestamp falls within [start, end] without removing them from the queue.
      */
-    @SuppressWarnings("unchecked")
-    public T[] peekBetween(long start, long end) {
+    public List<T> peekBetween(long start, long end) {
         List<T> result = new ArrayList<>();
         for (T item : queue) {
             long ts = item.getTimestamp();
@@ -195,14 +193,13 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
                 result.add(item);
             }
         }
-        return (T[]) result.toArray(new ISymObservation[0]);
+        return result;
     }
 
     /**
      * Removes and returns all observations whose timestamp falls within [start, end].
      */
-    @SuppressWarnings("unchecked")
-    public T[] removeAllBetween(long start, long end) {
+    public List<T> removeAllBetween(long start, long end) {
         List<T> result = new ArrayList<>();
         Iterator<T> it = iterator();
         while (it.hasNext()) {
@@ -213,6 +210,6 @@ public class ObservationsQueue<T extends ISymObservation> implements Queue<T> {
                 result.add(item);
             }
         }
-        return (T[]) result.toArray(new ISymObservation[0]);
+        return result;
     }
 }
