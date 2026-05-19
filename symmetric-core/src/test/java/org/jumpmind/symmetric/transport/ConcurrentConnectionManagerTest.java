@@ -107,8 +107,8 @@ class ConcurrentConnectionManagerTest {
     @Test
     void Reservation_equals_nonReservationObject_returnsFalse() {
         Reservation r = new Reservation("node1", System.currentTimeMillis() + 10_000, ReservationType.HARD);
-        assertNotEquals(r, "string");
-        assertNotEquals(r, null);
+        assertNotNull(r);
+        assertNotEquals("string", r);
     }
 
     @Test
