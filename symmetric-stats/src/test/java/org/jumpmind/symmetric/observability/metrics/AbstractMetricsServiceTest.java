@@ -36,19 +36,7 @@ import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.Instru
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.opentelemetry.api.common.Attributes;
-
 class AbstractMetricsServiceTest {
-    private static class TestService extends AbstractMetricsService {
-        TestService(MetricsManager manager) {
-            super(manager, Attributes.empty(), false);
-        }
-
-        @Override
-        public void saveCompletedIntervalStats() {
-        }
-    }
-
     private MetricsManager manager;
     private TestService service;
 
@@ -65,7 +53,7 @@ class AbstractMetricsServiceTest {
 
     @Test
     void shutdown_withNonOpenMetric_skipsCloseAndClearsMetrics() {
-        service.registerUpDownCounter(new SymMetricDefinition("t.ud", "d", "r", InstrumentType.UPDOWN_COUNTER));
+        service.registerUpDownCounter(new SymMetricDefinition("test.upd_counter", "d", "r", InstrumentType.UPDOWN_COUNTER));
         service.getAllMetrics().iterator().next().close();
         assertDoesNotThrow(service::shutdown);
         assertTrue(service.getAllMetrics().isEmpty());
@@ -87,11 +75,23 @@ class AbstractMetricsServiceTest {
     }
 
     @Test
+    void resetGaugesToZero_withDefaultMetric_zero() {
+        ISymDoubleGauge gauge = service.registerDoubleGauge(
+                new SymMetricDefinition("test.enabled.double_gauge", "d", "r", InstrumentType.DOUBLE_GAUGE));
+        gauge.setValue(11.0);
+        ((AbstractQueuedMetric) gauge).isMetricEnabled = true; 
+        service.resetGaugesToZero();
+        assertEquals(0.0, gauge.getValue());
+    }
+    
+    /** Disabled metrics are NOT reset to zero, because that would create a new observation
+    */
+    @Test
     void resetGaugesToZero_withDisabledMetric_skipsIt() {
         ISymDoubleGauge gauge = service.registerDoubleGauge(
-                new SymMetricDefinition("t.dg", "d", "r", InstrumentType.DOUBLE_GAUGE));
+                new SymMetricDefinition("test.disabled.double_gauge", "d", "r", InstrumentType.DOUBLE_GAUGE));
         gauge.setValue(10.0);
-        ((AbstractQueuedMetric) gauge).isMetricEnabled = false;
+        ((AbstractQueuedMetric) gauge).isMetricEnabled = false; 
         service.resetGaugesToZero();
         assertEquals(10.0, gauge.getValue());
     }
