@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.observability.interfaces;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -65,21 +66,21 @@ class MetricAttributeListTest {
     }
 
     @Test
-    void packNamesIntoArray_empty_allEmptyStrings() {
+    void packNamesIntoArray_empty_allNulls() {
         MetricAttributeList list = new MetricAttributeList(ATTR_NUM_VALUES);
-        assertArrayEquals(new String[] { "", "", "" }, list.packNamesIntoArray(ATTR_NUM_VALUES));
+        assertArrayEquals(new String[] { null, null, null }, list.packNamesIntoArray(ATTR_NUM_VALUES));
     }
 
     @Test
-    void packNamesIntoArray_oneAttr_firstSlotFilledRestEmpty() {
+    void packNamesIntoArray_oneAttr_firstSlotFilledRestNull() {
         MetricAttributeList list = MetricAttributeList.of(new MetricAttribute("k1", "v"));
-        assertArrayEquals(new String[] { "k1", "", "" }, list.packNamesIntoArray(ATTR_NUM_VALUES));
+        assertArrayEquals(new String[] { "k1", null, null }, list.packNamesIntoArray(ATTR_NUM_VALUES));
     }
 
     @Test
-    void packNamesIntoArray_attrWithNullName_usesEmptyString() {
+    void packNamesIntoArray_attrWithNullName_usesNull() {
         MetricAttributeList list = MetricAttributeList.of(new MetricAttribute(null, "v"));
-        assertArrayEquals(new String[] { "", "", "" }, list.packNamesIntoArray(ATTR_NUM_VALUES));
+        assertArrayEquals(new String[] { null, null, null }, list.packNamesIntoArray(ATTR_NUM_VALUES));
     }
 
     @Test
@@ -131,7 +132,7 @@ class MetricAttributeListTest {
     @Test
     void packNamesAndValuesIntoArray_empty_allNulls() {
         MetricAttributeList list = new MetricAttributeList(ATTR_NUM_VALUES);
-        String[] av = list.packNamesAndValuesIntoArray(ATTR_NUM_VALUES, NA);
+        String[] av = list.packNamesAndValuesIntoArray(ATTR_NUM_VALUES, null);
         assertEquals(2 * ATTR_NUM_VALUES, av.length);
         for (String s : av) {
             assertEquals(null, s);
@@ -141,7 +142,7 @@ class MetricAttributeListTest {
     @Test
     void packNamesAndValuesIntoArray_oneAttr_firstPairFilledRestNull() {
         MetricAttributeList list = MetricAttributeList.of(new MetricAttribute("attr1", "value1"));
-        String[] av = list.packNamesAndValuesIntoArray(ATTR_NUM_VALUES, NA);
+        String[] av = list.packNamesAndValuesIntoArray(ATTR_NUM_VALUES, null);
         assertEquals(2 * ATTR_NUM_VALUES, av.length);
         assertEquals("attr1", av[0]);
         assertEquals("value1", av[1]);
@@ -158,7 +159,7 @@ class MetricAttributeListTest {
                 new MetricAttribute("a", "1"),
                 new MetricAttribute("b", "2"),
                 new MetricAttribute("c", "3"));
-        String[] av = list.packNamesAndValuesIntoArray(ATTR_NUM_VALUES, NA);
+        String[] av = list.packNamesAndValuesIntoArray(ATTR_NUM_VALUES, null);
         assertArrayEquals(new String[] { "a", "1", "b", "2", "c", "3" }, av);
     }
 
@@ -184,5 +185,47 @@ class MetricAttributeListTest {
                 new MetricAttribute("c", "3"),
                 new MetricAttribute("d", "4"));
         assertEquals("a+b+c", list.concatenateNames("+", ATTR_NUM_VALUES));
+    }
+
+    @Test
+    void generateHashOfValues_empty_sameAsAllDefaultValues() {
+        MetricAttributeList empty = new MetricAttributeList(0);
+        MetricAttributeList allDefault = MetricAttributeList.of(
+                new MetricAttribute("a", NA),
+                new MetricAttribute("b", NA),
+                new MetricAttribute("c", NA));
+        assertEquals(empty.generateHashOfValues(ATTR_NUM_VALUES, NA),
+                allDefault.generateHashOfValues(ATTR_NUM_VALUES, NA));
+    }
+
+    @Test
+    void generateHashOfValues_attrWithNullValue_usesDefault() {
+        MetricAttributeList withNull = MetricAttributeList.of(new MetricAttribute("k", null));
+        MetricAttributeList withDefault = MetricAttributeList.of(new MetricAttribute("k", NA));
+        assertEquals(withNull.generateHashOfValues(ATTR_NUM_VALUES, NA),
+                withDefault.generateHashOfValues(ATTR_NUM_VALUES, NA));
+    }
+
+    @Test
+    void generateHashOfValues_differentValues_differentHash() {
+        MetricAttributeList a = MetricAttributeList.of(new MetricAttribute("k", "v1"));
+        MetricAttributeList b = MetricAttributeList.of(new MetricAttribute("k", "v2"));
+        assertNotEquals(a.generateHashOfValues(ATTR_NUM_VALUES, NA),
+                b.generateHashOfValues(ATTR_NUM_VALUES, NA));
+    }
+
+    @Test
+    void generateHashOfValues_moreAttrsThanMaxSize_truncated() {
+        MetricAttributeList full = MetricAttributeList.of(
+                new MetricAttribute("a", "v1"),
+                new MetricAttribute("b", "v2"),
+                new MetricAttribute("c", "v3"));
+        MetricAttributeList extra = MetricAttributeList.of(
+                new MetricAttribute("a", "v1"),
+                new MetricAttribute("b", "v2"),
+                new MetricAttribute("c", "v3"),
+                new MetricAttribute("d", "v4"));
+        assertEquals(full.generateHashOfValues(ATTR_NUM_VALUES, NA),
+                extra.generateHashOfValues(ATTR_NUM_VALUES, NA));
     }
 }

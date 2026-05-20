@@ -28,6 +28,7 @@ import java.util.List;
 /** An ordered list of {@link MetricAttribute} entries with packing helpers for array-based storage. */
 public class MetricAttributeList extends ArrayList<MetricAttribute> {
     private static final long serialVersionUID = 1L;
+    static final String ATTR_NAME_NULL = "null";
 
     public MetricAttributeList(int capacity) {
         super(capacity);
@@ -38,39 +39,65 @@ public class MetricAttributeList extends ArrayList<MetricAttribute> {
     }
 
     public String concatenateNames(String separator, int maxSize) {
-        int size = Math.min(size(), maxSize);
-        return String.join(separator, Arrays.copyOf(packNamesIntoArray(maxSize), size));
+        StringBuilder names = new StringBuilder();
+        int limit = Math.min(size(), maxSize);
+        for (int i = 0; i < limit; i++) {
+            if (i > 0) {
+                names.append(separator);
+            }
+            if (get(i).name() != null) {
+                names.append(get(i).name());
+            } else {
+                names.append(ATTR_NAME_NULL);
+            }
+        }
+        return names.toString();
     }
 
     public String[] packNamesIntoArray(int maxSize) {
         String[] names = new String[maxSize];
-        int size = Math.min(size(), maxSize);
-        for (int i = 0; i < maxSize; i++) {
-            names[i] = (i < size && get(i).name() != null) ? get(i).name() : "";
+        int limit = Math.min(size(), maxSize);
+        for (int i = 0; i < limit; i++) {
+            names[i] = get(i).name();
         }
         return names;
     }
 
     public String[] packValuesIntoArray(int maxSize, String defaultValue) {
         String[] values = new String[maxSize];
-        int size = Math.min(size(), maxSize);
-        for (int i = 0; i < maxSize; i++) {
-            values[i] = (i < size && get(i).value() != null) ? get(i).value() : defaultValue;
+        int limit = Math.min(size(), maxSize);
+        for (int i = 0; i < limit; i++) {
+            values[i] = get(i).value() != null ? get(i).value() : defaultValue;
+        }
+        for (int i = limit; i < maxSize; i++) {
+            values[i] = defaultValue;
         }
         return values;
+    }
+
+    /** It is recommended to use some non-empty value as a default when hashing */
+    public int generateHashOfValues(int maxSize, String defaultValue) {
+        String[] values = packValuesIntoArray(maxSize, defaultValue);
+        return Arrays.hashCode(values);
     }
 
     public static MetricAttributeList of(MetricAttribute... attrs) {
         return attrs != null ? new MetricAttributeList(Arrays.asList(attrs)) : new MetricAttributeList(0);
     }
 
-    /** Returns {@code [n1, v1, n2, v2, ...]} interleaved up to {@code maxSize} pairs, with {@code null} for unused slots. */
+    /**
+     * Returns arry [n1, v1, n2, v2, ...] interleaved up to maxSize attribute name=value pairs; name is {@code null} and value is {@code defaultValue} for
+     * unused slots.
+     */
     public String[] packNamesAndValuesIntoArray(int maxSize, String defaultValue) {
         String[] av = new String[maxSize * 2];
-        int size = Math.min(size(), maxSize);
-        for (int i = 0; i < size; i++) {
+        int limit = Math.min(size(), maxSize);
+        for (int i = 0; i < limit; i++) {
             av[i * 2] = get(i).name();
-            av[i * 2 + 1] = (i < size && get(i).value() != null) ? get(i).value() : defaultValue;
+            av[i * 2 + 1] = get(i).value() != null ? get(i).value() : defaultValue;
+        }
+        for (int i = limit; i < maxSize; i++) {
+            av[i * 2 + 1] = defaultValue;
         }
         return av;
     }
