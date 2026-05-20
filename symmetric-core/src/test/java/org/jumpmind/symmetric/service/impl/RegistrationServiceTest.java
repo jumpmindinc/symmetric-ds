@@ -535,6 +535,57 @@ class RegistrationServiceTest {
         verify(sqlTemplate).update(anyString(), eq("node-42"));
     }
 
+    @Test
+    void isPriorRequestSupersededByNewReturnsTrueWhenSameStatus() {
+        for (RegistrationStatus status : RegistrationStatus.values()) {
+            RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, status);
+            RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, status);
+            assertTrue(service.isPriorRequestSupersededByNew(prior, request));
+        }
+    }
+
+    @Test
+    void isPriorRequestSupersededByNewReturnsTrueWhenRejectedPriorAndPendingRequest() {
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        assertTrue(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
+    @Test
+    void isPriorRequestSupersededByNewReturnsTrueWhenErrorPriorAndOkRequest() {
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.ER);
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
+        assertTrue(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
+    @Test
+    void isPriorRequestSupersededByNewReturnsFalseWhenPendingPriorAndOkRequest() {
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
+    @Test
+    void isPriorRequestSupersededByNewReturnsFalseWhenRejectedPriorAndOkRequest() {
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
+    @Test
+    void isPriorRequestSupersededByNewReturnsFalseWhenErrorPriorAndPendingRequest() {
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.ER);
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
+    @Test
+    void isPriorRequestSupersededByNewReturnsFalseWhenOkPriorAndPendingRequest() {
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
     private void setupHappyPath() {
         when(nodeService.findIdentity()).thenReturn(buildIdentityNode());
         when(nodeService.findNodeSecurity(TEST_SERVER_NODE_ID)).thenReturn(new NodeSecurity());
