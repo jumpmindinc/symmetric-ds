@@ -34,7 +34,7 @@ public class RegistrationRequest implements Serializable {
         OK, RQ, RJ, RR, ER
     };
 
-    protected static final List<RegistrationStatus> incompleteStatuses = Arrays.asList(
+    protected static final List<RegistrationStatus> INCOMPLETE_STATUSES = Arrays.asList(
             RegistrationStatus.RQ, RegistrationStatus.ER, RegistrationStatus.RJ);
     private String nodeGroupId;
     private String externalId;
@@ -202,12 +202,12 @@ public class RegistrationRequest implements Serializable {
     }
 
     public boolean isIncomplete() {
-        return incompleteStatuses.contains(this.status);
+        return INCOMPLETE_STATUSES.contains(this.status);
     }
 
     public static String getIncompleteStatusListQuoted(String quote) {
         StringBuilder incompleteStatusList = new StringBuilder();
-        for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.incompleteStatuses) {
+        for (RegistrationRequest.RegistrationStatus statusName : RegistrationRequest.INCOMPLETE_STATUSES) {
             if (!incompleteStatusList.isEmpty()) {
                 incompleteStatusList.append(",");
             }
