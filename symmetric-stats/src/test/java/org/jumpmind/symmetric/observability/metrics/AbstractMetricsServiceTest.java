@@ -33,17 +33,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.InstrumentType;
+import io.opentelemetry.api.common.Attributes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class AbstractMetricsServiceTest {
     private MetricsManager manager;
-    private TestService service;
+    private MetricsServiceUnderTest service;
 
     @BeforeEach
     void setUp() {
         manager = TestMetricsManagerFactory.create();
-        service = new TestService(manager);
+        service = new MetricsServiceUnderTest(manager);
     }
 
     @Test
@@ -95,5 +96,16 @@ class AbstractMetricsServiceTest {
         ((AbstractQueuedMetric) gauge).isMetricEnabled = false;
         service.resetGaugesToZero();
         assertEquals(10.0, gauge.getValue());
+    }
+
+    static class MetricsServiceUnderTest extends AbstractMetricsService {
+        MetricsServiceUnderTest(MetricsManager manager) {
+            super(manager, Attributes.empty(), false);
+        }
+
+        @Override
+        public void saveCompletedIntervalStats() {
+            // no persistence needed in tests
+        }
     }
 }
