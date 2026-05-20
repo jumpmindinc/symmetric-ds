@@ -38,6 +38,7 @@ public final class SymMetricConstants {
         HISTOGRAM
     }
 
+    public static final String OTEL_ENV_PREFIX = "OTEL_";
     public static final String OTEL_SCOPE = "symmetricds";
     public static final String METRIC_UNIT_PERCENT = "percent";
     public static final String METRIC_UNIT_CONNECTIONS = "connections";

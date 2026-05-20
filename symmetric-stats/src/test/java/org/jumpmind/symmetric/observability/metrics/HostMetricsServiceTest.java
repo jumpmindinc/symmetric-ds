@@ -203,7 +203,7 @@ class HostMetricsServiceTest {
         ISymLongGauge gauge = service.registerLongGauge(def);
         gauge.setValue(99L);
         service.resetGaugesToZero();
-        assertTrue(0L, gauge.getValue());
+        assertEquals(0L, gauge.getValue());
     }
 
     @Test

@@ -34,9 +34,13 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.jumpmind.exception.IoException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.CollectionUtils;
 import org.jumpmind.util.FormatUtils;
@@ -45,6 +49,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
 public class TypedPropertiesFactory implements ITypedPropertiesFactory {
+    private static final Logger log = LoggerFactory.getLogger(TypedPropertiesFactory.class);
     protected File propertiesFile;
     protected Properties properties;
 
@@ -70,15 +75,17 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
 
     public static void mergeAndOverrideWithEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties,
             Map<String, String> envVariables) {
-        Properties systemProperties = getPropertiesFromEnvVariables(envVariables);
-        TypedProperties envProperties = new TypedProperties(systemProperties);
-        if (fileProperties.isEmpty() && envProperties.isEmpty()) {
+        TypedProperties otelEnvProperties = new TypedProperties(getPropertiesFromEnvVariables(SymMetricConstants.OTEL_ENV_PREFIX, false, envVariables));
+        TypedProperties symEnvProperties = new TypedProperties(getPropertiesFromEnvVariables(ServerConstants.SYM_ENV_PREFIX, true, envVariables));
+        if (fileProperties.isEmpty() && symEnvProperties.isEmpty()) {
             throw new RuntimeException("Property files were not found");
         }
         if (addMissingProperties) {
-            fileProperties.putAll(envProperties);
+            fileProperties.putAll(otelEnvProperties);
+            fileProperties.putAll(symEnvProperties);
         } else {
-            fileProperties.merge(envProperties);
+            fileProperties.merge(otelEnvProperties);
+            fileProperties.merge(symEnvProperties);
         }
         replaceSystemAndEnvironmentVariables(fileProperties);
     }
@@ -124,13 +131,16 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
         }
     }
 
-    private static Properties getPropertiesFromEnvVariables(Map<String, String> env) {
+    private static Properties getPropertiesFromEnvVariables(String prefix, boolean transformKey, Map<String, String> env) {
         Properties properties = new Properties();
         for (Map.Entry<String, String> entry : env.entrySet()) {
             String envKey = entry.getKey().toUpperCase();
-            if (envKey.startsWith("SYM_")) {
-                String propKey = envKey.substring(4).toLowerCase().replace('_', '.');
+            if (envKey.startsWith(prefix)) {
+                String propKey = transformKey ? FormatUtils.removePrefix(envKey, prefix).toLowerCase().replace('_', '.') : entry.getKey();
                 properties.setProperty(propKey, entry.getValue());
+                log.debug("Imported environment variable {} as {}={}", envKey, propKey, entry.getValue());
+            } else {
+                log.debug("Ignored environment variable " + envKey);
             }
         }
         return properties;

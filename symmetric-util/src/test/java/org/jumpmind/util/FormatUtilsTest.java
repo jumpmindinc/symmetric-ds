@@ -60,6 +60,15 @@ public class FormatUtilsTest {
     }
 
     @Test
+    public void testRemovePrefix() {
+        assertEquals("VALUE", FormatUtils.removePrefix("PREFIX_VALUE", "PREFIX_"));
+        assertEquals("VALUE", FormatUtils.removePrefix("VALUE", ""));
+        assertEquals("VALUE", FormatUtils.removePrefix("VALUE", "OTHER_"));
+        assertEquals("VALUE", FormatUtils.removePrefix("VALUE", null));
+        assertEquals(null, FormatUtils.removePrefix(null, "PREFIX_"));
+    }
+
+    @Test
     public void testIsWildcardMatch() {
         assertTrue(FormatUtils.isWildCardMatch("TEST_1", "TEST_*"));
         assertTrue(FormatUtils.isWildCardMatch("TEST_2", "TEST_*"));

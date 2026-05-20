@@ -54,4 +54,32 @@ class TypedPropertiesFactoryTest {
         assertEquals("updated-user", fileProps.getProperty("db.user"));
         assertEquals(null, fileProps.getProperty("db.password"));
     }
+
+    @Test
+    void testOtelEnvVariableAddedWithOriginalKey() {
+        Map<String, String> envVariables = Map.of("OTEL_SERVICE_NAME", "my-service");
+        TypedProperties fileProps = new TypedProperties();
+        fileProps.setProperty("db.url", "url");
+        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, true, envVariables);
+        assertEquals("my-service", fileProps.getProperty("OTEL_SERVICE_NAME"));
+    }
+
+    @Test
+    void testOtelEnvVariableNotAddedWhenNotMissingProperties() {
+        Map<String, String> envVariables = Map.of("OTEL_SERVICE_NAME", "my-service");
+        TypedProperties fileProps = new TypedProperties();
+        fileProps.setProperty("db.url", "url");
+        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, false, envVariables);
+        assertNull(fileProps.getProperty("OTEL_SERVICE_NAME"));
+    }
+
+    @Test
+    void testOtelEnvVariableOverriddenBySymVariable() {
+        Map<String, String> envVariables = Map.of("OTEL_SERVICE_NAME", "otel-name", "SYM_OTEL_SERVICE_NAME", "sym-name");
+        TypedProperties fileProps = new TypedProperties();
+        fileProps.setProperty("db.url", "url");
+        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, true, envVariables);
+        assertEquals("otel-name", fileProps.getProperty("OTEL_SERVICE_NAME"));
+        assertEquals("sym-name", fileProps.getProperty("otel.service.name"));
+    }
 }
