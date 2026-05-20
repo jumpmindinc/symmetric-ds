@@ -75,20 +75,14 @@ class IncreasingCounterTest {
     void add_negativeValue_doesNotChangeValue() {
         IncreasingCounter counter = counter();
         counter.add(5L);
-        try {
-            counter.add(-2L);
-        } catch (IllegalArgumentException ignored) {
-        }
+        assertThrows(IllegalArgumentException.class, () -> counter.add(-2L));
         assertEquals(5L, counter.getValue());
     }
 
     @Test
     void add_negativeValue_doesNotEnqueueObservation() {
         IncreasingCounter counter = counter();
-        try {
-            counter.add(-1L);
-        } catch (IllegalArgumentException ignored) {
-        }
+        assertThrows(IllegalArgumentException.class, () -> counter.add(-1L));
         assertEquals(0, counter.getObservationsCountEstimate());
     }
 

@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.observability.metrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
@@ -45,6 +46,14 @@ class ContextDefinitionTest {
         assertEquals(2, def.attributes().size());
         assertEquals("key1", def.attributes().get(0).name());
         assertEquals("value2", def.attributes().get(1).value());
+    }
+
+    @Test
+    void constructor_withAttributes_returnedListIsUnmodifiable() {
+        MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("k", "v"));
+        ContextDefinition def = new ContextDefinition(1L, attrs);
+        var attributes = def.attributes();
+        assertThrows(UnsupportedOperationException.class, () -> attributes.add(new MetricAttribute("x", "y")));
     }
 
     @Test

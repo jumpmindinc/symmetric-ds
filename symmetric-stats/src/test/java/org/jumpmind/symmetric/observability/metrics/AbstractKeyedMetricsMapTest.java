@@ -132,8 +132,8 @@ class AbstractKeyedMetricsMapTest {
     @Test
     void keys_isUnmodifiable() {
         map.put("k");
-        org.junit.jupiter.api.Assertions.assertThrows(UnsupportedOperationException.class,
-                () -> map.keys().add("z"));
+        var keys = map.keys();
+        assertThrows(UnsupportedOperationException.class, () -> keys.add("z"));
     }
 
     @Test
