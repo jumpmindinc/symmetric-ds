@@ -43,7 +43,7 @@ public abstract class AbstractStatsAccumulator implements IStatsAccumulator {
     protected double valueSum;
     protected long lastTimestamp;
 
-    protected AbstractStatsAccumulator(long intervalStart, double carryForwardValue) {
+    protected AbstractStatsAccumulator(long intervalStart) {
         this.intervalStart = intervalStart;
         this.intervalEnd = intervalStart + INTERVAL_DURATION_MS;
         this.lastTimestamp = intervalStart;

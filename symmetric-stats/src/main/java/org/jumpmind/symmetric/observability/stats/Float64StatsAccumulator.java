@@ -31,7 +31,7 @@ public class Float64StatsAccumulator extends AbstractStatsAccumulator {
     private double lastValue;
 
     public Float64StatsAccumulator(long intervalStart, double carryForwardValue) {
-        super(intervalStart, carryForwardValue);
+        super(intervalStart);
         this.lastValue = carryForwardValue;
         this.min = carryForwardValue;
         this.max = carryForwardValue;

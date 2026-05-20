@@ -32,7 +32,7 @@ public class Int64StatsAccumulator extends AbstractStatsAccumulator {
     private long lastValue;
 
     public Int64StatsAccumulator(long intervalStart, long carryForwardValue) {
-        super(intervalStart, carryForwardValue);
+        super(intervalStart);
         this.lastValue = carryForwardValue;
         this.min = carryForwardValue;
         this.max = carryForwardValue;
