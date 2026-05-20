@@ -12,7 +12,7 @@ apply from: symAssembleDir + '/common.gradle'
         compileOnly "org.bouncycastle:bcprov-jdk18on:$bouncyCastleVersion"
         compileOnly "org.bouncycastle:bcpkix-jdk18on:$bouncyCastleVersion"
         compileOnly "org.codehaus.mojo:animal-sniffer-annotations:$animalSnifferVersion"
-        compileOnly "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+        compileOnly "tools.jackson.core:jackson-core:$jacksonVersion"
         compileOnly ("com.azure:azure-core:1.49.0") {
             exclude group: 'com.fasterxml.jackson.core'
             exclude group: 'com.fasterxml.jackson.datatype'

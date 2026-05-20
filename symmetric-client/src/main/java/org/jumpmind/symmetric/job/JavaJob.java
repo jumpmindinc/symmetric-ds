@@ -66,6 +66,11 @@ public class JavaJob extends AbstractJob {
         if (StringUtils.isEmpty(jobExression)) {
             return null;
         }
+        if (!SimpleClassCompiler.isJdkAvailable()) {
+            log.warn("Skipping Java job '{}': Java compilation is not available in restricted security mode (JRE only). Configure a BSH job instead.",
+                    getJobDefinition().getJobName());
+            return null;
+        }
         final String code = CODE_START + jobExression + CODE_END;
         SimpleClassCompiler compiler = new SimpleClassCompiler();
         try {

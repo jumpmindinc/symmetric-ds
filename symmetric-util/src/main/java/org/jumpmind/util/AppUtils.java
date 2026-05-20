@@ -172,7 +172,7 @@ public class AppUtils {
     public static String fetchHostNameFromOsCommand() {
         try {
             // Note: This requires permissions to run an external process and capture it's output.
-            String osHostName = IOUtils.toString(Runtime.getRuntime().exec(OS_COMMAND_HOSTNAME).getInputStream(), Charset.defaultCharset());
+            String osHostName = IOUtils.toString(new ProcessBuilder(OS_COMMAND_HOSTNAME).start().getInputStream(), Charset.defaultCharset());
             if (isBlank(osHostName)) {
                 log.warn("Got blank hostname value from the {} OS command!", OS_COMMAND_HOSTNAME);
             } else {
@@ -302,6 +302,23 @@ public class AppUtils {
                 .equalsIgnoreCase(System.getProperty(propName, Boolean.toString(defaultValue)));
     }
 
+    public static File resolveZipEntry(File toDir, ZipEntry entry) throws IOException {
+        File file = new File(toDir, entry.getName());
+        if (file.getCanonicalPath().startsWith(toDir.getCanonicalPath() + File.separator)) {
+            return file;
+        }
+        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+    }
+
+    public static File resolveZipEntry(ZipEntry entry) throws IOException {
+        File file = new File(entry.getName());
+        String canonical = file.getCanonicalPath();
+        if (canonical.equals(file.getAbsolutePath())) {
+            return new File(canonical);
+        }
+        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+    }
+
     public static void unzip(InputStream in, File toDir) {
         try {
             ZipInputStream is = new ZipInputStream(in);
@@ -310,11 +327,11 @@ public class AppUtils {
                 entry = is.getNextEntry();
                 if (entry != null) {
                     if (entry.isDirectory()) {
-                        File dir = new File(toDir, entry.getName());
+                        File dir = resolveZipEntry(toDir, entry);
                         dir.mkdirs();
                         dir.setLastModified(entry.getTime());
                     } else {
-                        File file = new File(toDir, entry.getName());
+                        File file = resolveZipEntry(toDir, entry);
                         if (!file.getParentFile().exists()) {
                             file.getParentFile().mkdirs();
                             file.getParentFile().setLastModified(entry.getTime());

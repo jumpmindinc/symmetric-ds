@@ -301,7 +301,7 @@ public class ProcessInfo implements Serializable, Comparable<ProcessInfo>, Clone
 
     public ThreadData getThreadData() {
         if (thread != null && thread.isAlive()) {
-            return getThreadData(thread.getId());
+            return getThreadData(thread.threadId());
         } else {
             return null;
         }

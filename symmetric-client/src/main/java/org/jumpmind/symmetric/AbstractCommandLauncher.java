@@ -24,10 +24,10 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import java.io.File;
 import java.io.PrintWriter;
-import java.net.MalformedURLException;
 import java.security.Provider;
 import java.security.Security;
 import java.sql.Connection;
+import javax.sql.DataSource;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -35,11 +35,11 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
+import org.jumpmind.db.util.DataSourceUtils;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -189,7 +189,7 @@ public abstract class AbstractCommandLauncher {
         writer.flush();
     }
 
-    protected void configureLogging(CommandLine line) throws MalformedURLException {
+    protected void configureLogging(CommandLine line) {
         String overrideLogFileName = null;
         if (line.hasOption(OPTION_PROPERTIES_FILE)) {
             File file = new File(line.getOptionValue(OPTION_PROPERTIES_FILE));
@@ -269,14 +269,15 @@ public abstract class AbstractCommandLauncher {
     }
 
     protected void testConnection() {
+        DataSource ds = ClientSymmetricEngine.createDataSource(propertiesFile);
         try {
-            BasicDataSource ds = ClientSymmetricEngine
-                    .createBasicDataSource(propertiesFile);
             Connection conn = ds.getConnection();
             conn.close();
-            ds.close();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            // ensures the data source is closed when the connection test throws
+            DataSourceUtils.closeQuietly(ds);
         }
     }
 
@@ -294,7 +295,7 @@ public abstract class AbstractCommandLauncher {
                 if (!symmetricPlatform) {
                     TypedProperties copiedProperties = new TypedProperties();
                     String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
-                    copyProperties(properties, copiedProperties, prefix, BasicDataSourcePropertyConstants.ALL_PROPS);
+                    copyProperties(properties, copiedProperties, prefix, DataSourceProperties.ALL_PROPS);
                     copyProperties(properties, copiedProperties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
                     properties = copiedProperties;
                 }

@@ -65,6 +65,10 @@ public class SimpleClassCompiler {
     public SimpleClassCompiler() {
     }
 
+    public static boolean isJdkAvailable() {
+        return ToolProvider.getSystemJavaCompiler() != null;
+    }
+
     public Object getCompiledClass(String javaCode) throws Exception {
         Integer id = javaCode.hashCode();
         Object javaObject = objectMap.get(id);

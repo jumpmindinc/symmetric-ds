@@ -37,7 +37,7 @@ import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.mapper.StringMapper;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.Version;
@@ -77,7 +77,7 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
                 throw new SymmetricException(message);
             }
         }
-        if (parameterService.getString(BasicDataSourcePropertyConstants.DB_POOL_URL).contains("zeroDateTimeBehavior=convertToNull")) {
+        if (parameterService.getString(DataSourceProperties.DB_POOL_URL).contains("zeroDateTimeBehavior=convertToNull")) {
             try {
                 String sqlMode = platform.getSqlTemplate().queryForString("select @@sql_mode");
                 isConvertZeroDateToNull = sqlMode == null || (!sqlMode.contains("NO_ZERO_DATE") && !sqlMode.contains("NO_ZERO_IN_DATE"));

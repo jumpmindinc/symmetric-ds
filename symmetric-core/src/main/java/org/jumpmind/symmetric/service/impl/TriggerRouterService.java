@@ -81,6 +81,7 @@ import org.jumpmind.symmetric.model.TriggerReBuildReason;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.route.ConfigurationChangedDataRouter;
 import org.jumpmind.symmetric.route.FileSyncDataRouter;
+import org.jumpmind.symmetric.route.RegistrationServerRouter;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
@@ -673,6 +674,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         if (TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_SNAPSHOT).equals(
                 trigger.getSourceTableName())) {
             router.setRouterType(FileSyncDataRouter.ROUTER_TYPE);
+        } else if (TableConstants.getTableName(tablePrefix, TableConstants.SYM_MONITOR_EVENT).equals(
+                trigger.getSourceTableName())) {
+            router.setRouterType(RegistrationServerRouter.ROUTER_TYPE);
         } else {
             router.setRouterType(ConfigurationChangedDataRouter.ROUTER_TYPE);
         }
@@ -1313,7 +1317,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
 
     protected int[] getTriggerRouterSqlTypes() {
         return new int[] { Types.NUMERIC, Types.VARCHAR, Types.VARCHAR, Types.SMALLINT, Types.TIMESTAMP, Types.VARCHAR,
-                Types.TIMESTAMP, Types.SMALLINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
+                Types.TIMESTAMP, Types.SMALLINT, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
     }
 
     protected Object[] getTriggerRouterSqlValues(TriggerRouter triggerRouter) {
@@ -1321,11 +1325,17 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 triggerRouter.getInitialLoadDeleteStmt(), triggerRouter.isPingBackEnabled() ? 1 : 0,
                 triggerRouter.getCreateTime(), triggerRouter.getLastUpdateBy(), triggerRouter.getLastUpdateTime(),
                 triggerRouter.isEnabled() ? 1 : 0, triggerRouter.getDescription(), triggerRouter.getDataRefreshType(),
+                triggerRouter.getDataRefreshJobName(),
                 triggerRouter.getTrigger().getTriggerId(), triggerRouter.getRouter().getRouterId() };
     }
 
     protected void resetTriggerRouterCacheByNodeGroupId() {
         cacheManager.flushTriggerRoutersByNodeGroupId();
+    }
+
+    @Override
+    public void updateDataRefreshJobName(String oldJobName, String newJobName) {
+        sqlTemplate.update(getSql("updateDataRefreshJobNameSql"), newJobName, oldJobName);
     }
 
     public void saveRouter(Router router) {
@@ -2998,6 +3008,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             triggerRouter.setDescription(rs.getString("description"));
             if (rs.containsKey("data_refresh_type")) {
                 triggerRouter.setDataRefreshType(rs.getString("data_refresh_type"));
+            }
+            if (rs.containsKey("data_refresh_job_name")) {
+                triggerRouter.setDataRefreshJobName(rs.getString("data_refresh_job_name"));
             }
             return triggerRouter;
         }

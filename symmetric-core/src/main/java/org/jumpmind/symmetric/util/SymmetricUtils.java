@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.KeyManagementException;
@@ -163,7 +164,7 @@ final public class SymmetricUtils {
         try {
             notices = String.format("%n%s%n", IOUtils.toString(Thread.currentThread().getContextClassLoader().getResource("symmetricds.asciiart"), Charset
                     .defaultCharset()));
-            notices = notices.replaceAll("\n", String.format("%n"));
+            notices = notices.replaceAll("\r\n|\r|\n", System.lineSeparator());
         } catch (Exception ex) {
             notices = String.format("SymmetricDS Start%n");
         }
@@ -258,7 +259,7 @@ final public class SymmetricUtils {
 
     public static Certificate[] getCertificates(String urlString)
             throws MalformedURLException, IOException, NoSuchAlgorithmException, KeyManagementException {
-        URL url = new URL(urlString);
+        URL url = URI.create(urlString).toURL();
         if (!"https".equals(url.getProtocol())) {
             return null;
         }

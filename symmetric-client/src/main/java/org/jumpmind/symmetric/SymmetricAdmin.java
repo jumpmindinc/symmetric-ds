@@ -32,7 +32,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -151,7 +151,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
     private static final String OPTION_EXCLUDE_INDICES = "exclude-indices";
     private static final String OPTION_EXCLUDE_FOREIGN_KEYS = "exclude-fk";
     private static final String OPTION_EXCLUDE_DEFAULTS = "exclude-defaults";
-    private static final String OPTION_EXCLUDE_LOG4J = "exclude-log4j";
+    private static final String OPTION_EXCLUDE_LOGBACK = "exclude-logback";
     private static final String OPTION_EXTERNAL_SECURITY = "external-security";
     private static final String OPTION_ALTERS = "alters";
     private static final String OPTION_EXCLUDE_TABLES = "exclude-tables";
@@ -291,7 +291,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                 addOption(options, null, OPTION_EXCLUDE_DEFAULTS, false);
             }
             if (cmd.equals(CMD_CREATE_WAR)) {
-                addOption(options, null, OPTION_EXCLUDE_LOG4J, false);
+                addOption(options, null, OPTION_EXCLUDE_LOGBACK, false);
                 addOption(options, null, OPTION_EXTERNAL_SECURITY, false);
             }
             if (cmd.equals(CMD_EXPORT_SYM_TABLES)) {
@@ -340,7 +340,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         addOption(options, null, OPTION_EXCLUDE_INDICES, false);
         addOption(options, null, OPTION_EXCLUDE_FOREIGN_KEYS, false);
         addOption(options, null, OPTION_EXCLUDE_DEFAULTS, false);
-        addOption(options, null, OPTION_EXCLUDE_LOG4J, false);
+        addOption(options, null, OPTION_EXCLUDE_LOGBACK, false);
         addOption(options, null, OPTION_EXTERNAL_SECURITY, false);
         addOption(options, null, OPTION_ALTERS, false);
         addOption(options, "x", OPTION_EXCLUDE_TABLES, false);
@@ -693,18 +693,18 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         }
         try (FileInputStream finput = new FileInputStream(filename); ZipInputStream zip = new ZipInputStream(finput)) {
             ZipEntry entry = null;
+            File symHome = new File(AppUtils.getSymHome());
             for (entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
                 if (entry.isDirectory()) {
                     continue;
                 }
                 System.out.println("Restoring " + entry.getName());
-                File fileToOpen = null;
-                File f = new File(entry.getName());
-                if (f.isAbsolute()) {
-                    f.getParentFile().mkdirs();
-                    fileToOpen = f;
+                File fileToOpen;
+                if (new File(entry.getName()).isAbsolute()) {
+                    fileToOpen = AppUtils.resolveZipEntry(entry);
+                    fileToOpen.getParentFile().mkdirs();
                 } else {
-                    fileToOpen = new File(AppUtils.getSymHome(), entry.getName());
+                    fileToOpen = AppUtils.resolveZipEntry(symHome, entry);
                 }
                 try (FileOutputStream foutput = new FileOutputStream(fileToOpen)) {
                     final byte buffer[] = new byte[4096];
@@ -796,10 +796,10 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                 FileUtils.copyToDirectory(restPropFile, new File(workingDirectory, "WEB-INF/classes"));
             }
         }
-        if (!line.hasOption(OPTION_EXCLUDE_LOG4J)) {
-            System.out.println("Copying log4j files");
-            FileUtils.copyToDirectory(new File(AppUtils.getSymHome() + "/conf/log4j2.xml"), new File(workingDirectory, "WEB-INF/classes"));
-            for (File file : FileUtils.listFiles(new File(AppUtils.getSymHome() + "/lib"), FileFilterUtils.prefixFileFilter("log4j-"), null)) {
+        if (!line.hasOption(OPTION_EXCLUDE_LOGBACK)) {
+            System.out.println("Copying logback files");
+            FileUtils.copyToDirectory(new File(AppUtils.getSymHome() + "/conf/logback.xml"), new File(workingDirectory, "WEB-INF/classes"));
+            for (File file : FileUtils.listFiles(new File(AppUtils.getSymHome() + "/lib"), FileFilterUtils.prefixFileFilter("logback-"), null)) {
                 FileUtils.copyToDirectory(file, new File(workingDirectory, "WEB-INF/lib"));
             }
         }
@@ -832,8 +832,8 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         FileUtils.deleteDirectory(workingDirectory);
         System.out.println("Created " + warFileName);
         System.out.println("\nRemember to:");
-        if (!line.hasOption(OPTION_EXCLUDE_LOG4J)) {
-            System.out.println("- Edit " + warFileName + ":/WEB-INF/classes/log4j2.xml to set the path and filename to the log file");
+        if (!line.hasOption(OPTION_EXCLUDE_LOGBACK)) {
+            System.out.println("- Edit " + warFileName + ":/WEB-INF/classes/logback.xml to set the path and filename to the log file");
         }
         if (useProperties) {
             System.out.println("- Edit " + warFileName + ":/WEB-INF/classes/symmetric.properties to set sync.url to match web server");
@@ -845,7 +845,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
             System.out.println("- Set system property for cacerts file: -Djavax.net.ssl.trustStore=/path/to/cacerts");
             System.out.println("- Set system property for REST file: -Dsym.rest.properties.file=/path/to/rest.properties");
         }
-        if (line.hasOption(OPTION_EXCLUDE_LOG4J)) {
+        if (line.hasOption(OPTION_EXCLUDE_LOGBACK)) {
             System.out.println("- Provide a SLF4J binding JAR for your logging framework");
         }
         System.out.println("- Provide JDBC driver JAR for your database");
@@ -1235,7 +1235,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         HttpURLConnection snapshotHttpUrlConnection = null;
         boolean success = false;
         try {
-            URLConnection snapshotUrlConnection = new URL(snapshotUrl).openConnection();
+            URLConnection snapshotUrlConnection = URI.create(snapshotUrl).toURL().openConnection();
             if (snapshotUrlConnection instanceof HttpURLConnection) {
                 snapshotHttpUrlConnection = (HttpURLConnection) snapshotUrlConnection;
                 snapshotHttpUrlConnection.setDoInput(true);

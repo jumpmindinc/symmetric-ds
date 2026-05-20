@@ -32,11 +32,11 @@ import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
 import org.jumpmind.symmetric.util.SymmetricUtils;
+import org.jumpmind.symmetric.web.HealthServlet;
 import org.jumpmind.symmetric.web.HttpMethodFilter;
 import org.jumpmind.symmetric.web.SymmetricContextListener;
 import org.jumpmind.symmetric.web.SymmetricServlet;
 import org.jumpmind.symmetric.web.WebConstants;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.Banner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -54,8 +54,11 @@ import jakarta.servlet.ServletException;
 
 @SpringBootApplication(scanBasePackages = { "org.jumpmind.symmetric", "com.jumpmind.symmetric" })
 public class SymmetricBoot extends SpringBootServletInitializer {
-    @Autowired
-    private Environment env;
+    private final Environment env;
+
+    public SymmetricBoot(Environment env) {
+        this.env = env;
+    }
 
     @Bean
     ServletContextInitializer servletContextInitializer() {
@@ -86,6 +89,13 @@ public class SymmetricBoot extends SpringBootServletInitializer {
     ServletRegistrationBean<SymmetricServlet> symmetricServlet() {
         ServletRegistrationBean<SymmetricServlet> bean = new ServletRegistrationBean<>(new SymmetricServlet(),
                 "/sync/*");
+        bean.setLoadOnStartup(1);
+        return bean;
+    }
+
+    @Bean
+    ServletRegistrationBean<HealthServlet> healthServlet() {
+        ServletRegistrationBean<HealthServlet> bean = new ServletRegistrationBean<>(new HealthServlet(), "/health/*");
         bean.setLoadOnStartup(1);
         return bean;
     }

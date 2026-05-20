@@ -40,6 +40,8 @@ public class JobCreator {
             job = instantiateJavaJob(jobDefinition, engine, taskScheduler);
         } else if (jobDefinition.getJobType() == JobType.JAVA) {
             job = new JavaJob(jobDefinition.getJobName(), engine, taskScheduler);
+        } else if (jobDefinition.getJobType() == JobType.REFRESH) {
+            throw new SymmetricException("The " + JobType.REFRESH + " job type requires SymmetricDS Pro");
         } else {
             throw new SymmetricException("Unknown job type " + jobDefinition.getJobType());
         }

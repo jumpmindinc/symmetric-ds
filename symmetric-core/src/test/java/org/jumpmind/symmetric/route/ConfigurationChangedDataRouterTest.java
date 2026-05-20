@@ -35,6 +35,7 @@ import java.util.Set;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.DataMetaData;
@@ -223,6 +224,56 @@ public class ConfigurationChangedDataRouterTest {
         assertTrue(nodeIds.contains("regsvr"));
     }
 
+    @Test
+    void testRouteTableReloadRequest_routesToSourceAndTargetNodes() {
+        IDataRouter router = buildTestableRouter(
+                THREE_TIER_NETWORKED_ROOT.findNetworkedNode("corp").getNode(), THREE_TIER_LINKS,
+                THREE_TIER_NETWORKED_ROOT);
+        Set<Node> nodes = new HashSet<Node>();
+        nodes.add(THREE_TIER_NETWORKED_ROOT.findNetworkedNode("rgn1").getNode());
+        nodes.add(THREE_TIER_NETWORKED_ROOT.findNetworkedNode("rgn2").getNode());
+        nodes.add(THREE_TIER_NETWORKED_ROOT.findNetworkedNode("laptop1").getNode());
+        Collection<String> nodeIds = router.routeToNodes(new SimpleRouterContext(),
+                buildReloadRequestDataMetaData(
+                        TableConstants.getTableName("sym", TableConstants.SYM_TABLE_RELOAD_REQUEST), "rgn1", "laptop1"),
+                nodes, false, false, null);
+        assertNotNull(nodeIds);
+        assertEquals(2, nodeIds.size());
+        assertTrue(nodeIds.contains("rgn1"));
+        assertTrue(nodeIds.contains("laptop1"));
+    }
+
+    @Test
+    void testRouteTableReloadRequest_emptyPossibleNodes_routesToNone() {
+        IDataRouter router = buildTestableRouter(
+                THREE_TIER_NETWORKED_ROOT.findNetworkedNode("corp").getNode(), THREE_TIER_LINKS,
+                THREE_TIER_NETWORKED_ROOT);
+        Set<Node> nodes = new HashSet<Node>();
+        Collection<String> nodeIds = router.routeToNodes(new SimpleRouterContext(),
+                buildReloadRequestDataMetaData(
+                        TableConstants.getTableName("sym", TableConstants.SYM_TABLE_RELOAD_REQUEST), "rgn1", "laptop1"),
+                nodes, false, false, null);
+        assertNotNull(nodeIds);
+        assertEquals(0, nodeIds.size());
+    }
+
+    @Test
+    void testRouteTableReloadRequest_routesToSourceNodeOnly() {
+        IDataRouter router = buildTestableRouter(
+                THREE_TIER_NETWORKED_ROOT.findNetworkedNode("corp").getNode(), THREE_TIER_LINKS,
+                THREE_TIER_NETWORKED_ROOT);
+        Set<Node> nodes = new HashSet<Node>();
+        nodes.add(THREE_TIER_NETWORKED_ROOT.findNetworkedNode("rgn1").getNode());
+        nodes.add(THREE_TIER_NETWORKED_ROOT.findNetworkedNode("rgn2").getNode());
+        Collection<String> nodeIds = router.routeToNodes(new SimpleRouterContext(),
+                buildReloadRequestDataMetaData(
+                        TableConstants.getTableName("sym", TableConstants.SYM_TABLE_RELOAD_REQUEST), "rgn1", null),
+                nodes, false, false, null);
+        assertNotNull(nodeIds);
+        assertEquals(1, nodeIds.size());
+        assertTrue(nodeIds.contains("rgn1"));
+    }
+
     protected DataMetaData buildDataMetaData(String tableName, String nodeId) {
         Data data = new Data();
         data.setTableName(tableName);
@@ -230,6 +281,17 @@ public class ConfigurationChangedDataRouterTest {
         data.setTriggerHistory(new TriggerHistory(tableName, "NODE_ID", "NODE_ID"));
         data.setPkData(nodeId);
         data.setRowData(nodeId);
+        return new DataMetaData(data, new Table(tableName), null, null);
+    }
+
+    protected DataMetaData buildReloadRequestDataMetaData(String tableName, String sourceNodeId, String targetNodeId) {
+        Data data = new Data();
+        data.setTableName(tableName);
+        data.setDataEventType(DataEventType.UPDATE);
+        data.setTriggerHistory(new TriggerHistory(tableName, "SOURCE_NODE_ID", "SOURCE_NODE_ID,TARGET_NODE_ID"));
+        String targetId = targetNodeId != null ? targetNodeId : "";
+        data.setPkData(sourceNodeId);
+        data.setRowData(sourceNodeId + "," + targetId);
         return new DataMetaData(data, new Table(tableName), null, null);
     }
 

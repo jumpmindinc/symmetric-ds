@@ -46,6 +46,7 @@ import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.statistic.RouterStats;
 import org.jumpmind.symmetric.transport.IAcknowledgeEventListener;
+import org.jumpmind.symmetric.util.SecurityUtils;
 
 /**
  * @see IAcknowledgeService
@@ -59,6 +60,7 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
         setSqlMap(new AcknowledgeServiceSqlMap(symmetricDialect.getPlatform(), createSqlReplacementTokens()));
     }
 
+    @Override
     public BatchAckResult ack(final BatchAck batch) {
         IRegistrationService registrationService = engine.getRegistrationService();
         IOutgoingBatchService outgoingBatchService = engine.getOutgoingBatchService();
@@ -70,6 +72,8 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
             if (batch.isOk()) {
                 registrationService.markNodeAsRegistered(batch.getNodeId());
             } else if (batch.getSqlCode() != 0 || batch.getSqlMessage() != null) {
+                log.warn("Registration batch had failed for node {} ! Error line={}, SQL.code={}, SQL message={}",
+                        SecurityUtils.sanitizeLogArguments(batch.getNodeId(), batch.getErrorLine(), batch.getSqlCode(), batch.getSqlMessage()));
                 Node requestingNode = engine.getNodeService().findNode(batch.getNodeId());
                 if (requestingNode != null) {
                     RegistrationRequest request = registrationService.getLatestRegistrationRequest(
@@ -290,6 +294,7 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
         }
     }
 
+    @Override
     public List<BatchAckResult> ack(List<BatchAck> batches) {
         List<BatchAckResult> results = new ArrayList<BatchAckResult>();
         for (BatchAck batch : batches) {
@@ -298,6 +303,7 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
         return results;
     }
 
+    @Override
     public void checkMissingAck(List<BatchAck> acks, String queue) {
         boolean hasCorruptBatch = false;
         String nodeId = null;

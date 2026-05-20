@@ -238,6 +238,8 @@ public interface ITriggerRouterService {
 
     public void deleteAllTriggerRouters();
 
+    public void updateDataRefreshJobName(String oldJobName, String newJobName);
+
     public void saveTriggerRouter(TriggerRouter triggerRouter, boolean updateTriggerRouterTableOnly);
 
     public void saveTriggerRouter(ISqlTransaction transaction, TriggerRouter triggerRouter, boolean updateTriggerRouterTableOnly);

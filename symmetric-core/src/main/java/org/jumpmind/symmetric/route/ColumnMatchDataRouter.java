@@ -42,7 +42,8 @@ import org.jumpmind.symmetric.model.TriggerRouter;
  * SymmetricDS transmits.
  * <P>
  * The column name used for the match is the upper case column name if the current value is being compared. The upper case column name prefixed by OLD_ can be
- * used if the comparison is being done of the old data.
+ * used if the comparison is being done of the old data. The virtual column names :SOURCE_SCHEMA and :SOURCE_CATALOG can also be used to match against the
+ * source schema or catalog from the trigger history (e.g. ':SOURCE_SCHEMA=:EXTERNAL_ID').
  * <P>
  * For example, if the column on a table is named STATUS you can specify that you want to router when STATUS=OK by specifying such for the router_expression. If
  * you wanted to route when only the old value for STATUS=OK you would specify OLD_STATUS=OK.
@@ -89,6 +90,15 @@ public class ColumnMatchDataRouter extends AbstractDataRouter implements IDataRo
                     String column = e.getTokens()[0].trim();
                     String value = e.getTokens()[1];
                     String columnValue = columnValues.get(column);
+                    if (columnValue == null && TokenConstants.SOURCE_SCHEMA.equalsIgnoreCase(column)) {
+                        columnValue = dataMetaData.getTriggerHistory() != null
+                                ? dataMetaData.getTriggerHistory().getSourceSchemaName()
+                                : null;
+                    } else if (columnValue == null && TokenConstants.SOURCE_CATALOG.equalsIgnoreCase(column)) {
+                        columnValue = dataMetaData.getTriggerHistory() != null
+                                ? dataMetaData.getTriggerHistory().getSourceCatalogName()
+                                : null;
+                    }
                     if (value.equalsIgnoreCase(TokenConstants.NODE_ID)) {
                         for (Node node : nodes) {
                             nodeIds = runExpression(e, columnValue, node.getNodeId(), nodes,

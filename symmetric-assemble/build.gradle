@@ -130,12 +130,13 @@ task codeCoverageReport(type: JacocoReport) {
     dependsOn ':symmetric-util:processTestResources'
     dependsOn ':symmetric-wrapper:test'
     dependsOn ':test'
-    // Gather execution data from all subprojects
-    executionData = files(
-    subprojects.collect { subproject ->
-        file("${subproject.buildDir}/jacoco/test.exec")
-    }.findAll { it.exists() }
-    )
+    // Gather execution data from all subprojects. The closure defers evaluation to execution time
+    // (after tests run), so .exists() correctly finds the .exec files produced by each test task.
+    executionData = files({
+        subprojects.collect { subproject ->
+            file("${subproject.buildDir}/jacoco/test.exec")
+        }.findAll { it.exists() }
+    })
     
     allprojects.each {
         sourceSets it.sourceSets.main

@@ -85,7 +85,7 @@ import org.jumpmind.db.platform.sqlite.SqliteDatabasePlatform;
 import org.jumpmind.db.platform.voltdb.VoltDbDatabasePlatform;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlTemplateSettings;
-import org.jumpmind.db.util.BasicDataSourcePropertyConstants;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
@@ -200,8 +200,8 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
             throws DdlException {
         if (isLoadOnly) {
             TypedProperties properties = settings.getProperties();
-            String dbUrl = properties.get(BasicDataSourcePropertyConstants.DB_POOL_URL);
-            String dbDriver = properties.get(BasicDataSourcePropertyConstants.DB_POOL_DRIVER);
+            String dbUrl = properties.get(DataSourceProperties.DB_POOL_URL);
+            String dbDriver = properties.get(DataSourceProperties.DB_POOL_DRIVER);
             if (dbUrl != null && dbUrl.startsWith("cassandra://")) {
                 return new CassandraPlatform(settings, dbUrl.substring(12));
             } else if (dbDriver != null && dbDriver.contains("kafka")) {
