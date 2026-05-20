@@ -930,7 +930,7 @@ public class StatisticManager implements IStatisticManager {
             if (c != null)
                 c.add(delta);
         } catch (Exception e) {
-            log.debug("Failed to record channel metric {}@{}", metricId, channelId, e);
+            log.debug("Failed to record channel-specific counter metric {}@{}", metricId, channelId, e);
         }
     }
 
@@ -943,7 +943,7 @@ public class StatisticManager implements IStatisticManager {
             if (g != null)
                 g.setValue(value);
         } catch (Exception e) {
-            log.debug("Failed to record channel metric {}@{}", metricId, channelId, e);
+            log.debug("Failed to record channel-specific double gauge metric {}@{}", metricId, channelId, e);
         }
     }
 
@@ -956,7 +956,7 @@ public class StatisticManager implements IStatisticManager {
             if (g != null)
                 g.setValue(value);
         } catch (Exception e) {
-            log.debug("Failed to record channel metric {}@{}", metricId, channelId, e);
+            log.debug("Failed to record channel-specific long gauge metric {}@{}", metricId, channelId, e);
         }
     }
 
