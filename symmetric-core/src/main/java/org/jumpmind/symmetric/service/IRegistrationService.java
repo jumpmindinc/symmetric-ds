@@ -139,6 +139,8 @@ public interface IRegistrationService {
 
     public String getRedirectionUrlFor(String externalId);
 
+    public void deleteRegistrationRedirectsByNodeId(String nodeId);
+
     public void requestNodeCopy();
 
     public void setAllowClientRegistration(boolean enabled);

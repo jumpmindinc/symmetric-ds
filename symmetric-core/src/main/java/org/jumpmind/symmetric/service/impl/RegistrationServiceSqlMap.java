@@ -53,6 +53,7 @@ public class RegistrationServiceSqlMap extends AbstractSqlMap {
                 + "(registration_node_id, registrant_external_id) values (?, ?)   ");
         putSql("updateRegistrationRedirectUrlSql", "" + "update $(registration_redirect) "
                 + "set registration_node_id=? where registrant_external_id=?   ");
+        putSql("deleteRegistrationRedirectByNodeIdSql", "delete from $(registration_redirect) where registration_node_id=?");
         putSql("insertRegistrationRequestSql",
                 ""
                         + "insert into $(registration_request)                                                 "
