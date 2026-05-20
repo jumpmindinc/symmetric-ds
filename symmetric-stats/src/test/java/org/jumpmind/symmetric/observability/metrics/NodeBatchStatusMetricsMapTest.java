@@ -23,6 +23,8 @@ package org.jumpmind.symmetric.observability.metrics;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -94,14 +96,14 @@ class NodeBatchStatusMetricsMapTest {
     void getOrCreate_samePairTwice_returnsSameEntry() {
         INodeBatchStatusGauge first = map.getOrCreate("node-1", "OK");
         INodeBatchStatusGauge second = map.getOrCreate("node-1", "OK");
-        assertTrue(first == second);
+        assertSame(first, second);
     }
 
     @Test
     void getOrCreate_differentStatuses_createsDifferentEntries() {
         INodeBatchStatusGauge ok = map.getOrCreate("node-1", "OK");
         INodeBatchStatusGauge err = map.getOrCreate("node-1", "ER");
-        assertFalse(ok == err);
+        assertNotSame(ok, err);
         assertEquals(2, map.size());
     }
 

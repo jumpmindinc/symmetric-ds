@@ -39,10 +39,10 @@ class MetricIntervalStatsRecordTest {
     void accessors_returnConstructorValues() {
         MetricKey key = sampleKey();
         ISymIntervalStats stats = mock(ISymIntervalStats.class);
-        MetricIntervalStatsRecord record = new MetricIntervalStatsRecord(key, 42L, stats);
-        assertSame(key, record.key());
-        assertEquals(42L, record.contextId());
-        assertSame(stats, record.stats());
+        MetricIntervalStatsRecord actual = new MetricIntervalStatsRecord(key, 42L, stats);
+        assertSame(key, actual.key());
+        assertEquals(42L, actual.contextId());
+        assertSame(stats, actual.stats());
     }
 
     @Test

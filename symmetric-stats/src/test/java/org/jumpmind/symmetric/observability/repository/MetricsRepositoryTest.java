@@ -620,16 +620,16 @@ class MetricsRepositoryTest {
 
     @Test
     void validateAttributes_emptyList_throwsWithMinMessage() {
+        var emptyAttrs = new MetricAttributeList(MetricsRepository.ATTR_MAX_VALUES);
         MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
-                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, new MetricAttributeList(
-                        MetricsRepository.ATTR_MAX_VALUES)));
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, emptyAttrs));
         assertTrue(ex.getMessage().contains(String.valueOf(MetricsRepository.ATTR_MIN_VALUES)));
     }
 
     @Test
     void validateAttributes_singleValidAttr_doesNotThrow() {
-        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                MetricAttributeList.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT))));
+        var attrs = MetricAttributeList.of(new MetricAttribute("channel", Constants.CHANNEL_DEFAULT));
+        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
     }
 
     @Test
@@ -653,84 +653,84 @@ class MetricsRepositoryTest {
 
     @Test
     void validateAttributes_nullName_throwsWithIndexAndNameMessage() {
+        var attrs = MetricAttributeList.of(new MetricAttribute(null, "value"));
         MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
-                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                        MetricAttributeList.of(new MetricAttribute(null, "value"))));
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
         assertEquals("MetricAttribute at index 0 has null or empty name", ex.getMessage());
     }
 
     @Test
     void validateAttributes_emptyName_throwsWithIndexAndNameMessage() {
+        var attrs = MetricAttributeList.of(new MetricAttribute("", "value"));
         MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
-                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                        MetricAttributeList.of(new MetricAttribute("", "value"))));
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
         assertEquals("MetricAttribute at index 0 has null or empty name", ex.getMessage());
     }
 
     @Test
     void validateAttributes_nameTooLong_throwsWithIndexAndLengthMessage() {
         String longName = "x".repeat(MetricsRepository.ATTR_MAX_LENGTH + 1);
+        var attrs = MetricAttributeList.of(new MetricAttribute(longName, "value"));
         MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
-                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                        MetricAttributeList.of(new MetricAttribute(longName, "value"))));
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
         assertEquals("MetricAttribute at index 0 name exceeds " + MetricsRepository.ATTR_MAX_LENGTH + " characters", ex.getMessage());
     }
 
     @Test
     void validateAttributes_nameAtMaxLength_doesNotThrow() {
         String maxName = "x".repeat(MetricsRepository.ATTR_MAX_LENGTH);
-        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                MetricAttributeList.of(new MetricAttribute(maxName, "value"))));
+        var attrs = MetricAttributeList.of(new MetricAttribute(maxName, "value"));
+        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
     }
 
     @Test
     void validateAttributes_nullValue_throwsWithIndexAndValueMessage() {
+        var attrs = MetricAttributeList.of(new MetricAttribute("name", null));
         MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
-                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                        MetricAttributeList.of(new MetricAttribute("name", null))));
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
         assertEquals("MetricAttribute at index 0 has null or empty value", ex.getMessage());
     }
 
     @Test
     void validateAttributes_emptyValue_throwsWithIndexAndValueMessage() {
+        var attrs = MetricAttributeList.of(new MetricAttribute("name", ""));
         MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
-                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                        MetricAttributeList.of(new MetricAttribute("name", ""))));
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
         assertEquals("MetricAttribute at index 0 has null or empty value", ex.getMessage());
     }
 
     @Test
     void validateAttributes_valueTooLong_throwsWithIndexAndLengthMessage() {
         String longValue = "x".repeat(MetricsRepository.ATTR_MAX_LENGTH + 1);
+        var attrs = MetricAttributeList.of(new MetricAttribute("name", longValue));
         MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
-                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                        MetricAttributeList.of(new MetricAttribute("name", longValue))));
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
         assertEquals("MetricAttribute at index 0 value exceeds " + MetricsRepository.ATTR_MAX_LENGTH + " characters", ex.getMessage());
     }
 
     @Test
     void validateAttributes_valueAtMaxLength_doesNotThrow() {
         String maxValue = "x".repeat(MetricsRepository.ATTR_MAX_LENGTH);
-        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                MetricAttributeList.of(new MetricAttribute("name", maxValue))));
+        var attrs = MetricAttributeList.of(new MetricAttribute("name", maxValue));
+        assertDoesNotThrow(() -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
     }
 
     @Test
     void validateAttributes_invalidAttrAtIndex1_throwsWithCorrectIndex() {
+        var attrs = MetricAttributeList.of(new MetricAttribute("a", "1"), new MetricAttribute("", "v"));
         MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
-                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                        MetricAttributeList.of(new MetricAttribute("a", "1"), new MetricAttribute("", "v"))));
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
         assertTrue(ex.getMessage().contains("index 1"));
     }
 
     @Test
     void validateAttributes_invalidAttrAtIndex2_throwsWithCorrectIndex() {
+        var attrs = MetricAttributeList.of(
+                new MetricAttribute("a", "1"),
+                new MetricAttribute("b", "2"),
+                new MetricAttribute("", "v"));
         MetricsRepositoryException ex = assertThrows(MetricsRepositoryException.class,
-                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class },
-                        MetricAttributeList.of(
-                                new MetricAttribute("a", "1"),
-                                new MetricAttribute("b", "2"),
-                                new MetricAttribute("", "v"))));
+                () -> invokePrivate(null, "validateAttributes", new Class<?>[] { MetricAttributeList.class }, attrs));
         assertTrue(ex.getMessage().contains("index 2"));
     }
 
@@ -926,8 +926,8 @@ class MetricsRepositoryTest {
     @Test
     void prepareStatsForDatabase_nullKey_skipsRecord() {
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
-        MetricIntervalStatsRecord record = new MetricIntervalStatsRecord(null, 1L, stats);
-        List<MetricIntervalStatsRecord> result = repo.prepareStatsForDatabase(List.of(record));
+        MetricIntervalStatsRecord statsRecord = new MetricIntervalStatsRecord(null, 1L, stats);
+        List<MetricIntervalStatsRecord> result = repo.prepareStatsForDatabase(List.of(statsRecord));
         assertTrue(result.isEmpty());
     }
 
@@ -935,8 +935,8 @@ class MetricsRepositoryTest {
     void prepareStatsForDatabase_disabledKey_skipsRecord() {
         MetricKey disabled = new MetricKey(10L, TEST_HOST, TEST_ENGINE, "m1", MetricFactType.FLOAT64, InstrumentType.DOUBLE_GAUGE, false);
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
-        MetricIntervalStatsRecord record = new MetricIntervalStatsRecord(disabled, 1L, stats);
-        List<MetricIntervalStatsRecord> result = repo.prepareStatsForDatabase(List.of(record));
+        MetricIntervalStatsRecord statsRecord = new MetricIntervalStatsRecord(disabled, 1L, stats);
+        List<MetricIntervalStatsRecord> result = repo.prepareStatsForDatabase(List.of(statsRecord));
         assertTrue(result.isEmpty());
     }
 
@@ -956,8 +956,8 @@ class MetricsRepositoryTest {
         MetricKey k = key(10L, "m1", TEST_ENGINE, TEST_HOST);
         invokePrivate(repo, "populateMetricKeyCache", new Class<?>[] { List.class }, List.of(k));
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
-        MetricIntervalStatsRecord record = new MetricIntervalStatsRecord(k, 1L, stats);
-        List<MetricIntervalStatsRecord> result = repo.prepareStatsForDatabase(List.of(record));
+        MetricIntervalStatsRecord statsRecord = new MetricIntervalStatsRecord(k, 1L, stats);
+        List<MetricIntervalStatsRecord> result = repo.prepareStatsForDatabase(List.of(statsRecord));
         assertEquals(1, result.size());
     }
 
@@ -967,8 +967,8 @@ class MetricsRepositoryTest {
         invokePrivate(repo, "populateMetricKeyCache", new Class<?>[] { List.class }, List.of(disabledCached));
         MetricKey enabledRecord = key(SurrogateKeyConstants.SURROGATE_KEY_UNASSIGNED, "m1", TEST_ENGINE, TEST_HOST);
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
-        MetricIntervalStatsRecord record = new MetricIntervalStatsRecord(enabledRecord, 1L, stats);
-        List<MetricIntervalStatsRecord> result = repo.prepareStatsForDatabase(List.of(record));
+        MetricIntervalStatsRecord statsRecord = new MetricIntervalStatsRecord(enabledRecord, 1L, stats);
+        List<MetricIntervalStatsRecord> result = repo.prepareStatsForDatabase(List.of(statsRecord));
         assertTrue(result.isEmpty());
     }
 
@@ -984,9 +984,9 @@ class MetricsRepositoryTest {
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
         MetricKey k = new MetricKey(10L, TEST_HOST, TEST_ENGINE, "m1", MetricFactType.FLOAT64, InstrumentType.DOUBLE_GAUGE, true);
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
-        MetricIntervalStatsRecord record = new MetricIntervalStatsRecord(k, 1L, stats);
+        MetricIntervalStatsRecord statsRecord = new MetricIntervalStatsRecord(k, 1L, stats);
         invokePrivate(repo, "saveMetricIntervalStatsAll",
-                new Class<?>[] { List.class }, List.of(record));
+                new Class<?>[] { List.class }, List.of(statsRecord));
         verify(txn).commit();
     }
 
@@ -998,9 +998,10 @@ class MetricsRepositoryTest {
                 .thenThrow(new RuntimeException("db error"));
         MetricKey k = new MetricKey(10L, TEST_HOST, TEST_ENGINE, "m1", MetricFactType.FLOAT64, InstrumentType.DOUBLE_GAUGE, true);
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
-        MetricIntervalStatsRecord record = new MetricIntervalStatsRecord(k, 1L, stats);
+        MetricIntervalStatsRecord statsRecord = new MetricIntervalStatsRecord(k, 1L, stats);
+        var records = List.of(statsRecord);
         assertThrows(MetricsRepositoryException.class, () -> invokePrivate(repo, "saveMetricIntervalStatsAll",
-                new Class<?>[] { List.class }, List.of(record)));
+                new Class<?>[] { List.class }, records));
         verify(txn).rollback();
     }
 
