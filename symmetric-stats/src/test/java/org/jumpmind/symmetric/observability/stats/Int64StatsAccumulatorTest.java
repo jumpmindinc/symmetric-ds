@@ -132,8 +132,7 @@ class Int64StatsAccumulatorTest {
 
     @Test
     void closeAtObservation_withNonZeroCarryForward_includesLastValueInWeightedAvg() {
-        // Carry-forward = 10L; closeAtObservation at intervalEnd covers the inner
-        // "if (lastValue != INTERVAL_VALUE_DEFAULT)" branch.
+        // Carry-forward = 4.0; closeAtObservation at intervalEnd covers the lastValue != INTERVAL_VALUE_DEFAULT
         Int64StatsAccumulator acc = new Int64StatsAccumulator(T, 10L);
         acc.closeAtObservation(T + D);
         assertEquals(10.0, acc.computeAvg(), 1e-9);

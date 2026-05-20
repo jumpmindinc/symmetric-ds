@@ -32,7 +32,6 @@ import org.jumpmind.symmetric.observability.models.ObservationDouble;
 import org.junit.jupiter.api.Test;
 
 class Float64StatsAccumulatorTest {
-    // Jan 1 2020 00:00:00 UTC — already aligned to a 5-minute boundary
     private static final long T = 1_577_836_800_000L;
     private static final long D = AbstractStatsAccumulator.INTERVAL_DURATION_MS; // 300_000
 
@@ -230,8 +229,7 @@ class Float64StatsAccumulatorTest {
 
     @Test
     void closeAtObservation_withNonZeroCarryForward_includesLastValueInWeightedAvg() {
-        // Carry-forward = 4.0; closeAtObservation at intervalEnd covers the inner
-        // "if (lastValue != INTERVAL_VALUE_DEFAULT)" branch in closeAtObservation.
+        // Carry-forward = 4.0; closeAtObservation at intervalEnd covers the lastValue != INTERVAL_VALUE_DEFAULT
         Float64StatsAccumulator acc = new Float64StatsAccumulator(T, 4.0);
         acc.closeAtObservation(T + D);
         assertEquals(4.0, acc.computeAvg(), 1e-9);

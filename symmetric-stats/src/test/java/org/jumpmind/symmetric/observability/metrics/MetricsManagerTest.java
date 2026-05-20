@@ -92,14 +92,14 @@ class MetricsManagerTest {
 
     @Test
     void shutdown_whenAggregatorIsNull_doesNotThrow() {
-        assertDoesNotThrow(() -> manager.shutdown());
+        assertDoesNotThrow(manager::shutdown);
     }
 
     @Test
     void shutdown_whenHostMetricsServiceIsNull_doesNotThrow() {
         // Fresh manager — host metrics service not yet initialized
         MetricsManager freshManager = TestMetricsManagerFactory.create();
-        assertDoesNotThrow(() -> freshManager.shutdown());
+        assertDoesNotThrow(freshManager::shutdown);
     }
 
     @Test
