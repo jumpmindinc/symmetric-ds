@@ -107,11 +107,11 @@ public class StagingPerf {
         String timestampedHeaderLine = String.format("TEST: SymmetricDS staging file with random contents. Current Timestamp: %tc", System.currentTimeMillis());
         long ts = System.currentTimeMillis();
         IStagedResource lock = stagingMgr.acquireResourceLock(serverInfo, STAGE_PATH, batch.getStagedLocation(), batch.getBatchId());
-        if (lock.isAcquired()) {
+        if (lock.isLockAcquired()) {
             incrementTaskDuration(results, STAT_LOCK_ACQUIRE, System.currentTimeMillis() - ts);
             lock.releaseLock();
         } else {
-            String errorMsg = "Failed to create staging file " + lock.getResourcePath();
+            String errorMsg = "Failed to create staging file " + lock.getAbsolutePath();
             failTask(results, STAT_LOCK_ACQUIRE, errorMsg);
             throw new RuntimeException(errorMsg);
         }
