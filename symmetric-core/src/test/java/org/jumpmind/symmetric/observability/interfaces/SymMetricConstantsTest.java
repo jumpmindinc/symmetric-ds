@@ -46,11 +46,6 @@ class SymMetricConstantsTest {
     }
 
     @Test
-    void otelScope_isSymmetricds() {
-        assertEquals("symmetricds", SymMetricConstants.OTEL_SCOPE);
-    }
-
-    @Test
     void metricUnitConstants_areNonNull() {
         assertNotNull(SymMetricConstants.METRIC_UNIT_PERCENT);
         assertNotNull(SymMetricConstants.METRIC_UNIT_CONNECTIONS);

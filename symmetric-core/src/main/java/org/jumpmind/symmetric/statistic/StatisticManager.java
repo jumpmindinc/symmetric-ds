@@ -697,7 +697,7 @@ public class StatisticManager implements IStatisticManager {
                 hostStatsLock.release();
             }
         }
-        setEngineDoubleGauge(METRIC_ID_DATA_UNROUTED_TOTAL, count);
+        setEngineDoubleGauge(METRIC_ID_DATA_UNROUTED_COUNT, count);
     }
 
     protected void saveAdditionalStats(Date endTime, ChannelStats stats) {

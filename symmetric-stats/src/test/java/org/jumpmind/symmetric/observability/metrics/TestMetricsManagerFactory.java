@@ -28,6 +28,6 @@ import io.opentelemetry.api.OpenTelemetry;
  */
 public class TestMetricsManagerFactory {
     public static MetricsManager create() {
-        return new MetricsManager(OpenTelemetry.noop());
+        return new MetricsManager(OpenTelemetry.noop(), MetricsManager.getServerProperties());
     }
 }

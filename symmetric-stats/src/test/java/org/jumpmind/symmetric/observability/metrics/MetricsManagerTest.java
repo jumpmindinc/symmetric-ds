@@ -104,7 +104,7 @@ class MetricsManagerTest {
 
     @Test
     void constructor_withNoopOpenTelemetry_createsUsableManager() {
-        MetricsManager m = new MetricsManager(OpenTelemetry.noop());
+        MetricsManager m = new MetricsManager(OpenTelemetry.noop(), MetricsManager.getServerProperties());
         assertNotNull(m);
         assertNotNull(m.getMetricDefinitionFactory());
     }
@@ -112,7 +112,7 @@ class MetricsManagerTest {
     @Test
     void isOtelPublishingEnabled_propertyAbsent_defaultsToTrue() {
         System.clearProperty(ParameterConstants.OTEL_METRICS_ENABLED);
-        MetricsManager m = new MetricsManager(OpenTelemetry.noop());
+        MetricsManager m = new MetricsManager(OpenTelemetry.noop(), MetricsManager.getServerProperties());
         assertTrue(m.getHostMetricsService().isOtelPublishingEnabled());
     }
 
@@ -120,7 +120,7 @@ class MetricsManagerTest {
     void isOtelPublishingEnabled_propertySetToFalse_returnsFalse() {
         System.setProperty(ParameterConstants.OTEL_METRICS_ENABLED, "false");
         try {
-            MetricsManager m = new MetricsManager(OpenTelemetry.noop());
+            MetricsManager m = new MetricsManager(OpenTelemetry.noop(), MetricsManager.getServerProperties());
             assertFalse(m.getHostMetricsService().isOtelPublishingEnabled());
         } finally {
             System.clearProperty(ParameterConstants.OTEL_METRICS_ENABLED);
@@ -131,7 +131,7 @@ class MetricsManagerTest {
     void isOtelPublishingEnabled_propertySetToTrue_returnsTrue() {
         System.setProperty(ParameterConstants.OTEL_METRICS_ENABLED, "true");
         try {
-            MetricsManager m = new MetricsManager(OpenTelemetry.noop());
+            MetricsManager m = new MetricsManager(OpenTelemetry.noop(), MetricsManager.getServerProperties());
             assertTrue(m.getHostMetricsService().isOtelPublishingEnabled());
         } finally {
             System.clearProperty(ParameterConstants.OTEL_METRICS_ENABLED);
@@ -259,7 +259,7 @@ class MetricsManagerTest {
     void isOtelPublishingEnabled_uppercaseTrueProperty_returnsTrue() {
         System.setProperty(ParameterConstants.OTEL_METRICS_ENABLED, "TRUE");
         try {
-            MetricsManager m = new MetricsManager(OpenTelemetry.noop());
+            MetricsManager m = new MetricsManager(OpenTelemetry.noop(), MetricsManager.getServerProperties());
             assertTrue(m.getHostMetricsService().isOtelPublishingEnabled());
         } finally {
             System.clearProperty(ParameterConstants.OTEL_METRICS_ENABLED);

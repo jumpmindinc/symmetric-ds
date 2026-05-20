@@ -24,63 +24,7 @@ import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeCon
 import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.HTTP_METHOD;
 import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.JOB;
 import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.NODE_GROUP;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_BATCHES_INCOMING;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_BATCHES_OUTGOING;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_CREATE_TIME_MAX;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_CREATE_TIME_MIN;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_EVENTS_INSERTED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_EXTRACTED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_EXTRACTED_BYTES;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_EXTRACTED_ERRORS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_GAP_COUNT;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_INCOMING;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_BYTES;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_ERRORS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_OUTGOING;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_OUTGOING_BYTES;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_LOADED_OUTGOING_ERRORS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_OUTGOING;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_RECEIVED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_RECEIVED_BYTES;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_ROUTED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_SENT;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_SENT_BYTES;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_SENT_ERRORS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_UNROUTED_CHANNEL;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_UNROUTED_TOTAL;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_ENGINE_RESTARTS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_DISABLED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_LOADED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_PULLED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_PULLED_TIME;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_PUSHED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_PUSHED_TIME;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_REGISTERED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_NODES_REJECTED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_BATCH_INCOMING_ROWS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_BATCH_OUTGOING_ROWS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_DATA_EVENT_ROWS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_DATA_ROWS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_EXPIRED_DATA_ROWS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_STRANDED_DATA_EVENT_ROWS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_PURGE_STRANDED_DATA_ROWS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_ACTIVE;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_IDLE;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_RUNTIME_DBPOOL_UTILIZATION;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_UTILIZATION;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_TRIGGERS_CREATED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_TRIGGERS_REBUILT;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_TRIGGERS_REMOVED;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_BATCHES;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_BYTES;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_CONNECTIONS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_MILLIS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_NODES;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_PERCENT;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_ROWS;
-import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_UNIT_TRIGGERS;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -162,7 +106,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
                     InstrumentType.LONG_GAUGE),
             // Routing and CDC gauges
             new SymMetricDefinition(METRIC_ID_DATA_GAP_COUNT, "Total open data gaps", METRIC_UNIT_ROWS, InstrumentType.DOUBLE_GAUGE),
-            new SymMetricDefinition(METRIC_ID_DATA_UNROUTED_TOTAL, "Total unrouted data rows", METRIC_UNIT_ROWS, InstrumentType.DOUBLE_GAUGE),
+            new SymMetricDefinition(METRIC_ID_DATA_UNROUTED_COUNT, "Total unrouted data rows", METRIC_UNIT_ROWS, InstrumentType.DOUBLE_GAUGE),
             // Runtime DB connection pool gauges
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_ACTIVE, "DB connection pool active connections", METRIC_UNIT_CONNECTIONS,
                     InstrumentType.DOUBLE_GAUGE),

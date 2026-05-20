@@ -30,6 +30,7 @@ import java.util.function.DoubleSupplier;
 import java.util.function.LongSupplier;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.IPrimaryMetricAggregator;
@@ -65,29 +66,31 @@ public class MetricsManager {
     private IPrimaryMetricAggregator aggregator; // Runs on a dedicated thread, to avoid impacting instrumented code.
     private final IMetricDefinitionFactory definitionFactory;
 
-    private MetricsManager() {
+    private MetricsManager(TypedProperties properties) {
         this.isOtelPublishingEnabled = isSystemPropertyOtelPublishingEnabled();
         log.debug("Starting MetricsManager. isOtelPublishingEnabled={}", isOtelPublishingEnabled);
+        String scope = getOtelScopeName(properties);
         OpenTelemetry global = GlobalOpenTelemetry.get();
         if (global == OpenTelemetry.noop()) {
             this.openTelemetry = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
             this.isOtelSdkInternal = true;
-            otelMeter = openTelemetry.getMeter(SymMetricConstants.OTEL_SCOPE);
-            log.info("MetricsManager initialized with autoconfigured OpenTelemetry SDK");
+            otelMeter = openTelemetry.getMeter(scope);
+            log.info("MetricsManager initialized with autoconfigured OpenTelemetry SDK. Scope={}", scope);
         } else {
             this.openTelemetry = global;
             this.isOtelSdkInternal = false;
-            otelMeter = openTelemetry.getMeter(SymMetricConstants.OTEL_SCOPE);
-            log.info("MetricsManager initialized using existing global OpenTelemetry (agent detected)");
+            otelMeter = openTelemetry.getMeter(scope);
+            log.info("MetricsManager initialized using existing global OpenTelemetry (agent detected). Scope={}", scope);
         }
         definitionFactory = getMetricDefinitionFactory();
     }
 
-    MetricsManager(OpenTelemetry openTelemetry) {
+    MetricsManager(OpenTelemetry openTelemetry, TypedProperties properties) {
         this.isOtelPublishingEnabled = isSystemPropertyOtelPublishingEnabled();
         this.openTelemetry = openTelemetry;
         this.isOtelSdkInternal = false;
-        otelMeter = openTelemetry.getMeter(SymMetricConstants.OTEL_SCOPE);
+        String scope = getOtelScopeName(properties);
+        otelMeter = openTelemetry.getMeter(scope);
         log.info("MetricsManager initialized using specified OpenTelemetry");
         definitionFactory = getMetricDefinitionFactory();
     }
@@ -97,6 +100,14 @@ public class MetricsManager {
             return new MetricDefinitionFactory();
         }
         return definitionFactory;
+    }
+
+    private static String getOtelScopeName(TypedProperties properties) {
+        return properties.get(SymMetricConstants.OTEL_SCOPE, SymMetricConstants.OTEL_SCOPE_DEFAULT);
+    }
+
+    static TypedProperties getServerProperties() {
+        return new TypedProperties(System.getProperties());
     }
 
     private boolean isSystemPropertyOtelPublishingEnabled() {
@@ -112,7 +123,7 @@ public class MetricsManager {
         try {
             synchronized (MetricsManager.class) {
                 if (globalInstance.get() == null) {
-                    globalInstance.set(new MetricsManager());
+                    globalInstance.set(new MetricsManager(getServerProperties()));
                 }
             }
         } catch (Exception ex) {

@@ -214,7 +214,7 @@ class HostMetricsServiceTest {
         MetricAttributeList attrsB = MetricAttributeList.of(new MetricAttribute("channel", "ch2"));
         ISymLongGauge gaugeA = service.registerLongGauge(def, attrsA);
         ISymLongGauge gaugeB = service.registerLongGauge(def, attrsB);
-        assertEquals(gaugeA, gaugeB);
+        assertNotEquals(gaugeA, gaugeB);
         assertTrue(service.getAllMetrics().size() >= 2);
     }
 

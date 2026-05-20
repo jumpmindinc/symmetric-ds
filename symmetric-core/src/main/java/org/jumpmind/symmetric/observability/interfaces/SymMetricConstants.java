@@ -39,7 +39,8 @@ public final class SymMetricConstants {
     }
 
     public static final String OTEL_ENV_PREFIX = "OTEL_";
-    public static final String OTEL_SCOPE = "symmetricds";
+    public static final String OTEL_SCOPE = "otel.scope";
+    public static final String OTEL_SCOPE_DEFAULT = "symmetricds";
     public static final String METRIC_UNIT_PERCENT = "percent";
     public static final String METRIC_UNIT_CONNECTIONS = "connections";
     public static final String METRIC_UNIT_BYTES = "bytes";
@@ -55,63 +56,63 @@ public final class SymMetricConstants {
     public static final String METRIC_UNIT_NODES = "nodes";
     public static final String METRIC_UNIT_TRIGGERS = "triggers";
     // Node-scoped gauges (OutgoingBatchService)
-    public static final String METRIC_ID_BATCHES_OUTGOING = OTEL_SCOPE + ".batches.outgoing.count";
-    public static final String METRIC_ID_DATA_OUTGOING = OTEL_SCOPE + ".data.outgoing.count";
-    public static final String METRIC_ID_BATCHES_INCOMING = OTEL_SCOPE + ".batches.incoming.count";
-    public static final String METRIC_ID_DATA_INCOMING = OTEL_SCOPE + ".data.incoming.count";
+    public static final String METRIC_ID_BATCHES_OUTGOING = "batches.outgoing.count";
+    public static final String METRIC_ID_DATA_OUTGOING = "rows.outgoing.count";
+    public static final String METRIC_ID_BATCHES_INCOMING = "batches.incoming.count";
+    public static final String METRIC_ID_DATA_INCOMING = "rows.incoming.count";
     // Incoming client connection counters (ConcurrentConnectionManager)
-    public static final String METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS = OTEL_SCOPE + ".server.reservations.count";
-    public static final String METRIC_ID_SERVER_CONNECTIONS_UTILIZATION = OTEL_SCOPE + ".server.connections.utilization";
+    public static final String METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS = "server.reservations.count";
+    public static final String METRIC_ID_SERVER_CONNECTIONS_UTILIZATION = "server.connections.utilization";
     // Channel-scoped data counters (StatisticManager)
-    public static final String METRIC_ID_DATA_ROUTED = OTEL_SCOPE + ".data.routed.count";
-    public static final String METRIC_ID_DATA_EXTRACTED = OTEL_SCOPE + ".data.extracted.count";
-    public static final String METRIC_ID_DATA_EXTRACTED_BYTES = OTEL_SCOPE + ".data.extracted.bytes";
-    public static final String METRIC_ID_DATA_EXTRACTED_ERRORS = OTEL_SCOPE + ".data.extracted.errors";
-    public static final String METRIC_ID_DATA_EVENTS_INSERTED = OTEL_SCOPE + ".data.events.inserted.count";
-    public static final String METRIC_ID_DATA_SENT = OTEL_SCOPE + ".data.sent.count";
-    public static final String METRIC_ID_DATA_SENT_BYTES = OTEL_SCOPE + ".data.sent.bytes";
-    public static final String METRIC_ID_DATA_SENT_ERRORS = OTEL_SCOPE + ".data.sent.errors";
-    public static final String METRIC_ID_DATA_RECEIVED = OTEL_SCOPE + ".data.received.count";
-    public static final String METRIC_ID_DATA_RECEIVED_BYTES = OTEL_SCOPE + ".data.received.bytes";
-    public static final String METRIC_ID_DATA_LOADED = OTEL_SCOPE + ".data.loaded.count";
-    public static final String METRIC_ID_DATA_LOADED_BYTES = OTEL_SCOPE + ".data.loaded.bytes";
-    public static final String METRIC_ID_DATA_LOADED_ERRORS = OTEL_SCOPE + ".data.loaded.errors";
-    public static final String METRIC_ID_DATA_LOADED_OUTGOING = OTEL_SCOPE + ".data.loaded.outgoing.count";
-    public static final String METRIC_ID_DATA_LOADED_OUTGOING_BYTES = OTEL_SCOPE + ".data.loaded.outgoing.bytes";
-    public static final String METRIC_ID_DATA_LOADED_OUTGOING_ERRORS = OTEL_SCOPE + ".data.loaded.outgoing.errors";
+    public static final String METRIC_ID_DATA_ROUTED = "rows.routed.count";
+    public static final String METRIC_ID_DATA_EXTRACTED = "rows.extracted.count";
+    public static final String METRIC_ID_DATA_EXTRACTED_BYTES = "rows.extracted.bytes";
+    public static final String METRIC_ID_DATA_EXTRACTED_ERRORS = "rows.extracted.errors";
+    public static final String METRIC_ID_DATA_EVENTS_INSERTED = "rows.events.inserted.count";
+    public static final String METRIC_ID_DATA_SENT = "rows.sent.count";
+    public static final String METRIC_ID_DATA_SENT_BYTES = "rows.sent.bytes";
+    public static final String METRIC_ID_DATA_SENT_ERRORS = "rows.sent.errors";
+    public static final String METRIC_ID_DATA_RECEIVED = "rows.received.count";
+    public static final String METRIC_ID_DATA_RECEIVED_BYTES = "rows.received.bytes";
+    public static final String METRIC_ID_DATA_LOADED = "rows.loaded.count";
+    public static final String METRIC_ID_DATA_LOADED_BYTES = "rows.loaded.bytes";
+    public static final String METRIC_ID_DATA_LOADED_ERRORS = "rows.loaded.errors";
+    public static final String METRIC_ID_DATA_LOADED_OUTGOING = "rows.loaded.outgoing.count";
+    public static final String METRIC_ID_DATA_LOADED_OUTGOING_BYTES = "rows.loaded.outgoing.bytes";
+    public static final String METRIC_ID_DATA_LOADED_OUTGOING_ERRORS = "rows.loaded.outgoing.errors";
     // Channel-scoped gauges (StatisticManager)
-    public static final String METRIC_ID_DATA_UNROUTED_CHANNEL = OTEL_SCOPE + ".data.unrouted.channel.count";
-    public static final String METRIC_ID_DATA_CREATE_TIME_MIN = OTEL_SCOPE + ".data.create.time.min";
-    public static final String METRIC_ID_DATA_CREATE_TIME_MAX = OTEL_SCOPE + ".data.create.time.max";
+    public static final String METRIC_ID_DATA_UNROUTED_CHANNEL = "rows.unrouted.channel.count";
+    public static final String METRIC_ID_DATA_CREATE_TIME_MIN = "rows.create.time.min";
+    public static final String METRIC_ID_DATA_CREATE_TIME_MAX = "rows.create.time.max";
     // Routing and CGC gauges (StatisticManager)
-    public static final String METRIC_ID_DATA_GAP_COUNT = OTEL_SCOPE + ".data.gap.count";
-    public static final String METRIC_ID_DATA_UNROUTED_TOTAL = OTEL_SCOPE + ".data.unrouted.total";
+    public static final String METRIC_ID_DATA_GAP_COUNT = "rows.gap.count";
+    public static final String METRIC_ID_DATA_UNROUTED_COUNT = "rows.unrouted.count";
     // Database connection pool gauges (StatisticManager)
-    public static final String METRIC_ID_RUNTIME_DBPOOL_ACTIVE = OTEL_SCOPE + ".dbpool.active.count";
-    public static final String METRIC_ID_RUNTIME_DBPOOL_IDLE = OTEL_SCOPE + ".dbpool.idle.count";
-    public static final String METRIC_ID_RUNTIME_DBPOOL_UTILIZATION = OTEL_SCOPE + ".dbpool.connections.utilization";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_ACTIVE = "db.client.connection.count";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_IDLE = "db.client.connection.idle.count";
+    public static final String METRIC_ID_RUNTIME_DBPOOL_UTILIZATION = "db.client.connection.utilization";
     // Engine / node counters (StatisticManager)
-    public static final String METRIC_ID_ENGINE_RESTARTS = OTEL_SCOPE + ".engine.restarts";
-    public static final String METRIC_ID_NODES_PULLED = OTEL_SCOPE + ".nodes.pulled.count";
-    public static final String METRIC_ID_NODES_PUSHED = OTEL_SCOPE + ".nodes.pushed.count";
-    public static final String METRIC_ID_NODES_PULLED_TIME = OTEL_SCOPE + ".nodes.pulled.time";
-    public static final String METRIC_ID_NODES_PUSHED_TIME = OTEL_SCOPE + ".nodes.pushed.time";
-    public static final String METRIC_ID_NODES_REJECTED = OTEL_SCOPE + ".nodes.rejected.count";
-    public static final String METRIC_ID_NODES_REGISTERED = OTEL_SCOPE + ".nodes.registered.count";
-    public static final String METRIC_ID_NODES_LOADED = OTEL_SCOPE + ".nodes.loaded.count";
-    public static final String METRIC_ID_NODES_DISABLED = OTEL_SCOPE + ".nodes.disabled.count";
+    public static final String METRIC_ID_ENGINE_RESTARTS = "engine.restart.count";
+    public static final String METRIC_ID_NODES_PULLED = "server.nodes.pulled.count";
+    public static final String METRIC_ID_NODES_PUSHED = "server.nodes.pushed.count";
+    public static final String METRIC_ID_NODES_PULLED_TIME = "server.nodes.pulled.time";
+    public static final String METRIC_ID_NODES_PUSHED_TIME = "server.nodes.pushed.time";
+    public static final String METRIC_ID_NODES_REJECTED = "server.nodes.rejected.count";
+    public static final String METRIC_ID_NODES_REGISTERED = "server.nodes.registered.count";
+    public static final String METRIC_ID_NODES_LOADED = "server.nodes.loaded.count";
+    public static final String METRIC_ID_NODES_DISABLED = "server.nodes.disabled.count";
     // Purge counters (StatisticManager)
-    public static final String METRIC_ID_PURGE_BATCH_INCOMING_ROWS = OTEL_SCOPE + ".purge.batch.incoming.rows";
-    public static final String METRIC_ID_PURGE_BATCH_OUTGOING_ROWS = OTEL_SCOPE + ".purge.batch.outgoing.rows";
-    public static final String METRIC_ID_PURGE_DATA_ROWS = OTEL_SCOPE + ".purge.data.rows";
-    public static final String METRIC_ID_PURGE_DATA_EVENT_ROWS = OTEL_SCOPE + ".purge.data.event.rows";
-    public static final String METRIC_ID_PURGE_STRANDED_DATA_ROWS = OTEL_SCOPE + ".purge.stranded.data.rows";
-    public static final String METRIC_ID_PURGE_STRANDED_DATA_EVENT_ROWS = OTEL_SCOPE + ".purge.stranded.data.event.rows";
-    public static final String METRIC_ID_PURGE_EXPIRED_DATA_ROWS = OTEL_SCOPE + ".purge.expired.data.rows";
+    public static final String METRIC_ID_PURGE_BATCH_INCOMING_ROWS = "purge.batch.incoming.rows";
+    public static final String METRIC_ID_PURGE_BATCH_OUTGOING_ROWS = "purge.batch.outgoing.rows";
+    public static final String METRIC_ID_PURGE_DATA_ROWS = "purge.data.rows";
+    public static final String METRIC_ID_PURGE_DATA_EVENT_ROWS = "purge.data.event.rows";
+    public static final String METRIC_ID_PURGE_STRANDED_DATA_ROWS = "purge.stranded.data.rows";
+    public static final String METRIC_ID_PURGE_STRANDED_DATA_EVENT_ROWS = "purge.stranded.data.event.rows";
+    public static final String METRIC_ID_PURGE_EXPIRED_DATA_ROWS = "purge.expired.data.rows";
     // Trigger counters (StatisticManager)
-    public static final String METRIC_ID_TRIGGERS_REMOVED = OTEL_SCOPE + ".triggers.removed.count";
-    public static final String METRIC_ID_TRIGGERS_REBUILT = OTEL_SCOPE + ".triggers.rebuilt.count";
-    public static final String METRIC_ID_TRIGGERS_CREATED = OTEL_SCOPE + ".triggers.created.count";
+    public static final String METRIC_ID_TRIGGERS_REMOVED = "triggers.removed.count";
+    public static final String METRIC_ID_TRIGGERS_REBUILT = "triggers.rebuilt.count";
+    public static final String METRIC_ID_TRIGGERS_CREATED = "triggers.created.count";
     protected static final String[] DEFAULT_METRIC_IDS = {
             METRIC_ID_SERVER_CONNECTIONS_RESERVATIONS,
             METRIC_ID_SERVER_CONNECTIONS_UTILIZATION,
@@ -135,7 +136,7 @@ public final class SymMetricConstants {
             METRIC_ID_DATA_CREATE_TIME_MIN,
             METRIC_ID_DATA_CREATE_TIME_MAX,
             METRIC_ID_DATA_GAP_COUNT,
-            METRIC_ID_DATA_UNROUTED_TOTAL,
+            METRIC_ID_DATA_UNROUTED_COUNT,
             METRIC_ID_RUNTIME_DBPOOL_ACTIVE,
             METRIC_ID_RUNTIME_DBPOOL_IDLE,
             METRIC_ID_RUNTIME_DBPOOL_UTILIZATION,
