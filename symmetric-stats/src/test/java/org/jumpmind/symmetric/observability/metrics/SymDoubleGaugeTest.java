@@ -86,7 +86,7 @@ class SymDoubleGaugeTest {
     }
 
     @Test
-    void open_close_invokesHandleClose() throws Exception {
+    void open_close_invokesHandleClose() {
         SymDoubleGauge gauge = gauge();
         ObservableDoubleGauge handle = mock(ObservableDoubleGauge.class);
         gauge.open(handle);

@@ -43,7 +43,7 @@ import org.junit.jupiter.api.Test;
 
 class ConcurrentConnectionManagerTest {
     @Test
-    public void testRemoveTimedOutReservations() {
+    void testRemoveTimedOutReservations() {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
         when(engine.getEngineName()).thenReturn("test-engine");
         IParameterService parameterService = mock(IParameterService.class);
@@ -74,14 +74,14 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void testReserveConnection_underLimit_returnsAccepted() {
+    void testReserveConnection_underLimit_returnsAccepted() {
         ConcurrentConnectionManager mgr = newMgr(2);
         ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         assertEquals(ReservationStatus.ACCEPTED, status);
     }
 
     @Test
-    public void testReserveConnection_atLimit_returnsBusy() {
+    void testReserveConnection_atLimit_returnsBusy() {
         ConcurrentConnectionManager mgr = newMgr(1);
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         ReservationStatus status = mgr.reserveConnection("node2", "0", "push", ReservationType.HARD, false);
@@ -89,7 +89,7 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void testReserveConnection_whitelistedNode_bypassesLimit() {
+    void testReserveConnection_whitelistedNode_bypassesLimit() {
         ConcurrentConnectionManager mgr = newMgr(1);
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false); // fills pool
         mgr.addToWhitelist("node2");
@@ -98,7 +98,7 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void testReserveConnection_existingHardReservation_returnsDuplicate() {
+    void testReserveConnection_existingHardReservation_returnsDuplicate() {
         ConcurrentConnectionManager mgr = newMgr(5);
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
@@ -106,7 +106,7 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void testReserveConnection_existingSoftReplacedByHard_returnsAccepted() {
+    void testReserveConnection_existingSoftReplacedByHard_returnsAccepted() {
         ConcurrentConnectionManager mgr = newMgr(5);
         mgr.reserveConnection("node1", "0", "push", ReservationType.SOFT, false);
         ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
@@ -114,14 +114,14 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void testReserveConnection_requiresExisting_noReservation_returnsNotFound() {
+    void testReserveConnection_requiresExisting_noReservation_returnsNotFound() {
         ConcurrentConnectionManager mgr = newMgr(5);
         ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, true);
         assertEquals(ReservationStatus.NOT_FOUND, status);
     }
 
     @Test
-    public void testReserveConnection_requiresExisting_reservationPresent_returnsAccepted() {
+    void testReserveConnection_requiresExisting_reservationPresent_returnsAccepted() {
         ConcurrentConnectionManager mgr = newMgr(5);
         mgr.reserveConnection("node1", "0", "push", ReservationType.SOFT, false);
         ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, true);
@@ -129,20 +129,20 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void testReleaseConnection_found_returnsTrue() {
+    void testReleaseConnection_found_returnsTrue() {
         ConcurrentConnectionManager mgr = newMgr(5);
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         assertTrue(mgr.releaseConnection("node1", "0", "push"));
     }
 
     @Test
-    public void testReleaseConnection_notFound_returnsFalse() {
+    void testReleaseConnection_notFound_returnsFalse() {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertFalse(mgr.releaseConnection("node1", "0", "push"));
     }
 
     @Test
-    public void testReleaseConnection_decrementedReservationCount() {
+    void testReleaseConnection_decrementedReservationCount() {
         ConcurrentConnectionManager mgr = newMgr(1);
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         mgr.releaseConnection("node1", "0", "push");
@@ -152,22 +152,22 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void testGetReservationIdentifier_defaultChannel_returnsNodeIdOnly() {
+    void testGetReservationIdentifier_defaultChannel_returnsNodeIdOnly() {
         assertEquals("node1", ConcurrentConnectionManager.getReservationIdentifier("node1", "0"));
     }
 
     @Test
-    public void testGetReservationIdentifier_nullChannel_returnsNodeIdOnly() {
+    void testGetReservationIdentifier_nullChannel_returnsNodeIdOnly() {
         assertEquals("node1", ConcurrentConnectionManager.getReservationIdentifier("node1", null));
     }
 
     @Test
-    public void testGetReservationIdentifier_nonDefaultChannel_returnsNodeIdDashChannel() {
+    void testGetReservationIdentifier_nonDefaultChannel_returnsNodeIdDashChannel() {
         assertEquals("node1-channel1", ConcurrentConnectionManager.getReservationIdentifier("node1", "channel1"));
     }
 
     @Test
-    public void testWhitelist_addAndGet() {
+    void testWhitelist_addAndGet() {
         ConcurrentConnectionManager mgr = newMgr(5);
         mgr.addToWhitelist("node1");
         String[] list = mgr.getWhiteList();
@@ -176,7 +176,7 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void testWhitelist_removeNode_notInList() {
+    void testWhitelist_removeNode_notInList() {
         ConcurrentConnectionManager mgr = newMgr(5);
         mgr.addToWhitelist("node1");
         mgr.removeFromWhiteList("node1");
@@ -184,7 +184,7 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void releaseConnection_byNodeId_found_returnsTrue() {
+    void releaseConnection_byNodeId_found_returnsTrue() {
         ConcurrentConnectionManager mgr = newMgr(5);
         // Reserve with default channel "0" so the reservation key is just the nodeId
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
@@ -193,102 +193,102 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
-    public void releaseConnection_byNodeId_notFound_returnsFalse() {
+    void releaseConnection_byNodeId_notFound_returnsFalse() {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertFalse(mgr.releaseConnection("node99", "push"));
     }
 
     @Test
-    public void getReservationCount_empty_returnsZero() {
+    void getReservationCount_empty_returnsZero() {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertEquals(0, mgr.getReservationCount("push"));
     }
 
     @Test
-    public void getReservationCount_afterReservation_returnsOne() {
+    void getReservationCount_afterReservation_returnsOne() {
         ConcurrentConnectionManager mgr = newMgr(5);
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         assertEquals(1, mgr.getReservationCount("push"));
     }
 
     @Test
-    public void getPullReservationsByNodeId_emptyMap_returnsEmptyMap() {
+    void getPullReservationsByNodeId_emptyMap_returnsEmptyMap() {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertTrue(mgr.getPullReservationsByNodeId().isEmpty());
     }
 
     @Test
-    public void getPushReservationsByNodeId_afterHardReservation_containsNode() {
+    void getPushReservationsByNodeId_afterHardReservation_containsNode() {
         ConcurrentConnectionManager mgr = newMgr(5);
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         assertTrue(mgr.getPushReservationsByNodeId().containsKey("node1"));
     }
 
     @Test
-    public void getNodeConnectionStatisticsByPoolByNodeId_returnsStats() {
+    void getNodeConnectionStatisticsByPoolByNodeId_returnsStats() {
         ConcurrentConnectionManager mgr = newMgr(5);
         assertNotNull(mgr.getNodeConnectionStatisticsByPoolByNodeId());
     }
 
     @Test
-    public void Reservation_getChannelId_returnsDefaultZero() {
+    void Reservation_getChannelId_returnsDefaultZero() {
         Reservation r = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
         assertEquals("0", r.getChannelId());
     }
 
     @Test
-    public void Reservation_withChannelId_constructor() {
+    void Reservation_withChannelId_constructor() {
         Reservation r = new Reservation("node1", "ch1", System.currentTimeMillis() + 10000, ReservationType.HARD);
         assertEquals("node1", r.getNodeId());
     }
 
     @Test
-    public void Reservation_getNodeId_returnsNodeId() {
+    void Reservation_getNodeId_returnsNodeId() {
         Reservation r = new Reservation("myNode", System.currentTimeMillis() + 10000, ReservationType.HARD);
         assertEquals("myNode", r.getNodeId());
     }
 
     @Test
-    public void Reservation_getTimeToLiveInMs_returnsValue() {
+    void Reservation_getTimeToLiveInMs_returnsValue() {
         long ttl = System.currentTimeMillis() + 10000;
         Reservation r = new Reservation("node1", ttl, ReservationType.HARD);
         assertEquals(ttl, r.getTimeToLiveInMs());
     }
 
     @Test
-    public void Reservation_getCreateTime_returnsPositive() {
+    void Reservation_getCreateTime_returnsPositive() {
         Reservation r = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
         assertTrue(r.getCreateTime() > 0);
     }
 
     @Test
-    public void Reservation_hashCode_usesNodeId() {
+    void Reservation_hashCode_usesNodeId() {
         Reservation r = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
         assertEquals("node1".hashCode(), r.hashCode());
     }
 
     @Test
-    public void Reservation_equals_sameNodeId_returnsTrue() {
+    void Reservation_equals_sameNodeId_returnsTrue() {
         Reservation a = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
         Reservation b = new Reservation("node1", System.currentTimeMillis() + 20000, ReservationType.SOFT);
         assertEquals(a, b);
     }
 
     @Test
-    public void Reservation_equals_differentNodeId_returnsFalse() {
+    void Reservation_equals_differentNodeId_returnsFalse() {
         Reservation a = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
         Reservation b = new Reservation("node2", System.currentTimeMillis() + 10000, ReservationType.HARD);
         assertNotEquals(a, b);
     }
 
     @Test
-    public void Reservation_getIdentifier_defaultChannel_returnsNodeId() {
+    void Reservation_getIdentifier_defaultChannel_returnsNodeId() {
         Reservation r = new Reservation("node1", System.currentTimeMillis() + 10000, ReservationType.HARD);
         assertEquals("node1", r.getIdentifier());
     }
 
     @Test
-    public void Reservation_getIdentifier_nonDefaultChannel() {
+    void Reservation_getIdentifier_nonDefaultChannel() {
         // Using getReservationIdentifier directly to test non-default channel formatting
         assertEquals("node1-ch1", ConcurrentConnectionManager.getReservationIdentifier("node1", "ch1"));
     }

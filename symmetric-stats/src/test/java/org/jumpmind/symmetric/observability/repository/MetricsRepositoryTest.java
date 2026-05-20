@@ -307,9 +307,9 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void loadAllMetricKeysForHostnameFromDatabase_queryReturnsNull_returnsEmptyList() {
+    void loadAllMetricKeysForHostnameFromDatabase_queryReturnsEmptyList_returnsEmptyList() {
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
-                .thenReturn(null);
+                .thenReturn(List.of());
         List<MetricKey> result = invokePrivate(repo, "loadAllMetricKeysForHostnameFromDatabase",
                 new Class<?>[] {});
         assertNotNull(result);
@@ -357,7 +357,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void updateMetricKeyInDatabase_differentSurrogateKeys_executesTransaction_returnsKey() throws Exception {
+    void updateMetricKeyInDatabase_differentSurrogateKeys_executesTransaction_returnsKey() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
         MetricKey dbRec = key(5L, "m1", TEST_ENGINE, TEST_HOST);
@@ -368,7 +368,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void updateMetricKeyInDatabase_transactionThrows_wrapsInMetricsRepositoryException() throws Exception {
+    void updateMetricKeyInDatabase_transactionThrows_wrapsInMetricsRepositoryException() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
         when(txn.prepareAndExecute(anyString(), any(Object[].class), any(int[].class)))
@@ -380,7 +380,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void generateSurrogateKeyAndSaveMetricKeyToDatabase_transactionSucceeds_returnsLoadedKey() throws Exception {
+    void generateSurrogateKeyAndSaveMetricKeyToDatabase_transactionSucceeds_returnsLoadedKey() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
         MetricKey loaded = key(50L, "m1", TEST_ENGINE, TEST_HOST);
@@ -395,7 +395,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void generateSurrogateKeyAndSaveMetricKeyToDatabase_firstAttemptUniqueViolationSecondSucceeds_returnsKey() throws Exception {
+    void generateSurrogateKeyAndSaveMetricKeyToDatabase_firstAttemptUniqueViolationSecondSucceeds_returnsKey() {
         ISqlTransaction txn1 = mock(ISqlTransaction.class);
         ISqlTransaction txn2 = mock(ISqlTransaction.class);
         // First call throws UniqueKeyException; second succeeds
@@ -416,7 +416,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void generateSurrogateKeyAndSaveMetricKeyToDatabase_nonUniqueException_throwsImmediately() throws Exception {
+    void generateSurrogateKeyAndSaveMetricKeyToDatabase_nonUniqueException_throwsImmediately() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
         when(txn.prepareAndExecute(anyString(), any(Object[].class), any(int[].class)))
@@ -435,7 +435,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricKeyInternal_surrogateKeyMissing_sharedEngine_callsGeneratePath() throws Exception {
+    void saveMetricKeyInternal_surrogateKeyMissing_sharedEngine_callsGeneratePath() {
         // surrogateKeys is not available (default uninitialized state), so always falls through to generate path
         ISqlTransaction txn = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
@@ -452,7 +452,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricKeyInternal_validSurrogate_callsSaveToDatabase_returnsKey() throws Exception {
+    void saveMetricKeyInternal_validSurrogate_callsSaveToDatabase_returnsKey() {
         MetricKey k = key(77L, "m1", TEST_ENGINE, TEST_HOST);
         // saveMetricKeyToDatabase → loadMetricKeyFromDatabase returns equal key → no write needed
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
@@ -473,7 +473,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricKey_keyNotInCache_savesAndReturns() throws Exception {
+    void saveMetricKey_keyNotInCache_savesAndReturns() {
         MetricKey k = key(33L, "m2", TEST_ENGINE, TEST_HOST);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
                 .thenReturn(List.of(k));
@@ -492,7 +492,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void getOrRegisterMetricKey_keyNotInCache_savesAndReturns() throws Exception {
+    void getOrRegisterMetricKey_keyNotInCache_savesAndReturns() {
         MetricKey k = key(22L, "m3", TEST_ENGINE, TEST_HOST);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
                 .thenReturn(List.of(k));
@@ -512,7 +512,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void getOrRegisterMetricKey_byStrings_keyNotInCache_savesAndCaches() throws Exception {
+    void getOrRegisterMetricKey_byStrings_keyNotInCache_savesAndCaches() {
         // surrogateKeys not initialized → generate path; loadMetricKeyFromDatabase returns key
         ISqlTransaction txn = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
@@ -541,7 +541,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void getOrRegisterContext_def_notInCacheFoundInDb_cachesAndReturns() throws Exception {
+    void getOrRegisterContext_def_notInCacheFoundInDb_cachesAndReturns() {
         MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("channel", Constants.CHANNEL_RELOAD));
         MetricContext dbCtx = new MetricContext(2L, attrs);
         // loadContextByAttrsFromDatabase: sqlTemplate.query (varargs form) returns dbCtx
@@ -557,7 +557,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void getOrRegisterContext_def_notInCacheNotInDb_insertsAndCaches() throws Exception {
+    void getOrRegisterContext_def_notInCacheNotInDb_insertsAndCaches() {
         MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("channel", "new_channel"));
         // loadContextByAttrsFromDatabase returns empty → insertContextToDatabase called
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), (Object[]) any()))
@@ -587,7 +587,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void getOrRegisterContext_attrs_notInCacheFoundInDb_cachesInDynamicAndReturns() throws Exception {
+    void getOrRegisterContext_attrs_notInCacheFoundInDb_cachesInDynamicAndReturns() {
         MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("node", "002"));
         MetricContext dbCtx = new MetricContext(MetricContext.SEED_IDS_END + 5L, attrs);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), (Object[]) any()))
@@ -600,7 +600,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void getOrRegisterContext_attrs_notInCacheNotInDb_generatesAndInserts() throws Exception {
+    void getOrRegisterContext_attrs_notInCacheNotInDb_generatesAndInserts() {
         MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("node", "003"));
         MetricContext insertedCtx = new MetricContext(MetricContext.SEED_IDS_END + 20L, attrs);
         // First call: loadContextByAttrsFromDatabase returns empty (before insert)
@@ -766,7 +766,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricKeyInternal_string_surrogateAvailable_usesAssignPath() throws Exception {
+    void saveMetricKeyInternal_string_surrogateAvailable_usesAssignPath() {
         SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(100L, 100L);
         setField(repo, "surrogateKeys", buf);
         ISqlTransaction txn = mock(ISqlTransaction.class);
@@ -781,7 +781,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricKeyInternal_string_surrogateAvailable_uniqueKeyCollision_fallsBackToGenerate() throws Exception {
+    void saveMetricKeyInternal_string_surrogateAvailable_uniqueKeyCollision_fallsBackToGenerate() {
         SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(100L, 100L);
         setField(repo, "surrogateKeys", buf);
         ISqlTransaction txn1 = mock(ISqlTransaction.class);
@@ -801,7 +801,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricKeyInternal_string_surrogateAvailable_nonUniqueException_throws() throws Exception {
+    void saveMetricKeyInternal_string_surrogateAvailable_nonUniqueException_throws() {
         SurrogateLongKeyBuffer buf = new SurrogateLongKeyBuffer(100L, 100L);
         setField(repo, "surrogateKeys", buf);
         ISqlTransaction txn = mock(ISqlTransaction.class);
@@ -823,7 +823,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricKeyToDatabase_dbRecordExistsDifferent_callsUpdateAndReturnsNewKey() throws Exception {
+    void saveMetricKeyToDatabase_dbRecordExistsDifferent_callsUpdateAndReturnsNewKey() {
         MetricKey k = key(99L, "m1", TEST_ENGINE, TEST_HOST);
         MetricKey dbRecord = key(5L, "m1", TEST_ENGINE, TEST_HOST);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
@@ -836,7 +836,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricKeyToDatabase_dbRecordNull_insertsAndReturnsKey() throws Exception {
+    void saveMetricKeyToDatabase_dbRecordNull_insertsAndReturnsKey() {
         MetricKey k = key(99L, "m1", TEST_ENGINE, TEST_HOST);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
                 .thenReturn(List.of());
@@ -848,7 +848,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricKeyToDatabase_insertThrows_rollsBackAndThrowsMetricsRepositoryException() throws Exception {
+    void saveMetricKeyToDatabase_insertThrows_rollsBackAndThrowsMetricsRepositoryException() {
         MetricKey k = key(99L, "m1", TEST_ENGINE, TEST_HOST);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
                 .thenReturn(List.of());
@@ -873,7 +873,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void getOrRegisterContext_def_insertTransactionThrows_rethrowsOriginalException() throws Exception {
+    void getOrRegisterContext_def_insertTransactionThrows_rethrowsOriginalException() {
         MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("channel", "test"));
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), (Object[]) any()))
                 .thenReturn(List.of());
@@ -888,7 +888,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void getOrRegisterContext_attrs_firstAttemptCollision_retriesAndSucceeds() throws Exception {
+    void getOrRegisterContext_attrs_firstAttemptCollision_retriesAndSucceeds() {
         MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("node", "004"));
         MetricContext insertedCtx = new MetricContext(MetricContext.SEED_IDS_END + 30L, attrs);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), (Object[]) any()))
@@ -904,7 +904,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void generateContextSurrogateAndInsert_contextNotFoundAfterInsert_throwsMetricsRepositoryException() throws Exception {
+    void generateContextSurrogateAndInsert_contextNotFoundAfterInsert_throwsMetricsRepositoryException() {
         MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute("node", "005"));
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), (Object[]) any()))
                 .thenReturn(List.of());
@@ -979,7 +979,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricIntervalStatsAll_withRecords_commitsTransaction() throws Exception {
+    void saveMetricIntervalStatsAll_withRecords_commitsTransaction() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
         MetricKey k = new MetricKey(10L, TEST_HOST, TEST_ENGINE, "m1", MetricFactType.FLOAT64, InstrumentType.DOUBLE_GAUGE, true);
@@ -991,7 +991,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricIntervalStatsAll_transactionThrows_rollsBackAndThrowsMetricsRepositoryException() throws Exception {
+    void saveMetricIntervalStatsAll_transactionThrows_rollsBackAndThrowsMetricsRepositoryException() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(txn);
         when(txn.prepareAndExecute(anyString(), any(Object[].class), any(int[].class)))
@@ -1025,7 +1025,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricIntervalStatsInternal_nullKey_throwsMetricsRepositoryException() throws Exception {
+    void saveMetricIntervalStatsInternal_nullKey_throwsMetricsRepositoryException() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
         assertThrows(MetricsRepositoryException.class, () -> invokePrivate(repo, "saveMetricIntervalStatsInternal",
@@ -1034,7 +1034,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricIntervalStatsInternal_nullStats_throwsMetricsRepositoryException() throws Exception {
+    void saveMetricIntervalStatsInternal_nullStats_throwsMetricsRepositoryException() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         MetricKey k = key(10L, "m1", TEST_ENGINE, TEST_HOST);
         assertThrows(MetricsRepositoryException.class, () -> invokePrivate(repo, "saveMetricIntervalStatsInternal",
@@ -1043,7 +1043,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricIntervalStatsInternal_int64FactType_executesInt64Insert() throws Exception {
+    void saveMetricIntervalStatsInternal_int64FactType_executesInt64Insert() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         MetricKey k = new MetricKey(10L, TEST_HOST, TEST_ENGINE, "m1", MetricFactType.INT64, InstrumentType.LONG_GAUGE, true);
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
@@ -1054,7 +1054,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricIntervalStatsInternal_float64FactType_executesFloat64Insert() throws Exception {
+    void saveMetricIntervalStatsInternal_float64FactType_executesFloat64Insert() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         MetricKey k = key(10L, "m1", TEST_ENGINE, TEST_HOST);
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
@@ -1065,7 +1065,7 @@ class MetricsRepositoryTest {
     }
 
     @Test
-    void saveMetricIntervalStatsInternal_transactionThrows_wrapsInMetricsRepositoryException() throws Exception {
+    void saveMetricIntervalStatsInternal_transactionThrows_wrapsInMetricsRepositoryException() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         MetricKey k = key(10L, "m1", TEST_ENGINE, TEST_HOST);
         when(txn.prepareAndExecute(anyString(), any(Object[].class), any(int[].class)))

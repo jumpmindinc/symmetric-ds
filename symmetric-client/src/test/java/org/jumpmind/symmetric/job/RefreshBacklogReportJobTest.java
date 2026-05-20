@@ -97,7 +97,7 @@ class RefreshBacklogReportJobTest {
     }
 
     @Test
-    void doJob_callsFindOutgoingBatchSummaryByNodeBriefStats() throws Exception {
+    void doJob_callsFindOutgoingBatchSummaryByNodeBriefStats() {
         when(outgoingBatchService.findOutgoingBatchSummaryByNodeBriefStats()).thenReturn(Collections.emptyList());
         assertDoesNotThrow(() -> newJob().doJob(false));
         verify(outgoingBatchService).findOutgoingBatchSummaryByNodeBriefStats();

@@ -135,7 +135,7 @@ class IncreasingCounterTest {
     }
 
     @Test
-    void open_close_invokesHandleClose() throws Exception {
+    void open_close_invokesHandleClose() {
         IncreasingCounter counter = counter();
         ObservableLongCounter handle = mock(ObservableLongCounter.class);
         counter.open(handle);

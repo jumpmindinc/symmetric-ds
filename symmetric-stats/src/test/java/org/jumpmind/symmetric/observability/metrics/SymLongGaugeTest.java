@@ -93,7 +93,7 @@ class SymLongGaugeTest {
     }
 
     @Test
-    void open_close_invokesHandleClose() throws Exception {
+    void open_close_invokesHandleClose() {
         SymLongGauge gauge = gauge();
         ObservableLongGauge handle = mock(ObservableLongGauge.class);
         gauge.open(handle);

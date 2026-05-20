@@ -22,7 +22,6 @@ package org.jumpmind.symmetric.observability.repository;
 
 import java.sql.Types;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -389,13 +388,10 @@ public class MetricsRepository extends AbstractService {
         return total;
     }
 
-    private List<MetricKey> loadAllMetricKeysForHostnameFromDatabase() {
+    protected List<MetricKey> loadAllMetricKeysForHostnameFromDatabase() {
         Object[] paramValues = { hostname, engineName, METRIC_SHARED_ENGINE };
         int[] paramTypes = { Types.VARCHAR, Types.VARCHAR, Types.VARCHAR };
         List<MetricKey> metricKeys = sqlTemplate.query(getSql("selectMetricKeysByHostnameSql"), new MetricKeySqlRowMapper(), paramValues, paramTypes);
-        if (metricKeys == null) {
-            metricKeys = new ArrayList<>(0);
-        }
         log.debug("Loaded {} metric keys from database. Engine={}, hostname={}", metricKeys.size(), engineName, hostname);
         return metricKeys;
     }

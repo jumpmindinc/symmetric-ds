@@ -98,7 +98,7 @@ class UpDownCounterTest {
     }
 
     @Test
-    void open_close_invokesHandleClose() throws Exception {
+    void open_close_invokesHandleClose() {
         UpDownCounter counter = counter();
         ObservableLongUpDownCounter handle = mock(ObservableLongUpDownCounter.class);
         counter.open(handle);
