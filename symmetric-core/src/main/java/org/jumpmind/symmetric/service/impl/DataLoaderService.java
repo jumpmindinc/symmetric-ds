@@ -1190,7 +1190,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                                 }
                             }
                             resource.setState(State.DONE);
-                            if (!resource.isFileResource()) {
+                            if (resource.isMemoryOnlyResource()) {
                                 resource.delete();
                             }
                         }

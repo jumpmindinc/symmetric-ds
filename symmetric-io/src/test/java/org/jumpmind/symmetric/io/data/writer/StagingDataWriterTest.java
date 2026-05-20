@@ -41,7 +41,7 @@ import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.DataProcessor;
 import org.jumpmind.symmetric.io.data.reader.ProtocolDataReader;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
-import org.jumpmind.symmetric.io.stage.StagingManager;
+import org.jumpmind.symmetric.io.stage.FileSystemStagingManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -74,7 +74,7 @@ public class StagingDataWriterTest {
         InputStreamReader is = new InputStreamReader(getClass().getResourceAsStream("FileCsvDataWriterTest.1.csv"));
         String origCsv = IOUtils.toString(is);
         is.close();
-        StagingManager stagingManager = new StagingManager(DIR.getAbsolutePath(), false);
+        FileSystemStagingManager stagingManager = new FileSystemStagingManager(DIR.getAbsolutePath(), false);
         ProtocolDataReader reader = new ProtocolDataReader(BatchType.LOAD, "test", origCsv);
         StagingDataWriter writer = new StagingDataWriter(threshold, false, "aaa", "test", stagingManager, false, false, new BatchListener());
         DataProcessor processor = new DataProcessor(reader, writer, "test");

@@ -34,7 +34,13 @@ public interface IStagingManager {
 
     public Set<String> getResourceReferences();
 
-    public StagingFileLock acquireFileLock(String serverInfo, Object... path);
+    // public IStagingResourceLock acquireResourceLock(String serverInfo, Object... path);
 
-    public File getStagingDirectory();
+    public IStagedResource acquireResourceLock(String serverInfo, Object... path);
+
+    public String reportContents(int maxEntriesLimit);
+
+    public File getLocalDirectory();
+
+    public long getUsableSpace();
 }

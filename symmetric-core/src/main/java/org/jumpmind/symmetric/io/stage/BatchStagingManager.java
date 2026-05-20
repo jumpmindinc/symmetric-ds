@@ -20,11 +20,11 @@
  */
 package org.jumpmind.symmetric.io.stage;
 
-import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_INCOMING;
-import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_OUTGOING;
-import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_LOG_MINER;
-import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_BULK_LOAD;
 import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_BULK_EXTRACT;
+import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_BULK_LOAD;
+import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_INCOMING;
+import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_LOG_MINER;
+import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_OUTGOING;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,8 +39,8 @@ import org.jumpmind.symmetric.service.ClusterConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BatchStagingManager extends StagingManager {
-    private static final Logger log = LoggerFactory.getLogger(BatchStagingManager.class);
+public class BatchStagingManager extends FileSystemStagingManager {
+    protected static final Logger log = LoggerFactory.getLogger(BatchStagingManager.class);
     ISymmetricEngine engine;
 
     public BatchStagingManager(ISymmetricEngine engine, String directory) {

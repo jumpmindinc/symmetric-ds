@@ -469,6 +469,12 @@ final public class ParameterConstants {
     public static final String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
     public static final String SHOW_PIPELINES_VIEW = "console.show.pipelines.view";
     public final static String TRIGGER_CAPTURE_DDL_SEND_TABLE = "trigger.capture.ddl.send.table";
+    public static final String STAGING_PROVIDER_TYPE = "staging.provider.type";
+    public static final String STAGING_PROVIDER_URL = "staging.provider.url";
+    public static final String STAGING_PROVIDER_BUCKET = "staging.provider.bucket";
+    public static final String STAGING_ACCOUNT_TYPE = "staging.account.type";
+    public static final String STAGING_ACCOUNT_KEY = "staging.account.key";
+    public static final String STAGING_ACCOUNT_SECRET = "staging.account.secret";
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;

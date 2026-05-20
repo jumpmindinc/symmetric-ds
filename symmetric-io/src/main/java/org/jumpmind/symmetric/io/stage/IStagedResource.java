@@ -22,7 +22,6 @@ package org.jumpmind.symmetric.io.stage;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 
@@ -37,15 +36,13 @@ public interface IStagedResource {
 
     public BufferedReader getReader();
 
-    public BufferedWriter getWriter(long threshold);
+    public BufferedWriter getWriter(long threshold); // supports large payloads
 
     public OutputStream getOutputStream();
 
     public OutputStream getOutputStream(boolean append);
 
     public InputStream getInputStream();
-
-    public File getFile();
 
     public void close();
 
@@ -63,10 +60,6 @@ public interface IStagedResource {
 
     public void refreshLastUpdateTime();
 
-    public boolean isFileResource();
-
-    public boolean isMemoryResource();
-
     public boolean delete();
 
     public boolean exists();
@@ -76,4 +69,29 @@ public interface IStagedResource {
     public void dereference();
 
     public void reference();
+
+    public boolean isMemoryOnlyResource();
+
+    public boolean acquireLock(String serverInfo);
+
+    public void copyTo(IStagedResource destination);
+
+    public void setSmallContents(String contents); // only for small payloads
+
+    public String getSmallContents();
+    // copied from IStagingResourceLock
+
+    long getLockAge();
+
+    boolean isLockAcquired();
+
+    String getLockFailureMessage();
+
+    void setLockFailureMessage(String lockFailureMessage);
+
+    void releaseLock();
+
+    void breakLock();
+
+    boolean lockExists();
 }

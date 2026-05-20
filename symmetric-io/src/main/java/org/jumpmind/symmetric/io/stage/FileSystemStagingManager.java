@@ -22,7 +22,6 @@ package org.jumpmind.symmetric.io.stage;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -37,19 +36,19 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
+import org.jumpmind.util.DirectoryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StagingManager implements IStagingManager {
-    protected static final String LOCK_EXTENSION = ".lock";
-    private static final Logger log = LoggerFactory.getLogger(StagingManager.class);
+public class FileSystemStagingManager implements IStagingManager {
+    private static final Logger log = LoggerFactory.getLogger(FileSystemStagingManager.class);
     protected File directory;
     protected Set<String> resourcePathsCache;
     protected Map<String, IStagedResource> inUse = new ConcurrentHashMap<String, IStagedResource>();
     protected boolean clusterEnabled;
     protected long lowFreeSpaceThresholdMegabytes;
 
-    public StagingManager(String directory, boolean clusterEnabled, long lowFreeSpaceThresholdMegabytes) {
+    public FileSystemStagingManager(String directory, boolean clusterEnabled, long lowFreeSpaceThresholdMegabytes) {
         log.info("The staging directory was initialized at the following location: " + directory);
         this.directory = new File(directory);
         this.directory.mkdirs();
@@ -58,7 +57,7 @@ public class StagingManager implements IStagingManager {
         this.resourcePathsCache = ConcurrentHashMap.newKeySet();
     }
 
-    public StagingManager(String directory, boolean clusterEnabled) {
+    public FileSystemStagingManager(String directory, boolean clusterEnabled) {
         this(directory, clusterEnabled, 0);
     }
 
@@ -124,12 +123,12 @@ public class StagingManager implements IStagingManager {
                         if (entryPath != null) {
                             entryName = entryPath.toString();
                         }
-                        String stagingPath = StagedResource.toPath(directory,
+                        String stagingPath = FileSystemStagedResource.toPath(directory,
                                 new File((parentDirectory + "/" + entryName)));
-                        IStagedResource resource = createStagedResource(stagingPath);
+                        FileSystemStagedResource resource = (FileSystemStagedResource) createStagedResource(stagingPath);
                         if (stagingPath != null) {
                             if (shouldCleanPath(resource, ttlInMs, context)) {
-                                if (resource.isMemoryResource()) {
+                                if (resource.isMemoryOnlyResource()) {
                                     context.incrementPurgedMemoryCount();
                                     context.addPurgedMemoryBytes(resource.getSize());
                                 } else {
@@ -155,10 +154,10 @@ public class StagingManager implements IStagingManager {
         Iterator<Map.Entry<String, IStagedResource>> iter = inUse.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<String, IStagedResource> entry = iter.next();
-            IStagedResource resource = entry.getValue();
+            FileSystemStagedResource resource = (FileSystemStagedResource) entry.getValue();
             if (shouldCleanInUseCache(resource, ttlInMs, context)) {
                 resourceCount++;
-                if (resource.isMemoryResource()) {
+                if (resource.isMemoryOnlyResource()) {
                     memoryBytes += resource.getSize();
                     context.incrementPurgedMemoryCount();
                     context.addPurgedMemoryBytes(resource.getSize());
@@ -192,9 +191,10 @@ public class StagingManager implements IStagingManager {
     /**
      * Create a handle that can be written to
      */
+    @Override
     public IStagedResource create(Object... path) {
         String filePath = buildFilePath(path);
-        IStagedResource resource = createStagedResource(filePath);
+        FileSystemStagedResource resource = (FileSystemStagedResource) createStagedResource(filePath);
         if (resource.exists()) {
             resource.delete();
         } else {
@@ -218,7 +218,7 @@ public class StagingManager implements IStagingManager {
     }
 
     protected IStagedResource createStagedResource(String filePath) {
-        return new StagedResource(directory, filePath, this);
+        return new FileSystemStagedResource(directory, filePath, this);
     }
 
     protected String buildFilePath(Object... path) {
@@ -236,6 +236,7 @@ public class StagingManager implements IStagingManager {
         return buffer.toString();
     }
 
+    @Override
     public IStagedResource find(String path) {
         IStagedResource resource = inUse.get(path);
         if (resource == null) {
@@ -250,6 +251,7 @@ public class StagingManager implements IStagingManager {
         return resource;
     }
 
+    @Override
     public IStagedResource find(Object... path) {
         return find(buildFilePath(path));
     }
@@ -260,47 +262,13 @@ public class StagingManager implements IStagingManager {
     }
 
     @Override
-    public StagingFileLock acquireFileLock(String serverInfo, Object... path) {
-        String lockFilePath = String.format("%s/%s%s", directory, buildFilePath(path), LOCK_EXTENSION);
-        log.debug("About to acquire lock at {}", lockFilePath);
-        StagingFileLock stagingFileLock = new StagingFileLock();
-        File lockFile = new File(lockFilePath);
-        File containingDirectory = lockFile.getParentFile();
-        if (containingDirectory != null) {
-            containingDirectory.mkdirs();
-        }
-        boolean acquired = false;
-        try {
-            acquired = lockFile.createNewFile();
-            if (acquired) {
-                FileUtils.write(lockFile, serverInfo, Charset.defaultCharset(), false);
-            }
-        } catch (IOException ex) { // Hitting this when file already exists.
-            log.debug("Failed to create lock file  (" + lockFilePath + ")", ex);
-        }
-        stagingFileLock.setAcquired(acquired);
-        stagingFileLock.setLockFile(lockFile);
-        if (!acquired) {
-            if (lockFile.exists()) {
-                try {
-                    String lockFileContents = FileUtils.readFileToString(lockFile, "UTF8");
-                    stagingFileLock.setLockFailureMessage("Lock file exists: " + lockFileContents);
-                } catch (Exception ex) {
-                    stagingFileLock.setLockFailureMessage("Lock file exists but could not read contents: " + ex.getMessage());
-                    if (log.isDebugEnabled()) {
-                        log.debug("Failed to read lock file contents (" + lockFilePath + ")", ex);
-                    }
-                }
-            } else {
-                stagingFileLock.setLockFailureMessage("Lock file does not exist, but could not be created. Check directory permissions.");
-            }
-        }
-        return stagingFileLock;
-    }
-
-    @Override
-    public File getStagingDirectory() {
-        return directory;
+    public IStagedResource acquireResourceLock(String serverInfo, Object... path) {
+        String resourcePath = buildFilePath(path);
+        log.debug("About to acquire lock at {}", resourcePath);
+        FileSystemStagedResource stagedResource = (FileSystemStagedResource) find(path);
+        stagedResource.createParentDirectory();
+        stagedResource.acquireLock(serverInfo);
+        return stagedResource;
     }
 
     protected static final DirectoryStream.Filter<Path> STAGING_FILE_FILTER = new DirectoryStream.Filter<Path>() {
@@ -316,4 +284,24 @@ public class StagingManager implements IStagingManager {
             }
         }
     };
+
+    @Override
+    public String reportContents(int maxEntriesLimit) {
+        try {
+            return DirectoryUtils.reportDirectoryContents(this.directory, new DirectoryUtils.PrintDirConfig(maxEntriesLimit));
+        } catch (IOException e) {
+            log.warn("Failed to report staging contents", e);
+            return "";
+        }
+    }
+
+    @Override
+    public File getLocalDirectory() {
+        return this.directory.getParentFile();
+    }
+
+    @Override
+    public long getUsableSpace() {
+        return this.directory.getUsableSpace();
+    }
 }

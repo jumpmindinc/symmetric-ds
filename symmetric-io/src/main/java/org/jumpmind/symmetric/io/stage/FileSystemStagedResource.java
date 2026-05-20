@@ -34,7 +34,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.StringReader;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,8 +47,9 @@ import org.jumpmind.exception.IoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StagedResource implements IStagedResource {
-    private static final Logger log = LoggerFactory.getLogger(StagedResource.class);
+public class FileSystemStagedResource implements IStagedResource {
+    protected static final String LOCK_EXTENSION = ".lock";
+    private static final Logger log = LoggerFactory.getLogger(FileSystemStagedResource.class);
     private AtomicInteger references = new AtomicInteger(0);
     protected File directory;
     protected File file;
@@ -58,9 +61,11 @@ public class StagedResource implements IStagedResource {
     protected Map<Thread, InputStream> inputStreams = null;
     protected Map<Thread, BufferedReader> readers = null;
     protected BufferedWriter writer;
-    protected StagingManager stagingManager;
+    protected FileSystemStagingManager stagingManager;
+    protected StagingFileLock lockFile;
 
-    public StagedResource(File directory, String path, StagingManager stagingManager) {
+    public FileSystemStagedResource(File directory, String path, FileSystemStagingManager stagingManager) {
+        this.lockFile = new StagingFileLock();
         this.directory = directory;
         this.path = path;
         this.stagingManager = stagingManager;
@@ -104,17 +109,15 @@ public class StagedResource implements IStagedResource {
         log.debug("Decreased reference to {} for {} by {}", references, path, Thread.currentThread().getName());
     }
 
+    @Override
     public boolean isInUse() {
         return references.get() > 0 || (readers != null && readers.size() > 0) || writer != null ||
                 (inputStreams != null && inputStreams.size() > 0) ||
                 outputStream != null;
     }
 
-    public boolean isFileResource() {
-        return file != null && file.exists();
-    }
-
-    public boolean isMemoryResource() {
+    @Override
+    public boolean isMemoryOnlyResource() {
         return memoryBuffer != null && memoryBuffer.length() > 0;
     }
 
@@ -122,10 +125,12 @@ public class StagedResource implements IStagedResource {
         return new File(directory, String.format("%s.%s", path, state.getExtensionName()));
     }
 
+    @Override
     public State getState() {
         return state;
     }
 
+    @Override
     public void setState(State state) {
         if (file != null && file.exists()) {
             File newFile = buildFile(state);
@@ -204,6 +209,7 @@ public class StagedResource implements IStagedResource {
         return (oldFile.length() == newFile.length());
     }
 
+    @Override
     public synchronized BufferedReader getReader() {
         refreshLastUpdateTime();
         Thread thread = Thread.currentThread();
@@ -258,6 +264,7 @@ public class StagedResource implements IStagedResource {
         }
     }
 
+    @Override
     public void close() {
         refreshLastUpdateTime();
         closeInternal();
@@ -299,6 +306,7 @@ public class StagedResource implements IStagedResource {
         }
     }
 
+    @Override
     public void closeReaders() {
         if (readers != null) {
             for (BufferedReader reader : readers.values()) {
@@ -311,10 +319,12 @@ public class StagedResource implements IStagedResource {
         }
     }
 
+    @Override
     public OutputStream getOutputStream() {
         return getOutputStream(false);
     }
 
+    @Override
     public OutputStream getOutputStream(boolean append) {
         refreshLastUpdateTime();
         try {
@@ -337,6 +347,7 @@ public class StagedResource implements IStagedResource {
         return new BufferedOutputStream(new FileOutputStream(file, append));
     }
 
+    @Override
     public synchronized InputStream getInputStream() {
         refreshLastUpdateTime();
         Thread thread = Thread.currentThread();
@@ -366,6 +377,7 @@ public class StagedResource implements IStagedResource {
         return new BufferedInputStream(new FileInputStream(file));
     }
 
+    @Override
     public BufferedWriter getWriter(long threshold) {
         refreshLastUpdateTime();
         if (writer == null) {
@@ -386,6 +398,7 @@ public class StagedResource implements IStagedResource {
         return new BufferedWriter(new ThresholdFileWriter(threshold, this.memoryBuffer, file));
     }
 
+    @Override
     public long getSize() {
         if (file != null && file.exists()) {
             return file.length();
@@ -396,18 +409,22 @@ public class StagedResource implements IStagedResource {
         }
     }
 
+    @Override
     public boolean exists() {
         return (file != null && file.exists() && file.length() > 0) || (memoryBuffer != null && memoryBuffer.length() > 0);
     }
 
+    @Override
     public long getLastUpdateTime() {
         return lastUpdateTime;
     }
 
+    @Override
     public void refreshLastUpdateTime() {
         this.lastUpdateTime = System.currentTimeMillis();
     }
 
+    @Override
     public boolean delete() {
         close();
         boolean deleted = false;
@@ -424,6 +441,7 @@ public class StagedResource implements IStagedResource {
             if (log.isDebugEnabled() && path.contains("outgoing")) {
                 log.debug("Deleted staging resource {}", path);
             }
+            // TODO should we unlock here?
         }
         return deleted;
     }
@@ -432,6 +450,7 @@ public class StagedResource implements IStagedResource {
         return file;
     }
 
+    @Override
     public String getPath() {
         return path;
     }
@@ -441,5 +460,122 @@ public class StagedResource implements IStagedResource {
         return (file != null && file.exists()) ? file.getAbsolutePath()
                 : String.format("%d bytes in memory",
                         memoryBuffer != null ? memoryBuffer.length() : 0);
+    }
+
+    public void createParentDirectory() {
+        String fullPath = String.format("%s/%s", directory, this.path);
+        File lockFile = new File(fullPath);
+        File containingDirectory = lockFile.getParentFile();
+        if (containingDirectory != null) {
+            if (containingDirectory.mkdirs() && log.isDebugEnabled()) {
+                log.debug("Created directory {}", containingDirectory.getAbsolutePath());
+            }
+        }
+    }
+
+    @Override
+    public boolean acquireLock(String serverInfo) {
+        boolean acquired = false;
+        String lockFilePath = getLockFilePath();
+        try {
+            File newLock = this.lockFile.getLockFile();
+            if (newLock == null) {
+                newLock = new File(lockFilePath);
+            }
+            acquired = newLock.createNewFile();
+            if (acquired) {
+                this.lockFile.setLockFile(newLock);
+                FileUtils.write(newLock, serverInfo, Charset.defaultCharset(), false);
+            }
+        } catch (IOException ex) { // Hitting this when file already exists.
+            log.debug("Failed to create lock file  (" + lockFilePath + ")", ex);
+        }
+        this.lockFile.setAcquired(acquired);
+        if (!acquired) {
+            if (lockFile.isPresent()) {
+                try {
+                    String lockFileContents = lockFile.readFileToString();
+                    lockFile.setLockFailureMessage("Lock file exists: " + lockFileContents);
+                } catch (Exception ex) {
+                    lockFile.setLockFailureMessage("Lock file exists but could not read contents: " + ex.getMessage());
+                    if (log.isDebugEnabled()) {
+                        log.debug("Failed to read lock file contents (" + lockFilePath + ")", ex);
+                    }
+                }
+            } else {
+                lockFile.setLockFailureMessage("Lock file does not exist, but could not be created. Check directory permissions.");
+            }
+        }
+        return acquired;
+    }
+
+    private String getLockFilePath() {
+        return String.format("%s/%s%s", directory, this.path, LOCK_EXTENSION);
+    }
+
+    @Override
+    public void copyTo(IStagedResource destination) {
+        File destFile = ((FileSystemStagedResource) destination).getFile();
+        destFile.getParentFile().mkdirs();
+        try {
+            Files.copy(this.file.toPath(), destFile.toPath());
+        } catch (IOException e) {
+            log.error("Error copying file {} to  {}", this.file.toPath(), destFile.toPath());
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public long getLockAge() {
+        return this.lockFile.getLockAge();
+    }
+
+    @Override
+    public boolean isLockAcquired() {
+        return this.lockFile.isAcquired();
+    }
+
+    @Override
+    public String getLockFailureMessage() {
+        return this.lockFile.getLockFailureMessage();
+    }
+
+    @Override
+    public void setLockFailureMessage(String lockFailureMessage) {
+        this.lockFile.setLockFailureMessage(lockFailureMessage);
+    }
+
+    @Override
+    public void releaseLock() {
+        this.lockFile.releaseLock();
+    }
+
+    @Override
+    public void breakLock() {
+        this.lockFile.breakLock();
+    }
+
+    @Override
+    public boolean lockExists() {
+        return this.lockFile.isPresent();
+    }
+
+    @Override
+    public void setSmallContents(String contents) {
+        BufferedWriter writer = getWriter(0);
+        try {
+            writer.write(contents);
+            writer.close();
+        } catch (IOException e) {
+            log.error("Error writing to {}", this.path);
+            throw new IoException(e);
+        }
+        refreshLastUpdateTime();
+    }
+
+    @Override
+    public String getSmallContents() {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

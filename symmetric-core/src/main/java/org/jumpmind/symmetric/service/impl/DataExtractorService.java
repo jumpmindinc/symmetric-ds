@@ -28,8 +28,6 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -63,7 +61,6 @@ import java.util.zip.ZipException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DurationFormatUtils;
@@ -117,7 +114,6 @@ import org.jumpmind.symmetric.io.data.writer.TransformWriter;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
-import org.jumpmind.symmetric.io.stage.StagingFileLock;
 import org.jumpmind.symmetric.io.stage.StagingLowFreeSpace;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
@@ -1094,9 +1090,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         try {
             lock.acquire(); // In-memory, intra-process lock.
             if (isStagingFileLockRequired(batch)) { // File-system, inter-process lock for clustering.
-                StagingFileLock fileLock = acquireStagingFileLock(batch);
-                if (fileLock.isAcquired()) {
-                    lock.fileLock = fileLock;
+                IStagedResource fileLock = acquireStagingResourceLock(batch);
+                if (fileLock.isLockAcquired()) {
+                    lock.resource = fileLock;
                 } else {
                     // Didn't get the fileLock, ditch the in-memory lock as well.
                     releaseLock(lock, batch, useStagingDataWriter);
@@ -1120,40 +1116,44 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     @Override
-    public StagingFileLock acquireStagingFileLock(OutgoingBatch batch) {
-        boolean stagingFileAcquired = false;
-        StagingFileLock fileLock = null;
-        int iterations = 0;
-        while (!stagingFileAcquired) {
-            fileLock = stagingManager.acquireFileLock(getLockingServerInfo(), Constants.STAGING_CATEGORY_OUTGOING,
-                    batch.getStagedLocation(), batch.getBatchId());
-            stagingFileAcquired = fileLock.isAcquired();
-            if (!stagingFileAcquired) {
-                if (fileLock.getLockFile() == null) {
-                    log.warn("Staging lock file not acquired " + fileLock.getLockFailureMessage());
-                    return fileLock;
-                }
-                long lockAge = fileLock.getLockAge();
-                if (lockAge >= parameterService.getLong(ParameterConstants.LOCK_TIMEOUT_MS)) {
-                    log.warn("Lock {} in place for {} > about to BREAK the lock.", fileLock.getLockFile(), DurationFormatUtils.formatDurationWords(lockAge,
-                            true, true));
-                    fileLock.breakLock();
-                } else {
-                    if ((iterations % 10) == 0) {
-                        log.info("Lock {} in place for {}, waiting...", fileLock.getLockFile(), DurationFormatUtils.formatDurationWords(lockAge, true, true));
-                    } else {
-                        log.debug("Lock {} in place for {}, waiting...", fileLock.getLockFile(), DurationFormatUtils.formatDurationWords(lockAge, true, true));
-                    }
-                    try {
-                        Thread.sleep(parameterService.getLong(ParameterConstants.LOCK_WAIT_RETRY_MILLIS));
-                    } catch (InterruptedException ex) {
-                        log.debug("Interrupted.", ex);
-                    }
-                }
+    public IStagedResource acquireStagingResourceLock(OutgoingBatch batch) {
+        IStagedResource resource = stagingManager.acquireResourceLock(getLockingServerInfo(), Constants.STAGING_CATEGORY_OUTGOING,
+                batch.getStagedLocation(), batch.getBatchId());
+        int iterationNo = 0;
+
+        while (!resource.isLockAcquired()) {
+            if (!resource.lockExists()) {
+                log.warn("Staging lock file not acquired " + resource.getLockFailureMessage());
+                return resource;
             }
-            iterations++;
+            resource = waitOrBreakResourceLock(resource, iterationNo);
+            iterationNo++;
         }
-        return fileLock;
+        log.debug("Acquired lock for {} after {} attempts.", resource.getPath(), iterationNo);
+        return resource;
+    }
+
+    private IStagedResource waitOrBreakResourceLock(IStagedResource resource, int iterationNo) {
+        long lockAge = resource.getLockAge();
+        if (lockAge >= parameterService.getLong(ParameterConstants.LOCK_TIMEOUT_MS)) {
+            log.warn("Lock {} in place for {} > about to BREAK the lock.", resource.getPath(), DurationFormatUtils.formatDurationWords(lockAge,
+                    true, true));
+            resource.breakLock();
+            return resource;
+        }
+        if ((iterationNo % 10) == 0) {
+            log.info("Lock {} in place for {}, waiting...", resource.getPath(), DurationFormatUtils.formatDurationWords(lockAge, true,
+                    true));
+        } else {
+            log.debug("Lock {} in place for {}, waiting...", resource.getPath(), DurationFormatUtils.formatDurationWords(lockAge, true,
+                    true));
+        }
+        try {
+            Thread.sleep(parameterService.getLong(ParameterConstants.LOCK_WAIT_RETRY_MILLIS));
+        } catch (InterruptedException ex) {
+            log.debug("Interrupted, waiting for resource " + resource.getPath(), ex);
+        }
+        return resource;
     }
 
     private String getLockingServerInfo() {
@@ -1169,8 +1169,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 }
                 lock.release();
             }
-            if (lock.fileLock != null) {
-                lock.fileLock.releaseLock();
+            if (lock.resource != null) {
+                lock.resource.releaseLock();
             }
         }
     }
@@ -1318,7 +1318,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         ISymmetricEngine targetEngine = AbstractSymmetricEngine.findEngineByUrl(targetNode.getSyncUrl());
                         if (targetEngine != null) {
                             IParameterService targetParam = targetEngine.getParameterService();
-                            if (extractedBatch.isFileResource() && targetParam.is(ParameterConstants.STREAM_TO_FILE_ENABLED)
+                            if (!extractedBatch.isMemoryOnlyResource() && targetParam.is(ParameterConstants.STREAM_TO_FILE_ENABLED)
                                     && (!targetParam.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) || targetParam.is(
                                             ParameterConstants.CLUSTER_STAGING_ENABLED))) {
                                 Node sourceNode = nodeService.findIdentity();
@@ -1334,19 +1334,19 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                                                     .getBatchId()),
                                             currentBatch.getBatchId());
                                     try {
-                                        Files.copy(extractedBatch.getFile().toPath(), targetResource.getFile().toPath(), StandardCopyOption.REPLACE_EXISTING);
+                                        extractedBatch.copyTo(targetResource);
                                         processInfo.setCurrentDataCount(currentBatch.getDataRowCount());
                                         if (log.isDebugEnabled()) {
-                                            log.debug("Copied file to incoming staging of remote engine {}", targetResource.getFile().getAbsolutePath());
+                                            log.debug("Copied file to incoming staging of remote engine {}", targetResource.getPath());
                                         }
                                         targetResource.setState(State.DONE);
                                         isRetry = true;
                                         if (currentBatch.getSentCount() == 1) {
                                             statisticManager.incrementDataSent(currentBatch.getChannelId(), currentBatch.getDataRowCount());
-                                            statisticManager.incrementDataBytesSent(currentBatch.getChannelId(), extractedBatch.getFile().length());
+                                            statisticManager.incrementDataBytesSent(currentBatch.getChannelId(), extractedBatch.getSize());
                                         }
                                     } catch (Exception e) {
-                                        FileUtils.deleteQuietly(targetResource.getFile());
+                                        targetResource.delete();
                                         throw new RuntimeException(e);
                                     }
                                 }
@@ -1359,7 +1359,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                             isRetry = true;
                             if (currentBatch.getSentCount() == 1) {
                                 statisticManager.incrementDataSent(currentBatch.getChannelId(), currentBatch.getDataRowCount());
-                                statisticManager.incrementDataBytesSent(currentBatch.getChannelId(), extractedBatch.getFile().length());
+                                statisticManager.incrementDataBytesSent(currentBatch.getChannelId(), extractedBatch.getSize());
                             }
                         }
                     }
@@ -2373,7 +2373,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         }
     }
 
-    static class BatchLock {
+    static class BatchLock { // replaced with IStagedResource
         public BatchLock(String semaphoreKey) {
             this.semaphoreKey = semaphoreKey;
         }
@@ -2388,7 +2388,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
 
         String semaphoreKey;
         private Semaphore inMemoryLock = new Semaphore(1);
-        StagingFileLock fileLock;
+        IStagedResource resource;
         int referenceCount = 0;
     }
 }

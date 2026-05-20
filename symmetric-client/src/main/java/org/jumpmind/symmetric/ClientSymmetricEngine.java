@@ -415,6 +415,28 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
                 directory += File.separator + engineName;
             }
         }
+        String accountType = parameterService.getString(ParameterConstants.STAGING_ACCOUNT_TYPE, "implied");
+        if ("token".equals(accountType) || "openid".equals(accountType) || "ldap".equals(accountType)) {
+            throw new UnsupportedOperationException("staging.account.type=" + accountType + " is not yet implemented");
+        }
+        String providerType = parameterService.getString(ParameterConstants.STAGING_PROVIDER_TYPE, "file");
+        if ("aws_s3".equals(providerType) || "azure_blob".equals(providerType)) {
+            throw new UnsupportedOperationException("staging.provider.type=" + providerType + " is not yet implemented");
+        }
+        if ("minio".equals(providerType)) {
+            try {
+                Constructor<?> cons = Class.forName("com.jumpmind.symmetric.stage.MinIOStagingManager")
+                        .getConstructor(ISymmetricEngine.class, String.class);
+                return (IStagingManager) cons.newInstance(this, directory);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException("staging.provider.type=minio requires the symmetric-pro jar on the classpath", e);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to instantiate MinIOStagingManager", e);
+            }
+        }
+        if (!("file".equals(providerType))) {
+            throw new UnsupportedOperationException("Unrecognized staging.provider.type=" + providerType);
+        }
         String stagingManagerClassName = parameterService.getString(ParameterConstants.STAGING_MANAGER_CLASS);
         if (stagingManagerClassName != null) {
             try {

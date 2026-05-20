@@ -42,7 +42,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -83,6 +82,7 @@ import org.jumpmind.symmetric.io.data.DbExport;
 import org.jumpmind.symmetric.io.data.DbExport.Format;
 import org.jumpmind.symmetric.io.data.transform.TransformPoint;
 import org.jumpmind.symmetric.io.data.transform.TransformTable;
+import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.job.IJob;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Data;
@@ -104,8 +104,10 @@ import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGroupLink;
 import org.jumpmind.symmetric.service.impl.UpdateService;
 import org.jumpmind.util.AppUtils;
+import org.jumpmind.util.DirectoryUtils;
 import org.jumpmind.util.LogSummary;
 import org.jumpmind.util.ZipBuilder;
+import org.jumpmind.util.DirectoryUtils.PrintDirConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -560,10 +562,11 @@ public class SnapshotUtil {
                 home = home.getParentFile();
             }
             log.info("Writing directory listing of {}", home);
-            StringBuilder output = new StringBuilder();
             int maxFiles = engine.getParameterService().getInt(ParameterConstants.SNAPSHOT_MAX_FILES);
-            printDirectoryContents(home, output, new PrintDirConfig(maxFiles, engine.getStagingManager().getStagingDirectory().getParentFile()));
-            FileUtils.write(new File(tmpDir, "directory-listing.txt"), output, Charset.defaultCharset(), false);
+            File localDir = engine.getStagingManager().getLocalDirectory();
+            File excludeDir = localDir != null ? localDir.getParentFile() : null;
+            String report = DirectoryUtils.reportDirectoryContents(home, new DirectoryUtils.PrintDirConfig(maxFiles, excludeDir));
+            FileUtils.write(new File(tmpDir, "directory-listing.txt"), report, Charset.defaultCharset(), false);
         } catch (Exception ex) {
             log.warn("Failed to output the directory listing", ex);
         }
@@ -571,11 +574,11 @@ public class SnapshotUtil {
 
     protected static void writeDirectoryStaging(ISymmetricEngine engine, File tmpDir) {
         try {
-            log.info("Writing staging listing of {}", engine.getStagingManager().getStagingDirectory());
-            StringBuilder output = new StringBuilder();
-            int maxFiles = engine.getParameterService().getInt(ParameterConstants.SNAPSHOT_MAX_FILES);
-            printDirectoryContents(engine.getStagingManager().getStagingDirectory(), output, new PrintDirConfig(maxFiles));
-            FileUtils.write(new File(tmpDir, "directory-staging.txt"), output, Charset.defaultCharset(), false);
+            IStagingManager stagingManager = engine.getStagingManager();
+            log.info("Writing staging listing");
+            String contents = stagingManager.reportContents(
+                    engine.getParameterService().getInt(ParameterConstants.SNAPSHOT_MAX_FILES));
+            FileUtils.write(new File(tmpDir, "directory-staging.txt"), contents, Charset.defaultCharset(), false);
         } catch (Exception ex) {
             log.warn("Failed to output the directory staging", ex);
         }
@@ -734,7 +737,7 @@ public class SnapshotUtil {
         properties.setProperty("log.directory.space.usable",
                 FileUtils.byteCountToDisplaySize(logDir.getUsableSpace()));
         properties.setProperty("staging.directory.space.usable",
-                FileUtils.byteCountToDisplaySize(engine.getStagingManager().getStagingDirectory().getUsableSpace()));
+                FileUtils.byteCountToDisplaySize(engine.getStagingManager().getUsableSpace()));
         properties.setProperty("temp.directory.space.usable",
                 FileUtils.byteCountToDisplaySize(tmpDir.getUsableSpace()));
     }
@@ -1192,54 +1195,6 @@ public class SnapshotUtil {
             writeProperties(changedParameters, tmpDir, "parameters-changed.properties");
         } catch (Exception e) {
             log.warn("Failed to export parameters-changed information", e);
-        }
-    }
-
-    static class FileComparator implements Comparator<File> {
-        @Override
-        public int compare(File o1, File o2) {
-            return o1.getPath().compareToIgnoreCase(o2.getPath());
-        }
-    }
-
-    static class PrintDirConfig {
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-        Comparator<File> fileComparator = new FileComparator();
-        int fileCount;
-        int maxCount;
-        File excludeDir;
-
-        public PrintDirConfig(int maxCount) {
-            this.maxCount = maxCount;
-        }
-
-        public PrintDirConfig(int maxCount, File excludeDir) {
-            this.maxCount = maxCount;
-            this.excludeDir = excludeDir;
-        }
-
-        public Comparator<File> getFileComparator() {
-            return fileComparator;
-        }
-
-        public SimpleDateFormat getDateFormat() {
-            return df;
-        }
-
-        public int incrementFileCount() {
-            return fileCount++;
-        }
-
-        public int getFileCount() {
-            return fileCount;
-        }
-
-        public int getMaxCount() {
-            return maxCount;
-        }
-
-        public File getExcludeDir() {
-            return excludeDir;
         }
     }
 }

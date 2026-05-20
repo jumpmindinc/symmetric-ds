@@ -25,15 +25,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.attribute.FileTime;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StagingFileLock {
+public class StagingFileLock implements IStagingResourceLock {
     private static final Logger log = LoggerFactory.getLogger(StagingFileLock.class);
     boolean acquired = false;
     private File lockFile;
     private String lockFailureMessage;
 
+    @Override
     public long getLockAge() {
         if (lockFile != null) {
             FileTime lastModifiedTime;
@@ -52,10 +54,12 @@ public class StagingFileLock {
         }
     }
 
+    @Override
     public boolean isAcquired() {
         return acquired;
     }
 
+    @Override
     public void setAcquired(boolean acquired) {
         this.acquired = acquired;
     }
@@ -68,14 +72,17 @@ public class StagingFileLock {
         this.lockFile = lockFile;
     }
 
+    @Override
     public String getLockFailureMessage() {
         return lockFailureMessage;
     }
 
+    @Override
     public void setLockFailureMessage(String lockFailureMessage) {
         this.lockFailureMessage = lockFailureMessage;
     }
 
+    @Override
     public void releaseLock() {
         int retries = 5;
         boolean ok = false;
@@ -97,6 +104,7 @@ public class StagingFileLock {
         }
     }
 
+    @Override
     public void breakLock() {
         if (lockFile.delete()) {
             log.info("Lock {} broken successfully.", lockFile);
@@ -106,7 +114,21 @@ public class StagingFileLock {
     }
 
     @Override
+    public boolean isPresent() {
+        return lockFile != null && lockFile.exists();
+    }
+
+    @Override
+    public String getAbsolutePath() {
+        return this.lockFile.getAbsolutePath();
+    }
+
+    @Override
     public String toString() {
         return String.format("%s [%s]", super.toString(), lockFile);
+    }
+
+    public String readFileToString() throws IOException {
+        return FileUtils.readFileToString(lockFile, "UTF8");
     }
 }
