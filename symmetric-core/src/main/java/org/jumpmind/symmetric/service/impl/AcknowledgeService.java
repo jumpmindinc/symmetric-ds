@@ -288,7 +288,7 @@ public class AcknowledgeService extends AbstractService implements IAcknowledgeS
         if (streamToFileThreshold > 0 && !outgoingBatch.isCommonFlag() && outgoingBatch.getByteCount() <= streamToFileThreshold) {
             IStagedResource resource = engine.getStagingManager().find(Constants.STAGING_CATEGORY_OUTGOING,
                     outgoingBatch.getStagedLocation(), outgoingBatch.getBatchId());
-            if (resource != null && resource.isMemoryResource() && !resource.isInUse()) {
+            if (resource != null && resource.isMemoryOnlyResource() && !resource.isInUse()) {
                 resource.delete();
             }
         }
