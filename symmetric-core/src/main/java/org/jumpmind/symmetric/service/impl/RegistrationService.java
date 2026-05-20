@@ -399,7 +399,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         if (priorRequest == null) {
             return recordsChanged;
         }
-        if (isPrioRequestSupercededByNew(priorRequest, request)) {
+        if (isPriorRequestSupersededByNew(priorRequest, request)) {
             // When registration request exists, combine the attempt count. We previously did this in update SQL, but AS400 v5 didn't like that.
             request.setStatus(priorRequest.getStatus());
             request.incrementAttemptsAndSetLatestMessage(priorRequest);
@@ -412,7 +412,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         return recordsChanged;
     }
 
-    protected boolean isPrioRequestSupercededByNew(RegistrationRequest priorRequest, RegistrationRequest request) {
+    protected boolean isPriorRequestSupersededByNew(RegistrationRequest priorRequest, RegistrationRequest request) {
         return priorRequest.getStatus().equals(request.getStatus())
                 || priorRequest.getStatus().equals(RegistrationStatus.RJ) && request.getStatus().equals(RegistrationStatus.RQ)
                 || priorRequest.getStatus().equals(RegistrationStatus.ER) && request.getStatus().equals(RegistrationStatus.OK);

@@ -536,54 +536,54 @@ class RegistrationServiceTest {
     }
 
     @Test
-    void isPrioRequestSupercededByNewReturnsTrueWhenSameStatus() {
+    void isPriorRequestSupersededByNewReturnsTrueWhenSameStatus() {
         for (RegistrationStatus status : RegistrationStatus.values()) {
             RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, status);
             RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, status);
-            assertTrue(service.isPrioRequestSupercededByNew(prior, request));
+            assertTrue(service.isPriorRequestSupersededByNew(prior, request));
         }
     }
 
     @Test
-    void isPrioRequestSupercededByNewReturnsTrueWhenRejectedPriorAndPendingRequest() {
+    void isPriorRequestSupersededByNewReturnsTrueWhenRejectedPriorAndPendingRequest() {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
-        assertTrue(service.isPrioRequestSupercededByNew(prior, request));
+        assertTrue(service.isPriorRequestSupersededByNew(prior, request));
     }
 
     @Test
-    void isPrioRequestSupercededByNewReturnsTrueWhenErrorPriorAndOkRequest() {
+    void isPriorRequestSupersededByNewReturnsTrueWhenErrorPriorAndOkRequest() {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.ER);
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
-        assertTrue(service.isPrioRequestSupercededByNew(prior, request));
+        assertTrue(service.isPriorRequestSupersededByNew(prior, request));
     }
 
     @Test
-    void isPrioRequestSupercededByNewReturnsFalseWhenPendingPriorAndOkRequest() {
+    void isPriorRequestSupersededByNewReturnsFalseWhenPendingPriorAndOkRequest() {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
-        assertFalse(service.isPrioRequestSupercededByNew(prior, request));
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
     }
 
     @Test
-    void isPrioRequestSupercededByNewReturnsFalseWhenRejectedPriorAndOkRequest() {
+    void isPriorRequestSupersededByNewReturnsFalseWhenRejectedPriorAndOkRequest() {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
-        assertFalse(service.isPrioRequestSupercededByNew(prior, request));
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
     }
 
     @Test
-    void isPrioRequestSupercededByNewReturnsFalseWhenErrorPriorAndPendingRequest() {
+    void isPriorRequestSupersededByNewReturnsFalseWhenErrorPriorAndPendingRequest() {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.ER);
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
-        assertFalse(service.isPrioRequestSupercededByNew(prior, request));
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
     }
 
     @Test
-    void isPrioRequestSupercededByNewReturnsFalseWhenOkPriorAndPendingRequest() {
+    void isPriorRequestSupersededByNewReturnsFalseWhenOkPriorAndPendingRequest() {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
-        assertFalse(service.isPrioRequestSupercededByNew(prior, request));
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
     }
 
     private void setupHappyPath() {
