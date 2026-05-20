@@ -20,13 +20,7 @@
  */
 package org.jumpmind.symmetric.observability.metrics;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.observability.interfaces.IIncreasingCounter;
@@ -199,7 +193,7 @@ class HostMetricsServiceTest {
         ISymDoubleGauge gauge = service.registerDoubleGauge(def);
         gauge.setValue(42.0);
         service.resetGaugesToZero();
-        assertTrue(gauge.getValue() == 0.0);
+        assertEquals(0.0, gauge.getValue());
     }
 
     @Test
@@ -209,7 +203,7 @@ class HostMetricsServiceTest {
         ISymLongGauge gauge = service.registerLongGauge(def);
         gauge.setValue(99L);
         service.resetGaugesToZero();
-        assertTrue(gauge.getValue() == 0L);
+        assertTrue(0L, gauge.getValue());
     }
 
     @Test
@@ -220,7 +214,7 @@ class HostMetricsServiceTest {
         MetricAttributeList attrsB = MetricAttributeList.of(new MetricAttribute("channel", "ch2"));
         ISymLongGauge gaugeA = service.registerLongGauge(def, attrsA);
         ISymLongGauge gaugeB = service.registerLongGauge(def, attrsB);
-        assertFalse(gaugeA == gaugeB);
+        assertEquals(gaugeA, gaugeB);
         assertTrue(service.getAllMetrics().size() >= 2);
     }
 

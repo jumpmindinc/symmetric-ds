@@ -253,7 +253,7 @@ class EngineMetricsServiceTest {
         MetricsRepository repo = mock(MetricsRepository.class);
         when(repo.getMetricKey(anyString(), any(), any(), anyBoolean())).thenThrow(new RuntimeException("db error"));
         OneMetricInitService service = new OneMetricInitService(engine, manager, repo);
-        assertDoesNotThrow(() -> service.initRepository());
+        assertDoesNotThrow(service::initRepository);
         assertTrue(service.getAllMetrics().iterator().next().isOpen());
     }
 
@@ -334,7 +334,7 @@ class EngineMetricsServiceTest {
         when(badMetric.getMetricId()).thenReturn("bad.metric");
         doThrow(new RuntimeException("close error")).when(badMetric).closeCompletedIntervals();
         metricsMap.put("bad.metric", badMetric);
-        assertDoesNotThrow(() -> service.saveCompletedIntervalStats());
+        assertDoesNotThrow(service::saveCompletedIntervalStats);
     }
 
     @Test
