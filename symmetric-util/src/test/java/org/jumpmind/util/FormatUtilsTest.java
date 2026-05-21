@@ -3,11 +3,11 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General License, version 3.0 (GPLv3)
+ * to you under the GNU General Public License, version 3.0 (GPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General License,
+ * You should have received a copy of the GNU General Public License,
  * version 3.0 (GPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
