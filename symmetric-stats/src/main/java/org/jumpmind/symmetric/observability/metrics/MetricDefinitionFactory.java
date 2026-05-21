@@ -114,7 +114,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_UTILIZATION, "DB connection pool utilization as a percentage of max", METRIC_UNIT_PERCENT,
                     InstrumentType.DOUBLE_GAUGE),
             // Engine / node counters
-            new SymMetricDefinition(METRIC_ID_ENGINE_RESTARTS, "Engine restart count", METRIC_UNIT_ROWS, InstrumentType.UPDOWN_COUNTER),
+            new SymMetricDefinition(METRIC_ID_ENGINE_RESTARTS, "Engine restart count", METRIC_UNIT_RESTARTS, InstrumentType.UPDOWN_COUNTER),
             new SymMetricDefinition(METRIC_ID_NODES_PULLED, "Nodes pulled from", METRIC_UNIT_NODES, InstrumentType.UPDOWN_COUNTER),
             new SymMetricDefinition(METRIC_ID_NODES_PUSHED, "Nodes pushed to", METRIC_UNIT_NODES, InstrumentType.UPDOWN_COUNTER),
             new SymMetricDefinition(METRIC_ID_NODES_PULLED_TIME, "Total elapsed time for node pull operations", METRIC_UNIT_MILLIS,

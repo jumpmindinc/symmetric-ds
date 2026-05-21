@@ -87,7 +87,7 @@ class MetricDefinitionFactoryTest {
     @Test
     void registerDefaultMetric_addsToRegistryAndDefaultList() {
         int sizeBefore = factory.getDefaultMetrics().size();
-        SymMetricDefinition extra = new SymMetricDefinition("extra.metric", "Extra", "rows", InstrumentType.COUNTER);
+        SymMetricDefinition extra = new SymMetricDefinition("extra.metric", "Extra", "{row}", InstrumentType.COUNTER);
         factory.registerDefaultMetric(extra);
         assertEquals(sizeBefore + 1, factory.getDefaultMetrics().size());
         assertEquals("extra.metric", factory.getDefinition("extra.metric").id());
@@ -163,7 +163,7 @@ class MetricDefinitionFactoryTest {
     @Test
     void registerDefaultMetric_nullElementInArray_skipsNull() {
         int sizeBefore = factory.getDefaultMetrics().size();
-        SymMetricDefinition valid = new SymMetricDefinition("m.valid", "desc", "rows", InstrumentType.COUNTER);
+        SymMetricDefinition valid = new SymMetricDefinition("m.valid", "desc", "{row}", InstrumentType.COUNTER);
         factory.registerDefaultMetric(valid, null);
         assertEquals(sizeBefore + 1, factory.getDefaultMetrics().size());
         assertNotNull(factory.getDefinition("m.valid"));
@@ -218,7 +218,7 @@ class MetricDefinitionFactoryTest {
     @Test
     void initializeMetrics_counterTypeNonChannel_isRegisteredOnService() {
         // Register a COUNTER (monotonic) metric to hit the COUNTER case in the switch
-        factory.registerDefaultMetric(new SymMetricDefinition("test.nc.counter", "test", "rows", InstrumentType.COUNTER));
+        factory.registerDefaultMetric(new SymMetricDefinition("test.nc.counter", "test", "{row}", InstrumentType.COUNTER));
         MetricsManager svcManager = TestMetricsManagerFactory.create();
         HostMetricsService service = new HostMetricsService(svcManager, false);
         factory.initializeMetrics(service);

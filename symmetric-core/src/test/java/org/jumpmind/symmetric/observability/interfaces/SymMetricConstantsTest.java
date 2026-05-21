@@ -52,4 +52,23 @@ class SymMetricConstantsTest {
         assertNotNull(SymMetricConstants.METRIC_UNIT_ROWS);
         assertNotNull(SymMetricConstants.METRIC_UNIT_BATCHES);
     }
+
+    @Test
+    void metricUnitConstants_areUcumCompliant() {
+        assertEquals("%", SymMetricConstants.METRIC_UNIT_PERCENT);
+        assertEquals("{connection}", SymMetricConstants.METRIC_UNIT_CONNECTIONS);
+        assertEquals("By", SymMetricConstants.METRIC_UNIT_BYTES);
+        assertEquals("MiBy", SymMetricConstants.METRIC_UNIT_MB);
+        assertEquals("ms", SymMetricConstants.METRIC_UNIT_MILLIS);
+        assertEquals("s", SymMetricConstants.METRIC_UNIT_SECONDS);
+        assertEquals("min", SymMetricConstants.METRIC_UNIT_MINUTES);
+        assertEquals("h", SymMetricConstants.METRIC_UNIT_HOURS);
+        assertEquals("d", SymMetricConstants.METRIC_UNIT_DAYS);
+        assertEquals("mo", SymMetricConstants.METRIC_UNIT_MONTHS);
+        assertEquals("{batch}", SymMetricConstants.METRIC_UNIT_BATCHES);
+        assertEquals("{row}", SymMetricConstants.METRIC_UNIT_ROWS);
+        assertEquals("{node}", SymMetricConstants.METRIC_UNIT_NODES);
+        assertEquals("{trigger}", SymMetricConstants.METRIC_UNIT_TRIGGERS);
+        assertEquals("{restart}", SymMetricConstants.METRIC_UNIT_RESTARTS);
+    }
 }
