@@ -297,9 +297,9 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
     @Override
     protected ISymmetricDialect createTargetDialect() {
         if (parameterService.is(ParameterConstants.NODE_LOAD_ONLY, false)) {
-            TypedProperties properties = preparePlatformProperties();
+            TypedProperties platformProperties = preparePlatformProperties();
             boolean targetDelimitedIdentifierMode = parameterService.is(ParameterConstants.TARGET_DB_DELIMITED_IDENTIFIER_MODE, true);
-            IDatabasePlatform targetPlatform = createDatabasePlatform(null, properties, null, true, true,
+            IDatabasePlatform targetPlatform = createDatabasePlatform(null, platformProperties, null, true, true,
                     parameterService.is(ParameterConstants.START_LOG_MINER_JOB, false), targetDelimitedIdentifierMode);
             if (targetPlatform instanceof GenericJdbcDatabasePlatform) {
                 boolean createTableColumnsNotNullSupported = parameterService.is(ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX
@@ -322,7 +322,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         properties.collectFrom("", ParameterConstants.ALL_GOOGLE_BIG_QUERY_PARAMS, parameterService::getString);
         properties.collectFrom("", ParameterConstants.ALL_MONGODB_PARAMS, parameterService::getString);
         properties.collectFrom("", ParameterConstants.ALL_COSMOS_PARAMS, parameterService::getString);
-        return properties; 
+        return properties;
     }
 
     @Override
