@@ -460,7 +460,6 @@ final public class ParameterConstants {
     public static final String DEFAULT_VALUES_TO_LEAVE_UNQUOTED = "default.values.to.leave.unquoted";
     public static final String DEFAULT_VALUES_TO_TRANSLATE = "default.values.to.translate";
     public static final String INCLUDE_ROWIDENTIFIER_AS_COLUMN = "include.rowidentifier.as.column";
-    public static final String LOG_MINER_CAPTURE_USER = "log.miner.capture.user";
     public static final String COMPARE_QUEUE_PER_REQUEST_COUNT = "compare.queue.per.request.count";
     public static final String COMPARE_THREAD_PER_SERVER_COUNT = "compare.thread.per.server.count";
     public static final String COMPARE_LOCK_TIMEOUT_MS = "compare.lock.timeout.ms";
