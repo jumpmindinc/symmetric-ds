@@ -41,6 +41,7 @@ public final class SymMetricConstants {
     public static final String OTEL_ENV_PREFIX = "OTEL_";
     public static final String OTEL_SCOPE = "otel.scope";
     public static final String OTEL_SCOPE_DEFAULT = "symmetricds";
+    public static final String OTEL_SDK_DISABLED = "otel.sdk.disabled";
     public static final String METRIC_UNIT_PERCENT = "percent";
     public static final String METRIC_UNIT_CONNECTIONS = "connections";
     public static final String METRIC_UNIT_BYTES = "bytes";
