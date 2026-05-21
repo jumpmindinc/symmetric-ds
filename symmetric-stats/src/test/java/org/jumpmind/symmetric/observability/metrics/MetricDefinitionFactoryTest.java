@@ -115,8 +115,8 @@ class MetricDefinitionFactoryTest {
     @Test
     void getDefaultMetrics_returnsUnmodifiableList() {
         List<SymMetricDefinition> metrics = factory.getDefaultMetrics();
-        assertThrows(UnsupportedOperationException.class,
-                () -> metrics.add(new SymMetricDefinition("x", "x", "x", InstrumentType.COUNTER)));
+        SymMetricDefinition testMetricDefinition = new SymMetricDefinition("x", "x", "x", InstrumentType.COUNTER);
+        assertThrows(UnsupportedOperationException.class, () -> metrics.add(testMetricDefinition));
     }
 
     @Test
@@ -135,8 +135,8 @@ class MetricDefinitionFactoryTest {
     @Test
     void getDefaultContexts_returnsUnmodifiableList() {
         List<ContextDefinition> contexts = factory.getDefaultContexts();
-        assertThrows(UnsupportedOperationException.class,
-                () -> contexts.add(new ContextDefinition(1L, new MetricAttributeList(MetricsRepository.ATTR_MAX_VALUES))));
+        ContextDefinition testContextDefinition = new ContextDefinition(1L, new MetricAttributeList(MetricsRepository.ATTR_MAX_VALUES));
+        assertThrows(UnsupportedOperationException.class, () -> contexts.add(testContextDefinition));
     }
 
     @Test

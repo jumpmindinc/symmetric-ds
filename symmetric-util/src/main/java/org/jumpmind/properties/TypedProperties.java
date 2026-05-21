@@ -27,7 +27,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Properties;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.exception.IoException;
@@ -149,7 +149,7 @@ public class TypedProperties extends Properties {
         return returnValue;
     }
 
-    public void collectFrom(String prefixToDrop, String[] names, Function<String, String> lookup) {
+    public void collectFrom(String prefixToDrop, String[] names, UnaryOperator<String> lookup) {
         for (String name : names) {
             put(name, lookup.apply(prefixToDrop + name));
         }
@@ -163,7 +163,9 @@ public class TypedProperties extends Properties {
                         ? FormatUtils.removePrefix(upperKey, prefixToMatch).toLowerCase().replace('_', '.')
                         : key;
                 put(propKey, source.getProperty(key));
-                log.debug("Collected {} as {}={}", key, propKey, source.getProperty(key));
+                if(log.isDebugEnabled()) {
+                    log.debug("Collected {} as {}={}", key, propKey, source.getProperty(key));
+                }
             }
         }
     }

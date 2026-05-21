@@ -3,11 +3,11 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU General License, version 3.0 (GPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
+ * You should have received a copy of the GNU General License,
  * version 3.0 (GPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
@@ -32,9 +32,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-public class FormatUtilsTest {
+class FormatUtilsTest {
     @Test
-    public void testReplaceTokens() {
+    void testReplaceTokens() {
         assertEquals("test", FormatUtils.replaceTokens("test", null, true));
         assertEquals("test", FormatUtils.replaceTokens("test", new HashMap<String, String>(), true));
         Map<String, String> params = new HashMap<String, String>();
@@ -44,7 +44,7 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testReplaceCurrentTimestamp() {
+    void testReplaceCurrentTimestamp() {
         String beforeSql = "insert into sym_node values ('00000', 'test-root-group', '00000', 1, null, null, '2.0', null, null, current_timestamp, null, 0, 0, '00000', 'engine')";
         String afterSql = "insert into sym_node values ('00000', 'test-root-group', '00000', 1, null, null, '2.0', null, null, XXXX, null, 0, 0, '00000', 'engine')";
         Map<String, String> replacementTokens = new HashMap<String, String>();
@@ -53,7 +53,7 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testReplace() {
+    void testReplace() {
         assertEquals(FormatUtils.replace("nodeId", "001", "nodeId = $(nodeId)"), "nodeId = 001");
         assertEquals(FormatUtils.replace("nodeId", "001", "nodeId = $(nodeId:0)"), "nodeId = 001");
         assertEquals(FormatUtils.replace("nodeId", "001", "nodeId = $(nodeId:0:10)"), "nodeId = 001");
@@ -63,7 +63,7 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testRemovePrefix() {
+    void testRemovePrefix() {
         assertEquals("VALUE", FormatUtils.removePrefix("PREFIX_VALUE", "PREFIX_"));
         assertEquals("VALUE", FormatUtils.removePrefix("VALUE", ""));
         assertEquals("VALUE", FormatUtils.removePrefix("VALUE", "OTHER_"));
@@ -72,7 +72,7 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testIsWildcardMatch() {
+    void testIsWildcardMatch() {
         assertTrue(FormatUtils.isWildCardMatch("TEST_1", "TEST_*"));
         assertTrue(FormatUtils.isWildCardMatch("TEST_2", "TEST_*"));
         assertTrue(FormatUtils.isWildCardMatch("TEST_TEST_TEST", "TEST_*"));
@@ -91,14 +91,14 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testIsWildcardMatchIgnoreCase() {
+    void testIsWildcardMatchIgnoreCase() {
         assertTrue(FormatUtils.isWildCardMatch("test_1", "TEST_*", true));
         assertFalse(FormatUtils.isWildCardMatch("other", "TEST_*", true));
         assertTrue(FormatUtils.isWildCardMatch("TEST_1", "TEST_*", false));
     }
 
     @Test
-    public void testToBoolean() {
+    void testToBoolean() {
         assertTrue(FormatUtils.toBoolean("true"));
         assertTrue(FormatUtils.toBoolean("1"));
         assertFalse(FormatUtils.toBoolean("false"));
@@ -108,14 +108,14 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testIsMixedCase() {
+    void testIsMixedCase() {
         assertTrue(FormatUtils.isMixedCase("HelloWorld"));
         assertFalse(FormatUtils.isMixedCase("ALLCAPS"));
         assertFalse(FormatUtils.isMixedCase("alllower"));
     }
 
     @Test
-    public void testIsWildCarded() {
+    void testIsWildCarded() {
         assertTrue(FormatUtils.isWildCarded("TAB_*"));
         assertTrue(FormatUtils.isWildCarded("TAB_1,TAB_2"));
         assertTrue(FormatUtils.isWildCarded("!TAB_1"));
@@ -127,7 +127,7 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testEscapeAndUnescapeWildCards() {
+    void testEscapeAndUnescapeWildCards() {
         assertEquals("TAB**_1", FormatUtils.escapeWildCards("TAB*_1"));
         assertEquals("TAB*_1", FormatUtils.unescapeWildCards("TAB**_1"));
         assertNull(FormatUtils.escapeWildCards(null));
@@ -135,7 +135,7 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testWordWrap() {
+    void testWordWrap() {
         String[] lines = FormatUtils.wordWrap("short", 80);
         assertEquals(1, lines.length);
         assertEquals("short", lines[0]);
@@ -144,25 +144,25 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testWordWrapDifferentLineSizes() {
+    void testWordWrapDifferentLineSizes() {
         String[] lines = FormatUtils.wordWrap("one two three four five six seven eight", 15, 10);
         assertTrue(lines.length > 1);
     }
 
     @Test
-    public void testAbbreviateForLogging_shortString() {
+    void testAbbreviateForLogging_shortString() {
         assertEquals("hello", FormatUtils.abbreviateForLogging("hello"));
     }
 
     @Test
-    public void testAbbreviateForLogging_longString() {
+    void testAbbreviateForLogging_longString() {
         String longStr = "a".repeat(1100);
         String result = FormatUtils.abbreviateForLogging(longStr);
         assertTrue(result.length() <= FormatUtils.MAX_CHARS_TO_LOG);
     }
 
     @Test
-    public void testAbbreviateForLogging_list() {
+    void testAbbreviateForLogging_list() {
         List<String> items = Arrays.asList("alpha", "beta", "gamma");
         String result = FormatUtils.abbreviateForLogging(items, 1000);
         assertTrue(result.contains("alpha"));
@@ -172,7 +172,7 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testSplitOnSpacePreserveQuotedStrings() {
+    void testSplitOnSpacePreserveQuotedStrings() {
         String[] parts = FormatUtils.splitOnSpacePreserveQuotedStrings("one \"two three\" four");
         assertEquals(3, parts.length);
         assertEquals("one", parts[0]);
@@ -181,14 +181,14 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testReplaceCharsToShortenName() {
+    void testReplaceCharsToShortenName() {
         assertEquals("TBL", FormatUtils.replaceCharsToShortenName("TABLE"));
         assertEquals("t_b_l", FormatUtils.replaceCharsToShortenName("t_b_l"));
         assertEquals("symtblnm", FormatUtils.replaceCharsToShortenName("sym.table.name"));
     }
 
     @Test
-    public void testIsInteger() {
+    void testIsInteger() {
         assertTrue(FormatUtils.isInteger("123"));
         assertTrue(FormatUtils.isInteger("-456"));
         assertFalse(FormatUtils.isInteger("12.3"));
@@ -196,17 +196,17 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testFormatString_integer() {
+    void testFormatString_integer() {
         assertEquals("0042", FormatUtils.formatString("%04d", "42"));
     }
 
     @Test
-    public void testFormatString_string() {
+    void testFormatString_string() {
         assertEquals("hello     ", FormatUtils.formatString("%-10s", "hello"));
     }
 
     @Test
-    public void testReplaceToken() {
+    void testReplaceToken() {
         assertEquals("value=abc", FormatUtils.replaceToken("value=$(key)", "key", "abc", true));
         assertEquals("value=abc", FormatUtils.replaceToken("value=key", "key", "abc", false));
     }
