@@ -1,7 +1,3 @@
-*.classpath
-*.project
-*.settings
-*.factorypath
 /target
 /bin/
 /.DS_Store

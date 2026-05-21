@@ -1,11 +1,7 @@
-*.project
-*.factorypath
 /target
 /torque
 /velocity.log
 /.gradle/
-/.settings/
-/.classpath
 /build/
 /bin/
 /.DS_Store

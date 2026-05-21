@@ -1,5 +1,8 @@
 **/build/spotless-clean/
-/.project
+**/.classpath
+**/.project
+**/.settings/
+**/.factorypath
 *.iml
 .clover/*
 /.idea/*
