@@ -27,9 +27,11 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.exception.IoException;
+import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,6 +147,25 @@ public class TypedProperties extends Properties {
             returnValue = Boolean.parseBoolean(value);
         }
         return returnValue;
+    }
+
+    public void collectFrom(String prefixToDrop, String[] names, Function<String, String> lookup) {
+        for (String name : names) {
+            put(name, lookup.apply(prefixToDrop + name));
+        }
+    }
+
+    public void collectFrom(TypedProperties source, String prefixToMatch, boolean dropPrefix) {
+        for (String key : source.stringPropertyNames()) {
+            String upperKey = key.toUpperCase();
+            if (upperKey.startsWith(prefixToMatch)) {
+                String propKey = dropPrefix
+                        ? FormatUtils.removePrefix(upperKey, prefixToMatch).toLowerCase().replace('_', '.')
+                        : key;
+                put(propKey, source.getProperty(key));
+                log.debug("Collected {} as {}={}", key, propKey, source.getProperty(key));
+            }
+        }
     }
 
     public String get(String key) {

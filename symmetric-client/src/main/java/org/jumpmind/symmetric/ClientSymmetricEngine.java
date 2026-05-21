@@ -316,19 +316,13 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
     private TypedProperties preparePlatformProperties() {
         TypedProperties properties = new TypedProperties();
         String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
-        copyPropertiesDropPrefix(properties, prefix, DataSourceProperties.ALL_PROPS);
-        copyPropertiesDropPrefix(properties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
-        copyPropertiesDropPrefix(properties, "", ParameterConstants.ALL_KAFKA_PARAMS);
-        copyPropertiesDropPrefix(properties, "", ParameterConstants.ALL_GOOGLE_BIG_QUERY_PARAMS);
-        copyPropertiesDropPrefix(properties, "", ParameterConstants.ALL_MONGODB_PARAMS);
-        copyPropertiesDropPrefix(properties, "", ParameterConstants.ALL_COSMOS_PARAMS);
+        properties.collectFrom(prefix, DataSourceProperties.ALL_PROPS, parameterService::getString);
+        properties.collectFrom(prefix, ParameterConstants.ALL_JDBC_PARAMS, parameterService::getString);
+        properties.collectFrom("", ParameterConstants.ALL_KAFKA_PARAMS, parameterService::getString);
+        properties.collectFrom("", ParameterConstants.ALL_GOOGLE_BIG_QUERY_PARAMS, parameterService::getString);
+        properties.collectFrom("", ParameterConstants.ALL_MONGODB_PARAMS, parameterService::getString);
+        properties.collectFrom("", ParameterConstants.ALL_COSMOS_PARAMS, parameterService::getString);
         return properties;
-    }
-
-    private void copyPropertiesDropPrefix(TypedProperties properties, String prefix, String[] parameterNames) {
-        for (String name : parameterNames) {
-            properties.put(name, parameterService.getString(prefix + name));
-        }
     }
 
     @Override
