@@ -163,7 +163,7 @@ public class TypedProperties extends Properties {
                         ? FormatUtils.removePrefix(upperKey, prefixToMatch).toLowerCase().replace('_', '.')
                         : key;
                 put(propKey, source.getProperty(key));
-                if(log.isDebugEnabled()) {
+                if (log.isDebugEnabled()) {
                     log.debug("Collected {} as {}={}", key, propKey, source.getProperty(key));
                 }
             }
