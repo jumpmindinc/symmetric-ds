@@ -37,7 +37,6 @@ allprojects {
         maven { url = "https://packages.confluent.io/maven/" }
         maven { url = "https://repository.mulesoft.org/nexus/content/repositories/public/" }
         maven { url = "https://repo1.maven.org/maven2/" }
-        maven { url = "https://maven.jumpmind.com/repo" }
     }
         
     ext {
