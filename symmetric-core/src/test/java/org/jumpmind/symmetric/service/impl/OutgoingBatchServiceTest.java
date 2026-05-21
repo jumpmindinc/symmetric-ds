@@ -60,9 +60,9 @@ import org.jumpmind.symmetric.service.impl.OutgoingBatchService.OutgoingBatchSum
 import org.jumpmind.symmetric.service.impl.OutgoingBatchService.OutgoingBatchSummaryMapper;
 import org.junit.jupiter.api.Test;
 
-public class OutgoingBatchServiceTest {
+class OutgoingBatchServiceTest {
     @Test
-    public void testSummaryMapperWithoutNodeOrChannel() {
+    void testSummaryMapperWithoutNodeOrChannel() {
         Row row = buildSummaryRow();
         OutgoingBatchSummary summary = new OutgoingBatchSummaryMapper(false, false).mapRow(row);
         assertNull(summary.getNodeId());
@@ -71,7 +71,7 @@ public class OutgoingBatchServiceTest {
     }
 
     @Test
-    public void testSummaryMapperWithNode() {
+    void testSummaryMapperWithNode() {
         Row row = buildSummaryRow();
         OutgoingBatchSummary summary = new OutgoingBatchSummaryMapper(true, false).mapRow(row);
         assertEquals("node1", summary.getNodeId());
@@ -80,7 +80,7 @@ public class OutgoingBatchServiceTest {
     }
 
     @Test
-    public void testSummaryMapperWithNodeAndChannel() {
+    void testSummaryMapperWithNodeAndChannel() {
         Row row = buildSummaryRow();
         OutgoingBatchSummary summary = new OutgoingBatchSummaryMapper(true, true).mapRow(row);
         assertEquals("node1", summary.getNodeId());
@@ -89,7 +89,7 @@ public class OutgoingBatchServiceTest {
     }
 
     @Test
-    public void testSummaryMapperErrorFlag() {
+    void testSummaryMapperErrorFlag() {
         Row row = buildSummaryRow();
         assertFalse(new OutgoingBatchSummaryMapper(false, false).mapRow(row).isErrorFlag());
         row.put(OUT_BATCH_COL_ERROR_FLAG, true);
@@ -97,7 +97,7 @@ public class OutgoingBatchServiceTest {
     }
 
     @Test
-    public void testBriefStatsMapper() {
+    void testBriefStatsMapper() {
         Date batchDate = new Date();
         Row row = new Row(
                 new String[] { OUT_BATCH_COL_NODE_ID, OUT_BATCH_COL_STATUS, COL_BATCH_DATE, COL_BATCHES, COL_DATA_ROWS },
@@ -111,7 +111,7 @@ public class OutgoingBatchServiceTest {
     }
 
     @Test
-    public void testBacklogSummaryMapper() {
+    void testBacklogSummaryMapper() {
         Row row = new Row(
                 new String[] { OUT_BATCH_COL_BYTE_COUNT, COL_ROWS_COUNT },
                 new Object[] { 5000L, 250L });
