@@ -70,6 +70,83 @@ import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.FormatUtils;
 
 public class OutgoingBatchService extends AbstractService implements IOutgoingBatchService {
+    static final String COL_BATCH_COUNT = "batch_count";
+    static final String COL_BATCH_DATE = "batch_date";
+    static final String COL_BATCHES = "batches";
+    static final String COL_DATA = "data";
+    static final String COL_DATA_ROWS = "data_rows";
+    static final String COL_DELETE_EVENT_COUNT = "delete_event_count";
+    static final String COL_INSERT_EVENT_COUNT = "insert_event_count";
+    static final String COL_OLDEST_BATCH_TIME = "oldest_batch_time";
+    static final String COL_OTHER_EVENT_COUNT = "other_event_count";
+    static final String COL_RELOAD_EVENT_COUNT = "reload_event_count";
+    static final String COL_ROWS_COUNT = "rows_count";
+    static final String COL_TOTAL_BYTES = "total_bytes";
+    static final String COL_TOTAL_EXTRACT_MILLIS = "total_extract_millis";
+    static final String COL_TOTAL_LOAD_MILLIS = "total_load_millis";
+    static final String COL_TOTAL_MILLIS = "total_millis";
+    static final String COL_TOTAL_NETWORK_MILLIS = "total_network_millis";
+    static final String COL_TOTAL_ROUTER_MILLIS = "total_router_millis";
+    static final String COL_UPDATE_EVENT_COUNT = "update_event_count";
+    static final String OUT_BATCH_COL_BATCH_ID = "batch_id";
+    static final String OUT_BATCH_COL_BULK_LOADER_FLAG = "bulk_loader_flag";
+    static final String OUT_BATCH_COL_BYTE_COUNT = "byte_count";
+    static final String OUT_BATCH_COL_CHANNEL_ID = "channel_id";
+    static final String OUT_BATCH_COL_COMMON_FLAG = "common_flag";
+    static final String OUT_BATCH_COL_CONFLICT_LOSE_COUNT = "conflict_lose_count";
+    static final String OUT_BATCH_COL_CONFLICT_WIN_COUNT = "conflict_win_count";
+    static final String OUT_BATCH_COL_CREATE_BY = "create_by";
+    static final String OUT_BATCH_COL_CREATE_TIME = "create_time";
+    static final String OUT_BATCH_COL_DATA_DELETE_ROW_COUNT = "data_delete_row_count";
+    static final String OUT_BATCH_COL_DATA_INSERT_ROW_COUNT = "data_insert_row_count";
+    static final String OUT_BATCH_COL_DATA_MAX_CREATE_TIME = "data_max_create_time";
+    static final String OUT_BATCH_COL_DATA_MIN_CREATE_TIME = "data_min_create_time";
+    static final String OUT_BATCH_COL_DATA_ROW_COUNT = "data_row_count";
+    static final String OUT_BATCH_COL_DATA_UPDATE_ROW_COUNT = "data_update_row_count";
+    static final String OUT_BATCH_COL_ERROR_FLAG = "error_flag";
+    static final String OUT_BATCH_COL_EXTRACT_COUNT = "extract_count";
+    static final String OUT_BATCH_COL_EXTRACT_DELETE_ROW_COUNT = "extract_delete_row_count";
+    static final String OUT_BATCH_COL_EXTRACT_INSERT_ROW_COUNT = "extract_insert_row_count";
+    static final String OUT_BATCH_COL_EXTRACT_JOB_FLAG = "extract_job_flag";
+    static final String OUT_BATCH_COL_EXTRACT_MILLIS = "extract_millis";
+    static final String OUT_BATCH_COL_EXTRACT_ROW_COUNT = "extract_row_count";
+    static final String OUT_BATCH_COL_EXTRACT_START_TIME = "extract_start_time";
+    static final String OUT_BATCH_COL_EXTRACT_UPDATE_ROW_COUNT = "extract_update_row_count";
+    static final String OUT_BATCH_COL_FAILED_DATA_ID = "failed_data_id";
+    static final String OUT_BATCH_COL_FAILED_LINE_NUMBER = "failed_line_number";
+    static final String OUT_BATCH_COL_FALLBACK_INSERT_COUNT = "fallback_insert_count";
+    static final String OUT_BATCH_COL_FALLBACK_UPDATE_COUNT = "fallback_update_count";
+    static final String OUT_BATCH_COL_FILTER_MILLIS = "filter_millis";
+    static final String OUT_BATCH_COL_IGNORE_COUNT = "ignore_count";
+    static final String OUT_BATCH_COL_IGNORE_ROW_COUNT = "ignore_row_count";
+    static final String OUT_BATCH_COL_LAST_UPDATE_HOSTNAME = "last_update_hostname";
+    static final String OUT_BATCH_COL_LAST_UPDATE_TIME = "last_update_time";
+    static final String OUT_BATCH_COL_LOAD_COUNT = "load_count";
+    static final String OUT_BATCH_COL_LOAD_DELETE_ROW_COUNT = "load_delete_row_count";
+    static final String OUT_BATCH_COL_LOAD_FLAG = "load_flag";
+    static final String OUT_BATCH_COL_LOAD_ID = "load_id";
+    static final String OUT_BATCH_COL_LOAD_INSERT_ROW_COUNT = "load_insert_row_count";
+    static final String OUT_BATCH_COL_LOAD_MILLIS = "load_millis";
+    static final String OUT_BATCH_COL_LOAD_ROW_COUNT = "load_row_count";
+    static final String OUT_BATCH_COL_LOAD_START_TIME = "load_start_time";
+    static final String OUT_BATCH_COL_LOAD_UPDATE_ROW_COUNT = "load_update_row_count";
+    static final String OUT_BATCH_COL_MISSING_DELETE_COUNT = "missing_delete_count";
+    static final String OUT_BATCH_COL_NETWORK_MILLIS = "network_millis";
+    static final String OUT_BATCH_COL_NODE_ID = "node_id";
+    static final String OUT_BATCH_COL_OTHER_ROW_COUNT = "other_row_count";
+    static final String OUT_BATCH_COL_RELOAD_ROW_COUNT = "reload_row_count";
+    static final String OUT_BATCH_COL_ROUTER_MILLIS = "router_millis";
+    static final String OUT_BATCH_COL_SENT_COUNT = "sent_count";
+    static final String OUT_BATCH_COL_SKIP_COUNT = "skip_count";
+    static final String OUT_BATCH_COL_SQL_CODE = "sql_code";
+    static final String OUT_BATCH_COL_SQL_MESSAGE = "sql_message";
+    static final String OUT_BATCH_COL_SQL_STATE = "sql_state";
+    static final String OUT_BATCH_COL_STATUS = "status";
+    static final String OUT_BATCH_COL_SUMMARY = "summary";
+    static final String OUT_BATCH_COL_THREAD_ID = "thread_id";
+    static final String OUT_BATCH_COL_TRANSFER_START_TIME = "transfer_start_time";
+    static final String OUT_BATCH_COL_TRANSFORM_EXTRACT_MILLIS = "transform_extract_millis";
+    static final String OUT_BATCH_COL_TRANSFORM_LOAD_MILLIS = "transform_load_millis";
     private INodeService nodeService;
     private IConfigurationService configurationService;
     private ISequenceService sequenceService;
@@ -458,8 +535,8 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
     public int[] countOutgoingNonSystemBatchesRowsUnsent() {
         int[] batchesRows = new int[2];
         for (Row row : sqlTemplateDirty.query(getSql("countOutgoingNonSystemBatchesUnsentSql"))) {
-            batchesRows[0] = row.getInt("batch_count");
-            batchesRows[1] = row.getInt("rows_count");
+            batchesRows[0] = row.getInt(COL_BATCH_COUNT);
+            batchesRows[1] = row.getInt(COL_ROWS_COUNT);
         }
         return batchesRows;
     }
@@ -489,7 +566,7 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         Map<String, Integer> results = new HashMap<String, Integer>();
         if (rows != null && !rows.isEmpty()) {
             for (Row row : rows) {
-                results.put(row.getString("channel_id"), row.getInt("batch_count"));
+                results.put(row.getString(OUT_BATCH_COL_CHANNEL_ID), row.getInt(COL_BATCH_COUNT));
             }
         }
         Set<String> channelIds = configurationService.getChannels(false).keySet();
@@ -918,9 +995,9 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
                 OutgoingBatch.Status.ER.name(), OutgoingBatch.Status.IG.name(), OutgoingBatch.Status.RS.name() });
         Map<String, ReadyChannels> readyChannelMap = new HashMap<>();
         for (Row row : rows) {
-            String nodeId = row.getString("node_id");
-            String channelId = row.getString("channel_id");
-            Integer threadId = row.getInteger("thread_id");
+            String nodeId = row.getString(OUT_BATCH_COL_NODE_ID);
+            String channelId = row.getString(OUT_BATCH_COL_CHANNEL_ID);
+            Integer threadId = row.getInteger(OUT_BATCH_COL_THREAD_ID);
             ReadyChannels channels = readyChannelMap.get(nodeId);
             if (channels == null) {
                 channels = new ReadyChannels(nodeId);
@@ -953,29 +1030,29 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         public OutgoingBatchSummary mapRow(Row rs) {
             OutgoingBatchSummary summary = new OutgoingBatchSummary();
             if (withNode) {
-                summary.setNodeId(rs.getString("node_id"));
+                summary.setNodeId(rs.getString(OUT_BATCH_COL_NODE_ID));
             }
             if (withChannel) {
-                summary.setChannel(rs.getString("channel_id"));
+                summary.setChannel(rs.getString(OUT_BATCH_COL_CHANNEL_ID));
             }
-            summary.setBatchCount(rs.getInt("batches"));
-            summary.setDataCount(rs.getInt("data"));
-            summary.setStatus(Status.valueOf(rs.getString("status")));
-            summary.setOldestBatchCreateTime(rs.getDateTime("oldest_batch_time"));
-            summary.setLastBatchUpdateTime(rs.getDateTime("last_update_time"));
-            summary.setTotalBytes(rs.getLong("total_bytes"));
-            summary.setTotalMillis(rs.getLong("total_millis"));
-            summary.setErrorFlag(rs.getBoolean("error_flag"));
-            summary.setMinBatchId(rs.getLong("batch_id"));
-            summary.setInsertCount(rs.getInt("insert_event_count"));
-            summary.setUpdateCount(rs.getInt("update_event_count"));
-            summary.setDeleteCount(rs.getInt("delete_event_count"));
-            summary.setOtherCount(rs.getInt("other_event_count"));
-            summary.setOtherCount(rs.getInt("reload_event_count"));
-            summary.setRouterMillis(rs.getLong("total_router_millis"));
-            summary.setExtractMillis(rs.getLong("total_extract_millis"));
-            summary.setTransferMillis(rs.getLong("total_network_millis"));
-            summary.setLoadMillis(rs.getLong("total_load_millis"));
+            summary.setBatchCount(rs.getInt(COL_BATCHES));
+            summary.setDataCount(rs.getInt(COL_DATA));
+            summary.setStatus(Status.valueOf(rs.getString(OUT_BATCH_COL_STATUS)));
+            summary.setOldestBatchCreateTime(rs.getDateTime(COL_OLDEST_BATCH_TIME));
+            summary.setLastBatchUpdateTime(rs.getDateTime(OUT_BATCH_COL_LAST_UPDATE_TIME));
+            summary.setTotalBytes(rs.getLong(COL_TOTAL_BYTES));
+            summary.setTotalMillis(rs.getLong(COL_TOTAL_MILLIS));
+            summary.setErrorFlag(rs.getBoolean(OUT_BATCH_COL_ERROR_FLAG));
+            summary.setMinBatchId(rs.getLong(OUT_BATCH_COL_BATCH_ID));
+            summary.setInsertCount(rs.getInt(COL_INSERT_EVENT_COUNT));
+            summary.setUpdateCount(rs.getInt(COL_UPDATE_EVENT_COUNT));
+            summary.setDeleteCount(rs.getInt(COL_DELETE_EVENT_COUNT));
+            summary.setOtherCount(rs.getInt(COL_OTHER_EVENT_COUNT));
+            summary.setOtherCount(rs.getInt(COL_RELOAD_EVENT_COUNT));
+            summary.setRouterMillis(rs.getLong(COL_TOTAL_ROUTER_MILLIS));
+            summary.setExtractMillis(rs.getLong(COL_TOTAL_EXTRACT_MILLIS));
+            summary.setTransferMillis(rs.getLong(COL_TOTAL_NETWORK_MILLIS));
+            summary.setLoadMillis(rs.getLong(COL_TOTAL_LOAD_MILLIS));
             return summary;
         }
     }
@@ -996,70 +1073,70 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         }
 
         public OutgoingBatch mapRow(Row rs) {
-            String channelId = rs.getString("channel_id");
+            String channelId = rs.getString(OUT_BATCH_COL_CHANNEL_ID);
             Channel channel = channels.get(channelId);
             if (channel != null && (includeDisabledChannels || channel.isEnabled())) {
                 OutgoingBatch batch = new OutgoingBatch();
-                batch.setNodeId(rs.getString("node_id"));
-                batch.setStatusFromString(rs.getString("status"));
-                batch.setBatchId(rs.getLong("batch_id"));
+                batch.setNodeId(rs.getString(OUT_BATCH_COL_NODE_ID));
+                batch.setStatusFromString(rs.getString(OUT_BATCH_COL_STATUS));
+                batch.setBatchId(rs.getLong(OUT_BATCH_COL_BATCH_ID));
                 if (!statusOnly) {
                     batch.setChannelId(channelId);
-                    batch.setByteCount(rs.getLong("byte_count"));
-                    batch.setExtractCount(rs.getLong("extract_count"));
-                    batch.setSentCount(rs.getLong("sent_count"));
-                    batch.setLoadCount(rs.getLong("load_count"));
-                    batch.setDataRowCount(rs.getLong("data_row_count"));
-                    batch.setLoadRowCount(rs.getLong("load_row_count"));
-                    batch.setExtractRowCount(rs.getLong("extract_row_count"));
-                    batch.setReloadRowCount(rs.getLong("reload_row_count"));
-                    batch.setDataInsertRowCount(rs.getLong("data_insert_row_count"));
-                    batch.setDataUpdateRowCount(rs.getLong("data_update_row_count"));
-                    batch.setDataDeleteRowCount(rs.getLong("data_delete_row_count"));
-                    batch.setLoadInsertRowCount(rs.getLong("load_insert_row_count"));
-                    batch.setLoadUpdateRowCount(rs.getLong("load_update_row_count"));
-                    batch.setLoadDeleteRowCount(rs.getLong("load_delete_row_count"));
-                    batch.setExtractInsertRowCount(rs.getLong("extract_insert_row_count"));
-                    batch.setExtractUpdateRowCount(rs.getLong("extract_update_row_count"));
-                    batch.setExtractDeleteRowCount(rs.getLong("extract_delete_row_count"));
-                    batch.setOtherRowCount(rs.getLong("other_row_count"));
-                    batch.setIgnoreCount(rs.getLong("ignore_count"));
-                    batch.setRouterMillis(rs.getLong("router_millis"));
-                    batch.setNetworkMillis(rs.getLong("network_millis"));
-                    batch.setFilterMillis(rs.getLong("filter_millis"));
-                    batch.setLoadMillis(rs.getLong("load_millis"));
-                    batch.setExtractMillis(rs.getLong("extract_millis"));
-                    batch.setTransformExtractMillis(rs.getLong("transform_extract_millis"));
-                    batch.setTransformLoadMillis(rs.getLong("transform_load_millis"));
-                    batch.setExtractStartTime(rs.getDateTime("extract_start_time"));
-                    batch.setTransferStartTime(rs.getDateTime("transfer_start_time"));
-                    batch.setLoadStartTime(rs.getDateTime("load_start_time"));
-                    batch.setSqlState(rs.getString("sql_state"));
-                    batch.setSqlCode(rs.getInt("sql_code"));
-                    batch.setSqlMessage(rs.getString("sql_message"));
-                    batch.setFailedDataId(rs.getLong("failed_data_id"));
-                    batch.setFailedLineNumber(rs.getLong("failed_line_number"));
-                    batch.setLastUpdatedHostName(rs.getString("last_update_hostname"));
-                    batch.setLastUpdatedTime(rs.getDateTime("last_update_time"));
-                    batch.setCreateTime(rs.getDateTime("create_time"));
-                    batch.setLoadFlag(rs.getBoolean("load_flag"));
-                    batch.setErrorFlag(rs.getBoolean("error_flag"));
-                    batch.setCommonFlag(rs.getBoolean("common_flag"));
-                    batch.setExtractJobFlag(rs.getBoolean("extract_job_flag"));
-                    batch.setLoadId(rs.getLong("load_id"));
-                    batch.setCreateBy(rs.getString("create_by"));
-                    batch.setSummary(rs.getString("summary"));
-                    batch.setFallbackInsertCount(rs.getLong("fallback_insert_count"));
-                    batch.setFallbackUpdateCount(rs.getLong("fallback_update_count"));
-                    batch.setConflictWinCount(rs.getLong("conflict_win_count"));
-                    batch.setConflictLoseCount(rs.getLong("conflict_lose_count"));
-                    batch.setIgnoreRowCount(rs.getLong("ignore_row_count"));
-                    batch.setMissingDeleteCount(rs.getLong("missing_delete_count"));
-                    batch.setSkipCount(rs.getLong("skip_count"));
-                    batch.setBulkLoaderFlag(rs.getBoolean("bulk_loader_flag"));
-                    batch.setThreadId(rs.getInteger("thread_id"));
-                    batch.setDataMinCreateTime(rs.getDateTime("data_min_create_time"));
-                    batch.setDataMaxCreateTime(rs.getDateTime("data_max_create_time"));
+                    batch.setByteCount(rs.getLong(OUT_BATCH_COL_BYTE_COUNT));
+                    batch.setExtractCount(rs.getLong(OUT_BATCH_COL_EXTRACT_COUNT));
+                    batch.setSentCount(rs.getLong(OUT_BATCH_COL_SENT_COUNT));
+                    batch.setLoadCount(rs.getLong(OUT_BATCH_COL_LOAD_COUNT));
+                    batch.setDataRowCount(rs.getLong(OUT_BATCH_COL_DATA_ROW_COUNT));
+                    batch.setLoadRowCount(rs.getLong(OUT_BATCH_COL_LOAD_ROW_COUNT));
+                    batch.setExtractRowCount(rs.getLong(OUT_BATCH_COL_EXTRACT_ROW_COUNT));
+                    batch.setReloadRowCount(rs.getLong(OUT_BATCH_COL_RELOAD_ROW_COUNT));
+                    batch.setDataInsertRowCount(rs.getLong(OUT_BATCH_COL_DATA_INSERT_ROW_COUNT));
+                    batch.setDataUpdateRowCount(rs.getLong(OUT_BATCH_COL_DATA_UPDATE_ROW_COUNT));
+                    batch.setDataDeleteRowCount(rs.getLong(OUT_BATCH_COL_DATA_DELETE_ROW_COUNT));
+                    batch.setLoadInsertRowCount(rs.getLong(OUT_BATCH_COL_LOAD_INSERT_ROW_COUNT));
+                    batch.setLoadUpdateRowCount(rs.getLong(OUT_BATCH_COL_LOAD_UPDATE_ROW_COUNT));
+                    batch.setLoadDeleteRowCount(rs.getLong(OUT_BATCH_COL_LOAD_DELETE_ROW_COUNT));
+                    batch.setExtractInsertRowCount(rs.getLong(OUT_BATCH_COL_EXTRACT_INSERT_ROW_COUNT));
+                    batch.setExtractUpdateRowCount(rs.getLong(OUT_BATCH_COL_EXTRACT_UPDATE_ROW_COUNT));
+                    batch.setExtractDeleteRowCount(rs.getLong(OUT_BATCH_COL_EXTRACT_DELETE_ROW_COUNT));
+                    batch.setOtherRowCount(rs.getLong(OUT_BATCH_COL_OTHER_ROW_COUNT));
+                    batch.setIgnoreCount(rs.getLong(OUT_BATCH_COL_IGNORE_COUNT));
+                    batch.setRouterMillis(rs.getLong(OUT_BATCH_COL_ROUTER_MILLIS));
+                    batch.setNetworkMillis(rs.getLong(OUT_BATCH_COL_NETWORK_MILLIS));
+                    batch.setFilterMillis(rs.getLong(OUT_BATCH_COL_FILTER_MILLIS));
+                    batch.setLoadMillis(rs.getLong(OUT_BATCH_COL_LOAD_MILLIS));
+                    batch.setExtractMillis(rs.getLong(OUT_BATCH_COL_EXTRACT_MILLIS));
+                    batch.setTransformExtractMillis(rs.getLong(OUT_BATCH_COL_TRANSFORM_EXTRACT_MILLIS));
+                    batch.setTransformLoadMillis(rs.getLong(OUT_BATCH_COL_TRANSFORM_LOAD_MILLIS));
+                    batch.setExtractStartTime(rs.getDateTime(OUT_BATCH_COL_EXTRACT_START_TIME));
+                    batch.setTransferStartTime(rs.getDateTime(OUT_BATCH_COL_TRANSFER_START_TIME));
+                    batch.setLoadStartTime(rs.getDateTime(OUT_BATCH_COL_LOAD_START_TIME));
+                    batch.setSqlState(rs.getString(OUT_BATCH_COL_SQL_STATE));
+                    batch.setSqlCode(rs.getInt(OUT_BATCH_COL_SQL_CODE));
+                    batch.setSqlMessage(rs.getString(OUT_BATCH_COL_SQL_MESSAGE));
+                    batch.setFailedDataId(rs.getLong(OUT_BATCH_COL_FAILED_DATA_ID));
+                    batch.setFailedLineNumber(rs.getLong(OUT_BATCH_COL_FAILED_LINE_NUMBER));
+                    batch.setLastUpdatedHostName(rs.getString(OUT_BATCH_COL_LAST_UPDATE_HOSTNAME));
+                    batch.setLastUpdatedTime(rs.getDateTime(OUT_BATCH_COL_LAST_UPDATE_TIME));
+                    batch.setCreateTime(rs.getDateTime(OUT_BATCH_COL_CREATE_TIME));
+                    batch.setLoadFlag(rs.getBoolean(OUT_BATCH_COL_LOAD_FLAG));
+                    batch.setErrorFlag(rs.getBoolean(OUT_BATCH_COL_ERROR_FLAG));
+                    batch.setCommonFlag(rs.getBoolean(OUT_BATCH_COL_COMMON_FLAG));
+                    batch.setExtractJobFlag(rs.getBoolean(OUT_BATCH_COL_EXTRACT_JOB_FLAG));
+                    batch.setLoadId(rs.getLong(OUT_BATCH_COL_LOAD_ID));
+                    batch.setCreateBy(rs.getString(OUT_BATCH_COL_CREATE_BY));
+                    batch.setSummary(rs.getString(OUT_BATCH_COL_SUMMARY));
+                    batch.setFallbackInsertCount(rs.getLong(OUT_BATCH_COL_FALLBACK_INSERT_COUNT));
+                    batch.setFallbackUpdateCount(rs.getLong(OUT_BATCH_COL_FALLBACK_UPDATE_COUNT));
+                    batch.setConflictWinCount(rs.getLong(OUT_BATCH_COL_CONFLICT_WIN_COUNT));
+                    batch.setConflictLoseCount(rs.getLong(OUT_BATCH_COL_CONFLICT_LOSE_COUNT));
+                    batch.setIgnoreRowCount(rs.getLong(OUT_BATCH_COL_IGNORE_ROW_COUNT));
+                    batch.setMissingDeleteCount(rs.getLong(OUT_BATCH_COL_MISSING_DELETE_COUNT));
+                    batch.setSkipCount(rs.getLong(OUT_BATCH_COL_SKIP_COUNT));
+                    batch.setBulkLoaderFlag(rs.getBoolean(OUT_BATCH_COL_BULK_LOADER_FLAG));
+                    batch.setThreadId(rs.getInteger(OUT_BATCH_COL_THREAD_ID));
+                    batch.setDataMinCreateTime(rs.getDateTime(OUT_BATCH_COL_DATA_MIN_CREATE_TIME));
+                    batch.setDataMaxCreateTime(rs.getDateTime(OUT_BATCH_COL_DATA_MAX_CREATE_TIME));
                 }
                 return batch;
             } else {
@@ -1068,12 +1145,12 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         }
     }
 
-    class BacklogSummaryMapper implements ISqlRowMapper<BacklogSummary> {
+    static class BacklogSummaryMapper implements ISqlRowMapper<BacklogSummary> {
         @Override
         public BacklogSummary mapRow(Row row) {
             BacklogSummary summary = new BacklogSummary();
-            summary.setByteCount(row.getLong("byte_count"));
-            summary.setRowCount(row.getLong("rows_count"));
+            summary.setByteCount(row.getLong(OUT_BATCH_COL_BYTE_COUNT));
+            summary.setRowCount(row.getLong(COL_ROWS_COUNT));
             return summary;
         }
     }
@@ -1082,11 +1159,11 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         @Override
         public OutgoingBatchSummaryByNodeBriefStats mapRow(Row row) {
             return new OutgoingBatchSummaryByNodeBriefStats(
-                    row.getString("node_id"),
-                    row.getString("status"),
-                    row.getDateTime("batch_date"),
-                    row.getLong("batches"),
-                    row.getLong("data_rows"));
+                    row.getString(OUT_BATCH_COL_NODE_ID),
+                    row.getString(OUT_BATCH_COL_STATUS),
+                    row.getDateTime(COL_BATCH_DATE),
+                    row.getLong(COL_BATCHES),
+                    row.getLong(COL_DATA_ROWS));
         }
     }
 }
