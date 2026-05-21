@@ -58,12 +58,12 @@ class TypedPropertiesFactoryTest {
     }
 
     @Test
-    void testOtelEnvVariableAddedWithOriginalKey() {
+    void testOtelEnvVariableAddedAsPropertyKey() {
         TypedProperties fileProps = new TypedProperties();
         fileProps.setProperty("db.url", "url");
         TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, true,
                 TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "my-service")));
-        assertEquals("my-service", fileProps.getProperty("OTEL_SERVICE_NAME"));
+        assertEquals("my-service", fileProps.getProperty("otel.service.name"));
     }
 
     @Test
@@ -72,7 +72,7 @@ class TypedPropertiesFactoryTest {
         fileProps.setProperty("db.url", "url");
         TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, false,
                 TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "my-service")));
-        assertNull(fileProps.getProperty("OTEL_SERVICE_NAME"));
+        assertNull(fileProps.getProperty("otel.service.name"));
     }
 
     @Test
@@ -81,7 +81,6 @@ class TypedPropertiesFactoryTest {
         fileProps.setProperty("db.url", "url");
         TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, true,
                 TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "otel-name", "SYM_OTEL_SERVICE_NAME", "sym-name")));
-        assertEquals("otel-name", fileProps.getProperty("OTEL_SERVICE_NAME"));
         assertEquals("sym-name", fileProps.getProperty("otel.service.name"));
     }
 

@@ -10,6 +10,18 @@ import org.junit.jupiter.api.Test;
 
 class TypedPropertiesTest {
     @Test
+    void renameKeysWithUnderscores_convertsMatchingKeysToPropertyFormat() {
+        TypedProperties source = new TypedProperties();
+        source.setProperty("OTEL_SERVICE_NAME", "my-service");
+        source.setProperty("OTEL_SCOPE", "symmetricds");
+        source.setProperty("OTHER_KEY", "value");
+        TypedProperties result = source.renameKeysWithUnderscores("OTEL_");
+        assertEquals("my-service", result.getProperty("otel.service.name"));
+        assertEquals("symmetricds", result.getProperty("otel.scope"));
+        assertNull(result.getProperty("other.key"));
+    }
+
+    @Test
     void testMerge() {
         TypedProperties target = new TypedProperties();
         target.setProperty("db.url", "original-url");

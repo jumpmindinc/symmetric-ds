@@ -149,6 +149,16 @@ public class TypedProperties extends Properties {
         return returnValue;
     }
 
+    public TypedProperties renameKeysWithUnderscores(String prefixToMatch) {
+        TypedProperties result = new TypedProperties();
+        for (String key : stringPropertyNames()) {
+            if (key.toUpperCase().startsWith(prefixToMatch)) {
+                result.put(key.toLowerCase().replace('_', '.'), getProperty(key));
+            }
+        }
+        return result;
+    }
+
     public void collectFrom(String prefixToDrop, String[] names, UnaryOperator<String> lookup) {
         for (String name : names) {
             put(name, lookup.apply(prefixToDrop + name));

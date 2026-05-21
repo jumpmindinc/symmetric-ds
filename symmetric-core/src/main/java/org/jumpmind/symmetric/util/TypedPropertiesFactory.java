@@ -84,8 +84,7 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
 
     public static void mergeAndOverrideWithEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties,
             TypedProperties envProperties) {
-        TypedProperties otelEnvProperties = new TypedProperties();
-        otelEnvProperties.collectFrom(envProperties, SymMetricConstants.OTEL_ENV_PREFIX, false);
+        TypedProperties otelEnvProperties = envProperties.renameKeysWithUnderscores(SymMetricConstants.OTEL_ENV_PREFIX);
         TypedProperties symEnvProperties = new TypedProperties();
         symEnvProperties.collectFrom(envProperties, ServerConstants.SYM_ENV_PREFIX, true);
         if (fileProperties.isEmpty() && symEnvProperties.isEmpty()) {
