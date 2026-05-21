@@ -527,29 +527,33 @@ $(variableName|%05d) - returns 00001
 
 === OpenTelemetry Integration
 
-SymmetricDS publishes built-in metrics through the https://opentelemetry.io[OpenTelemetry] (OTel) API, making them available to any OTel-compatible backend such as Prometheus, Grafana, or a vendor-managed observability platform.
-Metrics are recorded at each aggregation interval and exposed via the OTel metric SDK under the scope name `symmetricds`, which can be overridden with the `otel.scope` system property.
+SymmetricDS publishes built-in metrics through the https://opentelemetry.io[OpenTelemetry] (OTel) API, making them available to any OTel-compatible observability platform such as Prometheus (via OTLP receiver), Grafana Cloud, DataDog, Dynatrace, etc.
 
-==== Integration Modes
+Built-in metrics are exposed via the OpenTelemetry SDK under the scope name `symmetricds`, which can be overridden in three ways:
+* `OTEL_SCOPE` environment variable,
+* With the `otel.scope` JMV system property (in either bin/setenv or conf/sym_service.conf file), 
+* `otel.scope` start up parameter in the symmetric-server.properties file.
+
+==== OTel SDK Configuration
 
 SymmetricDS supports two modes of OTel integration depending on how the JVM is configured.
 
 Autoconfigured SDK::
-When no global OpenTelemetry instance is registered, SymmetricDS initializes its own SDK using the standard https://opentelemetry.io/docs/languages/java/configuration/[OTel autoconfiguration] mechanism.
+When no global OpenTelemetry instance is registered in JVM, SymmetricDS initializes its own SDK using the standard https://opentelemetry.io/docs/languages/java/configuration/[OTel autoconfiguration] mechanism.
 Exporters and other SDK settings are controlled by the standard `OTEL_*` environment variables (for example, `OTEL_EXPORTER_OTLP_ENDPOINT` or `OTEL_METRICS_EXPORTER`).
 
 Java Agent::
-When an https://opentelemetry.io/docs/zero-code/java/agent/[OTel Java agent] is attached to the JVM, it registers a global OpenTelemetry instance before the application starts.
-SymmetricDS detects the existing instance and routes all metrics through it.
+When an https://opentelemetry.io/docs/zero-code/java/agent/[OTel Java agent] is attached to the JVM, it automatically registers a global OpenTelemetry instance before the application starts.
+SymmetricDS detects the existing instance and routes all metrics to it.
 No additional SDK configuration is needed; the agent's own configuration governs exporting.
 
-==== Enabling and Disabling
+==== Enabling and Disabling OpenTelemetry Feed
 
 `OTEL_SDK_DISABLED` is a standard OTel flag that prevents the SDK from exporting data.
 It is typically set per server as an environment variable or JVM system property (`-Dotel.sdk.disabled=true`).
-When set to `true`, SymmetricDS continues to collect and store metrics internally but does not publish them to any OTel backend.
+When set to `true`, SymmetricDS continues to collect, aggregate and store metrics internally, but does not publish them to any OpenTelemetry backend.
 
-The `metrics.opentelemetry.enabled` parameter can be set per engine and overrides the server-level `OTEL_SDK_DISABLED` flag for that engine's metrics service.
+The `metrics.opentelemetry.enabled` parameter can be set per SymmetricDS engine (a.k.a. node) and overrides the server-level `OTEL_SDK_DISABLED` flag for that engine's metrics service only.
 This allows a single server to host multiple engines with different OTel publishing behavior.
 
 .OTel publishing resolution
