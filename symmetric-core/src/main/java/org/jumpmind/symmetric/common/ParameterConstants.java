@@ -439,7 +439,7 @@ final public class ParameterConstants {
             DB_USER, "db.url", "target.db.url" };
     public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
             JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
-            INCLUDE_ROWIDENTIFIER_AS_COLUMN};
+            INCLUDE_ROWIDENTIFIER_AS_COLUMN };
     public static final String GOOGLE_BIG_QUERY_MAX_ROWS_PER_RPC = "google.bigquery.max.rows.per.rpc";
     public static final String GOOGLE_BIG_QUERY_LOCATION = "google.bigquery.location";
     public static final String GOOGLE_BIG_QUERY_PROJECT_ID = "google.bigquery.project.id";
