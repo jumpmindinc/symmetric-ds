@@ -1025,6 +1025,36 @@ class MetricsRepositoryTest {
     }
 
     @Test
+    void loadRecentIntervalsPerKey_emptyCollection_returnsEmptyMap() {
+        Map<MetricKey, List<ISymIntervalStats>> result = repo.loadRecentIntervalsPerKey(List.of());
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void loadRecentIntervalsPerKey_uniqueKeys_queriesEachOnce() {
+        MetricKey k1 = key(10L, "m1", TEST_ENGINE, TEST_HOST);
+        MetricKey k2 = key(11L, "m2", TEST_ENGINE, TEST_HOST);
+        invokePrivate(repo, "populateMetricKeyCache", new Class<?>[] { List.class }, List.of(k1, k2));
+        MetricIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);
+        when(sqlTemplate.query(anyString(), anyInt(), any(ISqlRowMapper.class), any(Object[].class)))
+                .thenReturn(List.of(stats));
+        Map<MetricKey, List<ISymIntervalStats>> result = repo.loadRecentIntervalsPerKey(List.of(k1, k2));
+        assertEquals(2, result.size());
+        verify(sqlTemplate, times(2)).query(anyString(), anyInt(), any(ISqlRowMapper.class), any(Object[].class));
+    }
+
+    @Test
+    void loadRecentIntervalsPerKey_duplicateKeys_queriesOnce() {
+        MetricKey k = key(10L, "m1", TEST_ENGINE, TEST_HOST);
+        invokePrivate(repo, "populateMetricKeyCache", new Class<?>[] { List.class }, List.of(k));
+        when(sqlTemplate.query(anyString(), anyInt(), any(ISqlRowMapper.class), any(Object[].class)))
+                .thenReturn(List.of());
+        Map<MetricKey, List<ISymIntervalStats>> result = repo.loadRecentIntervalsPerKey(List.of(k, k));
+        assertEquals(1, result.size());
+        verify(sqlTemplate, times(1)).query(anyString(), anyInt(), any(ISqlRowMapper.class), any(Object[].class));
+    }
+
+    @Test
     void saveMetricIntervalStatsInternal_nullKey_throwsMetricsRepositoryException() {
         ISqlTransaction txn = mock(ISqlTransaction.class);
         ISymIntervalStats stats = new MetricIntervalStats(1000L, 2000L, 1.0, 0.5, 2.0, 0.1, 5, 1.0, false);

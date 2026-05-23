@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.observability.repository;
 
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -647,6 +648,18 @@ public class MetricsRepository extends AbstractService {
                 getSql(sqlKey), limitRecords, new DoubleStatsSqlRowMapper(), key.key(), oneDayAgo);
         log.info("Loaded {} historical intervals for metric {}", rows.size(), key);
         return rows;
+    }
+
+    /**
+     * Loads recent historical intervals for a collection of metric keys in one pass, querying the database once per unique key. Callers may pass collections
+     * with duplicate keys; each surrogate key is queried at most once.
+     */
+    public Map<MetricKey, List<ISymIntervalStats>> loadRecentIntervalsPerKey(Collection<MetricKey> keys) {
+        Map<MetricKey, List<ISymIntervalStats>> result = new LinkedHashMap<>();
+        for (MetricKey k : keys) {
+            result.computeIfAbsent(k, this::loadRecentIntervalsForKeyFromDatabase);
+        }
+        return result;
     }
 
     private void saveMetricIntervalStatsInternal(ISqlTransaction transaction, MetricKey key, long contextId, ISymIntervalStats intervalStats) {

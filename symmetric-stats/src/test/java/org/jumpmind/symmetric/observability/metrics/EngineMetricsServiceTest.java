@@ -39,11 +39,14 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -228,33 +231,49 @@ class EngineMetricsServiceTest {
     }
 
     @Test
-    void initWorksetForMetric_withEnabledKey_seedsWorkset() {
+    void initializeStatsWorksets_withEnabledKey_seedsWorkset() {
         MetricsRepository repo = mock(MetricsRepository.class);
         MetricKey key = new MetricKey(MOCK_METRIC_KEY_ID, "host", "test-engine", "one.metric", MetricFactType.INT64, InstrumentType.UPDOWN_COUNTER, true);
         when(repo.getMetricKey(anyString(), any(), any(), anyBoolean())).thenReturn(key);
-        when(repo.loadRecentIntervalsForKeyFromDatabase(any())).thenReturn(List.of());
+        when(repo.loadRecentIntervalsPerKey(any())).thenReturn(Map.of(key, List.of()));
         OneMetricInitService service = new OneMetricInitService(engine, manager, repo);
         service.initRepository();
         assertTrue(service.getAllMetrics().iterator().next().isOpen());
     }
 
     @Test
-    void initWorksetForMetric_withDisabledKey_closesMetric() {
+    void initializeStatsWorksets_withDisabledKey_closesMetric() {
         MetricsRepository repo = mock(MetricsRepository.class);
         MetricKey key = new MetricKey(MOCK_METRIC_KEY_ID, "host", "test-engine", "one.metric", MetricFactType.INT64, InstrumentType.UPDOWN_COUNTER, false);
         when(repo.getMetricKey(anyString(), any(), any(), anyBoolean())).thenReturn(key);
+        when(repo.loadRecentIntervalsPerKey(any())).thenReturn(Map.of());
         OneMetricInitService service = new OneMetricInitService(engine, manager, repo);
         service.initRepository();
         assertFalse(service.getAllMetrics().iterator().next().isOpen());
     }
 
     @Test
-    void initWorksetForMetric_whenRepoThrows_catchesException() {
+    void initializeStatsWorksets_whenGetMetricKeyThrows_catchesExceptionAndKeepsMetricOpen() {
         MetricsRepository repo = mock(MetricsRepository.class);
         when(repo.getMetricKey(anyString(), any(), any(), anyBoolean())).thenThrow(new RuntimeException("db error"));
+        when(repo.loadRecentIntervalsPerKey(any())).thenReturn(Map.of());
         OneMetricInitService service = new OneMetricInitService(engine, manager, repo);
         assertDoesNotThrow(service::initRepository);
         assertTrue(service.getAllMetrics().iterator().next().isOpen());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void initializeStatsWorksets_multipleInstrumentsSameKey_loadsHistoryOnce() {
+        MetricsRepository repo = mock(MetricsRepository.class);
+        MetricKey key = new MetricKey(MOCK_METRIC_KEY_ID, "host", "test-engine", "one.metric", MetricFactType.INT64, InstrumentType.UPDOWN_COUNTER, true);
+        when(repo.getMetricKey(anyString(), any(), any(), anyBoolean())).thenReturn(key);
+        when(repo.loadRecentIntervalsPerKey(any())).thenReturn(Map.of(key, List.of()));
+        TwoContextInitService service = new TwoContextInitService(engine, manager, repo);
+        service.initRepository();
+        verify(repo, times(1)).loadRecentIntervalsPerKey(any(Collection.class));
+        assertEquals(2, service.getAllMetrics().size());
+        service.getAllMetrics().forEach(m -> assertTrue(m.isOpen()));
     }
 
     @Test
@@ -446,6 +465,35 @@ class EngineMetricsServiceTest {
         protected int initializeDefaultMetrics() {
             registerUpDownCounter(new SymMetricDefinition("one.metric", "d", "r", InstrumentType.UPDOWN_COUNTER));
             return 1;
+        }
+
+        @Override
+        protected void initializeDefaultContexts(MetricsRepository repo) {
+            // Skip default metric contexts
+        }
+    }
+
+    /** Registers two instruments for the same metric ID with different attribute contexts to verify history is loaded once per key. */
+    private static class TwoContextInitService extends EngineMetricsService {
+        private final MetricsRepository mockRepo;
+
+        TwoContextInitService(ISymmetricEngine engine, MetricsManager manager, MetricsRepository repo) {
+            super(engine, manager, false);
+            this.mockRepo = repo;
+        }
+
+        @Override
+        protected MetricsRepository createMetricsRepository() {
+            return mockRepo;
+        }
+
+        @Override
+        protected int initializeDefaultMetrics() {
+            MetricAttributeList ctx1 = new MetricAttributeList(List.of(new MetricAttribute("node", "node-1")));
+            MetricAttributeList ctx2 = new MetricAttributeList(List.of(new MetricAttribute("node", "node-2")));
+            registerUpDownCounter(new SymMetricDefinition("one.metric", "d", "r", InstrumentType.UPDOWN_COUNTER), ctx1);
+            registerUpDownCounter(new SymMetricDefinition("one.metric", "d", "r", InstrumentType.UPDOWN_COUNTER), ctx2);
+            return 2;
         }
 
         @Override

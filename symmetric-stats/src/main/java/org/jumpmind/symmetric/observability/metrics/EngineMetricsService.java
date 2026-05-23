@@ -23,7 +23,9 @@ package org.jumpmind.symmetric.observability.metrics;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -200,37 +202,40 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     }
 
     /**
-     * Seeds the sliding workset of every registered metric with historical intervals to enable outlier interval detection logic.
+     * Seeds the sliding workset of every registered metric with historical intervals to enable outlier interval detection logic. Groups instruments by their
+     * resolved MetricKey and loads history once per unique key.
      */
     private int initializeStatsWorksetsForAllMetrics(MetricsRepository repo) {
         int metricsInitialized = 0;
         try {
+            Map<MetricKey, List<AbstractQueuedMetric>> byKey = new LinkedHashMap<>();
             for (ISymMetric m : getAllMetrics()) {
                 if (m instanceof AbstractQueuedMetric metric) {
-                    metricsInitialized += initWorksetForMetric(metric, repo);
+                    try {
+                        MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.getMetricType(), metric.isEnabled());
+                        byKey.computeIfAbsent(key, k -> new ArrayList<>()).add(metric);
+                    } catch (Exception e) {
+                        log.warn("Failed to pre-warm workset for metric=" + metric.getMetricId(), e);
+                    }
                 }
+            }
+            Map<MetricKey, List<ISymIntervalStats>> historyByKey = repo.loadRecentIntervalsPerKey(byKey.keySet());
+            for (Map.Entry<MetricKey, List<AbstractQueuedMetric>> entry : byKey.entrySet()) {
+                MetricKey key = entry.getKey();
+                if (!key.isEnabled()) {
+                    entry.getValue().forEach(AbstractQueuedMetric::close);
+                    log.warn("Metrics were closed because they are not enabled in database. {}", key);
+                    continue;
+                }
+                List<ISymIntervalStats> history = historyByKey.getOrDefault(key, List.of());
+                entry.getValue().forEach(metric -> metric.seedWorkset(history));
+                metricsInitialized += entry.getValue().size();
             }
             log.debug("Initialized {} metrics in repository for engine {}", metricsInitialized, engine.getEngineName());
         } catch (Exception ex) {
             log.warn("Failed to initialize metrics repository with historical values for engine {}", engine.getEngineName(), ex);
         }
         return metricsInitialized;
-    }
-
-    private int initWorksetForMetric(AbstractQueuedMetric metric, MetricsRepository repo) {
-        try {
-            MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.getMetricType(), metric.isEnabled());
-            if (key.isEnabled()) {
-                List<ISymIntervalStats> history = repo.loadRecentIntervalsForKeyFromDatabase(key);
-                metric.seedWorkset(history);
-                return 1;
-            }
-            metric.close();
-            log.warn("Metric was closed because it is not enabled in database. {}", key);
-        } catch (Exception e) {
-            log.warn("Failed to pre-warm workset for metric=" + metric.getMetricId(), e);
-        }
-        return 0;
     }
 
     @Override
