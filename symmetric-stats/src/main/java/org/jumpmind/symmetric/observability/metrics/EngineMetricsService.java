@@ -211,31 +211,42 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             Map<MetricKey, List<AbstractQueuedMetric>> byKey = new LinkedHashMap<>();
             for (ISymMetric m : getAllMetrics()) {
                 if (m instanceof AbstractQueuedMetric metric) {
-                    try {
-                        MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.getMetricType(), metric.isEnabled());
-                        byKey.computeIfAbsent(key, k -> new ArrayList<>()).add(metric);
-                    } catch (Exception e) {
-                        log.warn("Failed to pre-warm workset for metric=" + metric.getMetricId(), e);
-                    }
+                    groupMetricByKey(metric, repo, byKey);
                 }
             }
             Map<MetricKey, List<ISymIntervalStats>> historyByKey = repo.loadRecentIntervalsPerKey(byKey.keySet());
-            for (Map.Entry<MetricKey, List<AbstractQueuedMetric>> entry : byKey.entrySet()) {
-                MetricKey key = entry.getKey();
-                if (!key.isEnabled()) {
-                    entry.getValue().forEach(AbstractQueuedMetric::close);
-                    log.warn("Metrics were closed because they are not enabled in database. {}", key);
-                    continue;
-                }
-                List<ISymIntervalStats> history = historyByKey.getOrDefault(key, List.of());
-                entry.getValue().forEach(metric -> metric.seedWorkset(history));
-                metricsInitialized += entry.getValue().size();
-            }
+            metricsInitialized = seedWorksetsFromHistory(byKey, historyByKey);
             log.debug("Initialized {} metrics in repository for engine {}", metricsInitialized, engine.getEngineName());
         } catch (Exception ex) {
             log.warn("Failed to initialize metrics repository with historical values for engine {}", engine.getEngineName(), ex);
         }
         return metricsInitialized;
+    }
+
+    private int seedWorksetsFromHistory(Map<MetricKey, List<AbstractQueuedMetric>> byKey, Map<MetricKey, List<ISymIntervalStats>> historyByKey) {
+        int metricsInitialized = 0;
+        for (Map.Entry<MetricKey, List<AbstractQueuedMetric>> entry : byKey.entrySet()) {
+            MetricKey key = entry.getKey();
+            if (!key.isEnabled()) {
+                entry.getValue().forEach(AbstractQueuedMetric::close);
+                log.warn("Metrics were closed because they are not enabled in database. {}", key);
+                continue;
+            }
+            List<ISymIntervalStats> history = historyByKey.getOrDefault(key, List.of());
+            entry.getValue().forEach(metric -> metric.seedWorkset(history));
+            metricsInitialized += entry.getValue().size();
+            log.debug("Seeded {} instrument(s) with {} historical intervals for metric {}", entry.getValue().size(), history.size(), key);
+        }
+        return metricsInitialized;
+    }
+
+    private void groupMetricByKey(AbstractQueuedMetric metric, MetricsRepository repo, Map<MetricKey, List<AbstractQueuedMetric>> byKey) {
+        try {
+            MetricKey key = repo.getMetricKey(metric.getMetricId(), metric.getFactType(), metric.getMetricType(), metric.isEnabled());
+            byKey.computeIfAbsent(key, k -> new ArrayList<>()).add(metric);
+        } catch (Exception e) {
+            log.warn("Failed to pre-warm workset for metric=" + metric.getMetricId(), e);
+        }
     }
 
     @Override
