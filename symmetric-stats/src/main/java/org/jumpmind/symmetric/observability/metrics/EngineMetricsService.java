@@ -38,6 +38,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymIntervalStats;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
 import org.jumpmind.symmetric.observability.models.MetricContext;
+import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStatsRecord;
 import org.jumpmind.symmetric.observability.models.MetricKey;
 import org.jumpmind.symmetric.observability.repository.MetricsRepository;
@@ -214,7 +215,8 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
 
     /**
      * Seeds the sliding workset of every registered metric with historical intervals to enable outlier interval detection logic. Groups instruments by their
-     * resolved MetricKey and loads history once per unique key.
+     * resolved MetricKey and loads history once per unique key. For keys with no prior history (cold-start metrics), writes a single bootstrap zero-value
+     * interval to the database immediately so the metric is primed for outlier detection on the next startup.
      */
     private int initializeStatsWorksetsForAllMetrics(MetricsRepository repo) {
         int metricsInitialized = 0;
@@ -226,7 +228,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                 }
             }
             Map<MetricKey, List<ISymIntervalStats>> historyByKey = repo.loadRecentIntervalsPerKey(byKey.keySet());
-            metricsInitialized = seedWorksetsFromHistory(byKey, historyByKey);
+            metricsInitialized = seedWorksetsFromHistory(byKey, historyByKey, repo);
             log.debug("Initialized {} metrics in repository for engine {}", metricsInitialized, engine.getEngineName());
         } catch (Exception ex) {
             log.warn("Failed to initialize metrics repository with historical values for engine {}", engine.getEngineName(), ex);
@@ -234,8 +236,11 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
         return metricsInitialized;
     }
 
-    private int seedWorksetsFromHistory(Map<MetricKey, List<AbstractQueuedMetric>> byKey, Map<MetricKey, List<ISymIntervalStats>> historyByKey) {
+    private int seedWorksetsFromHistory(Map<MetricKey, List<AbstractQueuedMetric>> byKey, Map<MetricKey, List<ISymIntervalStats>> historyByKey,
+            MetricsRepository repo) {
         int metricsInitialized = 0;
+        List<MetricIntervalStatsRecord> bootstrapIntervals = new ArrayList<>();
+        long now = System.currentTimeMillis();
         for (Map.Entry<MetricKey, List<AbstractQueuedMetric>> entry : byKey.entrySet()) {
             MetricKey key = entry.getKey();
             if (!key.isEnabled()) {
@@ -247,6 +252,14 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             entry.getValue().forEach(metric -> metric.seedWorkset(history));
             metricsInitialized += entry.getValue().size();
             log.debug("Seeded {} instrument(s) with {} historical intervals for metric {}", entry.getValue().size(), history.size(), key);
+            if (history.isEmpty()) {
+                long contextId = getOrAssignContextId(entry.getValue().get(0), repo);
+                bootstrapIntervals.add(new MetricIntervalStatsRecord(key, contextId, new MetricIntervalStats(now - 1, now, 0.0, 0.0, 0.0, 0.0, 0, 0.0, false)));
+            }
+        }
+        if (!bootstrapIntervals.isEmpty()) {
+            repo.saveIntervals(bootstrapIntervals);
+            log.info("Saved {} bootstrap zero-value interval(s) for metrics with no prior history", bootstrapIntervals.size());
         }
         return metricsInitialized;
     }

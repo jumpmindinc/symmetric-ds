@@ -96,6 +96,23 @@ App thread  →  instrument.add()  →  ObservationsQueue (per metric)
                     {prefix}_metric_stats_float64 / {prefix}_metric_stats_int64
 ```
 
+## Cold-start bootstrap for event-driven counters
+
+`UPDOWN_COUNTER` and `COUNTER` metrics only emit observations when the tracked event occurs (e.g. errors, purge actions, disabled nodes). A fresh installation or a newly added metric has no rows in the stats tables, so its `MetricSeriesSlidingWorkset` starts empty and outlier detection cannot activate until enough intervals accumulate.
+
+To avoid this, `EngineMetricsService.seedWorksetsFromHistory` writes a single bootstrap zero-value `MetricIntervalStats` (`avg=min=max=stdDev=0, observationCount=0`) for every metric key with no prior history at startup. This is an internal aggregation-layer record — the OTel instrument itself receives no artificial observation, preserving OTel counter semantics. On the next startup the bootstrap interval is present in the database, so the metric is immediately primed.
+
+Identify cold-start metrics with:
+```sql
+SELECT metric_id FROM sym_metric_key k
+WHERE engine_name = '<engine>'
+AND NOT EXISTS (
+    SELECT 1 FROM sym_metric_stats_float64 WHERE metric_key = k.metric_key
+    UNION ALL
+    SELECT 1 FROM sym_metric_stats_int64   WHERE metric_key = k.metric_key
+);
+```
+
 ## DB tables
 
 | Table | Purpose |

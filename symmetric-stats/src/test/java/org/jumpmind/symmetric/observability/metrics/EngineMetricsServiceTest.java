@@ -279,6 +279,32 @@ class EngineMetricsServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void seedWorksetsFromHistory_emptyHistory_savesBootstrapZeroInterval() {
+        MetricsRepository repo = mock(MetricsRepository.class);
+        MetricKey key = new MetricKey(MOCK_METRIC_KEY_ID, "host", "test-engine", "one.metric", MetricFactType.INT64, InstrumentType.UPDOWN_COUNTER, true);
+        when(repo.getMetricKey(anyString(), any(), any(), anyBoolean())).thenReturn(key);
+        when(repo.loadRecentIntervalsPerKey(any())).thenReturn(Map.of(key, List.of()));
+        OneMetricInitService service = new OneMetricInitService(engine, manager, repo);
+        service.initRepository();
+        service.initWorksetsIfNeeded();
+        verify(repo, times(1)).saveIntervals(any(List.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void seedWorksetsFromHistory_nonEmptyHistory_doesNotSaveBootstrapInterval() {
+        MetricsRepository repo = mock(MetricsRepository.class);
+        MetricKey key = new MetricKey(MOCK_METRIC_KEY_ID, "host", "test-engine", "one.metric", MetricFactType.INT64, InstrumentType.UPDOWN_COUNTER, true);
+        when(repo.getMetricKey(anyString(), any(), any(), anyBoolean())).thenReturn(key);
+        when(repo.loadRecentIntervalsPerKey(any())).thenReturn(Map.of(key, List.of(mock(ISymIntervalStats.class))));
+        OneMetricInitService service = new OneMetricInitService(engine, manager, repo);
+        service.initRepository();
+        service.initWorksetsIfNeeded();
+        verify(repo, never()).saveIntervals(any(List.class));
+    }
+
+    @Test
     void purgeMetricStats_nullRepository_returnsEarlyWithoutError() {
         EngineMetricsService service = new NullRepoEngineMetricsService(engine, manager);
         service.initRepository();
