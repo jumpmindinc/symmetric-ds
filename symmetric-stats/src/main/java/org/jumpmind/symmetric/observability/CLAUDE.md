@@ -13,7 +13,7 @@ symmetric-core / org.jumpmind.symmetric.observability.interfaces/
 ├── IUpDownCounter, IIncreasingCounter, ISymDoubleGauge, ISymLongGauge  – instrument interfaces
 ├── ISymMetric, ISymMetricDefinition         – metric/definition contracts
 ├── ISymObservation, ISymIntervalStats       – data contracts
-├── IStatsAccumulator, IPrimaryMetricAggregator
+├── IStatsAccumulator, IBackgroundMetricProcessor
 ├── InvalidMetricDataException
 └── SymMetricConstants                       – stable metric ID, unit, and InstrumentType constants
 
@@ -41,7 +41,7 @@ symmetric-stats / org.jumpmind.symmetric.observability/
 | `MetricIntervalStats` | stats / models | Immutable stats for one closed window: avg, min, max, stdDev, count, isOutlier |
 | `MetricSeries` | stats / models | Ordered series of interval stats for a single metric key |
 | `MetricsRepository` | stats / repository | DB access for `metric_key`, `metric_context`, `metric_stats_float64`, `metric_stats_int64`; caches surrogate keys in-memory |
-| `PrimaryMetricAggregator` | stats / stats | Daemon thread; drains observation queues, closes intervals, triggers persistence |
+| `BackgroundMetricProcessor` | stats / stats | Daemon thread; drains observation queues, closes intervals, triggers persistence |
 | `AbstractStatsAccumulator` | stats / stats | Mutable accumulator for one open time window; subclassed by `Float64StatsAccumulator` and `Int64StatsAccumulator` |
 | `MetricSeriesSlidingWorkset` | stats / stats | Sliding window of recent intervals for IQR-based outlier detection |
 
@@ -86,7 +86,7 @@ metricsService.getUpDownCounter(SymMetricConstants.METRIC_ID_SERVER_CONNECTIONS_
 ```
 App thread  →  instrument.add()  →  ObservationsQueue (per metric)
                                             ↓  (every 10 s)
-                              PrimaryMetricAggregator.processAll()
+                              BackgroundMetricProcessor.processAll()
                                             ↓
                               AbstractStatsAccumulator  →  MetricIntervalStats
                                             ↓

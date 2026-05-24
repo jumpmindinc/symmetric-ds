@@ -249,6 +249,7 @@ class EngineMetricsServiceTest {
         when(repo.loadRecentIntervalsPerKey(any())).thenReturn(Map.of());
         OneMetricInitService service = new OneMetricInitService(engine, manager, repo);
         service.initRepository();
+        service.initWorksetsIfNeeded();
         assertFalse(service.getAllMetrics().iterator().next().isOpen());
     }
 
@@ -271,6 +272,7 @@ class EngineMetricsServiceTest {
         when(repo.loadRecentIntervalsPerKey(any())).thenReturn(Map.of(key, List.of()));
         TwoContextInitService service = new TwoContextInitService(engine, manager, repo);
         service.initRepository();
+        service.initWorksetsIfNeeded();
         verify(repo, times(1)).loadRecentIntervalsPerKey(any(Collection.class));
         assertEquals(2, service.getAllMetrics().size());
         service.getAllMetrics().forEach(m -> assertTrue(m.isOpen()));
