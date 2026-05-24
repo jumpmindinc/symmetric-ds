@@ -646,7 +646,7 @@ public class MetricsRepository extends AbstractService {
         int limitRecords = MetricSeriesSlidingWorkset.getMinIntervalsForOutlierDetection();
         List<ISymIntervalStats> rows = sqlTemplate.query(
                 getSql(sqlKey), limitRecords, new DoubleStatsSqlRowMapper(), key.key(), oneDayAgo);
-        log.info("Loaded {} historical intervals for metric {}", rows.size(), key);
+        log.debug("Loaded {} historical intervals for metric {}", rows.size(), key);
         return rows;
     }
 
@@ -659,6 +659,8 @@ public class MetricsRepository extends AbstractService {
         for (MetricKey k : keys) {
             result.computeIfAbsent(k, this::loadRecentIntervalsForKeyFromDatabase);
         }
+        long primedCount = result.values().stream().filter(list -> !list.isEmpty()).count();
+        log.info("Primed {} of {} metric keys with historical interval data", primedCount, result.size());
         return result;
     }
 
