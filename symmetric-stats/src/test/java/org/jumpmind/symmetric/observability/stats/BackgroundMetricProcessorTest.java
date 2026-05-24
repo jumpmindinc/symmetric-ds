@@ -37,66 +37,66 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests the lifecycle and direct methods of {@link PrimaryMetricAggregator}.
+ * Tests the lifecycle and direct methods of {@link BackgroundMetricProcessor}.
  * <p>
- * The aggregator holds a static {@code AtomicReference<Thread>}, so each test must stop the aggregator in {@code @AfterEach} and wait for the daemon thread to
+ * The processor holds a static {@code AtomicReference<Thread>}, so each test must stop the processor in {@code @AfterEach} and wait for the daemon thread to
  * exit before the next test starts — otherwise {@code isRunning()} would reflect the previous test's thread state.
  */
-class PrimaryMetricAggregatorTest {
-    private PrimaryMetricAggregator aggregator;
+class BackgroundMetricProcessorTest {
+    private BackgroundMetricProcessor processor;
     private MetricsManager metricsManager;
 
     @BeforeEach
     void setUp() {
         metricsManager = TestMetricsManagerFactory.create();
-        aggregator = new PrimaryMetricAggregator(metricsManager, "test-host");
+        processor = new BackgroundMetricProcessor(metricsManager, "test-host");
     }
 
     @AfterEach
     void tearDown() throws InterruptedException {
-        aggregator.stop();
-        aggregator.awaitStop(2000);
+        processor.stop();
+        processor.awaitStop(2000);
     }
 
     @Test
     void isRunning_beforeStart_returnsFalse() {
-        assertFalse(aggregator.isRunning());
+        assertFalse(processor.isRunning());
     }
 
     @Test
     void isRunning_afterStart_returnsTrue() {
-        aggregator.start();
-        assertTrue(aggregator.isRunning());
+        processor.start();
+        assertTrue(processor.isRunning());
     }
 
     @Test
     void start_calledTwice_isNoOp_stillRunning() {
-        aggregator.start();
-        aggregator.start(); // second call must be ignored
-        assertTrue(aggregator.isRunning());
+        processor.start();
+        processor.start();
+        assertTrue(processor.isRunning());
     }
 
     @Test
     void stop_whenNotRunning_doesNotThrow() {
-        assertDoesNotThrow(() -> aggregator.stop());
+        assertDoesNotThrow(() -> processor.stop());
     }
 
     @Test
     void stop_afterStart_eventuallyStopsRunning() throws InterruptedException {
-        aggregator.start();
-        aggregator.stop();
-        aggregator.awaitStop(2000);
-        assertFalse(aggregator.isRunning());
+        processor.start();
+        processor.stop();
+        processor.awaitStop(2000);
+        assertFalse(processor.isRunning());
     }
 
     @Test
     void processAll_withEmptyMetricsManager_doesNotThrow() {
-        assertDoesNotThrow(() -> aggregator.processAllMetrics());
+        assertDoesNotThrow(() -> processor.processAllMetrics());
     }
 
     @Test
     void closeAll_withEmptyMetricsManager_doesNotThrow() {
-        assertDoesNotThrow(() -> aggregator.closeAllMetrics());
+        assertDoesNotThrow(() -> processor.closeAllMetrics());
     }
 
     @Test
@@ -105,7 +105,8 @@ class PrimaryMetricAggregatorTest {
         when(svc.getEngineName()).thenReturn("test-engine");
         when(svc.getAllMetrics()).thenReturn(List.of());
         metricsManager.register(svc);
-        aggregator.processAllMetrics();
+        processor.processAllMetrics();
+        verify(svc).initWorksetsIfNeeded();
         verify(svc).getAllMetrics();
         verify(svc).saveCompletedIntervalStats();
     }
@@ -115,7 +116,7 @@ class PrimaryMetricAggregatorTest {
         IEngineMetricsService svc = mock(IEngineMetricsService.class);
         when(svc.getEngineName()).thenReturn("test-engine");
         metricsManager.register(svc);
-        aggregator.closeAllMetrics();
+        processor.closeAllMetrics();
         verify(svc).shutdown();
     }
 }

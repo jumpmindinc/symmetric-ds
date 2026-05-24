@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
-import org.jumpmind.symmetric.observability.interfaces.IPrimaryMetricAggregator;
+import org.jumpmind.symmetric.observability.interfaces.IBackgroundMetricProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -226,7 +226,7 @@ class MetricsManagerTest {
     void startAggregation_calledTwice_returnsSameAggregatorInstance() {
         manager.startAggregation();
         try {
-            IPrimaryMetricAggregator first = manager.getAggregator();
+            IBackgroundMetricProcessor first = manager.getAggregator();
             manager.startAggregation();
             assertSame(first, manager.getAggregator());
         } finally {

@@ -53,6 +53,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     private static final int MINS_IN_ONE_WEEK = 10080;
     private final ISymmetricEngine engine;
     private final AtomicReference<MetricsRepository> repository = new AtomicReference<>();
+    private volatile boolean worksetsInitialized = false;
 
     public EngineMetricsService(ISymmetricEngine engine, MetricsManager metricsManager, boolean isOtelPublishingEnabled) {
         super(metricsManager, Attributes.of(AttributeKey.stringKey("engine.name"), engine.getEngineName()), isOtelPublishingEnabled);
@@ -162,7 +163,6 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                 repository.set(repo);
                 initializeDefaultMetrics();
                 initializeDefaultContexts(repo);
-                initializeStatsWorksetsForAllMetrics(repo);
             }
         }
         return repository.get();
@@ -199,6 +199,17 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
             }
         }
         log.info("Initialized {} default metric contexts for engine {}", count, engine.getEngineName());
+    }
+
+    @Override
+    public void initWorksetsIfNeeded() {
+        if (!worksetsInitialized) {
+            MetricsRepository repo = repository.get();
+            if (repo != null) {
+                initializeStatsWorksetsForAllMetrics(repo);
+                worksetsInitialized = true;
+            }
+        }
     }
 
     /**

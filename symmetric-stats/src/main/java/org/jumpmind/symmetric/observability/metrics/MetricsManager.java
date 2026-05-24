@@ -32,10 +32,10 @@ import java.util.function.LongSupplier;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.observability.interfaces.IBackgroundMetricProcessor;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
-import org.jumpmind.symmetric.observability.interfaces.IPrimaryMetricAggregator;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
-import org.jumpmind.symmetric.observability.stats.PrimaryMetricAggregator;
+import org.jumpmind.symmetric.observability.stats.BackgroundMetricProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,7 @@ public class MetricsManager {
     private HostMetricsService hostMetricsService;
     private Meter otelMeter;
     private final List<IEngineMetricsService> engineMetricsServices = new CopyOnWriteArrayList<>();
-    private IPrimaryMetricAggregator aggregator; // Runs on a dedicated thread, to avoid impacting instrumented code.
+    private IBackgroundMetricProcessor aggregator; // Runs on a dedicated thread, to avoid impacting instrumented code.
     private final IMetricDefinitionFactory definitionFactory;
 
     private MetricsManager(TypedProperties properties) {
@@ -246,12 +246,12 @@ public class MetricsManager {
 
     public synchronized void startAggregation() {
         if (aggregator == null) {
-            aggregator = new PrimaryMetricAggregator(this, resolveHostname());
+            aggregator = new BackgroundMetricProcessor(this, resolveHostname());
         }
         aggregator.start();
     }
 
-    public IPrimaryMetricAggregator getAggregator() {
+    public IBackgroundMetricProcessor getAggregator() {
         return aggregator;
     }
 

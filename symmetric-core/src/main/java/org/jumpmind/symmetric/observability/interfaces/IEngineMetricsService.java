@@ -103,6 +103,13 @@ public interface IEngineMetricsService extends IMetricsService {
     Collection<ISymMetric> getAllMetrics();
 
     /**
+     * Seeds the sliding worksets of all registered metrics with historical data. Called once by the background processor on its first processing tick after the
+     * repository becomes available. Implementations that do not use a repository may leave this as a no-op.
+     */
+    default void initWorksetsIfNeeded() {
+    }
+
+    /**
      * Drains all completed intervals from this metric's queue into permanent storage (database).
      */
     void saveCompletedIntervalStats();

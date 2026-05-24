@@ -24,8 +24,8 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.jumpmind.symmetric.common.LoggingConstants;
+import org.jumpmind.symmetric.observability.interfaces.IBackgroundMetricProcessor;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
-import org.jumpmind.symmetric.observability.interfaces.IPrimaryMetricAggregator;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.observability.models.MetricIntervalStats;
@@ -35,22 +35,22 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Periodically drains observation queues from all registered {@link IEngineMetricsService} instances, assigns observations to an interval (time window) via
- * accumulators, and initiates export of completed {@link MetricIntervalStats} records to database. *
+ * accumulators, and initiates export of completed {@link MetricIntervalStats} records to database.
  * <p>
  * Runs on a dedicated daemon thread. Call {@link #start()} once and {@link #stop()} on shutdown. The thread exits cleanly on both an explicit {@code stop()}
  * and a JVM interrupt.
  */
-public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
-    private static final Logger log = LoggerFactory.getLogger(PrimaryMetricAggregator.class);
+public class BackgroundMetricProcessor implements IBackgroundMetricProcessor {
+    private static final Logger log = LoggerFactory.getLogger(BackgroundMetricProcessor.class);
     static final int MAX_HISTORY_INTERVALS = 12;
-    static final long AGGREGATOR_PROCESSING_INTERVAL_MS = AbstractStatsAccumulator.INTERVAL_DURATION_MS / 3;
-    static final String AGGREGATOR_PROCESSING_THREAD = "metrics-primary-aggregator";
+    static final long PROCESSING_INTERVAL_MS = AbstractStatsAccumulator.INTERVAL_DURATION_MS / 3;
+    static final String PROCESSOR_THREAD = "metrics-background-processor";
     private final MetricsManager metricsManager;
     private final String hostname;
     private volatile boolean running;
     private static final AtomicReference<Thread> thread = new AtomicReference<>();
 
-    public PrimaryMetricAggregator(MetricsManager metricsManager, String hostname) {
+    public BackgroundMetricProcessor(MetricsManager metricsManager, String hostname) {
         this.metricsManager = metricsManager;
         this.hostname = hostname;
     }
@@ -63,17 +63,16 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
     @Override
     public synchronized void start() {
         if (isRunning()) {
-            log.debug("{} thread is already running, skipping start. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, thread.get()
-                    .threadId());
+            log.debug("{} thread is already running, skipping start. Hostname={}, threadId={}", PROCESSOR_THREAD, hostname, thread.get().threadId());
             return;
         }
-        log.debug("Starting {} thread... Hostname={}", AGGREGATOR_PROCESSING_THREAD, hostname);
+        log.debug("Starting {} thread... Hostname={}", PROCESSOR_THREAD, hostname);
         running = true;
-        Thread t = new Thread(this::run, AGGREGATOR_PROCESSING_THREAD);
+        Thread t = new Thread(this::run, PROCESSOR_THREAD);
         t.setDaemon(true);
         thread.set(t);
         t.start();
-        log.info("Started {} thread. Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t.threadId());
+        log.info("Started {} thread. Hostname={}, threadId={}", PROCESSOR_THREAD, hostname, t.threadId());
     }
 
     void awaitStop(long timeoutMs) throws InterruptedException {
@@ -86,37 +85,36 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
     @Override
     public void stop() {
         if (!isRunning()) {
-            log.debug("{} thread was already stopped, skipping interrupt. Hostname={}", AGGREGATOR_PROCESSING_THREAD, hostname);
+            log.debug("{} thread was already stopped, skipping interrupt. Hostname={}", PROCESSOR_THREAD, hostname);
             return;
         }
         Thread t = thread.get();
-        log.debug("Stopping {} thread... Hostname={}, threadId={}", AGGREGATOR_PROCESSING_THREAD, hostname, t != null ? t.threadId() : -1);
+        log.debug("Stopping {} thread... Hostname={}, threadId={}", PROCESSOR_THREAD, hostname, t != null ? t.threadId() : -1);
         running = false;
         if (t != null) {
             t.interrupt();
-            log.info("Stopped {} thread. Hostname={}, Thread.id={}", AGGREGATOR_PROCESSING_THREAD, hostname, t.threadId());
+            log.info("Stopped {} thread. Hostname={}, Thread.id={}", PROCESSOR_THREAD, hostname, t.threadId());
         }
     }
 
     /**
-     * Main processing loop for all metrics (from processing raw observations and to saving statistics (per metric-context-engine-host). Sleeps until the next
-     * 20-second iteration estimate. An external {@link InterruptedException} causes an immediate exit without final processing.
+     * Main processing loop. Drains observation queues and saves completed interval statistics. Sleeps until the next iteration boundary. An
+     * {@link InterruptedException} causes an immediate exit without final processing.
      */
     private void run() {
         long iterationTargetStart = 0;
         while (running && !Thread.currentThread().isInterrupted()) {
             long remainingMs = iterationTargetStart - System.currentTimeMillis();
-            iterationTargetStart = System.currentTimeMillis() + AGGREGATOR_PROCESSING_INTERVAL_MS;
+            iterationTargetStart = System.currentTimeMillis() + PROCESSING_INTERVAL_MS;
             try {
                 if (remainingMs > 0) {
-                    log.trace("Sleeping {} thread for {} milliseconds. ThreadId={} ....", AGGREGATOR_PROCESSING_THREAD, remainingMs, Thread.currentThread()
-                            .threadId());
+                    log.trace("Sleeping {} thread for {} milliseconds. ThreadId={} ....", PROCESSOR_THREAD, remainingMs, Thread.currentThread().threadId());
                     Thread.sleep(remainingMs);
                 }
                 processAllMetrics();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                log.warn("Thread interrupted " + AGGREGATOR_PROCESSING_THREAD, e);
+                log.warn("Thread interrupted " + PROCESSOR_THREAD, e);
                 closeAllMetrics(); // Interruptions require immediate exit, so discard all unprocessed observations!
                 return;
             } catch (Exception ex) {
@@ -145,6 +143,7 @@ public class PrimaryMetricAggregator implements IPrimaryMetricAggregator {
         for (IEngineMetricsService svc : metricsManager.getEngineMetricsServices()) {
             LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, svc.getEngineName());
             try {
+                svc.initWorksetsIfNeeded();
                 Collection<ISymMetric> allMetrics = svc.getAllMetrics();
                 for (ISymMetric metric : allMetrics) {
                     metric.processAllObservationsAndRefreshInterval();
