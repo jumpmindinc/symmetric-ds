@@ -125,6 +125,10 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             new SymMetricDefinition(METRIC_ID_NODES_REGISTERED, "Nodes registered", METRIC_UNIT_NODES, InstrumentType.UPDOWN_COUNTER),
             new SymMetricDefinition(METRIC_ID_NODES_LOADED, "Nodes loaded", METRIC_UNIT_NODES, InstrumentType.UPDOWN_COUNTER),
             new SymMetricDefinition(METRIC_ID_NODES_DISABLED, "Nodes disabled", METRIC_UNIT_NODES, InstrumentType.UPDOWN_COUNTER),
+            // Initial load gauges
+            new SymMetricDefinition(METRIC_ID_LOADS_OUTGOING, "Active outgoing initial loads", METRIC_UNIT_NODES, InstrumentType.LONG_GAUGE),
+            new SymMetricDefinition(METRIC_ID_LOADS_OUTGOING_UTILIZATION, "Active outgoing loads as a percentage of max", METRIC_UNIT_PERCENT,
+                    InstrumentType.DOUBLE_GAUGE),
             // Purge counters
             new SymMetricDefinition(METRIC_ID_PURGE_BATCH_INCOMING_ROWS, "Purged incoming batch rows", METRIC_UNIT_ROWS, InstrumentType.UPDOWN_COUNTER),
             new SymMetricDefinition(METRIC_ID_PURGE_BATCH_OUTGOING_ROWS, "Purged outgoing batch rows", METRIC_UNIT_ROWS, InstrumentType.UPDOWN_COUNTER),

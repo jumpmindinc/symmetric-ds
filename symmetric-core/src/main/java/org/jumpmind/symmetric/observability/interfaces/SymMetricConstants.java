@@ -103,6 +103,9 @@ public final class SymMetricConstants {
     public static final String METRIC_ID_NODES_REGISTERED = "server.nodes.registered.count";
     public static final String METRIC_ID_NODES_LOADED = "server.nodes.loaded.count";
     public static final String METRIC_ID_NODES_DISABLED = "server.nodes.disabled.count";
+    // Initial load gauges (InitialLoadService)
+    public static final String METRIC_ID_LOADS_OUTGOING = "loads.outgoing.count";
+    public static final String METRIC_ID_LOADS_OUTGOING_UTILIZATION = "loads.outgoing.utilization";
     // Purge counters (StatisticManager)
     public static final String METRIC_ID_PURGE_BATCH_INCOMING_ROWS = "purge.batch.incoming.rows";
     public static final String METRIC_ID_PURGE_BATCH_OUTGOING_ROWS = "purge.batch.outgoing.rows";
@@ -151,6 +154,8 @@ public final class SymMetricConstants {
             METRIC_ID_NODES_REGISTERED,
             METRIC_ID_NODES_LOADED,
             METRIC_ID_NODES_DISABLED,
+            METRIC_ID_LOADS_OUTGOING,
+            METRIC_ID_LOADS_OUTGOING_UTILIZATION,
             METRIC_ID_PURGE_BATCH_INCOMING_ROWS,
             METRIC_ID_PURGE_BATCH_OUTGOING_ROWS,
             METRIC_ID_PURGE_DATA_ROWS,
