@@ -226,6 +226,13 @@ public class TypedProperties extends Properties {
         return new TypedProperties(this);
     }
 
+    public void logAllKeys(String source) {
+        log.debug("Properties source={}, count={}", source, size());
+        for (String key : stringPropertyNames()) {
+            log.debug("  {}={}", key, getProperty(key));
+        }
+    }
+
     public static void logPropertiesException(Logger logger, String key, String val) {
         if (StringUtils.isNotBlank(val)) {
             logger.error("Could not parse integer from parameter \"" + key + "\"=\"" + val + "\"");

@@ -42,11 +42,14 @@ import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.CollectionUtils;
 import org.jumpmind.util.FormatUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
 public class TypedPropertiesFactory implements ITypedPropertiesFactory {
+    private static final Logger log = LoggerFactory.getLogger(TypedPropertiesFactory.class);
     protected File propertiesFile;
     protected Properties properties;
 
@@ -98,6 +101,11 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
             fileProperties.merge(symEnvProperties);
         }
         replaceSystemAndEnvironmentVariables(fileProperties);
+        if (log.isDebugEnabled()) {
+            otelEnvProperties.logAllKeys("otelEnvProperties");
+            symEnvProperties.logAllKeys("symEnvProperties");
+            fileProperties.logAllKeys("fileProperties");
+        }
     }
 
     public static final void replaceSystemAndEnvironmentVariables(Properties properties) {
