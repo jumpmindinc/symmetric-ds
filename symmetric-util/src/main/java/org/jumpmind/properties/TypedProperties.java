@@ -229,7 +229,7 @@ public class TypedProperties extends Properties {
     public void logAllKeys(String source) {
         log.debug("Properties source={}, count={}", source, size());
         for (String key : stringPropertyNames()) {
-            log.debug("  {}={}", key, getProperty(key));
+            log.debug("Property {}={}, Source={}", key, getProperty(key), source);
         }
     }
 
