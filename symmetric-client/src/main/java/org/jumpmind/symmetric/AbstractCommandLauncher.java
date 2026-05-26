@@ -27,6 +27,7 @@ import java.io.PrintWriter;
 import java.security.Provider;
 import java.security.Security;
 import java.sql.Connection;
+
 import javax.sql.DataSource;
 
 import org.apache.commons.cli.CommandLine;
@@ -36,6 +37,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.util.DataSourceProperties;
@@ -117,7 +119,27 @@ public abstract class AbstractCommandLauncher {
             serverProperties.merge(jvmProperties);
             TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(serverProperties, false);
             System.getProperties().putAll(serverProperties);
+            propagateOtelPropertiesToSystem(serverProperties);
             serverPropertiesInitialized = true;
+        }
+    }
+
+    static void propagateOtelPropertiesToSystem(TypedProperties serverProperties) {
+        for (String propertyName : serverProperties.stringPropertyNames()) {
+            if (propertyName.startsWith("otel.")) {
+                String value = serverProperties.getProperty(propertyName);
+                if (StringUtils.isBlank(value)) {
+                    log.debug("Skipped blank Open Telemetry property {}", propertyName);
+                    continue;
+                }
+                if (StringUtils.isBlank(System.getProperty(propertyName))) {
+                    System.setProperty(propertyName, serverProperties.getProperty(propertyName));
+                    log.debug("Imported Open Telemetry property {}={}", propertyName, value);
+                } else {
+                    System.setProperty(propertyName, serverProperties.getProperty(propertyName));
+                    log.debug("Skipped already defined Open Telemetry property {}", propertyName);
+                }
+            }
         }
     }
 
