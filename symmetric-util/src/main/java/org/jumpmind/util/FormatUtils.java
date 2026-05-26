@@ -450,6 +450,13 @@ public final class FormatUtils {
         return name.replaceAll("[^a-zA-Z0-9_]|[a|e|i|o|u|A|E|I|O|U]", "");
     }
 
+    public static String removePrefix(String text, String prefix) {
+        if (text != null && prefix != null && text.startsWith(prefix)) {
+            return text.substring(prefix.length());
+        }
+        return text;
+    }
+
     public static String lower(String str) {
         if (isInfamousTurkey) {
             return str.toLowerCase(Locale.US);

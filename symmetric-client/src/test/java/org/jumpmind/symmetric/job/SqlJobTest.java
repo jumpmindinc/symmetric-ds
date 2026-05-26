@@ -22,15 +22,22 @@ package org.jumpmind.symmetric.job;
 
 import static org.jumpmind.symmetric.job.JobDefaults.EVERY_FIFTEEN_MINUTES;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
+
+import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.TokenConstants;
 import org.jumpmind.symmetric.model.JobDefinition;
+import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IExtensionService;
+import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -103,5 +110,31 @@ class SqlJobTest {
         when(parameterService.getString(anyString())).thenReturn(null);
         jobDefinition.setDefaultSchedule(EVERY_FIFTEEN_MINUTES);
         assertEquals(Long.parseLong(EVERY_FIFTEEN_MINUTES), sqlJob.getTimeBetweenRunsInMs());
+    }
+
+    @Test
+    void getReplacementTokens_withIdentity_includesNodeGroupId() {
+        INodeService nodeService = mock(INodeService.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        Node identity = new Node();
+        identity.setNodeGroupId("client");
+        when(engine.getNodeId()).thenReturn(TEST_NODE_ID);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        when(nodeService.findIdentity()).thenReturn(identity);
+        when(platform.getSqlScriptReplacementTokens()).thenReturn(null);
+        Map<String, String> tokens = sqlJob.getReplacementTokens(engine, null);
+        assertEquals("client", tokens.get(TokenConstants.NODE_GROUP_ID));
+        assertEquals(TEST_NODE_ID, tokens.get(TokenConstants.NODE_ID));
+    }
+
+    @Test
+    void getReplacementTokens_withNullIdentity_omitsNodeGroupId() {
+        INodeService nodeService = mock(INodeService.class);
+        when(engine.getNodeId()).thenReturn(TEST_NODE_ID);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        when(nodeService.findIdentity()).thenReturn(null);
+        Map<String, String> tokens = sqlJob.getReplacementTokens(engine, null);
+        assertFalse(tokens.containsKey(TokenConstants.NODE_GROUP_ID));
+        assertEquals(TEST_NODE_ID, tokens.get(TokenConstants.NODE_ID));
     }
 }

@@ -2522,11 +2522,11 @@ public class DataService extends AbstractService implements IDataService {
     public void insertData(ISqlTransaction transaction, List<Data> datas) {
         transaction.prepare(getSql("insertIntoDataBulkSql"));
         int[] types = new int[] { Types.VARCHAR, Types.CHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.NUMERIC,
-                Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP };
+                Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP, Types.VARCHAR };
         for (Data data : datas) {
             Object[] args = new Object[] { data.getTableName(), data.getDataEventType().getCode(), data.getRowData(),
                     data.getPkData(), data.getOldData(), data.getTriggerHistory() != null ? data.getTriggerHistory().getTriggerHistoryId() : -1,
-                    data.getChannelId(), data.getTransactionId(), data.getSourceNodeId(), data.getCreateTime() };
+                    data.getChannelId(), data.getTransactionId(), data.getSourceNodeId(), data.getCreateTime(), data.getExternalData() };
             transaction.addRow(data, args, types);
         }
         transaction.flush();

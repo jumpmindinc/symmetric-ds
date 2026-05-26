@@ -36,6 +36,10 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
 import org.jumpmind.symmetric.load.IReloadGenerator;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.ExtractRequest;
@@ -339,10 +343,11 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
 
     protected void processTableRequestLoads(Node source, ProcessInfo processInfo) {
         List<TableReloadRequest> loadsToProcess = engine.getDataService().getTableReloadRequestToProcess(source.getNodeId());
+        int maxLoadCount = parameterService.getInt(ParameterConstants.INITIAL_LOAD_EXTRACT_THREAD_COUNT_PER_SERVER, 20);
+        int activeLoadCount = engine.getDataService().getActiveTableReloadStatus().size();
+        updateInitialLoadGauges(activeLoadCount, maxLoadCount);
         if (loadsToProcess.size() > 0) {
             processInfo.setStatus(ProcessInfo.ProcessStatus.CREATING);
-            int maxLoadCount = parameterService.getInt(ParameterConstants.INITIAL_LOAD_EXTRACT_THREAD_COUNT_PER_SERVER, 20);
-            int activeLoadCount = engine.getDataService().getActiveTableReloadStatus().size();
             int loadCountToProcess = loadsToProcess.size();
             if (activeLoadCount >= maxLoadCount) {
                 logActiveLoadCount(activeLoadCount, loadCountToProcess);
@@ -430,6 +435,21 @@ public class InitialLoadService extends AbstractService implements IInitialLoadS
                     return;
                 }
             }
+        }
+    }
+
+    private void updateInitialLoadGauges(int activeLoadCount, int maxLoadCount) {
+        IEngineMetricsService svc = engine.getMetricsService();
+        if (svc == null) {
+            return;
+        }
+        ISymLongGauge activeGauge = svc.getLongGauge(SymMetricConstants.METRIC_ID_LOADS_OUTGOING);
+        if (activeGauge != null) {
+            activeGauge.setValue(activeLoadCount);
+        }
+        ISymDoubleGauge utilGauge = svc.getDoubleGauge(SymMetricConstants.METRIC_ID_LOADS_OUTGOING_UTILIZATION);
+        if (utilGauge != null) {
+            utilGauge.setValue(maxLoadCount > 0 ? (activeLoadCount * 100.0) / maxLoadCount : 0.0);
         }
     }
 

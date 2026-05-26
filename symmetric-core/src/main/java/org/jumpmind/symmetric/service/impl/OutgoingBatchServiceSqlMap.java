@@ -118,7 +118,7 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
         putSql("countOutgoingBatchesByTargetNodeExcludingHeartbeatsSql",
                 "select count(*) as rows_count from $(outgoing_batch) where node_id = ? and channel_id <> 'heartbeat' and status in ('ER','RQ','NE','QY','RT')");
         putSql("countOutgoingBatchesErrorsSql",
-                "select count(*) from $(outgoing_batch) where error_flag=1");
+                "select count(*) from $(outgoing_batch) where  status != 'OK' and error_flag=1");
         putSql("countOutgoingBatchesUnsentSql",
                 "select count(*) from $(outgoing_batch) where status != 'OK'");
         putSql("countOutgoingNonSystemBatchesUnsentSql",
@@ -129,10 +129,6 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
                 "select count(*) from $(outgoing_batch) where status = ? ");
         putSql("countOutgoingBatchesUnsentOnChannelSql",
                 "select count(*) from $(outgoing_batch) where status != 'OK' and channel_id=?");
-        putSql("countOutgoingBatchesUnsentHeartbeat",
-                "select count(distinct b.node_id) from $(outgoing_batch) b inner join $(data_event) e on e.batch_id = b.batch_id " +
-                        "inner join $(data) d on d.data_id = e.data_id " +
-                        "where b.channel_id = 'heartbeat' and b.status != 'OK' and d.source_node_id is null");
         putSql("cancelStaleHeartbeatBatchesSql",
                 "update $(outgoing_batch) " +
                         "set status = 'OK', ignore_count = 1, last_update_time = current_timestamp " +
@@ -155,6 +151,11 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
                 "select b.status, b.node_id ");
         putSql("selectOutgoingBatchSummaryByNodeAndChannelPrefixSql",
                 "select b.status, b.node_id, b.channel_id ");
+        putSql("selectOutgoingBatchSummaryByNodeBriefStatsSql",
+                "select b.node_id, b.status, CAST(b.create_time AS DATE) as batch_date, count(*) as batches, sum(b.data_row_count) as data_rows "
+                        + " from $(outgoing_batch) b "
+                        + " GROUP BY b.node_id, b.status, CAST(b.create_time AS DATE)"
+                        + " ORDER BY b.node_id, b.status, CAST(b.create_time AS DATE)");
         putSql("selectOutgoingBatchSummaryStatsPrefixSql",
                 ", count(*) as batches, sum(b.data_row_count) as data, min(b.create_time) as oldest_batch_time, "
                         + " max(b.last_update_time) as last_update_time, "

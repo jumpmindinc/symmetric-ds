@@ -141,7 +141,13 @@ See <<File Synchronization>> and <<Pull Threads>> for more details.
 
 The Initial Load Extract Job processes <<EXTRACT_REQUEST>>s.  See <<Initial Load Extract In Background>> for more details.
 
+
+==== Refresh Backlog Report Job
+
+The Refresh Backlog Report Job queries <<OUTGOING_BATCH>> to compute batch and row counts (by node and batch status) to update the outgoing backlog metrics gauges.
+
 ifdef::pro[]
+Also, this job saves a snapshot of the outgoing backlog to the <<ANALYTICS_REPORT>> table, which is displayed under the Analytics tab.
 
 ==== Compare Job
 
@@ -154,5 +160,4 @@ Each request uses multiple threads, but less than the entire pool size by defaul
 ==== Refresh Analytics Job
 
 The Refresh Analytics Job is responsible for analyzing raw metrics and generating report data. It records reports to the <<ANALYTICS_REPORT>> table. Reports are displayed under the Analytics tab.
-
 endif::pro[]

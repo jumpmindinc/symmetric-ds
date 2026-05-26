@@ -37,14 +37,19 @@ import org.jumpmind.exception.IoException;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.CollectionUtils;
 import org.jumpmind.util.FormatUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
 public class TypedPropertiesFactory implements ITypedPropertiesFactory {
+    private static final Logger log = LoggerFactory.getLogger(TypedPropertiesFactory.class);
     protected File propertiesFile;
     protected Properties properties;
 
@@ -64,23 +69,43 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
         return fileProperties;
     }
 
+    public static TypedProperties getEnvironmentVariables() {
+        return getEnvironmentVariables(System.getenv());
+    }
+
+    public static TypedProperties getEnvironmentVariables(Map<String, String> env) {
+        TypedProperties properties = new TypedProperties();
+        for (Map.Entry<String, String> entry : env.entrySet()) {
+            properties.put(entry.getKey(), entry.getValue());
+        }
+        return properties;
+    }
+
     public static void mergeAndOverrideWithEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties) {
-        mergeAndOverrideWithEnvironmentVariables(fileProperties, addMissingProperties, System.getenv());
+        mergeAndOverrideWithEnvironmentVariables(fileProperties, addMissingProperties, getEnvironmentVariables());
     }
 
     public static void mergeAndOverrideWithEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties,
-            Map<String, String> envVariables) {
-        Properties systemProperties = getPropertiesFromEnvVariables(envVariables);
-        TypedProperties envProperties = new TypedProperties(systemProperties);
-        if (fileProperties.isEmpty() && envProperties.isEmpty()) {
+            TypedProperties envProperties) {
+        TypedProperties otelEnvProperties = envProperties.renameKeysWithUnderscores(SymMetricConstants.OTEL_ENV_PREFIX);
+        TypedProperties symEnvProperties = new TypedProperties();
+        symEnvProperties.collectFrom(envProperties, ServerConstants.SYM_ENV_PREFIX, true);
+        if (fileProperties.isEmpty() && symEnvProperties.isEmpty()) {
             throw new RuntimeException("Property files were not found");
         }
         if (addMissingProperties) {
-            fileProperties.putAll(envProperties);
+            fileProperties.putAll(otelEnvProperties);
+            fileProperties.putAll(symEnvProperties);
         } else {
-            fileProperties.merge(envProperties);
+            fileProperties.merge(otelEnvProperties);
+            fileProperties.merge(symEnvProperties);
         }
         replaceSystemAndEnvironmentVariables(fileProperties);
+        if (log.isDebugEnabled()) {
+            otelEnvProperties.logAllKeys("OTelEnvProperties");
+            symEnvProperties.logAllKeys("SymEnvProperties");
+            fileProperties.logAllKeys("CombinedProperties");
+        }
     }
 
     public static final void replaceSystemAndEnvironmentVariables(Properties properties) {
@@ -122,18 +147,6 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
                 properties.put(object, value);
             }
         }
-    }
-
-    private static Properties getPropertiesFromEnvVariables(Map<String, String> env) {
-        Properties properties = new Properties();
-        for (Map.Entry<String, String> entry : env.entrySet()) {
-            String envKey = entry.getKey().toUpperCase();
-            if (envKey.startsWith("SYM_")) {
-                String propKey = envKey.substring(4).toLowerCase().replace('_', '.');
-                properties.setProperty(propKey, entry.getValue());
-            }
-        }
-        return properties;
     }
 
     private TypedProperties loadPropertiesFromConfigLocations() {

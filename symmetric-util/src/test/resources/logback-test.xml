@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration>
+<configuration scan="true">
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>WARN</level>
@@ -15,6 +17,7 @@
             <pattern>%d %p [%X{engineName}] [%c{0}] [%t] %m%n</pattern>
         </encoder>
     </appender>
+
     <appender name="CONSOLE_ERR" class="ch.qos.logback.core.ConsoleAppender">
         <target>System.err</target>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
@@ -24,10 +27,64 @@
             <pattern>%d %p [%X{engineName}] [%c{0}] [%t] %m%n</pattern>
         </encoder>
     </appender>
+
+    <appender name="ROLLING" class="org.jumpmind.util.SymRollingFileAppender">
+        <file>symmetric.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>symmetric.log.%i</fileNamePattern>
+            <minIndex>1</minIndex>
+            <maxIndex>3</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>10MB</maxFileSize>
+        </triggeringPolicy>
+        <encoder>
+            <pattern>%d %p [%X{engineName}] [%c{0}] [%t] %m%ex%n</pattern>
+        </encoder>
+    </appender>
+
     <logger name="org.jumpmind" level="INFO" />
     <logger name="com.jumpmind" level="INFO" />
-    <root level="ERROR">
+    <logger name="org.eclipse.jetty.util.ssl.SslContextFactory" level="ERROR" />
+    <logger name="org.jumpmind.symmetric.util.PropertiesFactoryBean" level="ERROR" />
+    <logger name="org.jumpmind.symmetric.service.impl.ParameterService" level="ERROR" />
+    <logger name="org.jumpmind.symmetric.db.SqlScript" level="ERROR" />
+    <logger name="org.springframework" level="ERROR" />
+    <logger name="springfox.documentation" level="ERROR" />
+    <logger name="sun.net.www.protocol.http.HttpURLConnection" level="ERROR" />
+
+    <!-- SQL for all statements
+    <logger name="org.jumpmind.db.sql" level="DEBUG" />
+    -->
+    <!-- SQL for loading batches
+    <logger name="org.jumpmind.symmetric.io.data.writer.DefaultDatabaseWriter" level="DEBUG" />
+    -->
+    <!-- JMS publishing
+    <logger name="org.jumpmind.symmetric.integrate" level="DEBUG" />
+    -->
+    <!-- HTTP headers (also edit logging.properties)
+    <logger name="sun.net.www.protocol.http.HttpURLConnection" level="ALL" />
+    -->
+    <!-- File sync
+    <logger name="org.jumpmind.symmetric.service.impl.FileSyncService" level="DEBUG" />
+    <logger name="org.jumpmind.symmetric.file.FileTriggerFileModifiedListener" level="DEBUG" />
+    --> 
+    <!-- Routing and data extraction
+    <logger name="org.jumpmind.symmetric.service.impl.RouterService" level="DEBUG" />
+    <logger name="org.jumpmind.symmetric.route" level="DEBUG" />
+    -->
+    <!-- Batch loading and transport
+    <logger name="org.jumpmind.symmetric.service.impl.DataLoaderService" level="DEBUG" />
+    <logger name="org.jumpmind.symmetric.transport" level="DEBUG" />
+    -->
+    <!-- Staging area
+    <logger name="org.jumpmind.symmetric.io.stage" level="DEBUG" />
+    -->
+
+
+    <root level="WARN">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="CONSOLE_ERR" />
+        <appender-ref ref="ROLLING" />
     </root>
 </configuration>

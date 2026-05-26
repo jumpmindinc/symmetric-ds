@@ -71,6 +71,10 @@ import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.impl.ClientExtensionService;
 import org.jumpmind.symmetric.service.impl.NodeService;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
+import org.jumpmind.symmetric.observability.metrics.EngineMetricsService;
+import org.jumpmind.symmetric.observability.metrics.MetricsManager;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.statistic.StatisticManager;
 import org.jumpmind.symmetric.util.ConfigImportHelper;
@@ -293,20 +297,14 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
     @Override
     protected ISymmetricDialect createTargetDialect() {
         if (parameterService.is(ParameterConstants.NODE_LOAD_ONLY, false)) {
-            TypedProperties properties = new TypedProperties();
-            String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
+            TypedProperties platformProperties = preparePlatformProperties();
             boolean targetDelimitedIdentifierMode = parameterService.is(ParameterConstants.TARGET_DB_DELIMITED_IDENTIFIER_MODE, true);
-            copyProperties(properties, prefix, DataSourceProperties.ALL_PROPS);
-            copyProperties(properties, prefix, ParameterConstants.ALL_JDBC_PARAMS);
-            copyProperties(properties, "", ParameterConstants.ALL_KAFKA_PARAMS);
-            copyProperties(properties, "", ParameterConstants.ALL_GOOGLE_BIG_QUERY_PARAMS);
-            copyProperties(properties, "", ParameterConstants.ALL_MONGODB_PARAMS);
-            copyProperties(properties, "", ParameterConstants.ALL_COSMOS_PARAMS);
-            IDatabasePlatform targetPlatform = createDatabasePlatform(null, properties, null, true, true,
+            IDatabasePlatform targetPlatform = createDatabasePlatform(null, platformProperties, null, true, true,
                     parameterService.is(ParameterConstants.START_LOG_MINER_JOB, false), targetDelimitedIdentifierMode);
             if (targetPlatform instanceof GenericJdbcDatabasePlatform) {
-                targetPlatform.getDatabaseInfo().setNotNullColumnsSupported(parameterService.is(prefix +
-                        ParameterConstants.CREATE_TABLE_NOT_NULL_COLUMNS, true));
+                boolean createTableColumnsNotNullSupported = parameterService.is(ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX
+                        + ParameterConstants.CREATE_TABLE_NOT_NULL_COLUMNS, true);
+                targetPlatform.getDatabaseInfo().setNotNullColumnsSupported(createTableColumnsNotNullSupported);
             }
             targetPlatform.setClearCacheModelTimeoutInMs(parameterService.getLong(ParameterConstants.CACHE_TIMEOUT_TABLES_IN_MS));
             return JdbcSymmetricDialectFactory.getInstance().create(parameterService, targetPlatform);
@@ -315,10 +313,16 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
         }
     }
 
-    private void copyProperties(TypedProperties properties, String prefix, String[] parameterNames) {
-        for (String name : parameterNames) {
-            properties.put(name, parameterService.getString(prefix + name));
-        }
+    private TypedProperties preparePlatformProperties() {
+        TypedProperties properties = new TypedProperties();
+        String prefix = ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX;
+        properties.collectFrom(prefix, DataSourceProperties.ALL_PROPS, parameterService::getString);
+        properties.collectFrom(prefix, ParameterConstants.ALL_JDBC_PARAMS, parameterService::getString);
+        properties.collectFrom("", ParameterConstants.ALL_KAFKA_PARAMS, parameterService::getString);
+        properties.collectFrom("", ParameterConstants.ALL_GOOGLE_BIG_QUERY_PARAMS, parameterService::getString);
+        properties.collectFrom("", ParameterConstants.ALL_MONGODB_PARAMS, parameterService::getString);
+        properties.collectFrom("", ParameterConstants.ALL_COSMOS_PARAMS, parameterService::getString);
+        return properties;
     }
 
     @Override
@@ -329,7 +333,6 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
 
     public static IDatabasePlatform createDatabasePlatform(ApplicationContext springContext, TypedProperties properties,
             DataSource dataSource, boolean waitOnAvailableDatabase) {
-        boolean delimitedIdentifierMode = properties.is(ParameterConstants.DB_DELIMITED_IDENTIFIER_MODE, true);
         return createDatabasePlatform(springContext, properties, dataSource, waitOnAvailableDatabase, properties.is(ParameterConstants.NODE_LOAD_ONLY),
                 properties.is(ParameterConstants.START_LOG_MINER_JOB), null);
     }
@@ -446,6 +449,24 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             }
         }
         return new StatisticManager(this);
+    }
+
+    @Override
+    protected IEngineMetricsService createMetricsService() {
+        try {
+            boolean isOtelEnabledOnSystem = !(parameterService.is(SymMetricConstants.OTEL_SDK_DISABLED, false));
+            boolean isOtelEnabledForEngine = parameterService.is(ParameterConstants.OTEL_METRICS_ENABLED, isOtelEnabledOnSystem);
+            return new EngineMetricsService(this, MetricsManager.getGlobalInstance(), isOtelEnabledForEngine);
+        } catch (Exception ex) {
+            log.error("Failed to initialize EngineMetricsService!", ex);
+            return null;
+        }
+    }
+
+    @Override
+    protected void startMetricsAggregation() {
+        MetricsManager mgr = MetricsManager.getGlobalInstance();
+        mgr.startAggregation();
     }
 
     protected static void waitForAvailableDatabase(DataSource dataSource) {
