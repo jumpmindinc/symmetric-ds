@@ -75,12 +75,6 @@ public class ChannelStats extends AbstractNodeHostStats {
         updateDataMaxCreateTime(stats.getDataMaxCreateTime());
     }
 
-    public boolean isNonZero() {
-        return dataRouted > 0 || dataUnRouted > 0 || dataExtracted > 0 || dataBytesExtracted > 0 || dataExtractedErrors > 0 || dataEventInserted > 0
-                || dataSent > 0 || dataBytesSent > 0 || dataSentErrors > 0 || dataReceived > 0 || dataBytesReceived > 0 || dataLoaded > 0
-                || dataBytesLoaded > 0 || dataLoadedErrors > 0 || dataLoadedOutgoing > 0 || dataBytesLoadedOutgoing > 0 || dataLoadedOutgoingErrors > 0;
-    }
-
     public String getChannelId() {
         return channelId;
     }
