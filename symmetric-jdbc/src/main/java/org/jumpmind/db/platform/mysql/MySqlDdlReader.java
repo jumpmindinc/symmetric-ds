@@ -56,6 +56,7 @@ import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -95,30 +96,30 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
         // TODO This needs some more work, since table names can be case
         // sensitive or lowercase
         // depending on the platform (really cute).
         // See http://dev.mysql.com/doc/refman/4.1/en/name-case-sensitivity.html
         // for more info.
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
-            determineExtraColumnInfo(table);
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation != null) {
+            determineExtraColumnInfo(relation);
         }
-        return table;
+        return relation;
     }
 
-    protected void determineExtraColumnInfo(Table table) {
+    protected void determineExtraColumnInfo(Relation relation) {
         String sql = "SELECT column_name, extra, column_type" + (supportsGeneratedColumns ? ", generation_expression" : "") +
                 " FROM information_schema.columns WHERE table_schema = ? AND table_name = ?";
-        List<Row> rows = platform.getSqlTemplateDirty().query(sql, new Object[] { table.getCatalog(), table.getName() });
+        List<Row> rows = platform.getSqlTemplateDirty().query(sql, new Object[] { relation.getCatalog(), relation.getName() });
         for (Row row : rows) {
             String extra = row.getString("extra");
             String columnName = row.getString("column_name");
             String columnType = row.getString("column_type");
             if (StringUtils.isNotBlank(extra)) {
-                Column column = table.findColumn(columnName);
+                Column column = relation.findColumn(columnName);
                 if (column != null) {
                     if (column.getMappedTypeCode() == Types.TIMESTAMP && extra.toLowerCase().contains("on update")) {
                         column.setAutoUpdate(true);
@@ -141,7 +142,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                 for (int i = 0; i < parsedEnums.length; i++) {
                     parsedEnums[i] = StringUtils.unwrap(parsedEnums[i], "'");
                 }
-                Column column = table.findColumn(columnName);
+                Column column = relation.findColumn(columnName);
                 if (column != null) {
                     PlatformColumn platformColumn = column.getPlatformColumns().get(platform.getName());
                     if (platformColumn != null) {
@@ -151,7 +152,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
             }
         }
         if (rows.isEmpty()) {
-            log.warn("Could not find extra column info for table {}", table.getFullyQualifiedTableName());
+            log.warn("Could not find extra column info for table {}", relation.getFullyQualifiedName());
         }
     }
 

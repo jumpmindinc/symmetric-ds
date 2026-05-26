@@ -42,6 +42,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DdlBuilderFactory;
 import org.jumpmind.db.platform.DmlStatementFactory;
@@ -127,7 +128,7 @@ public class DbExport {
     public void exportTables(OutputStream output, String[] tableNames) throws IOException {
         ArrayList<Table> tableList = new ArrayList<Table>();
         for (String tableName : tableNames) {
-            Table table = platform.readTableFromDatabase(getCatalogToUse(), getSchemaToUse(),
+            Table table = (Table) platform.readRelationFromDatabase(getCatalogToUse(), getSchemaToUse(),
                     tableName);
             if (table != null) {
                 tableList.add(table);
@@ -140,8 +141,8 @@ public class DbExport {
     }
 
     public void exportTable(OutputStream output, String tableName, String sql) throws IOException {
-        Table table = platform
-                .readTableFromDatabase(getCatalogToUse(), getSchemaToUse(), tableName);
+        Table table = (Table) platform
+                .readRelationFromDatabase(getCatalogToUse(), getSchemaToUse(), tableName);
         exportTables(output, new Table[] { table }, sql);
     }
 
@@ -154,7 +155,7 @@ public class DbExport {
             // if the table definition did not come from the database, then read
             // the table from the database
             if (!tables[i].containsJdbcTypes()) {
-                tables[i] = platform.readTableFromDatabase(getCatalogToUse(), getSchemaToUse(),
+                tables[i] = (Table) platform.readRelationFromDatabase(getCatalogToUse(), getSchemaToUse(),
                         tables[i].getName());
             }
             /* make a copy so if we zero out catalog and schema we don't effect the original */
@@ -164,9 +165,8 @@ public class DbExport {
         rowCount = 0;
         try {
             writerWrapper = new WriterWrapper(output);
-            tables = Database.sortByForeignKeys(tables);
-            for (Table table : tables) {
-                writeTable(writerWrapper, table, sql);
+            for (Relation relation : Database.sortByForeignKeys((Relation[]) tables)) {
+                writeTable(writerWrapper, (Table) relation, sql);
             }
         } finally {
             if (writerWrapper != null) {

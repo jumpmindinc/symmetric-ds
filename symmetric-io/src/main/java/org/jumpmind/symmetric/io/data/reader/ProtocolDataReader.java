@@ -39,6 +39,7 @@ import java.util.Set;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.exception.IoException;
@@ -144,7 +145,7 @@ public class ProtocolDataReader extends AbstractDataReader implements IDataReade
             long bytesRead = 0;
             String[] statsColumns = null;
             String[] statsValues = null;
-            Table table = null;
+            Relation relation = null;
             while (tokens != null || csvReader.readRecord()) {
                 lineNumber++;
                 context.put(CTX_LINE_NUMBER, lineNumber);
@@ -158,9 +159,9 @@ public class ProtocolDataReader extends AbstractDataReader implements IDataReade
                     stats.increment(DataReaderStatistics.READ_BYTE_COUNT, bytesRead);
                     bytesRead = 0;
                 }
-                if (table != null && !(tokens[0].equals(CsvConstants.TABLE) || tokens[0].equals(CsvConstants.KEYS)
+                if (relation != null && !(tokens[0].equals(CsvConstants.TABLE) || tokens[0].equals(CsvConstants.KEYS)
                         || tokens[0].equals(CsvConstants.COLUMNS))) {
-                    return table;
+                    return relation;
                 }
                 if (stats != null && (tokens[0].equals(CsvConstants.INSERT) || tokens[0].equals(CsvConstants.UPDATE)
                         || tokens[0].equals(CsvConstants.DELETE))) {
@@ -185,12 +186,12 @@ public class ProtocolDataReader extends AbstractDataReader implements IDataReade
                     CsvData data = new CsvData();
                     data.setNoBinaryOldData(noBinaryOldData);
                     data.setDataEventType(DataEventType.UPDATE);
-                    int columnCount = context.getLastParsedTable().getColumnCount();
+                    int columnCount = context.getLastParsedRelation().getColumnCount();
                     if (tokens.length <= columnCount) {
                         String msg = String.format(
                                 "Invalid state while parsing csv data.  "
                                         + "The number of columns (%d) reported for table '%s' doesn't match up with the token count (%d) data: %s",
-                                columnCount, context.getLastParsedTable().getFullyQualifiedTableName(), tokens.length,
+                                columnCount, context.getLastParsedRelation().getFullyQualifiedName(), tokens.length,
                                 ArrayUtils.toString(tokens));
                         throw new ProtocolException(msg);
                     }
@@ -248,12 +249,12 @@ public class ProtocolDataReader extends AbstractDataReader implements IDataReade
                     catalogName = tokens.length == 1 || StringUtils.isBlank(tokens[1]) ? null : tokens[1];
                 } else if (tokens[0].equals(CsvConstants.TABLE)) {
                     tableName = tokens[1];
-                    table = context.getParsedTables().get(Table.getFullyQualifiedTableName(catalogName, schemaName, tableName));
-                    if (table != null) {
-                        context.setLastParsedTable(table);
+                    relation = context.getParsedRelations().get(Table.getFullyQualifiedName(catalogName, schemaName, tableName));
+                    if (relation != null) {
+                        context.setLastParsedRelation(relation);
                     } else {
-                        table = new Table(catalogName, schemaName, tableName);
-                        context.setLastParsedTable(table);
+                        relation = new Table(catalogName, schemaName, tableName);
+                        context.setLastParsedRelation(relation);
                     }
                 } else if (tokens[0].equals(CsvConstants.KEYS)) {
                     if (keys == null) {
@@ -263,12 +264,12 @@ public class ProtocolDataReader extends AbstractDataReader implements IDataReade
                         keys.add(tokens[i]);
                     }
                 } else if (tokens[0].equals(CsvConstants.COLUMNS)) {
-                    table.removeAllColumns();
+                    relation.removeAllColumns();
                     for (int i = 1; i < tokens.length; i++) {
                         Column column = new Column(tokens[i], keys != null && keys.contains(tokens[i]));
-                        table.addColumn(column);
+                        relation.addColumn(column);
                     }
-                    context.getParsedTables().put(table.getFullyQualifiedTableName(), table);
+                    context.getParsedRelations().put(relation.getFullyQualifiedName(), relation);
                 } else if (tokens[0].equals(CsvConstants.COMMIT)) {
                     if (batch != null) {
                         batch.setComplete(true);
@@ -338,20 +339,20 @@ public class ProtocolDataReader extends AbstractDataReader implements IDataReade
         return null;
     }
 
-    public Table nextTable() {
-        if (next instanceof Table) {
-            Table table = (Table) next;
-            context.setLastParsedTable(table);
+    public Relation nextRelation() {
+        if (next instanceof Relation) {
+            Relation relation = (Relation) next;
+            context.setLastParsedRelation(relation);
             next = null;
-            return table;
+            return relation;
         } else {
             do {
                 next = readNext();
-                if (next instanceof Table) {
-                    Table table = (Table) next;
-                    context.setLastParsedTable(table);
+                if (next instanceof Relation) {
+                    Relation relation = (Relation) next;
+                    context.setLastParsedRelation(relation);
                     next = null;
-                    return table;
+                    return relation;
                 }
             } while (next != null && !(next instanceof Batch));
         }

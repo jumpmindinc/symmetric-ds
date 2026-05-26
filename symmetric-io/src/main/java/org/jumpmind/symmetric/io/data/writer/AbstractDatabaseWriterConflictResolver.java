@@ -290,7 +290,7 @@ abstract public class AbstractDatabaseWriterConflictResolver implements IDatabas
         if (log.isDebugEnabled()) {
             log.debug("Conflict detected: {} in batch {} at line {} for table {}",
                     new Object[] { conflict.getConflictId() == null ? "default" : conflict.getConflictId(), writer.getBatch().getNodeBatchId(),
-                            lineNumber, writer.getTargetTable().getFullyQualifiedTableName() });
+                            lineNumber, writer.getTargetTable().getFullyQualifiedName() });
             String csvData = data.getCsvData(CsvData.ROW_DATA);
             if (StringUtils.isNotBlank(csvData)) {
                 log.debug("Row data: {}", csvData);
@@ -311,7 +311,7 @@ abstract public class AbstractDatabaseWriterConflictResolver implements IDatabas
         if (writer.getWriterSettings().isLogConflictResolution()) {
             log.info("Conflict detected: {} in batch {} at line {} for table {}",
                     new Object[] { conflict.getConflictId() == null ? "default" : conflict.getConflictId(), writer.getBatch().getBatchId(),
-                            lineNumber, writer.getTargetTable().getFullyQualifiedTableName() });
+                            lineNumber, writer.getTargetTable().getFullyQualifiedName() });
             String csvData = data.getCsvData(CsvData.ROW_DATA);
             if (StringUtils.isNotBlank(csvData)) {
                 log.info("Row data: {}", csvData);

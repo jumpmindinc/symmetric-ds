@@ -18,7 +18,9 @@ image::images/wizard-config/wizard-config-start.png[]
 image::images/wizard-config/wizard-config-client-server.png[]
 
 Select all tables that should be synchronized in the direction
-stated in the header, in this case from `CLIENT` to the `SERVER`
+stated in the header, in this case from `CLIENT` to the `SERVER`.
+A Show Views checkbox is available for Microsoft SQL Server, Oracle, PostgreSQL, MySQL, and MariaDB source nodes.
+Views cannot be configured for change capture, but they can be configured to be refreshed on a schedule by a Data Refresh job.
 --
 
 ===== Router: Server to Client

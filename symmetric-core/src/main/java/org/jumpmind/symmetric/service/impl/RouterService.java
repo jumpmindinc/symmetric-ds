@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -951,18 +952,18 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected int routeData(ProcessInfo processInfo, Data data, ChannelRouterContext context) {
         int numberOfDataEventsInserted = 0;
         List<TriggerRouter> triggerRouters = getTriggerRoutersForData(data, context);
-        Table table = null;
+        Relation relation = null;
         if (!isUsingTargetExternalId && data.getTriggerHistory() != null) {
-            table = platform.getTableFromCache(data.getTriggerHistory().getSourceCatalogName(), data.getTriggerHistory().getSourceSchemaName(),
+            relation = platform.getRelationFromCache(data.getTriggerHistory().getSourceCatalogName(), data.getTriggerHistory().getSourceSchemaName(),
                     data.getTriggerHistory().getSourceTableName(), false);
         }
-        if (table == null) {
-            table = buildTableFromTriggerHistory(data.getTriggerHistory());
+        if (relation == null) {
+            relation = buildTableFromTriggerHistory(data.getTriggerHistory());
         }
         if (triggerRouters != null && triggerRouters.size() > 0) {
             for (TriggerRouter triggerRouter : triggerRouters) {
                 Router router = triggerRouter.getRouter();
-                DataMetaData dataMetaData = new DataMetaData(data, table, router, context.getChannel());
+                DataMetaData dataMetaData = new DataMetaData(data, relation, router, context.getChannel());
                 Collection<String> nodeIds = null;
                 if (triggerRouter.isRouted(data.getDataEventType())) {
                     String targetNodeIds = data.getNodeList();
@@ -1038,7 +1039,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 }
             }
             if (numberOfDataEventsInserted == 0) {
-                DataMetaData dataMetaData = new DataMetaData(data, table, null, context.getChannel());
+                DataMetaData dataMetaData = new DataMetaData(data, relation, null, context.getChannel());
                 numberOfDataEventsInserted += insertDataEvents(processInfo, context, dataMetaData, null, null);
             }
         } else {
@@ -1049,7 +1050,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 missingTriggerRouter.put(triggerHistId, counterStat);
             }
             counterStat.incrementCount();
-            numberOfDataEventsInserted += insertDataEvents(processInfo, context, new DataMetaData(data, table,
+            numberOfDataEventsInserted += insertDataEvents(processInfo, context, new DataMetaData(data, relation,
                     null, context.getChannel()), new HashSet<String>(0), null);
         }
         context.incrementStat(numberOfDataEventsInserted,
@@ -1070,7 +1071,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
     protected int insertDataEvents(ProcessInfo processInfo, ChannelRouterContext context, DataMetaData dataMetaData,
             Collection<String> nodeIds, TriggerRouter triggerRouter) {
         final long ts = System.currentTimeMillis();
-        final String tableName = dataMetaData.getTable().getNameLowerCase();
+        final String tableName = dataMetaData.getRelation().getNameLowerCase();
         final DataEventType eventType = dataMetaData.getData().getDataEventType();
         Map<String, OutgoingBatch> batches = null;
         long loadId = -1;
@@ -1329,7 +1330,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
             } else {
                 rowData = dataMetaData.getData().toParsedRowData();
             }
-            return rowData == null || dataMetaData.getTable().getColumnCount() == rowData.length;
+            return rowData == null || dataMetaData.getRelation().getColumnCount() == rowData.length;
         }
         return true;
     }

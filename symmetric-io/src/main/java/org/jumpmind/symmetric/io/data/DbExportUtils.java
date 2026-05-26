@@ -22,7 +22,7 @@ public class DbExportUtils {
         String quote = platform.getDdlBuilder().getDatabaseInfo().getDelimiterToken();
         for (String tableName : tables) {
             String appendSql = "order by ";
-            Table table = platform.getTableFromCache(null, null, tableName, false);
+            Table table = (Table) platform.getRelationFromCache(null, null, tableName, false);
             if (table != null) {
                 Column[] pkColumns = table.getPrimaryKeyColumns();
                 for (int j = 0; j < pkColumns.length; j++) {

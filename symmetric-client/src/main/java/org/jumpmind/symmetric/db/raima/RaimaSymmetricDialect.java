@@ -90,7 +90,7 @@ public class RaimaSymmetricDialect extends AbstractSymmetricDialect implements I
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
             try {
-                log.info("Dropping {} trigger for {}", triggerName, Table.getFullyQualifiedTableName(catalogName, schemaName, tableName));
+                log.info("Dropping {} trigger for {}", triggerName, Table.getFullyQualifiedName(catalogName, schemaName, tableName));
                 platform.getSqlTemplate().update(sql);
             } catch (Exception e) {
                 log.warn("Trigger does not exist");

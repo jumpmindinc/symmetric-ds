@@ -75,6 +75,7 @@ import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.TypeMap;
+import org.jumpmind.db.model.View;
 import org.jumpmind.db.model.UniqueIndex;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.exception.IoException;
@@ -174,6 +175,11 @@ public class DatabaseXmlUtil {
                             Table table = nextTable(parser, database.getCatalog(), database.getSchema());
                             if (table != null) {
                                 database.addTable(table);
+                            }
+                        } else if (name.equalsIgnoreCase("view")) {
+                            View view = nextView(parser, database.getCatalog(), database.getSchema());
+                            if (view != null) {
+                                database.addView(view);
                             }
                         }
                         break;
@@ -507,6 +513,63 @@ public class DatabaseXmlUtil {
         }
     }
 
+    public static View nextView(XmlPullParser parser, String catalog, String schema) {
+        try {
+            View view = null;
+            boolean done = false;
+            int eventType = parser.getEventType();
+            while (eventType != XmlPullParser.END_DOCUMENT && !done) {
+                switch (eventType) {
+                    case XmlPullParser.START_TAG:
+                        String name = parser.getName();
+                        if (name.equalsIgnoreCase("view")) {
+                            view = new View();
+                            view.setCatalog(catalog);
+                            view.setSchema(schema);
+                            for (int i = 0; i < parser.getAttributeCount(); i++) {
+                                String attributeName = parser.getAttributeName(i);
+                                String attributeValue = parser.getAttributeValue(i);
+                                if (attributeName.equalsIgnoreCase("name")) {
+                                    view.setName(attributeValue);
+                                } else if (attributeName.equalsIgnoreCase("description")) {
+                                    view.setDescription(attributeValue);
+                                }
+                            }
+                        } else if (name.equalsIgnoreCase("column") && view != null) {
+                            Column column = new Column();
+                            for (int i = 0; i < parser.getAttributeCount(); i++) {
+                                String attributeName = parser.getAttributeName(i);
+                                String attributeValue = parser.getAttributeValue(i);
+                                if (attributeName.equalsIgnoreCase("name")) {
+                                    column.setName(attributeValue);
+                                } else if (attributeName.equalsIgnoreCase("type")) {
+                                    column.setMappedType(attributeValue);
+                                } else if (attributeName.equalsIgnoreCase("size")) {
+                                    column.setSize(attributeValue);
+                                } else if (attributeName.equalsIgnoreCase("required")) {
+                                    column.setRequired(FormatUtils.toBoolean(attributeValue));
+                                } else if (attributeName.equalsIgnoreCase("default")) {
+                                    column.setDefaultValue(attributeValue);
+                                }
+                            }
+                            view.addColumn(column);
+                        }
+                        break;
+                    case XmlPullParser.END_TAG:
+                        name = parser.getName();
+                        if (name.equalsIgnoreCase("view")) {
+                            done = true;
+                        }
+                        break;
+                }
+                eventType = parser.next();
+            }
+            return view;
+        } catch (XmlPullParserException | IOException e) {
+            throw new IoException(e);
+        }
+    }
+
     /*
      * Writes the database model to the specified file.
      * 
@@ -573,6 +636,9 @@ public class DatabaseXmlUtil {
             for (Table table : model.getTables()) {
                 write(table, output);
             }
+            for (View view : model.getViews()) {
+                write(view, output);
+            }
             output.write("</database>\n");
         } catch (IOException e) {
             throw new IoException(e);
@@ -628,85 +694,7 @@ public class DatabaseXmlUtil {
             }
             output.write(">\n");
             for (Column column : table.getColumns()) {
-                output.write("\t\t<column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"");
-                if (column.isPrimaryKey()) {
-                    output.write(" primaryKey=\"" + column.isPrimaryKey() + "\"");
-                    output.write(" primaryKeySeq=\"" + column.getPrimaryKeySequence() + "\"");
-                }
-                if (column.isRequired()) {
-                    output.write(" required=\"" + column.isRequired() + "\"");
-                }
-                if (column.getMappedType() != null) {
-                    if (isOracle(column) && column.getMappedType().equalsIgnoreCase("date")) {
-                        output.write(" type=\"" + TypeMap.TIMESTAMP + "\"");
-                    } else {
-                        output.write(" type=\"" + column.getMappedType() + "\"");
-                    }
-                }
-                if (column.getSize() != null) {
-                    output.write(" size=\"" + column.getSize() + "\"");
-                }
-                if (column.getDefaultValue() != null) {
-                    output.write(" default=\"" + StringEscapeUtils.escapeXml10(column.getDefaultValue()) + "\"");
-                }
-                if (column.isAutoIncrement()) {
-                    output.write(" autoIncrement=\"" + column.isAutoIncrement() + "\"");
-                }
-                if (column.isAutoUpdate()) {
-                    output.write(" autoUpdate=\"" + column.isAutoUpdate() + "\"");
-                }
-                if (column.getJavaName() != null) {
-                    output.write(" javaName=\"" + column.getJavaName() + "\"");
-                }
-                if (column.isUnique()) {
-                    output.write(" unique=\"" + column.isUnique() + "\"");
-                }
-                if (column.isGenerated()) {
-                    output.write(" generated=\"" + column.isGenerated() + "\"");
-                }
-                if (column.isExpressionAsDefaultValue()) {
-                    output.write(" expressionAsDefault=\"" + column.isExpressionAsDefaultValue() + "\"");
-                }
-                if (column.getPlatformColumns() != null && column.getPlatformColumns().size() > 0) {
-                    Collection<PlatformColumn> platformColumns = column.getPlatformColumns()
-                            .values();
-                    output.write(">\n");
-                    for (PlatformColumn platformColumn : platformColumns) {
-                        output.write("\t\t\t<platform-column name=\""
-                                + platformColumn.getName() + "\"");
-                        output.write(" type=\"" + StringEscapeUtils.escapeXml10(platformColumn.getType()) + "\"");
-                        if (platformColumn.getSize() > 0 || (platformColumn.getSize() == 0 && isMySql(column)
-                                && column.getMappedType().equalsIgnoreCase("varchar"))) {
-                            output.write(" size=\"" + platformColumn.getSize() + "\"");
-                        }
-                        if (platformColumn.getDecimalDigits() > 0) {
-                            output.write(" decimalDigits=\""
-                                    + platformColumn.getDecimalDigits() + "\"");
-                        }
-                        if (platformColumn.getDefaultValue() != null) {
-                            output.write(" default=\"" + StringEscapeUtils.escapeXml10(platformColumn.getDefaultValue()) + "\"");
-                        }
-                        if (platformColumn.getEnumValues() != null && platformColumn.getEnumValues().length > 0) {
-                            output.write(" enumValues=\"");
-                            boolean writeComma = false;
-                            for (String enumValue : platformColumn.getEnumValues()) {
-                                if (writeComma) {
-                                    output.write(",");
-                                }
-                                output.write(enumValue);
-                                writeComma = true;
-                            }
-                            output.write("\"");
-                        }
-                        if (platformColumn.isUserDefinedType()) {
-                            output.write(" userDefinedType=\"" + platformColumn.isUserDefinedType() + "\"");
-                        }
-                        output.write("/>\n");
-                    }
-                    output.write("\t\t</column>\n");
-                } else {
-                    output.write("/>\n");
-                }
+                writeColumn(column, output);
             }
             for (ForeignKey fk : table.getForeignKeys()) {
                 String name = fk.getName() == null ? "" : fk.getName();
@@ -808,6 +796,101 @@ public class DatabaseXmlUtil {
             output.write("\t</table>\n");
         } catch (IOException e) {
             throw new IoException(e);
+        }
+    }
+
+    public static void write(View view, Writer output) {
+        try {
+            output.write("\t<view name=\"" + StringEscapeUtils.escapeXml10(view.getName()) + "\"");
+            if (isNotBlank(view.getDescription())) {
+                output.write(" description=\"" + StringEscapeUtils.escapeXml10(view.getDescription()) + "\"");
+            }
+            output.write(">\n");
+            for (Column column : view.getColumns()) {
+                writeColumn(column, output);
+            }
+            output.write("\t</view>\n");
+        } catch (IOException e) {
+            throw new IoException(e);
+        }
+    }
+
+    private static void writeColumn(Column column, Writer output) throws IOException {
+        output.write("\t\t<column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"");
+        if (column.isPrimaryKey()) {
+            output.write(" primaryKey=\"" + column.isPrimaryKey() + "\"");
+            output.write(" primaryKeySeq=\"" + column.getPrimaryKeySequence() + "\"");
+        }
+        if (column.isRequired()) {
+            output.write(" required=\"" + column.isRequired() + "\"");
+        }
+        if (column.getMappedType() != null) {
+            if (isOracle(column) && column.getMappedType().equalsIgnoreCase("date")) {
+                output.write(" type=\"" + TypeMap.TIMESTAMP + "\"");
+            } else {
+                output.write(" type=\"" + column.getMappedType() + "\"");
+            }
+        }
+        if (column.getSize() != null) {
+            output.write(" size=\"" + column.getSize() + "\"");
+        }
+        if (column.getDefaultValue() != null) {
+            output.write(" default=\"" + StringEscapeUtils.escapeXml10(column.getDefaultValue()) + "\"");
+        }
+        if (column.isAutoIncrement()) {
+            output.write(" autoIncrement=\"" + column.isAutoIncrement() + "\"");
+        }
+        if (column.isAutoUpdate()) {
+            output.write(" autoUpdate=\"" + column.isAutoUpdate() + "\"");
+        }
+        if (column.getJavaName() != null) {
+            output.write(" javaName=\"" + column.getJavaName() + "\"");
+        }
+        if (column.isUnique()) {
+            output.write(" unique=\"" + column.isUnique() + "\"");
+        }
+        if (column.isGenerated()) {
+            output.write(" generated=\"" + column.isGenerated() + "\"");
+        }
+        if (column.isExpressionAsDefaultValue()) {
+            output.write(" expressionAsDefault=\"" + column.isExpressionAsDefaultValue() + "\"");
+        }
+        if (column.getPlatformColumns() != null && column.getPlatformColumns().size() > 0) {
+            Collection<PlatformColumn> platformColumns = column.getPlatformColumns().values();
+            output.write(">\n");
+            for (PlatformColumn platformColumn : platformColumns) {
+                output.write("\t\t\t<platform-column name=\"" + platformColumn.getName() + "\"");
+                output.write(" type=\"" + StringEscapeUtils.escapeXml10(platformColumn.getType()) + "\"");
+                if (platformColumn.getSize() > 0 || (platformColumn.getSize() == 0 && isMySql(column)
+                        && column.getMappedType().equalsIgnoreCase("varchar"))) {
+                    output.write(" size=\"" + platformColumn.getSize() + "\"");
+                }
+                if (platformColumn.getDecimalDigits() > 0) {
+                    output.write(" decimalDigits=\"" + platformColumn.getDecimalDigits() + "\"");
+                }
+                if (platformColumn.getDefaultValue() != null) {
+                    output.write(" default=\"" + StringEscapeUtils.escapeXml10(platformColumn.getDefaultValue()) + "\"");
+                }
+                if (platformColumn.getEnumValues() != null && platformColumn.getEnumValues().length > 0) {
+                    output.write(" enumValues=\"");
+                    boolean writeComma = false;
+                    for (String enumValue : platformColumn.getEnumValues()) {
+                        if (writeComma) {
+                            output.write(",");
+                        }
+                        output.write(enumValue);
+                        writeComma = true;
+                    }
+                    output.write("\"");
+                }
+                if (platformColumn.isUserDefinedType()) {
+                    output.write(" userDefinedType=\"" + platformColumn.isUserDefinedType() + "\"");
+                }
+                output.write("/>\n");
+            }
+            output.write("\t\t</column>\n");
+        } else {
+            output.write("/>\n");
         }
     }
 

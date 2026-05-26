@@ -50,7 +50,7 @@ public class TransformWriterTest extends AbstractWriterTest {
         Table table = new Table("original", new Column("id"));
         writeData(getTransformWriter(), new TableCsvData(table, new CsvData(DataEventType.INSERT,
                 new String[] { "1" }), new CsvData(DataEventType.INSERT, new String[] { "2" })));
-        List<CsvData> datas = mockWriter.writtenDatas.get(table.getFullyQualifiedTableName());
+        List<CsvData> datas = mockWriter.writtenDatas.get(table.getFullyQualifiedName());
         Assert.assertEquals(2, datas.size());
         Assert.assertEquals("1", datas.get(0).getParsedData(CsvData.ROW_DATA)[0]);
         Assert.assertEquals("2", datas.get(1).getParsedData(CsvData.ROW_DATA)[0]);
@@ -62,7 +62,7 @@ public class TransformWriterTest extends AbstractWriterTest {
         Table table = new Table("s1", new Column("id"));
         writeData(getTransformWriter(), new TableCsvData(table, new CsvData(DataEventType.INSERT, new String[] { "66" }),
                 new CsvData(DataEventType.INSERT, new String[] { "77" })));
-        List<CsvData> datas = mockWriter.writtenDatas.get(table.getFullyQualifiedTableName());
+        List<CsvData> datas = mockWriter.writtenDatas.get(table.getFullyQualifiedName());
         Assert.assertNull(datas);
         datas = mockWriter.writtenDatas.get("t1");
         Assert.assertEquals(2, datas.size());
@@ -76,7 +76,7 @@ public class TransformWriterTest extends AbstractWriterTest {
         Table table = new Table("s2", new Column("id"));
         writeData(getTransformWriter(), new TableCsvData(table, new CsvData(DataEventType.INSERT, new String[] { "2" }),
                 new CsvData(DataEventType.INSERT, new String[] { "1" })));
-        List<CsvData> datas = mockWriter.writtenDatas.get(table.getFullyQualifiedTableName());
+        List<CsvData> datas = mockWriter.writtenDatas.get(table.getFullyQualifiedName());
         Assert.assertNull(datas);
         datas = mockWriter.writtenDatas.get("t2");
         Assert.assertEquals(2, datas.size());

@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.io.data.Batch;
@@ -40,69 +41,69 @@ import org.jumpmind.symmetric.io.data.IDataReader;
 import org.jumpmind.util.Statistics;
 
 /**
- * A data reader that knows it will be reading a single batch and a single table.
+ * A data reader that knows it will be reading a single batch and a single relation.
  */
-abstract public class AbstractTableDataReader extends AbstractDataReader implements IDataReader {
-    public static final String CTX_LINE_NUMBER = AbstractTableDataReader.class.getSimpleName()
+abstract public class AbstractRelationDataReader extends AbstractDataReader implements IDataReader {
+    public static final String CTX_LINE_NUMBER = AbstractRelationDataReader.class.getSimpleName()
             + ".lineNumber";
     protected Reader reader;
     protected Statistics statistics = new Statistics();
     protected DataContext context;
     protected Batch batch;
-    protected Table table;
+    protected Relation relation;
     protected int lineNumber = 0;
-    protected boolean readDataBeforeTable = false;
+    protected boolean readDataBeforeRelation = false;
     protected boolean readingBatch = false;
-    protected boolean readingTable = false;
+    protected boolean readingRelation = false;
 
-    public AbstractTableDataReader(Batch batch, String catalogName, String schemaName,
-            String tableName, StringBuilder input) {
-        this(batch, catalogName, schemaName, tableName, new BufferedReader(new StringReader(
+    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+            String relationName, StringBuilder input) {
+        this(batch, catalogName, schemaName, relationName, new BufferedReader(new StringReader(
                 input.toString())));
     }
 
-    public AbstractTableDataReader(Batch batch, String catalogName, String schemaName,
-            String tableName, InputStream is) {
-        this(batch, catalogName, schemaName, tableName, toReader(is));
+    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+            String relationName, InputStream is) {
+        this(batch, catalogName, schemaName, relationName, toReader(is));
     }
 
-    public AbstractTableDataReader(Batch batch, String catalogName, String schemaName,
-            String tableName, String input) {
-        this(batch, catalogName, schemaName, tableName, new BufferedReader(new StringReader(input)));
+    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+            String relationName, String input) {
+        this(batch, catalogName, schemaName, relationName, new BufferedReader(new StringReader(input)));
     }
 
-    public AbstractTableDataReader(Batch batch, String catalogName, String schemaName,
-            String tableName, File file) {
-        this(batch, catalogName, schemaName, toTableName(tableName, file), toReader(file));
+    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+            String relationName, File file) {
+        this(batch, catalogName, schemaName, toRelationName(relationName, file), toReader(file));
     }
 
-    public AbstractTableDataReader(Batch batch, String catalogName, String schemaName,
-            String tableName, Reader reader) {
+    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+            String relationName, Reader reader) {
         this.reader = reader;
         this.batch = batch;
-        if (StringUtils.isNotBlank(tableName)) {
-            this.table = new Table(catalogName, schemaName, tableName);
+        if (StringUtils.isNotBlank(relationName)) {
+            this.relation = new Table(catalogName, schemaName, relationName);
         }
     }
 
-    public AbstractTableDataReader(BinaryEncoding binaryEncoding, String catalogName,
-            String schemaName, String tableName, Reader reader) {
-        this(toBatch(binaryEncoding), catalogName, schemaName, tableName, reader);
+    public AbstractRelationDataReader(BinaryEncoding binaryEncoding, String catalogName,
+            String schemaName, String relationName, Reader reader) {
+        this(toBatch(binaryEncoding), catalogName, schemaName, relationName, reader);
     }
 
-    public AbstractTableDataReader(BinaryEncoding binaryEncoding, String catalogName,
-            String schemaName, String tableName, InputStream is) {
-        this(toBatch(binaryEncoding), catalogName, schemaName, tableName, is);
+    public AbstractRelationDataReader(BinaryEncoding binaryEncoding, String catalogName,
+            String schemaName, String relationName, InputStream is) {
+        this(toBatch(binaryEncoding), catalogName, schemaName, relationName, is);
     }
 
-    protected static String toTableName(String tableName, File file) {
-        if (StringUtils.isBlank(tableName)) {
-            tableName = file.getName();
-            if (tableName.lastIndexOf(".") > 0) {
-                tableName = tableName.substring(0, tableName.lastIndexOf("."));
+    protected static String toRelationName(String relationName, File file) {
+        if (StringUtils.isBlank(relationName)) {
+            relationName = file.getName();
+            if (relationName.lastIndexOf(".") > 0) {
+                relationName = relationName.substring(0, relationName.lastIndexOf("."));
             }
         }
-        return tableName;
+        return relationName;
     }
 
     public void open(DataContext context) {
@@ -123,7 +124,7 @@ abstract public class AbstractTableDataReader extends AbstractDataReader impleme
     }
 
     public CsvData nextData() {
-        if (readDataBeforeTable || readingTable) {
+        if (readDataBeforeRelation || readingRelation) {
             CsvData data = readNext();
             if (data != null) {
                 lineNumber++;
@@ -145,10 +146,10 @@ abstract public class AbstractTableDataReader extends AbstractDataReader impleme
         }
     }
 
-    public Table nextTable() {
-        if (!readingTable) {
-            readingTable = true;
-            return table;
+    public Relation nextRelation() {
+        if (!readingRelation) {
+            readingRelation = true;
+            return relation;
         } else {
             return null;
         }

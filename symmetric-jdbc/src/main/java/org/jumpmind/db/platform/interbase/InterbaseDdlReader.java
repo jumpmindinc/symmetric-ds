@@ -57,6 +57,7 @@ import org.apache.commons.collections4.map.ListOrderedMap;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -82,15 +83,17 @@ public class InterbaseDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
-            determineExtraColumnInfo(connection, table);
-            determineAutoIncrementColumns(connection, table);
-            adjustColumns(table);
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation != null) {
+            determineExtraColumnInfo(connection, relation);
+            if (relation instanceof Table table) {
+                determineAutoIncrementColumns(connection, table);
+            }
+            adjustColumns(relation);
         }
-        return table;
+        return relation;
     }
 
     protected Column readColumn(DatabaseMetaDataWrapper metaData, Map<String, Object> values)
@@ -150,21 +153,21 @@ public class InterbaseDdlReader extends AbstractJdbcDdlReader {
     /*
      * Helper method that determines extra column info from the system tables: default value, precision, scale.
      * 
-     * @param table The table
+     * @param relation The relation
      */
-    protected void determineExtraColumnInfo(Connection connection, Table table) throws SQLException {
+    protected void determineExtraColumnInfo(Connection connection, Relation relation) throws SQLException {
         StringBuilder query = new StringBuilder();
         query.append("SELECT a.RDB$FIELD_NAME, a.RDB$DEFAULT_SOURCE, b.RDB$FIELD_PRECISION, b.RDB$FIELD_SCALE,");
         query.append(" b.RDB$FIELD_TYPE, b.RDB$FIELD_SUB_TYPE FROM RDB$RELATION_FIELDS a, RDB$FIELDS b");
         query.append(" WHERE a.RDB$RELATION_NAME=? AND a.RDB$FIELD_SOURCE=b.RDB$FIELD_NAME");
         PreparedStatement prepStmt = connection.prepareStatement(query.toString());
         try {
-            prepStmt.setString(1, getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn() ? table.getName()
-                    : table.getName().toUpperCase());
+            prepStmt.setString(1, getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn() ? relation.getName()
+                    : relation.getName().toUpperCase());
             ResultSet rs = prepStmt.executeQuery();
             while (rs.next()) {
                 String columnName = rs.getString(1).trim();
-                Column column = table.findColumn(columnName, getPlatform().getDdlBuilder()
+                Column column = relation.findColumn(columnName, getPlatform().getDdlBuilder()
                         .isDelimitedIdentifierModeOn());
                 if (column != null) {
                     byte[] defaultBytes = rs.getBytes(2);
@@ -237,12 +240,12 @@ public class InterbaseDdlReader extends AbstractJdbcDdlReader {
     }
 
     /*
-     * Adjusts the columns in the table by fixing types and default values.
+     * Adjusts the columns in the relation by fixing types and default values.
      * 
-     * @param table The table
+     * @param relation The relation
      */
-    protected void adjustColumns(Table table) {
-        Column[] columns = table.getColumns();
+    protected void adjustColumns(Relation relation) {
+        Column[] columns = relation.getColumns();
         for (int idx = 0; idx < columns.length; idx++) {
             if (columns[idx].getMappedTypeCode() == Types.FLOAT) {
                 columns[idx].setMappedTypeCode(Types.REAL);
@@ -413,8 +416,8 @@ public class InterbaseDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected String getTableNamePattern(String tableName) {
-        return String.format("\"%s\"", tableName);
+    protected String getRelationNamePattern(String relationName) {
+        return String.format("\"%s\"", relationName);
     }
 
     @Override

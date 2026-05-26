@@ -58,7 +58,7 @@ public class XmlPublisherDataRouter extends AbstractXmlPublisherExtensionPoint i
     public Set<String> routeToNodes(SimpleRouterContext context, DataMetaData dataMetaData,
             Set<Node> nodes, boolean initialLoad, boolean initialLoadSelectUsed, TriggerRouter triggerRouter) {
         Data data = dataMetaData.getData();
-        if (tableNamesToPublishAsGroup == null || tableNamesToPublishAsGroup.contains(data.getTableName())) {
+        if (relationNamesToPublishAsGroup == null || relationNamesToPublishAsGroup.contains(data.getTableName())) {
             String[] rowData = data.getParsedData(CsvData.ROW_DATA);
             if (data.getDataEventType() == DataEventType.DELETE) {
                 rowData = data.getParsedData(CsvData.OLD_DATA);

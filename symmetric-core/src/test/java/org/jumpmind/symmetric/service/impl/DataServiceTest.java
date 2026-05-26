@@ -318,7 +318,7 @@ public class DataServiceTest {
         when(groupletService.isTargetEnabled(triggerRouter, targetNode)).thenReturn(true);
         when(engine.getDataExtractorService()).thenReturn(dataExtractorService);
         when(symmetricDialect.getTargetDialect()).thenReturn(symmetricDialect);
-        when(platform.getTableFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.anyBoolean())).thenReturn(
+        when(platform.getRelationFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.anyBoolean())).thenReturn(
                 table);
         doNothing().when(dataExtractorService).releaseMissedExtractRequests();
         when(triggerRouterService.getRouterById(ArgumentMatchers.anyString(), ArgumentMatchers.anyBoolean())).thenReturn(router);
@@ -502,7 +502,7 @@ public class DataServiceTest {
         when(engine.getDataExtractorService()).thenReturn(dataExtractorService);
         when(symmetricDialect.getTargetDialect()).thenReturn(symmetricDialect);
         when(symmetricDialect.getTablePrefix()).thenReturn("sym");
-        when(platform.getTableFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.anyBoolean())).thenReturn(
+        when(platform.getRelationFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.anyBoolean())).thenReturn(
                 table);
         doNothing().when(dataExtractorService).releaseMissedExtractRequests();
         when(triggerRouterService.getRouterById(ArgumentMatchers.anyString(), ArgumentMatchers.anyBoolean())).thenReturn(router);
@@ -944,11 +944,11 @@ public class DataServiceTest {
         when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
         TriggerHistory history = buildMapperTriggerHistory(catalog, schema);
         setUpHistoryReturnValues(triggerRouterService, history);
-        when(platform.getTableFromCache(catalog, schema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        when(platform.getRelationFromCache(catalog, schema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
         DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
         Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
         assertSame(history, data.getTriggerHistory());
-        verify(platform).getTableFromCache(catalog, schema, MAPPER_TABLE, false);
+        verify(platform).getRelationFromCache(catalog, schema, MAPPER_TABLE, false);
     }
 
     @Test
@@ -964,12 +964,12 @@ public class DataServiceTest {
         when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
         TriggerHistory history = buildMapperTriggerHistory(resolvedCatalog, schema);
         setUpHistoryReturnValues(triggerRouterService, history);
-        when(platform.getTableFromCache(resolvedCatalog, schema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        when(platform.getRelationFromCache(resolvedCatalog, schema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
         DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
         Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
         assertSame(history, data.getTriggerHistory());
-        verify(platform).getTableFromCache(resolvedCatalog, schema, MAPPER_TABLE, false);
-        verify(platform, never()).getTableFromCache(ArgumentMatchers.eq(wildcardCatalog), ArgumentMatchers.any(),
+        verify(platform).getRelationFromCache(resolvedCatalog, schema, MAPPER_TABLE, false);
+        verify(platform, never()).getRelationFromCache(ArgumentMatchers.eq(wildcardCatalog), ArgumentMatchers.any(),
                 ArgumentMatchers.any(), ArgumentMatchers.anyBoolean());
     }
 
@@ -986,12 +986,12 @@ public class DataServiceTest {
         when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
         TriggerHistory history = buildMapperTriggerHistory(catalog, resolvedSchema);
         setUpHistoryReturnValues(triggerRouterService, history);
-        when(platform.getTableFromCache(catalog, resolvedSchema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        when(platform.getRelationFromCache(catalog, resolvedSchema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
         DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
         Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
         assertSame(history, data.getTriggerHistory());
-        verify(platform).getTableFromCache(catalog, resolvedSchema, MAPPER_TABLE, false);
-        verify(platform, never()).getTableFromCache(ArgumentMatchers.any(), ArgumentMatchers.eq(wildcardSchema),
+        verify(platform).getRelationFromCache(catalog, resolvedSchema, MAPPER_TABLE, false);
+        verify(platform, never()).getRelationFromCache(ArgumentMatchers.any(), ArgumentMatchers.eq(wildcardSchema),
                 ArgumentMatchers.any(), ArgumentMatchers.anyBoolean());
     }
 
@@ -1009,11 +1009,11 @@ public class DataServiceTest {
         when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
         TriggerHistory history = buildMapperTriggerHistory(resolvedCatalog, resolvedSchema);
         setUpHistoryReturnValues(triggerRouterService, history);
-        when(platform.getTableFromCache(resolvedCatalog, resolvedSchema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        when(platform.getRelationFromCache(resolvedCatalog, resolvedSchema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
         DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
         Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
         assertSame(history, data.getTriggerHistory());
-        verify(platform).getTableFromCache(resolvedCatalog, resolvedSchema, MAPPER_TABLE, false);
+        verify(platform).getRelationFromCache(resolvedCatalog, resolvedSchema, MAPPER_TABLE, false);
     }
 
     @Test
@@ -1030,13 +1030,13 @@ public class DataServiceTest {
         when(triggerRouterService.getAllTriggerRoutersForCurrentNode("server")).thenReturn(Collections.singletonList(tr));
         when(triggerRouterService.getActiveTriggerHistories()).thenReturn(Collections.emptyList());
         when(triggerRouterService.getHistoryRecords()).thenReturn(new HashMap<Long, TriggerHistory>());
-        when(platform.getTableFromCache(null, schema, MAPPER_TABLE, false)).thenReturn(null);
+        when(platform.getRelationFromCache(null, schema, MAPPER_TABLE, false)).thenReturn(null);
         DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
         Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
         assertNotNull(data.getTriggerHistory());
         assertEquals(MAPPER_HIST_ID, data.getTriggerHistory().getTriggerHistoryId());
-        verify(platform).getTableFromCache(null, schema, MAPPER_TABLE, false);
-        verify(platform, never()).getTableFromCache(ArgumentMatchers.eq(wildcardCatalog), ArgumentMatchers.any(),
+        verify(platform).getRelationFromCache(null, schema, MAPPER_TABLE, false);
+        verify(platform, never()).getRelationFromCache(ArgumentMatchers.eq(wildcardCatalog), ArgumentMatchers.any(),
                 ArgumentMatchers.any(), ArgumentMatchers.anyBoolean());
     }
 
@@ -1056,12 +1056,12 @@ public class DataServiceTest {
         // History has a different schema value — it should be ignored since schema is not wildcarded.
         TriggerHistory history = buildMapperTriggerHistory(resolvedCatalog, "other_schema");
         setUpHistoryReturnValues(triggerRouterService, history);
-        when(platform.getTableFromCache(resolvedCatalog, schema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
+        when(platform.getRelationFromCache(resolvedCatalog, schema, MAPPER_TABLE, false)).thenReturn(mock(Table.class));
         DataService.DataMapper mapper = ((DataService) dataService).new DataMapper();
         Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
         assertSame(history, data.getTriggerHistory());
         // catalog resolved from history; schema kept from trigger (not from history)
-        verify(platform).getTableFromCache(resolvedCatalog, schema, MAPPER_TABLE, false);
+        verify(platform).getRelationFromCache(resolvedCatalog, schema, MAPPER_TABLE, false);
     }
 
     @Test
@@ -1072,7 +1072,7 @@ public class DataServiceTest {
         Data data = mapper.mapRow(buildMapperRow(MAPPER_TABLE, MAPPER_HIST_ID));
         assertNotNull(data.getTriggerHistory());
         assertEquals(MAPPER_HIST_ID, data.getTriggerHistory().getTriggerHistoryId());
-        verify(platform, never()).getTableFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(),
+        verify(platform, never()).getRelationFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(),
                 ArgumentMatchers.any(), ArgumentMatchers.anyBoolean());
     }
 
@@ -1104,7 +1104,7 @@ public class DataServiceTest {
         when(triggerRouterService.getTriggerRouterForTableForCurrentNode(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(),
                 ArgumentMatchers.anyBoolean())).thenReturn(triggerRouters);
         Table table = new Table(null, null, tableName, columnNamesArr, pkNamesArr);
-        when(platform.getTableFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.anyBoolean())).thenReturn(
+        when(platform.getRelationFromCache(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.anyBoolean())).thenReturn(
                 table);
         when(platform.getObjectValues(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenReturn(existingRowData);
         DmlStatement st = mock(DmlStatement.class);

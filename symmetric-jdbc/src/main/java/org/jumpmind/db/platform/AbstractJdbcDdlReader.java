@@ -78,8 +78,10 @@ import org.jumpmind.db.model.NonUniqueIndex;
 import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
+import org.jumpmind.db.model.View;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.model.UniqueIndex;
 import org.jumpmind.db.sql.DmlStatement;
@@ -133,7 +135,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     /* The default pattern for reading all columns. */
     private String defaultColumnPattern;
     /* The table types to recognize per default. */
-    private String[] defaultTableTypes = { "TABLE" };
+    private String[] defaultRelationTypes = { "TABLE" };
 
     public AbstractJdbcDdlReader(IDatabasePlatform platform) {
         this.platform = platform;
@@ -408,22 +410,22 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     }
 
     /*
-     * Returns the table types to recognize per default.
+     * Returns the relation types to recognize per default.
      * 
-     * @return The default table types
+     * @return The default relation types
      */
-    public String[] getDefaultTableTypes() {
-        return defaultTableTypes;
+    public String[] getDefaultRelationTypes() {
+        return defaultRelationTypes;
     }
 
     /*
-     * Sets the table types to recognize per default. Typical types are "TABLE", "VIEW", "SYSTEM TABLE", "GLOBAL TEMPORARY", "LOCAL TEMPORARY", "ALIAS",
+     * Sets the relation types to recognize per default. Typical types are "TABLE", "VIEW", "SYSTEM TABLE", "GLOBAL TEMPORARY", "LOCAL TEMPORARY", "ALIAS",
      * "SYNONYM".
      * 
-     * @param types The table types
+     * @param types The relation types
      */
-    public void setDefaultTableTypes(String[] types) {
-        defaultTableTypes = types;
+    public void setDefaultRelationTypes(String[] types) {
+        defaultRelationTypes = types;
     }
 
     /*
@@ -491,7 +493,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * @return The database model
      */
     public Database getDatabase(Connection connection) throws SQLException {
-        return readTables(null, null, null);
+        return readRelations(null, null, null);
     }
 
     protected String getResultSetSchemaName() {
@@ -509,22 +511,28 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * 
      * @param schema The schema to access in the database; use <code>null</code> for the default value
      * 
-     * @param tableTypes The table types to process; use <code>null</code> or an empty list for the default ones
+     * @param relationTypes The relation types to process; use <code>null</code> or an empty list for the default ones
      * 
      * @return The database model
      */
     @Override
-    public Database readTables(final String catalog, final String schema, final String[] tableTypes) {
+    public Database readRelations(final String catalog, final String schema, final String[] relationTypes) {
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
         return postprocessModelFromDatabase(sqlTemplate
                 .execute(new IConnectionCallback<Database>() {
                     @Override
                     public Database execute(Connection connection) throws SQLException {
                         Database db = new Database();
-                        db.setName(Table.getFullyQualifiedTablePrefix(catalog, schema));
+                        db.setName(Table.getFullyQualifiedPrefix(catalog, schema));
                         db.setCatalog(catalog);
                         db.setSchema(schema);
-                        db.addTables(readTables(connection, catalog, schema, tableTypes));
+                        for (Relation relation : readRelations(connection, catalog, schema, relationTypes)) {
+                            if (relation instanceof View view) {
+                                db.addView(view);
+                            } else if (relation instanceof Table table) {
+                                db.addTable(table);
+                            }
+                        }
                         db.initialize();
                         return db;
                     }
@@ -540,24 +548,24 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         // Default values for CHAR/VARCHAR/LONGVARCHAR columns have quotation
         // marks around them which we'll remove now
         for (int tableIdx = 0; tableIdx < model.getTableCount(); tableIdx++) {
-            postprocessTableFromDatabase(model.getTable(tableIdx));
+            postprocessRelationFromDatabase(model.getTable(tableIdx));
         }
         return model;
     }
 
     /*
-     * Reads the tables from the database metadata.
+     * Reads the relations from the database metadata.
      * 
-     * @param catalog The catalog to acess in the database; use <code>null</code> for the default value
+     * @param catalog The catalog to access in the database; use <code>null</code> for the default value
      * 
-     * @param schemaPattern The schema(s) to acess in the database; use <code>null</code> for the default value
+     * @param schemaPattern The schema(s) to access in the database; use <code>null</code> for the default value
      * 
-     * @param tableTypes The table types to process; use <code>null</code> or an empty list for the default ones
+     * @param relationTypes The relation types to process; use <code>null</code> or an empty list for the default ones
      * 
-     * @return The tables
+     * @return The relations
      */
-    protected Collection<Table> readTables(Connection connection, String catalog,
-            String schemaPattern, String[] tableTypes) throws SQLException {
+    protected Collection<Relation> readRelations(Connection connection, String catalog,
+            String schemaPattern, String[] relationTypes) throws SQLException {
         ResultSet tableData = null;
         try {
             DatabaseMetaDataWrapper metaData = new DatabaseMetaDataWrapper();
@@ -565,26 +573,26 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             metaData.setCatalog(catalog == null ? getDefaultCatalogPattern() : catalog);
             metaData.setSchemaPattern(schemaPattern == null ? getDefaultSchemaPattern()
                     : schemaPattern);
-            metaData.setTableTypes((tableTypes == null) || (tableTypes.length == 0) ? getDefaultTableTypes()
-                    : tableTypes);
+            metaData.setRelationTypes((relationTypes == null) || (relationTypes.length == 0) ? getDefaultRelationTypes()
+                    : relationTypes);
             tableData = metaData.getTables(getDefaultTablePattern());
-            List<Table> tables = new ArrayList<Table>();
+            List<Relation> relations = new ArrayList<>();
             while (tableData.next()) {
                 Map<String, Object> values = readMetaData(tableData, getColumnsForTable());
-                Table table = readTable(connection, metaData, values);
-                if (table != null) {
-                    tables.add(table);
+                Relation relation = readRelation(connection, metaData, values);
+                if (relation != null) {
+                    relations.add(relation);
                 }
             }
             final Collator collator = Collator.getInstance();
-            Collections.sort(tables, new Comparator<Table>() {
+            Collections.sort(relations, new Comparator<Relation>() {
                 @Override
-                public int compare(Table obj1, Table obj2) {
+                public int compare(Relation obj1, Relation obj2) {
                     return collator.compare(obj1.getName().toUpperCase(), obj2.getName()
                             .toUpperCase());
                 }
             });
-            return tables;
+            return relations;
         } finally {
             if (tableData != null) {
                 tableData.close();
@@ -593,20 +601,20 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     }
 
     @Override
-    public Table readTable(final String catalog, final String schema, final String table) {
+    public Relation readRelation(final String catalog, final String schema, final String relationName) {
         try {
             JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
-            return postprocessTableFromDatabase(sqlTemplate.execute(new IConnectionCallback<Table>() {
+            return postprocessRelationFromDatabase(sqlTemplate.execute(new IConnectionCallback<Relation>() {
                 @Override
-                public Table execute(Connection connection) throws SQLException {
-                    return readTableFromConnection(connection, catalog, schema, table);
+                public Relation execute(Connection connection) throws SQLException {
+                    return readRelationFromConnection(connection, catalog, schema, relationName);
                 }
             }));
         } catch (SqlException e) {
             if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
-                log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedTableName(catalog, schema, table), e.getClass().getName(), e
+                log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedName(catalog, schema, relationName), e.getClass().getName(), e
                         .getMessage());
                 throw e;
             }
@@ -614,32 +622,33 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     }
 
     @Override
-    public Table readTable(ISqlTransaction transaction, final String catalog, final String schema, final String table) {
+    public Relation readRelation(ISqlTransaction transaction, final String catalog, final String schema, final String relationName) {
         try {
-            log.debug("reading table {}", table);
+            log.debug("reading table {}", relationName);
             if (transaction instanceof JdbcSqlTransaction) {
-                return postprocessTableFromDatabase(((JdbcSqlTransaction) transaction).executeCallback(new IConnectionCallback<Table>() {
+                return postprocessRelationFromDatabase(((JdbcSqlTransaction) transaction).executeCallback(new IConnectionCallback<Relation>() {
                     @Override
-                    public Table execute(Connection connection) throws SQLException {
-                        return readTableFromConnection(connection, catalog, schema, table);
+                    public Relation execute(Connection connection) throws SQLException {
+                        return readRelationFromConnection(connection, catalog, schema, relationName);
                     }
                 }));
             } else {
-                return readTable(catalog, schema, table);
+                return readRelation(catalog, schema, relationName);
             }
         } catch (SqlException e) {
             if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
-                log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedTableName(catalog, schema, table), e.getClass().getName(), e
+                log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedName(catalog, schema, relationName), e.getClass().getName(), e
                         .getMessage());
                 throw e;
             }
         }
     }
 
-    protected Table readTableFromConnection(Connection connection, final String catalog, final String schema, final String table) throws SQLException {
-        log.debug("reading table {}", table);
+    protected Relation readRelationFromConnection(Connection connection, final String catalog, final String schema, final String relationName)
+            throws SQLException {
+        log.debug("reading table {}", relationName);
         DatabaseMetaDataWrapper metaData = new DatabaseMetaDataWrapper();
         metaData.setMetaData(connection.getMetaData());
         if (isNotBlank(catalog)) {
@@ -648,17 +657,17 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         if (isNotBlank(schema)) {
             metaData.setSchemaPattern(schema);
         }
-        metaData.setTableTypes(null);
+        metaData.setRelationTypes(null);
         ResultSet rs = null;
         try {
-            log.debug("getting table metadata for {}", table);
-            rs = metaData.getTables(getTableNamePattern(table));
-            log.debug("done getting table metadata for {}", table);
+            log.debug("getting table metadata for {}", relationName);
+            rs = metaData.getTables(getRelationNamePattern(relationName));
+            log.debug("done getting table metadata for {}", relationName);
             if (rs != null && rs.next()) {
                 Map<String, Object> values = readMetaData(rs, initColumnsForTable());
-                return readTable(connection, metaData, values);
+                return readRelation(connection, metaData, values);
             } else {
-                log.debug("table {} not found", table);
+                log.debug("table {} not found", relationName);
                 return null;
             }
         } finally {
@@ -666,10 +675,10 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         }
     }
 
-    protected Table postprocessTableFromDatabase(Table table) {
-        if (table != null) {
-            for (int columnIdx = 0; columnIdx < table.getColumnCount(); columnIdx++) {
-                Column column = table.getColumn(columnIdx);
+    protected Relation postprocessRelationFromDatabase(Relation relation) {
+        if (relation != null) {
+            for (int columnIdx = 0; columnIdx < relation.getColumnCount(); columnIdx++) {
+                Column column = relation.getColumn(columnIdx);
                 if (TypeMap.isTextType(column.getMappedTypeCode())
                         || TypeMap.isDateTimeType(column.getMappedTypeCode())) {
                     String defaultValue = column.getDefaultValue();
@@ -681,7 +690,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             }
         }
-        return table;
+        return relation;
     }
 
     protected void close(ResultSet rs) {
@@ -702,8 +711,8 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         }
     }
 
-    protected String getTableNamePattern(String tableName) {
-        return tableName;
+    protected String getRelationNamePattern(String relationName) {
+        return relationName;
     }
 
     protected String getTableNamePatternForConstraints(String tableName) {
@@ -711,73 +720,89 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     }
 
     /*
-     * Reads the next table from the meta data.
+     * Reads the next relation from the meta data.
      * 
      * @param metaData The database meta data
      * 
-     * @param values The table metadata values as defined by {@link #getColumnsForTable()}
+     * @param values The relation metadata values as defined by {@link #getColumnsForTable()}
      * 
-     * @return The table or <code>null</code> if the result set row did not contain a valid table
+     * @return The relation or <code>null</code> if the result set row did not contain a valid relation
      */
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        String tableName = (String) values.get(getName("TABLE_NAME"));
-        if (tableName == null) {
-            tableName = (String) values.get("NAME");
+        String relationName = (String) values.get(getName("TABLE_NAME"));
+        if (relationName == null) {
+            relationName = (String) values.get("NAME");
         }
         try {
-            Table table = null;
-            if ((tableName != null) && (tableName.length() > 0)) {
-                String type = (String) values.get(getName("TABLE_TYPE"));
-                String[] unsupportedTableTypes = getUnsupportedTableTypes();
-                for (String unsupportedTableType : unsupportedTableTypes) {
-                    if (StringUtils.isNotBlank(type) && type.equals(unsupportedTableType)) {
-                        return null;
+            if (relationName == null || relationName.length() == 0) {
+                return null;
+            }
+            String type = (String) values.get(getName("TABLE_TYPE"));
+            String[] unsupportedRelationTypes = getUnsupportedRelationTypes();
+            for (String unsupportedRelationType : unsupportedRelationTypes) {
+                if (StringUtils.isNotBlank(type) && type.equals(unsupportedRelationType)) {
+                    return null;
+                }
+            }
+            if ("VIEW".equalsIgnoreCase(type) || "MATERIALIZED VIEW".equalsIgnoreCase(type)) {
+                return readView(connection, metaData, relationName, values);
+            }
+            Table table = new Table();
+            table.setName(relationName);
+            table.setType(type);
+            String catalog = (String) values.get(getName(getResultSetCatalogName()));
+            table.setCatalog(catalog);
+            String schema = (String) values.get(getName(getResultSetSchemaName()));
+            table.setSchema(schema);
+            table.setDescription((String) values.get(getName("REMARKS")));
+            table.addColumns(readColumns(metaData, relationName));
+            if (table.getColumnCount() > 0) {
+                table.addForeignKeys(readForeignKeys(connection, metaData, relationName));
+                table.addIndices(readIndices(connection, metaData, relationName));
+                table.addExportedForeignKeys(readExportedForeignKeys(metaData, relationName));
+                Collection<String> primaryKeys = readPrimaryKeyNames(metaData, relationName);
+                int primaryKeySequence = 1;
+                for (Iterator<String> it = primaryKeys.iterator(); it.hasNext();) {
+                    Column column = table.findColumn(it.next(), true);
+                    if (column != null) {
+                        column.setPrimaryKey(true);
+                        column.setPrimaryKeySequence(primaryKeySequence);
+                        primaryKeySequence++;
                     }
                 }
-                table = new Table();
-                table.setName(tableName);
-                table.setType(type);
-                String catalog = (String) values.get(getName(getResultSetCatalogName()));
-                table.setCatalog(catalog);
-                String schema = (String) values.get(getName(getResultSetSchemaName()));
-                table.setSchema(schema);
-                table.setDescription((String) values.get(getName("REMARKS")));
-                // TODO Pass in connection to readColumns(...)
-                table.addColumns(readColumns(metaData, tableName));
-                if (table.getColumnCount() > 0) {
-                    table.addForeignKeys(readForeignKeys(connection, metaData, tableName));
-                    table.addIndices(readIndices(connection, metaData, tableName));
-                    table.addExportedForeignKeys(readExportedForeignKeys(metaData, tableName));
-                    Collection<String> primaryKeys = readPrimaryKeyNames(metaData, tableName);
-                    int primaryKeySequence = 1;
-                    for (Iterator<String> it = primaryKeys.iterator(); it.hasNext();) {
-                        Column column = table.findColumn(it.next(), true);
-                        if (column != null) {
-                            column.setPrimaryKey(true);
-                            column.setPrimaryKeySequence(primaryKeySequence);
-                            primaryKeySequence++;
-                        }
-                    }
-                    if (getPlatformInfo().isSystemIndicesReturned()) {
-                        removeSystemIndices(connection, metaData, table);
-                    }
-                    removeGeneratedColumns(connection, metaData, table);
-                } else {
-                    table = null;
+                if (getPlatformInfo().isSystemIndicesReturned()) {
+                    removeSystemIndices(connection, metaData, table);
                 }
+                removeGeneratedColumns(connection, metaData, table);
+            } else {
+                table = null;
             }
             return table;
         } catch (RuntimeException ex) {
-            log.error("Failed to read table: {}.  Error: {}", tableName, ex.getMessage());
+            log.error("Failed to read schema object: {}.  Error: {}", relationName, ex.getMessage());
             throw ex;
         } catch (SQLException ex) {
-            log.error("Failed to read table: {}.  Error: {}", tableName, ex.getMessage());
+            log.error("Failed to read schema object: {}.  Error: {}", relationName, ex.getMessage());
             throw ex;
         }
     }
 
-    protected String[] getUnsupportedTableTypes() {
+    protected View readView(Connection connection, DatabaseMetaDataWrapper metaData, String viewName,
+            Map<String, Object> values) throws SQLException {
+        View view = new View();
+        view.setName(viewName);
+        view.setType("VIEW");
+        String catalog = (String) values.get(getName(getResultSetCatalogName()));
+        view.setCatalog(catalog);
+        String schema = (String) values.get(getName(getResultSetSchemaName()));
+        view.setSchema(schema);
+        view.setDescription((String) values.get(getName("REMARKS")));
+        view.addColumns(readColumns(metaData, viewName));
+        return view.getColumnCount() > 0 ? view : null;
+    }
+
+    protected String[] getUnsupportedRelationTypes() {
         return new String[0];
     }
 
@@ -924,20 +949,20 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     }
 
     /*
-     * Reads the column definitions for the indicated table.
+     * Reads the column definitions for the indicated relation.
      * 
      * @param metaData The database meta data
      * 
-     * @param tableName The name of the table
+     * @param relationName The name of the relation
      * 
      * @return The columns
      */
-    protected Collection<Column> readColumns(DatabaseMetaDataWrapper metaData, String tableName)
+    protected Collection<Column> readColumns(DatabaseMetaDataWrapper metaData, String relationName)
             throws SQLException {
         ResultSet columnData = null;
         try {
             Set<String> columnNames = new HashSet<String>();
-            columnData = metaData.getColumns(getTableNamePattern(tableName),
+            columnData = metaData.getColumns(getRelationNamePattern(relationName),
                     getDefaultColumnPattern());
             List<Column> columns = new ArrayList<Column>();
             while (columnData.next()) {
@@ -1523,7 +1548,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     }
 
     @Override
-    public List<String> getTableTypes() {
+    public List<String> getRelationTypes() {
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
         return sqlTemplate.execute(new IConnectionCallback<List<String>>() {
             @Override
@@ -1629,12 +1654,17 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
     }
 
     @Override
-    public List<String> getTableNames(final String catalog, final String schema,
-            final String[] tableTypes) {
-        return objectDefinitionCache.getTableNames(new CatalogSchema(catalog, schema), tableTypes);
+    public List<String> getRelationNames(final String catalog, final String schema,
+            final String[] relationTypes) {
+        return objectDefinitionCache.getRelationNames(new CatalogSchema(catalog, schema), relationTypes);
     }
 
-    public List<String> getTableNamesFromDatabase(final String catalog, final String schema,
+    @Override
+    public List<String> getViewNames(final String catalog, final String schema) {
+        return objectDefinitionCache.getRelationNames(new CatalogSchema(catalog, schema), new String[] { "VIEW" });
+    }
+
+    public List<String> getRelationNamesFromDatabase(final String catalog, final String schema,
             final String[] tableTypes) {
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
         List<String> list = sqlTemplate.execute(new IConnectionCallback<List<String>>() {
@@ -1661,12 +1691,12 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         return list;
     }
 
-    public void clearTableNameCache() {
-        objectDefinitionCache.clearTableNameCache();
+    public void clearRelationNameCache() {
+        objectDefinitionCache.clearRelationNameCache();
     }
 
     @Override
-    public List<String> getColumnNames(final String catalog, final String schema, final String tableName) {
+    public List<String> getColumnNames(final String catalog, final String schema, final String relationName) {
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
         return sqlTemplate.execute(new IConnectionCallback<List<String>>() {
             @Override
@@ -1675,7 +1705,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 DatabaseMetaData meta = connection.getMetaData();
                 ResultSet rs = null;
                 try {
-                    rs = meta.getColumns(catalog, schema, tableName, null);
+                    rs = meta.getColumns(catalog, schema, relationName, null);
                     while (rs.next()) {
                         String tableName = rs.getString(getName("COLUMN_NAME"));
                         list.add(tableName);
@@ -1716,7 +1746,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                     metaData.setMetaData(connection.getMetaData());
                     metaData.setCatalog(table.getCatalog());
                     metaData.setSchemaPattern(table.getSchema());
-                    metaData.setTableTypes(null);
+                    metaData.setRelationTypes(null);
                     return readExportedKeys(connection, metaData, table.getName());
                 }
             });
@@ -1724,7 +1754,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
-                log.error("Failed to get metadata for {}, because {} {}", table.getFullyQualifiedTableName(), e.getClass().getName(), e.getMessage());
+                log.error("Failed to get metadata for {}, because {} {}", table.getFullyQualifiedName(), e.getClass().getName(), e.getMessage());
                 throw e;
             }
         }
@@ -1741,7 +1771,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                     metaData.setMetaData(connection.getMetaData());
                     metaData.setCatalog(catalog);
                     metaData.setSchemaPattern(schema);
-                    metaData.setTableTypes(null);
+                    metaData.setRelationTypes(null);
                     return readForeignKeys(connection, metaData, tableName);
                 }
             });
@@ -1750,7 +1780,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 return null;
             } else {
                 log.error("Failed to get metadata for {}, because {} {}",
-                        Table.getFullyQualifiedTableName(catalog, schema, tableName), e.getClass().getName(), e.getMessage());
+                        Table.getFullyQualifiedName(catalog, schema, tableName), e.getClass().getName(), e.getMessage());
                 throw e;
             }
         }
@@ -1901,11 +1931,14 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
 
     private Table lookupForeignTable(IDatabasePlatform platform, ForeignKey fk, boolean clearPrimaryKeys) {
         Table foreignTable = null;
-        Table table = platform.getTableFromCache(fk.getForeignTableCatalog(), fk.getForeignTableSchema(), fk.getForeignTableName(), false);
+        Table table = null;
+        if (platform.getRelationFromCache(fk.getForeignTableCatalog(), fk.getForeignTableSchema(), fk.getForeignTableName(), false) instanceof Table t) {
+            table = t;
+        }
         if (table == null) {
             table = fk.getForeignTable();
-            if (table == null) {
-                table = platform.getTableFromCache(fk.getForeignTableName(), false);
+            if (table == null && platform.getRelationFromCache(fk.getForeignTableName(), false) instanceof Table t) {
+                table = t;
             }
         }
         if (table != null) {

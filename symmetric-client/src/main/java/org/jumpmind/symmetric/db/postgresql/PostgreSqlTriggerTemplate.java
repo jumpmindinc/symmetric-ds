@@ -524,7 +524,7 @@ createTriggerCommandBeginning + "$(triggerName) after delete on $(schemaName)$(t
             return "";
         }
         ddl = FormatUtils.replace("triggerName", truncateTriggerName, ddl);
-        ddl = FormatUtils.replace("sourceTableName", originalTable.getFullyQualifiedTableName(), ddl);
+        ddl = FormatUtils.replace("sourceTableName", originalTable.getFullyQualifiedName(), ddl);
         ddl = FormatUtils.replace("sharedFunctionName", sharedTruncateEventFunctionName, ddl);
         ddl = replaceTemplateVariables(DataEventType.DELETE, trigger, history, channel, tablePrefix, originalTable, originalTable, defaultCatalog, defaultSchema, ddl);
         

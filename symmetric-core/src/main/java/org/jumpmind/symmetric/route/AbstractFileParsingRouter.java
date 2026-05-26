@@ -266,7 +266,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
         }
         IDatabasePlatform platform = getEngine().getDatabasePlatform();
         DatabaseInfo dbInfo = platform.getDatabaseInfo();
-        String tableName = Table.getFullyQualifiedTableName(triggerRouter.getTargetCatalog(null, hist),
+        String tableName = Table.getFullyQualifiedName(triggerRouter.getTargetCatalog(null, hist),
                 triggerRouter.getTargetSchema(null, hist),
                 hist.getSourceTableName(), null, dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator());
         sql = String.format(sql, tableName);
@@ -381,7 +381,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
 
     public void deleteFileIfNecessary(DataMetaData dataMetaData) {
         Data data = dataMetaData.getData();
-        Table snapshotTable = dataMetaData.getTable();
+        Table snapshotTable = (Table) dataMetaData.getRelation();
         if (data.getDataEventType() == DataEventType.INSERT || data.getDataEventType() == DataEventType.UPDATE) {
             List<File> filesToDelete = new ArrayList<File>();
             Map<String, String> columnData = data.toColumnNameValuePairs(

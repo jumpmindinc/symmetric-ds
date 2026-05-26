@@ -66,7 +66,7 @@ public abstract class AbstractBulkDatabaseWriter extends DynamicDefaultDatabaseW
             if (sourceTable == null) {
                 throw new SqlException("The target table was not specified");
             } else if (targetTable == null) {
-                String qualifiedName = sourceTable.getFullyQualifiedTableName();
+                String qualifiedName = sourceTable.getFullyQualifiedName();
                 if (writerSettings.isIgnoreMissingTables() || batch.getBatchId() == IoConstants.IGNORE_TABLES_BATCH) {
                     if (missingTables.add(qualifiedName)) {
                         log.info("Did not find the {} table in the target database", qualifiedName);

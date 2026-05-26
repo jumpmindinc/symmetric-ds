@@ -30,6 +30,7 @@ import java.util.StringTokenizer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.util.FormatUtils;
@@ -185,7 +186,7 @@ public class Trigger implements IModelObject, Cloneable {
         }
     }
 
-    public Column[] getSyncKeysColumnsForTable(Table table) {
+    public Column[] getSyncKeysColumnsForTable(Relation table) {
         List<String> syncKeys = getSyncKeyNamesAsList();
         if (syncKeys.size() > 0) {
             List<Column> columns = new ArrayList<Column>();
@@ -210,7 +211,7 @@ public class Trigger implements IModelObject, Cloneable {
     /**
      * When dealing with columns, always use this method to order the columns so that the primary keys are first.
      */
-    public Column[] orderColumnsForTable(Table table) {
+    public Column[] orderColumnsForTable(Relation table) {
         if (table != null) {
             Column[] pks = getSyncKeysColumnsForTable(table);
             Column[] cols = table.getColumns();
@@ -651,7 +652,7 @@ public class Trigger implements IModelObject, Cloneable {
     }
 
     public String getFullyQualifiedSourceTableName() {
-        return Table.getFullyQualifiedTableName(sourceCatalogName, sourceSchemaName, sourceTableName);
+        return Table.getFullyQualifiedName(sourceCatalogName, sourceSchemaName, sourceTableName);
     }
 
     public long toHashedValue() {
@@ -754,30 +755,30 @@ public class Trigger implements IModelObject, Cloneable {
         return matches;
     }
 
-    public boolean matches(Table table, String defaultCatalog, String defaultSchema,
+    public boolean matches(Relation relation, String defaultCatalog, String defaultSchema,
             boolean ignoreCase) {
         boolean catalogMatch = false;
         if (isSourceCatalogWildCarded) {
-            catalogMatch = matches(sourceCatalogName, table.getCatalog(), ignoreCase);
+            catalogMatch = matches(sourceCatalogName, relation.getCatalog(), ignoreCase);
         } else {
-            catalogMatch = (Strings.CS.equals(sourceCatalogNameUnescaped, table.getCatalog()) ||
-                    (StringUtils.isBlank(sourceCatalogName) && Strings.CS.equals(defaultCatalog, table.getCatalog())));
+            catalogMatch = (Strings.CS.equals(sourceCatalogNameUnescaped, relation.getCatalog()) ||
+                    (StringUtils.isBlank(sourceCatalogName) && Strings.CS.equals(defaultCatalog, relation.getCatalog())));
         }
         boolean schemaMatch = false;
         if (isSourceSchemaWildCarded) {
-            schemaMatch = matches(sourceSchemaName, table.getSchema(), ignoreCase);
+            schemaMatch = matches(sourceSchemaName, relation.getSchema(), ignoreCase);
         } else {
-            schemaMatch = (Strings.CS.equals(sourceSchemaNameUnescaped, table.getSchema()) ||
-                    (StringUtils.isBlank(sourceSchemaName) && Strings.CS.equals(defaultSchema, table.getSchema())));
+            schemaMatch = (Strings.CS.equals(sourceSchemaNameUnescaped, relation.getSchema()) ||
+                    (StringUtils.isBlank(sourceSchemaName) && Strings.CS.equals(defaultSchema, relation.getSchema())));
         }
         boolean tableMatch = false;
         if (isSourceTableNameWildCarded) {
-            tableMatch = matches(sourceTableName, table.getName(), ignoreCase);
+            tableMatch = matches(sourceTableName, relation.getName(), ignoreCase);
         } else if (isSourceTableNameExpanded) {
-            tableMatch = matches(sourceTableName.replace("$(targetExternalId)", "*"), table.getName(), ignoreCase);
+            tableMatch = matches(sourceTableName.replace("$(targetExternalId)", "*"), relation.getName(), ignoreCase);
         } else {
-            tableMatch = ignoreCase ? table.getName().equalsIgnoreCase(sourceTableNameUnescaped)
-                    : table.getName().equals(sourceTableNameUnescaped);
+            tableMatch = ignoreCase ? relation.getName().equalsIgnoreCase(sourceTableNameUnescaped)
+                    : relation.getName().equals(sourceTableNameUnescaped);
         }
         return catalogMatch && schemaMatch && tableMatch;
     }

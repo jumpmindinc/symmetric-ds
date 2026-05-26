@@ -36,7 +36,7 @@ import org.junit.jupiter.api.Test;
 public class DatabaseTest {
     @Test
     public void testOrderingOfFourTables() {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -57,7 +57,7 @@ public class DatabaseTest {
 
     @Test
     public void testOrderingOfTenTables() {
-        List<Table> list = new ArrayList<Table>(10);
+        List<Relation> list = new ArrayList<Relation>(10);
         Table t0 = new Table("0");
         Table t1 = new Table("1");
         Table t2 = new Table("2");
@@ -90,7 +90,7 @@ public class DatabaseTest {
 
     @Test
     public void testCyclicalReferences() {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -106,7 +106,7 @@ public class DatabaseTest {
 
     @Test
     public void testMultipleParentsTables() {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -127,7 +127,7 @@ public class DatabaseTest {
 
     @Test
     public void testSplitTreeTables() {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -147,7 +147,7 @@ public class DatabaseTest {
 
     @Test
     public void testIndependentTreesSameTables() {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -168,7 +168,7 @@ public class DatabaseTest {
 
     @Test
     public void testSelfReferenceTables() {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -189,14 +189,14 @@ public class DatabaseTest {
 
     @Test
     public void testMissingDepdendentTables() {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t4 = new Table("4");
         t1.addForeignKey(new ForeignKey("2", "2"));
         t1.addForeignKey(new ForeignKey("3", "3"));
         list.add(t1);
         list.add(t4);
-        Map<Table, Set<String>> missingDependencyMap = new HashMap<Table, Set<String>>();
+        Map<Relation, Set<String>> missingDependencyMap = new HashMap<Relation, Set<String>>();
         list = Database.sortByForeignKeys(list, null, null, missingDependencyMap);
         assertTrue(list.toString(), list.indexOf(t1) < list.indexOf(t4));
         assertEquals(missingDependencyMap.size(), 1);
@@ -219,21 +219,21 @@ public class DatabaseTest {
 
     @Test
     public void testDependentMapIndependent() throws Exception {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
         list.add(t1);
         list.add(t2);
         list.add(t3);
-        Map<Integer, Set<Table>> dependencyMap = new HashMap<Integer, Set<Table>>();
+        Map<Integer, Set<Relation>> dependencyMap = new HashMap<Integer, Set<Relation>>();
         list = Database.sortByForeignKeys(list, null, dependencyMap, null);
         assertEquals(dependencyMap.size(), 3);
     }
 
     @Test
     public void testDependentMapParentChild() throws Exception {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -241,7 +241,7 @@ public class DatabaseTest {
         list.add(t1);
         list.add(t2);
         list.add(t3);
-        Map<Integer, Set<Table>> dependencyMap = new HashMap<Integer, Set<Table>>();
+        Map<Integer, Set<Relation>> dependencyMap = new HashMap<Integer, Set<Relation>>();
         list = Database.sortByForeignKeys(list, null, dependencyMap, null);
         assertTrue(dependencyMap.get(1).contains(t1));
         assertTrue(dependencyMap.get(1).contains(t2));
@@ -250,7 +250,7 @@ public class DatabaseTest {
 
     @Test
     public void testDependentMapParentChildReverseOrder() throws Exception {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -258,7 +258,7 @@ public class DatabaseTest {
         list.add(t2);
         list.add(t1);
         list.add(t3);
-        Map<Integer, Set<Table>> dependencyMap = new HashMap<Integer, Set<Table>>();
+        Map<Integer, Set<Relation>> dependencyMap = new HashMap<Integer, Set<Relation>>();
         list = Database.sortByForeignKeys(list, null, dependencyMap, null);
         assertTrue(dependencyMap.get(1).contains(t1));
         assertTrue(dependencyMap.get(1).contains(t2));
@@ -267,7 +267,7 @@ public class DatabaseTest {
 
     @Test
     public void testDependentMapTwoGroups() throws Exception {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -284,7 +284,7 @@ public class DatabaseTest {
         list.add(t4);
         list.add(t5);
         list.add(t6);
-        Map<Integer, Set<Table>> dependencyMap = new HashMap<Integer, Set<Table>>();
+        Map<Integer, Set<Relation>> dependencyMap = new HashMap<Integer, Set<Relation>>();
         list = Database.sortByForeignKeys(list, null, dependencyMap, null);
         assertTrue(dependencyMap.get(1).contains(t1));
         assertTrue(dependencyMap.get(1).contains(t2));
@@ -296,7 +296,7 @@ public class DatabaseTest {
 
     @Test
     public void testDependentMapCircular() throws Exception {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -310,7 +310,7 @@ public class DatabaseTest {
         list.add(t3);
         list.add(t4);
         list.add(t5);
-        Map<Integer, Set<Table>> dependencyMap = new HashMap<Integer, Set<Table>>();
+        Map<Integer, Set<Relation>> dependencyMap = new HashMap<Integer, Set<Relation>>();
         list = Database.sortByForeignKeys(list, null, dependencyMap, null);
         assertTrue(dependencyMap.get(1).contains(t1));
         assertTrue(dependencyMap.get(2).contains(t2));
@@ -321,7 +321,7 @@ public class DatabaseTest {
 
     @Test
     public void testDependentMapMultipleParents() throws Exception {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -336,7 +336,7 @@ public class DatabaseTest {
         list.add(t3);
         list.add(t4);
         list.add(t5);
-        Map<Integer, Set<Table>> dependencyMap = new HashMap<Integer, Set<Table>>();
+        Map<Integer, Set<Relation>> dependencyMap = new HashMap<Integer, Set<Relation>>();
         list = Database.sortByForeignKeys(list, null, dependencyMap, null);
         assertTrue(dependencyMap.get(1).contains(t1));
         assertTrue(dependencyMap.get(1).contains(t2));
@@ -347,7 +347,7 @@ public class DatabaseTest {
 
     @Test
     public void testDependentMapMergeGroups() throws Exception {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -362,7 +362,7 @@ public class DatabaseTest {
         list.add(t4);
         list.add(t5);
         list.add(t3);
-        Map<Integer, Set<Table>> dependencyMap = new HashMap<Integer, Set<Table>>();
+        Map<Integer, Set<Relation>> dependencyMap = new HashMap<Integer, Set<Relation>>();
         list = Database.sortByForeignKeys(list, null, dependencyMap, null);
         assertTrue(dependencyMap.get(1).contains(t1));
         assertTrue(dependencyMap.get(1).contains(t2));
@@ -373,7 +373,7 @@ public class DatabaseTest {
 
     @Test
     public void testDependentMapOutOfOrder() throws Exception {
-        List<Table> list = new ArrayList<Table>(4);
+        List<Relation> list = new ArrayList<Relation>(4);
         Table t1 = new Table("1");
         Table t2 = new Table("2");
         Table t3 = new Table("3");
@@ -386,7 +386,7 @@ public class DatabaseTest {
         list.add(t4);
         list.add(t2);
         list.add(t5);
-        Map<Integer, Set<Table>> dependencyMap = new HashMap<Integer, Set<Table>>();
+        Map<Integer, Set<Relation>> dependencyMap = new HashMap<Integer, Set<Relation>>();
         list = Database.sortByForeignKeys(list, null, dependencyMap, null);
         assertTrue(dependencyMap.get(1).contains(t1));
         assertTrue(dependencyMap.get(1).contains(t4));

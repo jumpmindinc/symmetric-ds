@@ -56,6 +56,7 @@ import java.util.regex.Pattern;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.TypeMap;
@@ -92,10 +93,10 @@ public class SqlAnywhereDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation instanceof Table table) {
             // Sybase does not return the auto-increment status via the database
             // metadata
             determineAutoIncrementFromResultSetMetaData(connection, table, table.getColumns());
@@ -106,7 +107,7 @@ public class SqlAnywhereDdlReader extends AbstractJdbcDdlReader {
                 }
             }
         }
-        return table;
+        return relation;
     }
 
     @Override

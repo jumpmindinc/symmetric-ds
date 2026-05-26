@@ -82,6 +82,7 @@ import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.model.Trigger;
@@ -120,7 +121,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     /* The model reader for this platform. */
     protected IDdlReader ddlReader;
     protected IDdlBuilder ddlBuilder;
-    protected Map<String, Table> tableCache = Collections.synchronizedMap(new HashMap<String, Table>());
+    protected Map<String, Relation> relationCache = Collections.synchronizedMap(new HashMap<String, Relation>());
     private long lastTimeCachedModelClearedInMs = System.currentTimeMillis();
     protected long clearCacheModelTimeoutInMs = DateUtils.MILLIS_PER_HOUR;
     protected String defaultSchema;
@@ -160,21 +161,21 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     abstract public ISqlTemplate getSqlTemplateDirty();
 
     @Override
-    public DmlStatement createDmlStatement(DmlType dmlType, Table table, String textColumnExpression) {
-        return createDmlStatement(dmlType, table.getCatalog(), table.getSchema(), table.getName(), table.getPrimaryKeyColumns(),
-                table.getColumns(), null, textColumnExpression);
+    public DmlStatement createDmlStatement(DmlType dmlType, Relation relation, String textColumnExpression) {
+        return createDmlStatement(dmlType, relation.getCatalog(), relation.getSchema(), relation.getName(), relation.getPrimaryKeyColumns(),
+                relation.getColumns(), null, textColumnExpression);
     }
 
     @Override
-    public DmlStatement createDmlStatement(DmlType dmlType, String catalogName, String schemaName, String tableName, Column[] keys,
+    public DmlStatement createDmlStatement(DmlType dmlType, String catalogName, String schemaName, String relationName, Column[] keys,
             Column[] columns, boolean[] nullKeyValues, String textColumnExpression) {
-        return createDmlStatement(dmlType, catalogName, schemaName, tableName, keys, columns, nullKeyValues, textColumnExpression, false);
+        return createDmlStatement(dmlType, catalogName, schemaName, relationName, keys, columns, nullKeyValues, textColumnExpression, false);
     }
 
     @Override
-    public DmlStatement createDmlStatement(DmlType dmlType, String catalogName, String schemaName, String tableName, Column[] keys,
+    public DmlStatement createDmlStatement(DmlType dmlType, String catalogName, String schemaName, String relationName, Column[] keys,
             Column[] columns, boolean[] nullKeyValues, String textColumnExpression, boolean namedParameters) {
-        DmlStatementOptions options = new DmlStatementOptions(dmlType, tableName).databaseInfo(getDatabaseInfo()).catalogName(catalogName).schemaName(
+        DmlStatementOptions options = new DmlStatementOptions(dmlType, relationName).databaseInfo(getDatabaseInfo()).catalogName(catalogName).schemaName(
                 schemaName).columns(columns).keys(keys).nullKeyValues(nullKeyValues).quotedIdentifiers(getDdlBuilder().isDelimitedIdentifierModeOn())
                 .textColumnExpression(textColumnExpression).namedParameters(namedParameters);
         return createDmlStatement(options);
@@ -266,10 +267,13 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         desiredDatabase.setName(getName());
         StringBuilder tablesProcessed = new StringBuilder();
         for (Table table : desiredTables) {
-            tablesProcessed.append(table.getFullyQualifiedTableName());
+            tablesProcessed.append(table.getFullyQualifiedName());
             tablesProcessed.append(", ");
             desiredDatabase.addTable(table);
-            Table currentTable = ddlReader.readTable(table.getCatalog(), table.getSchema(), table.getName());
+            Table currentTable = null;
+            if (ddlReader.readRelation(table.getCatalog(), table.getSchema(), table.getName()) instanceof Table t) {
+                currentTable = t;
+            }
             if (currentTable != null) {
                 if (createTableIncludeApplicationTriggers) {
                     List<Trigger> triggers = ddlReader.getApplicationTriggersForModel(table.getCatalog(), table.getSchema(), table.getName(), triggerPrefix);
@@ -313,7 +317,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
 
     @Override
     public Database readDatabase(String catalog, String schema, String[] tableTypes) {
-        Database model = ddlReader.readTables(catalog, schema, tableTypes);
+        Database model = ddlReader.readRelations(catalog, schema, tableTypes);
         if ((model.getName() == null) || (model.getName().length() == 0)) {
             model.setName(MODEL_DEFAULT_NAME);
         }
@@ -324,8 +328,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     public Database readFromDatabase(Table... tables) {
         Database fromDb = new Database();
         for (Table tableFromXml : tables) {
-            Table tableFromDatabase = getTableFromCache(tableFromXml.getCatalog(), tableFromXml.getSchema(), tableFromXml.getName(), true);
-            if (tableFromDatabase != null) {
+            if (getRelationFromCache(tableFromXml.getCatalog(), tableFromXml.getSchema(), tableFromXml.getName(), true) instanceof Table tableFromDatabase) {
                 fromDb.addTable(tableFromDatabase);
             }
         }
@@ -334,24 +337,24 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     }
 
     @Override
-    public Table readTableFromDatabase(String catalogName, String schemaName, String tableName) {
+    public Relation readRelationFromDatabase(String catalogName, String schemaName, String relationName) {
         try {
-            return readTableFromDatabaseAllowException(catalogName, schemaName, tableName);
+            return readRelationFromDatabaseAllowException(catalogName, schemaName, relationName);
         } catch (Exception e) {
             if (getSqlTemplate().isDeadlock(e)) {
-                log.warn("Deadlock occurred while reading {}, so retrying", tableName);
-                return readTableFromDatabaseAllowException(catalogName, schemaName, tableName);
+                log.warn("Deadlock occurred while reading {}, so retrying", relationName);
+                return readRelationFromDatabaseAllowException(catalogName, schemaName, relationName);
             }
             throw e;
         }
     }
 
-    protected Table readTableFromDatabaseAllowException(String catalogName, String schemaName, String tableName) {
-        String originalFullyQualifiedName = Table.getFullyQualifiedTableName(catalogName, schemaName, tableName);
+    protected Relation readRelationFromDatabaseAllowException(String catalogName, String schemaName, String relationName) {
+        String originalFullyQualifiedName = Table.getFullyQualifiedName(catalogName, schemaName, relationName);
         String defaultedCatalogName = catalogName == null ? getDefaultCatalog() : catalogName;
         String defaultedSchemaName = schemaName == null ? getDefaultSchema() : schemaName;
-        Table table = ddlReader.readTable(defaultedCatalogName, defaultedSchemaName, tableName);
-        if (table == null && metadataIgnoreCase) {
+        Relation relation = ddlReader.readRelation(defaultedCatalogName, defaultedSchemaName, relationName);
+        if (relation == null && metadataIgnoreCase) {
             IDdlReader reader = getDdlReader();
             if (isNotBlank(catalogName)) {
                 List<String> catalogNames = reader.getCatalogNames();
@@ -375,88 +378,88 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
                     }
                 }
             }
-            List<String> tableNames = reader.getTableNames(defaultedCatalogName, defaultedSchemaName, null);
+            List<String> tableNames = reader.getRelationNames(defaultedCatalogName, defaultedSchemaName, null);
             if (tableNames != null) {
                 for (String name : tableNames) {
-                    if (name != null && name.equalsIgnoreCase(tableName)) {
-                        tableName = name;
+                    if (name != null && name.equalsIgnoreCase(relationName)) {
+                        relationName = name;
                         break;
                     }
                 }
             }
-            if (!originalFullyQualifiedName.equals(Table.getFullyQualifiedTableName(defaultedCatalogName, defaultedSchemaName, tableName))) {
-                table = ddlReader.readTable(defaultedCatalogName, defaultedSchemaName, tableName);
+            if (!originalFullyQualifiedName.equals(Table.getFullyQualifiedName(defaultedCatalogName, defaultedSchemaName, relationName))) {
+                relation = ddlReader.readRelation(defaultedCatalogName, defaultedSchemaName, relationName);
             }
         }
-        if (table != null && log.isDebugEnabled()) {
-            log.debug("Just read table: \n{}", table.toVerboseString());
+        if (relation != null && log.isDebugEnabled()) {
+            log.debug("Just read table: {}", relation.toVerboseString());
         }
-        return table;
+        return relation;
     }
 
     @Override
-    public Table readTableFromDatabase(ISqlTransaction transaction, String catalogName, String schemaName, String tableName) {
+    public Relation readRelationFromDatabase(ISqlTransaction transaction, String catalogName, String schemaName, String relationName) {
         String defaultedCatalogName = catalogName == null ? getDefaultCatalog() : catalogName;
         String defaultedSchemaName = schemaName == null ? getDefaultSchema() : schemaName;
-        Table table = ddlReader.readTable(transaction, defaultedCatalogName, defaultedSchemaName, tableName);
-        if (table == null && metadataIgnoreCase) {
-            table = ddlReader.readTable(transaction, StringUtils.toRootUpperCase(defaultedCatalogName), StringUtils.toRootUpperCase(defaultedSchemaName),
-                    tableName.toUpperCase());
-            if (table == null) {
-                table = ddlReader.readTable(transaction, StringUtils.toRootLowerCase(defaultedCatalogName), StringUtils.toRootLowerCase(defaultedSchemaName),
-                        tableName.toUpperCase());
+        Relation relation = ddlReader.readRelation(transaction, defaultedCatalogName, defaultedSchemaName, relationName);
+        if (relation == null && metadataIgnoreCase) {
+            relation = ddlReader.readRelation(transaction, StringUtils.toRootUpperCase(defaultedCatalogName),
+                    StringUtils.toRootUpperCase(defaultedSchemaName), relationName.toUpperCase());
+            if (relation == null) {
+                relation = ddlReader.readRelation(transaction, StringUtils.toRootLowerCase(defaultedCatalogName),
+                        StringUtils.toRootLowerCase(defaultedSchemaName), relationName.toUpperCase());
             }
         }
-        return table;
+        return relation;
     }
 
     @Override
-    public void resetCachedTableModel() {
-        resetCachedTableModel(true);
+    public void resetCachedRelationModel() {
+        resetCachedRelationModel(true);
     }
 
-    protected void resetCachedTableModel(boolean clearTableNameCache) {
-        this.tableCache = Collections.synchronizedMap(new HashMap<String, Table>());
+    protected void resetCachedRelationModel(boolean clearRelationNameCache) {
+        this.relationCache = Collections.synchronizedMap(new HashMap<String, Relation>());
         lastTimeCachedModelClearedInMs = System.currentTimeMillis();
     }
 
     @Override
-    public Table getTableFromCache(String tableName, boolean forceReread) {
-        return getTableFromCache(getDefaultCatalog(), getDefaultSchema(), tableName, forceReread);
+    public Relation getRelationFromCache(String relationName, boolean forceReread) {
+        return getRelationFromCache(getDefaultCatalog(), getDefaultSchema(), relationName, forceReread);
     }
 
     @Override
-    public Table getTableFromCache(String catalogName, String schemaName, String tableName, boolean forceReread) {
+    public Relation getRelationFromCache(String catalogName, String schemaName, String relationName, boolean forceReread) {
         if (System.currentTimeMillis() - lastTimeCachedModelClearedInMs > clearCacheModelTimeoutInMs) {
-            resetCachedTableModel(false);
+            resetCachedRelationModel(false);
         }
-        Map<String, Table> model = tableCache;
-        String key = Table.getFullyQualifiedTableName(catalogName, schemaName, tableName);
-        Table retTable = model != null ? model.get(key) : null;
-        if (retTable == null || forceReread) {
+        Map<String, Relation> model = relationCache;
+        String key = Table.getFullyQualifiedName(catalogName, schemaName, relationName);
+        Relation retRelation = model != null ? model.get(key) : null;
+        if (retRelation == null || forceReread) {
             try {
-                Table table = readTableFromDatabase(catalogName, schemaName, tableName);
-                tableCache.put(key, table);
-                retTable = table;
+                Relation relation = readRelationFromDatabase(catalogName, schemaName, relationName);
+                relationCache.put(key, relation);
+                retRelation = relation;
             } catch (RuntimeException ex) {
                 throw ex;
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
         }
-        return retTable;
+        return retRelation;
     }
 
     @Override
-    public Object[] getObjectValues(BinaryEncoding encoding, Table table, String[] columnNames, String[] values) {
-        Column[] metaData = Table.orderColumns(columnNames, table, false);
+    public Object[] getObjectValues(BinaryEncoding encoding, Relation relation, String[] columnNames, String[] values) {
+        Column[] metaData = Table.orderColumns(columnNames, relation, false);
         return getObjectValues(encoding, values, metaData);
     }
 
     @Override
-    public Object[] getObjectValues(BinaryEncoding encoding, Table table, String[] columnNames, String[] values, boolean useVariableDates,
+    public Object[] getObjectValues(BinaryEncoding encoding, Relation relation, String[] columnNames, String[] values, boolean useVariableDates,
             boolean fitToColumn) {
-        Column[] metaData = Table.orderColumns(columnNames, table, false);
+        Column[] metaData = Table.orderColumns(columnNames, relation, false);
         return getObjectValues(encoding, values, metaData, useVariableDates, fitToColumn);
     }
 
@@ -891,9 +894,9 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     }
 
     @Override
-    public Table makeAllColumnsPrimaryKeys(Table table) {
-        Table result = table.copy();
-        IIndex[] indices = result.getUniqueIndices();
+    public Relation makeAllColumnsPrimaryKeys(Relation relation) {
+        Relation result = relation.copy();
+        IIndex[] indices = result instanceof Table t ? t.getUniqueIndices() : null;
         if (indices != null && indices.length > 0) {
             for (IndexColumn indexColumn : indices[0].getColumns()) {
                 Column column = result.getColumnWithName(indexColumn.getName());
@@ -935,9 +938,9 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     }
 
     @Override
-    public List<Column> getLobColumns(Table table) {
+    public List<Column> getLobColumns(Relation relation) {
         List<Column> lobColumns = new ArrayList<Column>(1);
-        Column[] allColumns = table.getColumns();
+        Column[] allColumns = relation.getColumns();
         for (Column column : allColumns) {
             if (isLob(column)) {
                 lobColumns.add(column);
@@ -1095,35 +1098,37 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     }
 
     @Override
-    public void alterCaseToMatchDatabaseDefaultCase(Table... tables) {
-        for (Table table : tables) {
-            alterCaseToMatchDatabaseDefaultCase(table);
+    public void alterCaseToMatchDatabaseDefaultCase(Relation... relations) {
+        for (Relation relation : relations) {
+            alterCaseToMatchDatabaseDefaultCase(relation);
         }
     }
 
     @Override
-    public void alterCaseToMatchDatabaseDefaultCase(Table table) {
-        table.setName(alterCaseToMatchDatabaseDefaultCase(table.getName()));
-        Column[] columns = table.getColumns();
+    public void alterCaseToMatchDatabaseDefaultCase(Relation relation) {
+        relation.setName(alterCaseToMatchDatabaseDefaultCase(relation.getName()));
+        Column[] columns = relation.getColumns();
         for (Column column : columns) {
             column.setName(alterCaseToMatchDatabaseDefaultCase(column.getName()));
         }
-        IIndex[] indexes = table.getIndices();
-        for (IIndex index : indexes) {
-            index.setName(alterCaseToMatchDatabaseDefaultCase(index.getName()));
-            IndexColumn[] indexColumns = index.getColumns();
-            for (IndexColumn indexColumn : indexColumns) {
-                indexColumn.setName(alterCaseToMatchDatabaseDefaultCase(indexColumn.getName()));
+        if (relation instanceof Table table) {
+            IIndex[] indexes = table.getIndices();
+            for (IIndex index : indexes) {
+                index.setName(alterCaseToMatchDatabaseDefaultCase(index.getName()));
+                IndexColumn[] indexColumns = index.getColumns();
+                for (IndexColumn indexColumn : indexColumns) {
+                    indexColumn.setName(alterCaseToMatchDatabaseDefaultCase(indexColumn.getName()));
+                }
             }
-        }
-        ForeignKey[] fks = table.getForeignKeys();
-        for (ForeignKey foreignKey : fks) {
-            foreignKey.setName(alterCaseToMatchDatabaseDefaultCase(foreignKey.getName()));
-            foreignKey.setForeignTableName(alterCaseToMatchDatabaseDefaultCase(foreignKey.getForeignTableName()));
-            Reference[] references = foreignKey.getReferences();
-            for (Reference reference : references) {
-                reference.setForeignColumnName(alterCaseToMatchDatabaseDefaultCase(reference.getForeignColumnName()));
-                reference.setLocalColumnName(alterCaseToMatchDatabaseDefaultCase(reference.getLocalColumnName()));
+            ForeignKey[] fks = table.getForeignKeys();
+            for (ForeignKey foreignKey : fks) {
+                foreignKey.setName(alterCaseToMatchDatabaseDefaultCase(foreignKey.getName()));
+                foreignKey.setForeignTableName(alterCaseToMatchDatabaseDefaultCase(foreignKey.getForeignTableName()));
+                Reference[] references = foreignKey.getReferences();
+                for (Reference reference : references) {
+                    reference.setForeignColumnName(alterCaseToMatchDatabaseDefaultCase(reference.getForeignColumnName()));
+                    reference.setLocalColumnName(alterCaseToMatchDatabaseDefaultCase(reference.getLocalColumnName()));
+                }
             }
         }
     }
@@ -1339,7 +1344,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         Table table = getPermissionTableDefinition();
         PermissionResult result = new PermissionResult(PermissionType.DROP_TABLE, "dropping table " + table.getName() + "...");
         try {
-            if (getTableFromCache(table.getName(), true) != null) {
+            if (getRelationFromCache(table.getName(), true) != null) {
                 dropTables(false, table);
                 result.setStatus(Status.PASS);
             } else {
@@ -1450,12 +1455,12 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     }
 
     @Override
-    public long getEstimatedRowCount(Table table) {
+    public long getEstimatedRowCount(Relation relation) {
         DatabaseInfo dbInfo = getDatabaseInfo();
         String quote = dbInfo.getDelimiterToken();
         String catalogSeparator = dbInfo.getCatalogSeparator();
         String schemaSeparator = dbInfo.getSchemaSeparator();
-        String sql = String.format("select count(*) from %s", table.getQualifiedTableName(quote, catalogSeparator, schemaSeparator));
+        String sql = String.format("select count(*) from %s", relation.getQualifiedName(quote, catalogSeparator, schemaSeparator));
         return getSqlTemplateDirty().queryForLong(sql);
     }
 
@@ -1465,7 +1470,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         if (supportsTruncate) {
             sql = "truncate table ";
             String quote = getDdlBuilder().isDelimitedIdentifierModeOn() ? getDatabaseInfo().getDelimiterToken() : "";
-            sql += table.getQualifiedTableName(quote, getDatabaseInfo().getCatalogSeparator(), getDatabaseInfo().getSchemaSeparator());
+            sql += table.getQualifiedName(quote, getDatabaseInfo().getCatalogSeparator(), getDatabaseInfo().getSchemaSeparator());
         } else {
             log.info("Truncate is not supported on " + getName() + ". Changing to equivalent delete statement");
             sql = getDeleteSql(table);
@@ -1477,7 +1482,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     public String getDeleteSql(Table table) {
         String sql = "delete from ";
         String quote = getDdlBuilder().isDelimitedIdentifierModeOn() ? getDatabaseInfo().getDelimiterToken() : "";
-        sql += table.getQualifiedTableName(quote, getDatabaseInfo().getCatalogSeparator(), getDatabaseInfo().getSchemaSeparator());
+        sql += table.getQualifiedName(quote, getDatabaseInfo().getCatalogSeparator(), getDatabaseInfo().getSchemaSeparator());
         return sql;
     }
 

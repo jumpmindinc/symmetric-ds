@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IAlterDatabaseInterceptor;
@@ -185,7 +186,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     public void initTablesAndDatabaseObjects() {
         createRequiredDatabaseObjects();
         createOrAlterTablesIfNecessary();
-        platform.resetCachedTableModel();
+        platform.resetCachedRelationModel();
     }
 
     protected String replaceTokens(String sql, String objectName) {
@@ -283,14 +284,14 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     }
 
     @Override
-    public String createInitialLoadSqlFor(Node node, TriggerRouter trigger, Table table, TriggerHistory triggerHistory, Channel channel,
+    public String createInitialLoadSqlFor(Node node, TriggerRouter trigger, Relation relation, TriggerHistory triggerHistory, Channel channel,
             String overrideSelectSql) {
-        return triggerTemplate.createInitalLoadSql(node, trigger, table, triggerHistory, channel, overrideSelectSql).trim();
+        return triggerTemplate.createInitalLoadSql(node, trigger, relation, triggerHistory, channel, overrideSelectSql).trim();
     }
 
     @Override
-    public boolean[] getColumnPositionUsingTemplate(Table originalTable, TriggerHistory triggerHistory) {
-        return triggerTemplate.getColumnPositionUsingTemplate(originalTable, triggerHistory);
+    public boolean[] getColumnPositionUsingTemplate(Relation originalRelation, TriggerHistory triggerHistory) {
+        return triggerTemplate.getColumnPositionUsingTemplate(originalRelation, triggerHistory);
     }
 
     @Override
@@ -342,8 +343,12 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
 
     @Override
     public String createCsvDataSql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause) {
-        return createCsvDataSql(trigger, triggerHistory, channel, whereClause, platform.getTableFromCache(trigger.getSourceCatalogName(),
-                trigger.getSourceSchemaName(), trigger.getSourceTableName(), false));
+        Relation relation = platform.getRelationFromCache(trigger.getSourceCatalogName(),
+                trigger.getSourceSchemaName(), trigger.getSourceTableName(), false);
+        if (!(relation instanceof Table table)) {
+            return "";
+        }
+        return createCsvDataSql(trigger, triggerHistory, channel, whereClause, table);
     }
 
     public String createCsvDataSql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause, Table table) {
@@ -352,8 +357,12 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
 
     @Override
     public String createCsvPrimaryKeySql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause) {
-        return triggerTemplate.createCsvPrimaryKeySql(trigger, triggerHistory, platform.getTableFromCache(trigger.getSourceCatalogName(),
-                trigger.getSourceSchemaName(), trigger.getSourceTableName(), false), channel, whereClause).trim();
+        Relation relation = platform.getRelationFromCache(trigger.getSourceCatalogName(),
+                trigger.getSourceSchemaName(), trigger.getSourceTableName(), false);
+        if (!(relation instanceof Table table)) {
+            return "";
+        }
+        return triggerTemplate.createCsvPrimaryKeySql(trigger, triggerHistory, table, channel, whereClause).trim();
     }
 
     public String createCsvPrimaryKeySql(Trigger trigger, TriggerHistory triggerHistory, Channel channel, String whereClause, Table table) {
@@ -396,7 +405,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         String sql = getDropTriggerSql(sqlBuffer, catalogName, schemaName, triggerName, tableName);
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
-            log.info("Dropping {} trigger for {}", triggerName, Table.getFullyQualifiedTableName(catalogName, schemaName, tableName));
+            log.info("Dropping {} trigger for {}", triggerName, Table.getFullyQualifiedName(catalogName, schemaName, tableName));
             transaction.execute(sql);
         }
     }
@@ -448,7 +457,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
                 try {
                     logSql(triggerSql, sqlBuffer);
                     if (sqlBuffer == null) {
-                        log.info("Creating {} trigger for {}", hist.getTriggerNameForDmlType(dml), table.getFullyQualifiedTableName());
+                        log.info("Creating {} trigger for {}", hist.getTriggerNameForDmlType(dml), table.getFullyQualifiedName());
                         log.debug("Running: {}", triggerSql);
                         transaction.execute(triggerSql);
                     }
@@ -880,7 +889,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         int tryCount = 5;
         while (!success && tryCount > 0) {
             try {
-                Table table = platform.getTableFromCache(tableName, false);
+                Table table = (Table) platform.getRelationFromCache(tableName, false);
                 if (table != null) {
                     platform.getSqlTemplate().update(String.format("truncate table %s%s%s", quote, table.getName(), quote));
                     success = true;
@@ -986,13 +995,13 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     }
 
     @Override
-    public boolean isInitialLoadTwoPassLob(Table table) {
+    public boolean isInitialLoadTwoPassLob(Relation relation) {
         return false;
     }
 
     @Override
-    public String getInitialLoadTwoPassLobSql(String sql, Table table, boolean isFirstPass) {
-        List<Column> columns = table.getLobColumns(this.platform);
+    public String getInitialLoadTwoPassLobSql(String sql, Relation relation, boolean isFirstPass) {
+        List<Column> columns = relation.getLobColumns(this.platform);
         boolean isFirstColumn = true;
         sql = sql == null ? "" : sql;
         String orderBySql = "";
@@ -1007,7 +1016,7 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
             }
             sql += "(";
         }
-        for (Column column : table.getLobColumns(this.platform)) {
+        for (Column column : relation.getLobColumns(this.platform)) {
             String columnSql = getInitialLoadTwoPassLobLengthSql(column, isFirstPass);
             if (columnSql != null && !columnSql.trim().equals("")) {
                 if (isFirstColumn) {

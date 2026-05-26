@@ -61,7 +61,7 @@ public class XmlPublisherFilterTest {
         });
         HashSet<String> tableNames = new HashSet<String>();
         tableNames.add(TABLE_TEST);
-        filter.setTableNamesToPublishAsGroup(tableNames);
+        filter.setRelationNamesToPublishAsGroup(tableNames);
         List<String> columns = new ArrayList<String>();
         columns.add("ID1");
         columns.add("ID2");

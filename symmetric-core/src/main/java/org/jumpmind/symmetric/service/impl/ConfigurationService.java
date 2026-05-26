@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
@@ -349,7 +349,8 @@ public class ConfigurationService extends AbstractService implements IConfigurat
     @Override
     public List<NodeGroupLink> getNodeGroupLinksFromDb() {
         String sql = getSql("groupsLinksCompatibleSql");
-        Table table = platform.getTableFromCache(TableConstants.getTableName(parameterService.getTablePrefix(), TableConstants.SYM_NODE_GROUP_LINK), false);
+        Relation table = platform.getRelationFromCache(TableConstants.getTableName(parameterService.getTablePrefix(), TableConstants.SYM_NODE_GROUP_LINK),
+                false);
         if (table != null && table.findColumn("sync_sql_enabled") != null) {
             sql = getSql("groupsLinksSql");
         }

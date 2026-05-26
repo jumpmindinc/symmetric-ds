@@ -51,6 +51,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -65,6 +66,7 @@ import org.jumpmind.symmetric.cache.TriggerRouterRoutersCache;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
+import org.jumpmind.symmetric.config.IRelationResolver;
 import org.jumpmind.symmetric.config.ITableResolver;
 import org.jumpmind.symmetric.config.ITriggerCreationListener;
 import org.jumpmind.symmetric.config.TriggerFailureListener;
@@ -1632,7 +1634,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                         fixMultipleActiveTriggerHistories(context);
                         context.incrementFixMultipleActiveTriggerHistoriesTime(System.currentTimeMillis() - ts);
                         // make sure all tables are freshly read in
-                        platform.resetCachedTableModel();
+                        platform.resetCachedRelationModel();
                         clearCache();
                         // make sure channels are read from the database
                         configurationService.clearCache();
@@ -1752,7 +1754,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             final StringBuilder sqlBuffer, List<TriggerHistory> activeTriggerHistories,
             TriggerRouterContext triggerRouterContext) {
         final boolean ignoreCase = this.parameterService.is(ParameterConstants.DB_METADATA_IGNORE_CASE);
-        final Map<String, Set<Table>> tablesByTriggerId = new HashMap<String, Set<Table>>();
+        final Map<String, Set<Relation>> relationsByTriggerId = new HashMap<String, Set<Relation>>();
         int numThreads = getNumberOfThreadsToUseForSyncTriggers();
         ExecutorService executor = Executors.newFixedThreadPool(numThreads, new SyncTriggersThreadFactory());
         List<Future<?>> futures = new ArrayList<Future<?>>();
@@ -1760,42 +1762,42 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             Runnable runnable = new Runnable() {
                 public void run() {
                     MDC.put("engineName", parameterService.getEngineName());
-                    Set<Table> tables;
-                    synchronized (tablesByTriggerId) {
-                        tables = tablesByTriggerId.get(history.getTriggerId());
+                    Set<Relation> relations;
+                    synchronized (relationsByTriggerId) {
+                        relations = relationsByTriggerId.get(history.getTriggerId());
                     }
                     Trigger trigger = getTriggerFromList(history.getTriggerId(), triggersThatShouldBeActive);
-                    if (tables == null && trigger != null) {
-                        tables = getTablesForTrigger(trigger, triggersThatShouldBeActive, true, triggerRouterContext);
-                        synchronized (tablesByTriggerId) {
-                            tablesByTriggerId.put(trigger.getTriggerId(), tables);
+                    if (relations == null && trigger != null) {
+                        relations = getRelationsForTrigger(trigger, triggersThatShouldBeActive, true, triggerRouterContext);
+                        synchronized (relationsByTriggerId) {
+                            relationsByTriggerId.put(trigger.getTriggerId(), relations);
                         }
                     }
-                    boolean foundTable = false;
-                    if (tables != null && trigger != null) {
-                        for (Table table : tables) {
+                    boolean foundRelation = false;
+                    if (relations != null && trigger != null) {
+                        for (Relation relation : relations) {
                             boolean matchesCatalog = isEqual(
-                                    trigger.isSourceCatalogNameWildCarded() ? table.getCatalog()
+                                    trigger.isSourceCatalogNameWildCarded() ? relation.getCatalog()
                                             : trigger.getSourceCatalogNameUnescaped(),
                                     history.getSourceCatalogName(), ignoreCase);
                             boolean matchesSchema = isEqual(
-                                    trigger.isSourceSchemaNameWildCarded() ? table.getSchema()
+                                    trigger.isSourceSchemaNameWildCarded() ? relation.getSchema()
                                             : trigger.getSourceSchemaNameUnescaped(), history.getSourceSchemaName(),
                                     ignoreCase);
-                            boolean matchesTable = isEqual(
-                                    (trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded()) ? table.getName()
+                            boolean matchesRelation = isEqual(
+                                    (trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded()) ? relation.getName()
                                             : trigger.getSourceTableNameUnescaped(), history.getSourceTableName(),
                                     ignoreCase);
-                            foundTable |= matchesCatalog && matchesSchema && matchesTable;
+                            foundRelation |= matchesCatalog && matchesSchema && matchesRelation;
                         }
                     }
                     if (trigger == null) {
                         log.info("About to remove triggers for inactivated table: {}", history.getFullyQualifiedSourceTableName());
                         dropTriggersIfNeeded(history, sqlBuffer, triggerRouterContext, true);
-                    } else if (!foundTable && history.getErrorMessage() == null) {
+                    } else if (!foundRelation && history.getErrorMessage() == null) {
                         log.info("About to inactivate trigger history {} because table is missing: {}", history.getTriggerHistoryId(),
                                 trigger.qualifiedSourceTableName());
-                        dropTriggersIfNeeded(history, sqlBuffer, triggerRouterContext, foundTable);
+                        dropTriggersIfNeeded(history, sqlBuffer, triggerRouterContext, foundRelation);
                     }
                 }
             };
@@ -1905,23 +1907,24 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 .select();
     }
 
-    protected Set<Table> getTablesForTrigger(Trigger trigger, List<Trigger> triggers, boolean useTableCache,
+    protected Set<Relation> getRelationsForTrigger(Trigger trigger, List<Trigger> triggers, boolean useRelationCache,
             TriggerRouterContext triggerRouterContext) {
         try {
-            return getTablesForTriggerWithException(trigger, triggers, useTableCache, triggerRouterContext);
+            return getRelationsForTriggerWithException(trigger, triggers, useRelationCache, triggerRouterContext);
         } catch (RuntimeException e) {
             if (platform.getSqlTemplate().isDeadlock(e)) {
                 log.warn("Deadlock occurred, so retrying");
-                return getTablesForTriggerWithException(trigger, triggers, useTableCache, triggerRouterContext);
+                return getRelationsForTriggerWithException(trigger, triggers, useRelationCache, triggerRouterContext);
             }
             throw e;
         }
     }
 
-    protected Set<Table> getTablesForTriggerWithException(Trigger trigger, List<Trigger> triggers, boolean useTableCache,
+    @SuppressWarnings("deprecation")
+    protected Set<Relation> getRelationsForTriggerWithException(Trigger trigger, List<Trigger> triggers, boolean useRelationCache,
             TriggerRouterContext triggerRouterContext) {
         long ts = System.currentTimeMillis();
-        Set<Table> tables = new HashSet<Table>();
+        Set<Relation> relations = new HashSet<Relation>();
         IDatabasePlatform sourcePlatform = getTargetPlatform(trigger.getSourceTableName());
         try {
             boolean ignoreCase = this.parameterService
@@ -1975,21 +1978,35 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                                     && !containsExactMatchForSourceTableName(table, triggers,
                                             ignoreCase)
                                     && !table.getName().toLowerCase().startsWith(tablePrefix)) {
-                                tables.add(table);
+                                relations.add(table);
                             }
                         }
-                    } else if (!trigger.getSourceTableName().startsWith(parameterService.getTablePrefix() + "_")
-                            && CollectionUtils.isNotEmpty(extensionService.getExtensionPointList(ITableResolver.class))) {
-                        for (ITableResolver resolver : extensionService.getExtensionPointList(ITableResolver.class)) {
-                            resolver.resolve(catalogName, schemaName, tables, sourcePlatform, nodeService, trigger, useTableCache,
-                                    triggerRouterContext);
-                        }
                     } else {
-                        Table table = sourcePlatform.getTableFromCache(
-                                catalogName, schemaName,
-                                trigger.getSourceTableNameUnescaped(), !useTableCache);
-                        if (table != null) {
-                            tables.add(table);
+                        boolean useTableResolver = parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE);
+                        List<ITableResolver> tableResolverList = extensionService.getExtensionPointList(ITableResolver.class);
+                        List<IRelationResolver> relationResolverList = extensionService.getExtensionPointList(IRelationResolver.class);
+                        if (!trigger.getSourceTableName().startsWith(parameterService.getTablePrefix() + "_")
+                                && CollectionUtils.isNotEmpty(useTableResolver ? tableResolverList : relationResolverList)) {
+                            if (useTableResolver) {
+                                Set<Table> resolvedTables = new HashSet<Table>();
+                                for (ITableResolver resolver : tableResolverList) {
+                                    resolver.resolve(catalogName, schemaName, resolvedTables, sourcePlatform, nodeService, trigger, useRelationCache,
+                                            triggerRouterContext);
+                                }
+                                relations.addAll(resolvedTables);
+                            } else {
+                                for (IRelationResolver resolver : relationResolverList) {
+                                    resolver.resolve(catalogName, schemaName, relations, sourcePlatform, nodeService, trigger, useRelationCache,
+                                            triggerRouterContext);
+                                }
+                            }
+                        } else {
+                            Relation relation = sourcePlatform.getRelationFromCache(
+                                    catalogName, schemaName,
+                                    trigger.getSourceTableNameUnescaped(), !useRelationCache);
+                            if (relation != null) {
+                                relations.add(relation);
+                            }
                         }
                     }
                 }
@@ -1998,22 +2015,22 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             throw new RuntimeException(String.format("Failed to retrieve tables for trigger with id of %s", trigger.getTriggerId()), ex);
         }
         triggerRouterContext.incrementTablesForTriggerTime(System.currentTimeMillis() - ts);
-        return tables;
+        return relations;
     }
 
-    private boolean containsExactMatchForSourceTableName(Table table, List<Trigger> triggers,
+    private boolean containsExactMatchForSourceTableName(Relation relation, List<Trigger> triggers,
             boolean ignoreCase) {
         for (Trigger trigger : triggers) {
             if (!trigger.isSourceWildCarded()) {
                 String sourceCatalogName = trigger.getSourceCatalogName() != null ? trigger.getSourceCatalogName() : platform.getDefaultCatalog();
                 String sourceSchemaName = trigger.getSourceSchemaName() != null ? trigger.getSourceSchemaName() : platform.getDefaultSchema();
-                if (trigger.getSourceTableName().equals(table.getName())
-                        && (sourceCatalogName == null || sourceCatalogName.equals(table.getCatalog())) &&
-                        (sourceSchemaName == null || sourceSchemaName.equals(table.getSchema()))) {
+                if (trigger.getSourceTableName().equals(relation.getName())
+                        && (sourceCatalogName == null || sourceCatalogName.equals(relation.getCatalog())) &&
+                        (sourceSchemaName == null || sourceSchemaName.equals(relation.getSchema()))) {
                     return true;
-                } else if (ignoreCase && trigger.getSourceTableName().equalsIgnoreCase(table.getName())
-                        && (sourceCatalogName == null || sourceCatalogName.equalsIgnoreCase(table.getCatalog()))
-                        && (sourceSchemaName == null || sourceSchemaName.equalsIgnoreCase(table.getSchema()))) {
+                } else if (ignoreCase && trigger.getSourceTableName().equalsIgnoreCase(relation.getName())
+                        && (sourceCatalogName == null || sourceCatalogName.equalsIgnoreCase(relation.getCatalog()))
+                        && (sourceSchemaName == null || sourceSchemaName.equalsIgnoreCase(relation.getSchema()))) {
                     return true;
                 }
             }
@@ -2024,28 +2041,28 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public boolean syncTriggers(String targetExternalId, boolean force) {
         if (cacheManager.isUsingTargetExternalId(false)) {
             List<Trigger> triggers = getTriggersForCurrentNode();
-            List<Table> tables = new ArrayList<Table>();
+            List<Relation> relations = new ArrayList<Relation>();
             for (Trigger trigger : triggers) {
                 if (trigger.getSourceTableName().contains("targetExternalId")) {
-                    Table table = platform.readTableFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
+                    Relation relation = platform.readRelationFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
                             FormatUtils.replace("targetExternalId", targetExternalId, trigger.getSourceTableName()));
-                    if (table != null) {
-                        tables.add(table);
+                    if (relation != null) {
+                        relations.add(relation);
                     }
                 }
             }
-            if (tables.size() > 0) {
-                return syncTriggers(tables, force);
+            if (relations.size() > 0) {
+                return syncTriggers(relations, force);
             }
         }
         return true;
     }
 
-    public boolean syncTriggers(Table table, boolean force) {
-        return syncTriggers(Arrays.asList(table), force);
+    public boolean syncTriggers(Relation relation, boolean force) {
+        return syncTriggers(Arrays.asList(relation), force);
     }
 
-    public boolean syncTriggers(List<Table> tables, boolean force) {
+    public boolean syncTriggers(List<Relation> relations, boolean force) {
         if (clusterService.lock(ClusterConstants.SYNC_TRIGGERS)) {
             TriggerRouterContext context = new TriggerRouterContext();
             long startTime = System.currentTimeMillis();
@@ -2063,45 +2080,45 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 ts = System.currentTimeMillis();
                 List<TriggerHistory> activeTriggerHistories = getActiveTriggerHistories();
                 context.incrementActiveTriggerHistoriesTime(System.currentTimeMillis() - ts);
-                Map<String, List<TriggerTableSupportingInfo>> triggerToTableSupportingInfo = getTriggerToTableSupportingInfo(
+                Map<String, List<TriggerRelationSupportingInfo>> triggerToRelationSupportingInfo = getTriggerToRelationSupportingInfo(
                         triggersForCurrentNode, activeTriggerHistories, false, context);
-                Map<Trigger, List<Table>> triggersToProcess = new HashMap<Trigger, List<Table>>();
-                for (Table table : tables) {
-                    IDatabasePlatform targetPlatform = symmetricDialect.getTargetPlatform(table.getName());
+                Map<Trigger, List<Relation>> triggersToProcess = new HashMap<Trigger, List<Relation>>();
+                for (Relation relation : relations) {
+                    IDatabasePlatform targetPlatform = symmetricDialect.getTargetPlatform(relation.getName());
                     for (Trigger trigger : triggersForCurrentNode) {
-                        if (trigger.matches(table, targetPlatform.getDefaultCatalog(), targetPlatform.getDefaultSchema(), ignoreCase) &&
+                        if (trigger.matches(relation, targetPlatform.getDefaultCatalog(), targetPlatform.getDefaultSchema(), ignoreCase) &&
                                 (!trigger.isSourceTableNameWildCarded() || !trigger.isSourceTableNameExpanded()
-                                        || !containsExactMatchForSourceTableName(table, triggersForCurrentNode, ignoreCase))) {
-                            List<Table> l = triggersToProcess.get(trigger);
+                                        || !containsExactMatchForSourceTableName(relation, triggersForCurrentNode, ignoreCase))) {
+                            List<Relation> l = triggersToProcess.get(trigger);
                             if (l == null) {
-                                l = new ArrayList<Table>();
+                                l = new ArrayList<Relation>();
                                 triggersToProcess.put(trigger, l);
                             }
-                            l.add(table);
+                            l.add(relation);
                         }
                     }
                 }
                 if (triggersToProcess.size() > 0) {
                     context.incrementTriggersToSyncCount(triggersToProcess.size());
-                    for (Map.Entry<Trigger, List<Table>> entry : triggersToProcess.entrySet()) {
+                    for (Map.Entry<Trigger, List<Relation>> entry : triggersToProcess.entrySet()) {
                         Trigger trigger = entry.getKey();
-                        List<Table> l = entry.getValue();
-                        List<TriggerTableSupportingInfo> triggerTableSupportingInfoList = triggerToTableSupportingInfo.get(trigger.getTriggerId());
-                        for (Table table : l) {
-                            TriggerTableSupportingInfo triggerTableSupportingInfo = null;
-                            for (TriggerTableSupportingInfo t : triggerTableSupportingInfoList) {
-                                if (getFullyQualifiedTableName(t.getTable()).equals(getFullyQualifiedTableName(table))) {
-                                    triggerTableSupportingInfo = t;
+                        List<Relation> l = entry.getValue();
+                        List<TriggerRelationSupportingInfo> triggerRelationSupportingInfoList = triggerToRelationSupportingInfo.get(trigger.getTriggerId());
+                        for (Relation relation : l) {
+                            TriggerRelationSupportingInfo triggerRelationSupportingInfo = null;
+                            for (TriggerRelationSupportingInfo t : triggerRelationSupportingInfoList) {
+                                if (getFullyQualifiedName(t.getRelation()).equals(getFullyQualifiedName(relation))) {
+                                    triggerRelationSupportingInfo = t;
                                     break;
                                 }
                             }
-                            if (triggerTableSupportingInfo != null) {
-                                log.info("Synchronizing triggers for {}", table.getFullyQualifiedTableName());
+                            if (triggerRelationSupportingInfo != null) {
+                                log.info("Synchronizing triggers for {}", relation.getFullyQualifiedName());
                                 ts = System.currentTimeMillis();
-                                updateOrCreateDatabaseTriggers(trigger, triggerTableSupportingInfo.getTable(), null, force, true, activeTriggerHistories,
-                                        triggerTableSupportingInfo, context);
+                                updateOrCreateDatabaseTriggers(trigger, triggerRelationSupportingInfo.getRelation(), null, force, true, activeTriggerHistories,
+                                        triggerRelationSupportingInfo, context);
                                 context.incrementUpdateOrCreateDatabaseTriggersTime(System.currentTimeMillis() - ts);
-                                log.info("Done synchronizing triggers for {}", table.getFullyQualifiedTableName());
+                                log.info("Done synchronizing triggers for {}", relation.getFullyQualifiedName());
                             } else {
                                 handleTableNotFound(trigger, activeTriggerHistories, context);
                             }
@@ -2128,11 +2145,11 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return false;
     }
 
-    protected String getFullyQualifiedTableName(Table table) {
-        IDatabasePlatform targetPlatform = symmetricDialect.getTargetPlatform(table.getName());
-        String catalog = StringUtils.isNotBlank(table.getCatalog()) ? table.getCatalog() : targetPlatform.getDefaultCatalog();
-        String schema = StringUtils.isNotBlank(table.getSchema()) ? table.getSchema() : targetPlatform.getDefaultSchema();
-        return Table.getFullyQualifiedTableName(catalog, schema, table.getName());
+    protected String getFullyQualifiedName(Relation relation) {
+        IDatabasePlatform targetPlatform = symmetricDialect.getTargetPlatform(relation.getName());
+        String catalog = StringUtils.isNotBlank(relation.getCatalog()) ? relation.getCatalog() : targetPlatform.getDefaultCatalog();
+        String schema = StringUtils.isNotBlank(relation.getSchema()) ? relation.getSchema() : targetPlatform.getDefaultSchema();
+        return Relation.getFullyQualifiedName(catalog, schema, relation.getName());
     }
 
     protected void updateOrCreateDdlTriggers(StringBuilder sqlBuffer) {
@@ -2176,7 +2193,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     protected void updateOrCreateDatabaseTriggers(final List<Trigger> triggers, final StringBuilder sqlBuffer,
             final boolean force, final boolean verifyInDatabase, final List<TriggerHistory> activeTriggerHistories,
             final boolean useTableCache, TriggerRouterContext triggerRouterContext) {
-        Map<String, List<TriggerTableSupportingInfo>> triggerToTableSupportingInfo = getTriggerToTableSupportingInfo(triggers, activeTriggerHistories,
+        Map<String, List<TriggerRelationSupportingInfo>> triggerToRelationSupportingInfo = getTriggerToRelationSupportingInfo(triggers, activeTriggerHistories,
                 useTableCache, triggerRouterContext);
         int numThreads = getNumberOfThreadsToUseForSyncTriggers();
         ExecutorService executor = Executors.newFixedThreadPool(numThreads, new SyncTriggersThreadFactory());
@@ -2186,7 +2203,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 public void run() {
                     MDC.put("engineName", parameterService.getEngineName());
                     updateOrCreateDatabaseTrigger(trigger, triggers, sqlBuffer, force, verifyInDatabase, activeTriggerHistories, useTableCache,
-                            triggerToTableSupportingInfo, triggerRouterContext);
+                            triggerToRelationSupportingInfo, triggerRouterContext);
                 }
             };
             futures.add(executor.submit(task));
@@ -2194,18 +2211,19 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         awaitTermination(executor, futures);
     }
 
-    private Map<String, List<TriggerTableSupportingInfo>> getTriggerToTableSupportingInfo(List<Trigger> triggers, List<TriggerHistory> activeTriggerHistories,
+    private Map<String, List<TriggerRelationSupportingInfo>> getTriggerToRelationSupportingInfo(List<Trigger> triggers,
+            List<TriggerHistory> activeTriggerHistories,
             boolean useTableCache, TriggerRouterContext triggerRouterContext) {
-        Map<String, List<TriggerTableSupportingInfo>> triggerToTableSupportingInfo = new HashMap<String, List<TriggerTableSupportingInfo>>();
+        Map<String, List<TriggerRelationSupportingInfo>> triggerToRelationSupportingInfo = new HashMap<String, List<TriggerRelationSupportingInfo>>();
         List<String> triggerNamesGeneratedThisSession = new ArrayList<String>();
         for (final Trigger trigger : triggers) {
-            List<TriggerTableSupportingInfo> triggerTableSupportingInfoList = new ArrayList<TriggerTableSupportingInfo>();
-            Set<Table> tables = getTablesForTrigger(trigger, triggers, useTableCache, triggerRouterContext);
+            List<TriggerRelationSupportingInfo> triggerRelationSupportingInfoList = new ArrayList<TriggerRelationSupportingInfo>();
+            Set<Relation> relations = getRelationsForTrigger(trigger, triggers, useTableCache, triggerRouterContext);
             long ts = System.currentTimeMillis();
-            for (Table table : tables) {
-                Table modifiedTable = table;
+            for (Relation relation : relations) {
+                Relation modifiedRelation = relation;
                 boolean foundPk = false;
-                Column[] columns = trigger.filterExcludedAndIncludedColumns(modifiedTable.getColumns());
+                Column[] columns = trigger.filterExcludedAndIncludedColumns(modifiedRelation.getColumns());
                 for (Column column : columns) {
                     foundPk |= column.isPrimaryKey();
                     if (foundPk) {
@@ -2213,16 +2231,16 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                     }
                 }
                 if (!foundPk) {
-                    modifiedTable = platform.makeAllColumnsPrimaryKeys(modifiedTable);
+                    modifiedRelation = platform.makeAllColumnsPrimaryKeys(relation);
                 }
                 TriggerHistory latestHistoryBeforeRebuild;
                 synchronized (activeTriggerHistories) {
                     latestHistoryBeforeRebuild = getNewestTriggerHistoryForTrigger(
                             activeTriggerHistories,
                             trigger.getTriggerId(),
-                            trigger.isSourceCatalogNameWildCarded() ? modifiedTable.getCatalog() : trigger.getSourceCatalogNameUnescaped(),
-                            trigger.isSourceSchemaNameWildCarded() ? modifiedTable.getSchema() : trigger.getSourceSchemaNameUnescaped(),
-                            (trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded()) ? modifiedTable.getName()
+                            trigger.isSourceCatalogNameWildCarded() ? modifiedRelation.getCatalog() : trigger.getSourceCatalogNameUnescaped(),
+                            trigger.isSourceSchemaNameWildCarded() ? modifiedRelation.getSchema() : trigger.getSourceSchemaNameUnescaped(),
+                            (trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded()) ? modifiedRelation.getName()
                                     : trigger.getSourceTableNameUnescaped());
                 }
                 int maxTriggerNameLength = symmetricDialect.getMaxTriggerNameLength();
@@ -2231,48 +2249,51 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 String deleteTriggerName = null;
                 if (trigger.isSyncOnInsert()) {
                     insertTriggerName = getTriggerName(DataEventType.INSERT,
-                            maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
+                            maxTriggerNameLength, trigger, modifiedRelation, activeTriggerHistories, latestHistoryBeforeRebuild,
+                            triggerNamesGeneratedThisSession)
                             .toUpperCase();
                     triggerNamesGeneratedThisSession.add(insertTriggerName);
                 }
                 if (trigger.isSyncOnUpdate()) {
                     updateTriggerName = getTriggerName(DataEventType.UPDATE,
-                            maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
+                            maxTriggerNameLength, trigger, modifiedRelation, activeTriggerHistories, latestHistoryBeforeRebuild,
+                            triggerNamesGeneratedThisSession)
                             .toUpperCase();
                     triggerNamesGeneratedThisSession.add(updateTriggerName);
                 }
                 if (trigger.isSyncOnDelete()) {
                     deleteTriggerName = getTriggerName(DataEventType.DELETE,
-                            maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
+                            maxTriggerNameLength, trigger, modifiedRelation, activeTriggerHistories, latestHistoryBeforeRebuild,
+                            triggerNamesGeneratedThisSession)
                             .toUpperCase();
                     triggerNamesGeneratedThisSession.add(deleteTriggerName);
                 }
-                TriggerTableSupportingInfo triggerTableSupportingInfo = new TriggerTableSupportingInfo(trigger.getTriggerId(), insertTriggerName,
-                        updateTriggerName, deleteTriggerName, latestHistoryBeforeRebuild, modifiedTable);
-                triggerTableSupportingInfoList.add(triggerTableSupportingInfo);
+                TriggerRelationSupportingInfo triggerRelationSupportingInfo = new TriggerRelationSupportingInfo(trigger.getTriggerId(), insertTriggerName,
+                        updateTriggerName, deleteTriggerName, latestHistoryBeforeRebuild, modifiedRelation);
+                triggerRelationSupportingInfoList.add(triggerRelationSupportingInfo);
             }
-            triggerToTableSupportingInfo.put(trigger.getTriggerId(), triggerTableSupportingInfoList);
-            triggerRouterContext.incrementTriggerToTableSupportingInfoTime(System.currentTimeMillis() - ts);
+            triggerToRelationSupportingInfo.put(trigger.getTriggerId(), triggerRelationSupportingInfoList);
+            triggerRouterContext.incrementTriggerToRelationSupportingInfoTime(System.currentTimeMillis() - ts);
         }
-        return triggerToTableSupportingInfo;
+        return triggerToRelationSupportingInfo;
     }
 
-    class TriggerTableSupportingInfo {
+    class TriggerRelationSupportingInfo {
         private String triggerId;
         private String insertTriggerName;
         private String updateTriggerName;
         private String deleteTriggerName;
         private TriggerHistory latestHistoryBeforeRebuild;
-        private Table table;
+        private Relation relation;
 
-        public TriggerTableSupportingInfo(String triggerId, String insertTriggerName, String updaterTriggerName, String deleteTriggerName,
-                TriggerHistory latestHistoryBeforeRebuild, Table table) {
+        public TriggerRelationSupportingInfo(String triggerId, String insertTriggerName, String updaterTriggerName, String deleteTriggerName,
+                TriggerHistory latestHistoryBeforeRebuild, Relation relation) {
             this.triggerId = triggerId;
             this.insertTriggerName = insertTriggerName;
             this.updateTriggerName = updaterTriggerName;
             this.deleteTriggerName = deleteTriggerName;
             this.latestHistoryBeforeRebuild = latestHistoryBeforeRebuild;
-            this.table = table;
+            this.relation = relation;
         }
 
         public String getInsertTriggerName() {
@@ -2307,12 +2328,12 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             this.latestHistoryBeforeRebuild = latestHistoryBeforeRebuild;
         }
 
-        public Table getTable() {
-            return table;
+        public Relation getRelation() {
+            return relation;
         }
 
-        public void setTable(Table table) {
-            this.table = table;
+        public void setRelation(Relation relation) {
+            this.relation = relation;
         }
 
         public String getTriggerId() {
@@ -2325,14 +2346,15 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     protected void updateOrCreateDatabaseTrigger(Trigger trigger, List<Trigger> triggers, StringBuilder sqlBuffer, boolean force, boolean verifyInDatabase,
-            List<TriggerHistory> activeTriggerHistories, boolean useTableCache, Map<String, List<TriggerTableSupportingInfo>> triggerToTableSupportingInfo,
+            List<TriggerHistory> activeTriggerHistories, boolean useTableCache,
+            Map<String, List<TriggerRelationSupportingInfo>> triggerToRelationSupportingInfo,
             TriggerRouterContext context) {
-        List<TriggerTableSupportingInfo> triggerTableSupportingInfoList = triggerToTableSupportingInfo.get(trigger.getTriggerId());
-        if (triggerTableSupportingInfoList != null && triggerTableSupportingInfoList.size() > 0) {
-            for (TriggerTableSupportingInfo triggerTableSupportingInfo : triggerTableSupportingInfoList) {
+        List<TriggerRelationSupportingInfo> triggerRelationSupportingInfoList = triggerToRelationSupportingInfo.get(trigger.getTriggerId());
+        if (triggerRelationSupportingInfoList != null && triggerRelationSupportingInfoList.size() > 0) {
+            for (TriggerRelationSupportingInfo triggerRelationSupportingInfo : triggerRelationSupportingInfoList) {
                 long ts = System.currentTimeMillis();
-                updateOrCreateDatabaseTriggers(trigger, triggerTableSupportingInfo.getTable(), sqlBuffer, force, verifyInDatabase, activeTriggerHistories,
-                        triggerTableSupportingInfo, context);
+                updateOrCreateDatabaseTriggers(trigger, triggerRelationSupportingInfo.getRelation(), sqlBuffer, force, verifyInDatabase, activeTriggerHistories,
+                        triggerRelationSupportingInfo, context);
                 context.incrementUpdateOrCreateDatabaseTriggersTime(System.currentTimeMillis() - ts);
             }
         } else {
@@ -2404,24 +2426,24 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                                     }
                                 }
                             } else if (trigger.isSourceTableNameWildCarded()) {
-                                Set<Table> tables = getTablesForTrigger(trigger, triggers, verifyInDatabase, context);
-                                Set<String> fullyQualifiedTableNames = new HashSet<String>();
-                                for (Table table : tables) {
-                                    fullyQualifiedTableNames.add(table.getFullyQualifiedTableName());
+                                Set<Relation> relations = getRelationsForTrigger(trigger, triggers, verifyInDatabase, context);
+                                Set<String> fullyQualifiedRelationNames = new HashSet<String>();
+                                for (Relation relation : relations) {
+                                    fullyQualifiedRelationNames.add(relation.getFullyQualifiedName());
                                 }
                                 List<TriggerHistory> activeHistories = activeHistoryByTriggerId.get(trigger.getTriggerId());
                                 if (activeHistories != null) {
                                     for (TriggerHistory triggerHistory : activeHistories) {
-                                        if (!fullyQualifiedTableNames.contains(triggerHistory.getFullyQualifiedSourceTableName())) {
+                                        if (!fullyQualifiedRelationNames.contains(triggerHistory.getFullyQualifiedSourceTableName())) {
                                             dropTriggers(triggerHistory, null, context);
                                         }
                                     }
                                 }
                             }
-                            Map<String, List<TriggerTableSupportingInfo>> triggerToTableSupportingInfo = getTriggerToTableSupportingInfo(
+                            Map<String, List<TriggerRelationSupportingInfo>> triggerToRelationSupportingInfo = getTriggerToRelationSupportingInfo(
                                     Collections.singletonList(trigger), allHistories, useTableCache, context);
                             updateOrCreateDatabaseTrigger(trigger, triggersForCurrentNode, null, force,
-                                    verifyInDatabase, allHistories, false, triggerToTableSupportingInfo, context);
+                                    verifyInDatabase, allHistories, false, triggerToRelationSupportingInfo, context);
                         } else {
                             List<TriggerHistory> activeHistories = activeHistoryByTriggerId.get(trigger.getTriggerId());
                             if (activeHistories != null) {
@@ -2457,10 +2479,10 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return false;
     }
 
-    protected void updateOrCreateDatabaseTriggers(Trigger trigger, Table table,
+    protected void updateOrCreateDatabaseTriggers(Trigger trigger, Relation relation,
             StringBuilder sqlBuffer, boolean force, boolean verifyInDatabase, List<TriggerHistory> activeTriggerHistories,
-            TriggerTableSupportingInfo triggerTableSupportingInfo, TriggerRouterContext context) {
-        TriggerHistory latestHistoryBeforeRebuild = triggerTableSupportingInfo.getLatestHistoryBeforeRebuild();
+            TriggerRelationSupportingInfo triggerRelationSupportingInfo, TriggerRouterContext context) {
+        TriggerHistory latestHistoryBeforeRebuild = triggerRelationSupportingInfo.getLatestHistoryBeforeRebuild();
         TriggerHistory newestHistory = null;
         TriggerReBuildReason reason = TriggerReBuildReason.NEW_TRIGGERS;
         if (verifyInDatabase) {
@@ -2475,7 +2497,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             if (latestHistoryBeforeRebuild == null) {
                 reason = TriggerReBuildReason.NEW_TRIGGERS;
                 forceRebuildOfTriggers = true;
-            } else if (table.calculateTableHashcode() != latestHistoryBeforeRebuild.getTableHash()) {
+            } else if (relation.calculateHashcode() != latestHistoryBeforeRebuild.getTableHash()) {
                 reason = TriggerReBuildReason.TABLE_SCHEMA_CHANGED;
                 forceRebuildOfTriggers = true;
             } else if (trigger.hasChangedSinceLastTriggerBuild(latestHistoryBeforeRebuild
@@ -2494,13 +2516,13 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                     .isTriggersSupported();
             newestHistory = rebuildTriggerIfNecessary(sqlBuffer, forceRebuildOfTriggers, trigger,
                     DataEventType.INSERT, reason, latestHistoryBeforeRebuild, null,
-                    trigger.isSyncOnInsert() && supportsTriggers, table, activeTriggerHistories, triggerTableSupportingInfo);
+                    trigger.isSyncOnInsert() && supportsTriggers, relation, activeTriggerHistories, triggerRelationSupportingInfo);
             newestHistory = rebuildTriggerIfNecessary(sqlBuffer, forceRebuildOfTriggers, trigger,
                     DataEventType.UPDATE, reason, latestHistoryBeforeRebuild, newestHistory,
-                    trigger.isSyncOnUpdate() && supportsTriggers, table, activeTriggerHistories, triggerTableSupportingInfo);
+                    trigger.isSyncOnUpdate() && supportsTriggers, relation, activeTriggerHistories, triggerRelationSupportingInfo);
             newestHistory = rebuildTriggerIfNecessary(sqlBuffer, forceRebuildOfTriggers, trigger,
                     DataEventType.DELETE, reason, latestHistoryBeforeRebuild, newestHistory,
-                    trigger.isSyncOnDelete() && supportsTriggers, table, activeTriggerHistories, triggerTableSupportingInfo);
+                    trigger.isSyncOnDelete() && supportsTriggers, relation, activeTriggerHistories, triggerRelationSupportingInfo);
             if (latestHistoryBeforeRebuild != null && newestHistory != null) {
                 inactivateTriggerHistory(latestHistoryBeforeRebuild);
             }
@@ -2538,25 +2560,25 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     protected TriggerHistory rebuildTriggerIfNecessary(StringBuilder sqlBuffer,
             boolean forceRebuild, Trigger trigger, DataEventType dmlType,
             TriggerReBuildReason reason, TriggerHistory oldhist, TriggerHistory hist,
-            boolean triggerIsActive, Table table, List<TriggerHistory> activeTriggerHistories,
-            TriggerTableSupportingInfo triggerTableSupportingInfo) {
+            boolean triggerIsActive, Relation relation, List<TriggerHistory> activeTriggerHistories,
+            TriggerRelationSupportingInfo triggerRelationSupportingInfo) {
         try {
-            return rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist, triggerIsActive, table,
-                    activeTriggerHistories, triggerTableSupportingInfo);
+            return rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist, triggerIsActive, relation,
+                    activeTriggerHistories, triggerRelationSupportingInfo);
         } catch (Exception e) {
             SQLException se = ExceptionUtils.unwrapSqlException(e);
-            IDatabasePlatform platform = symmetricDialect.getTargetPlatform(table.getName());
+            IDatabasePlatform platform = symmetricDialect.getTargetPlatform(relation.getName());
             if (se != null && se.getMessage() != null && platform.getName().startsWith(DatabaseNamesConstants.MSSQL) && se.getErrorCode() == 207) {
-                log.error("Retrying trigger for {} after exception {} [{}]: {}", table.getName(), e.getClass().getName(), se.getErrorCode(), e.getMessage());
-                table = platform.readTableFromDatabase(table.getCatalog(), table.getSchema(), table.getName());
-                if (table != null) {
-                    return rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist, triggerIsActive, table,
-                            activeTriggerHistories, triggerTableSupportingInfo);
+                log.error("Retrying trigger for {} after exception {} [{}]: {}", relation.getName(), e.getClass().getName(), se.getErrorCode(), e.getMessage());
+                relation = platform.readRelationFromDatabase(relation.getCatalog(), relation.getSchema(), relation.getName());
+                if (relation != null) {
+                    return rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist, triggerIsActive, relation,
+                            activeTriggerHistories, triggerRelationSupportingInfo);
                 }
             } else if (platform.getSqlTemplate().isDeadlock(e)) {
-                log.error("Retrying trigger for {} after deadlock {} [{}]: {}", table.getName(), e.getClass().getName(), se.getErrorCode(), e.getMessage());
-                return rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist, triggerIsActive, table,
-                        activeTriggerHistories, triggerTableSupportingInfo);
+                log.error("Retrying trigger for {} after deadlock {} [{}]: {}", relation.getName(), e.getClass().getName(), se.getErrorCode(), e.getMessage());
+                return rebuildTriggerIfNecessaryWithException(sqlBuffer, forceRebuild, trigger, dmlType, reason, oldhist, hist, triggerIsActive, relation,
+                        activeTriggerHistories, triggerRelationSupportingInfo);
             }
             throw e;
         }
@@ -2565,8 +2587,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     protected TriggerHistory rebuildTriggerIfNecessaryWithException(StringBuilder sqlBuffer,
             boolean forceRebuild, Trigger trigger, DataEventType dmlType,
             TriggerReBuildReason reason, TriggerHistory oldhist, TriggerHistory hist,
-            boolean triggerIsActive, Table table, List<TriggerHistory> activeTriggerHistories,
-            TriggerTableSupportingInfo triggerTableSupportingInfo) {
+            boolean triggerIsActive, Relation relation, List<TriggerHistory> activeTriggerHistories,
+            TriggerRelationSupportingInfo triggerRelationSupportingInfo) {
         boolean triggerExists = false;
         boolean triggerRemoved = false;
         boolean usingTargetDialect = false;
@@ -2574,7 +2596,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix())) {
             usingTargetDialect = true;
         }
-        TriggerHistory newTriggerHist = new TriggerHistory(table, trigger,
+        TriggerHistory newTriggerHist = new TriggerHistory(relation, trigger,
                 usingTargetDialect ? getTargetDialect().getTriggerTemplate() : getSymmetricDialect().getTriggerTemplate(), reason);
         if (usingTargetDialect) {
             if (hist == null && (oldhist == null || forceRebuild)) {
@@ -2583,9 +2605,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                     activeTriggerHistories.add(newTriggerHist);
                     historyMap.put(newTriggerHist.getTriggerHistoryId(), newTriggerHist);
                     hist = getNewestTriggerHistoryForTrigger(activeTriggerHistories, trigger.getTriggerId(),
-                            trigger.isSourceCatalogNameWildCarded() ? table.getCatalog() : trigger.getSourceCatalogNameUnescaped(),
-                            trigger.isSourceSchemaNameWildCarded() ? table.getSchema() : trigger.getSourceSchemaNameUnescaped(),
-                            (trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded()) ? table.getName()
+                            trigger.isSourceCatalogNameWildCarded() ? relation.getCatalog() : trigger.getSourceCatalogNameUnescaped(),
+                            trigger.isSourceSchemaNameWildCarded() ? relation.getSchema() : trigger.getSourceSchemaNameUnescaped(),
+                            (trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded()) ? relation.getName()
                                     : trigger.getSourceTableNameUnescaped());
                 }
             }
@@ -2595,13 +2617,13 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             return hist;
         }
         if (trigger.isSyncOnInsert()) {
-            newTriggerHist.setNameForInsertTrigger(triggerTableSupportingInfo.getInsertTriggerName());
+            newTriggerHist.setNameForInsertTrigger(triggerRelationSupportingInfo.getInsertTriggerName());
         }
         if (trigger.isSyncOnUpdate()) {
-            newTriggerHist.setNameForUpdateTrigger(triggerTableSupportingInfo.getUpdateTriggerName());
+            newTriggerHist.setNameForUpdateTrigger(triggerRelationSupportingInfo.getUpdateTriggerName());
         }
         if (trigger.isSyncOnDelete()) {
-            newTriggerHist.setNameForDeleteTrigger(triggerTableSupportingInfo.getDeleteTriggerName());
+            newTriggerHist.setNameForDeleteTrigger(triggerRelationSupportingInfo.getDeleteTriggerName());
         }
         String oldTriggerName = null;
         String oldSourceSchema = null;
@@ -2609,7 +2631,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         if (oldhist != null) {
             oldTriggerName = oldhist.getTriggerNameForDmlType(dmlType);
             if (oldTriggerName == null) {
-                oldTriggerName = getTriggerName(dmlType, triggerTableSupportingInfo);
+                oldTriggerName = getTriggerName(dmlType, triggerRelationSupportingInfo);
             }
             oldSourceSchema = oldhist.getSourceSchemaName();
             oldCatalogName = oldhist.getSourceCatalogName();
@@ -2619,11 +2641,11 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             // We had no trigger_hist row, lets validate that the trigger as
             // defined in the trigger row data does not exist as well.
             oldTriggerName = newTriggerHist.getTriggerNameForDmlType(dmlType);
-            oldSourceSchema = table.getSchema();
-            oldCatalogName = table.getCatalog();
+            oldSourceSchema = relation.getSchema();
+            oldCatalogName = relation.getCatalog();
             if (StringUtils.isNotBlank(oldTriggerName)) {
                 triggerExists = symmetricDialect.doesTriggerExist(sqlBuffer, oldCatalogName,
-                        oldSourceSchema, table.getName(), oldTriggerName);
+                        oldSourceSchema, relation.getName(), oldTriggerName);
             }
         }
         ISqlTransaction transaction = null;
@@ -2633,7 +2655,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 if (!triggerIsActive || !platform.getDatabaseInfo().isTriggersCreateOrReplaceSupported() ||
                         !oldTriggerName.equalsIgnoreCase(newTriggerHist.getTriggerNameForDmlType(dmlType))) {
                     symmetricDialect.removeTrigger(sqlBuffer, oldCatalogName, oldSourceSchema,
-                            oldTriggerName, trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded() ? table.getName()
+                            oldTriggerName, trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded() ? relation.getName()
                                     : trigger.getSourceTableNameUnescaped(), transaction);
                     triggerRemoved = true;
                 }
@@ -2656,14 +2678,14 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                     activeTriggerHistories.add(newTriggerHist);
                     historyMap.put(newTriggerHist.getTriggerHistoryId(), newTriggerHist);
                     hist = getNewestTriggerHistoryForTrigger(activeTriggerHistories, trigger.getTriggerId(),
-                            trigger.isSourceCatalogNameWildCarded() ? table.getCatalog() : trigger.getSourceCatalogNameUnescaped(),
-                            trigger.isSourceSchemaNameWildCarded() ? table.getSchema() : trigger.getSourceSchemaNameUnescaped(),
-                            trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded() ? table.getName()
+                            trigger.isSourceCatalogNameWildCarded() ? relation.getCatalog() : trigger.getSourceCatalogNameUnescaped(),
+                            trigger.isSourceSchemaNameWildCarded() ? relation.getSchema() : trigger.getSourceSchemaNameUnescaped(),
+                            trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded() ? relation.getName()
                                     : trigger.getSourceTableNameUnescaped());
                 }
             }
             try {
-                if (!triggerExists && triggerIsActive) {
+                if (!triggerExists && triggerIsActive && relation instanceof Table table) {
                     symmetricDialect
                             .createTrigger(sqlBuffer, dmlType, trigger, hist,
                                     configurationService.getChannel(trigger.getChannelId()),
@@ -2693,7 +2715,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public String getTriggerName(DataEventType dml, int maxTriggerNameLength, Trigger trigger,
-            Table table, List<TriggerHistory> activeTriggerHistories, TriggerHistory oldhist, List<String> triggerNamesGeneratedThisSession) {
+            Relation relation, List<TriggerHistory> activeTriggerHistories, TriggerHistory oldhist, List<String> triggerNamesGeneratedThisSession) {
         String triggerName = null;
         switch (dml) {
             case INSERT:
@@ -2720,9 +2742,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             String triggerSuffix1 = "on_" + dml.getCode().toLowerCase() + "_for_";
             String triggerSuffix2 = FormatUtils.replaceCharsToShortenName(trigger.getTriggerId());
             if (trigger.isSourceTableNameWildCarded()) {
-                triggerSuffix2 = FormatUtils.replaceCharsToShortenName(table.getName());
+                triggerSuffix2 = FormatUtils.replaceCharsToShortenName(relation.getName());
             } else if (trigger.isSourceTableNameExpanded()) {
-                triggerSuffix2 = FormatUtils.replaceCharsToShortenName(table.getName());
+                triggerSuffix2 = FormatUtils.replaceCharsToShortenName(relation.getName());
             }
             String triggerSuffix3 = FormatUtils.replaceCharsToShortenName("_"
                     + parameterService.getNodeGroupId());
@@ -2761,17 +2783,17 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return triggerName;
     }
 
-    public String getTriggerName(DataEventType dml, TriggerTableSupportingInfo triggerTableSupportingInfo) {
+    public String getTriggerName(DataEventType dml, TriggerRelationSupportingInfo triggerRelationSupportingInfo) {
         String triggerName = null;
         switch (dml) {
             case INSERT:
-                triggerName = triggerTableSupportingInfo.getInsertTriggerName();
+                triggerName = triggerRelationSupportingInfo.getInsertTriggerName();
                 break;
             case UPDATE:
-                triggerName = triggerTableSupportingInfo.getUpdateTriggerName();
+                triggerName = triggerRelationSupportingInfo.getUpdateTriggerName();
                 break;
             case DELETE:
-                triggerName = triggerTableSupportingInfo.getDeleteTriggerName();
+                triggerName = triggerRelationSupportingInfo.getDeleteTriggerName();
                 break;
             default:
                 break;
@@ -3052,11 +3074,11 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             List<TriggerRouter> triggerRouters, boolean sortByFk) {
         final Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId = fillTriggerRoutersByHistId(
                 sourceNodeGroupId, targetNodeGroupId, targetExternalId, triggerHistories, triggerRouters);
-        List<Table> tables = null;
+        List<Relation> relations = null;
         if (sortByFk) {
-            tables = getSortedTablesFor(triggerHistories);
+            relations = getSortedRelationsFor(triggerHistories);
         }
-        final List<Table> sortedTables = tables;
+        final List<Relation> sortedRelations = relations;
         Comparator<TriggerHistory> comparator = new Comparator<TriggerHistory>() {
             public int compare(TriggerHistory o1, TriggerHistory o2) {
                 List<TriggerRouter> triggerRoutersForTriggerHist1 = triggerRoutersByHistoryId
@@ -3083,23 +3105,35 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 if (sortByFk) {
                     Table table1 = null;
                     if (!o1.getSourceTableName().startsWith(tablePrefix)) {
-                        table1 = getTargetPlatform().getTableFromCache(o1.getSourceCatalogName(),
+                        Relation relation1 = getTargetPlatform().getRelationFromCache(o1.getSourceCatalogName(),
                                 o1.getSourceSchemaName(), o1.getSourceTableName(), false);
+                        if (relation1 instanceof Table table) {
+                            table1 = table;
+                        }
                     }
                     if (table1 == null) {
-                        platform.getTableFromCache(o1.getSourceCatalogName(),
+                        Relation relation1 = platform.getRelationFromCache(o1.getSourceCatalogName(),
                                 o1.getSourceSchemaName(), o1.getSourceTableName(), false);
+                        if (relation1 instanceof Table table) {
+                            table1 = table;
+                        }
                     }
                     Table table2 = null;
                     if (!o2.getSourceTableName().startsWith(tablePrefix)) {
-                        table2 = getTargetPlatform().getTableFromCache(o2.getSourceCatalogName(),
+                        Relation relation2 = getTargetPlatform().getRelationFromCache(o2.getSourceCatalogName(),
                                 o2.getSourceSchemaName(), o2.getSourceTableName(), false);
+                        if (relation2 instanceof Table table) {
+                            table2 = table;
+                        }
                     }
                     if (table2 == null) {
-                        platform.getTableFromCache(o2.getSourceCatalogName(),
+                        Relation relation2 = platform.getRelationFromCache(o2.getSourceCatalogName(),
                                 o2.getSourceSchemaName(), o2.getSourceTableName(), false);
+                        if (relation2 instanceof Table table) {
+                            table2 = table;
+                        }
                     }
-                    return Integer.valueOf(sortedTables.indexOf(table1)).compareTo(Integer.valueOf(sortedTables
+                    return Integer.valueOf(sortedRelations.indexOf(table1)).compareTo(Integer.valueOf(sortedRelations
                             .indexOf(table2)));
                 }
                 return o1.getSourceTableName().compareTo(o2.getSourceTableName());
@@ -3140,29 +3174,27 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return triggerRoutersByHistoryId;
     }
 
-    public List<Table> getSortedTablesFor(List<TriggerHistory> histories) {
-        return Database.sortByForeignKeys(getTablesFor(histories), null, null, null);
+    public List<Relation> getSortedRelationsFor(List<TriggerHistory> histories) {
+        return Database.sortByForeignKeys(new ArrayList<Relation>(getRelationsFor(histories)), null, null, null);
     }
 
-    public List<Table> getTablesFor(List<TriggerHistory> histories) {
-        List<Table> tables = new ArrayList<Table>(histories.size());
+    public List<Relation> getRelationsFor(List<TriggerHistory> histories) {
+        List<Relation> relations = new ArrayList<>(histories.size());
         for (TriggerHistory triggerHistory : histories) {
-            Table table = null;
+            Relation relation = null;
             if (!triggerHistory.getSourceTableName().startsWith(tablePrefix)) {
-                table = getTargetPlatform().getTableFromCache(triggerHistory.getSourceCatalogName(),
-                        triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(),
-                        false);
+                relation = getTargetPlatform().getRelationFromCache(triggerHistory.getSourceCatalogName(),
+                        triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(), false);
             }
-            if (table == null) {
-                table = platform.getTableFromCache(triggerHistory.getSourceCatalogName(),
-                        triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(),
-                        false);
+            if (relation == null) {
+                relation = platform.getRelationFromCache(triggerHistory.getSourceCatalogName(),
+                        triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(), false);
             }
-            if (table != null) {
-                tables.add(table);
+            if (relation != null) {
+                relations.add(relation);
             }
         }
-        return tables;
+        return relations;
     }
 
     protected void awaitTermination(ExecutorService executor, List<Future<?>> futures) {
@@ -3303,7 +3335,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         log.info("SyncTriggers: update or create database trigger took {} ms",
                 triggerRouterContext.getUpdateOrCreateDatabaseTriggersTime());
         log.info("SyncTriggers: trigger to table supporting info took {} ms",
-                triggerRouterContext.getTriggerToTableSupportingInfoTime());
+                triggerRouterContext.getTriggerToRelationSupportingInfoTime());
         log.info("SyncTriggers: table does not exist took {} ms",
                 triggerRouterContext.getTableDoesNotExistTime());
     }

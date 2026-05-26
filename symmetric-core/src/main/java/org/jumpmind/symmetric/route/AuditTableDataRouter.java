@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -65,21 +66,21 @@ public class AuditTableDataRouter extends AbstractDataRouter implements IBuiltIn
             IParameterService parameterService = engine.getParameterService();
             IDatabasePlatform platform = engine.getDatabasePlatform();
             TriggerHistory triggerHistory = dataMetaData.getTriggerHistory();
-            Table table = dataMetaData.getTable().copyAndFilterColumns(
+            Relation relation = dataMetaData.getRelation().copyAndFilterColumns(
                     triggerHistory.getParsedColumnNames(), triggerHistory.getParsedPkColumnNames(),
                     true, false);
-            String tableName = table.getFullyQualifiedTableName();
-            Table auditTable = auditTables.get(tableName);
+            String relationName = relation.getFullyQualifiedName();
+            Table auditTable = auditTables.get(relationName);
             if (auditTable == null) {
-                auditTable = toAuditTable(table);
+                auditTable = toAuditTable(relation);
                 if (parameterService.is(ParameterConstants.AUTO_CONFIGURE_DATABASE)) {
                     platform.alterTables(true, auditTable);
                 }
-                auditTable = platform.getTableFromCache(auditTable.getCatalog(), auditTable.getSchema(), auditTable.getName(), false);
-                auditTables.put(tableName, auditTable);
+                auditTable = (Table) platform.getRelationFromCache(auditTable.getCatalog(), auditTable.getSchema(), auditTable.getName(), false);
+                auditTables.put(relationName, auditTable);
             }
             DatabaseInfo dbInfo = platform.getDatabaseInfo();
-            String auditTableName = auditTable.getQualifiedTableName(dbInfo.getDelimiterToken(),
+            String auditTableName = auditTable.getQualifiedName(dbInfo.getDelimiterToken(),
                     dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator());
             ISqlTemplate template = platform.getSqlTemplate();
             Map<String, Object> values = null;
@@ -110,23 +111,24 @@ public class AuditTableDataRouter extends AbstractDataRouter implements IBuiltIn
         return null;
     }
 
-    protected Table toAuditTable(Table table) {
+    protected Table toAuditTable(Relation relation) {
         IDatabasePlatform platform = engine.getDatabasePlatform();
-        Table auditTable = table.copy();
-        auditTable.setName(String.format("%s_%s", auditTable.getName(), platform.alterCaseToMatchDatabaseDefaultCase("AUDIT")));
-        Column[] columns = auditTable.getColumns();
-        auditTable.removeAllColumns();
+        Table auditTable = new Table(relation.getCatalog(), relation.getSchema(),
+                String.format("%s_%s", relation.getName(), platform.alterCaseToMatchDatabaseDefaultCase("AUDIT")));
         auditTable.addColumn(new Column(COLUMN_AUDIT_ID, true, Types.BIGINT, 0, 0));
         auditTable.addColumn(new Column(COLUMN_AUDIT_TIME, false, Types.TIMESTAMP, 0, 0));
         auditTable.addColumn(new Column(COLUMN_AUDIT_EVENT, false, Types.CHAR, 1, 0));
-        for (Column column : columns) {
-            column.setRequired(false);
-            column.setPrimaryKey(false);
-            column.setAutoIncrement(false);
-            auditTable.addColumn(column);
+        for (Column column : relation.getColumns()) {
+            try {
+                Column columnCopy = (Column) column.clone();
+                columnCopy.setRequired(false);
+                columnCopy.setPrimaryKey(false);
+                columnCopy.setAutoIncrement(false);
+                auditTable.addColumn(columnCopy);
+            } catch (CloneNotSupportedException e) {
+                throw new RuntimeException(e);
+            }
         }
-        auditTable.removeAllForeignKeys();
-        auditTable.removeAllIndices();
         platform.alterCaseToMatchDatabaseDefaultCase(auditTable);
         return auditTable;
     }

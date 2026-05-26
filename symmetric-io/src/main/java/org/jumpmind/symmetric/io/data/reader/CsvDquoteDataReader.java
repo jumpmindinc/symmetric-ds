@@ -51,7 +51,7 @@ public class CsvDquoteDataReader extends CsvTableDataReader {
             this.csvReader.readHeaders();
             String[] columnNames = this.csvReader.getHeaders();
             for (String columnName : columnNames) {
-                table.addColumn(new Column(columnName));
+                relation.addColumn(new Column(columnName));
             }
         } catch (IOException e) {
             throw new IoException(e);

@@ -135,8 +135,8 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
                 String schemaName = table.getSchema();
                 println(CsvConstants.SCHEMA, StringUtils.isNotBlank(schemaName) ? schemaName : "");
             }
-            String tableKey = table.getTableKey();
-            String fullyQualifiedTableName = table.getFullyQualifiedTableName();
+            String tableKey = table.getKey();
+            String fullyQualifiedTableName = table.getFullyQualifiedName();
             String previousTableKey = processedTables.get(fullyQualifiedTableName);
             println(CsvConstants.TABLE, CsvUtils.escapeAndQuoteCsvData(table.getName()));
             if (!tableKey.equals(previousTableKey)) {

@@ -294,7 +294,7 @@ public class DbImportDialog extends ResizableDialog {
     }
 
     public List<String> getTables() {
-        return databasePlatform.getDdlReader().getTableNames((String) catalogSelect.getValue(),
+        return databasePlatform.getDdlReader().getRelationNames((String) catalogSelect.getValue(),
                 (String) schemaSelect.getValue(), new String[] { "TABLE" });
     }
 }

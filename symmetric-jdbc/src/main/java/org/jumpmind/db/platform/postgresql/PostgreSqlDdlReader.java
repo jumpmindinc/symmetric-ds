@@ -36,6 +36,7 @@ import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.ForeignKey;
@@ -46,6 +47,7 @@ import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.PlatformFunction;
 import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -100,15 +102,14 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table == null) {
-            return null;
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation instanceof Table table) {
+            detectAutoIncrementColumnsInUniqueIndices(table);
+            readMetaDataAndPrimaryKeyConstraint(connection, table);
         }
-        detectAutoIncrementColumnsInUniqueIndices(table);
-        readMetaDataAndPrimaryKeyConstraint(connection, table);
-        return table;
+        return relation;
     }
 
     /**
@@ -406,6 +407,11 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
         ArrayList<String> list = new ArrayList<String>();
         list.add(platform.getSqlTemplateDirty().queryForObject("select current_database()", String.class));
         return list;
+    }
+
+    @Override
+    public List<String> getViewNames(final String catalog, final String schema) {
+        return objectDefinitionCache.getRelationNames(new CatalogSchema(catalog, schema), new String[] { "VIEW", "MATERIALIZED VIEW" });
     }
 
     @Override

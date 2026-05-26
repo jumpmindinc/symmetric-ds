@@ -369,6 +369,7 @@ final public class ParameterConstants {
     public static final String SQLITE_TRIGGER_FUNCTION_TO_USE = "sqlite.trigger.function.to.use";
     public static final String AS400_CAST_CLOB_TO = "as400.cast.clob.to";
     public static final String EXTENSIONS_XML = "extensions.xml";
+    public static final String EXTENSION_USE_LEGACY_INTERFACE = "extension.use.legacy.interface.enabled";
     public static final String DATA_CREATE_TIME_TIMEZONE = "data.create_time.timezone";
     public static final String LOG_SLOW_SQL_THRESHOLD_MILLIS = "log.slow.sql.threshold.millis";
     public static final String CONSOLE_LOG_SLOW_SQL_THRESHOLD_MILLIS = "console.log.slow.sql.threshold.millis";

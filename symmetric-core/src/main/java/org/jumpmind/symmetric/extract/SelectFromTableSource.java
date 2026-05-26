@@ -43,6 +43,7 @@ import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataEventType;
+import org.jumpmind.symmetric.load.IRelationReloadVariableFilter;
 import org.jumpmind.symmetric.load.IReloadVariableFilter;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Data;
@@ -131,7 +132,7 @@ public class SelectFromTableSource extends SelectFromSource {
     }
 
     public boolean shouldDataBeRouted(CsvData data) {
-        DataMetaData dataMetaData = new DataMetaData((Data) data, sourceTable, triggerRouter.getRouter(), routingContext.getChannel());
+        DataMetaData dataMetaData = new DataMetaData((Data) data, sourceRelation, triggerRouter.getRouter(), routingContext.getChannel());
         Collection<String> nodeIds = dataRouter.routeToNodes(routingContext, dataMetaData, nodeSet, true, initialLoadSelectUsed, triggerRouter);
         return nodeIds != null && nodeIds.contains(node.getNodeId());
     }
@@ -145,9 +146,9 @@ public class SelectFromTableSource extends SelectFromSource {
             isFirstRow = true;
             if (currentInitialLoadEvent.containsData()) {
                 data = currentInitialLoadEvent.getData();
-                sourceTable = columnsAccordingToTriggerHistory.lookup(
+                sourceRelation = columnsAccordingToTriggerHistory.lookup(
                         currentInitialLoadEvent.getTriggerRouter().getRouterId(), history, false, true, false, false);
-                targetTable = columnsAccordingToTriggerHistory.lookup(
+                targetRelation = columnsAccordingToTriggerHistory.lookup(
                         currentInitialLoadEvent.getTriggerRouter().getRouterId(), history, true, false, false, false);
                 currentInitialLoadEvent = null;
             } else {
@@ -170,15 +171,15 @@ public class SelectFromTableSource extends SelectFromSource {
                     }
                     routingContext = new SimpleRouterContext(batch == null ? null : batch.getTargetNodeId(), channel);
                 }
-                sourceTable = columnsAccordingToTriggerHistory.lookup(triggerRouter.getRouter().getRouterId(), history, false, true, false, false);
-                targetTable = columnsAccordingToTriggerHistory.lookup(triggerRouter.getRouter().getRouterId(), history, true, false, false, false);
+                sourceRelation = columnsAccordingToTriggerHistory.lookup(triggerRouter.getRouter().getRouterId(), history, false, true, false, false);
+                targetRelation = columnsAccordingToTriggerHistory.lookup(triggerRouter.getRouter().getRouterId(), history, true, false, false, false);
                 overrideSelectSql = currentInitialLoadEvent.getInitialLoadSelect();
                 if (overrideSelectSql != null && overrideSelectSql.trim().toUpperCase().startsWith("WHERE")) {
                     overrideSelectSql = overrideSelectSql.trim().substring(5);
                 }
                 if (parameterService.is(ParameterConstants.INITIAL_LOAD_RECURSION_SELF_FK)
                         && (StringUtils.isBlank(overrideSelectSql) || overrideSelectSql.equals(Constants.ALWAYS_TRUE_CONDITION))) {
-                    ForeignKey fk = sourceTable.getSelfReferencingForeignKey();
+                    ForeignKey fk = sourceRelation instanceof Table t ? t.getSelfReferencingForeignKey() : null;
                     if (fk != null) {
                         Reference[] refs = fk.getReferences();
                         if (refs.length == 1) {
@@ -193,7 +194,7 @@ public class SelectFromTableSource extends SelectFromSource {
                                 selfRefChildColumnName = refs[0].getForeignColumnName();
                                 selfRefLevel = 0;
                                 log.info("Ordering rows for table {} using self-referencing foreign key {} -> {}",
-                                        sourceTable.getName(), selfRefParentColumnName, selfRefChildColumnName);
+                                        sourceRelation.getName(), selfRefParentColumnName, selfRefChildColumnName);
                             }
                         } else {
                             log.warn("Unable to order rows for self-referencing foreign key because it contains multiple columns");
@@ -201,7 +202,7 @@ public class SelectFromTableSource extends SelectFromSource {
                     }
                 }
                 ISymmetricDialect symmetricDialectToUse = getSymmetricDialect();
-                if (routingContext.getChannel().isReloadFlag() && symmetricDialectToUse.isInitialLoadTwoPassLob(sourceTable)) {
+                if (routingContext.getChannel().isReloadFlag() && symmetricDialectToUse.isInitialLoadTwoPassLob(sourceRelation)) {
                     isLobFirstPass = true;
                 }
                 startNewCursor(history, triggerRouter);
@@ -216,7 +217,7 @@ public class SelectFromTableSource extends SelectFromSource {
                     selfRefLevel++;
                     startNewCursor(currentInitialLoadEvent.getTriggerHistory(), triggerRouter);
                     isFirstRow = true;
-                } else if (symmetricDialectToUse.isInitialLoadTwoPassLob(sourceTable) && isLobFirstPass) {
+                } else if (symmetricDialectToUse.isInitialLoadTwoPassLob(sourceRelation) && isLobFirstPass) {
                     isLobFirstPass = false;
                     startNewCursor(currentInitialLoadEvent.getTriggerHistory(), triggerRouter);
                 } else {
@@ -239,7 +240,8 @@ public class SelectFromTableSource extends SelectFromSource {
 
     public ISymmetricDialect getSymmetricDialect() {
         ISymmetricDialect dialect = null;
-        if (isConfiguration || (sourceTable != null && sourceTable.getNameLowerCase().startsWith(parameterService.getTablePrefix().toLowerCase() + "_"))) {
+        if (isConfiguration || (sourceRelation != null && sourceRelation.getNameLowerCase().startsWith(parameterService.getTablePrefix().toLowerCase()
+                + "_"))) {
             dialect = symmetricDialect;
         } else {
             dialect = symmetricDialect.getTargetDialect();
@@ -247,6 +249,7 @@ public class SelectFromTableSource extends SelectFromSource {
         return dialect;
     }
 
+    @SuppressWarnings("deprecation")
     protected void startNewCursor(final TriggerHistory triggerHistory, final TriggerRouter triggerRouter) {
         ISymmetricDialect symmetricDialectToUse = getSymmetricDialect();
         String selectSql = overrideSelectSql;
@@ -258,8 +261,8 @@ public class SelectFromTableSource extends SelectFromSource {
                         + " = " + SymmetricUtils.quote(symmetricDialectToUse, selfRefChildColumnName) + ") ";
             } else {
                 DatabaseInfo info = symmetricDialectToUse.getPlatform().getDatabaseInfo();
-                String tableName = Table.getFullyQualifiedTableName(sourceTable.getCatalog(), sourceTable.getSchema(),
-                        sourceTable.getName(), info.getDelimiterToken(), info.getCatalogSeparator(), info.getSchemaSeparator());
+                String tableName = Table.getFullyQualifiedName(sourceRelation.getCatalog(), sourceRelation.getSchema(),
+                        sourceRelation.getName(), info.getDelimiterToken(), info.getCatalogSeparator(), info.getSchemaSeparator());
                 String refSql = "select " + SymmetricUtils.quote(symmetricDialectToUse, selfRefChildColumnName)
                         + " from " + tableName + " where "
                         + SymmetricUtils.quote(symmetricDialectToUse, selfRefParentColumnName);
@@ -272,28 +275,34 @@ public class SelectFromTableSource extends SelectFromSource {
                         SymmetricUtils.quote(symmetricDialectToUse, selfRefParentColumnName) + " != " + SymmetricUtils.quote(symmetricDialectToUse,
                                 selfRefChildColumnName) + StringUtils.repeat(")", selfRefLevel - 1);
             }
-            log.info("Querying level {} for table {}: {}", selfRefLevel, sourceTable.getName(), selectSql);
+            log.info("Querying level {} for table {}: {}", selfRefLevel, sourceRelation.getName(), selectSql);
         }
         Channel channel = configurationService.getChannel(triggerRouter.getTrigger().getReloadChannelId());
-        if (channel.isReloadFlag() && symmetricDialectToUse.isInitialLoadTwoPassLob(sourceTable)) {
+        if (channel.isReloadFlag() && symmetricDialectToUse.isInitialLoadTwoPassLob(sourceRelation)) {
             channel = new Channel();
             channel.setContainsBigLob(!isLobFirstPass);
-            selectSql = symmetricDialectToUse.getInitialLoadTwoPassLobSql(selectSql, sourceTable, isLobFirstPass);
-            log.info("Querying {} pass LOB for table {}: {}", (isLobFirstPass ? "first" : "second"), sourceTable.getName(), selectSql);
+            selectSql = symmetricDialectToUse.getInitialLoadTwoPassLobSql(selectSql, sourceRelation, isLobFirstPass);
+            log.info("Querying {} pass LOB for table {}: {}", (isLobFirstPass ? "first" : "second"), sourceRelation.getName(), selectSql);
         }
         String sql = symmetricDialectToUse.createInitialLoadSqlFor(currentInitialLoadEvent.getNode(), triggerRouter,
-                sourceTable, triggerHistory, channel, selectSql);
-        for (IReloadVariableFilter filter : extensionService.getExtensionPointList(IReloadVariableFilter.class)) {
-            sql = filter.filterInitalLoadSql(sql, node, targetTable);
+                sourceRelation, triggerHistory, channel, selectSql);
+        if (parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE)) {
+            for (IReloadVariableFilter filter : extensionService.getExtensionPointList(IReloadVariableFilter.class)) {
+                sql = filter.filterInitalLoadSql(sql, node, (Table) targetRelation);
+            }
+        } else {
+            for (IRelationReloadVariableFilter filter : extensionService.getExtensionPointList(IRelationReloadVariableFilter.class)) {
+                sql = filter.filterInitalLoadSql(sql, node, targetRelation);
+            }
         }
         boolean checkRowLength = parameterService.is(ParameterConstants.EXTRACT_CHECK_ROW_SIZE, false);
         SelectFromTableOptions options = new SelectFromTableOptions().triggerHistory(triggerHistory).initialLoadSql(sql)
                 .expectedCommaCount(triggerHistory.getParsedColumnNames().length - 1).selectedAsCsv(symmetricDialectToUse.getParameterService()
                         .is(ParameterConstants.INITIAL_LOAD_CONCAT_CSV_IN_SQL_ENABLED)).maxBatchSize(channel.getMaxBatchSize())
                 .objectValuesWillNeedEscaped(!symmetricDialectToUse.getTriggerTemplate().useTriggerTemplateForColumnTemplatesDuringInitialLoad())
-                .columnPositionUsingTemplate(symmetricDialectToUse.getColumnPositionUsingTemplate(sourceTable, triggerHistory))
+                .columnPositionUsingTemplate(symmetricDialectToUse.getColumnPositionUsingTemplate(sourceRelation, triggerHistory))
                 .checkRowLength(checkRowLength).rowMaxLength(parameterService.getLong(ParameterConstants.EXTRACT_ROW_MAX_LENGTH, 1000000000))
-                .returnLobObjects(checkRowLength && sourceTable.containsLobColumns(symmetricDialect.getPlatform()) && !sourceTable.getNameLowerCase()
+                .returnLobObjects(checkRowLength && sourceRelation.containsLobColumns(symmetricDialect.getPlatform()) && !sourceRelation.getNameLowerCase()
                         .startsWith(symmetricDialect.getTablePrefix()));
         log.debug(sql);
         cursor = createCursor(symmetricDialectToUse, options);
@@ -309,7 +318,7 @@ public class SelectFromTableSource extends SelectFromSource {
                         StringBuilder pkValues = new StringBuilder();
                         int i = 0;
                         Object[] rowValues = row.values().toArray();
-                        for (String name : sourceTable.getPrimaryKeyColumnNames()) {
+                        for (String name : sourceRelation.getPrimaryKeyColumnNames()) {
                             pkValues.append(name).append("=").append(rowValues[i]);
                             i++;
                         }
@@ -329,7 +338,7 @@ public class SelectFromTableSource extends SelectFromSource {
                                 options.getExpectedCommaCount(), commaCount, csvRow, options.getInitialLoadSql());
                     }
                 } else if (options.isObjectValuesWillNeedEscaped()) {
-                    csvRow = platform.getCsvStringValue(symmetricDialect.getBinaryEncoding(), sourceTable.getColumns(), row, options
+                    csvRow = platform.getCsvStringValue(symmetricDialect.getBinaryEncoding(), sourceRelation.getColumns(), row, options
                             .isColumnPositionUsingTemplate());
                 } else {
                     csvRow = row.csvValue();
@@ -344,7 +353,7 @@ public class SelectFromTableSource extends SelectFromSource {
     public boolean requiresLobsSelectedFromSource(CsvData data) {
         if (isInitialLoadUseColumnTemplates && currentInitialLoadEvent != null && currentInitialLoadEvent.getTriggerRouter() != null) {
             if (currentInitialLoadEvent.getTriggerRouter().getTrigger().isUseStreamLobs()
-                    || (data != null && hasLobsThatNeedExtract(sourceTable, data))) {
+                    || (data != null && hasLobsThatNeedExtract(sourceRelation, data))) {
                 return true;
             }
             return currentInitialLoadEvent.getTriggerRouter().getTrigger().isUseStreamLobs();

@@ -52,6 +52,7 @@ import org.apache.commons.lang3.Strings;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -86,6 +87,7 @@ import org.jumpmind.symmetric.io.data.transform.TransformPoint;
 import org.jumpmind.symmetric.job.PushHeartbeatListener;
 import org.jumpmind.symmetric.load.IReloadGenerator;
 import org.jumpmind.symmetric.load.IReloadListener;
+import org.jumpmind.symmetric.load.IRelationReloadVariableFilter;
 import org.jumpmind.symmetric.load.IReloadVariableFilter;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
@@ -1827,11 +1829,11 @@ public class DataService extends AbstractService implements IDataService {
                                     : triggerRouter.getInitialLoadSelect();
                         }
                     }
-                    Table table = getTargetPlatform(triggerHistory.getSourceTableName()).getTableFromCache(
+                    Relation relation = getTargetPlatform(triggerHistory.getSourceTableName()).getRelationFromCache(
                             triggerHistory.getSourceCatalogName(), triggerHistory.getSourceSchemaName(),
                             triggerHistory.getSourceTableName(), false);
-                    if (table != null) {
-                        processInfo.setCurrentTableName(table.getName());
+                    if (relation != null) {
+                        processInfo.setCurrentTableName(relation.getName());
                         Trigger trigger = triggerRouter.getTrigger();
                         String reloadChannel = getReloadChannelIdForTrigger(trigger, channels);
                         Channel channel = channels.get(reloadChannel);
@@ -1846,9 +1848,9 @@ public class DataService extends AbstractService implements IDataService {
                             }
                         }
                         if (rowCount == -1) {
-                            rowCount = getDataCountForReload(table, targetNode, selectSql, loadId);
+                            rowCount = getDataCountForReload(relation, targetNode, selectSql, loadId);
                         }
-                        long transformMultiplier = getTransformMultiplier(table, triggerRouter);
+                        long transformMultiplier = getTransformMultiplier(relation, triggerRouter);
                         long startBatchId = 0;
                         long numberOfBatches = 1;
                         if (parameterService.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB)) {
@@ -1870,14 +1872,14 @@ public class DataService extends AbstractService implements IDataService {
                         }
                         long endBatchId = startBatchId + numberOfBatches - 1;
                         firstBatchId = firstBatchId == 0 ? startBatchId : firstBatchId;
-                        if (table.getNameLowerCase().startsWith(symmetricDialect.getTablePrefix() + "_" + TableConstants.SYM_FILE_SNAPSHOT)) {
+                        if (relation.getNameLowerCase().startsWith(symmetricDialect.getTablePrefix() + "_" + TableConstants.SYM_FILE_SNAPSHOT)) {
                             TableReloadStatus reloadStatus = getTableReloadStatusByLoadIdAndSourceNodeId(loadId, sourceNodeId);
                             firstBatchId = reloadStatus.getStartDataBatchId() > 0 ? reloadStatus.getStartDataBatchId() : firstBatchId;
                         }
                         updateTableReloadStatusDataCounts(platform.supportsMultiThreadedTransactions() ? null : transaction,
                                 loadId, sourceNodeId, firstBatchId, endBatchId, numberOfBatches, rowCount);
                         ExtractRequest request = engine.getDataExtractorService().requestExtractRequest(transaction, targetNode.getNodeId(), channel.getQueue(),
-                                triggerRouter, startBatchId, endBatchId, loadId, table.getName(), rowCount, parentRequestId);
+                                triggerRouter, startBatchId, endBatchId, loadId, relation.getName(), rowCount, parentRequestId);
                         if (parentRequest == null) {
                             requests.put(triggerHistory.getTriggerHistoryId(), request);
                         }
@@ -1905,11 +1907,12 @@ public class DataService extends AbstractService implements IDataService {
         return requests;
     }
 
-    protected long getDataCountForReload(Table table, Node targetNode, String selectSql, long loadId) throws SqlException {
+    @SuppressWarnings("deprecation")
+    protected long getDataCountForReload(Relation relation, Node targetNode, String selectSql, long loadId) throws SqlException {
         long rowCount = -1;
         if (parameterService.is(ParameterConstants.INITIAL_LOAD_USE_ESTIMATED_COUNTS) &&
                 (selectSql == null || StringUtils.isBlank(selectSql) || selectSql.replace(" ", "").equals("1=1"))) {
-            rowCount = getTargetPlatform().getEstimatedRowCount(table);
+            rowCount = getTargetPlatform().getEstimatedRowCount(relation);
         }
         if (rowCount < 0) {
             DatabaseInfo dbInfo = getTargetPlatform().getDatabaseInfo();
@@ -1919,13 +1922,21 @@ public class DataService extends AbstractService implements IDataService {
             if (selectSql != null && selectSql.trim().toUpperCase().startsWith("WHERE")) {
                 selectSql = selectSql.trim().substring(5);
             }
-            String sql = String.format("select count(*) from %s t where %s", table
-                    .getQualifiedTableName(quote, catalogSeparator, schemaSeparator), selectSql);
+            String sql = String.format("select count(*) from %s t where %s", relation
+                    .getQualifiedName(quote, catalogSeparator, schemaSeparator), selectSql);
             sql = FormatUtils.replace("groupId", targetNode.getNodeGroupId(), sql);
             sql = FormatUtils.replace("externalId", targetNode.getExternalId(), sql);
             sql = FormatUtils.replace("nodeId", targetNode.getNodeId(), sql);
-            for (IReloadVariableFilter filter : extensionService.getExtensionPointList(IReloadVariableFilter.class)) {
-                sql = filter.filterPurgeSql(sql, targetNode, table);
+            if (parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE)) {
+                if (relation instanceof Table table) {
+                    for (IReloadVariableFilter filter : extensionService.getExtensionPointList(IReloadVariableFilter.class)) {
+                        sql = filter.filterPurgeSql(sql, targetNode, table);
+                    }
+                }
+            } else {
+                for (IRelationReloadVariableFilter filter : extensionService.getExtensionPointList(IRelationReloadVariableFilter.class)) {
+                    sql = filter.filterPurgeSql(sql, targetNode, relation);
+                }
             }
             try {
                 rowCount = getTargetPlatform().getSqlTemplateDirty().queryForLong(sql);
@@ -1936,13 +1947,13 @@ public class DataService extends AbstractService implements IDataService {
         return rowCount;
     }
 
-    protected int getTransformMultiplier(Table table, TriggerRouter triggerRouter) {
+    protected int getTransformMultiplier(Relation relation, TriggerRouter triggerRouter) {
         int transformMultiplier = 0;
         List<TransformTableNodeGroupLink> transforms = engine.getTransformService()
                 .findTransformsFor(triggerRouter.getRouter().getNodeGroupLink(), TransformPoint.EXTRACT);
         if (transforms != null) {
             for (TransformService.TransformTableNodeGroupLink transform : transforms) {
-                if (transform.getSourceTableName().equals(table.getName())) {
+                if (transform.getSourceTableName().equals(relation.getName())) {
                     transformMultiplier++;
                 }
             }
@@ -2145,6 +2156,7 @@ public class DataService extends AbstractService implements IDataService {
                 isLoad, loadId, createBy, Status.NE);
     }
 
+    @SuppressWarnings("deprecation")
     protected void createPurgeEvent(ISqlTransaction transaction, String sql, Node targetNode, Node sourceNode,
             TriggerRouter triggerRouter, TriggerHistory triggerHistory, boolean isLoad,
             long loadId, String createBy, Status outgoingBatchStatus) {
@@ -2159,8 +2171,14 @@ public class DataService extends AbstractService implements IDataService {
         sql = FormatUtils.replace("sourceNodeId", sourceNode.getNodeId(), sql);
         Table table = new Table(triggerHistory.getSourceCatalogName(), triggerHistory.getSourceSchemaName(),
                 triggerHistory.getSourceTableName(), triggerHistory.getParsedColumnNames(), triggerHistory.getParsedPkColumnNames());
-        for (IReloadVariableFilter filter : extensionService.getExtensionPointList(IReloadVariableFilter.class)) {
-            sql = filter.filterPurgeSql(sql, targetNode, table);
+        if (parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE)) {
+            for (IReloadVariableFilter filter : extensionService.getExtensionPointList(IReloadVariableFilter.class)) {
+                sql = filter.filterPurgeSql(sql, targetNode, table);
+            }
+        } else {
+            for (IRelationReloadVariableFilter filter : extensionService.getExtensionPointList(IRelationReloadVariableFilter.class)) {
+                sql = filter.filterPurgeSql(sql, targetNode, table);
+            }
         }
         String channelId = getReloadChannelIdForTrigger(triggerRouter.getTrigger(), engine
                 .getConfigurationService().getChannels(false));
@@ -2911,9 +2929,9 @@ public class DataService extends AbstractService implements IDataService {
             List<TableRow> tableRows = new ArrayList<TableRow>();
             Row row = new Row(dataMap.size());
             row.putAll(dataMap);
-            Table localTable = platform.getTableFromCache(table.getCatalog(), table.getSchema(), table.getName(), false);
+            Table localTable = (Table) platform.getRelationFromCache(table.getCatalog(), table.getSchema(), table.getName(), false);
             if (localTable == null) {
-                log.info("Could not find table " + table.getFullyQualifiedTableName());
+                log.info("Could not find table " + table.getFullyQualifiedName());
             }
             tableRows.add(new TableRow(localTable, row, null, null, null));
             List<TableRow> foreignTableRows = platform.getDdlReader().getImportedForeignTableRows(tableRows, new HashSet<TableRow>(), symmetricDialect
@@ -2979,10 +2997,10 @@ public class DataService extends AbstractService implements IDataService {
                 + engine.getNodeId() + "\", " + rowNumber + ", " + rowData + "); } catch (Exception e) { }";
         if (log.isDebugEnabled()) {
             log.debug("Requesting missing foreign key rows for batch {}-{} row {} for table {} row data {}", sourceNodeId, batchId, rowNumber,
-                    table.getFullyQualifiedTableName(), data.getCsvData(CsvData.ROW_DATA));
+                    table.getFullyQualifiedName(), data.getCsvData(CsvData.ROW_DATA));
         } else {
             log.info("Requesting missing foreign key rows for batch {}-{} row {} for table {}", sourceNodeId, batchId, rowNumber,
-                    table.getFullyQualifiedTableName());
+                    table.getFullyQualifiedName());
         }
         insertScriptEvent("config", sourceNode, script, false, -1, "fk");
     }
@@ -3033,12 +3051,12 @@ public class DataService extends AbstractService implements IDataService {
         TriggerHistory hist = data.getTriggerHistory();
         IDatabasePlatform targetPlatform = getTargetPlatform(data.getTableName());
         ISymmetricDialect targetDialect = symmetricDialect.getTargetDialect(data.getTableName());
-        Table table = targetPlatform.getTableFromCache(hist.getSourceCatalogName(), hist.getSourceSchemaName(), hist.getSourceTableName(), false);
+        Table table = (Table) targetPlatform.getRelationFromCache(hist.getSourceCatalogName(), hist.getSourceSchemaName(), hist.getSourceTableName(), false);
         if (table == null) {
             log.info("Unable to lookup table " + hist.getFullyQualifiedSourceTableName());
             return false;
         }
-        table = table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
+        table = (Table) table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
         Object[] values = targetPlatform.getObjectValues(targetDialect.getBinaryEncoding(), data.getParsedData(CsvData.ROW_DATA), table.getColumns());
         List<TableRow> tableRows = new ArrayList<TableRow>();
         Row row = new Row(values.length);
@@ -3060,7 +3078,7 @@ public class DataService extends AbstractService implements IDataService {
         for (TableRow foreignTableRow : foreignTableRows) {
             if (foreignTableRow.getRow().size() == 0) {
                 log.info("Resolving batch {} to ignore the row because {} refers to a missing foreign row in {}", batchName,
-                        table.getFullyQualifiedTableName(), foreignTableRow.getTable().getFullyQualifiedTableName());
+                        table.getFullyQualifiedName(), foreignTableRow.getTable().getFullyQualifiedName());
                 foundAllRows = false;
                 break;
             }
@@ -3078,7 +3096,7 @@ public class DataService extends AbstractService implements IDataService {
                         }
                     }
                     log.info("Issuing foreign key correction for batch {} table {}: foreign table '{}' column '{}' fk name '{}' where '{}'",
-                            batchName, data.getTableName(), Table.getFullyQualifiedTableName(catalog, schema, foreignTable.getName()),
+                            batchName, data.getTableName(), Table.getFullyQualifiedName(catalog, schema, foreignTable.getName()),
                             foreignTableRow.getReferenceColumnName(), foreignTableRow.getFkName(), foreignTableRow.getWhereSql());
                     try {
                         reloadTableImmediate(nodeId, catalog, schema, foreignTable.getName(), foreignTableRow.getWhereSql(),
@@ -3100,17 +3118,17 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     protected void sortTableRowsByForeignKeys(List<TableRow> tableRows) {
-        List<Table> tables = new ArrayList<Table>();
+        List<Table> tables = new ArrayList<>();
         for (TableRow tableRow : tableRows) {
             tables.add(tableRow.getTable());
         }
-        List<Table> sortedTables = Database.sortByForeignKeys(tables);
-        Map<Table, Integer> tableMap = new HashMap<Table, Integer>();
+        List<Relation> sortedTables = Database.sortByForeignKeys(new ArrayList<>(tables));
+        Map<Relation, Integer> tableMap = new HashMap<>();
         int index = 0;
-        for (Table table : sortedTables) {
+        for (Relation table : sortedTables) {
             tableMap.put(table, index++);
         }
-        Collections.sort(tableRows, new Comparator<TableRow>() {
+        Collections.sort(tableRows, new Comparator<>() {
             @Override
             public int compare(TableRow t1, TableRow t2) {
                 Integer i1 = tableMap.get(t1.getTable());
@@ -3289,7 +3307,7 @@ public class DataService extends AbstractService implements IDataService {
                     ? ""
                     : databaseInfo.getDelimiterToken();
             sql = "select " + triggerHistory.getColumnNames() + " from "
-                    + Table.getFullyQualifiedTableName(triggerHistory.getSourceCatalogName(), triggerHistory.getSourceSchemaName(),
+                    + Table.getFullyQualifiedName(triggerHistory.getSourceCatalogName(), triggerHistory.getSourceSchemaName(),
                             triggerHistory.getSourceTableName(), quote, databaseInfo.getCatalogSeparator(),
                             databaseInfo.getSchemaSeparator()) + " t where " + whereClause;
             Row row = transaction.queryForRow(sql);
@@ -3304,8 +3322,11 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     protected String getCsvDataFor(ISqlTransaction transaction, Trigger trigger, TriggerHistory triggerHistory, String whereClause, boolean pkOnly) {
-        Table table = platform.getTableFromCache(trigger.getSourceCatalogName(),
+        Relation relation = platform.getRelationFromCache(trigger.getSourceCatalogName(),
                 trigger.getSourceSchemaName(), trigger.getSourceTableName(), false);
+        if (!(relation instanceof Table table)) {
+            return null;
+        }
         return getCsvDataFor(transaction, trigger, triggerHistory, whereClause, pkOnly, table);
     }
 
@@ -3815,19 +3836,19 @@ public class DataService extends AbstractService implements IDataService {
                 triggerRouters = engine.getTriggerRouterService().getAllTriggerRoutersForCurrentNode(engine.getNodeService().findIdentity().getNodeGroupId());
             }
             Trigger trigger = null;
-            Table table = null;
+            Relation relation = null;
             for (TriggerRouter triggerRouter : triggerRouters) {
                 if (triggerRouter.isEnabled() && triggerRouter.getTrigger().getSourceTableName().equalsIgnoreCase(tableName)) {
                     trigger = triggerRouter.getTrigger();
                     if (trigger.isSourceCatalogNameWildCarded() || trigger.isSourceSchemaNameWildCarded()) {
                         ensureHistoriesLoaded();
                     }
-                    table = TriggerUtils.resolveTableForTrigger(trigger, tableName, activeTriggerHistories, platform);
+                    relation = TriggerUtils.resolveRelationForTrigger(trigger, tableName, activeTriggerHistories, platform);
                     break;
                 }
             }
-            if (table != null && trigger != null) {
-                return reconcileTriggerHistory(trigger, table, triggerHistId, data, tableName, isExistingTriggerHist);
+            if (relation != null && trigger != null) {
+                return reconcileTriggerHistory(trigger, relation, triggerHistId, data, tableName, isExistingTriggerHist);
             }
             return TriggerUtils.buildStubTriggerHistory(triggerHistId, tableName, data.getDataId(), missingConfigTriggerHist);
         }
@@ -3839,12 +3860,12 @@ public class DataService extends AbstractService implements IDataService {
             }
         }
 
-        private TriggerHistory reconcileTriggerHistory(Trigger trigger, Table table, int triggerHistId, Data data, String tableName,
+        private TriggerHistory reconcileTriggerHistory(Trigger trigger, Relation relation, int triggerHistId, Data data, String tableName,
                 boolean isExistingTriggerHist) {
             ensureHistoriesLoaded();
             TriggerHistory triggerHistory = findMatchingTriggerHistory(trigger, data, tableName);
             if (triggerHistory == null) {
-                triggerHistory = TriggerUtils.createNewTriggerHistory(trigger, table, triggerHistId, isExistingTriggerHist, data.getDataId(),
+                triggerHistory = TriggerUtils.createNewTriggerHistory(trigger, relation, triggerHistId, isExistingTriggerHist, data.getDataId(),
                         activeTriggerHistories, engine);
                 activeTriggerHistories.add(triggerHistory);
                 allTriggerHistories.add(triggerHistory);
@@ -3938,19 +3959,19 @@ public class DataService extends AbstractService implements IDataService {
         IDatabasePlatform platform = engine.getDatabasePlatform();
         for (Data data : dataList) {
             TriggerHistory hist = data.getTriggerHistory();
-            Table table = platform.getTableFromCache(hist.getSourceCatalogName(), hist.getSourceSchemaName(), hist.getSourceTableName(), false);
-            if (table != null) {
-                table = table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
+            Relation relation = platform.getRelationFromCache(hist.getSourceCatalogName(), hist.getSourceSchemaName(), hist.getSourceTableName(), false);
+            if (relation != null) {
+                relation = relation.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
                 if (data.getDataEventType() == DataEventType.INSERT || data.getDataEventType() == DataEventType.UPDATE) {
-                    convertDataToReload(data, table, hist, nodeId);
+                    convertDataToReload(data, relation, hist, nodeId);
                 } else if (data.getDataEventType() == DataEventType.DELETE) {
                     String[] pkData = data.getParsedData(CsvData.PK_DATA);
-                    Object[] values = platform.getObjectValues(engine.getSymmetricDialect().getBinaryEncoding(), pkData, table.getPrimaryKeyColumns());
-                    DmlStatement st = platform.createDmlStatement(DmlType.COUNT, table.getCatalog(), table.getSchema(),
-                            table.getName(), table.getPrimaryKeyColumns(), table.getPrimaryKeyColumns(), DmlStatement.getNullKeyValues(values), null);
+                    Object[] values = platform.getObjectValues(engine.getSymmetricDialect().getBinaryEncoding(), pkData, relation.getPrimaryKeyColumns());
+                    DmlStatement st = platform.createDmlStatement(DmlType.COUNT, relation.getCatalog(), relation.getSchema(),
+                            relation.getName(), relation.getPrimaryKeyColumns(), relation.getPrimaryKeyColumns(), DmlStatement.getNullKeyValues(values), null);
                     int count = platform.getSqlTemplateDirty().queryForInt(st.getSql(), values);
                     if (count > 0) {
-                        convertDataToReload(data, table, hist, nodeId);
+                        convertDataToReload(data, relation, hist, nodeId);
                     } else {
                         data.setNodeList(nodeId);
                         data.setExternalData(null);
@@ -3984,7 +4005,7 @@ public class DataService extends AbstractService implements IDataService {
         }
     }
 
-    protected void convertDataToReload(Data data, Table table, TriggerHistory hist, String nodeId) {
+    protected void convertDataToReload(Data data, Relation relation, TriggerHistory hist, String nodeId) {
         IDatabasePlatform platform = engine.getDatabasePlatform();
         BinaryEncoding encoding = engine.getSymmetricDialect().getBinaryEncoding();
         String[] pkNames = hist.getParsedPkColumnNames();
@@ -3994,10 +4015,10 @@ public class DataService extends AbstractService implements IDataService {
         } else {
             pkData = data.getParsedData(CsvData.PK_DATA);
         }
-        DmlStatement st = platform.createDmlStatement(DmlType.WHERE, table.getCatalog(), table.getSchema(),
-                table.getName(), table.getPrimaryKeyColumns(), table.getPrimaryKeyColumns(), DmlStatement.getNullKeyValues(pkData), null);
+        DmlStatement st = platform.createDmlStatement(DmlType.WHERE, relation.getCatalog(), relation.getSchema(),
+                relation.getName(), relation.getPrimaryKeyColumns(), relation.getPrimaryKeyColumns(), DmlStatement.getNullKeyValues(pkData), null);
         Row row = new Row(pkNames.length);
-        Object[] values = platform.getObjectValues(encoding, pkData, table.getPrimaryKeyColumns());
+        Object[] values = platform.getObjectValues(encoding, pkData, relation.getPrimaryKeyColumns());
         for (int i = 0; i < pkNames.length; i++) {
             row.put(pkNames[i], values[i]);
         }
@@ -4107,13 +4128,13 @@ public class DataService extends AbstractService implements IDataService {
                         fullTableName, data.getChannelId());
                 return null;
             }
-            table = platform.getTableFromCache(hist.getSourceCatalogName(), hist.getSourceSchemaName(), hist.getSourceTableName(), false);
+            table = (Table) platform.getRelationFromCache(hist.getSourceCatalogName(), hist.getSourceSchemaName(), hist.getSourceTableName(), false);
             if (table == null) {
                 log.warn("Unable to recapture stale data_id={} because table={} was not found!)", data.getDataId(), fullTableName);
                 return null;
             }
             Trigger trigger = triggerRouters.iterator().next().getTrigger();
-            table = table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
+            table = (Table) table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
             keys = recaptureKeysForData(table, data);
             Object[] values = platform.getObjectValues(engine.getSymmetricDialect().getBinaryEncoding(), keys, table.getPrimaryKeyColumns());
             if (keys == null || values == null) {
@@ -4123,7 +4144,7 @@ public class DataService extends AbstractService implements IDataService {
             String actualRowData = null;
             String pkData = data.getPkData();
             String dataSummary4Log = String.format("data_id=%d, event=%s, table=%s, PK: %s", data.getDataId(),
-                    data.getDataEventType().toString(), table.getFullyQualifiedTableName(), (whereClause.length() <= 100) ? whereClause
+                    data.getDataEventType().toString(), table.getFullyQualifiedName(), (whereClause.length() <= 100) ? whereClause
                             : whereClause.substring(0, 100));
             // Look this record up:
             transaction = sqlTemplate.startSqlTransaction();

@@ -405,7 +405,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                 }
                 if (lookupKeys.size() == 0) {
                     String msg = "There are no keys defined for "
-                            + targetTable.getFullyQualifiedTableName()
+                            + targetTable.getFullyQualifiedName()
                             + ".  Cannot build a delete statement.  ";
                     if (lookupKeyCountBeforeColumnRemoval > 0) {
                         msg += "The only keys defined are binary and they have been removed.";
@@ -562,7 +562,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                     }
                     if (lookupKeys.size() == 0) {
                         String msg = "There are no keys defined for "
-                                + targetTable.getFullyQualifiedTableName()
+                                + targetTable.getFullyQualifiedName()
                                 + ".  Cannot build an update statement.  ";
                         if (lookupKeyCountBeforeColumnRemoval > 0) {
                             msg += "The only keys defined are binary and they have been removed.";
@@ -624,7 +624,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                 checkTargetTableHasColumns();
                 if (log.isDebugEnabled()) {
                     log.debug("Not running update for table {} with pk of {}.  There was no change to apply",
-                            targetTable.getFullyQualifiedTableName(), data.getCsvData(CsvData.PK_DATA));
+                            targetTable.getFullyQualifiedName(), data.getCsvData(CsvData.PK_DATA));
                 }
                 // There was no change to apply
                 return LoadStatus.SUCCESS;
@@ -639,7 +639,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
 
     protected void checkTargetTableHasColumns() {
         if (targetTable.getColumnCount() == 0) {
-            throw new IllegalStateException("There are no columns defined for table " + targetTable.getFullyQualifiedTableName() +
+            throw new IllegalStateException("There are no columns defined for table " + targetTable.getFullyQualifiedName() +
                     " that match with " + sourceTable.getColumnCount() + " columns in the batch");
         }
     }
@@ -721,7 +721,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
                     callback.afterDdlExecution(getTargetPlatform().getSqlTemplate());
                 }
             }
-            getTargetPlatform().resetCachedTableModel();
+            getTargetPlatform().resetCachedRelationModel();
             statistics.get(batch).increment(DataWriterStatisticConstants.CREATECOUNT);
             return true;
         } catch (RuntimeException ex) {
@@ -1140,7 +1140,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
             sql = FormatUtils.replace("tableName", quoteString(table.getName()), sql);
             DatabaseInfo info = getPlatform().getDatabaseInfo();
             String quote = getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn() ? info.getDelimiterToken() : "";
-            sql = FormatUtils.replace("fullTableName", table.getQualifiedTableName(quote, info.getCatalogSeparator(), info.getSchemaSeparator()),
+            sql = FormatUtils.replace("fullTableName", table.getQualifiedName(quote, info.getCatalogSeparator(), info.getSchemaSeparator()),
                     sql);
             final String old38CompatibilityTable = "sym_node";
             if (ATTRIBUTE_CHANNEL_ID_RELOAD.equals(batch.getChannelId()) && sql.matches(TRUNCATE_PATTERN)
@@ -1219,10 +1219,10 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
             changeIndicators[index] = needsUpdated;
         } else if (index == -1) {
             log.warn("Unable to set change indicator because column {} not found on source table {}", column.getName(),
-                    sourceTable.getFullyQualifiedTableName());
+                    sourceTable.getFullyQualifiedName());
         } else {
             log.warn("Unable to set change indicator because column {} is index {} on source table {}, but row data has only {} values",
-                    column.getName(), index, sourceTable.getFullyQualifiedTableName(), changeIndicators.length);
+                    column.getName(), index, sourceTable.getFullyQualifiedName(), changeIndicators.length);
         }
     }
 
@@ -1252,17 +1252,18 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
         if (table == null) {
             try {
                 if (hasUncommittedDdl) {
-                    table = getPlatform(sourceTable).readTableFromDatabase(getTransaction(sourceTable), sourceTable.getCatalog(), sourceTable.getSchema(),
+                    table = (Table) getPlatform(sourceTable).readRelationFromDatabase(getTransaction(sourceTable), sourceTable.getCatalog(), sourceTable
+                            .getSchema(),
                             sourceTable.getName());
                 } else {
-                    table = getPlatform(sourceTable).getTableFromCache(sourceTable.getCatalog(), sourceTable.getSchema(),
+                    table = (Table) getPlatform(sourceTable).getRelationFromCache(sourceTable.getCatalog(), sourceTable.getSchema(),
                             sourceTable.getName(), false);
                 }
                 if (table != null) {
                     table = table.copyAndFilterColumns(sourceTable.getColumnNames(),
                             sourceTable.getPrimaryKeyColumnNames(), writerSettings.isUsePrimaryKeysFromSource(), false);
                     if (table.getPrimaryKeyColumnCount() == 0) {
-                        table = getPlatform(table).makeAllColumnsPrimaryKeys(table);
+                        table = (Table) getPlatform(table).makeAllColumnsPrimaryKeys(table);
                     }
                     if (writerSettings.isTreatDateTimeFieldsAsVarchar() && (batch.getChannelId() != null
                             && !batch.getChannelId().equals(IoConstants.CHANNEL_CONFIG)
@@ -1317,7 +1318,7 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
     }
 
     protected String getTableKey(Table table) {
-        return table.getTableKey();
+        return table.getKey();
     }
 
     protected Table lookupTableFromCache(Table sourceTable, String tableKey) {
@@ -1344,11 +1345,11 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
     protected String getCurData(ISqlTransaction transaction) {
         String curVal = null;
         if (writerSettings.isSaveCurrentValueOnError()) {
-            String[] keyNames = Table.getArrayColumns(context.getTable().getPrimaryKeyColumns());
-            String[] columnNames = Table.getArrayColumns(context.getTable().getColumns());
-            org.jumpmind.db.model.Table targetTable = getPlatform().getTableFromCache(
-                    context.getTable().getCatalog(), context.getTable().getSchema(),
-                    context.getTable().getName(), false);
+            String[] keyNames = Table.getArrayColumns(context.getRelation().getPrimaryKeyColumns());
+            String[] columnNames = Table.getArrayColumns(context.getRelation().getColumns());
+            Table targetTable = (Table) getPlatform().getRelationFromCache(
+                    context.getRelation().getCatalog(), context.getRelation().getSchema(),
+                    context.getRelation().getName(), false);
             targetTable = targetTable.copyAndFilterColumns(columnNames, keyNames, true, false);
             String[] data = context.getData().getParsedData(CsvData.OLD_DATA);
             if (data == null) {

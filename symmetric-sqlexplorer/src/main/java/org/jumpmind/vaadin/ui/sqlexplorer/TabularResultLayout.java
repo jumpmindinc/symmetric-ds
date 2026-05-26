@@ -48,6 +48,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -101,13 +102,13 @@ public class TabularResultLayout extends VerticalLayout {
     final Logger log = LoggerFactory.getLogger(getClass());
     SqlExplorer explorer;
     QueryPanel queryPanel;
-    String tableName;
+    String relationName;
     String catalogName;
     String schemaName;
     Grid<List<Object>> grid;
     Map<Integer, String> columnNameMap;
     Map<Grid.Column<List<Object>>, ValueProvider<List<Object>, Object>> valueProviderMap;
-    org.jumpmind.db.model.Table resultTable;
+    Relation resultRelation;
     String sql;
     ResultSet rs;
     ResultSetMetaData meta;
@@ -177,7 +178,7 @@ public class TabularResultLayout extends VerticalLayout {
             menu.addItem(ACTION_INSERT, event -> handleAction(ACTION_INSERT));
             menu.addItem(ACTION_UPDATE, event -> handleAction(ACTION_UPDATE));
             menu.addItem(ACTION_DELETE, event -> handleAction(ACTION_DELETE));
-            if (resultTable != null && resultTable.getForeignKeyCount() > 0) {
+            if (resultRelation instanceof Table table && table.getForeignKeyCount() > 0) {
                 followToMenu = menu.addItem("Follow to", null);
                 buildFollowToMenu();
             }
@@ -195,17 +196,17 @@ public class TabularResultLayout extends VerticalLayout {
                 }
             }
             editor.setBinder(binder);
-            if (resultTable != null) {
+            if (resultRelation instanceof Table) {
                 List<Object>[] unchangedValue = (List<Object>[]) new List[1];
-                Object[] pkParams = new Object[resultTable.getPrimaryKeyColumnCount()];
+                Object[] pkParams = new Object[resultRelation.getPrimaryKeyColumnCount()];
                 int[] pkTypes = new int[pkParams.length];
                 editor.addOpenListener(event -> {
                     unchangedValue[0] = new ArrayList<Object>(event.getItem());
                     int paramCount = 0;
                     for (int j = 0; j < unchangedValue[0].size(); j++) {
-                        if (resultTable.getPrimaryKeyColumnIndex(columnNameMap.get(j)) >= 0) {
+                        if (resultRelation.getPrimaryKeyColumnIndex(columnNameMap.get(j)) >= 0) {
                             pkParams[paramCount] = unchangedValue[0].get(j);
-                            pkTypes[paramCount] = resultTable.getColumnWithName(columnNameMap.get(j)).getMappedTypeCode();
+                            pkTypes[paramCount] = resultRelation.getColumnWithName(columnNameMap.get(j)).getMappedTypeCode();
                             paramCount++;
                         }
                     }
@@ -225,9 +226,9 @@ public class TabularResultLayout extends VerticalLayout {
                         }
                         colNames.add(colName);
                         params.add(param);
-                        types.add(resultTable.getColumnWithName(colName).getMappedTypeCode());
+                        types.add(resultRelation.getColumnWithName(colName).getMappedTypeCode());
                     }
-                    String sql = buildUpdate(resultTable, colNames, unchangedValue[0], resultTable.getPrimaryKeyColumnNames());
+                    String sql = buildUpdate((Table) resultRelation, colNames, unchangedValue[0], resultRelation.getPrimaryKeyColumnNames());
                     log.warn(sql);
                     Object[] allParams;
                     int[] allTypes;
@@ -245,7 +246,7 @@ public class TabularResultLayout extends VerticalLayout {
                         List<Integer> requiredColTypes = new ArrayList<Integer>();
                         for (int k = 0; k < unchangedValue[0].size(); k++) {
                             Object val = unchangedValue[0].get(k);
-                            Column col = resultTable.getColumn(k);
+                            Column col = resultRelation.getColumn(k);
                             if (db.getPlatform().canColumnBeUsedInWhereClause(col)) {
                                 if (!val.equals("<null>")) {
                                     requiredColParams.add(val);
@@ -399,12 +400,12 @@ public class TabularResultLayout extends VerticalLayout {
                             sql.append(", ").append(quote).append(columnHeaders[i]).append(quote);
                         }
                     }
-                    sql.append(" FROM " + org.jumpmind.db.model.Table.getFullyQualifiedTableName(catalogName, schemaName, tableName, quote,
+                    sql.append(" FROM " + Table.getFullyQualifiedName(catalogName, schemaName, relationName, quote,
                             catalogSeparator, schemaSeparator));
                     sql.append(" WHERE ");
                     int track = 0;
-                    for (int i = 0; i < resultTable.getColumnCount(); i++) {
-                        Column col = resultTable.getColumn(i);
+                    for (int i = 0; i < resultRelation.getColumnCount(); i++) {
+                        Column col = resultRelation.getColumn(i);
                         if (col.isPrimaryKey()) {
                             if (track == 0) {
                                 sql.append(col.getName() + "=" + typeValueList.get(i));
@@ -419,8 +420,8 @@ public class TabularResultLayout extends VerticalLayout {
                     listener.writeSql(sql.toString());
                 } else if (action.equals(ACTION_INSERT)) {
                     StringBuilder sql = new StringBuilder();
-                    sql.append("INSERT INTO ").append(org.jumpmind.db.model.Table.getFullyQualifiedTableName(catalogName, schemaName,
-                            tableName, quote, catalogSeparator, schemaSeparator)).append(" (");
+                    sql.append("INSERT INTO ").append(Table.getFullyQualifiedName(catalogName, schemaName,
+                            relationName, quote, catalogSeparator, schemaSeparator)).append(" (");
                     for (int i = 1; i < columnHeaders.length; i++) {
                         if (i == 1) {
                             sql.append(quote + columnHeaders[i] + quote);
@@ -442,7 +443,7 @@ public class TabularResultLayout extends VerticalLayout {
                     listener.writeSql(sql.toString());
                 } else if (action.equals(ACTION_UPDATE)) {
                     StringBuilder sql = new StringBuilder("UPDATE ");
-                    sql.append(org.jumpmind.db.model.Table.getFullyQualifiedTableName(catalogName, schemaName, tableName, quote,
+                    sql.append(Table.getFullyQualifiedName(catalogName, schemaName, relationName, quote,
                             catalogSeparator, schemaSeparator) + " SET ");
                     for (int i = 1; i < columnHeaders.length; i++) {
                         if (i == 1) {
@@ -454,8 +455,8 @@ public class TabularResultLayout extends VerticalLayout {
                     }
                     sql.append(" WHERE ");
                     int track = 0;
-                    for (int i = 0; i < resultTable.getColumnCount(); i++) {
-                        Column col = resultTable.getColumn(i);
+                    for (int i = 0; i < resultRelation.getColumnCount(); i++) {
+                        Column col = resultRelation.getColumn(i);
                         if (col.isPrimaryKey()) {
                             if (track == 0) {
                                 sql.append(quote).append(col.getName()).append(quote).append("=").append(typeValueList.get(i));
@@ -470,11 +471,11 @@ public class TabularResultLayout extends VerticalLayout {
                     listener.writeSql(sql.toString());
                 } else if (action.equals(ACTION_DELETE)) {
                     StringBuilder sql = new StringBuilder("DELETE FROM ");
-                    sql.append(org.jumpmind.db.model.Table.getFullyQualifiedTableName(catalogName, schemaName, tableName, quote,
+                    sql.append(Table.getFullyQualifiedName(catalogName, schemaName, relationName, quote,
                             catalogSeparator, schemaSeparator)).append(" WHERE ");
                     int track = 0;
-                    for (int i = 0; i < resultTable.getColumnCount(); i++) {
-                        Column col = resultTable.getColumn(i);
+                    for (int i = 0; i < resultRelation.getColumnCount(); i++) {
+                        Column col = resultRelation.getColumn(i);
                         if (col.isPrimaryKey()) {
                             if (track == 0) {
                                 sql.append(quote).append(col.getName()).append(quote).append("=").append(typeValueList.get(i));
@@ -522,7 +523,7 @@ public class TabularResultLayout extends VerticalLayout {
     }
 
     protected void buildFollowToMenu() {
-        ForeignKey[] foreignKeys = resultTable.getForeignKeys();
+        ForeignKey[] foreignKeys = resultRelation instanceof Table table ? table.getForeignKeys() : new ForeignKey[] {};
         for (final ForeignKey foreignKey : foreignKeys) {
             String optionTitle = foreignKey.getForeignTableName() + " (";
             for (Reference ref : foreignKey.getReferences()) {
@@ -546,7 +547,7 @@ public class TabularResultLayout extends VerticalLayout {
             }
             Table foreignTable = foreignKey.getForeignTable();
             if (foreignTable == null) {
-                foreignTable = db.getPlatform().getTableFromCache(foreignKey.getForeignTableName(), false);
+                foreignTable = (Table) db.getPlatform().getRelationFromCache(foreignKey.getForeignTableName(), false);
             }
             Reference[] references = foreignKey.getReferences();
             for (Reference ref : references) {
@@ -591,7 +592,7 @@ public class TabularResultLayout extends VerticalLayout {
         }
         sql.delete(sql.length() - 2, sql.length());
         sql.append(" from ");
-        sql.append(foreignTable.getQualifiedTableName(quote, dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator()));
+        sql.append(foreignTable.getQualifiedName(quote, dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator()));
         sql.append(" where ");
         StringBuilder whereClause = new StringBuilder("(");
         for (Reference ref : references) {
@@ -634,7 +635,7 @@ public class TabularResultLayout extends VerticalLayout {
             first = parsedSql;
         }
         if (!third.equals("")) {
-            tableName = third;
+            relationName = third;
             schemaName = second;
             catalogName = first;
         } else if (!second.equals("")) {
@@ -655,13 +656,13 @@ public class TabularResultLayout extends VerticalLayout {
             } else if (db.getPlatform().getDefaultSchema() != null) {
                 schemaName = first;
             }
-            tableName = second;
+            relationName = second;
         } else if (!first.equals("")) {
-            tableName = parsedSql;
+            relationName = parsedSql;
         }
-        if (isNotBlank(tableName)) {
-            if (tableName.contains(" ")) {
-                tableName = tableName.substring(0, tableName.indexOf(" "));
+        if (isNotBlank(relationName)) {
+            if (relationName.contains(" ")) {
+                relationName = relationName.substring(0, relationName.indexOf(" "));
             }
             if (isBlank(schemaName)) {
                 schemaName = null;
@@ -678,23 +679,23 @@ public class TabularResultLayout extends VerticalLayout {
                 schemaName = schemaName.replaceAll(quote, "");
                 schemaName = schemaName.trim();
             }
-            if (tableName != null && tableName.contains(quote)) {
-                tableName = tableName.replaceAll(quote, "");
-                tableName = tableName.trim();
+            if (relationName != null && relationName.contains(quote)) {
+                relationName = relationName.replaceAll(quote, "");
+                relationName = relationName.trim();
             }
             try {
-                resultTable = db.getPlatform().getTableFromCache(catalogName, schemaName, tableName, false);
-                if (resultTable != null) {
-                    tableName = resultTable.getName();
-                    if (isNotBlank(catalogName) && isNotBlank(resultTable.getCatalog())) {
-                        catalogName = resultTable.getCatalog();
+                resultRelation = db.getPlatform().getRelationFromCache(catalogName, schemaName, relationName, false);
+                if (resultRelation != null) {
+                    relationName = resultRelation.getName();
+                    if (isNotBlank(catalogName) && isNotBlank(resultRelation.getCatalog())) {
+                        catalogName = resultRelation.getCatalog();
                     }
-                    if (isNotBlank(schemaName) && isNotBlank(resultTable.getSchema())) {
-                        schemaName = resultTable.getSchema();
+                    if (isNotBlank(schemaName) && isNotBlank(resultRelation.getSchema())) {
+                        schemaName = resultRelation.getSchema();
                     }
                 }
             } catch (Exception e) {
-                log.debug("Failed to lookup table: " + tableName, e);
+                log.debug("Failed to lookup table: " + relationName, e);
             }
         }
         TypedProperties properties = settings.getProperties();
@@ -810,7 +811,7 @@ public class TabularResultLayout extends VerticalLayout {
         IDatabasePlatform platform = db.getPlatform();
         DatabaseInfo dbInfo = platform.getDatabaseInfo();
         String quote = platform.getDdlBuilder().isDelimitedIdentifierModeOn() ? dbInfo.getDelimiterToken() : "";
-        sql.append(table.getQualifiedTableName(quote, dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator()));
+        sql.append(table.getQualifiedName(quote, dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator()));
         sql.append(" set ");
         for (String col : columnNames) {
             sql.append(quote);

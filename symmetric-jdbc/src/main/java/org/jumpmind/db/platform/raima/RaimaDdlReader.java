@@ -32,6 +32,7 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -51,37 +52,39 @@ public class RaimaDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
-            determineAutoIncrementFromResultSetMetaData(connection, table,
-                    table.getColumns());
-            table.setCatalog(null);
-            if (table.getIndexCount() > 0) {
-                Collection<IIndex> nonPkIndices = new ArrayList<IIndex>();
-                for (IIndex index : table.getIndices()) {
-                    if (index.getColumnCount() == table.getPrimaryKeyColumnCount()) {
-                        int matches = 0;
-                        for (IndexColumn indexColumn : index.getColumns()) {
-                            for (String pkColName : table.getPrimaryKeyColumnNames()) {
-                                if (pkColName.equals(indexColumn.getName())) {
-                                    matches++;
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation != null) {
+            if (relation instanceof Table table) {
+                determineAutoIncrementFromResultSetMetaData(connection, table,
+                        table.getColumns());
+                if (table.getIndexCount() > 0) {
+                    Collection<IIndex> nonPkIndices = new ArrayList<IIndex>();
+                    for (IIndex index : table.getIndices()) {
+                        if (index.getColumnCount() == table.getPrimaryKeyColumnCount()) {
+                            int matches = 0;
+                            for (IndexColumn indexColumn : index.getColumns()) {
+                                for (String pkColName : table.getPrimaryKeyColumnNames()) {
+                                    if (pkColName.equals(indexColumn.getName())) {
+                                        matches++;
+                                    }
                                 }
                             }
-                        }
-                        if (matches != index.getColumnCount()) {
+                            if (matches != index.getColumnCount()) {
+                                nonPkIndices.add(index);
+                            }
+                        } else {
                             nonPkIndices.add(index);
                         }
-                    } else {
-                        nonPkIndices.add(index);
                     }
+                    table.removeAllIndices();
+                    table.addIndices(nonPkIndices);
                 }
-                table.removeAllIndices();
-                table.addIndices(nonPkIndices);
             }
+            relation.setCatalog(null);
         }
-        return table;
+        return relation;
     }
 
     @Override

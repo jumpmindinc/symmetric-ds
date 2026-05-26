@@ -20,16 +20,19 @@
  */
 package org.jumpmind.symmetric.extract;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.extension.IExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
-import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.reader.ExtractDataReader;
 import org.jumpmind.symmetric.io.data.reader.IExtractDataFilter;
+import org.jumpmind.symmetric.io.data.reader.IRelationExtractDataFilter;
 import org.jumpmind.symmetric.io.data.reader.IExtractDataReaderSource;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.service.IParameterService;
 
 public class ExtractDataReaderFactory implements IExtractDataReaderFactory {
     protected ISymmetricEngine engine;
@@ -38,12 +41,18 @@ public class ExtractDataReaderFactory implements IExtractDataReaderFactory {
         this.engine = engine;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ExtractDataReader getReader(IDatabasePlatform platform, IExtractDataReaderSource source, Node sourceNode, Node targetNode,
             IDatabasePlatform targetPlatform) {
-        ISymmetricDialect symmetricDialect = engine.getSymmetricDialect();
-        boolean isUsingUnitypes = symmetricDialect.getParameterService().is(ParameterConstants.DBDIALECT_SYBASE_ASE_CONVERT_UNITYPES_FOR_SYNC);
-        List<IExtractDataFilter> filters = engine.getExtensionService().getExtensionPointList(IExtractDataFilter.class);
+        IParameterService parameterService = engine.getSymmetricDialect().getParameterService();
+        boolean isUsingUnitypes = parameterService.is(ParameterConstants.DBDIALECT_SYBASE_ASE_CONVERT_UNITYPES_FOR_SYNC);
+        List<IExtensionPoint> filters = new ArrayList<IExtensionPoint>();
+        if (parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE)) {
+            engine.getExtensionService().getExtensionPointList(IExtractDataFilter.class).forEach(filters::add);
+        } else {
+            engine.getExtensionService().getExtensionPointList(IRelationExtractDataFilter.class).forEach(filters::add);
+        }
         return new ExtractDataReader(platform, source, filters, isUsingUnitypes, targetPlatform);
     }
 }

@@ -304,7 +304,7 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
                             table.setName(table.getName().replace(batch.getSourceNodeId(), ""));
                         } catch (CloneNotSupportedException e) {
                         }
-                        return table.getTableKey();
+                        return table.getKey();
                     }
                 }
 

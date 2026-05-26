@@ -37,6 +37,8 @@ image::images/canvas/AddTablesDialog.png[]
 
 Select all of the tables that should be synchronized in the given direction. Use the catalog and schema fields to choose the source and target catalog and schema, and use the filters to narrow down the available and selected tables separately. Clicking the Refresh tables button will re-read the tables from the endpoint. Advanced options include a prefix that SymmetricDS will append to its trigger IDs, an option to use a non-default channel, and an option to include foreign key parent tables.
 
+A Show Views checkbox is available for Microsoft SQL Server, Oracle, PostgreSQL, MySQL, and MariaDB source endpoints. Views cannot be configured for change capture, but they can be configured to be refreshed on a schedule by a Data Refresh job.
+
 image::images/canvas/AddTablesDialog_bidirectional.png[]
 
 After table selection, there is an option to configure the selected tables bidirectionally.

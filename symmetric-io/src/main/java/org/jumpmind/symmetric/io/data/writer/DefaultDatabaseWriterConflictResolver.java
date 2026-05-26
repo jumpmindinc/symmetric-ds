@@ -81,7 +81,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
         Column column = targetTable.getColumnWithName(columnName);
         if (column == null) {
             throw new RuntimeException(String.format("Could not find a timestamp column with a name of %s on the table %s.  "
-                    + "Please check your conflict resolution configuration", columnName, targetTable.getQualifiedTableName()));
+                    + "Please check your conflict resolution configuration", columnName, targetTable.getQualifiedName()));
         }
         String sql = stmt.getColumnsSql(new Column[] { column });
         Map<String, String> newData = data.toColumnNameValuePairs(sourceTable.getColumnNames(),
@@ -535,7 +535,8 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
         boolean mismatched = false;
         DefaultDatabaseWriter databaseWriter = (DefaultDatabaseWriter) writer;
         Table targetTable = writer.getTargetTable();
-        Table databaseTable = databaseWriter.getPlatform(writer.getTargetTable()).getTableFromCache(targetTable.getCatalog(), targetTable.getSchema(),
+        Table databaseTable = (Table) databaseWriter.getPlatform(writer.getTargetTable()).getRelationFromCache(targetTable.getCatalog(), targetTable
+                .getSchema(),
                 targetTable.getName(), false);
         if (databaseTable != null) {
             String[] names = targetTable.getPrimaryKeyColumnNames();
@@ -671,7 +672,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                 return true;
             } else {
                 throw new RuntimeException("Failed to delete foreign table rows to fix foreign key violation for table '"
-                        + writer.getTargetTable().getFullyQualifiedTableName() + "'");
+                        + writer.getTargetTable().getFullyQualifiedName() + "'");
             }
         }
         return false;
@@ -719,7 +720,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
             }
         });
         if (foreignTableRows.isEmpty()) {
-            log.info("Could not determine foreign table rows to fix foreign key violation for table '{}'", targetTable.getFullyQualifiedTableName());
+            log.info("Could not determine foreign table rows to fix foreign key violation for table '{}'", targetTable.getFullyQualifiedName());
             return false;
         }
         Collections.reverse(foreignTableRows);
@@ -728,10 +729,10 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
             if (visited.add(foreignTableRow)) {
                 Table foreignTable = foreignTableRow.getTable();
                 log.info("Remove foreign row from table '{}' fk name '{}' where sql '{}' to correct table '{}' for column '{}'",
-                        foreignTable.getFullyQualifiedTableName(), foreignTableRow.getFkName(), foreignTableRow.getWhereSql(),
+                        foreignTable.getFullyQualifiedName(), foreignTableRow.getFkName(), foreignTableRow.getWhereSql(),
                         targetTable.getName(), foreignTableRow.getReferenceColumnName());
                 DatabaseInfo info = platform.getDatabaseInfo();
-                String tableName = Table.getFullyQualifiedTableName(foreignTable.getCatalog(), foreignTable.getSchema(), foreignTable.getName(),
+                String tableName = Table.getFullyQualifiedName(foreignTable.getCatalog(), foreignTable.getSchema(), foreignTable.getName(),
                         info.getDelimiterToken(), info.getCatalogSeparator(), info.getSchemaSeparator());
                 String cte = updateCteExpression(info.getCteExpression(), databaseWriter.getBatch().getSourceNodeId(), platform.getDdlBuilder()
                         .getCteExpressionPrefix());

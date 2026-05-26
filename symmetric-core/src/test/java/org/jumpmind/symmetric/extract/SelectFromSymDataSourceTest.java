@@ -117,7 +117,7 @@ class SelectFromSymDataSourceTest {
         when(outgoingBatch.getLoadId()).thenReturn(0L);
         when(outgoingBatch.getNodeBatchId()).thenReturn("target-1");
         tableWithFksAndIndexes = buildTableWithFksAndIndexes();
-        when(platform.getTableFromCache(any(), any(), any(), anyBoolean())).thenReturn(tableWithFksAndIndexes);
+        when(platform.getRelationFromCache(any(), any(), any(), anyBoolean())).thenReturn(tableWithFksAndIndexes);
     }
 
     private Table buildTableWithFksAndIndexes() {
@@ -156,7 +156,7 @@ class SelectFromSymDataSourceTest {
         when(outgoingBatch.isLoadFlag()).thenReturn(true);
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
         SelectFromSymDataSource source = createSource();
-        source.sourceTable = tableWithFksAndIndexes;
+        source.sourceRelation = tableWithFksAndIndexes;
         setColumnsAccordingToTriggerHistory(source, buildTableWithFksAndIndexes());
         TriggerHistory hist = new TriggerHistory("test_table", "id", "id,name,ref_id");
         Data data = new Data("test_table", DataEventType.CREATE, "", null, hist, "default", null, null);
@@ -173,7 +173,7 @@ class SelectFromSymDataSourceTest {
         when(outgoingBatch.isLoadFlag()).thenReturn(true);
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
         SelectFromSymDataSource source = createSource();
-        source.sourceTable = tableWithFksAndIndexes;
+        source.sourceRelation = tableWithFksAndIndexes;
         setColumnsAccordingToTriggerHistory(source, buildTableWithFksAndIndexes());
         TriggerHistory hist = new TriggerHistory("test_table", "id", "id,name,ref_id");
         Data data = new Data("test_table", DataEventType.CREATE, "", null, hist, "default", null, null);
@@ -189,7 +189,7 @@ class SelectFromSymDataSourceTest {
         when(outgoingBatch.isLoadFlag()).thenReturn(false);
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
         SelectFromSymDataSource source = createSource();
-        source.sourceTable = tableWithFksAndIndexes;
+        source.sourceRelation = tableWithFksAndIndexes;
         setColumnsAccordingToTriggerHistory(source, buildTableWithFksAndIndexes());
         TriggerHistory hist = new TriggerHistory("test_table", "id", "id,name,ref_id");
         Data data = new Data("test_table", DataEventType.CREATE, "", null, hist, "default", null, null);
@@ -206,7 +206,7 @@ class SelectFromSymDataSourceTest {
         when(outgoingBatch.isLoadFlag()).thenReturn(false);
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
         SelectFromSymDataSource source = createSource();
-        source.sourceTable = tableWithFksAndIndexes;
+        source.sourceRelation = tableWithFksAndIndexes;
         setColumnsAccordingToTriggerHistory(source, buildTableWithFksAndIndexes());
         TriggerHistory hist = new TriggerHistory("test_table", "id", "id,name,ref_id");
         Data data = new Data("test_table", DataEventType.CREATE, "", null, hist, "default", null, null);

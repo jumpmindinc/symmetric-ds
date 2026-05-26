@@ -20,7 +20,7 @@
  */
 package org.jumpmind.symmetric.io.data.reader;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
 
@@ -28,14 +28,14 @@ public interface IExtractDataReaderSource {
     public Batch getBatch();
 
     /**
-     * Return the table with the catalog, schema, and table name of the target table for the last {@link CsvData} retrieved by {@link #next()}
+     * Return the relation with the catalog, schema, and relation name of the target relation for the last {@link CsvData} retrieved by {@link #next()}
      */
-    public Table getTargetTable();
+    public Relation getTargetRelation();
 
     /**
-     * Return the table with the catalog, schema, and table name of the source table for the last {@link CsvData} retrieved by {@link #next()}
+     * Return the relation with the catalog, schema, and relation name of the source relation for the last {@link CsvData} retrieved by {@link #next()}
      */
-    public Table getSourceTable();
+    public Relation getSourceRelation();
 
     public CsvData next();
 

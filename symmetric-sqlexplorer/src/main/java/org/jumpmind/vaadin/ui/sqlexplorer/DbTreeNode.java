@@ -122,7 +122,7 @@ public class DbTreeNode implements Serializable {
         IDb db = dbTree.getDbForNode(this);
         IDatabasePlatform platform = db.getPlatform();
         TypedProperties nodeProperties = getProperties();
-        return platform.getTableFromCache(
+        return (Table) platform.getRelationFromCache(
                 nodeProperties.get(DbTree.PROPERTY_CATALOG_NAME),
                 nodeProperties.get(DbTree.PROPERTY_SCHEMA_NAME), name, false);
     }

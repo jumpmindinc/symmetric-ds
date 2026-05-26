@@ -28,6 +28,7 @@ import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.csv.CsvReader;
@@ -90,28 +91,28 @@ public class TriggerHistory implements Serializable {
         this.isMissingPk = Objects.equals(pkColumnNames, columnNames) || StringUtils.isBlank(pkColumnNames);
     }
 
-    public TriggerHistory(Table table, Trigger trigger, AbstractTriggerTemplate triggerTemplate) {
-        this(table, trigger, triggerTemplate, null);
+    public TriggerHistory(Relation relation, Trigger trigger, AbstractTriggerTemplate triggerTemplate) {
+        this(relation, trigger, triggerTemplate, null);
     }
 
-    public TriggerHistory(Table table, Trigger trigger, AbstractTriggerTemplate triggerTemplate, TriggerReBuildReason reason) {
+    public TriggerHistory(Relation relation, Trigger trigger, AbstractTriggerTemplate triggerTemplate, TriggerReBuildReason reason) {
         this();
         if (triggerTemplate == null) {
             throw new SymmetricException("triggerTemplate cannot be null. Does the current dialect have a TriggerTemplate?");
         }
         this.lastTriggerBuildReason = reason;
-        this.sourceTableName = (trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded()) ? table.getName()
+        this.sourceTableName = (trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded()) ? relation.getName()
                 : trigger.getSourceTableNameUnescaped();
-        this.columnNames = Table.getCommaDeliminatedColumns(trigger.orderColumnsForTable(table));
-        this.sourceSchemaName = trigger.isSourceSchemaNameWildCarded() ? table.getSchema() : trigger.getSourceSchemaNameUnescaped();
-        this.sourceCatalogName = trigger.isSourceCatalogNameWildCarded() ? table.getCatalog() : trigger.getSourceCatalogNameUnescaped();
+        this.columnNames = Relation.getCommaDeliminatedColumns(trigger.orderColumnsForTable(relation));
+        this.sourceSchemaName = trigger.isSourceSchemaNameWildCarded() ? relation.getSchema() : trigger.getSourceSchemaNameUnescaped();
+        this.sourceCatalogName = trigger.isSourceCatalogNameWildCarded() ? relation.getCatalog() : trigger.getSourceCatalogNameUnescaped();
         this.triggerId = trigger.getTriggerId();
-        this.pkColumnNames = Table.getCommaDeliminatedColumns(trigger.filterExcludedAndIncludedColumns(trigger
-                .getSyncKeysColumnsForTable(table)));
-        this.isMissingPk = !table.hasPrimaryKey() || table.isMadeAllColumnsPrimaryKey() || StringUtils.isBlank(pkColumnNames);
+        this.pkColumnNames = Relation.getCommaDeliminatedColumns(trigger.filterExcludedAndIncludedColumns(trigger
+                .getSyncKeysColumnsForTable(relation)));
+        this.isMissingPk = !relation.hasPrimaryKey() || relation.isMadeAllColumnsPrimaryKey() || StringUtils.isBlank(pkColumnNames);
         this.triggerRowHash = trigger.toHashedValue();
         this.triggerTemplateHash = triggerTemplate.toHashedValue();
-        this.tableHash = table.calculateTableHashcode();
+        this.tableHash = relation.calculateHashcode();
     }
 
     public TriggerHistory(Trigger trigger) {
@@ -172,7 +173,7 @@ public class TriggerHistory implements Serializable {
     }
 
     public String getFullyQualifiedSourceTableName() {
-        return Table.getFullyQualifiedTableName(sourceCatalogName, sourceSchemaName, sourceTableName);
+        return Table.getFullyQualifiedName(sourceCatalogName, sourceSchemaName, sourceTableName);
     }
 
     public String getSourceTableName() {

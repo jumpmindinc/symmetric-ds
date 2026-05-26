@@ -22,7 +22,7 @@ package org.jumpmind.symmetric.io.data.reader;
 
 import static org.junit.Assert.*;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvConstants;
@@ -49,13 +49,13 @@ public class ProtocolDataReaderTest {
         Batch batch = reader.nextBatch();
         assertNotNull(batch);
         assertEquals(batchId, batch.getBatchId());
-        Table table = reader.nextTable();
-        assertNotNull(table);
-        assertEquals("test1", table.getName());
-        assertEquals(2, table.getColumnCount());
-        assertEquals(1, table.getPrimaryKeyColumns().length);
-        assertEquals("id", table.getColumn(0).getName());
-        assertEquals("text", table.getColumn(1).getName());
+        Relation relation = reader.nextRelation();
+        assertNotNull(relation);
+        assertEquals("test1", relation.getName());
+        assertEquals(2, relation.getColumnCount());
+        assertEquals(1, relation.getPrimaryKeyColumns().length);
+        assertEquals("id", relation.getColumn(0).getName());
+        assertEquals("text", relation.getColumn(1).getName());
         CsvData data = reader.nextData();
         assertNotNull(data);
         assertEquals(DataEventType.INSERT, data.getDataEventType());
@@ -78,8 +78,8 @@ public class ProtocolDataReaderTest {
         assertEquals("test", data.getParsedData(CsvData.ROW_DATA)[1]);
         data = reader.nextData();
         assertNull(data);
-        table = reader.nextTable();
-        assertNull(table);
+        relation = reader.nextRelation();
+        assertNull(relation);
         batch = reader.nextBatch();
         assertNull(batch);
         reader.close();
@@ -106,41 +106,41 @@ public class ProtocolDataReaderTest {
         reader.open(ctx);
         Batch batch = reader.nextBatch();
         assertNotNull(batch);
-        Table table = reader.nextTable();
-        assertNotNull(table);
-        assertEquals(2, table.getColumnCount());
-        assertEquals(1, table.getPrimaryKeyColumnCount());
-        assertEquals("test1", table.getName());
+        Relation relation = reader.nextRelation();
+        assertNotNull(relation);
+        assertEquals(2, relation.getColumnCount());
+        assertEquals(1, relation.getPrimaryKeyColumnCount());
+        assertEquals("test1", relation.getName());
         int dataCount = 0;
         while (reader.nextData() != null) {
             dataCount++;
         }
         assertEquals(4, dataCount);
-        table = reader.nextTable();
-        assertNotNull(table);
-        assertEquals(2, table.getColumnCount());
-        assertEquals(1, table.getPrimaryKeyColumnCount());
-        assertEquals("test2", table.getName());
+        relation = reader.nextRelation();
+        assertNotNull(relation);
+        assertEquals(2, relation.getColumnCount());
+        assertEquals(1, relation.getPrimaryKeyColumnCount());
+        assertEquals("test2", relation.getName());
         dataCount = 0;
         while (reader.nextData() != null) {
             dataCount++;
         }
         assertEquals(4, dataCount);
-        table = reader.nextTable();
-        assertNotNull(table);
-        assertEquals(2, table.getColumnCount());
-        assertEquals(1, table.getPrimaryKeyColumnCount());
-        assertEquals("test1", table.getName());
+        relation = reader.nextRelation();
+        assertNotNull(relation);
+        assertEquals(2, relation.getColumnCount());
+        assertEquals(1, relation.getPrimaryKeyColumnCount());
+        assertEquals("test1", relation.getName());
         dataCount = 0;
         while (reader.nextData() != null) {
             dataCount++;
         }
         assertEquals(2, dataCount);
-        table = reader.nextTable();
-        assertNotNull(table);
-        assertEquals(2, table.getColumnCount());
-        assertEquals(1, table.getPrimaryKeyColumnCount());
-        assertEquals("test2", table.getName());
+        relation = reader.nextRelation();
+        assertNotNull(relation);
+        assertEquals(2, relation.getColumnCount());
+        assertEquals(1, relation.getPrimaryKeyColumnCount());
+        assertEquals("test2", relation.getName());
         dataCount = 0;
         while (reader.nextData() != null) {
             dataCount++;

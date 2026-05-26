@@ -26,10 +26,15 @@ import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataContext;
 
+/**
+ * @deprecated Use {@link org.jumpmind.symmetric.io.data.reader.IRelationExtractDataFilter} instead, which accepts {@link org.jumpmind.db.model.Relation} to
+ *             support both tables and views. Enable legacy behavior via the {@code extension.use.legacy.interface.enabled} parameter.
+ */
+@Deprecated(forRemoval = true)
 public interface IExtractDataFilter extends IExtensionPoint {
     /**
      * Called during extraction of sym_data or source table
-     * 
+     *
      * @return true if the row should be extracted
      */
     public boolean filterData(DataContext context, Batch batch, Table table, CsvData data);

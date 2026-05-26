@@ -59,6 +59,7 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -99,21 +100,23 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation != null) {
             // Sybase does not return the auto-increment status or the generated
             // column status via the database metadata
-            determineAutoIncrementFromResultSetMetaData(connection, table, table.getColumns());
+            if (relation instanceof Table table) {
+                determineAutoIncrementFromResultSetMetaData(connection, table, table.getColumns());
+            }
             if (getMajorVersion(metaData) >= 15) {
-                determineGeneratedColumns(connection, table, table.getColumns());
+                determineGeneratedColumns(connection, relation, relation.getColumns());
             }
         }
-        return table;
+        return relation;
     }
 
-    protected void determineGeneratedColumns(Connection conn, Table table, final Column columnsToCheck[]) {
+    protected void determineGeneratedColumns(Connection conn, Relation relation, final Column columnsToCheck[]) {
         StringBuilder query = new StringBuilder();
         if (columnsToCheck == null || columnsToCheck.length == 0) {
             return;
@@ -124,7 +127,7 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
                 + "on col.computedcol = com.id\n"
                 + "where col.id = (select id from sysobjects where name = ?)");
         List<String> l = new ArrayList<String>();
-        l.add(table.getName());
+        l.add(relation.getName());
         List<Row> result = sqlTemplate.query(query.toString(), l.toArray());
         for (Column column : columnsToCheck) {
             for (Row row : result) {
@@ -386,10 +389,10 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected String getTableNamePattern(String tableName) {
-        tableName = tableName.replace("_", "\\_");
-        tableName = tableName.replace("%", "\\%");
-        return tableName;
+    protected String getRelationNamePattern(String relationName) {
+        relationName = relationName.replace("_", "\\_");
+        relationName = relationName.replace("%", "\\%");
+        return relationName;
     }
 
     @Override

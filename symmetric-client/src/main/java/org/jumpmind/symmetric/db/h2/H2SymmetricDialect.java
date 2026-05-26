@@ -91,7 +91,7 @@ public class H2SymmetricDialect extends AbstractEmbeddedSymmetricDialect impleme
     public void removeTrigger(StringBuilder sqlBuffer, String catalogName, String schemaName, String triggerName,
             String tableName, ISqlTransaction transaction) {
         DatabaseInfo dbInfo = getPlatform().getDatabaseInfo();
-        String prefix = Table.getFullyQualifiedTablePrefix(catalogName, schemaName, dbInfo.getDelimiterToken(),
+        String prefix = Table.getFullyQualifiedPrefix(catalogName, schemaName, dbInfo.getDelimiterToken(),
                 dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator());
         final String dropSql = String.format("DROP TRIGGER IF EXISTS %s%s", prefix, triggerName);
         logSql(dropSql, sqlBuffer);
@@ -99,7 +99,7 @@ public class H2SymmetricDialect extends AbstractEmbeddedSymmetricDialect impleme
         logSql(dropTable, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
             log.info("Dropping trigger {} for {}", triggerName,
-                    Table.getFullyQualifiedTableName(catalogName, schemaName, tableName));
+                    Table.getFullyQualifiedName(catalogName, schemaName, tableName));
             transaction.execute(dropSql);
             transaction.execute(dropTable);
         }

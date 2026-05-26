@@ -51,6 +51,7 @@ import java.util.Map;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -80,17 +81,17 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null && table.getColumnsAsList().stream().anyMatch(col -> col.getDefaultValue() != null
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation != null && relation.getColumnsAsList().stream().anyMatch(col -> col.getDefaultValue() != null
                 && col.getDefaultValue().contains("(") && col.getDefaultValue().contains(")"))) {
-            determineGeneratedColumns(connection, table, table.getColumns());
+            determineGeneratedColumns(connection, relation, relation.getColumns());
         }
-        return table;
+        return relation;
     }
 
-    protected void determineGeneratedColumns(Connection conn, Table table, final Column columnsToCheck[]) {
+    protected void determineGeneratedColumns(Connection conn, Relation relation, final Column columnsToCheck[]) {
         StringBuilder query = new StringBuilder();
         if (columnsToCheck == null || columnsToCheck.length == 0) {
             return;
@@ -102,16 +103,16 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
         }
         query.append("SELECT column_name, " + isGeneratedColumnName + " FROM information_schema.columns WHERE ");
         List<String> l = new ArrayList<String>();
-        if (table.getCatalog() != null) {
+        if (relation.getCatalog() != null) {
             query.append("table_catalog = ? AND ");
-            l.add(table.getCatalog());
+            l.add(relation.getCatalog());
         }
-        if (table.getSchema() != null) {
+        if (relation.getSchema() != null) {
             query.append("table_schema = ? AND ");
-            l.add(table.getSchema());
+            l.add(relation.getSchema());
         }
         query.append("table_name = ?");
-        l.add(table.getName());
+        l.add(relation.getName());
         List<Row> result = sqlTemplate.query(query.toString(), l.toArray());
         for (Column column : columnsToCheck) {
             for (Row row : result) {

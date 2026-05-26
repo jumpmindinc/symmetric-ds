@@ -104,31 +104,31 @@ public class DmlStatement {
         }
         this.quote = databaseInfo.getDelimiterToken() == null || !useQuotedIdentifiers ? "" : databaseInfo.getDelimiterToken();
         if (type == DmlType.INSERT) {
-            this.sql = buildInsertSql(Table.getFullyQualifiedTableName(catalogName, schemaName,
+            this.sql = buildInsertSql(Table.getFullyQualifiedName(catalogName, schemaName,
                     tableName, quote, databaseInfo.getCatalogSeparator(), databaseInfo.getSchemaSeparator()), keysColumns, columns);
         } else if (type == DmlType.UPDATE) {
-            this.sql = buildUpdateSql(Table.getFullyQualifiedTableName(catalogName, schemaName,
+            this.sql = buildUpdateSql(Table.getFullyQualifiedName(catalogName, schemaName,
                     tableName, quote, databaseInfo.getCatalogSeparator(), databaseInfo.getSchemaSeparator()), keysColumns, columns);
         } else if (type == DmlType.DELETE) {
-            this.sql = buildDeleteSql(Table.getFullyQualifiedTableName(catalogName, schemaName,
+            this.sql = buildDeleteSql(Table.getFullyQualifiedName(catalogName, schemaName,
                     tableName, quote, databaseInfo.getCatalogSeparator(), databaseInfo.getSchemaSeparator()), keysColumns);
         } else if (type == DmlType.UPSERT) {
-            this.sql = buildUpsertSql(Table.getFullyQualifiedTableName(catalogName, schemaName,
+            this.sql = buildUpsertSql(Table.getFullyQualifiedName(catalogName, schemaName,
                     tableName, quote, databaseInfo.getCatalogSeparator(), databaseInfo.getSchemaSeparator()), keysColumns, columns);
         } else if (type == DmlType.COUNT) {
-            this.sql = buildCountSql(Table.getFullyQualifiedTableName(catalogName, schemaName,
+            this.sql = buildCountSql(Table.getFullyQualifiedName(catalogName, schemaName,
                     tableName, quote, databaseInfo.getCatalogSeparator(), databaseInfo.getSchemaSeparator()), keysColumns);
         } else if (type == DmlType.FROM) {
-            this.sql = buildFromSql(Table.getFullyQualifiedTableName(catalogName, schemaName,
+            this.sql = buildFromSql(Table.getFullyQualifiedName(catalogName, schemaName,
                     tableName, quote, databaseInfo.getCatalogSeparator(), databaseInfo.getSchemaSeparator()), keysColumns);
         } else if (type == DmlType.WHERE) {
-            this.sql = buildWhereSql(Table.getFullyQualifiedTableName(catalogName, schemaName,
+            this.sql = buildWhereSql(Table.getFullyQualifiedName(catalogName, schemaName,
                     tableName, quote, databaseInfo.getCatalogSeparator(), databaseInfo.getSchemaSeparator()), keysColumns);
         } else if (type == DmlType.SELECT) {
-            this.sql = buildSelectSql(Table.getFullyQualifiedTableName(catalogName, schemaName,
+            this.sql = buildSelectSql(Table.getFullyQualifiedName(catalogName, schemaName,
                     tableName, quote, databaseInfo.getCatalogSeparator(), databaseInfo.getSchemaSeparator()), keysColumns, columns);
         } else if (type == DmlType.SELECT_ALL) {
-            this.sql = buildSelectSqlAll(Table.getFullyQualifiedTableName(catalogName, schemaName,
+            this.sql = buildSelectSqlAll(Table.getFullyQualifiedName(catalogName, schemaName,
                     tableName, quote, databaseInfo.getCatalogSeparator(), databaseInfo.getSchemaSeparator()), keysColumns, columns);
         } else {
             throw new NotImplementedException("Unimplemented SQL type: " + type);

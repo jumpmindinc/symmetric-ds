@@ -34,7 +34,9 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.View;
 import org.jumpmind.db.model.ForeignKey.ForeignKeyAction;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
 import org.jumpmind.db.platform.DatabaseMetaDataWrapper;
@@ -80,7 +82,7 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    public Database readTables(final String catalog, final String schema, final String[] tableTypes) {
+    public Database readRelations(final String catalog, final String schema, final String[] relationTypes) {
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
         ISqlTransaction transaction = sqlTemplate.startSqlTransaction();
         Database database = null;
@@ -89,10 +91,16 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
                     .executeCallback(new IConnectionCallback<Database>() {
                         public Database execute(Connection connection) throws SQLException {
                             Database db = new Database();
-                            db.setName(Table.getFullyQualifiedTablePrefix(catalog, schema));
+                            db.setName(Table.getFullyQualifiedPrefix(catalog, schema));
                             db.setCatalog(catalog);
                             db.setSchema(schema);
-                            db.addTables(readTables(connection, catalog, schema, tableTypes));
+                            for (Relation relation : readRelations(connection, catalog, schema, relationTypes)) {
+                                if (relation instanceof View view) {
+                                    db.addView(view);
+                                } else if (relation instanceof Table table) {
+                                    db.addTable(table);
+                                }
+                            }
                             db.initialize();
                             return db;
                         }
@@ -116,36 +124,36 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    public Table readTable(final String catalog, final String schema, final String table) {
-        Table tableObject = null;
+    public Relation readRelation(final String catalog, final String schema, final String relationName) {
+        Relation relation = null;
         try {
-            log.debug("reading table: " + table);
+            log.debug("reading table: " + relationName);
             JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
             ISqlTransaction transaction = sqlTemplate.startSqlTransaction();
             try {
-                tableObject = postprocessTableFromDatabase(((JdbcSqlTransaction) transaction).executeCallback(new IConnectionCallback<Table>() {
-                    public Table execute(Connection connection) throws SQLException {
+                relation = postprocessRelationFromDatabase(((JdbcSqlTransaction) transaction).executeCallback(new IConnectionCallback<Relation>() {
+                    public Relation execute(Connection connection) throws SQLException {
                         DatabaseMetaDataWrapper metaData = new DatabaseMetaDataWrapper();
                         metaData.setMetaData(connection.getMetaData());
                         metaData.setCatalog(catalog);
                         metaData.setSchemaPattern(schema);
-                        metaData.setTableTypes(null);
+                        metaData.setRelationTypes(null);
                         ResultSet tableData = null;
                         try {
-                            log.debug("getting table metadata for {}", table);
-                            tableData = metaData.getTables(getTableNamePattern(StringUtils.lowerCase(table)));
-                            log.debug("done getting table metadata for {}", table);
+                            log.debug("getting table metadata for {}", relationName);
+                            tableData = metaData.getTables(getRelationNamePattern(StringUtils.lowerCase(relationName)));
+                            log.debug("done getting table metadata for {}", relationName);
                             if (tableData != null && tableData.next()) {
                                 Map<String, Object> values = readMetaData(tableData, initColumnsForTable());
-                                return readTable(connection, metaData, values);
+                                return readRelation(connection, metaData, values);
                             } else {
                                 close(tableData);
-                                tableData = metaData.getTables(getTableNamePattern(StringUtils.upperCase(table)));
+                                tableData = metaData.getTables(getRelationNamePattern(StringUtils.upperCase(relationName)));
                                 if (tableData != null && tableData.next()) {
                                     Map<String, Object> values = readMetaData(tableData, initColumnsForTable());
-                                    return readTable(connection, metaData, values);
+                                    return readRelation(connection, metaData, values);
                                 }
-                                log.debug("table {} not found", table);
+                                log.debug("table {} not found", relationName);
                                 return null;
                             }
                         } finally {
@@ -171,18 +179,18 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
             if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
-                log.error("Failed to get metadata for {}", Table.getFullyQualifiedTableName(catalog, schema, table));
+                log.error("Failed to get metadata for {}", Table.getFullyQualifiedName(catalog, schema, relationName));
                 throw e;
             }
         }
-        return tableObject;
+        return relation;
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        String schema = table.getSchema();
+        Relation relation = super.readRelation(connection, metaData, values);
+        String schema = relation.getSchema();
         // select column_name, column_always_ident, column_bydefault_ident
         // from iicolumns
         // where table_name='test_uppercase_table' and (column_always_ident='Y' OR column_bydefault_ident='Y')
@@ -193,18 +201,20 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
                 .append("from iicolumns ")
                 .append("where table_name=? ")
                 .append(schema != null && schema.length() > 0 ? " and table_owner=? " : "");
-        Object[] args = new Object[] { table.getName() };
+        Object[] args = new Object[] { relation.getName() };
         PreparedStatement ps = null;
         ResultSet rs = null;
         try {
             ps = connection.prepareStatement(sql.toString());
-            ps.setString(1, table.getName());
+            ps.setString(1, relation.getName());
             if (setTableOwner) {
                 ps.setString(2, schema);
             }
             ps.setQueryTimeout(((IngresDatabasePlatform) platform).getSettings().getQueryTimeout());
             rs = ps.executeQuery();
-            processAdditionalColumnInformation(table, rs);
+            if (relation instanceof Table table) {
+                processAdditionalColumnInformation(table, rs);
+            }
         } catch (SQLException e) {
             log.error(sql.toString(), args, e);
             throw e;
@@ -212,7 +222,7 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
             close(rs);
             close(ps);
         }
-        return table;
+        return relation;
     }
 
     @Override

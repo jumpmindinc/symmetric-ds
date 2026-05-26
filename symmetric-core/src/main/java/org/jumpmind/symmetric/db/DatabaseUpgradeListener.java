@@ -71,6 +71,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     protected boolean isUpgradeFromPre315;
     protected boolean isUpgradeFromPre316;
     protected boolean isUpgradeFromPre317;
+    protected boolean isUpgradeFromPre318;
 
     @Override
     public String beforeUpgrade(ISymmetricDialect symmetricDialect, String tablePrefix, Database currentModel, Database desiredModel)
@@ -296,6 +297,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 log.info("Unable to delete from {}: {}", nodeChannelControlTableName, e.getMessage());
             }
         }
+        isUpgradeFromPre318 = isUpgradeFromPre318(tablePrefix, currentModel);
         // Leave this last in the sequence of steps to make sure to capture any DML changes done before this
         if (engine.getParameterService().is(ParameterConstants.AUTO_SYNC_TRIGGERS) &&
                 currentModel.getTableCount() > 0 && currentModel.findTable(tablePrefix + "_" + TableConstants.SYM_TRIGGER_HIST) != null) {
@@ -362,6 +364,10 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 configService.saveChannel(reloadChannel, false);
             }
             migrateOracleTransactionViewParameters();
+        }
+        if (isUpgradeFromPre318) {
+            log.info("Setting {} to true for upgrade from pre-3.18", ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE);
+            engine.getParameterService().saveParameter(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE, true, "upgrade");
         }
         if (engine.getDatabasePlatform().getName().equals(DatabaseNamesConstants.H2)) {
             createH2SequenceIfMissing(symmetricDialect, tablePrefix);
@@ -576,6 +582,11 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     protected boolean isUpgradeFromPre317(String tablePrefix, Database currentModel) {
         Table nodeHostChannelStatsTable = currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_CHANNEL_STATS));
         return nodeHostChannelStatsTable != null && nodeHostChannelStatsTable.findColumn("data_received") == null;
+    }
+
+    protected boolean isUpgradeFromPre318(String tablePrefix, Database currentModel) {
+        Table nodeHostTable = currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST));
+        return nodeHostTable != null && nodeHostTable.findColumn("security_mode") == null;
     }
 
     protected void createH2SequenceIfMissing(ISymmetricDialect symmetricDialect, String tablePrefix) {

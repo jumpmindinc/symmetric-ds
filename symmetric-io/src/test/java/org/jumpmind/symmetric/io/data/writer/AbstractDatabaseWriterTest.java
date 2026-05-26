@@ -67,7 +67,7 @@ public class AbstractDatabaseWriterTest {
         String[] keyNames = { "c1", "c2" };
         Table sourceTable = new Table("catalog1", "schema1", "table1", columnNames, keyNames);
         Table targetTable = new Table("catalog2", "schema2", "table2", columnNames, keyNames);
-        String expectedKey = sourceTable.getFullyQualifiedTableName() + targetTable.getFullyQualifiedTableName();
+        String expectedKey = sourceTable.getFullyQualifiedName() + targetTable.getFullyQualifiedName();
         String key = TableColumnSourceReferences.generateSearchKey(sourceTable, targetTable);
         assertEquals(expectedKey, key);
     }

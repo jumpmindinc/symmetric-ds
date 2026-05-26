@@ -92,7 +92,7 @@ class AbstractTriggerTemplateTest {
     void testPrimaryKeyJoin_UniqueIndexWith1NullableColumn() {
         // Arrange
         Table table = buildTable_UniqueIndexWithNullableColumns("TBL1", 1, 2);
-        Trigger trigger = new Trigger(table.getFullyQualifiedTableName(), channel.getChannelId());
+        Trigger trigger = new Trigger(table.getFullyQualifiedName(), channel.getChannelId());
         TriggerHistory triggerHistory = new TriggerHistory(table, trigger, triggerTemplate);
         Table targetTable = table.copyAndFilterColumns(triggerHistory.getParsedColumnNames(), triggerHistory.getParsedPkColumnNames(), true, false);
         String uniqueColumnName = table.getColumn(0).getName();
@@ -113,7 +113,7 @@ class AbstractTriggerTemplateTest {
     void testPrimaryKeyJoin_UniqueIndexWith2NullableColumns() {
         // Arrange
         Table table = buildTable_UniqueIndexWithNullableColumns("TBL2", 2, 3);
-        Trigger trigger = new Trigger(table.getFullyQualifiedTableName(), channel.getChannelId());
+        Trigger trigger = new Trigger(table.getFullyQualifiedName(), channel.getChannelId());
         TriggerHistory triggerHistory = new TriggerHistory(table, trigger, triggerTemplate);
         Table targetTable = table.copyAndFilterColumns(triggerHistory.getParsedColumnNames(), triggerHistory.getParsedPkColumnNames(), true, false);
         String uniqueColumnName = table.getColumn(0).getName();
@@ -134,7 +134,7 @@ class AbstractTriggerTemplateTest {
     void testPrimaryKeyJoinVar_UniqueIndexWith2NullableColumns() {
         // Arrange
         Table table = buildTable_UniqueIndexWithNullableColumns("TBL3", 2, 3);
-        Trigger trigger = new Trigger(table.getFullyQualifiedTableName(), channel.getChannelId());
+        Trigger trigger = new Trigger(table.getFullyQualifiedName(), channel.getChannelId());
         TriggerHistory triggerHistory = new TriggerHistory(table, trigger, triggerTemplate);
         Table targetTable = table.copyAndFilterColumns(triggerHistory.getParsedColumnNames(), triggerHistory.getParsedPkColumnNames(), true, false);
         String uniqueColumnName = table.getColumn(0).getName();
@@ -155,7 +155,7 @@ class AbstractTriggerTemplateTest {
     void testPrimaryKeyJoinVar_UniqueIndexWith1NullableColumn() {
         // Arrange
         Table table = buildTable_UniqueIndexWithNullableColumns("TBL4", 1, 3);
-        Trigger trigger = new Trigger(table.getFullyQualifiedTableName(), channel.getChannelId());
+        Trigger trigger = new Trigger(table.getFullyQualifiedName(), channel.getChannelId());
         TriggerHistory triggerHistory = new TriggerHistory(table, trigger, triggerTemplate);
         Table targetTable = table.copyAndFilterColumns(triggerHistory.getParsedColumnNames(), triggerHistory.getParsedPkColumnNames(), true, false);
         String uniqueColumnName = table.getColumn(0).getName();

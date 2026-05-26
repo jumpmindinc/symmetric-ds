@@ -104,7 +104,7 @@ public class LoadFilterService extends AbstractService implements ILoadFilterSer
                 } else if (ignoreCase) {
                     catalogName = catalogName.toUpperCase();
                 }
-                String qualifiedName = Table.getFullyQualifiedTableName(
+                String qualifiedName = Table.getFullyQualifiedName(
                         catalogName, schemaName, tableName);
                 List<LoadFilter> loadFiltersForTable = loadFiltersByTable.get(qualifiedName);
                 if (loadFiltersForTable == null) {

@@ -56,6 +56,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -88,7 +89,7 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
         String tableName = (String) values.get("TABLE_NAME");
         for (int idx = 0; idx < KNOWN_SYSTEM_TABLES.length; idx++) {
@@ -96,11 +97,11 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
                 return null;
             }
         }
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation instanceof Table table) {
             enhanceTableMetaData(connection, metaData, table);
         }
-        return table;
+        return relation;
     }
 
     protected void enhanceTableMetaData(Connection connection, DatabaseMetaDataWrapper metaData, Table table) throws SQLException {
@@ -340,7 +341,7 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
         for (int i = 0; columns != null && i < columns.length; i++) {
             if (columns[i].getMappedTypeCode() == Types.ROWID || columns[i].getName().equals("DB2_GENERATED_ROWID_FOR_LOBS")) {
                 found = true;
-                log.info("Found generated and/or rowid column on table " + table.getFullyQualifiedTableName() + ", column " + columns[i].getName());
+                log.info("Found generated and/or rowid column on table " + table.getFullyQualifiedName() + ", column " + columns[i].getName());
             } else {
                 tempColumns.add(columns[i]);
             }

@@ -114,7 +114,7 @@ public class DbFillDialog extends ResizableDialog {
             } else {
                 List<String> tables = getSelectedTables();
                 for (String tableName : tables) {
-                    Table table = databasePlatform.getTableFromCache(
+                    Table table = (Table) databasePlatform.getRelationFromCache(
                             tableSelectionLayout.catalogSelect.getValue() != null ? tableSelectionLayout.catalogSelect
                                     .getValue().toString() : null,
                             tableSelectionLayout.schemaSelect.getValue() != null ? tableSelectionLayout.schemaSelect

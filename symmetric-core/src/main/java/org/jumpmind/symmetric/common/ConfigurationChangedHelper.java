@@ -301,8 +301,8 @@ public class ConfigurationChangedHelper {
         if (engine.getParameterService().is(ParameterConstants.AUTO_SYNC_TRIGGERS)) {
             log.info("Syncing triggers for file snapshot");
             engine.getTriggerRouterService().clearCache();
-            Table fileSnapshotTable = engine.getDatabasePlatform()
-                    .getTableFromCache(TableConstants.getTableName(engine.getTablePrefix(), TableConstants.SYM_FILE_SNAPSHOT), false);
+            Table fileSnapshotTable = (Table) engine.getDatabasePlatform()
+                    .getRelationFromCache(TableConstants.getTableName(engine.getTablePrefix(), TableConstants.SYM_FILE_SNAPSHOT), false);
             engine.getTriggerRouterService().syncTriggers(fileSnapshotTable, false);
         }
     }

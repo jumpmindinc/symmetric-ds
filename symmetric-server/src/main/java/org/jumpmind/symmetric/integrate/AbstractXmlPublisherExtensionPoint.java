@@ -36,7 +36,7 @@ import org.jdom2.Element;
 import org.jdom2.Namespace;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -70,7 +70,7 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
     protected final String XML_CACHE = "XML_CACHE_" + this.hashCode();
     private String[] nodeGroups;
     protected IPublisher publisher;
-    protected Set<String> tableNamesToPublishAsGroup;
+    protected Set<String> relationNamesToPublishAsGroup;
     protected String xmlTagNameToUseForGroup = "batch";
     protected List<String> groupByColumnNames;
     protected Format xmlFormat;
@@ -99,16 +99,16 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
     @ManagedOperation(description = "Looks up rows in the database and resends them to the publisher")
     @ManagedOperationParameters({ @ManagedOperationParameter(
             name = "args",
-            description = "A pipe deliminated list of key values to use to look up the tables to resend") })
+            description = "A pipe deliminated list of key values to use to look up the relations to resend") })
     public boolean resend(String args) {
         try {
             String[] argArray = args != null ? args.split("\\|") : new String[0];
             DataContext context = new DataContext();
             IDatabasePlatform platform = engine.getDatabasePlatform();
-            for (String tableName : tableNamesToPublishAsGroup) {
-                Table table = platform.getTableFromCache(tableName, false);
-                List<String[]> dataRowsForTable = readData(table, argArray);
-                for (String[] values : dataRowsForTable) {
+            for (String relationName : relationNamesToPublishAsGroup) {
+                Relation relation = platform.getRelationFromCache(relationName, false);
+                List<String[]> dataRowsForRelation = readData(relation, argArray);
+                for (String[] values : dataRowsForRelation) {
                     Batch batch = new Batch();
                     batch.setBinaryEncoding(engine.getSymmetricDialect().getBinaryEncoding());
                     batch.setSourceNodeId("republish");
@@ -116,13 +116,13 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
                     CsvData data = new CsvData(DataEventType.INSERT);
                     data.putParsedData(CsvData.ROW_DATA, values);
                     Element xml = getXmlFromCache(context, context.getBatch().getBinaryEncoding(),
-                            table.getColumnNames(), data.getParsedData(CsvData.ROW_DATA),
-                            table.getPrimaryKeyColumnNames(), data.getParsedData(CsvData.PK_DATA));
+                            relation.getColumnNames(), data.getParsedData(CsvData.ROW_DATA),
+                            relation.getPrimaryKeyColumnNames(), data.getParsedData(CsvData.PK_DATA));
                     if (xml != null) {
-                        toXmlElement(data.getDataEventType(), xml, table.getCatalog(),
-                                table.getSchema(), table.getName(), table.getColumnNames(),
+                        toXmlElement(data.getDataEventType(), xml, relation.getCatalog(),
+                                relation.getSchema(), relation.getName(), relation.getColumnNames(),
                                 data.getParsedData(CsvData.ROW_DATA),
-                                table.getPrimaryKeyColumnNames(),
+                                relation.getPrimaryKeyColumnNames(),
                                 data.getParsedData(CsvData.PK_DATA));
                     }
                 }
@@ -132,30 +132,30 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
                 return true;
             } else {
                 log.warn("Failed to resend message for tables {}, columns {}, and args {}",
-                        tableNamesToPublishAsGroup, groupByColumnNames, args);
+                        relationNamesToPublishAsGroup, groupByColumnNames, args);
             }
         } catch (RuntimeException ex) {
             log.error(String.format(
                     "Failed to resend message for tables %s, columns %s, and args %s",
-                    tableNamesToPublishAsGroup, groupByColumnNames, args), ex);
+                    relationNamesToPublishAsGroup, groupByColumnNames, args), ex);
         }
         return false;
     }
 
-    @ManagedAttribute(description = "A comma separated list of columns that act as the key values for the tables that will be published")
+    @ManagedAttribute(description = "A comma separated list of columns that act as the key values for the relations that will be published")
     public String getKeyColumnNames() {
         return groupByColumnNames != null ? groupByColumnNames.toString() : "";
     }
 
-    @ManagedAttribute(description = "A comma separated list of tables that will be published")
-    public String getTableNames() {
-        return tableNamesToPublishAsGroup != null ? tableNamesToPublishAsGroup.toString() : "";
+    @ManagedAttribute(description = "A comma separated list of relations that will be published")
+    public String getRelationNames() {
+        return relationNamesToPublishAsGroup != null ? relationNamesToPublishAsGroup.toString() : "";
     }
 
-    protected List<String[]> readData(final Table table, String[] args) {
+    protected List<String[]> readData(final Relation relation, String[] args) {
         final IDatabasePlatform platform = engine.getDatabasePlatform();
         List<String[]> rows = new ArrayList<String[]>();
-        final String[] columnNames = table.getColumnNames();
+        final String[] columnNames = relation.getColumnNames();
         if (columnNames != null && columnNames.length > 0) {
             StringBuilder builder = new StringBuilder("select ");
             for (int i = 0; i < columnNames.length; i++) {
@@ -165,7 +165,7 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
                 }
                 builder.append(columnName);
             }
-            builder.append(" from ").append(table.getName()).append(" where ");
+            builder.append(" from ").append(relation.getName()).append(" where ");
             for (int i = 0; i < groupByColumnNames.size(); i++) {
                 String columnName = groupByColumnNames.get(i);
                 if (i > 0 && i < groupByColumnNames.size()) {
@@ -175,13 +175,13 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
             }
             ISqlTemplate template = platform.getSqlTemplate();
             Object[] argObjs = platform.getObjectValues(engine.getSymmetricDialect()
-                    .getBinaryEncoding(), args, table.getColumnsWithName(groupByColumnNames
+                    .getBinaryEncoding(), args, relation.getColumnsWithName(groupByColumnNames
                             .toArray(new String[groupByColumnNames.size()])));
             rows = template.query(builder.toString(), new ISqlRowMapper<String[]>() {
                 @Override
                 public String[] mapRow(Row row) {
                     return platform.getStringValues(engine.getSymmetricDialect()
-                            .getBinaryEncoding(), table.getColumns(), row, false, false);
+                            .getBinaryEncoding(), relation.getColumns(), row, false, false);
                 }
             }, argObjs);
         }
@@ -241,7 +241,7 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
     }
 
     protected void toXmlElement(DataEventType dml, Element xml, String catalogName,
-            String schemaName, String tableName, String[] columnNames, String[] data,
+            String schemaName, String relationName, String[] columnNames, String[] data,
             String[] keyNames, String[] keys) {
         Element row = new Element("row");
         xml.addContent(row);
@@ -251,7 +251,7 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
         if (StringUtils.isNotBlank(schemaName)) {
             row.setAttribute("schema", schemaName);
         }
-        row.setAttribute("entity", tableName);
+        row.setAttribute("entity", relationName);
         row.setAttribute("dml", dml.getCode());
         String[] colNames = null;
         if (data == null) {
@@ -392,13 +392,13 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
         this.xmlFormat = xmlFormat;
     }
 
-    public void setTableNamesToPublishAsGroup(Set<String> tableNamesToPublishAsGroup) {
-        this.tableNamesToPublishAsGroup = tableNamesToPublishAsGroup;
+    public void setRelationNamesToPublishAsGroup(Set<String> relationNamesToPublishAsGroup) {
+        this.relationNamesToPublishAsGroup = relationNamesToPublishAsGroup;
     }
 
-    public void setTableNameToPublish(String tableName) {
-        this.tableNamesToPublishAsGroup = new HashSet<String>(1);
-        this.tableNamesToPublishAsGroup.add(tableName);
+    public void setRelationNameToPublish(String relationName) {
+        this.relationNamesToPublishAsGroup = new HashSet<String>(1);
+        this.relationNamesToPublishAsGroup.add(relationName);
     }
 
     public void setXmlTagNameToUseForGroup(String xmlTagNameToUseForGroup) {
@@ -410,8 +410,8 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
     }
 
     /**
-     * This attribute is required. It needs to identify the columns that will be used to key on rows in the specified tables that need to be grouped together in
-     * an 'XML batch.'
+     * This attribute is required. It needs to identify the columns that will be used to key on rows in the specified relations that need to be grouped together
+     * in an 'XML batch.'
      */
     public void setGroupByColumnNames(List<String> groupByColumnNames) {
         this.groupByColumnNames = groupByColumnNames;

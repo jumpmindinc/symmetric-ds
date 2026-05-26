@@ -544,14 +544,16 @@ public class DbCompare {
             Table sourceTable = null;
             Map<String, String> tableNameParts = sourceEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(tableName);
             if (tableNameParts.size() == 1) {
-                sourceTable = sourceEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableName, true);
+                sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableName, true);
             } else {
-                sourceTable = sourceEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableNameParts.get("catalog"), tableNameParts.get("schema"),
+                sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get("catalog"), tableNameParts
+                        .get("schema"),
                         tableNameParts
                                 .get("table"), true);
                 if (sourceTable == null) {
-                    sourceTable = sourceEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableNameParts.get("schema"), tableNameParts.get(
-                            "catalog"),
+                    sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get("schema"), tableNameParts
+                            .get(
+                                    "catalog"),
                             tableNameParts.get("table"), true);
                 }
             }
@@ -571,9 +573,9 @@ public class DbCompare {
                 TriggerHistory hist = sourceEngine.getTriggerRouterService().findTriggerHistory(catalog, schema,
                         sourceTable.getName());
                 if (hist != null) {
-                    sourceTable = sourceTable.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
+                    sourceTable = (Table) sourceTable.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
                 } else {
-                    log.warn("No trigger history found for {}", sourceTable.getFullyQualifiedTableName());
+                    log.warn("No trigger history found for {}", sourceTable.getFullyQualifiedName());
                 }
             }
             // could put a check here before copying table?
@@ -652,19 +654,21 @@ public class DbCompare {
                         tableName = triggerRouter.getTargetTable(null);
                     }
                 }
-                targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(catalog, schema, tableName, true);
+                targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(catalog, schema, tableName, true);
             }
         } else {
             Map<String, String> tableNameParts = targetEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(targetTableName);
             if (tableNameParts.size() == 1) {
-                targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(targetTableName, true);
+                targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(targetTableName, true);
             } else {
-                targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableNameParts.get("catalog"), tableNameParts.get("schema"),
+                targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get("catalog"), tableNameParts
+                        .get("schema"),
                         tableNameParts
                                 .get("table"), true);
                 if (targetTable == null) {
-                    targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableNameParts.get("schema"), tableNameParts.get(
-                            "catalog"),
+                    targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get("schema"), tableNameParts
+                            .get(
+                                    "catalog"),
                             tableNameParts.get("table"), true);
                 }
             }
@@ -714,7 +718,7 @@ public class DbCompare {
     }
 
     protected Table loadTargetTableUsingTransform(TransformTableNodeGroupLink transform) {
-        Table targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(transform.getTargetCatalogName(), transform
+        Table targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(transform.getTargetCatalogName(), transform
                 .getTargetSchemaName(), transform
                         .getTargetTableName(), true);
         return targetTable;

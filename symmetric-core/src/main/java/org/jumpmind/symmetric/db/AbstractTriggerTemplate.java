@@ -32,6 +32,7 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.sql.DmlStatement.DmlType;
@@ -137,23 +138,23 @@ abstract public class AbstractTriggerTemplate {
         return true;
     }
 
-    public String createInitalLoadSql(Node node, TriggerRouter triggerRouter, Table originalTable,
+    public String createInitalLoadSql(Node node, TriggerRouter triggerRouter, Relation originalRelation,
             TriggerHistory triggerHistory, Channel channel, String overrideSelectSql) {
         IParameterService parameterService = symmetricDialect.getParameterService();
         boolean dateTimeAsString = parameterService.is(
                 ParameterConstants.DATA_LOADER_TREAT_DATETIME_AS_VARCHAR);
         boolean concatInCsv = parameterService.is(
                 ParameterConstants.INITIAL_LOAD_CONCAT_CSV_IN_SQL_ENABLED);
-        Table table = originalTable.copyAndFilterColumns(triggerHistory.getParsedColumnNames(),
+        Relation relation = originalRelation.copyAndFilterColumns(triggerHistory.getParsedColumnNames(),
                 triggerHistory.getParsedPkColumnNames(), true, false);
-        Column[] columns = table.getColumns();
+        Column[] columns = relation.getColumns();
         String textColumnExpression = parameterService.getString(ParameterConstants.DATA_EXTRACTOR_TEXT_COLUMN_EXPRESSION);
         String sql = null;
         String tableAlias = symmetricDialect.getInitialLoadTableAlias();
         if (concatInCsv) {
             sql = sqlTemplates.get(INITIAL_LOAD_SQL_TEMPLATE);
             String columnsText = buildColumnsString(tableAlias,
-                    tableAlias, "", table, columns, DataEventType.INSERT,
+                    tableAlias, "", relation, columns, DataEventType.INSERT,
                     false, channel, triggerRouter.getTrigger()).columnString;
             if (isNotBlank(textColumnExpression)) {
                 columnsText = textColumnExpression.replace("$(columnName)", columnsText);
@@ -171,7 +172,7 @@ abstract public class AbstractTriggerTemplate {
                     String columnExpression = null;
                     if (useTriggerTemplateForColumnTemplatesDuringInitialLoad(column) && (!isUniTextColumn(column))) {
                         ColumnString columnString = fillOutColumnTemplate(tableAlias,
-                                tableAlias, "", table, column, DataEventType.INSERT, false, channel,
+                                tableAlias, "", relation, column, DataEventType.INSERT, false, channel,
                                 triggerRouter.getTrigger(), true);
                         columnExpression = columnString.columnString;
                         if (isNotBlank(textColumnExpression)
@@ -202,13 +203,13 @@ abstract public class AbstractTriggerTemplate {
             initialLoadSelect = overrideSelectSql;
         }
         sql = FormatUtils.replace("whereClause", initialLoadSelect, sql);
-        sql = FormatUtils.replace("tableName", SymmetricUtils.quote(symmetricDialect, table.getName()), sql);
+        sql = FormatUtils.replace("tableName", SymmetricUtils.quote(symmetricDialect, relation.getName()), sql);
         sql = FormatUtils.replace("schemaName", getSourceTablePrefix(triggerHistory), sql);
         sql = FormatUtils.replace("schemaNameOnly", getSchemaNameOnly(triggerHistory), sql);
         sql = FormatUtils.replace(
                 "primaryKeyWhereString",
                 getPrimaryKeyWhereString(symmetricDialect.getInitialLoadTableAlias(),
-                        table.hasPrimaryKey() ? table.getPrimaryKeyColumns() : table.getColumns()),
+                        relation.hasPrimaryKey() ? relation.getPrimaryKeyColumns() : relation.getColumns()),
                 sql);
         // Replace these parameters to give the initiaLoadContition a chance to
         // reference the node that is being loaded
@@ -218,7 +219,7 @@ abstract public class AbstractTriggerTemplate {
         sql = replaceDefaultSchemaAndCatalog(sql);
         sql = FormatUtils.replace("prefixName", symmetricDialect.getTablePrefix(), sql);
         sql = FormatUtils.replace("toClob",
-                triggerRouter.getTrigger().isUseCaptureLobs() ? toClobExpression(table) : "", sql);
+                triggerRouter.getTrigger().isUseCaptureLobs() ? toClobExpression(relation) : "", sql);
         return sql;
     }
 
@@ -226,12 +227,12 @@ abstract public class AbstractTriggerTemplate {
         return column.getJdbcTypeName() == null ? false : column.getJdbcTypeName().equalsIgnoreCase("unitext");
     }
 
-    public boolean[] getColumnPositionUsingTemplate(Table originalTable, TriggerHistory triggerHistory) {
+    public boolean[] getColumnPositionUsingTemplate(Relation originalRelation, TriggerHistory triggerHistory) {
         IParameterService parameterService = symmetricDialect.getParameterService();
         boolean concatInCsv = parameterService.is(ParameterConstants.INITIAL_LOAD_CONCAT_CSV_IN_SQL_ENABLED);
-        Table table = originalTable.copyAndFilterColumns(triggerHistory.getParsedColumnNames(),
+        Relation relation = originalRelation.copyAndFilterColumns(triggerHistory.getParsedColumnNames(),
                 triggerHistory.getParsedPkColumnNames(), true, false);
-        Column[] columns = table.getColumns();
+        Column[] columns = relation.getColumns();
         boolean[] isColumnPositionUsingTemplate = new boolean[columns.length];
         if (!concatInCsv) {
             for (int i = 0; i < columns.length; i++) {
@@ -631,15 +632,15 @@ abstract public class AbstractTriggerTemplate {
         return null;
     }
 
-    protected String toClobExpression(Table table) {
+    protected String toClobExpression(Relation relation) {
         return "";
     }
 
-    protected String getClobType(Table table) {
+    protected String getClobType(Relation relation) {
         return "clob";
     }
 
-    protected String getVarcharLobType(Table table) {
+    protected String getVarcharLobType(Relation relation) {
         return "";
     }
 
@@ -813,7 +814,7 @@ abstract public class AbstractTriggerTemplate {
     }
 
     protected ColumnString buildColumnsString(String origTableAlias, String tableAlias,
-            String columnPrefix, Table table, Column[] columns, DataEventType dml, boolean isOld,
+            String columnPrefix, Relation relation, Column[] columns, DataEventType dml, boolean isOld,
             Channel channel, Trigger trigger) {
         String columnsText = "";
         boolean containsLob = false;
@@ -824,7 +825,7 @@ abstract public class AbstractTriggerTemplate {
             Column column = columns[i];
             if (column != null) {
                 ColumnString columnString = fillOutColumnTemplate(origTableAlias, tableAlias,
-                        columnPrefix, table, column, dml, isOld, channel, trigger, false);
+                        columnPrefix, relation, column, dml, isOld, channel, trigger, false);
                 columnsText = columnsText + "\n          " + columnString.columnString
                         + lastCommandToken;
                 containsLob |= columnString.isBlobClob;
@@ -838,7 +839,7 @@ abstract public class AbstractTriggerTemplate {
     }
 
     protected ColumnString fillOutColumnTemplate(String origTableAlias, String tableAlias,
-            String columnPrefix, Table table, Column column, DataEventType dml, boolean isOld, Channel channel,
+            String columnPrefix, Relation relation, Column column, DataEventType dml, boolean isOld, Channel channel,
             Trigger trigger, boolean ignoreStreamLobs) {
         boolean isLob = this.isLob(column);
         String templateToUse = null;
@@ -986,14 +987,14 @@ abstract public class AbstractTriggerTemplate {
             templateToUse = adjustColumnTemplate(templateToUse, column.getMappedTypeCode());
             templateToUse = templateToUse.trim();
         } else {
-            throw new NotImplementedException(table.toString() + " " + column.toString());
+            throw new NotImplementedException(relation.toString() + " " + column.toString());
         }
         String formattedColumnText = FormatUtils.replace("columnSizeOrMax",
                 trigger.isUseCaptureLobs() ? "max" : "$(columnSize)", templateToUse);
         formattedColumnText = FormatUtils.replace("columnName",
                 String.format("%s%s", columnPrefix, column.getName()), formattedColumnText);
         formattedColumnText = FormatUtils.replace("columnSize",
-                getColumnSize(table, column), formattedColumnText);
+                getColumnSize(relation, column), formattedColumnText);
         formattedColumnText = FormatUtils.replace("masterCollation",
                 symmetricDialect.getMasterCollation(), formattedColumnText);
         if (isLob) {
@@ -1007,7 +1008,7 @@ abstract public class AbstractTriggerTemplate {
         return new ColumnString(formattedColumnText, isLob);
     }
 
-    protected String getColumnSize(Table table, Column column) {
+    protected String getColumnSize(Relation relation, Column column) {
         return column.getSize();
     }
 

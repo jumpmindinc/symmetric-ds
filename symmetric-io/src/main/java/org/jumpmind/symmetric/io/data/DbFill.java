@@ -38,6 +38,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -46,6 +47,7 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -170,7 +172,7 @@ public class DbFill {
             }
         } else {
             for (String tableName : tableNames) {
-                Table table = platform.readTableFromDatabase(getCatalogToUse(), getSchemaToUse(),
+                Table table = (Table) platform.readRelationFromDatabase(getCatalogToUse(), getSchemaToUse(),
                         tableName);
                 if (table != null) {
                     table = filterColumns(table);
@@ -197,7 +199,11 @@ public class DbFill {
             }
         }
         log.info("TABLES TO FILL (" + tablesToFill.size() + "): " + toString(tablesToFill));
-        List<Table> orderedTables = Database.sortByForeignKeys(tablesToFill, getAllDbTables(), null, null);
+        List<Table> orderedTables = Database.sortByForeignKeys(
+                new ArrayList<Relation>(tablesToFill),
+                new HashMap<String, Relation>(getAllDbTables()),
+                null, null)
+                .stream().map(r -> (Table) r).collect(Collectors.toList());
         orderedTables = removeSymTables(orderedTables);
         List<Table> dependencyTables = new ArrayList<Table>();
         for (Table table : orderedTables) {
@@ -251,7 +257,7 @@ public class DbFill {
         for (Table table : tables) {
             for (ForeignKey fk : table.getForeignKeys()) {
                 for (Reference ref : fk.getReferences()) {
-                    String key = table.getQualifiedTableName() + "." + ref.getLocalColumnName();
+                    String key = table.getQualifiedName() + "." + ref.getLocalColumnName();
                     List<ForeignKeyReference> fkrs = foreignKeyReferences.get(key);
                     if (fkrs == null) {
                         fkrs = new ArrayList<ForeignKeyReference>();
@@ -289,7 +295,7 @@ public class DbFill {
                     StringBuilder sb = null;
                     for (ForeignKeyReference fkr : references) {
                         ForeignKey fk = fkr.getForeignKey();
-                        String key = table.getFullyQualifiedTableName() + "." + fkr.getReference().getForeignColumnName();
+                        String key = table.getFullyQualifiedName() + "." + fkr.getReference().getForeignColumnName();
                         commonDependencyValues.put(key, commonValue);
                         commonDependencyTables.add(getDbTable(fk.getForeignTableCatalog(), fk.getForeignTableSchema(), fk.getForeignTableName()));
                         if (verbose) {
@@ -326,7 +332,7 @@ public class DbFill {
      * 
      */
     protected int buildMinColumnSize(Table table, Column column, Set<String> relatedTableColumns, Integer minSize) {
-        if (relatedTableColumns.add(table.getQualifiedTableName() + "." + column.getName())) {
+        if (relatedTableColumns.add(table.getQualifiedName() + "." + column.getName())) {
             Integer size = column.getSizeAsInt();
             if (minSize != null && minSize < size) {
                 size = minSize;
@@ -510,13 +516,13 @@ public class DbFill {
 
     private void truncateTable(Table table) {
         if (verbose) {
-            log.info("Truncating table " + table.getFullyQualifiedTableName());
+            log.info("Truncating table " + table.getFullyQualifiedName());
         }
         String options = "";
         if (platform.getName().startsWith(DatabaseNamesConstants.POSTGRESQL)) {
             options = " cascade";
         }
-        platform.getSqlTemplate().update("truncate table " + table.getFullyQualifiedTableName() + options);
+        platform.getSqlTemplate().update("truncate table " + table.getFullyQualifiedName() + options);
     }
 
     /**
@@ -779,7 +785,7 @@ public class DbFill {
                                     .getWhereSql(),
                             table.getName(), foreignTableRow.getReferenceColumnName());
                     DatabaseInfo info = platform.getDatabaseInfo();
-                    String tableName = Table.getFullyQualifiedTableName(foreignTable.getCatalog(), foreignTable.getSchema(), foreignTable.getName(),
+                    String tableName = Table.getFullyQualifiedName(foreignTable.getCatalog(), foreignTable.getSchema(), foreignTable.getName(),
                             info.getDelimiterToken(), info.getCatalogSeparator(), info.getSchemaSeparator());
                     String sql = "DELETE FROM " + tableName + " WHERE " + foreignTableRow.getWhereSql();
                     tran.prepareAndExecute(sql);
@@ -824,7 +830,7 @@ public class DbFill {
 
     private void saveDependentColumnValues(Table table, Row row) {
         for (String columnName : row.keySet()) {
-            String key = table.getFullyQualifiedTableName() + "." + columnName;
+            String key = table.getFullyQualifiedName() + "." + columnName;
             List<Object> commonValue = commonDependencyValues.get(key);
             if (commonValue != null) {
                 commonValue.clear();
@@ -1130,7 +1136,7 @@ public class DbFill {
     protected Table getDbTable(String catalogName, String schemaName, String tableName) {
         Table table = getAllDbTables().get(tableName);
         if (table == null) {
-            table = platform.readTableFromDatabase(catalogName, schemaName, tableName);
+            table = (Table) platform.readRelationFromDatabase(catalogName, schemaName, tableName);
             table = filterColumns(table);
         }
         return table;

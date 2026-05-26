@@ -156,15 +156,15 @@ public class FtpDataWriter implements IDataWriter {
     }
 
     protected void createFile(Table table, Batch batch) {
-        FileInfo fileInfo = fileInfoByTable.get(table.getFullyQualifiedTableName());
+        FileInfo fileInfo = fileInfoByTable.get(table.getFullyQualifiedName());
         if (fileInfo == null) {
             try {
                 fileInfo = new FileInfo();
                 fileInfo.outputFile = new File(stagingDir, batch.getBatchId() + "-"
-                        + table.getFullyQualifiedTableName() + "." + format.name().toLowerCase());
+                        + table.getFullyQualifiedName() + "." + format.name().toLowerCase());
                 fileInfo.outputFile.getParentFile().mkdirs();
                 fileInfo.outputFileWriter = new BufferedWriter(new FileWriter(fileInfo.outputFile));
-                fileInfoByTable.put(table.getFullyQualifiedTableName(), fileInfo);
+                fileInfoByTable.put(table.getFullyQualifiedName(), fileInfo);
                 if (format == Format.CSV) {
                     printCsvTableHeader();
                 }
@@ -253,7 +253,7 @@ public class FtpDataWriter implements IDataWriter {
     }
 
     protected void println(String... data) {
-        FileInfo fileInfo = fileInfoByTable.get(table.getFullyQualifiedTableName());
+        FileInfo fileInfo = fileInfoByTable.get(table.getFullyQualifiedName());
         if (fileInfo != null) {
             try {
                 StringBuilder buffer = new StringBuilder();

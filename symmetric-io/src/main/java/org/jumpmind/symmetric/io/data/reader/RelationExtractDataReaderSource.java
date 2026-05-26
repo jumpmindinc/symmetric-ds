@@ -25,7 +25,7 @@ import java.nio.charset.Charset;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlReadCursor;
@@ -38,23 +38,23 @@ import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.Batch.BatchType;
 
 /**
- * Convert a source table's rows to {@link CsvData}
+ * Convert a source relation's rows to {@link CsvData}
  */
-public class TableExtractDataReaderSource implements IExtractDataReaderSource {
+public class RelationExtractDataReaderSource implements IExtractDataReaderSource {
     protected IDatabasePlatform platform;
     protected String whereClause;
     protected Batch batch;
-    protected Table table;
+    protected Relation relation;
     protected ISqlReadCursor<CsvData> cursor;
     protected boolean streamLobs;
 
-    public TableExtractDataReaderSource(IDatabasePlatform platform, String catalogName,
+    public RelationExtractDataReaderSource(IDatabasePlatform platform, String catalogName,
             String schemaName, String tableName, String whereClause, boolean streamLobs, String sourceNodeId, String targetNodeId) {
         this.platform = platform;
-        this.table = platform.getTableFromCache(catalogName, schemaName, tableName, true);
-        if (table == null) {
+        this.relation = platform.getRelationFromCache(catalogName, schemaName, tableName, true);
+        if (relation == null) {
             throw new IllegalStateException(String.format("Could not find table %s",
-                    Table.getFullyQualifiedTableName(catalogName, schemaName, tableName)));
+                    Relation.getFullyQualifiedName(catalogName, schemaName, tableName)));
         }
         this.whereClause = whereClause;
         this.streamLobs = streamLobs;
@@ -65,12 +65,12 @@ public class TableExtractDataReaderSource implements IExtractDataReaderSource {
         return this.batch;
     }
 
-    public Table getTargetTable() {
-        return this.table;
+    public Relation getTargetRelation() {
+        return this.relation;
     }
 
-    public Table getSourceTable() {
-        return this.table;
+    public Relation getSourceRelation() {
+        return this.relation;
     }
 
     public CsvData next() {
@@ -89,12 +89,12 @@ public class TableExtractDataReaderSource implements IExtractDataReaderSource {
 
     protected void startNewCursor() {
         DatabaseInfo dbInfo = platform.getDatabaseInfo();
-        String sql = String.format("select * from %s %s", table.getQualifiedTableName(dbInfo.getDelimiterToken(),
+        String sql = String.format("select * from %s %s", relation.getQualifiedName(dbInfo.getDelimiterToken(),
                 dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator()),
                 StringUtils.isNotBlank(whereClause) ? " where " + whereClause : "");
         this.cursor = platform.getSqlTemplate().queryForCursor(sql, new ISqlRowMapper<CsvData>() {
             public CsvData mapRow(Row row) {
-                return new CsvData(DataEventType.INSERT, toStringData(row, table.getPrimaryKeyColumns()), toStringData(row, table.getColumns()));
+                return new CsvData(DataEventType.INSERT, toStringData(row, relation.getPrimaryKeyColumns()), toStringData(row, relation.getColumns()));
             }
         });
     }

@@ -39,7 +39,7 @@ import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.ISequenceService;
 import org.jumpmind.symmetric.service.impl.TriggerRouterService.TriggerHistoryMapper;
-import org.jumpmind.symmetric.service.impl.TriggerRouterService.TriggerTableSupportingInfo;
+import org.jumpmind.symmetric.service.impl.TriggerRouterService.TriggerRelationSupportingInfo;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -391,7 +391,7 @@ public class TriggerRouterServiceTest {
     @ParameterizedTest
     @CsvSource({ "INSERT", "UPDATE", "DELETE" })
     void testGetTriggerNameSimple(String dmlType) throws Exception {
-        TriggerTableSupportingInfo mockTriggerTableSupportingInfo = mock(TriggerTableSupportingInfo.class);
+        TriggerRelationSupportingInfo mockTriggerRelationSupportingInfo = mock(TriggerRelationSupportingInfo.class);
         when(engine.getCacheManager()).thenReturn(cacheManager);
         when(engine.getClusterService()).thenReturn(clusterService);
         when(engine.getConfigurationService()).thenReturn(configurationService);
@@ -412,9 +412,9 @@ public class TriggerRouterServiceTest {
                 .thenReturn(1);
         when(parameterService.getString(ParameterConstants.RUNTIME_CONFIG_TRIGGER_PREFIX, tablePrefix)).thenReturn("test");
         when(parameterService.getNodeGroupId()).thenReturn("TestNodeGroup");
-        when(mockTriggerTableSupportingInfo.getInsertTriggerName()).thenReturn("testInsertTriggerName");
-        when(mockTriggerTableSupportingInfo.getUpdateTriggerName()).thenReturn("testUpdateTriggerName");
-        when(mockTriggerTableSupportingInfo.getDeleteTriggerName()).thenReturn("testDeleteTriggerName");
+        when(mockTriggerRelationSupportingInfo.getInsertTriggerName()).thenReturn("testInsertTriggerName");
+        when(mockTriggerRelationSupportingInfo.getUpdateTriggerName()).thenReturn("testUpdateTriggerName");
+        when(mockTriggerRelationSupportingInfo.getDeleteTriggerName()).thenReturn("testDeleteTriggerName");
         TriggerRouterService triggerRouterService = new TriggerRouterService(engine);
         TriggerRouterService spyTriggerRouterService = spy(triggerRouterService);
         DataEventType dml = null;
@@ -429,7 +429,7 @@ public class TriggerRouterServiceTest {
             dml = DataEventType.DELETE;
             expectedTriggerName = "testDeleteTriggerName";
         }
-        String actualTriggerName = spyTriggerRouterService.getTriggerName(dml, mockTriggerTableSupportingInfo);
+        String actualTriggerName = spyTriggerRouterService.getTriggerName(dml, mockTriggerRelationSupportingInfo);
         assertEquals(expectedTriggerName, actualTriggerName);
     }
 

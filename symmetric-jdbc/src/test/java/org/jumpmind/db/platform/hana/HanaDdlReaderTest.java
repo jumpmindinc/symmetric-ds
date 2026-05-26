@@ -132,6 +132,6 @@ class HanaDdlReaderTest {
         ddlReader.determineExtraColumnInfo(testTable);
         verify(sqlTemplateMock).query("SELECT column_name, generation_type FROM sys.table_columns WHERE schema_name = ? AND table_name = ?", new Object[] {
                 testTable.getSchema(), testTable.getName() });
-        verify(testTable, times(1)).getFullyQualifiedTableName(); // verifies warn level logging
+        verify(testTable, times(1)).getFullyQualifiedName(); // verifies warn level logging
     }
 }

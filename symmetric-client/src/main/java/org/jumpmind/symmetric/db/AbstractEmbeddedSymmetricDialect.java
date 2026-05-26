@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.db;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.model.Channel;
@@ -40,9 +41,9 @@ abstract public class AbstractEmbeddedSymmetricDialect extends AbstractSymmetric
      * All the templates have ' escaped because the SQL is inserted into a view. When returning the raw SQL for use as SQL it needs to be un-escaped.
      */
     @Override
-    public String createInitialLoadSqlFor(Node node, TriggerRouter trigger, Table table, TriggerHistory triggerHistory, Channel channel,
+    public String createInitialLoadSqlFor(Node node, TriggerRouter trigger, Relation relation, TriggerHistory triggerHistory, Channel channel,
             String overrideSelectSql) {
-        return unescapeTicks(super.createInitialLoadSqlFor(node, trigger, table, triggerHistory, channel, overrideSelectSql));
+        return unescapeTicks(super.createInitialLoadSqlFor(node, trigger, relation, triggerHistory, channel, overrideSelectSql));
     }
 
     @Override

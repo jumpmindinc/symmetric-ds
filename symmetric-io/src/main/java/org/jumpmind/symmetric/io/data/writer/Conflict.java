@@ -62,7 +62,7 @@ public class Conflict implements Serializable {
 
     public String toQualifiedTableName() {
         if (StringUtils.isNotBlank(targetTableName)) {
-            return Table.getFullyQualifiedTableName(targetCatalogName, targetSchemaName,
+            return Table.getFullyQualifiedName(targetCatalogName, targetSchemaName,
                     targetTableName).toLowerCase();
         } else {
             return null;

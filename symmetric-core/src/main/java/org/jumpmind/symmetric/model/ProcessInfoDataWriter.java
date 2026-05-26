@@ -80,7 +80,7 @@ public class ProcessInfoDataWriter extends NestedDataWriter {
 
     public boolean start(Table table) {
         if (table != null) {
-            processInfo.setCurrentTableName(table.getFullyQualifiedTableName());
+            processInfo.setCurrentTableName(table.getFullyQualifiedName());
         }
         return super.start(table);
     }

@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.exception.IoException;
@@ -45,7 +46,7 @@ public class SymXmlDataReader extends AbstractDataReader implements IDataReader 
     protected Reader reader;
     protected DataContext context;
     protected Batch batch;
-    protected Table table;
+    protected Relation relation;
     protected CsvData data;
     protected String sourceNodeId;
     protected int lineNumber = 0;
@@ -77,7 +78,7 @@ public class SymXmlDataReader extends AbstractDataReader implements IDataReader 
         try {
             Map<String, String> rowData = new LinkedHashMap<String, String>();
             String columnName = null;
-            Table lastTable = this.table;
+            Relation lastRelation = this.relation;
             int eventType = parser.next();
             while (eventType != XmlPullParser.END_DOCUMENT) {
                 switch (eventType) {
@@ -90,17 +91,17 @@ public class SymXmlDataReader extends AbstractDataReader implements IDataReader 
                     case XmlPullParser.START_TAG:
                         String name = parser.getName();
                         if ("row".equalsIgnoreCase(name)) {
-                            table = new Table();
+                            relation = new Table();
                             data = new CsvData();
                             for (int i = 0; i < parser.getAttributeCount(); i++) {
                                 String attributeName = parser.getAttributeName(i);
                                 String attributeValue = parser.getAttributeValue(i);
                                 if (attributeName.equalsIgnoreCase("entity")) {
-                                    table.setName(attributeValue);
+                                    relation.setName(attributeValue);
                                 } else if (attributeName.equalsIgnoreCase("catalog")) {
-                                    table.setCatalog(attributeValue);
+                                    relation.setCatalog(attributeValue);
                                 } else if (attributeName.equalsIgnoreCase("schema")) {
-                                    table.setSchema(attributeValue);
+                                    relation.setSchema(attributeValue);
                                 } else if (attributeName.equalsIgnoreCase("dml")) {
                                     if (attributeValue.equals("I")) {
                                         data.setDataEventType(DataEventType.INSERT);
@@ -154,14 +155,14 @@ public class SymXmlDataReader extends AbstractDataReader implements IDataReader 
                             String[] columnNames = rowData.keySet().toArray(
                                     new String[rowData.size()]);
                             for (String colName : columnNames) {
-                                table.addColumn(new Column(colName));
+                                relation.addColumn(new Column(colName));
                             }
                             String[] columnValues = rowData.values().toArray(
                                     new String[rowData.size()]);
                             data.putParsedData(CsvData.ROW_DATA, columnValues);
                             rowData.clear();
-                            if (lastTable == null || !lastTable.equals(table)) {
-                                return table;
+                            if (lastRelation == null || !lastRelation.equals(relation)) {
+                                return relation;
                             } else {
                                 return data;
                             }
@@ -196,23 +197,23 @@ public class SymXmlDataReader extends AbstractDataReader implements IDataReader 
         return null;
     }
 
-    public Table nextTable() {
-        if (next instanceof Table) {
-            this.table = (Table) next;
+    public Relation nextRelation() {
+        if (next instanceof Relation) {
+            this.relation = (Relation) next;
             next = data;
         } else {
             next = readNext();
-            if (next instanceof Table) {
-                this.table = (Table) next;
+            if (next instanceof Relation) {
+                this.relation = (Relation) next;
                 next = data;
             } else {
-                this.table = null;
+                this.relation = null;
             }
         }
-        if (this.table == null) {
+        if (this.relation == null) {
             batch.setComplete(true);
         }
-        return this.table;
+        return this.relation;
     }
 
     public CsvData nextData() {
