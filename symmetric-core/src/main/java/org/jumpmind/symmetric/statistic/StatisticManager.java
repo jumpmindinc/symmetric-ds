@@ -51,6 +51,14 @@ import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.ProcessType;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
+import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
+import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttribute;
+import org.jumpmind.symmetric.observability.interfaces.MetricAttributeList;
+import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.CHANNEL;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.*;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataService;
@@ -288,6 +296,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_ROUTED, channelId, count);
     }
 
     public void setDataUnRouted(String channelId, long count) {
@@ -297,6 +306,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        setChannelDoubleGauge(METRIC_ID_DATA_UNROUTED_CHANNEL, channelId, count);
     }
 
     public void incrementDataExtracted(String channelId, long count) {
@@ -306,6 +316,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_EXTRACTED, channelId, count);
     }
 
     public void incrementDataBytesExtracted(String channelId, long count) {
@@ -315,6 +326,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_EXTRACTED_BYTES, channelId, count);
     }
 
     public void incrementDataExtractedErrors(String channelId, long count) {
@@ -324,6 +336,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_EXTRACTED_ERRORS, channelId, count);
     }
 
     public void incrementDataEventInserted(String channelId, long count) {
@@ -333,6 +346,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_EVENTS_INSERTED, channelId, count);
     }
 
     public void incrementDataSent(String channelId, long count) {
@@ -342,6 +356,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_SENT, channelId, count);
     }
 
     public void incrementDataBytesSent(String channelId, long count) {
@@ -351,6 +366,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_SENT_BYTES, channelId, count);
     }
 
     public void incrementDataSentErrors(String channelId, long count) {
@@ -360,6 +376,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_SENT_ERRORS, channelId, count);
     }
 
     public void incrementDataReceived(String channelId, long count) {
@@ -369,6 +386,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_RECEIVED, channelId, count);
     }
 
     public void incrementDataBytesReceived(String channelId, long count) {
@@ -378,6 +396,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_RECEIVED_BYTES, channelId, count);
     }
 
     public void incrementDataLoaded(String channelId, long count) {
@@ -387,6 +406,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_LOADED, channelId, count);
     }
 
     public void incrementDataBytesLoaded(String channelId, long count) {
@@ -396,6 +416,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_LOADED_BYTES, channelId, count);
     }
 
     public void incrementDataLoadedErrors(String channelId, long count) {
@@ -405,6 +426,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_LOADED_ERRORS, channelId, count);
     }
 
     public void incrementDataLoadedOutgoing(String channelId, long count, String nodeId) {
@@ -418,6 +440,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_LOADED_OUTGOING, channelId, count);
     }
 
     public void incrementDataBytesLoadedOutgoing(String channelId, long count, String nodeId) {
@@ -430,6 +453,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_LOADED_OUTGOING_BYTES, channelId, count);
     }
 
     public void incrementDataLoadedOutgoingErrors(String channelId, long count) {
@@ -439,6 +463,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        addChannelCounter(METRIC_ID_DATA_LOADED_OUTGOING_ERRORS, channelId, count);
     }
 
     public void updateDataMinCreateTime(String channelId, Date minCreateTime) {
@@ -448,6 +473,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, channelId, minCreateTime.getTime());
     }
 
     public void updateDataMaxCreateTime(String channelId, Date maxCreateTime) {
@@ -457,6 +483,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             channelStatsLock.release();
         }
+        setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MAX, channelId, maxCreateTime.getTime());
     }
 
     public void incrementRestart() {
@@ -466,6 +493,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_ENGINE_RESTARTS, 1);
     }
 
     public void incrementNodesPulled(long count) {
@@ -475,6 +503,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_NODES_PULLED, count);
     }
 
     public void incrementNodesPushed(long count) {
@@ -484,6 +513,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_NODES_PUSHED, count);
     }
 
     public void incrementTotalNodesPulledTime(long count) {
@@ -493,6 +523,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_NODES_PULLED_TIME, count);
     }
 
     public void incrementTotalNodesPushedTime(long count) {
@@ -502,6 +533,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_NODES_PUSHED_TIME, count);
     }
 
     public void incrementNodesRejected(long count) {
@@ -511,6 +543,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_NODES_REJECTED, count);
     }
 
     public void incrementNodesRegistered(long count) {
@@ -520,6 +553,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_NODES_REGISTERED, count);
     }
 
     public void incrementNodesLoaded(long count) {
@@ -529,6 +563,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_NODES_LOADED, count);
     }
 
     public void incrementNodesDisabled(long count) {
@@ -538,6 +573,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_NODES_DISABLED, count);
     }
 
     public void incrementPurgedBatchIncomingRows(long count) {
@@ -547,6 +583,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_PURGE_BATCH_INCOMING_ROWS, count);
     }
 
     public void incrementPurgedBatchOutgoingRows(long count) {
@@ -556,6 +593,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_PURGE_BATCH_OUTGOING_ROWS, count);
     }
 
     public void incrementPurgedDataRows(long count) {
@@ -565,6 +603,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_PURGE_DATA_ROWS, count);
     }
 
     public void incrementPurgedDataEventRows(long count) {
@@ -574,6 +613,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_PURGE_DATA_EVENT_ROWS, count);
     }
 
     public void incrementPurgedStrandedDataRows(long count) {
@@ -583,6 +623,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_PURGE_STRANDED_DATA_ROWS, count);
     }
 
     public void incrementPurgedStrandedDataEventRows(long count) {
@@ -592,6 +633,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_PURGE_STRANDED_DATA_EVENT_ROWS, count);
     }
 
     public void incrementPurgedExpiredDataRows(long count) {
@@ -601,6 +643,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_PURGE_EXPIRED_DATA_ROWS, count);
     }
 
     public void incrementTriggersRemovedCount(long count) {
@@ -610,6 +653,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_TRIGGERS_REMOVED, count);
     }
 
     public void incrementTriggersRebuiltCount(long count) {
@@ -619,6 +663,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_TRIGGERS_REBUILT, count);
     }
 
     public void incrementTriggersCreatedCount(long count) {
@@ -628,6 +673,7 @@ public class StatisticManager implements IStatisticManager {
         } finally {
             hostStatsLock.release();
         }
+        addEngineCounter(METRIC_ID_TRIGGERS_CREATED, count);
     }
 
     @Override
@@ -639,6 +685,7 @@ public class StatisticManager implements IStatisticManager {
                 hostStatsLock.release();
             }
         }
+        setEngineDoubleGauge(METRIC_ID_DATA_GAP_COUNT, count);
     }
 
     @Override
@@ -650,6 +697,7 @@ public class StatisticManager implements IStatisticManager {
                 hostStatsLock.release();
             }
         }
+        setEngineDoubleGauge(METRIC_ID_DATA_UNROUTED_COUNT, count);
     }
 
     protected void saveAdditionalStats(Date endTime, ChannelStats stats) {
@@ -696,7 +744,7 @@ public class StatisticManager implements IStatisticManager {
                     rowsSent += channelEntry.getValue().getDataSent();
                 }
             }
-            if (rowsLoaded > 0 || rowsSent > 0) {
+            if (log.isDebugEnabled() && (rowsLoaded > 0 || rowsSent > 0)) {
                 log.debug("===================================");
                 log.debug("Date: " + entry.getKey());
                 log.debug("Rows Out: " + rowsSent);
@@ -871,6 +919,71 @@ public class StatisticManager implements IStatisticManager {
     @Override
     public Map<String, Long> getLastDataLoadedBytesMap() {
         return this.lastDataSyncBytesMap;
+    }
+
+    private void addChannelCounter(String metricId, String channelId, long delta) {
+        try {
+            IEngineMetricsService svc = engine.getMetricsService();
+            if (svc == null)
+                return;
+            IUpDownCounter c = svc.getUpDownCounter(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
+            if (c != null)
+                c.add(delta);
+        } catch (Exception e) {
+            log.debug("Failed to record channel-specific counter metric {}@{}", metricId, channelId, e);
+        }
+    }
+
+    private void setChannelDoubleGauge(String metricId, String channelId, double value) {
+        try {
+            IEngineMetricsService svc = engine.getMetricsService();
+            if (svc == null)
+                return;
+            ISymDoubleGauge g = svc.getDoubleGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
+            if (g != null)
+                g.setValue(value);
+        } catch (Exception e) {
+            log.debug("Failed to record channel-specific double gauge metric {}@{}", metricId, channelId, e);
+        }
+    }
+
+    private void setChannelLongGauge(String metricId, String channelId, long value) {
+        try {
+            IEngineMetricsService svc = engine.getMetricsService();
+            if (svc == null)
+                return;
+            ISymLongGauge g = svc.getLongGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
+            if (g != null)
+                g.setValue(value);
+        } catch (Exception e) {
+            log.debug("Failed to record channel-specific long gauge metric {}@{}", metricId, channelId, e);
+        }
+    }
+
+    private void addEngineCounter(String metricId, long delta) {
+        try {
+            IEngineMetricsService svc = engine.getMetricsService();
+            if (svc == null)
+                return;
+            IUpDownCounter c = svc.getUpDownCounter(metricId);
+            if (c != null)
+                c.add(delta);
+        } catch (Exception e) {
+            log.debug("Failed to record engine metric {}", metricId, e);
+        }
+    }
+
+    private void setEngineDoubleGauge(String metricId, double value) {
+        try {
+            IEngineMetricsService svc = engine.getMetricsService();
+            if (svc == null)
+                return;
+            ISymDoubleGauge g = svc.getDoubleGauge(metricId);
+            if (g != null)
+                g.setValue(value);
+        } catch (Exception e) {
+            log.debug("Failed to record engine metric {}", metricId, e);
+        }
     }
 
     private class SourceTargetNodeId {

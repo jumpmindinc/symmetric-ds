@@ -30,14 +30,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.SymmetricException;
+import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.JobDefinition;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.util.LogUtils;
 import org.jumpmind.util.RandomTimeSlot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.jmx.export.annotation.ManagedAttribute;
 import org.springframework.jmx.export.annotation.ManagedMetric;
 import org.springframework.jmx.export.annotation.ManagedOperation;
@@ -211,7 +212,7 @@ abstract public class AbstractJob implements Runnable, IJob {
     @Override
     public boolean invoke(boolean force) {
         try {
-            MDC.put("engineName", engine.getEngineName());
+            LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, engine.getEngineName());
             IParameterService parameterService = engine.getParameterService();
             boolean ok = checkPrerequsites(force);
             if (!ok) {
@@ -297,7 +298,7 @@ abstract public class AbstractJob implements Runnable, IJob {
      * This method is called from the job
      */
     public void run() {
-        MDC.put("engineName", engine != null ? engine.getEngineName() : "unknown");
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, engine != null ? engine.getEngineName() : "unknown");
         invoke(false);
     }
 

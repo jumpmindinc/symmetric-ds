@@ -525,6 +525,62 @@ Examples when `$(externalId)` is set to `1`:
 $(variableName|%05d) - returns 00001
 ----
 
+=== OpenTelemetry Integration
+
+SymmetricDS publishes built-in metrics through the https://opentelemetry.io[OpenTelemetry] (OTel) API, making them available to any OTel-compatible observability platform such as Prometheus (via OTLP receiver), Grafana Cloud, DataDog, Dynatrace, etc.
+
+Built-in metrics are exposed via the OpenTelemetry SDK under the scope name `symmetricds`, which can be overridden in three ways:
+* `OTEL_SCOPE` environment variable,
+* With the `otel.scope` JMV system property (in either bin/setenv or conf/sym_service.conf file), 
+* `otel.scope` start up parameter in the symmetric-server.properties file.
+
+==== OTel SDK Configuration
+
+SymmetricDS supports two modes of OTel integration depending on how the JVM is configured.
+
+Autoconfigured SDK::
+When no global OpenTelemetry instance is registered in JVM, SymmetricDS initializes its own SDK using the standard https://opentelemetry.io/docs/languages/java/configuration/[OTel autoconfiguration] mechanism.
+Exporters and other SDK settings are controlled by the standard `OTEL_*` environment variables (for example, `OTEL_EXPORTER_OTLP_ENDPOINT` or `OTEL_METRICS_EXPORTER`).
+
+Java Agent::
+When an https://opentelemetry.io/docs/zero-code/java/agent/[OTel Java agent] is attached to the JVM, it automatically registers a global OpenTelemetry instance before the application starts.
+SymmetricDS detects the existing instance and routes all metrics to it.
+No additional SDK configuration is needed; the agent's own configuration governs exporting.
+
+==== Enabling and Disabling OpenTelemetry Feed
+
+`OTEL_SDK_DISABLED` is a standard OTel flag that prevents the SDK from exporting data.
+It is typically set per server as an environment variable or JVM system property (`-Dotel.sdk.disabled=true`).
+When set to `true`, SymmetricDS continues to collect, aggregate and store metrics internally, but does not publish them to any OpenTelemetry backend.
+
+The `metrics.opentelemetry.enabled` parameter can be set per SymmetricDS engine (a.k.a. node) and overrides the server-level `OTEL_SDK_DISABLED` flag for that engine's metrics service only.
+This allows a single server to host multiple engines with different OTel publishing behavior.
+
+.OTel publishing resolution
+[cols="2,2,3", options="header"]
+|===
+|`otel.sdk.disabled`|`metrics.opentelemetry.enabled`|Result
+
+|`false` (default)|not set|OTel publishing enabled for the engine
+|`true`|not set|OTel publishing disabled for the engine
+|`true`|`true`|OTel publishing enabled for this engine only
+|`false`|`false`|OTel publishing disabled for this engine only
+|===
+
+==== Built-in Metric Categories
+
+The following categories of metrics are collected by default.
+See <<Metrics>> for the full list of metric IDs, units, and descriptions.
+
+Server Connections:: Active connection reservations and utilization relative to the configured concurrent-worker limit.
+Synchronization Pipeline:: Per-channel row and byte counts across each stage of the sync pipeline: routed, extracted, sent, received, and loaded.
+Batch Status:: Per-node outgoing and incoming batch and row counts by status.
+Queue Depth:: Unrouted row counts and data-gap counts, including oldest and newest unrouted row timestamps per channel.
+Database Connection Pool:: Active, idle, and waiting connection counts and pool utilization.
+Nodes:: Pull and push operation counts and elapsed times; registration, load, rejection, and disable counts.
+Purge:: Row counts purged from the data, data event, and batch history tables.
+Triggers:: Database trigger create, rebuild, and remove counts.
+
 ifdef::pro[]
 
 === Display Settings

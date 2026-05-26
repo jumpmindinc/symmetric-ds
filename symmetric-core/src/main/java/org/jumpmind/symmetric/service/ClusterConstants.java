@@ -34,6 +34,7 @@ public class ClusterConstants {
     public static final String PURGE_OUTGOING = "Purge Outgoing";
     public static final String PURGE_INCOMING = "Purge Incoming";
     public static final String PURGE_STATISTICS = "Purge Statistics";
+    public static final String PURGE_METRIC_STATS = "Purge Metric Stats";
     public static final String REPORT_STATUS = "Report Status";
     public static final String PURGE_DATA_GAPS = "Purge Data Gaps";
     public static final String HEARTBEAT = "Heartbeat";
@@ -59,6 +60,7 @@ public class ClusterConstants {
     public static final String DATA_REFRESH_MONTHLY_1ST_10AM = "Data Refresh - Monthly, on 1st day at 10 AM";
     public static final String LOG_MINER = "Log Miner";
     public static final String REFRESH_ANALYTICS = "Refresh Analytics";
+    public static final String REFRESH_BACKLOG_REPORT = "Refresh Backlog Report";
     public static final String FILE_SYNC_SHARED = "FILE_SYNC_SHARED";
     public static final String TYPE_CLUSTER = "CLUSTER";
     public static final String TYPE_EXCLUSIVE = "EXCLUSIVE";

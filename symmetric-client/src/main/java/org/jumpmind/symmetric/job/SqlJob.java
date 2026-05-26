@@ -30,6 +30,7 @@ import org.jumpmind.db.sql.SqlScript;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.TokenConstants;
 import org.jumpmind.symmetric.model.JobDefinition.JobType;
+import org.jumpmind.symmetric.model.Node;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 public class SqlJob extends AbstractJob {
@@ -69,7 +70,10 @@ public class SqlJob extends AbstractJob {
             replacementTokens.putAll(startingReplacementTokens);
         }
         replacementTokens.put(TokenConstants.NODE_ID, engine.getNodeId());
-        replacementTokens.put(TokenConstants.NODE_GROUP_ID, engine.getNodeService().findIdentity().getNodeGroupId());
+        Node identity = engine.getNodeService().findIdentity();
+        if (identity != null) {
+            replacementTokens.put(TokenConstants.NODE_GROUP_ID, identity.getNodeGroupId());
+        }
         return replacementTokens;
     }
 

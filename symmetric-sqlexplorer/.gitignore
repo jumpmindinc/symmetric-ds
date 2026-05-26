@@ -13,9 +13,6 @@ hs_err_pid*
 /.gradle/
 /bin/
 /build/
-/.settings/
-/.classpath
-/.project
 /.clover/
 /node_modules/
 /webpack.generated.js

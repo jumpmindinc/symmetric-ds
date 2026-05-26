@@ -301,6 +301,8 @@ bin/sym_service stop
 
 Another way to run SymmetricDS is as a container. The `bin/sym --container` command runs within the container and acts as PID 1.
 
+NOTE: Hosting multiple engines in a containerized server is not a common deployment pattern as it affects auto-scaling.
+
 ifndef::pro[]
 See the https://hub.docker.com/r/jumpmind/symmetricds[SymmetricDS Docker Hub page] for more information about using Docker to run SymmetricDS as a container.
 endif::pro[]
