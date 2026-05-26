@@ -102,9 +102,9 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
         }
         replaceSystemAndEnvironmentVariables(fileProperties);
         if (log.isDebugEnabled()) {
-            otelEnvProperties.logAllKeys("otelEnvProperties");
-            symEnvProperties.logAllKeys("symEnvProperties");
-            fileProperties.logAllKeys("fileProperties");
+            otelEnvProperties.logAllKeys("OTelEnvProperties");
+            symEnvProperties.logAllKeys("SymEnvProperties");
+            fileProperties.logAllKeys("CombinedProperties");
         }
     }
 
