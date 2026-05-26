@@ -436,11 +436,13 @@ final public class ParameterConstants {
     public static final String POSTGRES_TRIGGER_CAPTURE_TRUNCATE = "postgres.trigger.capture.truncate.event";
     public static final String POSTGRES_SECURITY_DEFINER = "postgres.security.definer";
     public static final String POSTGRES_CONVERT_INFINITY_DATE_TO_NULL = "postgres.convert.infinity.date.to.null";
+    public static final String INCLUDE_ROWIDENTIFIER_AS_COLUMN = "include.rowidentifier.as.column";
     public static final String[] STARTUP_DB_OBJECTS_SETUP_PARAMS = new String[] { TRIGGER_CAPTURE_DDL_CHANGES,
             POSTGRES_TRIGGER_CAPTURE_TRUNCATE, TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST, TRIGGER_CAPTURE_DDL_DELIMITER,
             DB_USER, "db.url", "target.db.url" };
     public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
-            JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE };
+            JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
+            INCLUDE_ROWIDENTIFIER_AS_COLUMN };
     public static final String GOOGLE_BIG_QUERY_MAX_ROWS_PER_RPC = "google.bigquery.max.rows.per.rpc";
     public static final String GOOGLE_BIG_QUERY_LOCATION = "google.bigquery.location";
     public static final String GOOGLE_BIG_QUERY_PROJECT_ID = "google.bigquery.project.id";
@@ -462,7 +464,6 @@ final public class ParameterConstants {
     public static final String SPATIAL_TYPES_ENABLED = "spatial.data.types.enabled";
     public static final String DEFAULT_VALUES_TO_LEAVE_UNQUOTED = "default.values.to.leave.unquoted";
     public static final String DEFAULT_VALUES_TO_TRANSLATE = "default.values.to.translate";
-    public static final String INCLUDE_ROWIDENTIFIER_AS_COLUMN = "include.rowidentifier.as.column";
     public static final String COMPARE_QUEUE_PER_REQUEST_COUNT = "compare.queue.per.request.count";
     public static final String COMPARE_THREAD_PER_SERVER_COUNT = "compare.thread.per.server.count";
     public static final String COMPARE_LOCK_TIMEOUT_MS = "compare.lock.timeout.ms";
