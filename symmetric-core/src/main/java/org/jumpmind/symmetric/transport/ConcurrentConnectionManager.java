@@ -26,6 +26,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.jumpmind.symmetric.ApplicationHealthTracker;
+import org.jumpmind.symmetric.IApplicationHealthTracker;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
@@ -80,6 +82,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         Map<String, Reservation> reservations = getReservationMap(poolId);
         Reservation reservation = reservations.remove(reservationId);
         if (reservation != null) {
+        	updateReadiness(reservations);
             logConnectedTimePeriod(reservationId, reservation.createTime, System.currentTimeMillis(), poolId);
             return true;
         } else {
@@ -92,6 +95,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         Map<String, Reservation> reservations = getReservationMap(poolId);
         Reservation reservation = reservations.remove(nodeId);
         if (reservation != null) {
+        	updateReadiness(reservations);
             logConnectedTimePeriod(nodeId, reservation.createTime, System.currentTimeMillis(),
                     poolId);
             return true;
@@ -146,6 +150,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
                 }
                 reservations.put(reservationId, new Reservation(reservationId, reservationExpiration, reservationRequest));
                 transportErrorTimeByNode.remove(nodeId);
+                updateReadiness(reservations);
                 return ReservationStatus.ACCEPTED;
             } else {
                 String message = "Node '{}' Channel '{}' requested a {} connection, but was rejected because it already has one";
@@ -199,6 +204,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
                     reservations.remove(key);
                 }
             }
+            updateReadiness(reservations);
         }
     }
 
@@ -314,5 +320,15 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     @Override
     public Map<String, Map<String, Reservation>> getActiveReservationsByNodeByPool() {
         return activeReservationsByNodeByPool;
+    }
+    
+    private void updateReadiness(Map<String, Reservation> reservations) {
+    	 IApplicationHealthTracker tracker = ApplicationHealthTracker.getTracker();
+         if (tracker != null) {
+        	 	int maxPoolSize = parameterService.getInt(ParameterConstants.CONCURRENT_WORKERS);
+        	 	boolean engineReady = reservations.size() < maxPoolSize;
+            tracker.setEngineReady(parameterService.getEngineName(), engineReady);
+            log.debug("Engine readiness = {}, reservations = {}, max = {}", engineReady, reservations.size(), maxPoolSize);
+         }
     }
 }
