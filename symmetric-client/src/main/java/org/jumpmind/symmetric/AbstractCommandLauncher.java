@@ -119,27 +119,7 @@ public abstract class AbstractCommandLauncher {
             serverProperties.merge(jvmProperties);
             TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(serverProperties, false);
             System.getProperties().putAll(serverProperties);
-            propagateOtelPropertiesToSystem(serverProperties);
             serverPropertiesInitialized = true;
-        }
-    }
-
-    static void propagateOtelPropertiesToSystem(TypedProperties serverProperties) {
-        for (String propertyName : serverProperties.stringPropertyNames()) {
-            if (propertyName.startsWith("otel.")) {
-                String value = serverProperties.getProperty(propertyName);
-                if (StringUtils.isBlank(value)) {
-                    log.debug("Skipped blank Open Telemetry property {}", propertyName);
-                    continue;
-                }
-                if (StringUtils.isBlank(System.getProperty(propertyName))) {
-                    System.setProperty(propertyName, serverProperties.getProperty(propertyName));
-                    log.debug("Imported Open Telemetry property {}={}", propertyName, value);
-                } else {
-                    System.setProperty(propertyName, serverProperties.getProperty(propertyName));
-                    log.debug("Skipped already defined Open Telemetry property {}", propertyName);
-                }
-            }
         }
     }
 
