@@ -374,6 +374,16 @@ public class Table extends Relation {
     @Override
     public Object clone() throws CloneNotSupportedException {
         Table result = (Table) super.clone();
+        result.fullyQualifiedName = null;
+        result.fullyQualifiedNameLowerCase = null;
+        result.nameLowerCase = null;
+        result.columns = new ArrayList<>(columns.size());
+        for (Column col : columns) {
+            if (col != null) {
+                result.columns.add((Column) col.clone());
+            }
+        }
+        result.lobColumns = null;
         result.foreignKeys = new ArrayList<>(foreignKeys.size());
         for (ForeignKey fk : foreignKeys) {
             if (fk != null) {

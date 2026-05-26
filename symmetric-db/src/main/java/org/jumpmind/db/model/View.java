@@ -21,9 +21,6 @@
 package org.jumpmind.db.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Set;
-import java.util.TreeSet;
 
 /**
  * Represents a database view. A view has a name, catalog, schema, and columns but no indices or foreign keys.
@@ -48,8 +45,6 @@ public class View extends Relation {
         try {
             View copy = (View) this.clone();
             copy.orderColumns(orderedColumnNames, addMissingColumns);
-            Set<String> columnNameSet = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-            columnNameSet.addAll(Arrays.asList(orderedColumnNames));
             if (setPrimaryKeys && copy.columns != null) {
                 for (Column column : copy.columns) {
                     if (column != null) {
@@ -72,13 +67,16 @@ public class View extends Relation {
             }
             return copy;
         } catch (CloneNotSupportedException ex) {
-            throw new RuntimeException(ex);
+            throw new IllegalStateException(ex);
         }
     }
 
     @Override
     public Object clone() throws CloneNotSupportedException {
         View result = (View) super.clone();
+        result.fullyQualifiedName = null;
+        result.fullyQualifiedNameLowerCase = null;
+        result.nameLowerCase = null;
         result.columns = new ArrayList<>(columns.size());
         for (Column column : columns) {
             if (column != null) {
@@ -93,7 +91,7 @@ public class View extends Relation {
         try {
             return (View) this.clone();
         } catch (CloneNotSupportedException ex) {
-            throw new RuntimeException(ex);
+            throw new IllegalStateException(ex);
         }
     }
 

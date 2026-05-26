@@ -38,7 +38,6 @@ import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.IDatabasePlatform;
-import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.extension.IExtensionPoint;
@@ -60,7 +59,7 @@ public class ExtractDataReader implements IDataReader {
     protected List<IExtractDataReaderSource> sourcesToUse;
     protected IDatabasePlatform targetPlatform;
     protected IExtractDataReaderSource currentSource;
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     protected List<IExtractDataFilter> filters = new ArrayList<>();
     protected List<IRelationExtractDataFilter> relationFilters = new ArrayList<>();
     protected Batch batch;
@@ -79,7 +78,7 @@ public class ExtractDataReader implements IDataReader {
         this.isSybaseASE = platform.getName().equals(DatabaseNamesConstants.ASE);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     public ExtractDataReader(IDatabasePlatform platform, IExtractDataReaderSource source, List<IExtensionPoint> filters,
             boolean isUsingUnitypes, IDatabasePlatform targetPlatform) {
         this.sourcesToUse = new ArrayList<IExtractDataReaderSource>();
@@ -158,23 +157,23 @@ public class ExtractDataReader implements IDataReader {
         return sourceString;
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     @Override
     public CsvData nextData() {
         CsvData nextData = nextDataFromSource();
         if (nextData != null && !relationFilters.isEmpty()) {
-            nextData = applyFilterLoop(nextData, data -> {
+            nextData = applyFilterLoop(nextData, csvData -> {
                 boolean accepted = true;
                 for (IRelationExtractDataFilter f : relationFilters) {
-                    accepted &= f.filterData(dataContext, batch, relation, data);
+                    accepted &= f.filterData(dataContext, batch, relation, csvData);
                 }
                 return accepted;
             });
         } else if (nextData != null && !filters.isEmpty()) {
-            nextData = applyFilterLoop(nextData, data -> {
+            nextData = applyFilterLoop(nextData, csvData -> {
                 boolean accepted = true;
                 for (IExtractDataFilter f : filters) {
-                    accepted &= f.filterData(dataContext, batch, (Table) relation, data);
+                    accepted &= f.filterData(dataContext, batch, (Table) relation, csvData);
                 }
                 return accepted;
             });
@@ -242,67 +241,64 @@ public class ExtractDataReader implements IDataReader {
         if (this.currentSource.requiresLobsSelectedFromSource(data)
                 && (data.getDataEventType() == DataEventType.UPDATE || data.getDataEventType() == DataEventType.INSERT)) {
             List<Column> lobColumns = platform.getLobColumns(relation);
-            if (lobColumns.size() > 0) {
+            if (!lobColumns.isEmpty()) {
                 String[] columnNames = relation.getColumnNames();
                 String[] rowData = data.getParsedData(CsvData.ROW_DATA);
                 Column[] orderedColumns = relation.getColumns();
-                Object[] objectValues = platform.getObjectValues(batch.getBinaryEncoding(),
-                        rowData, orderedColumns);
-                Map<String, Object> columnDataMap = CollectionUtils
-                        .toMap(columnNames, objectValues);
+                Object[] objectValues = platform.getObjectValues(batch.getBinaryEncoding(), rowData, orderedColumns);
+                Map<String, Object> columnDataMap = CollectionUtils.toMap(columnNames, objectValues);
                 Column[] pkColumns = relation.getPrimaryKeyColumns();
-                ISqlTemplate sqlTemplate = targetPlatform.getSqlTemplate();
-                // ISqlTemplate sqlTemplate = platform.getSqlTemplate();
                 Object[] args = new Object[pkColumns.length];
                 for (int i = 0; i < pkColumns.length; i++) {
                     args[i] = columnDataMap.get(pkColumns[i].getName());
                 }
                 String sql = buildSelect(relation, lobColumns, pkColumns);
-                Row row = sqlTemplate.queryForRow(sql, args);
+                Row row = targetPlatform.getSqlTemplate().queryForRow(sql, args);
                 if (row == null) {
                     row = createRowForRequiredLobs(lobColumns);
                 }
                 if (row != null) {
                     for (Column lobColumn : lobColumns) {
-                        String valueForCsv = null;
-                        if (platform.isBlob(lobColumn)) {
-                            byte[] binaryData = row.getBytes(lobColumn.getName());
-                            if (binaryData != null) {
-                                if (isUniType(lobColumn.getJdbcTypeName())) {
-                                    try {
-                                        if (lobColumn.getJdbcTypeName().equalsIgnoreCase("unitext")) {
-                                            valueForCsv = row.getString(lobColumn.getName());
-                                        } else {
-                                            String utf16String = null;
-                                            String baseString = row.getString(lobColumn.getName());
-                                            baseString = "fffe" + baseString;
-                                            utf16String = new String(Hex.decodeHex(baseString), "UTF-16");
-                                            String utf8String = new String(utf16String.getBytes(Charset.defaultCharset()), Charset.defaultCharset());
-                                            valueForCsv = utf8String;
-                                        }
-                                    } catch (UnsupportedEncodingException | DecoderException e) {
-                                        e.printStackTrace();
-                                    }
-                                } else if (batch.getBinaryEncoding() == BinaryEncoding.BASE64) {
-                                    valueForCsv = new String(Base64.encodeBase64(binaryData), Charset.defaultCharset());
-                                } else if (batch.getBinaryEncoding() == BinaryEncoding.HEX) {
-                                    valueForCsv = new String(Hex.encodeHex(binaryData));
-                                } else {
-                                    valueForCsv = new String(binaryData, Charset.defaultCharset());
-                                }
-                                binaryData = null;
-                            }
-                        } else {
-                            valueForCsv = row.getString(lobColumn.getName());
-                        }
-                        int index = ArrayUtils.indexOf(columnNames, lobColumn.getName());
-                        rowData[index] = valueForCsv;
+                        String valueForCsv = platform.isBlob(lobColumn)
+                                ? convertBlobValueForCsv(lobColumn, row)
+                                : row.getString(lobColumn.getName());
+                        rowData[ArrayUtils.indexOf(columnNames, lobColumn.getName())] = valueForCsv;
                     }
                     data.putParsedData(CsvData.ROW_DATA, rowData);
                 }
             }
         }
         return data;
+    }
+
+    private String convertBlobValueForCsv(Column lobColumn, Row row) {
+        byte[] binaryData = row.getBytes(lobColumn.getName());
+        if (binaryData == null) {
+            return null;
+        }
+        if (isUniType(lobColumn.getJdbcTypeName())) {
+            return convertUniTypeBlobValueForCsv(lobColumn, row);
+        } else if (batch.getBinaryEncoding() == BinaryEncoding.BASE64) {
+            return new String(Base64.encodeBase64(binaryData), Charset.defaultCharset());
+        } else if (batch.getBinaryEncoding() == BinaryEncoding.HEX) {
+            return new String(Hex.encodeHex(binaryData));
+        } else {
+            return new String(binaryData, Charset.defaultCharset());
+        }
+    }
+
+    private String convertUniTypeBlobValueForCsv(Column lobColumn, Row row) {
+        try {
+            if (lobColumn.getJdbcTypeName().equalsIgnoreCase("unitext")) {
+                return row.getString(lobColumn.getName());
+            }
+            String baseString = "fffe" + row.getString(lobColumn.getName());
+            String utf16String = new String(Hex.decodeHex(baseString), "UTF-16");
+            return new String(utf16String.getBytes(Charset.defaultCharset()), Charset.defaultCharset());
+        } catch (UnsupportedEncodingException | DecoderException e) {
+            log.warn("Failed to convert unitype blob for column '" + lobColumn.getName() + "'", e);
+            return null;
+        }
     }
 
     protected CsvData convertUtf16toUTF8(Relation relation, CsvData data) {
@@ -312,34 +308,34 @@ public class ExtractDataReader implements IDataReader {
                 String[] columnNames = relation.getColumnNames();
                 String[] rowData = data.getParsedData(CsvData.ROW_DATA);
                 boolean skipUnitext = this.currentSource.requiresLobsSelectedFromSource(data);
+                String fullyQualifiedRelationName = relation.getFullyQualifiedName();
                 for (Column uniColumn : uniColumns) {
                     String jdbcType = uniColumn.getJdbcTypeName();
-                    boolean isUnitext = jdbcType != null && jdbcType.equalsIgnoreCase("unitext");
-                    if (isUnitext && skipUnitext) {
+                    if (jdbcType != null && jdbcType.equalsIgnoreCase("unitext") && skipUnitext) {
                         continue;
                     }
                     int index = ArrayUtils.indexOf(columnNames, uniColumn.getName());
                     if (index >= 0 && rowData[index] != null) {
-                        try {
-                            String baseString = rowData[index];
-                            baseString = "fffe" + baseString;
-                            byte[] utf16Bytes = Hex.decodeHex(baseString);
-                            String utf16Str = new String(utf16Bytes, "UTF-16");
-                            String utf8Str = new String(utf16Str.getBytes("UTF-8"), "UTF-8");
-                            rowData[index] = utf8Str;
-                        } catch (UnsupportedEncodingException | DecoderException e) {
-                            log.warn("Failed to decode UTF-16 to UTF-8 for column '{}' with value '{}' in table '{}': {}",
-                                    uniColumn.getName(),
-                                    rowData[index],
-                                    relation.getFullyQualifiedName(),
-                                    e.getMessage());
-                        }
+                        rowData[index] = convertColumnUtf16ToUtf8(uniColumn, rowData[index], fullyQualifiedRelationName);
                     }
                 }
                 data.putParsedData(CsvData.ROW_DATA, rowData);
             }
         }
         return data;
+    }
+
+    private String convertColumnUtf16ToUtf8(Column uniColumn, String value, String fullyQualifiedRelationName) {
+        try {
+            String baseString = "fffe" + value;
+            byte[] utf16Bytes = Hex.decodeHex(baseString);
+            String utf16Str = new String(utf16Bytes, "UTF-16");
+            return new String(utf16Str.getBytes("UTF-8"), "UTF-8");
+        } catch (UnsupportedEncodingException | DecoderException e) {
+            log.warn("Failed to decode UTF-16 to UTF-8 for column '{}' with value '{}' in table '{}': {}",
+                    uniColumn.getName(), value, fullyQualifiedRelationName, e.getMessage());
+            return value;
+        }
     }
 
     public List<Column> getUniColumns(Relation relation) {

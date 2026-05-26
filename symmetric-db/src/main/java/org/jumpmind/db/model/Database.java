@@ -75,9 +75,9 @@ public class Database implements Serializable, Cloneable {
     /** The version of the model. */
     private String version;
     /** The tables. */
-    private ArrayList<Table> tables = new ArrayList<Table>();
-    private Map<String, Integer> tableIndexCache = new HashMap<String, Integer>();
-    private ArrayList<View> views = new ArrayList<View>();
+    private ArrayList<Table> tables = new ArrayList<>();
+    private Map<String, Integer> tableIndexCache = new HashMap<>();
+    private ArrayList<View> views = new ArrayList<>();
 
     /**
      * Implements modified topological sort of relations (@see <a href="http://en.wikipedia.org/wiki/Topological_sorting">topological sorting</a>). The

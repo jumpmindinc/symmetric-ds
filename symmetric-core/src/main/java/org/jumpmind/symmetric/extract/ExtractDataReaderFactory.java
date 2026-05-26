@@ -41,7 +41,7 @@ public class ExtractDataReaderFactory implements IExtractDataReaderFactory {
         this.engine = engine;
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     @Override
     public ExtractDataReader getReader(IDatabasePlatform platform, IExtractDataReaderSource source, Node sourceNode, Node targetNode,
             IDatabasePlatform targetPlatform) {

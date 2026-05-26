@@ -249,7 +249,7 @@ public class SelectFromTableSource extends SelectFromSource {
         return dialect;
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     protected void startNewCursor(final TriggerHistory triggerHistory, final TriggerRouter triggerRouter) {
         ISymmetricDialect symmetricDialectToUse = getSymmetricDialect();
         String selectSql = overrideSelectSql;

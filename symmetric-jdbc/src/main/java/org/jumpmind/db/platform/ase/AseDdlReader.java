@@ -110,13 +110,13 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
                 determineAutoIncrementFromResultSetMetaData(connection, table, table.getColumns());
             }
             if (getMajorVersion(metaData) >= 15) {
-                determineGeneratedColumns(connection, relation, relation.getColumns());
+                determineGeneratedColumns(relation, relation.getColumns());
             }
         }
         return relation;
     }
 
-    protected void determineGeneratedColumns(Connection conn, Relation relation, final Column columnsToCheck[]) {
+    protected void determineGeneratedColumns(Relation relation, final Column columnsToCheck[]) {
         StringBuilder query = new StringBuilder();
         if (columnsToCheck == null || columnsToCheck.length == 0) {
             return;

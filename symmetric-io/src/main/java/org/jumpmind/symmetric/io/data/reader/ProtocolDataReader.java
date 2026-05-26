@@ -40,6 +40,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.exception.IoException;
@@ -249,7 +250,7 @@ public class ProtocolDataReader extends AbstractDataReader implements IDataReade
                     catalogName = tokens.length == 1 || StringUtils.isBlank(tokens[1]) ? null : tokens[1];
                 } else if (tokens[0].equals(CsvConstants.TABLE)) {
                     tableName = tokens[1];
-                    relation = context.getParsedRelations().get(Table.getFullyQualifiedName(catalogName, schemaName, tableName));
+                    relation = context.getParsedRelations().get(SchemaObject.getFullyQualifiedName(catalogName, schemaName, tableName));
                     if (relation != null) {
                         context.setLastParsedRelation(relation);
                     } else {
@@ -258,7 +259,7 @@ public class ProtocolDataReader extends AbstractDataReader implements IDataReade
                     }
                 } else if (tokens[0].equals(CsvConstants.KEYS)) {
                     if (keys == null) {
-                        keys = new HashSet<String>(tokens.length);
+                        keys = HashSet.newHashSet(tokens.length);
                     }
                     for (int i = 1; i < tokens.length; i++) {
                         keys.add(tokens[i]);

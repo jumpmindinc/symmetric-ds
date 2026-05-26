@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -756,7 +755,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             triggerRouters.addAll(buildTriggerRoutersForSymmetricTables(Version.version(),
                     nodeGroupLink));
         }
-        if (triggerRouters.size() == 0 && parameterService.is(ParameterConstants.SYNC_TRIGGERS_REG_SVR_INSTALL_WITHOUT_CONFIG, true) &&
+        if (triggerRouters.isEmpty() && parameterService.is(ParameterConstants.SYNC_TRIGGERS_REG_SVR_INSTALL_WITHOUT_CONFIG, true) &&
                 parameterService.isRegistrationServer()) {
             NodeGroupLink link = new NodeGroupLink(sourceNodeGroupId, Constants.NO_GROUP);
             triggerRouters.addAll(buildTriggerRoutersForSymmetricTables(Version.version(), link));
@@ -1920,95 +1919,17 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         }
     }
 
-    @SuppressWarnings("deprecation")
     protected Set<Relation> getRelationsForTriggerWithException(Trigger trigger, List<Trigger> triggers, boolean useRelationCache,
             TriggerRouterContext triggerRouterContext) {
         long ts = System.currentTimeMillis();
-        Set<Relation> relations = new HashSet<Relation>();
+        Set<Relation> relations = new HashSet<>();
         IDatabasePlatform sourcePlatform = getTargetPlatform(trigger.getSourceTableName());
         try {
-            boolean ignoreCase = this.parameterService
-                    .is(ParameterConstants.DB_METADATA_IGNORE_CASE);
-            List<String> catalogNames = new ArrayList<String>();
-            if (trigger.isSourceCatalogNameWildCarded()) {
-                List<String> all = sourcePlatform.getDdlReader().getCatalogNames();
-                for (String catalogName : all) {
-                    if (trigger.matchesCatalogName(catalogName, ignoreCase)) {
-                        catalogNames.add(catalogName);
-                    }
-                }
-                if (catalogNames.size() == 0) {
-                    catalogNames.add(null);
-                }
-            } else {
-                if (isBlank(trigger.getSourceCatalogName())) {
-                    catalogNames.add(sourcePlatform.getDefaultCatalog());
-                } else {
-                    catalogNames.add(trigger.getSourceCatalogNameUnescaped());
-                }
-            }
-            for (String catalogName : catalogNames) {
-                List<String> schemaNames = new ArrayList<String>();
-                if (trigger.isSourceSchemaNameWildCarded()) {
-                    List<String> all = sourcePlatform.getDdlReader().getSchemaNames(catalogName);
-                    for (String schemaName : all) {
-                        if (trigger.matchesSchemaName(schemaName, ignoreCase)) {
-                            schemaNames.add(schemaName);
-                        }
-                    }
-                    if (schemaNames.size() == 0) {
-                        schemaNames.add(null);
-                    }
-                } else {
-                    if (isBlank(trigger.getSourceSchemaName())) {
-                        schemaNames.add(sourcePlatform.getDefaultSchema());
-                    } else {
-                        schemaNames.add(trigger.getSourceSchemaNameUnescaped());
-                    }
-                }
-                for (String schemaName : schemaNames) {
-                    if (trigger.isSourceTableNameWildCarded()) {
-                        Database database = sourcePlatform.readDatabase(
-                                catalogName, schemaName,
-                                new String[] { "TABLE" });
-                        Table[] tableArray = database.getTables();
-                        for (Table table : tableArray) {
-                            if (trigger.matches(table, catalogName,
-                                    schemaName, ignoreCase)
-                                    && !containsExactMatchForSourceTableName(table, triggers,
-                                            ignoreCase)
-                                    && !table.getName().toLowerCase().startsWith(tablePrefix)) {
-                                relations.add(table);
-                            }
-                        }
-                    } else {
-                        boolean useTableResolver = parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE);
-                        List<ITableResolver> tableResolverList = extensionService.getExtensionPointList(ITableResolver.class);
-                        List<IRelationResolver> relationResolverList = extensionService.getExtensionPointList(IRelationResolver.class);
-                        if (!trigger.getSourceTableName().startsWith(parameterService.getTablePrefix() + "_")
-                                && CollectionUtils.isNotEmpty(useTableResolver ? tableResolverList : relationResolverList)) {
-                            if (useTableResolver) {
-                                Set<Table> resolvedTables = new HashSet<Table>();
-                                for (ITableResolver resolver : tableResolverList) {
-                                    resolver.resolve(catalogName, schemaName, resolvedTables, sourcePlatform, nodeService, trigger, useRelationCache,
-                                            triggerRouterContext);
-                                }
-                                relations.addAll(resolvedTables);
-                            } else {
-                                for (IRelationResolver resolver : relationResolverList) {
-                                    resolver.resolve(catalogName, schemaName, relations, sourcePlatform, nodeService, trigger, useRelationCache,
-                                            triggerRouterContext);
-                                }
-                            }
-                        } else {
-                            Relation relation = sourcePlatform.getRelationFromCache(
-                                    catalogName, schemaName,
-                                    trigger.getSourceTableNameUnescaped(), !useRelationCache);
-                            if (relation != null) {
-                                relations.add(relation);
-                            }
-                        }
-                    }
+            boolean ignoreCase = parameterService.is(ParameterConstants.DB_METADATA_IGNORE_CASE);
+            for (String catalogName : resolveCatalogNames(trigger, sourcePlatform, ignoreCase)) {
+                for (String schemaName : resolveSchemaNames(trigger, sourcePlatform, catalogName, ignoreCase)) {
+                    relations.addAll(resolveRelationsForSchema(trigger, triggers, sourcePlatform,
+                            catalogName, schemaName, useRelationCache, triggerRouterContext));
                 }
             }
         } catch (Exception ex) {
@@ -2018,19 +1939,112 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return relations;
     }
 
+    private List<String> resolveCatalogNames(Trigger trigger, IDatabasePlatform sourcePlatform, boolean ignoreCase) {
+        List<String> catalogNames = new ArrayList<>();
+        if (trigger.isSourceCatalogNameWildCarded()) {
+            for (String catalogName : sourcePlatform.getDdlReader().getCatalogNames()) {
+                if (trigger.matchesCatalogName(catalogName, ignoreCase)) {
+                    catalogNames.add(catalogName);
+                }
+            }
+            if (catalogNames.isEmpty()) {
+                catalogNames.add(null);
+            }
+        } else {
+            catalogNames.add(isBlank(trigger.getSourceCatalogName())
+                    ? sourcePlatform.getDefaultCatalog()
+                    : trigger.getSourceCatalogNameUnescaped());
+        }
+        return catalogNames;
+    }
+
+    private List<String> resolveSchemaNames(Trigger trigger, IDatabasePlatform sourcePlatform, String catalogName, boolean ignoreCase) {
+        List<String> schemaNames = new ArrayList<>();
+        if (trigger.isSourceSchemaNameWildCarded()) {
+            for (String schemaName : sourcePlatform.getDdlReader().getSchemaNames(catalogName)) {
+                if (trigger.matchesSchemaName(schemaName, ignoreCase)) {
+                    schemaNames.add(schemaName);
+                }
+            }
+            if (schemaNames.isEmpty()) {
+                schemaNames.add(null);
+            }
+        } else {
+            schemaNames.add(isBlank(trigger.getSourceSchemaName())
+                    ? sourcePlatform.getDefaultSchema()
+                    : trigger.getSourceSchemaNameUnescaped());
+        }
+        return schemaNames;
+    }
+
+    private Set<Relation> resolveRelationsForSchema(Trigger trigger, List<Trigger> triggers, IDatabasePlatform sourcePlatform,
+            String catalogName, String schemaName, boolean useRelationCache,
+            TriggerRouterContext triggerRouterContext) {
+        Set<Relation> resolved = new HashSet<>();
+        boolean ignoreCase = parameterService.is(ParameterConstants.DB_METADATA_IGNORE_CASE);
+        if (trigger.isSourceTableNameWildCarded()) {
+            Database database = sourcePlatform.readDatabase(catalogName, schemaName, new String[] { "TABLE" });
+            for (Table table : database.getTables()) {
+                if (trigger.matches(table, catalogName, schemaName, ignoreCase)
+                        && !containsExactMatchForSourceTableName(table, triggers, ignoreCase)
+                        && !table.getName().toLowerCase().startsWith(tablePrefix)) {
+                    resolved.add(table);
+                }
+            }
+        } else {
+            resolveNonWildcardedRelation(trigger, sourcePlatform, catalogName, schemaName,
+                    useRelationCache, triggerRouterContext, resolved);
+        }
+        return resolved;
+    }
+
+    @SuppressWarnings("removal")
+    private void resolveNonWildcardedRelation(Trigger trigger, IDatabasePlatform sourcePlatform,
+            String catalogName, String schemaName, boolean useRelationCache,
+            TriggerRouterContext triggerRouterContext, Set<Relation> relations) {
+        boolean useTableResolver = parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE);
+        List<ITableResolver> tableResolverList = extensionService.getExtensionPointList(ITableResolver.class);
+        List<IRelationResolver> relationResolverList = extensionService.getExtensionPointList(IRelationResolver.class);
+        if (!trigger.getSourceTableName().startsWith(parameterService.getTablePrefix() + "_")
+                && CollectionUtils.isNotEmpty(useTableResolver ? tableResolverList : relationResolverList)) {
+            if (useTableResolver) {
+                Set<Table> resolvedTables = new HashSet<>();
+                for (ITableResolver resolver : tableResolverList) {
+                    resolver.resolve(catalogName, schemaName, resolvedTables, sourcePlatform, nodeService,
+                            trigger, useRelationCache, triggerRouterContext);
+                }
+                relations.addAll(resolvedTables);
+            } else {
+                for (IRelationResolver resolver : relationResolverList) {
+                    resolver.resolve(catalogName, schemaName, relations, sourcePlatform, nodeService,
+                            trigger, useRelationCache, triggerRouterContext);
+                }
+            }
+        } else {
+            Relation relation = sourcePlatform.getRelationFromCache(catalogName, schemaName,
+                    trigger.getSourceTableNameUnescaped(), !useRelationCache);
+            if (relation != null) {
+                relations.add(relation);
+            }
+        }
+    }
+
     private boolean containsExactMatchForSourceTableName(Relation relation, List<Trigger> triggers,
             boolean ignoreCase) {
         for (Trigger trigger : triggers) {
             if (!trigger.isSourceWildCarded()) {
                 String sourceCatalogName = trigger.getSourceCatalogName() != null ? trigger.getSourceCatalogName() : platform.getDefaultCatalog();
                 String sourceSchemaName = trigger.getSourceSchemaName() != null ? trigger.getSourceSchemaName() : platform.getDefaultSchema();
-                if (trigger.getSourceTableName().equals(relation.getName())
-                        && (sourceCatalogName == null || sourceCatalogName.equals(relation.getCatalog())) &&
-                        (sourceSchemaName == null || sourceSchemaName.equals(relation.getSchema()))) {
-                    return true;
-                } else if (ignoreCase && trigger.getSourceTableName().equalsIgnoreCase(relation.getName())
-                        && (sourceCatalogName == null || sourceCatalogName.equalsIgnoreCase(relation.getCatalog()))
-                        && (sourceSchemaName == null || sourceSchemaName.equalsIgnoreCase(relation.getSchema()))) {
+                boolean nameMatch = ignoreCase
+                        ? trigger.getSourceTableName().equalsIgnoreCase(relation.getName())
+                        : trigger.getSourceTableName().equals(relation.getName());
+                boolean catalogMatch = sourceCatalogName == null || (ignoreCase
+                        ? sourceCatalogName.equalsIgnoreCase(relation.getCatalog())
+                        : sourceCatalogName.equals(relation.getCatalog()));
+                boolean schemaMatch = sourceSchemaName == null || (ignoreCase
+                        ? sourceSchemaName.equalsIgnoreCase(relation.getSchema())
+                        : sourceSchemaName.equals(relation.getSchema()));
+                if (nameMatch && catalogMatch && schemaMatch) {
                     return true;
                 }
             }
@@ -2041,7 +2055,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public boolean syncTriggers(String targetExternalId, boolean force) {
         if (cacheManager.isUsingTargetExternalId(false)) {
             List<Trigger> triggers = getTriggersForCurrentNode();
-            List<Relation> relations = new ArrayList<Relation>();
+            List<Relation> relations = new ArrayList<>();
             for (Trigger trigger : triggers) {
                 if (trigger.getSourceTableName().contains("targetExternalId")) {
                     Relation relation = platform.readRelationFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
@@ -3074,73 +3088,43 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             List<TriggerRouter> triggerRouters, boolean sortByFk) {
         final Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId = fillTriggerRoutersByHistId(
                 sourceNodeGroupId, targetNodeGroupId, targetExternalId, triggerHistories, triggerRouters);
-        List<Relation> relations = null;
-        if (sortByFk) {
-            relations = getSortedRelationsFor(triggerHistories);
-        }
-        final List<Relation> sortedRelations = relations;
-        Comparator<TriggerHistory> comparator = new Comparator<TriggerHistory>() {
-            public int compare(TriggerHistory o1, TriggerHistory o2) {
-                List<TriggerRouter> triggerRoutersForTriggerHist1 = triggerRoutersByHistoryId
-                        .get(o1.getTriggerHistoryId());
-                int intialLoadOrder1 = 0;
-                for (TriggerRouter triggerRouter1 : triggerRoutersForTriggerHist1) {
-                    if (triggerRouter1.getInitialLoadOrder() > intialLoadOrder1) {
-                        intialLoadOrder1 = triggerRouter1.getInitialLoadOrder();
-                    }
-                }
-                List<TriggerRouter> triggerRoutersForTriggerHist2 = triggerRoutersByHistoryId
-                        .get(o2.getTriggerHistoryId());
-                int intialLoadOrder2 = 0;
-                for (TriggerRouter triggerRouter2 : triggerRoutersForTriggerHist2) {
-                    if (triggerRouter2.getInitialLoadOrder() > intialLoadOrder2) {
-                        intialLoadOrder2 = triggerRouter2.getInitialLoadOrder();
-                    }
-                }
-                if (intialLoadOrder1 < intialLoadOrder2) {
-                    return -1;
-                } else if (intialLoadOrder1 > intialLoadOrder2) {
-                    return 1;
-                }
-                if (sortByFk) {
-                    Table table1 = null;
-                    if (!o1.getSourceTableName().startsWith(tablePrefix)) {
-                        Relation relation1 = getTargetPlatform().getRelationFromCache(o1.getSourceCatalogName(),
-                                o1.getSourceSchemaName(), o1.getSourceTableName(), false);
-                        if (relation1 instanceof Table table) {
-                            table1 = table;
-                        }
-                    }
-                    if (table1 == null) {
-                        Relation relation1 = platform.getRelationFromCache(o1.getSourceCatalogName(),
-                                o1.getSourceSchemaName(), o1.getSourceTableName(), false);
-                        if (relation1 instanceof Table table) {
-                            table1 = table;
-                        }
-                    }
-                    Table table2 = null;
-                    if (!o2.getSourceTableName().startsWith(tablePrefix)) {
-                        Relation relation2 = getTargetPlatform().getRelationFromCache(o2.getSourceCatalogName(),
-                                o2.getSourceSchemaName(), o2.getSourceTableName(), false);
-                        if (relation2 instanceof Table table) {
-                            table2 = table;
-                        }
-                    }
-                    if (table2 == null) {
-                        Relation relation2 = platform.getRelationFromCache(o2.getSourceCatalogName(),
-                                o2.getSourceSchemaName(), o2.getSourceTableName(), false);
-                        if (relation2 instanceof Table table) {
-                            table2 = table;
-                        }
-                    }
-                    return Integer.valueOf(sortedRelations.indexOf(table1)).compareTo(Integer.valueOf(sortedRelations
-                            .indexOf(table2)));
-                }
-                return o1.getSourceTableName().compareTo(o2.getSourceTableName());
-            };
-        };
-        Collections.sort(triggerHistories, comparator);
+        final List<Relation> sortedRelations = sortByFk ? getSortedRelationsFor(triggerHistories) : null;
+        Collections.sort(triggerHistories, (o1, o2) -> {
+            int order1 = getMaxInitialLoadOrder(triggerRoutersByHistoryId.get(o1.getTriggerHistoryId()));
+            int order2 = getMaxInitialLoadOrder(triggerRoutersByHistoryId.get(o2.getTriggerHistoryId()));
+            if (order1 != order2) {
+                return Integer.compare(order1, order2);
+            }
+            if (sortByFk) {
+                return Integer.compare(sortedRelations.indexOf(resolveTableForHistory(o1)),
+                        sortedRelations.indexOf(resolveTableForHistory(o2)));
+            }
+            return o1.getSourceTableName().compareTo(o2.getSourceTableName());
+        });
         return triggerRoutersByHistoryId;
+    }
+
+    private int getMaxInitialLoadOrder(List<TriggerRouter> triggerRouters) {
+        int maxOrder = 0;
+        for (TriggerRouter tr : triggerRouters) {
+            if (tr.getInitialLoadOrder() > maxOrder) {
+                maxOrder = tr.getInitialLoadOrder();
+            }
+        }
+        return maxOrder;
+    }
+
+    private Table resolveTableForHistory(TriggerHistory history) {
+        if (!history.getSourceTableName().startsWith(tablePrefix)) {
+            Relation relation = getTargetPlatform().getRelationFromCache(history.getSourceCatalogName(),
+                    history.getSourceSchemaName(), history.getSourceTableName(), false);
+            if (relation instanceof Table table) {
+                return table;
+            }
+        }
+        Relation relation = platform.getRelationFromCache(history.getSourceCatalogName(),
+                history.getSourceSchemaName(), history.getSourceTableName(), false);
+        return relation instanceof Table table ? table : null;
     }
 
     @Override
@@ -3175,7 +3159,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public List<Relation> getSortedRelationsFor(List<TriggerHistory> histories) {
-        return Database.sortByForeignKeys(new ArrayList<Relation>(getRelationsFor(histories)), null, null, null);
+        return Database.sortByForeignKeys(new ArrayList<>(getRelationsFor(histories)), null, null, null);
     }
 
     public List<Relation> getRelationsFor(List<TriggerHistory> histories) {

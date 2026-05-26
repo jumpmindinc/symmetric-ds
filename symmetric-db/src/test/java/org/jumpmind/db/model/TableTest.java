@@ -22,6 +22,7 @@ package org.jumpmind.db.model;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -228,27 +229,27 @@ class TableTest {
     void testEquals_differentName() {
         Table t1 = tableWithColumns("orders", "id");
         Table t2 = tableWithColumns("shipments", "id");
-        assertFalse(t1.equals(t2));
+        assertNotEquals(t1, t2);
     }
 
     @Test
     void testEquals_differentColumns() {
         Table t1 = tableWithColumns("orders", "id");
         Table t2 = tableWithColumns("orders", "code");
-        assertFalse(t1.equals(t2));
+        assertNotEquals(t1, t2);
     }
 
     @Test
     void testEquals_tableNotEqualToView() {
         Table t = new Table("orders");
         View v = new View("orders");
-        assertFalse(t.equals(v));
+        assertNotEquals(t, v);
     }
 
     @Test
     void testEquals_null() {
         Table t = new Table("orders");
-        assertFalse(t.equals(null));
+        assertNotEquals(t, null);
     }
 
     @Test

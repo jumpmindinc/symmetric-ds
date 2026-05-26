@@ -66,6 +66,7 @@ import org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.model.View;
@@ -1010,7 +1011,7 @@ public class SnapshotUtil {
 
     public static HashMap<CatalogSchema, List<Relation>> getRelationsForCaptureByCatalogSchema(ISymmetricEngine engine) {
         IDatabasePlatform targetPlatform = engine.getSymmetricDialect().getTargetPlatform();
-        HashMap<CatalogSchema, List<Relation>> catalogSchemas = new HashMap<CatalogSchema, List<Relation>>();
+        HashMap<CatalogSchema, List<Relation>> catalogSchemas = new HashMap<>();
         ITriggerRouterService triggerRouterService = engine.getTriggerRouterService();
         List<TriggerHistory> triggerHistories = triggerRouterService.getActiveTriggerHistories();
         String tablePrefix = engine.getTablePrefix().toUpperCase();
@@ -1090,7 +1091,7 @@ public class SnapshotUtil {
                 List<Table> tablesToLookup = new ArrayList<Table>();
                 Map<String, List<TransformTable>> byTableExtractTransforms = getByTableTransforms(engine.getTransformService(), extractTransformMap, router
                         .getNodeGroupLink(), TransformPoint.EXTRACT);
-                String tableKey = Table.getFullyQualifiedName(catalog, schema, tableName).toLowerCase();
+                String tableKey = SchemaObject.getFullyQualifiedName(catalog, schema, tableName).toLowerCase();
                 List<TransformTable> extractTransforms = byTableExtractTransforms.get(tableKey);
                 if (extractTransforms != null && extractTransforms.size() > 0) {
                     for (TransformTable transform : extractTransforms) {

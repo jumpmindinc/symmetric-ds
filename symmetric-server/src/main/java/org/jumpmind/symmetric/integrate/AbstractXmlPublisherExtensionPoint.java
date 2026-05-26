@@ -397,7 +397,7 @@ abstract public class AbstractXmlPublisherExtensionPoint implements IExtensionPo
     }
 
     public void setRelationNameToPublish(String relationName) {
-        this.relationNamesToPublishAsGroup = new HashSet<String>(1);
+        this.relationNamesToPublishAsGroup = HashSet.newHashSet(1);
         this.relationNamesToPublishAsGroup.add(relationName);
     }
 

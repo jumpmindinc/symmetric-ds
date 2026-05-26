@@ -53,6 +53,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -1907,7 +1908,7 @@ public class DataService extends AbstractService implements IDataService {
         return requests;
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     protected long getDataCountForReload(Relation relation, Node targetNode, String selectSql, long loadId) throws SqlException {
         long rowCount = -1;
         if (parameterService.is(ParameterConstants.INITIAL_LOAD_USE_ESTIMATED_COUNTS) &&
@@ -2156,7 +2157,7 @@ public class DataService extends AbstractService implements IDataService {
                 isLoad, loadId, createBy, Status.NE);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("removal")
     protected void createPurgeEvent(ISqlTransaction transaction, String sql, Node targetNode, Node sourceNode,
             TriggerRouter triggerRouter, TriggerHistory triggerHistory, boolean isLoad,
             long loadId, String createBy, Status outgoingBatchStatus) {
@@ -3056,7 +3057,7 @@ public class DataService extends AbstractService implements IDataService {
             log.info("Unable to lookup table " + hist.getFullyQualifiedSourceTableName());
             return false;
         }
-        table = (Table) table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
+        table = table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
         Object[] values = targetPlatform.getObjectValues(targetDialect.getBinaryEncoding(), data.getParsedData(CsvData.ROW_DATA), table.getColumns());
         List<TableRow> tableRows = new ArrayList<TableRow>();
         Row row = new Row(values.length);
@@ -3095,9 +3096,11 @@ public class DataService extends AbstractService implements IDataService {
                             schema = null;
                         }
                     }
-                    log.info("Issuing foreign key correction for batch {} table {}: foreign table '{}' column '{}' fk name '{}' where '{}'",
-                            batchName, data.getTableName(), Table.getFullyQualifiedName(catalog, schema, foreignTable.getName()),
-                            foreignTableRow.getReferenceColumnName(), foreignTableRow.getFkName(), foreignTableRow.getWhereSql());
+                    if (log.isInfoEnabled()) {
+                        log.info("Issuing foreign key correction for batch {} table {}: foreign table '{}' column '{}' fk name '{}' where '{}'",
+                                batchName, data.getTableName(), SchemaObject.getFullyQualifiedName(catalog, schema, foreignTable.getName()),
+                                foreignTableRow.getReferenceColumnName(), foreignTableRow.getFkName(), foreignTableRow.getWhereSql());
+                    }
                     try {
                         reloadTableImmediate(nodeId, catalog, schema, foreignTable.getName(), foreignTableRow.getWhereSql(),
                                 dataId == -1 ? Constants.CHANNEL_CONFIG : null);
@@ -4134,7 +4137,7 @@ public class DataService extends AbstractService implements IDataService {
                 return null;
             }
             Trigger trigger = triggerRouters.iterator().next().getTrigger();
-            table = (Table) table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
+            table = table.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
             keys = recaptureKeysForData(table, data);
             Object[] values = platform.getObjectValues(engine.getSymmetricDialect().getBinaryEncoding(), keys, table.getPrimaryKeyColumns());
             if (keys == null || values == null) {

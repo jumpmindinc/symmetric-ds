@@ -53,7 +53,6 @@ import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -79,6 +78,7 @@ import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.View;
@@ -523,7 +523,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                     @Override
                     public Database execute(Connection connection) throws SQLException {
                         Database db = new Database();
-                        db.setName(Table.getFullyQualifiedPrefix(catalog, schema));
+                        db.setName(SchemaObject.getFullyQualifiedPrefix(catalog, schema));
                         db.setCatalog(catalog);
                         db.setSchema(schema);
                         for (Relation relation : readRelations(connection, catalog, schema, relationTypes)) {
@@ -585,13 +585,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             }
             final Collator collator = Collator.getInstance();
-            Collections.sort(relations, new Comparator<Relation>() {
-                @Override
-                public int compare(Relation obj1, Relation obj2) {
-                    return collator.compare(obj1.getName().toUpperCase(), obj2.getName()
-                            .toUpperCase());
-                }
-            });
+            Collections.sort(relations, (obj1, obj2) -> collator.compare(obj1.getName().toUpperCase(), obj2.getName().toUpperCase()));
             return relations;
         } finally {
             if (tableData != null) {
@@ -614,8 +608,9 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
-                log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedName(catalog, schema, relationName), e.getClass().getName(), e
-                        .getMessage());
+                log.error("Failed to get metadata for {} because: {} {}", SchemaObject.getFullyQualifiedName(catalog, schema, relationName), e.getClass()
+                        .getName(), e
+                                .getMessage());
                 throw e;
             }
         }
@@ -639,8 +634,9 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
-                log.error("Failed to get metadata for {} because: {} {}", Table.getFullyQualifiedName(catalog, schema, relationName), e.getClass().getName(), e
-                        .getMessage());
+                log.error("Failed to get metadata for {} because: {} {}", SchemaObject.getFullyQualifiedName(catalog, schema, relationName), e.getClass()
+                        .getName(), e
+                                .getMessage());
                 throw e;
             }
         }
@@ -735,7 +731,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             relationName = (String) values.get("NAME");
         }
         try {
-            if (relationName == null || relationName.length() == 0) {
+            if (relationName == null || relationName.isEmpty()) {
                 return null;
             }
             String type = (String) values.get(getName("TABLE_TYPE"));
@@ -1780,7 +1776,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 return null;
             } else {
                 log.error("Failed to get metadata for {}, because {} {}",
-                        Table.getFullyQualifiedName(catalog, schema, tableName), e.getClass().getName(), e.getMessage());
+                        SchemaObject.getFullyQualifiedName(catalog, schema, tableName), e.getClass().getName(), e.getMessage());
                 throw e;
             }
         }

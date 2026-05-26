@@ -166,7 +166,7 @@ abstract public class AbstractRelationDataReader extends AbstractDataReader impl
     }
 
     public Map<Batch, Statistics> getStatistics() {
-        Map<Batch, Statistics> map = new HashMap<Batch, Statistics>(1);
+        Map<Batch, Statistics> map = HashMap.newHashMap(1);
         map.put(batch, statistics);
         return map;
     }

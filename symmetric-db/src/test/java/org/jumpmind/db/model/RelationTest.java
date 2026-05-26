@@ -23,6 +23,7 @@ package org.jumpmind.db.model;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -318,7 +319,7 @@ class RelationTest {
         t1.addColumn(new Column("id"));
         Table t2 = new Table("shipments");
         t2.addColumn(new Column("id"));
-        assertTrue(t1.calculateHashcode() != t2.calculateHashcode());
+        assertNotEquals(t1.calculateHashcode(), t2.calculateHashcode());
     }
 
     @Test

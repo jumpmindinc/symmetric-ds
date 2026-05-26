@@ -45,14 +45,14 @@ public abstract class Relation extends SchemaObject {
     protected ArrayList<Column> lobColumns;
     protected boolean madeAllColumnsPrimaryKey;
 
-    public Relation() {
+    protected Relation() {
     }
 
-    public Relation(String name) {
+    protected Relation(String name) {
         this(null, null, name);
     }
 
-    public Relation(String catalog, String schema, String name) {
+    protected Relation(String catalog, String schema, String name) {
         super(catalog, schema, name);
     }
 
@@ -388,7 +388,7 @@ public abstract class Relation extends SchemaObject {
         if (lobColumns == null) {
             lobColumns = populateLobColumns(platform);
         }
-        return lobColumns.size() > 0;
+        return !lobColumns.isEmpty();
     }
 
     public List<Column> getLobColumns(IDatabasePlatform platform) {
@@ -574,7 +574,7 @@ public abstract class Relation extends SchemaObject {
             }
             return result;
         }
-        return null;
+        return new String[0];
     }
 
     public static String escapeColumnNameForCsv(String columnName) {
@@ -587,19 +587,6 @@ public abstract class Relation extends SchemaObject {
             return "\"" + columnName + "\"";
         }
         return columnName;
-    }
-
-    @Override
-    public Object clone() throws CloneNotSupportedException {
-        Relation result = (Relation) super.clone();
-        result.columns = new ArrayList<>(columns.size());
-        for (Column col : columns) {
-            if (col != null) {
-                result.columns.add((Column) col.clone());
-            }
-        }
-        result.lobColumns = null;
-        return result;
     }
 
     static class ColumnPkSequenceComparator implements Comparator<Column> {

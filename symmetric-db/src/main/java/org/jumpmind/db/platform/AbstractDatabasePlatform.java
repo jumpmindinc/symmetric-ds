@@ -452,14 +452,14 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
 
     @Override
     public Object[] getObjectValues(BinaryEncoding encoding, Relation relation, String[] columnNames, String[] values) {
-        Column[] metaData = Table.orderColumns(columnNames, relation, false);
+        Column[] metaData = Relation.orderColumns(columnNames, relation, false);
         return getObjectValues(encoding, values, metaData);
     }
 
     @Override
     public Object[] getObjectValues(BinaryEncoding encoding, Relation relation, String[] columnNames, String[] values, boolean useVariableDates,
             boolean fitToColumn) {
-        Column[] metaData = Table.orderColumns(columnNames, relation, false);
+        Column[] metaData = Relation.orderColumns(columnNames, relation, false);
         return getObjectValues(encoding, values, metaData, useVariableDates, fitToColumn);
     }
 

@@ -32,6 +32,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -175,7 +176,7 @@ public class ColumnsAccordingToTriggerHistory {
                     triggerHistory.getParsedPkColumnNames(), true, addMissingColumns);
         } else {
             throw new SymmetricException("Could not find the following table.  It might have been dropped: %s",
-                    Table.getFullyQualifiedName(catalogName, schemaName, relationName));
+                    SchemaObject.getFullyQualifiedName(catalogName, schemaName, relationName));
         }
         return relation;
     }

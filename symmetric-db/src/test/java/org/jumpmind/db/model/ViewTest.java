@@ -22,6 +22,7 @@ package org.jumpmind.db.model;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -157,33 +158,33 @@ class ViewTest {
     void testEquals_differentName() {
         View v1 = new View("sales_view");
         View v2 = new View("other_view");
-        assertFalse(v1.equals(v2));
+        assertNotEquals(v1, v2);
     }
 
     @Test
     void testEquals_differentSchema() {
         View v1 = new View("mydb", "dbo", "sales_view");
         View v2 = new View("mydb", "other", "sales_view");
-        assertFalse(v1.equals(v2));
+        assertNotEquals(v1, v2);
     }
 
     @Test
     void testEquals_tableNotEqualToView() {
         View v = new View("orders");
         Table t = new Table("orders");
-        assertFalse(v.equals(t));
+        assertNotEquals(v, t);
     }
 
     @Test
     void testEquals_null() {
         View v = new View("sales_view");
-        assertFalse(v.equals(null));
+        assertNotEquals(v, null);
     }
 
     @Test
     void testEquals_self() {
         View v = new View("sales_view");
-        assertTrue(v.equals(v));
+        assertEquals(v, v);
     }
 
     @Test

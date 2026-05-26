@@ -43,6 +43,7 @@ import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.NonUniqueIndex;
 import org.jumpmind.db.model.PlatformIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -1345,8 +1346,8 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
     protected String getCurData(ISqlTransaction transaction) {
         String curVal = null;
         if (writerSettings.isSaveCurrentValueOnError()) {
-            String[] keyNames = Table.getArrayColumns(context.getRelation().getPrimaryKeyColumns());
-            String[] columnNames = Table.getArrayColumns(context.getRelation().getColumns());
+            String[] keyNames = Relation.getArrayColumns(context.getRelation().getPrimaryKeyColumns());
+            String[] columnNames = Relation.getArrayColumns(context.getRelation().getColumns());
             Table targetTable = (Table) getPlatform().getRelationFromCache(
                     context.getRelation().getCatalog(), context.getRelation().getSchema(),
                     context.getRelation().getName(), false);

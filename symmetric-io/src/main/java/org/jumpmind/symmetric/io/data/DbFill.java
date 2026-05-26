@@ -47,7 +47,6 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.Reference;
-import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -200,8 +199,8 @@ public class DbFill {
         }
         log.info("TABLES TO FILL (" + tablesToFill.size() + "): " + toString(tablesToFill));
         List<Table> orderedTables = Database.sortByForeignKeys(
-                new ArrayList<Relation>(tablesToFill),
-                new HashMap<String, Relation>(getAllDbTables()),
+                new ArrayList<>(tablesToFill),
+                new HashMap<>(getAllDbTables()),
                 null, null)
                 .stream().map(r -> (Table) r).collect(Collectors.toList());
         orderedTables = removeSymTables(orderedTables);

@@ -62,6 +62,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymmetricEngineAware, IBuiltInExtensionPoint {
+    private static final String LAST_UPDATE_BY_UPGRADE = "upgrade";
     protected final Logger log = LoggerFactory.getLogger(getClass());
     protected ISymmetricEngine engine;
     protected boolean isUpgradeFromPre38;
@@ -297,7 +298,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 log.info("Unable to delete from {}: {}", nodeChannelControlTableName, e.getMessage());
             }
         }
-        isUpgradeFromPre318 = isUpgradeFromPre318(tablePrefix, currentModel);
+        isUpgradeFromPre318 = detectUpgradeFromPre318(tablePrefix, currentModel);
         // Leave this last in the sequence of steps to make sure to capture any DML changes done before this
         if (engine.getParameterService().is(ParameterConstants.AUTO_SYNC_TRIGGERS) &&
                 currentModel.getTableCount() > 0 && currentModel.findTable(tablePrefix + "_" + TableConstants.SYM_TRIGGER_HIST) != null) {
@@ -367,7 +368,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         }
         if (isUpgradeFromPre318) {
             log.info("Setting {} to true for upgrade from pre-3.18", ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE);
-            engine.getParameterService().saveParameter(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE, true, "upgrade");
+            engine.getParameterService().saveParameter(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE, true, LAST_UPDATE_BY_UPGRADE);
         }
         if (engine.getDatabasePlatform().getName().equals(DatabaseNamesConstants.H2)) {
             createH2SequenceIfMissing(symmetricDialect, tablePrefix);
@@ -379,13 +380,13 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     protected void migrateOracleTransactionViewParameters() {
         IParameterService parameterService = engine.getParameterService();
         if (parameterService.is(ParameterConstants.DBDIALECT_ORACLE_USE_TRANSACTION_VIEW_LEGACY)) {
-            parameterService.saveParameter(ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW, true, "upgrade");
+            parameterService.saveParameter(ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW, true, LAST_UPDATE_BY_UPGRADE);
             log.info("Migrated {} to {}", ParameterConstants.DBDIALECT_ORACLE_USE_TRANSACTION_VIEW_LEGACY,
                     ParameterConstants.ROUTING_GAPS_USE_TRANSACTION_VIEW);
         }
         long threshold = parameterService.getLong(ParameterConstants.DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS_LEGACY, 60000);
         if (threshold != 60000) {
-            parameterService.saveParameter(ParameterConstants.ROUTING_GAPS_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS, threshold, "upgrade");
+            parameterService.saveParameter(ParameterConstants.ROUTING_GAPS_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS, threshold, LAST_UPDATE_BY_UPGRADE);
             log.info("Migrated {} ({}) to {}", ParameterConstants.DBDIALECT_ORACLE_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS_LEGACY,
                     threshold, ParameterConstants.ROUTING_GAPS_TRANSACTION_VIEW_CLOCK_SYNC_THRESHOLD_MS);
         }
@@ -584,7 +585,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         return nodeHostChannelStatsTable != null && nodeHostChannelStatsTable.findColumn("data_received") == null;
     }
 
-    protected boolean isUpgradeFromPre318(String tablePrefix, Database currentModel) {
+    protected boolean detectUpgradeFromPre318(String tablePrefix, Database currentModel) {
         Table nodeHostTable = currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST));
         return nodeHostTable != null && nodeHostTable.findColumn("security_mode") == null;
     }

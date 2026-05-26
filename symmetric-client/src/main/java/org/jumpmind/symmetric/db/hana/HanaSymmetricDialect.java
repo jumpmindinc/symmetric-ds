@@ -20,7 +20,7 @@
  */
 package org.jumpmind.symmetric.db.hana;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.util.BinaryEncoding;
@@ -114,7 +114,7 @@ public class HanaSymmetricDialect extends AbstractSymmetricDialect {
         final String sql = "drop trigger " + schemaName + triggerName;
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
-            log.info("Dropping {} trigger for {}", triggerName, Table.getFullyQualifiedName(catalogName, schemaName, tableName));
+            log.info("Dropping {} trigger for {}", triggerName, SchemaObject.getFullyQualifiedName(catalogName, schemaName, tableName));
             transaction.execute(sql);
         }
     }

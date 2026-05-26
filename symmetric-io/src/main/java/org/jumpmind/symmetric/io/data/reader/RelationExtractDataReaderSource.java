@@ -24,6 +24,7 @@ import java.nio.charset.Charset;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -48,9 +49,11 @@ public class RelationExtractDataReaderSource implements IExtractDataReaderSource
     protected ISqlReadCursor<CsvData> cursor;
     protected boolean streamLobs;
 
-    public RelationExtractDataReaderSource(IDatabasePlatform platform, String catalogName,
-            String schemaName, String tableName, String whereClause, boolean streamLobs, String sourceNodeId, String targetNodeId) {
+    public RelationExtractDataReaderSource(IDatabasePlatform platform, CatalogSchema catalogSchema,
+            String tableName, String whereClause, boolean streamLobs, String sourceNodeId, String targetNodeId) {
         this.platform = platform;
+        String catalogName = catalogSchema.getCatalog();
+        String schemaName = catalogSchema.getSchema();
         this.relation = platform.getRelationFromCache(catalogName, schemaName, tableName, true);
         if (relation == null) {
             throw new IllegalStateException(String.format("Could not find table %s",

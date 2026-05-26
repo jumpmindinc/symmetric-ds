@@ -126,7 +126,7 @@ public class AuditTableDataRouter extends AbstractDataRouter implements IBuiltIn
                 columnCopy.setAutoIncrement(false);
                 auditTable.addColumn(columnCopy);
             } catch (CloneNotSupportedException e) {
-                throw new RuntimeException(e);
+                throw new IllegalStateException(e);
             }
         }
         platform.alterCaseToMatchDatabaseDefaultCase(auditTable);

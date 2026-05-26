@@ -286,16 +286,16 @@ public class FirebirdDdlReader extends AbstractJdbcDdlReader {
          * column names for more than one table. Example: DatabaseMetaData.metaData.getColumns(null, null, "SYM\\_NODE", null)
          */
         if (isLegacyJaybird) {
-            return String.format("\"%s\"", relationName).replaceAll("\\_", "\\\\_");
+            return String.format("\"%s\"", relationName).replace("\\_", "\\\\_");
         } else {
-            return String.format("%s", relationName).replaceAll("\\_", "\\\\_");
+            return String.format("%s", relationName).replace("\\_", "\\\\_");
         }
     }
 
     @Override
     protected String getTableNamePatternForConstraints(String tableName) {
         if (isLegacyJaybird) {
-            return String.format("\"%s\"", tableName).replaceAll("\\_", "\\\\_");
+            return String.format("\"%s\"", tableName).replace("\\_", "\\\\_");
         } else {
             return super.getTableNamePatternForConstraints(tableName);
         }

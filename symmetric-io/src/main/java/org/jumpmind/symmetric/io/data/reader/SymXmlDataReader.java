@@ -198,13 +198,13 @@ public class SymXmlDataReader extends AbstractDataReader implements IDataReader 
     }
 
     public Relation nextRelation() {
-        if (next instanceof Relation) {
-            this.relation = (Relation) next;
+        if (next instanceof Relation relation) {
+            this.relation = relation;
             next = data;
         } else {
             next = readNext();
-            if (next instanceof Relation) {
-                this.relation = (Relation) next;
+            if (next instanceof Relation relation) {
+                this.relation = relation;
                 next = data;
             } else {
                 this.relation = null;

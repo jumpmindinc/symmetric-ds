@@ -56,7 +56,7 @@ public class DatabaseMetaDataWrapper {
     /** The schema(s) to access in the database. */
     private String _schemaPattern;
     /** The relation types to process. */
-    private String[] _relationTypes;
+    private String[] relationTypes;
 
     /**
      * Returns the database meta data.
@@ -121,7 +121,7 @@ public class DatabaseMetaDataWrapper {
      * @return The relation types
      */
     public String[] getRelationTypes() {
-        return _relationTypes;
+        return relationTypes;
     }
 
     /**
@@ -131,7 +131,7 @@ public class DatabaseMetaDataWrapper {
      *            The relation types
      */
     public void setRelationTypes(String[] types) {
-        _relationTypes = types;
+        relationTypes = types;
     }
 
     /**

@@ -38,14 +38,14 @@ public abstract class SchemaObject implements Serializable, Cloneable, Comparabl
     protected String fullyQualifiedNameLowerCase;
     protected String nameLowerCase;
 
-    public SchemaObject() {
+    protected SchemaObject() {
     }
 
-    public SchemaObject(String name) {
+    protected SchemaObject(String name) {
         this(null, null, name);
     }
 
-    public SchemaObject(String catalog, String schema, String name) {
+    protected SchemaObject(String catalog, String schema, String name) {
         this.catalog = catalog;
         this.schema = schema;
         this.name = name;
@@ -175,11 +175,15 @@ public abstract class SchemaObject implements Serializable, Cloneable, Comparabl
     }
 
     @Override
-    protected Object clone() throws CloneNotSupportedException {
-        SchemaObject result = (SchemaObject) super.clone();
-        result.fullyQualifiedName = null;
-        result.fullyQualifiedNameLowerCase = null;
-        result.nameLowerCase = null;
-        return result;
+    public boolean equals(Object obj) {
+        if (obj instanceof SchemaObject other) {
+            return getFullyQualifiedName().equals(other.getFullyQualifiedName());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return getFullyQualifiedName().hashCode();
     }
 }
