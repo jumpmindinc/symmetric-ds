@@ -72,6 +72,7 @@ final public class ParameterConstants {
     public static final String START_OFFLINE_PULL_JOB = "start.offline.pull.job";
     public static final String START_OFFLINE_PUSH_JOB = "start.offline.push.job";
     public static final String START_REFRESH_CACHE_JOB = "start.refresh.cache.job";
+    public static final String START_REFRESH_BACKLOG_REPORT_JOB = "start.refresh.backlog.report.job";
     public static final String START_FILE_SYNC_TRACKER_JOB = "start.file.sync.tracker.job";
     public static final String START_FILE_SYNC_PUSH_JOB = "start.file.sync.push.job";
     public static final String START_FILE_SYNC_PULL_JOB = "start.file.sync.pull.job";
@@ -188,6 +189,7 @@ final public class ParameterConstants {
     public static final String STREAM_TO_FILE_PURGE_ON_TTL_ENABLED = "stream.to.file.purge.on.ttl.enabled";
     public static final String PARAMETER_REFRESH_PERIOD_IN_MS = "parameter.reload.timeout.ms";
     public static final String CONCURRENT_WORKERS = "http.concurrent.workers.max";
+    public static final String OTEL_METRICS_ENABLED = "metrics.opentelemetry.enabled";
     public static final String CONCURRENT_RESERVATION_TIMEOUT = "http.concurrent.reservation.timeout.ms";
     public static final String OUTGOING_BATCH_PEEK_AHEAD_BATCH_COMMIT_SIZE = "outgoing.batches.peek.ahead.batch.commit.size";
     public static final String OUTGOING_BATCH_COPY_TO_INCOMING_STAGING = "outgoing.batches.copy.to.incoming.staging";
@@ -311,6 +313,7 @@ final public class ParameterConstants {
     public static final String PURGE_EXTRACT_REQUESTS_RETENTION_MINUTES = "purge.extract.request.retention.minutes";
     public static final String PURGE_REGISTRATION_REQUEST_RETENTION_MINUTES = "purge.registration.request.retention.minutes";
     public static final String PURGE_STATS_RETENTION_MINUTES = "purge.stats.retention.minutes";
+    public static final String PURGE_METRIC_STATS_RETENTION_MINUTES = "purge.metric.stats.retention.minutes";
     public static final String PURGE_TRIGGER_HIST_RETENTION_MINUTES = "purge.trigger.hist.retention.minutes";
     public static final String PURGE_EXPIRED_DATA_GAP_RETENTION_MINUTES = "purge.expired.data.gap.retention.minutes";
     public static final String PURGE_STRANDED_DATA_RECAPTURE_ENABLED = "job.purge.recapture.stranded.data";

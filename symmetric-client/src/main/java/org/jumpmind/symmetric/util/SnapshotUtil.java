@@ -665,7 +665,7 @@ public class SnapshotUtil {
                     df.format(engine.getOutgoingBatchService().countOutgoingBatchesUnsent()));
             runtimeProperties.setProperty("batch.outgoing.tosend.offline.count",
                     df.format(engine.getOutgoingBatchService().countOutgoingBatchesUnsentOfflineNodes(
-                            ParameterConstants.OFFLINE_NODE_DETECTION_PERIOD_MINUTES)));
+                            engine.getParameterService().getInt(ParameterConstants.OFFLINE_NODE_DETECTION_PERIOD_MINUTES))));
             Map<String, Long> blockedBatches = engine.getOutgoingBatchService().countUnsentBatchesBlocked();
             runtimeProperties.setProperty("batch.outgoing.tosend.blocked.count", blockedBatches.get("batch_count") + "");
             runtimeProperties.setProperty("batch.outgoing.tosend.blocked.nodes", blockedBatches.get("node_count") + "");

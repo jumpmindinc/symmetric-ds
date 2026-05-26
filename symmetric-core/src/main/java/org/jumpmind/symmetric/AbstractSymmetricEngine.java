@@ -66,6 +66,7 @@ import org.jumpmind.symmetric.cache.CacheManager;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ContextConstants;
+import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.config.INodeIdCreator;
@@ -86,6 +87,7 @@ import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
@@ -152,13 +154,13 @@ import org.jumpmind.symmetric.transport.ConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
+import org.jumpmind.symmetric.util.LogUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.ExceptionUtils;
 import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 
 abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     private static Map<String, ISymmetricEngine> registeredEnginesByUrl = new ConcurrentHashMap<String, ISymmetricEngine>();
@@ -213,6 +215,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected IFileSyncService fileSyncService;
     protected IContextService contextService;
     protected IUpdateService updateService;
+    protected IEngineMetricsService metricsService;
     protected ICacheManager cacheManager;
     protected Date lastRestartTime = null;
 
@@ -275,47 +278,92 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     protected abstract SecurityServiceType getSecurityServiceType();
 
-    protected void init() {
-        if (propertiesFactory == null) {
-            this.propertiesFactory = createTypedPropertiesFactory();
-        }
-        if (securityService == null) {
-            this.securityService = SecurityServiceFactory.create(getSecurityServiceType(),
-                    propertiesFactory.reload());
-        }
-        TypedProperties properties = this.propertiesFactory.reload();
-        registerSymDSDriver(properties);
-        String engineName = properties.get(ParameterConstants.ENGINE_NAME);
+    private String initEngineNameAndLoggingContext(TypedProperties engineProperties) {
+        String engineName = engineProperties.get(ParameterConstants.ENGINE_NAME);
         if (!Strings.CS.contains(engineName, "`") && !Strings.CS.contains(engineName, "(")) {
-            MDC.put("engineName", engineName);
+            LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, engineName);
         }
-        this.platform = createDatabasePlatform(properties);
-        this.parameterService = new ParameterService(platform, propertiesFactory,
-                properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym"));
+        return engineName;
+    }
+
+    private void initEngineParametersFromDatabase(TypedProperties engineProperties) {
+        this.parameterService = new ParameterService(this.platform, propertiesFactory,
+                engineProperties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym"));
         Table paramTable = this.platform.readTableFromDatabase(null, null,
-                TableConstants.getTableName(properties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER));
+                TableConstants.getTableName(engineProperties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER));
         if (paramTable != null) {
             log.debug("Reading parameters because found {}", paramTable.getFullyQualifiedTableName());
             this.parameterService.setDatabaseHasBeenInitialized(true);
             this.parameterService.rereadParameters();
         }
-        // So that the key properties are initialized in a predictable order
+        // Request key properties, so that they are initialized in a predictable order:
         parameterService.getNodeGroupId();
         parameterService.getExternalId();
         parameterService.getEngineName();
         parameterService.getSyncUrl();
         parameterService.getRegistrationUrl();
-        MDC.put("engineName", parameterService.getEngineName());
-        this.platform.setMetadataIgnoreCase(this.parameterService
-                .is(ParameterConstants.DB_METADATA_IGNORE_CASE));
-        this.platform.setClearCacheModelTimeoutInMs(parameterService
-                .getLong(ParameterConstants.CACHE_TIMEOUT_TABLES_IN_MS));
-        this.symmetricDialect = createSymmetricDialect();
-        this.symmetricDialect.setTargetDialect(createTargetDialect());
+    }
+
+    private void updatePlatformWithParametersFromDatabase() {
+        this.platform.setMetadataIgnoreCase(parameterService.is(ParameterConstants.DB_METADATA_IGNORE_CASE));
+        this.platform.setClearCacheModelTimeoutInMs(parameterService.getLong(ParameterConstants.CACHE_TIMEOUT_TABLES_IN_MS));
+    }
+
+    private void ensurePropertiesFactoryIsCreated() {
+        if (propertiesFactory == null) {
+            this.propertiesFactory = createTypedPropertiesFactory();
+        }
+    }
+
+    private void ensureSecurityServiceIsCreated() {
+        if (securityService == null) {
+            this.securityService = SecurityServiceFactory.create(getSecurityServiceType(),
+                    propertiesFactory.reload());
+        }
+    }
+
+    private void ensureMetricsServiceIsCreated() {
+        this.metricsService = createMetricsService();
+        if (this.metricsService != null) {
+            this.metricsService.initRepository();
+        }
+    }
+
+    private void ensureUpdateServiceIsCreated(TypedProperties engineProperties) {
+        String updateServiceClassName = engineProperties.get(ParameterConstants.UPDATE_SERVICE_CLASS);
+        if (updateServiceClassName == null) {
+            this.updateService = new UpdateService(this);
+        } else {
+            try {
+                Constructor<?> cons = Class.forName(updateServiceClassName).getConstructor(ISymmetricEngine.class);
+                this.updateService = (IUpdateService) cons.newInstance(this);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private void ensureExtensionServiceIsCreated() {
         this.extensionService = createExtensionService();
         this.extensionService.refresh();
         this.symmetricDialect.setExtensionService(extensionService);
         this.parameterService.setExtensionService(extensionService);
+    }
+
+    protected void init() {
+        ensurePropertiesFactoryIsCreated();
+        ensureSecurityServiceIsCreated();
+        TypedProperties properties = this.propertiesFactory.reload();
+        registerSymDSDriver(properties);
+        initEngineNameAndLoggingContext(properties);
+        this.platform = createDatabasePlatform(properties);
+        initEngineParametersFromDatabase(properties);
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, parameterService.getEngineName());
+        updatePlatformWithParametersFromDatabase();
+        this.symmetricDialect = createSymmetricDialect();
+        this.symmetricDialect.setTargetDialect(createTargetDialect());
+        ensureMetricsServiceIsCreated();
+        ensureExtensionServiceIsCreated();
         this.cacheManager = new CacheManager(this);
         this.contextService = new ContextService(parameterService, symmetricDialect);
         this.bandwidthService = new BandwidthService(this);
@@ -328,7 +376,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
-                statisticManager);
+                metricsService);
         this.purgeService = new PurgeService(parameterService, symmetricDialect, clusterService, dataService, sequenceService,
                 statisticManager, extensionService, contextService);
         this.transformService = new TransformService(this, symmetricDialect);
@@ -356,17 +404,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 configurationService, extensionService, offlineTransportManager);
         this.fileSyncService = buildFileSyncService();
         this.fileSyncExtractorService = new FileSyncExtractorService(this);
-        String updateServiceClassName = properties.get(ParameterConstants.UPDATE_SERVICE_CLASS);
-        if (updateServiceClassName == null) {
-            this.updateService = new UpdateService(this);
-        } else {
-            try {
-                Constructor<?> cons = Class.forName(updateServiceClassName).getConstructor(ISymmetricEngine.class);
-                this.updateService = (IUpdateService) cons.newInstance(this);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
+        ensureUpdateServiceIsCreated(properties);
         this.jobManager = createJobManager();
         extensionService.addExtensionPoint(new DefaultOfflineServerListener(
                 statisticManager, nodeService, outgoingBatchService));
@@ -387,6 +425,15 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         } catch (Exception ex) {
             log.debug("Failed to load org.jumpmind.driver.Driver", ex);
         }
+    }
+
+    protected IEngineMetricsService createMetricsService() {
+        log.warn("EngineMetricsService is not implemented.");
+        return null;
+    }
+
+    protected void startMetricsAggregation() {
+        log.warn("MetricsAggregation is not implemented.");
     }
 
     protected IClusterService createClusterService() {
@@ -722,6 +769,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                     }
                     lastRestartTime = new Date();
                     statisticManager.incrementRestart();
+                    startMetricsAggregation();
                     started = true;
                     for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
                         ext.started(this);
@@ -1044,6 +1092,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (jobManager != null) {
             jobManager.destroy();
         }
+        if (metricsService != null) {
+            metricsService.shutdown();
+        }
     }
 
     @Override
@@ -1059,19 +1110,19 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public RemoteNodeStatuses push() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         return pushService.pushData(true);
     }
 
     @Override
     public boolean syncTriggers() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         return triggerRouterService.syncTriggers();
     }
 
     @Override
     public boolean forceTriggerRebuild() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         return triggerRouterService.syncTriggers(true);
     }
 
@@ -1089,19 +1140,19 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public RemoteNodeStatuses pull() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         return pullService.pullData(true);
     }
 
     @Override
     public void route() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         routerService.routeData(true);
     }
 
     @Override
     public void purge() {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         purgeService.purgeOutgoing(true);
         purgeService.purgeIncoming(true);
     }
@@ -1178,13 +1229,13 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public void heartbeat(boolean force) {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         dataService.heartbeat(force);
     }
 
     @Override
     public void openRegistration(String nodeGroupId, String externalId) {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         registrationService.openRegistration(nodeGroupId, externalId);
     }
 
@@ -1206,7 +1257,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     @Override
     public void reOpenRegistration(String nodeId) {
-        MDC.put("engineName", getEngineName());
+        LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         registrationService.reOpenRegistration(nodeId);
     }
 
@@ -1378,6 +1429,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     @Override
     public IConcurrentConnectionManager getConcurrentConnectionManager() {
         return concurrentConnectionManager;
+    }
+
+    @Override
+    public IEngineMetricsService getMetricsService() {
+        return metricsService;
     }
 
     @Override

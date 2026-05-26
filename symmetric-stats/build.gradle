@@ -1,0 +1,14 @@
+apply from: symAssembleDir + '/common.gradle'
+
+    description = 'SymmetricDS statistics and observability implementation.'
+
+    dependencies {
+        api project(':symmetric-core')
+        api platform("io.opentelemetry:opentelemetry-bom:$openTelemetryVersion")
+        api 'io.opentelemetry:opentelemetry-api'
+        implementation 'io.opentelemetry:opentelemetry-sdk'
+        implementation 'io.opentelemetry:opentelemetry-sdk-extension-autoconfigure'
+        api 'org.apache.commons:commons-lang3'
+        testImplementation 'io.opentelemetry:opentelemetry-sdk-testing'
+        testImplementation project(path: ':symmetric-core', configuration: 'testArtifacts')
+    }

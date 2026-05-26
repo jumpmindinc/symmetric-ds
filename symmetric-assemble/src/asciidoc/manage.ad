@@ -272,3 +272,5 @@ endif::pro[]
 
 include::manage/logging.ad[]
 
+include::manage/metrics.ad[]
+

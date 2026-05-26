@@ -23,7 +23,7 @@ The following query will show outgoing synchronization failures by node:
 [source, sql]
 ----
 select count(*), node_id from sym_outgoing_batch 
-  where error_flag=1 group by node_id;
+  where error_flag=1 and status != 'OK' group by node_id;
 ----
 
 The following query will show the number of data rows that have *not* been delivered to target nodes:

@@ -292,7 +292,7 @@ and a column in the foreign table into relation.
 <!--
 Defines a non-unique index for the current table.
 -->
-<!ELEMENT index (index-column+)>
+<!ELEMENT index (index-column+, include-column*)>
 <!--
 @attr name The name of this index. Even though you can leave it empty,  we suggest that
            you always supply a meaningful name for foreign keys.
@@ -314,6 +314,18 @@ An index is defined for one or more columns of a table, which are specified by t
   name CDATA #REQUIRED
   size CDATA #IMPLIED
 >
+
+<!--
+A convering-type index can contain (optional) included columns of a table, which are specified by this element.
+-->
+<!ELEMENT include-column EMPTY>
+<!--
+@attr name The name of the column in the current table.
+-->
+<!ATTLIST include-column
+  name CDATA #REQUIRED
+>
+
 
 <!--
 Defines an unique index for the current table.

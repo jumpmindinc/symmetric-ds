@@ -27,9 +27,11 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.exception.IoException;
+import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -147,6 +149,37 @@ public class TypedProperties extends Properties {
         return returnValue;
     }
 
+    public TypedProperties renameKeysWithUnderscores(String prefixToMatch) {
+        TypedProperties result = new TypedProperties();
+        for (String key : stringPropertyNames()) {
+            if (key.toUpperCase().startsWith(prefixToMatch)) {
+                result.put(key.toLowerCase().replace('_', '.'), getProperty(key));
+            }
+        }
+        return result;
+    }
+
+    public void collectFrom(String prefixToDrop, String[] names, UnaryOperator<String> lookup) {
+        for (String name : names) {
+            put(name, lookup.apply(prefixToDrop + name));
+        }
+    }
+
+    public void collectFrom(TypedProperties source, String prefixToMatch, boolean dropPrefix) {
+        for (String key : source.stringPropertyNames()) {
+            String upperKey = key.toUpperCase();
+            if (upperKey.startsWith(prefixToMatch)) {
+                String propKey = dropPrefix
+                        ? FormatUtils.removePrefix(upperKey, prefixToMatch).toLowerCase().replace('_', '.')
+                        : key;
+                put(propKey, source.getProperty(key));
+                if (log.isDebugEnabled()) {
+                    log.debug("Collected {} as {}={}", key, propKey, source.getProperty(key));
+                }
+            }
+        }
+    }
+
     public String get(String key) {
         return get(key, null);
     }
@@ -191,6 +224,14 @@ public class TypedProperties extends Properties {
 
     public TypedProperties copy() {
         return new TypedProperties(this);
+    }
+
+    public void logAllKeys(String source) {
+        log.debug("Properties source={}, count={}", source, size());
+        for (String key : stringPropertyNames()) {
+            String value = getProperty(key);
+            log.debug("Property {}={}, Source={}", key, value == null ? "null" : value, source);
+        }
     }
 
     public static void logPropertiesException(Logger logger, String key, String val) {

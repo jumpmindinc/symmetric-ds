@@ -4,6 +4,7 @@ apply from: symAssembleDir + '/common.gradle'
 
     dependencies {
         api project(":symmetric-core")
+        api project(":symmetric-stats")
         api project(":symmetric-jdbc")
         api "org.springframework:spring-context:$springVersion"
         api "commons-cli:commons-cli:$commonsCliVersion"

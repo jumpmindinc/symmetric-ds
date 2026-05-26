@@ -1,9 +1,7 @@
-/.project
-*.iml
+# General temporary files
+*.log
+*.tmp
 .clover/*
-/.idea/*
-*.ipr
-*.iws
 
 # Visual Studio Code related temporary files and personal preferences
 .vscode-test
@@ -20,3 +18,37 @@
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Eclipse temporary files and personal preferences
+**/.classpath
+**/.project
+**/.settings/
+**/.factorypath
+.metadata
+bin/
+tmp/
+*.bak
+*.launch
+*.swp
+*.tmp
+*~.nib
+.loadpath
+.externalToolBuilders/
+
+# IntelliJ IDEA temporary files and personal preferences
+/.idea/*
+*.iml
+*.ipr
+*.iws
+
+# Claude Code temporary files and personal preferences
+.claude
+tmpclaude-*
+*.tmp.*
+
+#  Gradle temporary files and personal preferences
+.gradle/
+build/
+.gradletasknamecache
+gradle-app.setting
+**/build/spotless-clean/

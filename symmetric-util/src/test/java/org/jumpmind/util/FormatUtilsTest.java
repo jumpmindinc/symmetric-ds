@@ -22,16 +22,19 @@ package org.jumpmind.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-public class FormatUtilsTest {
+class FormatUtilsTest {
     @Test
-    public void testReplaceTokens() {
+    void testReplaceTokens() {
         assertEquals("test", FormatUtils.replaceTokens("test", null, true));
         assertEquals("test", FormatUtils.replaceTokens("test", new HashMap<String, String>(), true));
         Map<String, String> params = new HashMap<String, String>();
@@ -41,7 +44,7 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testReplaceCurrentTimestamp() {
+    void testReplaceCurrentTimestamp() {
         String beforeSql = "insert into sym_node values ('00000', 'test-root-group', '00000', 1, null, null, '2.0', null, null, current_timestamp, null, 0, 0, '00000', 'engine')";
         String afterSql = "insert into sym_node values ('00000', 'test-root-group', '00000', 1, null, null, '2.0', null, null, XXXX, null, 0, 0, '00000', 'engine')";
         Map<String, String> replacementTokens = new HashMap<String, String>();
@@ -50,7 +53,7 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testReplace() {
+    void testReplace() {
         assertEquals(FormatUtils.replace("nodeId", "001", "nodeId = $(nodeId)"), "nodeId = 001");
         assertEquals(FormatUtils.replace("nodeId", "001", "nodeId = $(nodeId:0)"), "nodeId = 001");
         assertEquals(FormatUtils.replace("nodeId", "001", "nodeId = $(nodeId:0:10)"), "nodeId = 001");
@@ -60,7 +63,16 @@ public class FormatUtilsTest {
     }
 
     @Test
-    public void testIsWildcardMatch() {
+    void testRemovePrefix() {
+        assertEquals("VALUE", FormatUtils.removePrefix("PREFIX_VALUE", "PREFIX_"));
+        assertEquals("VALUE", FormatUtils.removePrefix("VALUE", ""));
+        assertEquals("VALUE", FormatUtils.removePrefix("VALUE", "OTHER_"));
+        assertEquals("VALUE", FormatUtils.removePrefix("VALUE", null));
+        assertEquals(null, FormatUtils.removePrefix(null, "PREFIX_"));
+    }
+
+    @Test
+    void testIsWildcardMatch() {
         assertTrue(FormatUtils.isWildCardMatch("TEST_1", "TEST_*"));
         assertTrue(FormatUtils.isWildCardMatch("TEST_2", "TEST_*"));
         assertTrue(FormatUtils.isWildCardMatch("TEST_TEST_TEST", "TEST_*"));
@@ -76,5 +88,126 @@ public class FormatUtilsTest {
         assertTrue(FormatUtils.isWildCardMatch("item_price", "*item*"));
         assertTrue(FormatUtils.isWildCardMatch("item_price", "item*"));
         assertFalse(FormatUtils.isWildCardMatch("c$table3", "*$table"));
+    }
+
+    @Test
+    void testIsWildcardMatchIgnoreCase() {
+        assertTrue(FormatUtils.isWildCardMatch("test_1", "TEST_*", true));
+        assertFalse(FormatUtils.isWildCardMatch("other", "TEST_*", true));
+        assertTrue(FormatUtils.isWildCardMatch("TEST_1", "TEST_*", false));
+    }
+
+    @Test
+    void testToBoolean() {
+        assertTrue(FormatUtils.toBoolean("true"));
+        assertTrue(FormatUtils.toBoolean("1"));
+        assertFalse(FormatUtils.toBoolean("false"));
+        assertFalse(FormatUtils.toBoolean("0"));
+        assertFalse(FormatUtils.toBoolean(""));
+        assertFalse(FormatUtils.toBoolean(null));
+    }
+
+    @Test
+    void testIsMixedCase() {
+        assertTrue(FormatUtils.isMixedCase("HelloWorld"));
+        assertFalse(FormatUtils.isMixedCase("ALLCAPS"));
+        assertFalse(FormatUtils.isMixedCase("alllower"));
+    }
+
+    @Test
+    void testIsWildCarded() {
+        assertTrue(FormatUtils.isWildCarded("TAB_*"));
+        assertTrue(FormatUtils.isWildCarded("TAB_1,TAB_2"));
+        assertTrue(FormatUtils.isWildCarded("!TAB_1"));
+        assertFalse(FormatUtils.isWildCarded("TAB_1"));
+        assertFalse(FormatUtils.isWildCarded(null));
+        assertFalse(FormatUtils.isWildCarded("TAB**_1"));
+        assertFalse(FormatUtils.isWildCarded("TAB,,_1"));
+        assertFalse(FormatUtils.isWildCarded("!!TAB_1"));
+    }
+
+    @Test
+    void testEscapeAndUnescapeWildCards() {
+        assertEquals("TAB**_1", FormatUtils.escapeWildCards("TAB*_1"));
+        assertEquals("TAB*_1", FormatUtils.unescapeWildCards("TAB**_1"));
+        assertNull(FormatUtils.escapeWildCards(null));
+        assertNull(FormatUtils.unescapeWildCards(null));
+    }
+
+    @Test
+    void testWordWrap() {
+        String[] lines = FormatUtils.wordWrap("short", 80);
+        assertEquals(1, lines.length);
+        assertEquals("short", lines[0]);
+        String[] wrapped = FormatUtils.wordWrap("one two three four five", 10);
+        assertTrue(wrapped.length > 1);
+    }
+
+    @Test
+    void testWordWrapDifferentLineSizes() {
+        String[] lines = FormatUtils.wordWrap("one two three four five six seven eight", 15, 10);
+        assertTrue(lines.length > 1);
+    }
+
+    @Test
+    void testAbbreviateForLogging_shortString() {
+        assertEquals("hello", FormatUtils.abbreviateForLogging("hello"));
+    }
+
+    @Test
+    void testAbbreviateForLogging_longString() {
+        String longStr = "a".repeat(1100);
+        String result = FormatUtils.abbreviateForLogging(longStr);
+        assertTrue(result.length() <= FormatUtils.MAX_CHARS_TO_LOG);
+    }
+
+    @Test
+    void testAbbreviateForLogging_list() {
+        List<String> items = Arrays.asList("alpha", "beta", "gamma");
+        String result = FormatUtils.abbreviateForLogging(items, 1000);
+        assertTrue(result.contains("alpha"));
+        assertTrue(result.contains("beta"));
+        assertTrue(result.startsWith("["));
+        assertTrue(result.endsWith("]"));
+    }
+
+    @Test
+    void testSplitOnSpacePreserveQuotedStrings() {
+        String[] parts = FormatUtils.splitOnSpacePreserveQuotedStrings("one \"two three\" four");
+        assertEquals(3, parts.length);
+        assertEquals("one", parts[0]);
+        assertEquals("two three", parts[1]);
+        assertEquals("four", parts[2]);
+    }
+
+    @Test
+    void testReplaceCharsToShortenName() {
+        assertEquals("TBL", FormatUtils.replaceCharsToShortenName("TABLE"));
+        assertEquals("t_b_l", FormatUtils.replaceCharsToShortenName("t_b_l"));
+        assertEquals("symtblnm", FormatUtils.replaceCharsToShortenName("sym.table.name"));
+    }
+
+    @Test
+    void testIsInteger() {
+        assertTrue(FormatUtils.isInteger("123"));
+        assertTrue(FormatUtils.isInteger("-456"));
+        assertFalse(FormatUtils.isInteger("12.3"));
+        assertFalse(FormatUtils.isInteger("abc"));
+    }
+
+    @Test
+    void testFormatString_integer() {
+        assertEquals("0042", FormatUtils.formatString("%04d", "42"));
+    }
+
+    @Test
+    void testFormatString_string() {
+        assertEquals("hello     ", FormatUtils.formatString("%-10s", "hello"));
+    }
+
+    @Test
+    void testReplaceToken() {
+        assertEquals("value=abc", FormatUtils.replaceToken("value=$(key)", "key", "abc", true));
+        assertEquals("value=abc", FormatUtils.replaceToken("value=key", "key", "abc", false));
     }
 }

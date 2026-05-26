@@ -1,0 +1,88 @@
+/**
+ * Licensed to JumpMind Inc under one or more contributor
+ * license agreements.  See the NOTICE file distributed
+ * with this work for additional information regarding
+ * copyright ownership.  JumpMind Inc licenses this file
+ * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * (the "License"); you may not use this file except in compliance
+ * with the License.
+ *
+ * You should have received a copy of the GNU General Public License,
+ * version 3.0 (GPLv3) along with this library; if not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.jumpmind.symmetric.observability.interfaces;
+
+import java.util.List;
+
+import org.jumpmind.symmetric.model.MetricFactType;
+
+public interface ISymMetric {
+    String getMetricId();
+
+    /** Returns the metric context (equivalent to OpenTelemetry attributes), or null if not yet assigned by the repository. */
+    ISymMetricContext getContext();
+
+    /** Write-once: ignored if a context has already been set. */
+    void setContext(ISymMetricContext context);
+
+    /** Returns the attribute list supplied at creation time (0–3 elements, never null). */
+    MetricAttributeList getAttributes();
+
+    /**
+     * Return system time (epoch) from when this metric was last modified (either value or state).
+     */
+    long getLastModified();
+
+    /**
+     * Opens this metric for new observations. Also registers a callback if an external (optional) OpenTelemetry is specified.
+     */
+    void open(AutoCloseable externalMetricHandle);
+
+    /**
+     * Drains all completed intervals from this metric's queue into permanent storage (database).
+     */
+    void closeCompletedIntervals();
+
+    /**
+     * Closes this metric, preventing any further observations from being accepted. Also closes an exernal OpenTelemetry handle, if present.
+     */
+    void close();
+
+    /**
+     * Operational state: whether this metric accepts new observations. Depends on isEnabled=true (user configuration).
+     */
+    boolean isOpen();
+
+    /**
+     * User configuration for this metric: enabled by default, user can override this in database.
+     */
+    boolean isEnabled();
+
+    /**
+     * Creates initial accumulator for this metric. Called once when no prior interval exists. Implementations return the type appropriate for this metric
+     * ({@link org.jumpmind.symmetric.observability.stats.Float64StatsAccumulator} for gauges,
+     * {@link org.jumpmind.symmetric.observability.stats.Int64StatsAccumulator} for counters). Carry-forward for subsequent windows uses
+     * {@link org.jumpmind.symmetric.observability.interfaces.IStatsAccumulator#createNext}.
+     */
+    IStatsAccumulator createAccumulator(long intervalStart);
+
+    List<ISymObservation> removeAllObservations();
+
+    int processObservations(List<ISymObservation> observations);
+
+    void processAllObservationsAndRefreshInterval();
+
+    MetricFactType getFactType();
+
+    SymMetricConstants.InstrumentType getMetricType();
+
+    List<ISymIntervalStats> exportCompletedIntervals();
+}
