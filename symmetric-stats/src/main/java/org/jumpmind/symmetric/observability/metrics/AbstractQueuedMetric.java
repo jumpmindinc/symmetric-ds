@@ -334,7 +334,10 @@ public abstract class AbstractQueuedMetric implements ISymMetric {
             return;
         }
         workset.seed(history);
-        log.debug("Primed outlier detection with {} historical intervals for metric={}", history.size(), metricId);
+        if (log.isDebugEnabled()) {
+            String attribute1 = metricAttributes != null && !metricAttributes.isEmpty() ? metricAttributes.get(0).value() : null;
+            log.debug("Primed outlier detection with {} historical intervals for metric={}, attribute1={}", history.size(), metricId, attribute1);
+        }
     }
 
     /**
