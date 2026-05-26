@@ -725,9 +725,7 @@ public class StatisticManager implements IStatisticManager {
                         }
                         stats.setEndTime(endTime);
                         saveAdditionalStats(endTime, stats);
-                        if (stats.isNonZero()) {
-                            statisticService.save(stats);
-                        }
+                        statisticService.save(stats);
                     }
                 }
                 resetChannelStats(true);
