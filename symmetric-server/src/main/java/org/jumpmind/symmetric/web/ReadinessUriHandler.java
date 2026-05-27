@@ -49,7 +49,7 @@ public class ReadinessUriHandler implements IUriHandler{
     private String prepareReadinessJsonRes(Map<String, Boolean> engineReadiness) {
     		StringBuilder response = new StringBuilder("{\"engine_details\": [");
     		
-        boolean ready = true;
+        boolean ready = ApplicationHealthTracker.getTracker().isAlive();
         for(Entry<String, Boolean> engine : engineReadiness.entrySet()) {
         		ready &= engine.getValue();
         		response.append("{\"engine_name\": \"");
