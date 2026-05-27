@@ -349,8 +349,7 @@ public class ProtocolDataReader extends AbstractDataReader implements IDataReade
         } else {
             do {
                 next = readNext();
-                if (next instanceof Relation) {
-                    Relation relation = (Relation) next;
+                if (next instanceof Relation relation) {
                     context.setLastParsedRelation(relation);
                     next = null;
                     return relation;

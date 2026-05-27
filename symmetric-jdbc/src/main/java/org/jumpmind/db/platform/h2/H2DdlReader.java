@@ -86,12 +86,12 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
         Relation relation = super.readRelation(connection, metaData, values);
         if (relation != null && relation.getColumnsAsList().stream().anyMatch(col -> col.getDefaultValue() != null
                 && col.getDefaultValue().contains("(") && col.getDefaultValue().contains(")"))) {
-            determineGeneratedColumns(connection, relation, relation.getColumns());
+            determineGeneratedColumns(relation, relation.getColumns());
         }
         return relation;
     }
 
-    protected void determineGeneratedColumns(Connection conn, Relation relation, final Column columnsToCheck[]) {
+    protected void determineGeneratedColumns(Relation relation, final Column[] columnsToCheck) {
         StringBuilder query = new StringBuilder();
         if (columnsToCheck == null || columnsToCheck.length == 0) {
             return;
@@ -253,8 +253,8 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
             tableNameColumnName = "TABLE_NAME";
             triggerTypeColumnName = "TRIGGER_TYPE";
         }
-        List<Trigger> triggers = new ArrayList<Trigger>();
-        log.debug("Reading triggers for: " + tableName);
+        List<Trigger> triggers = new ArrayList<>();
+        log.debug("Reading triggers for: {}", tableName);
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform
                 .getSqlTemplate();
         String sql = "SELECT * FROM INFORMATION_SCHEMA.TRIGGERS "

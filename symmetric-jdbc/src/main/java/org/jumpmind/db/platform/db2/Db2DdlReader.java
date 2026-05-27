@@ -254,7 +254,7 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
     public List<Trigger> getTriggers(final String catalog, final String schema,
             final String tableName) throws SqlException {
         List<Trigger> triggers = new ArrayList<Trigger>();
-        log.debug("Reading triggers for: " + tableName);
+        log.debug("Reading triggers for: {}", tableName);
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform
                 .getSqlTemplate();
         String sql = "SELECT "

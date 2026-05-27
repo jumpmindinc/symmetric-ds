@@ -53,8 +53,8 @@ import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGr
 import org.jumpmind.symmetric.util.SymmetricUtils;
 
 public class ColumnsAccordingToTriggerHistory {
-    private static Map<String, Map<String, Relation>> cacheByEngine = new ConcurrentHashMap<String, Map<String, Relation>>();
-    private Map<CacheKey, Relation> cache = new HashMap<CacheKey, Relation>();
+    private static Map<String, Map<String, Relation>> cacheByEngine = new ConcurrentHashMap<>();
+    private Map<CacheKey, Relation> cache = new HashMap<>();
     private ISymmetricEngine engine;
     private Node sourceNode;
     private Node targetNode;
@@ -140,19 +140,15 @@ public class ColumnsAccordingToTriggerHistory {
             }
         }
         if (useTransforms) {
-            TransformTable transform = getTransform(sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), relation,
-                    TransformPoint.EXTRACT, Integer.MIN_VALUE);
+            TransformTable transform = getTransform(relation, TransformPoint.EXTRACT, Integer.MIN_VALUE);
             while (transform != null) {
                 applyTransform(relation, transform);
-                transform = getTransform(sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), relation,
-                        TransformPoint.EXTRACT, transform.getTransformOrder() + 1);
+                transform = getTransform(relation, TransformPoint.EXTRACT, transform.getTransformOrder() + 1);
             }
-            transform = getTransform(sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), relation,
-                    TransformPoint.LOAD, Integer.MIN_VALUE);
+            transform = getTransform(relation, TransformPoint.LOAD, Integer.MIN_VALUE);
             while (transform != null) {
                 applyTransform(relation, transform);
-                transform = getTransform(sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), relation,
-                        TransformPoint.LOAD, transform.getTransformOrder() + 1);
+                transform = getTransform(relation, TransformPoint.LOAD, transform.getTransformOrder() + 1);
             }
         }
         return relation;
@@ -205,16 +201,10 @@ public class ColumnsAccordingToTriggerHistory {
     }
 
     protected Map<String, Relation> getSourceRelationMap(String engineName) {
-        Map<String, Relation> map = cacheByEngine.get(engineName);
-        if (map == null) {
-            map = new ConcurrentHashMap<String, Relation>();
-            cacheByEngine.put(engineName, map);
-        }
-        return map;
+        return cacheByEngine.computeIfAbsent(engineName, k -> new ConcurrentHashMap<>());
     }
 
-    protected TransformTable getTransform(String sourceNodeGroupId, String targetNodeGroupId, Relation relation,
-            TransformPoint transformPoint, int order) {
+    protected TransformTable getTransform(Relation relation, TransformPoint transformPoint, int order) {
         List<TransformTableNodeGroupLink> transforms = transformService.findTransformsFor(sourceNode.getNodeGroupId(),
                 targetNode.getNodeGroupId(), relation.getName(), relation.getSchema(), relation.getCatalog());
         if (transforms != null) {
@@ -230,7 +220,7 @@ public class ColumnsAccordingToTriggerHistory {
     }
 
     protected void applyTransform(Relation relation, TransformTable transform) {
-        List<String> columnNamesToRemoveList = new ArrayList<String>();
+        List<String> columnNamesToRemoveList = new ArrayList<>();
         if (transform.getColumnPolicy().equals(ColumnPolicy.SPECIFIED)) {
             columnNamesToRemoveList.addAll(Arrays.asList(relation.getColumnNames()));
         }

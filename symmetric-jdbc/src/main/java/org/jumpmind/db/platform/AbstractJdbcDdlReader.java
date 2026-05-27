@@ -742,7 +742,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 }
             }
             if ("VIEW".equalsIgnoreCase(type) || "MATERIALIZED VIEW".equalsIgnoreCase(type)) {
-                return readView(connection, metaData, relationName, values);
+                return readView(metaData, relationName, values);
             }
             Table table = new Table();
             table.setName(relationName);
@@ -784,7 +784,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         }
     }
 
-    protected View readView(Connection connection, DatabaseMetaDataWrapper metaData, String viewName,
+    protected View readView(DatabaseMetaDataWrapper metaData, String viewName,
             Map<String, Object> values) throws SQLException {
         View view = new View();
         view.setName(viewName);
@@ -1938,15 +1938,11 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             }
         }
         if (table != null) {
-            try {
-                foreignTable = (Table) table.clone();
-                if (clearPrimaryKeys) {
-                    for (Column column : foreignTable.getColumns()) {
-                        column.setPrimaryKey(false);
-                    }
+            foreignTable = table.copy();
+            if (clearPrimaryKeys) {
+                for (Column column : foreignTable.getColumns()) {
+                    column.setPrimaryKey(false);
                 }
-            } catch (CloneNotSupportedException e) {
-                throw new RuntimeException(e);
             }
         }
         return foreignTable;

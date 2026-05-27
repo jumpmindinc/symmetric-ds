@@ -31,7 +31,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Relation;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
@@ -652,7 +652,7 @@ public class Trigger implements IModelObject, Cloneable {
     }
 
     public String getFullyQualifiedSourceTableName() {
-        return Table.getFullyQualifiedName(sourceCatalogName, sourceSchemaName, sourceTableName);
+        return SchemaObject.getFullyQualifiedName(sourceCatalogName, sourceSchemaName, sourceTableName);
     }
 
     public long toHashedValue() {

@@ -29,7 +29,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.jumpmind.db.model.Relation;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.csv.CsvReader;
 import org.jumpmind.symmetric.db.AbstractTriggerTemplate;
@@ -173,7 +173,7 @@ public class TriggerHistory implements Serializable {
     }
 
     public String getFullyQualifiedSourceTableName() {
-        return Table.getFullyQualifiedName(sourceCatalogName, sourceSchemaName, sourceTableName);
+        return SchemaObject.getFullyQualifiedName(sourceCatalogName, sourceSchemaName, sourceTableName);
     }
 
     public String getSourceTableName() {

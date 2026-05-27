@@ -27,6 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlReadCursor;
@@ -57,7 +58,7 @@ public class RelationExtractDataReaderSource implements IExtractDataReaderSource
         this.relation = platform.getRelationFromCache(catalogName, schemaName, tableName, true);
         if (relation == null) {
             throw new IllegalStateException(String.format("Could not find table %s",
-                    Relation.getFullyQualifiedName(catalogName, schemaName, tableName)));
+                    SchemaObject.getFullyQualifiedName(catalogName, schemaName, tableName)));
         }
         this.whereClause = whereClause;
         this.streamLobs = streamLobs;

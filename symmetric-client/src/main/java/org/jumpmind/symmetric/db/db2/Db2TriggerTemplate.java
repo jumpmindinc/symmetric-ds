@@ -247,6 +247,7 @@ public class Db2TriggerTemplate extends AbstractTriggerTemplate {
                 "select $(toClob)$(columns) from $(schemaName)$(tableName) t where $(whereClause)                                                                                                                                ");
     }
 
+    @Override
     protected String toClobExpression(Relation relation) {
         if (relation.hasNTypeColumns()) {
             return "nclob('')||";

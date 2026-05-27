@@ -41,6 +41,7 @@ import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -732,7 +733,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
                         foreignTable.getFullyQualifiedName(), foreignTableRow.getFkName(), foreignTableRow.getWhereSql(),
                         targetTable.getName(), foreignTableRow.getReferenceColumnName());
                 DatabaseInfo info = platform.getDatabaseInfo();
-                String tableName = Table.getFullyQualifiedName(foreignTable.getCatalog(), foreignTable.getSchema(), foreignTable.getName(),
+                String tableName = SchemaObject.getFullyQualifiedName(foreignTable.getCatalog(), foreignTable.getSchema(), foreignTable.getName(),
                         info.getDelimiterToken(), info.getCatalogSeparator(), info.getSchemaSeparator());
                 String cte = updateCteExpression(info.getCteExpression(), databaseWriter.getBatch().getSourceNodeId(), platform.getDdlBuilder()
                         .getCteExpressionPrefix());

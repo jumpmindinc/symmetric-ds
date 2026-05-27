@@ -167,7 +167,7 @@ public class SnapshotUtil {
         IDatabasePlatform targetPlatform = engine.getSymmetricDialect().getTargetPlatform();
         ISymmetricDialect targetDialect = engine.getTargetDialect();
         try {
-            HashMap<CatalogSchema, List<Relation>> catalogSchemas = getRelationsForCaptureByCatalogSchema(engine);
+            Map<CatalogSchema, List<Relation>> catalogSchemas = getRelationsForCaptureByCatalogSchema(engine);
             checkpoint(engine, listener, stepNumber++, totalSteps);
             addRelationsForLoadByCatalogSchema(engine, catalogSchemas);
             checkpoint(engine, listener, stepNumber++, totalSteps);
@@ -196,8 +196,8 @@ public class SnapshotUtil {
                 }
                 try (FileOutputStream fos = new FileOutputStream(new File(tmpDir, filename))) {
                     List<Relation> relations = catalogSchemas.get(catalogSchema);
-                    List<Table> tables = new ArrayList<Table>();
-                    List<View> views = new ArrayList<View>();
+                    List<Table> tables = new ArrayList<>();
+                    List<View> views = new ArrayList<>();
                     for (Relation relation : relations) {
                         if (relation instanceof Table table) {
                             tables.add(table);
@@ -654,7 +654,7 @@ public class SnapshotUtil {
             runtimeProperties.setProperty("memory.jvm.free", df.format(rt.freeMemory()));
             runtimeProperties.setProperty("memory.jvm.used", df.format(rt.totalMemory() - rt.freeMemory()));
             runtimeProperties.setProperty("memory.jvm.max", df.format(rt.maxMemory()));
-            List<MemoryPoolMXBean> memoryPools = new ArrayList<MemoryPoolMXBean>(ManagementFactory.getMemoryPoolMXBeans());
+            List<MemoryPoolMXBean> memoryPools = new ArrayList<>(ManagementFactory.getMemoryPoolMXBeans());
             long usedHeapMemory = 0;
             for (MemoryPoolMXBean memoryPool : memoryPools) {
                 if (memoryPool.getType() == MemoryType.HEAP) {
@@ -762,7 +762,7 @@ public class SnapshotUtil {
 
     protected static void writeProperties(Properties properties, File tmpDir, String fileName) {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(new File(tmpDir, fileName)))) {
-            List<String> keys = new ArrayList<String>();
+            List<String> keys = new ArrayList<>();
             for (Object key : properties.keySet()) {
                 keys.add(key.toString());
             }
@@ -940,11 +940,11 @@ public class SnapshotUtil {
     }
 
     private static File createTransactionsFile(ISymmetricEngine engine, String parent, List<Transaction> transactions) {
-        Map<String, Transaction> transactionMap = new HashMap<String, Transaction>();
+        Map<String, Transaction> transactionMap = new HashMap<>();
         for (Transaction transaction : transactions) {
             transactionMap.put(transaction.getId(), transaction);
         }
-        List<Transaction> filteredTransactions = new ArrayList<Transaction>();
+        List<Transaction> filteredTransactions = new ArrayList<>();
         String dbUser = engine.getParameterService().getString("db.user");
         for (Transaction transaction : transactions) {
             SymmetricUtils.filterTransactions(transaction, transactionMap, filteredTransactions, dbUser, false, false);
@@ -1009,25 +1009,19 @@ public class SnapshotUtil {
         }
     }
 
-    public static HashMap<CatalogSchema, List<Relation>> getRelationsForCaptureByCatalogSchema(ISymmetricEngine engine) {
+    public static Map<CatalogSchema, List<Relation>> getRelationsForCaptureByCatalogSchema(ISymmetricEngine engine) {
         IDatabasePlatform targetPlatform = engine.getSymmetricDialect().getTargetPlatform();
-        HashMap<CatalogSchema, List<Relation>> catalogSchemas = new HashMap<>();
+        Map<CatalogSchema, List<Relation>> catalogSchemas = new HashMap<>();
         ITriggerRouterService triggerRouterService = engine.getTriggerRouterService();
         List<TriggerHistory> triggerHistories = triggerRouterService.getActiveTriggerHistories();
         String tablePrefix = engine.getTablePrefix().toUpperCase();
-        Set<String> triggerIds = new HashSet<String>();
+        Set<String> triggerIds = new HashSet<>();
         boolean isClonedTables = engine.getParameterService().is("sync.triggers.expand.table.clone", true);
         long timeoutMillis = engine.getParameterService().getLong(ParameterConstants.SNAPSHOT_OPERATION_TIMEOUT_MS, 30000);
         long ts = System.currentTimeMillis();
         for (TriggerHistory triggerHistory : triggerHistories) {
-            if (!triggerHistory.getSourceTableName().toUpperCase().startsWith(tablePrefix)) {
-                if (isClonedTables && !triggerIds.add(triggerHistory.getTriggerId())) {
-                    Trigger trigger = triggerRouterService.getTriggerById(triggerHistory.getTriggerId(), false);
-                    if (trigger != null && trigger.getSourceTableName().contains("$(targetExternalId)")) {
-                        // for multi-tenant database where the same table is repeated for each node, just need one definition
-                        continue;
-                    }
-                }
+            if (!triggerHistory.getSourceTableName().toUpperCase().startsWith(tablePrefix)
+                    && !isMultiTenantDuplicate(triggerHistory, isClonedTables, triggerIds, triggerRouterService)) {
                 Relation relation = targetPlatform.getRelationFromCache(triggerHistory.getSourceCatalogName(),
                         triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(), false);
                 if (relation != null) {
@@ -1042,98 +1036,132 @@ public class SnapshotUtil {
         return catalogSchemas;
     }
 
-    public static HashMap<CatalogSchema, List<Relation>> getRelationsForLoadByCatalogSchema(ISymmetricEngine engine) {
-        HashMap<CatalogSchema, List<Relation>> relations = new HashMap<CatalogSchema, List<Relation>>();
+    private static boolean isMultiTenantDuplicate(TriggerHistory triggerHistory, boolean isClonedTables,
+            Set<String> triggerIds, ITriggerRouterService triggerRouterService) {
+        if (!isClonedTables || triggerIds.add(triggerHistory.getTriggerId())) {
+            return false;
+        }
+        Trigger trigger = triggerRouterService.getTriggerById(triggerHistory.getTriggerId(), false);
+        return trigger != null && trigger.getSourceTableName().contains("$(targetExternalId)");
+    }
+
+    public static Map<CatalogSchema, List<Relation>> getRelationsForLoadByCatalogSchema(ISymmetricEngine engine) {
+        Map<CatalogSchema, List<Relation>> relations = new HashMap<>();
         addRelationsForLoadByCatalogSchema(engine, relations);
         return relations;
     }
 
-    protected static void addRelationsForLoadByCatalogSchema(ISymmetricEngine engine, HashMap<CatalogSchema, List<Relation>> catalogSchemas) {
+    protected static void addRelationsForLoadByCatalogSchema(ISymmetricEngine engine, Map<CatalogSchema, List<Relation>> catalogSchemas) {
         ITriggerRouterService triggerRouterService = engine.getTriggerRouterService();
         IParameterService parameterService = engine.getParameterService();
-        IDatabasePlatform targetPlatform = engine.getSymmetricDialect().getTargetPlatform();
         Node targetNode = engine.getNodeService().findIdentity();
-        List<Node> nodes = engine.getNodeService().findAllNodes();
-        Map<String, Node> sampleNodeForGroup = new HashMap<String, Node>();
-        for (Node node : nodes) {
-            sampleNodeForGroup.put(node.getNodeGroupId(), node);
-        }
-        Map<NodeGroupLink, Map<String, List<TransformTable>>> extractTransformMap = new HashMap<NodeGroupLink, Map<String, List<TransformTable>>>();
-        Map<NodeGroupLink, Map<String, List<TransformTable>>> loadTransformMap = new HashMap<NodeGroupLink, Map<String, List<TransformTable>>>();
+        Map<String, Node> sampleNodeForGroup = buildSampleNodeForGroup(engine.getNodeService().findAllNodes());
+        LoadContext context = new LoadContext(engine.getSymmetricDialect().getTargetPlatform(), engine.getTransformService());
         List<TriggerRouter> triggerRouters = triggerRouterService.getTriggerRoutersForTargetNode(parameterService.getNodeGroupId());
         long timeoutMillis = engine.getParameterService().getLong(ParameterConstants.SNAPSHOT_OPERATION_TIMEOUT_MS, 30000);
         long ts = System.currentTimeMillis();
         for (TriggerRouter triggerRouter : triggerRouters) {
-            Trigger trigger = triggerRouter.getTrigger();
-            if (!trigger.isSourceWildCarded()) {
-                String catalog = null;
-                String schema = null;
-                String tableName = trigger.getSourceTableName();
-                Router router = triggerRouter.getRouter();
-                Node sourceNode = sampleNodeForGroup.get(router.getNodeGroupLink().getSourceNodeGroupId());
-                if (router.isUseSourceCatalogSchema()) {
-                    catalog = trigger.getSourceCatalogName();
-                    schema = trigger.getSourceSchemaName();
-                }
-                if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
-                    catalog = null;
-                } else if (StringUtils.isNotBlank(router.getTargetCatalogName())) {
-                    catalog = SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetCatalogName());
-                }
-                if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
-                    schema = null;
-                } else if (StringUtils.isNotBlank(router.getTargetSchemaName())) {
-                    schema = SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetSchemaName());
-                }
-                if (StringUtils.isNotBlank(router.getTargetTableName())) {
-                    tableName = router.getTargetTableName();
-                }
-                List<Table> tablesToLookup = new ArrayList<Table>();
-                Map<String, List<TransformTable>> byTableExtractTransforms = getByTableTransforms(engine.getTransformService(), extractTransformMap, router
-                        .getNodeGroupLink(), TransformPoint.EXTRACT);
-                String tableKey = SchemaObject.getFullyQualifiedName(catalog, schema, tableName).toLowerCase();
-                List<TransformTable> extractTransforms = byTableExtractTransforms.get(tableKey);
-                if (extractTransforms != null && extractTransforms.size() > 0) {
-                    for (TransformTable transform : extractTransforms) {
-                        tablesToLookup.add(new Table(transform.getTargetCatalogName(), transform.getTargetSchemaName(), transform.getTargetTableName()));
-                    }
-                }
-                if (tablesToLookup.size() == 0) {
-                    tablesToLookup.add(new Table(catalog, schema, tableName));
-                }
-                Map<String, List<TransformTable>> byTableLoadTransforms = getByTableTransforms(engine.getTransformService(), loadTransformMap, router
-                        .getNodeGroupLink(), TransformPoint.LOAD);
-                ListIterator<Table> iterator = tablesToLookup.listIterator();
-                while (iterator.hasNext()) {
-                    Table table = iterator.next();
-                    List<TransformTable> loadTransforms = byTableLoadTransforms.get(table.getFullyQualifiedName().toLowerCase());
-                    if (loadTransforms != null && loadTransforms.size() > 0) {
-                        iterator.remove();
-                        for (TransformTable transform : loadTransforms) {
-                            iterator.add(new Table(transform.getTargetCatalogName(), transform.getTargetSchemaName(), transform.getTargetTableName()));
-                        }
-                    }
-                }
-                for (Table lookupTable : tablesToLookup) {
-                    Relation relation = targetPlatform.getRelationFromCache(lookupTable.getCatalog(), lookupTable.getSchema(), lookupTable.getName(), false);
-                    if (relation != null) {
-                        addRelationToMap(catalogSchemas, new CatalogSchema(relation.getCatalog(), relation.getSchema()), relation);
-                    }
-                }
-                if (System.currentTimeMillis() - ts > timeoutMillis) {
-                    log.info("Reached time limit for load table definitions");
-                    break;
-                }
+            if (!triggerRouter.getTrigger().isSourceWildCarded()) {
+                addRelationsForTriggerRouter(triggerRouter, targetNode, sampleNodeForGroup, context, catalogSchemas);
+            }
+            if (System.currentTimeMillis() - ts > timeoutMillis) {
+                log.info("Reached time limit for load table definitions");
+                break;
             }
         }
     }
 
-    private static void addRelationToMap(HashMap<CatalogSchema, List<Relation>> catalogSchemas, CatalogSchema catalogSchema, Relation relation) {
-        List<Relation> relations = catalogSchemas.get(catalogSchema);
-        if (relations == null) {
-            relations = new ArrayList<Relation>();
-            catalogSchemas.put(catalogSchema, relations);
+    private static Map<String, Node> buildSampleNodeForGroup(List<Node> nodes) {
+        Map<String, Node> sampleNodeForGroup = new HashMap<>();
+        for (Node node : nodes) {
+            sampleNodeForGroup.put(node.getNodeGroupId(), node);
         }
+        return sampleNodeForGroup;
+    }
+
+    private static void addRelationsForTriggerRouter(TriggerRouter triggerRouter, Node targetNode,
+            Map<String, Node> sampleNodeForGroup, LoadContext context,
+            Map<CatalogSchema, List<Relation>> catalogSchemas) {
+        Trigger trigger = triggerRouter.getTrigger();
+        Router router = triggerRouter.getRouter();
+        Node sourceNode = sampleNodeForGroup.get(router.getNodeGroupLink().getSourceNodeGroupId());
+        for (Table lookupTable : resolveTablesWithTransforms(trigger, router, sourceNode, targetNode, context)) {
+            Relation relation = context.targetPlatform.getRelationFromCache(
+                    lookupTable.getCatalog(), lookupTable.getSchema(), lookupTable.getName(), false);
+            if (relation != null) {
+                addRelationToMap(catalogSchemas, new CatalogSchema(relation.getCatalog(), relation.getSchema()), relation);
+            }
+        }
+    }
+
+    private static List<Table> resolveTablesWithTransforms(Trigger trigger, Router router,
+            Node sourceNode, Node targetNode, LoadContext context) {
+        String[] location = resolveTargetLocation(trigger, router, sourceNode, targetNode);
+        List<Table> tablesToLookup = buildTablesFromExtractTransforms(location[0], location[1], location[2], router, context);
+        return expandWithLoadTransforms(tablesToLookup, router, context);
+    }
+
+    private static String[] resolveTargetLocation(Trigger trigger, Router router, Node sourceNode, Node targetNode) {
+        String catalog = null;
+        String schema = null;
+        String tableName = trigger.getSourceTableName();
+        if (router.isUseSourceCatalogSchema()) {
+            catalog = trigger.getSourceCatalogName();
+            schema = trigger.getSourceSchemaName();
+        }
+        if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
+            catalog = null;
+        } else if (StringUtils.isNotBlank(router.getTargetCatalogName())) {
+            catalog = SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetCatalogName());
+        }
+        if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
+            schema = null;
+        } else if (StringUtils.isNotBlank(router.getTargetSchemaName())) {
+            schema = SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetSchemaName());
+        }
+        if (StringUtils.isNotBlank(router.getTargetTableName())) {
+            tableName = router.getTargetTableName();
+        }
+        return new String[] { catalog, schema, tableName };
+    }
+
+    private static List<Table> buildTablesFromExtractTransforms(String catalog, String schema,
+            String tableName, Router router, LoadContext context) {
+        List<Table> tablesToLookup = new ArrayList<>();
+        Map<String, List<TransformTable>> byTableExtractTransforms = getByTableTransforms(
+                context.transformService, context.extractTransformMap, router.getNodeGroupLink(), TransformPoint.EXTRACT);
+        String tableKey = SchemaObject.getFullyQualifiedName(catalog, schema, tableName).toLowerCase();
+        List<TransformTable> extractTransforms = byTableExtractTransforms.get(tableKey);
+        if (extractTransforms != null && !extractTransforms.isEmpty()) {
+            for (TransformTable transform : extractTransforms) {
+                tablesToLookup.add(new Table(transform.getTargetCatalogName(), transform.getTargetSchemaName(), transform.getTargetTableName()));
+            }
+        }
+        if (tablesToLookup.isEmpty()) {
+            tablesToLookup.add(new Table(catalog, schema, tableName));
+        }
+        return tablesToLookup;
+    }
+
+    private static List<Table> expandWithLoadTransforms(List<Table> tablesToLookup, Router router, LoadContext context) {
+        Map<String, List<TransformTable>> byTableLoadTransforms = getByTableTransforms(
+                context.transformService, context.loadTransformMap, router.getNodeGroupLink(), TransformPoint.LOAD);
+        ListIterator<Table> iterator = tablesToLookup.listIterator();
+        while (iterator.hasNext()) {
+            Table table = iterator.next();
+            List<TransformTable> loadTransforms = byTableLoadTransforms.get(table.getFullyQualifiedName().toLowerCase());
+            if (loadTransforms != null && !loadTransforms.isEmpty()) {
+                iterator.remove();
+                for (TransformTable transform : loadTransforms) {
+                    iterator.add(new Table(transform.getTargetCatalogName(), transform.getTargetSchemaName(), transform.getTargetTableName()));
+                }
+            }
+        }
+        return tablesToLookup;
+    }
+
+    private static void addRelationToMap(Map<CatalogSchema, List<Relation>> catalogSchemas, CatalogSchema catalogSchema, Relation relation) {
+        List<Relation> relations = catalogSchemas.computeIfAbsent(catalogSchema, k -> new ArrayList<>());
         if (!relations.contains(relation)) {
             relations.add(relation);
         }
@@ -1151,13 +1179,13 @@ public class SnapshotUtil {
     }
 
     protected static Map<String, List<TransformTable>> toMap(List<TransformTableNodeGroupLink> transforms) {
-        Map<String, List<TransformTable>> transformsByTable = new HashMap<String, List<TransformTable>>();
+        Map<String, List<TransformTable>> transformsByTable = new HashMap<>();
         if (transforms != null) {
             for (TransformTable transformTable : transforms) {
                 String sourceTableName = transformTable.getFullyQualifiedSourceTableName().toLowerCase();
                 List<TransformTable> tables = transformsByTable.get(sourceTableName);
                 if (tables == null) {
-                    tables = new ArrayList<TransformTable>();
+                    tables = new ArrayList<>();
                     transformsByTable.put(sourceTableName, tables);
                 }
                 tables.add(transformTable);
@@ -1261,6 +1289,18 @@ public class SnapshotUtil {
 
         public File getExcludeDir() {
             return excludeDir;
+        }
+    }
+
+    private static final class LoadContext {
+        final IDatabasePlatform targetPlatform;
+        final ITransformService transformService;
+        final Map<NodeGroupLink, Map<String, List<TransformTable>>> extractTransformMap = new HashMap<>();
+        final Map<NodeGroupLink, Map<String, List<TransformTable>>> loadTransformMap = new HashMap<>();
+
+        LoadContext(IDatabasePlatform targetPlatform, ITransformService transformService) {
+            this.targetPlatform = targetPlatform;
+            this.transformService = transformService;
         }
     }
 }

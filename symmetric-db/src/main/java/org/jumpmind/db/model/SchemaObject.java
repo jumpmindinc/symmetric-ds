@@ -27,7 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 /**
  * Represents any named object in the database schema.
  */
-public abstract class SchemaObject implements Serializable, Cloneable, Comparable<SchemaObject> {
+public abstract class SchemaObject implements Serializable, Comparable<SchemaObject> {
     private static final long serialVersionUID = 1L;
     protected String catalog = null;
     protected String schema = null;

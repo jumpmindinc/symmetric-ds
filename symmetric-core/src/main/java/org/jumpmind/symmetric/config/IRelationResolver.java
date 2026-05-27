@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.config;
 
 import java.util.Set;
 
+import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.extension.IExtensionPoint;
@@ -30,6 +31,6 @@ import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.impl.TriggerRouterContext;
 
 public interface IRelationResolver extends IExtensionPoint {
-    public void resolve(String catalog, String schema, Set<Relation> relations, IDatabasePlatform platform,
+    public void resolve(CatalogSchema catalogSchema, Set<Relation> relations, IDatabasePlatform platform,
             INodeService nodeService, Trigger trigger, boolean useRelationCache, TriggerRouterContext triggerRouterContext);
 }

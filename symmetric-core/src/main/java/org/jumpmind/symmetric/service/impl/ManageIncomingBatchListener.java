@@ -32,7 +32,7 @@ import java.util.zip.ZipException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.TableNotFoundException;
@@ -298,9 +298,9 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                             error.setTargetCatalogName(context.getRelation().getCatalog());
                             error.setTargetSchemaName(context.getRelation().getSchema());
                             error.setTargetTableName(context.getRelation().getName());
-                            error.setColumnNames(Table.getCommaDeliminatedColumns(context
+                            error.setColumnNames(Relation.getCommaDeliminatedColumns(context
                                     .getRelation().getColumns()));
-                            error.setPrimaryKeyColumnNames(Table.getCommaDeliminatedColumns(context
+                            error.setPrimaryKeyColumnNames(Relation.getCommaDeliminatedColumns(context
                                     .getRelation().getPrimaryKeyColumns()));
                             error.setCsvData(context.getData());
                             error.setCurData((String) context.get(DefaultDatabaseWriter.CUR_DATA));

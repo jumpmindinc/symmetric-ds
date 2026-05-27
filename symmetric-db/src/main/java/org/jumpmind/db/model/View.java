@@ -20,8 +20,6 @@
  */
 package org.jumpmind.db.model;
 
-import java.util.ArrayList;
-
 /**
  * Represents a database view. A view has a name, catalog, schema, and columns but no indices or foreign keys.
  */
@@ -42,57 +40,56 @@ public class View extends Relation {
     @Override
     public View copyAndFilterColumns(String[] orderedColumnNames, String[] pkColumnNames,
             boolean setPrimaryKeys, boolean addMissingColumns) {
-        try {
-            View copy = (View) this.clone();
-            copy.orderColumns(orderedColumnNames, addMissingColumns);
-            if (setPrimaryKeys && copy.columns != null) {
-                for (Column column : copy.columns) {
-                    if (column != null) {
-                        column.setPrimaryKey(false);
-                    }
-                }
-                if (pkColumnNames != null) {
-                    for (Column column : copy.columns) {
-                        if (column != null) {
-                            for (String pkColumnName : pkColumnNames) {
-                                if (column.getName().equalsIgnoreCase(pkColumnName)) {
-                                    boolean required = column.isRequired();
-                                    column.setPrimaryKey(true);
-                                    column.setRequired(required);
-                                }
-                            }
-                        }
-                    }
-                }
+        View copy = copy();
+        copy.orderColumns(orderedColumnNames, addMissingColumns);
+        if (setPrimaryKeys && copy.columns != null) {
+            clearPrimaryKeys(copy);
+            if (pkColumnNames != null) {
+                applyPrimaryKeys(copy, pkColumnNames);
             }
-            return copy;
-        } catch (CloneNotSupportedException ex) {
-            throw new IllegalStateException(ex);
+        }
+        return copy;
+    }
+
+    private static void clearPrimaryKeys(View view) {
+        for (Column column : view.columns) {
+            if (column != null) {
+                column.setPrimaryKey(false);
+            }
         }
     }
 
-    @Override
-    public Object clone() throws CloneNotSupportedException {
-        View result = (View) super.clone();
-        result.fullyQualifiedName = null;
-        result.fullyQualifiedNameLowerCase = null;
-        result.nameLowerCase = null;
-        result.columns = new ArrayList<>(columns.size());
-        for (Column column : columns) {
-            if (column != null) {
-                result.columns.add((Column) column.clone());
+    private static void applyPrimaryKeys(View view, String[] pkColumnNames) {
+        for (Column column : view.columns) {
+            if (column == null) {
+                continue;
+            }
+            for (String pkColumnName : pkColumnNames) {
+                if (column.getName().equalsIgnoreCase(pkColumnName)) {
+                    boolean required = column.isRequired();
+                    column.setPrimaryKey(true);
+                    column.setRequired(required);
+                }
             }
         }
-        return result;
     }
 
     @Override
     public View copy() {
-        try {
-            return (View) this.clone();
-        } catch (CloneNotSupportedException ex) {
-            throw new IllegalStateException(ex);
+        View result = new View(catalog, schema, name);
+        result.description = description;
+        result.type = type;
+        result.madeAllColumnsPrimaryKey = madeAllColumnsPrimaryKey;
+        for (Column column : columns) {
+            if (column != null) {
+                try {
+                    result.columns.add((Column) column.clone());
+                } catch (CloneNotSupportedException ex) {
+                    throw new IllegalStateException(ex);
+                }
+            }
         }
+        return result;
     }
 
     @Override

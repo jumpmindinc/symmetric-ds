@@ -138,7 +138,7 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
             @SuppressWarnings("unchecked")
             Set<Table> tables = (Set<Table>) context.get(CTX_KEY_RESYNC_TABLE_NEEDED);
             if (tables == null) {
-                tables = new HashSet<Table>();
+                tables = new HashSet<>();
                 context.put(CTX_KEY_RESYNC_TABLE_NEEDED, tables);
             }
             tables.add(table);
@@ -181,7 +181,7 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
                 @SuppressWarnings("unchecked")
                 List<Long> loadIds = (List<Long>) context.get(CTX_KEY_CANCEL_LOAD);
                 if (loadIds == null) {
-                    loadIds = new ArrayList<Long>();
+                    loadIds = new ArrayList<>();
                     context.put(CTX_KEY_CANCEL_LOAD, loadIds);
                 }
                 loadIds.add(Long.parseLong(loadId));

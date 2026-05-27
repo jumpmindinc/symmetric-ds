@@ -427,38 +427,57 @@ public abstract class Relation extends SchemaObject {
         Column[] orderedColumns = new Column[columnNames.length];
         for (int i = 0; i < columnNames.length; i++) {
             String colName = columnNames[i];
-            for (Column column : unorderedColumns) {
-                if (column != null && column.getName().equals(colName)) {
-                    orderedColumns[i] = column;
-                    break;
-                }
-            }
+            orderedColumns[i] = findColumn(unorderedColumns, colName);
             if (orderedColumns[i] == null) {
-                for (Column column : unorderedColumns) {
-                    if (column != null && column.getName().equalsIgnoreCase(colName)) {
-                        orderedColumns[i] = column;
-                        break;
-                    }
-                }
-            }
-            if (orderedColumns[i] == null) {
-                if (!addMissingColumns) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("Could not find column with the name of {} on {}.", colName, relation.getFullyQualifiedName());
-                    }
-                } else {
-                    orderedColumns[i] = new Column(colName);
-                    if (log.isDebugEnabled()) {
-                        log.debug("Could not find column with the name of {} on {}. Added this column to the list of columns.",
-                                colName, relation.getFullyQualifiedName());
-                    }
-                }
+                handleMissingColumn(orderedColumns, i, colName, addMissingColumns, relation);
             }
         }
         return orderedColumns;
     }
 
+    private static Column findColumn(Column[] columns, String name) {
+        for (Column column : columns) {
+            if (column != null && column.getName().equals(name)) {
+                return column;
+            }
+        }
+        for (Column column : columns) {
+            if (column != null && column.getName().equalsIgnoreCase(name)) {
+                return column;
+            }
+        }
+        return null;
+    }
+
+    private static void handleMissingColumn(Column[] orderedColumns, int index, String colName,
+            boolean addMissingColumns, Relation relation) {
+        if (!addMissingColumns) {
+            if (log.isDebugEnabled()) {
+                log.debug("Could not find column with the name of {} on {}.", colName, relation.getFullyQualifiedName());
+            }
+        } else {
+            orderedColumns[index] = new Column(colName);
+            if (log.isDebugEnabled()) {
+                log.debug("Could not find column with the name of {} on {}. Added this column to the list of columns.",
+                        colName, relation.getFullyQualifiedName());
+            }
+        }
+    }
+
     public abstract Relation copy();
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Relation other) {
+            return getFullyQualifiedName().equals(other.getFullyQualifiedName());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return getFullyQualifiedName().hashCode();
+    }
 
     public String toVerboseString() {
         StringBuilder result = new StringBuilder();

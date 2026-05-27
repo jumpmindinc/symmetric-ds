@@ -24,7 +24,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.SchemaObject;
 
 public class Conflict implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -62,7 +62,7 @@ public class Conflict implements Serializable {
 
     public String toQualifiedTableName() {
         if (StringUtils.isNotBlank(targetTableName)) {
-            return Table.getFullyQualifiedName(targetCatalogName, targetSchemaName,
+            return SchemaObject.getFullyQualifiedName(targetCatalogName, targetSchemaName,
                     targetTableName).toLowerCase();
         } else {
             return null;

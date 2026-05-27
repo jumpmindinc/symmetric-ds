@@ -38,7 +38,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -47,6 +46,7 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -111,12 +111,12 @@ public class DbFill {
     // share a common value [foreign table name.column name -> [value]]
     private Map<String, List<Object>> commonDependencyValues = new TreeMap<String, List<Object>>();
     // For cascading-select, quick check by table if it shares a common value with other tables
-    private Set<Table> commonDependencyTables = new HashSet<Table>();
+    private Set<Table> commonDependencyTables = new HashSet<>();
     // For cascading-select, to ensure composite keys contain proper values for all columns in the key
     private Map<Table, HashSet<ForeignKey>> compositeForeignKeys = new HashMap<Table, HashSet<ForeignKey>>();
     // Minimum column size for all columns with foreign key references
     // For example, if pid varchar(10) references id varchar(5), then both id and pid will return min column size as 5
-    private Map<String, Integer> minColumnSizes = new HashMap<String, Integer>();
+    private Map<String, Integer> minColumnSizes = new HashMap<>();
     // Cache of SET column values: key = "tableName.columnName", value = valid SET values
     private Map<String, String[]> setColumnValues = new HashMap<>();
     // -1 for no limit
@@ -138,7 +138,7 @@ public class DbFill {
     }
 
     public void fillTables(String[] tableNames, Map<String, DmlWeight> tableProperties) {
-        List<Table> tablesToFill = new ArrayList<Table>();
+        List<Table> tablesToFill = new ArrayList<>();
         if (verbose) {
             log.info("Looking up table definitions from database");
         }
@@ -187,9 +187,9 @@ public class DbFill {
             buildForeignTables(tablesToFill);
         } else {
             log.info("Checking for foreign key constraints");
-            List<Table> missingTables = getForeignKeyTables(tablesToFill, new HashSet<Table>());
+            List<Table> missingTables = getForeignKeyTables(tablesToFill, new HashSet<>());
             if (missingTables.size() > 0) {
-                List<String> missingTableNames = new ArrayList<String>();
+                List<String> missingTableNames = new ArrayList<>();
                 for (Table missingTable : missingTables) {
                     missingTableNames.add(missingTable.getName());
                 }
@@ -197,14 +197,14 @@ public class DbFill {
                         missingTableNames);
             }
         }
-        log.info("TABLES TO FILL (" + tablesToFill.size() + "): " + toString(tablesToFill));
+        log.info("TABLES TO FILL ({}): {}", tablesToFill.size(), toString(tablesToFill));
         List<Table> orderedTables = Database.sortByForeignKeys(
                 new ArrayList<>(tablesToFill),
                 new HashMap<>(getAllDbTables()),
                 null, null)
-                .stream().map(r -> (Table) r).collect(Collectors.toList());
+                .stream().map(r -> (Table) r).toList();
         orderedTables = removeSymTables(orderedTables);
-        List<Table> dependencyTables = new ArrayList<Table>();
+        List<Table> dependencyTables = new ArrayList<>();
         for (Table table : orderedTables) {
             if (!tablesToFill.contains(table)) {
                 dependencyTables.add(table);
@@ -218,7 +218,7 @@ public class DbFill {
     }
 
     protected List<Table> removeSymTables(List<Table> tables) {
-        List<Table> filteredTables = new ArrayList<Table>();
+        List<Table> filteredTables = new ArrayList<>();
         for (Table table : tables) {
             if (!table.getNameLowerCase().startsWith("sym_")) {
                 filteredTables.add(table);
@@ -243,11 +243,11 @@ public class DbFill {
 
     protected void buildForeignTables(List<Table> tables) {
         for (Table table : tables) {
-            ArrayList<Table> tableList = new ArrayList<Table>();
+            ArrayList<Table> tableList = new ArrayList<>();
             tableList.add(table);
-            List<Table> list = getForeignKeyTables(tableList, new HashSet<Table>());
+            List<Table> list = getForeignKeyTables(tableList, new HashSet<>());
             foreignTables.put(table, list);
-            List<Table> reversedList = getForeignKeyTablesReversed(tableList, new HashSet<Table>());
+            List<Table> reversedList = getForeignKeyTablesReversed(tableList, new HashSet<>());
             foreignTablesReversed.put(table, reversedList);
         }
     }
@@ -259,14 +259,14 @@ public class DbFill {
                     String key = table.getQualifiedName() + "." + ref.getLocalColumnName();
                     List<ForeignKeyReference> fkrs = foreignKeyReferences.get(key);
                     if (fkrs == null) {
-                        fkrs = new ArrayList<ForeignKeyReference>();
+                        fkrs = new ArrayList<>();
                         foreignKeyReferences.put(key, fkrs);
                     }
                     fkrs.add(new ForeignKeyReference(fk, ref));
                 }
                 if (fk.getReferences().length > 1) {
                     if (compositeForeignKeys.get(table) == null) {
-                        compositeForeignKeys.put(table, new HashSet<ForeignKey>());
+                        compositeForeignKeys.put(table, new HashSet<>());
                     }
                     compositeForeignKeys.get(table).add(fk);
                 }
@@ -281,7 +281,7 @@ public class DbFill {
                 for (Reference ref : fk.getReferences()) {
                     List<ForeignKeyReference> references = columnReferences.get(ref.getLocalColumnName());
                     if (references == null) {
-                        references = new ArrayList<ForeignKeyReference>();
+                        references = new ArrayList<>();
                         columnReferences.put(ref.getLocalColumnName(), references);
                     }
                     references.add(new ForeignKeyReference(fk, ref));
@@ -290,7 +290,7 @@ public class DbFill {
             for (String columnName : columnReferences.keySet()) {
                 List<ForeignKeyReference> references = columnReferences.get(columnName);
                 if (references.size() > 1) {
-                    List<Object> commonValue = new ArrayList<Object>();
+                    List<Object> commonValue = new ArrayList<>();
                     StringBuilder sb = null;
                     for (ForeignKeyReference fkr : references) {
                         ForeignKey fk = fkr.getForeignKey();
@@ -313,7 +313,7 @@ public class DbFill {
 
     protected void buildMinColumnSizes(List<Table> tables) {
         for (Table table : tables) {
-            Set<String> columnNames = new HashSet<String>();
+            Set<String> columnNames = new HashSet<>();
             for (ForeignKey fk : table.getForeignKeys()) {
                 for (Reference ref : fk.getReferences()) {
                     columnNames.add(ref.getLocalColumnName());
@@ -321,7 +321,7 @@ public class DbFill {
             }
             for (String columnName : columnNames) {
                 Column column = table.findColumn(columnName);
-                buildMinColumnSize(table, column, new HashSet<String>(), null);
+                buildMinColumnSize(table, column, new HashSet<>(), null);
             }
         }
     }
@@ -364,8 +364,8 @@ public class DbFill {
      * @return The table array argument and the tables that the initial table array argument depend on.
      */
     protected List<Table> getForeignKeyTables(List<Table> tables, Set<Table> visited) {
-        Set<Table> fkDepSet = new HashSet<Table>(tables);
-        List<Table> fkDepList = new ArrayList<Table>();
+        Set<Table> fkDepSet = new HashSet<>(tables);
+        List<Table> fkDepList = new ArrayList<>();
         for (Table table : tables) {
             if (table != null && visited.add(table)) {
                 for (ForeignKey fk : table.getForeignKeys()) {
@@ -385,7 +385,7 @@ public class DbFill {
     }
 
     protected List<Table> getForeignKeyTablesReversed(List<Table> tables, Set<Table> visited) {
-        List<Table> fkDepList = new ArrayList<Table>();
+        List<Table> fkDepList = new ArrayList<>();
         for (Table table : tables) {
             if (table != null && visited.add(table)) {
                 String parentTableName = table.getName();
@@ -606,7 +606,7 @@ public class DbFill {
     }
 
     private List<Row> queryForRows(ISqlTransaction tran, String sql, Object[] values, int[] types) {
-        final List<Row> rows = new ArrayList<Row>();
+        final List<Row> rows = new ArrayList<>();
         if (tran != null) {
             try {
                 tran.query(sql, new ISqlRowMapper<Object>() {
@@ -768,12 +768,12 @@ public class DbFill {
     }
 
     private void deleteForeignKeyChildren(ISqlTransaction tran, Table table, Row row) {
-        List<TableRow> tableRows = new ArrayList<TableRow>();
+        List<TableRow> tableRows = new ArrayList<>();
         tableRows.add(new TableRow(table, row, null, null, null));
-        tableRows = platform.getDdlReader().getExportedForeignTableRows(tran, tableRows, new HashSet<TableRow>(), BinaryEncoding.HEX);
+        tableRows = platform.getDdlReader().getExportedForeignTableRows(tran, tableRows, new HashSet<>(), BinaryEncoding.HEX);
         if (!tableRows.isEmpty()) {
             Collections.reverse(tableRows);
-            Set<TableRow> visited = new HashSet<TableRow>();
+            Set<TableRow> visited = new HashSet<>();
             for (TableRow foreignTableRow : tableRows) {
                 if (visited.add(foreignTableRow)) {
                     Table foreignTable = foreignTableRow.getTable();
@@ -784,7 +784,7 @@ public class DbFill {
                                     .getWhereSql(),
                             table.getName(), foreignTableRow.getReferenceColumnName());
                     DatabaseInfo info = platform.getDatabaseInfo();
-                    String tableName = Table.getFullyQualifiedName(foreignTable.getCatalog(), foreignTable.getSchema(), foreignTable.getName(),
+                    String tableName = SchemaObject.getFullyQualifiedName(foreignTable.getCatalog(), foreignTable.getSchema(), foreignTable.getName(),
                             info.getDelimiterToken(), info.getCatalogSeparator(), info.getSchemaSeparator());
                     String sql = "DELETE FROM " + tableName + " WHERE " + foreignTableRow.getWhereSql();
                     tran.prepareAndExecute(sql);
@@ -816,7 +816,7 @@ public class DbFill {
     }
 
     private Map<Column, Object> getDependentColumnValues(Table table) {
-        Map<Column, Object> columnValues = new HashMap<Column, Object>();
+        Map<Column, Object> columnValues = new HashMap<>();
         for (Column column : table.getColumns()) {
             String key = table.getQualifiedColumnName(column);
             List<Object> commonValue = commonDependencyValues.get(key);
@@ -1111,7 +1111,7 @@ public class DbFill {
     }
 
     protected List<String> getLocalFkRefColumns(Table table) {
-        List<String> columns = new ArrayList<String>();
+        List<String> columns = new ArrayList<>();
         for (ForeignKey fk : table.getForeignKeys()) {
             for (Reference ref : fk.getReferences()) {
                 columns.add(ref.getLocalColumnName());
@@ -1143,7 +1143,7 @@ public class DbFill {
 
     protected Table filterColumns(Table table) {
         if (platform.getName().startsWith("mssql")) {
-            List<Column> columnsToRemove = new ArrayList<Column>();
+            List<Column> columnsToRemove = new ArrayList<>();
             for (Column column : table.getColumns()) {
                 if (column.getJdbcTypeName().equalsIgnoreCase("timestamp") || column.getJdbcTypeName().equalsIgnoreCase("rowversion")) {
                     columnsToRemove.add(column);

@@ -97,7 +97,7 @@ public class DatabasePlatformTest {
         table.getColumnWithName("NOTES").setTypeCode(Types.VARCHAR);
         table.getColumnWithName("NOTES").setSize("20");
         table.getColumnWithName("NOTES").setDefaultValue("1234");
-        Table origTable = (Table) table.clone();
+        Table origTable = table.copy();
         Table tableFromDatabase = dropCreateAndThenReadTable(table);
         assertNotNull(tableFromDatabase);
         assertEquals(2, tableFromDatabase.getColumnCount());

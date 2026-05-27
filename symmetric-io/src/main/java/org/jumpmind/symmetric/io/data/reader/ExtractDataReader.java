@@ -20,8 +20,8 @@
  */
 package org.jumpmind.symmetric.io.data.reader;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -293,9 +293,9 @@ public class ExtractDataReader implements IDataReader {
                 return row.getString(lobColumn.getName());
             }
             String baseString = "fffe" + row.getString(lobColumn.getName());
-            String utf16String = new String(Hex.decodeHex(baseString), "UTF-16");
+            String utf16String = new String(Hex.decodeHex(baseString), StandardCharsets.UTF_16);
             return new String(utf16String.getBytes(Charset.defaultCharset()), Charset.defaultCharset());
-        } catch (UnsupportedEncodingException | DecoderException e) {
+        } catch (DecoderException e) {
             log.warn("Failed to convert unitype blob for column '" + lobColumn.getName() + "'", e);
             return null;
         }
@@ -329,9 +329,9 @@ public class ExtractDataReader implements IDataReader {
         try {
             String baseString = "fffe" + value;
             byte[] utf16Bytes = Hex.decodeHex(baseString);
-            String utf16Str = new String(utf16Bytes, "UTF-16");
-            return new String(utf16Str.getBytes("UTF-8"), "UTF-8");
-        } catch (UnsupportedEncodingException | DecoderException e) {
+            String utf16Str = new String(utf16Bytes, StandardCharsets.UTF_16);
+            return new String(utf16Str.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
+        } catch (DecoderException e) {
             log.warn("Failed to decode UTF-16 to UTF-8 for column '{}' with value '{}' in table '{}': {}",
                     uniColumn.getName(), value, fullyQualifiedRelationName, e.getMessage());
             return value;

@@ -216,8 +216,8 @@ public class XmlDataReader extends AbstractDataReader implements IDataReader {
             readNext();
             if (next.size() > 0) {
                 Object o = next.remove(0);
-                if (o instanceof Relation) {
-                    this.relation = (Relation) o;
+                if (o instanceof Relation relation) {
+                    this.relation = relation;
                     break;
                 }
             }
@@ -246,7 +246,7 @@ public class XmlDataReader extends AbstractDataReader implements IDataReader {
     }
 
     public Map<Batch, Statistics> getStatistics() {
-        Map<Batch, Statistics> map = new HashMap<Batch, Statistics>(1);
+        Map<Batch, Statistics> map = HashMap.newHashMap(1);
         map.put(batch, statistics);
         return map;
     }

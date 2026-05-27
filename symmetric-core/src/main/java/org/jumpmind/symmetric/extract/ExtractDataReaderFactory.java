@@ -47,7 +47,7 @@ public class ExtractDataReaderFactory implements IExtractDataReaderFactory {
             IDatabasePlatform targetPlatform) {
         IParameterService parameterService = engine.getSymmetricDialect().getParameterService();
         boolean isUsingUnitypes = parameterService.is(ParameterConstants.DBDIALECT_SYBASE_ASE_CONVERT_UNITYPES_FOR_SYNC);
-        List<IExtensionPoint> filters = new ArrayList<IExtensionPoint>();
+        List<IExtensionPoint> filters = new ArrayList<>();
         if (parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE)) {
             engine.getExtensionService().getExtensionPointList(IExtractDataFilter.class).forEach(filters::add);
         } else {

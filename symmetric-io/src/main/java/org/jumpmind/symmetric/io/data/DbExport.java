@@ -165,7 +165,7 @@ public class DbExport {
         rowCount = 0;
         try {
             writerWrapper = new WriterWrapper(output);
-            for (Relation relation : Database.sortByForeignKeys((Relation[]) tables)) {
+            for (Relation relation : Database.sortByForeignKeys(tables)) {
                 writeTable(writerWrapper, (Table) relation, sql);
             }
         } finally {
@@ -292,26 +292,21 @@ public class DbExport {
 
     protected Database getDatabase(Table[] tables) {
         Database db = new Database();
-        try {
-            if (!noCreateInfo) {
-                for (Table table : tables) {
-                    Table newTable = (Table) table.clone();
-                    if (noIndices) {
-                        newTable.removeAllIndices();
-                    }
-                    if (noForeignKeys) {
-                        newTable.removeAllForeignKeys();
-                    }
-                    db.addTable(newTable);
+        if (!noCreateInfo) {
+            for (Table table : tables) {
+                Table newTable = table.copy();
+                if (noIndices) {
+                    newTable.removeAllIndices();
                 }
-            } else if (addDropTable) {
-                for (Table table : tables) {
-                    Table newTable = (Table) table.clone();
-                    db.addTable(newTable);
+                if (noForeignKeys) {
+                    newTable.removeAllForeignKeys();
                 }
+                db.addTable(newTable);
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        } else if (addDropTable) {
+            for (Table table : tables) {
+                db.addTable(table.copy());
+            }
         }
         return db;
     }

@@ -201,7 +201,9 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
         final String sql = "drop trigger " + schemaName + triggerName;
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
-            log.info("Dropping {} trigger for {}", triggerName, SchemaObject.getFullyQualifiedName(catalogName, schemaName, tableName));
+            if (log.isInfoEnabled()) {
+                log.info("Dropping {} trigger for {}", triggerName, SchemaObject.getFullyQualifiedName(catalogName, schemaName, tableName));
+            }
             ((JdbcSqlTransaction) transaction)
                     .executeCallback(new IConnectionCallback<Boolean>() {
                         @Override

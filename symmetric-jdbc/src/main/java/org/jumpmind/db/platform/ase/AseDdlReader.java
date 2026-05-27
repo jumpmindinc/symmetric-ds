@@ -116,7 +116,7 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
         return relation;
     }
 
-    protected void determineGeneratedColumns(Relation relation, final Column columnsToCheck[]) {
+    protected void determineGeneratedColumns(Relation relation, final Column[] columnsToCheck) {
         StringBuilder query = new StringBuilder();
         if (columnsToCheck == null || columnsToCheck.length == 0) {
             return;

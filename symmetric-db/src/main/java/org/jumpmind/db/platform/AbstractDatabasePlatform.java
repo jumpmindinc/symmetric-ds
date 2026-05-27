@@ -83,6 +83,7 @@ import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.model.Trigger;
@@ -350,7 +351,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     }
 
     protected Relation readRelationFromDatabaseAllowException(String catalogName, String schemaName, String relationName) {
-        String originalFullyQualifiedName = Table.getFullyQualifiedName(catalogName, schemaName, relationName);
+        String originalFullyQualifiedName = SchemaObject.getFullyQualifiedName(catalogName, schemaName, relationName);
         String defaultedCatalogName = catalogName == null ? getDefaultCatalog() : catalogName;
         String defaultedSchemaName = schemaName == null ? getDefaultSchema() : schemaName;
         Relation relation = ddlReader.readRelation(defaultedCatalogName, defaultedSchemaName, relationName);
@@ -387,7 +388,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
                     }
                 }
             }
-            if (!originalFullyQualifiedName.equals(Table.getFullyQualifiedName(defaultedCatalogName, defaultedSchemaName, relationName))) {
+            if (!originalFullyQualifiedName.equals(SchemaObject.getFullyQualifiedName(defaultedCatalogName, defaultedSchemaName, relationName))) {
                 relation = ddlReader.readRelation(defaultedCatalogName, defaultedSchemaName, relationName);
             }
         }
@@ -434,7 +435,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
             resetCachedRelationModel(false);
         }
         Map<String, Relation> model = relationCache;
-        String key = Table.getFullyQualifiedName(catalogName, schemaName, relationName);
+        String key = SchemaObject.getFullyQualifiedName(catalogName, schemaName, relationName);
         Relation retRelation = model != null ? model.get(key) : null;
         if (retRelation == null || forceReread) {
             try {

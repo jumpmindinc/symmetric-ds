@@ -87,7 +87,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
         @SuppressWarnings("unchecked")
         Map<String, RouterInfo> routers = (Map<String, RouterInfo>) context.get(ROUTERS);
         if (routers == null) {
-            routers = new HashMap<String, RouterInfo>();
+            routers = new HashMap<>();
             context.put(ROUTERS, routers);
         }
         String routerId = triggerRouter.getRouterId();
@@ -125,7 +125,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
         if (batch.getNodeId().equals(Constants.UNROUTED_NODE_ID)) {
             @SuppressWarnings("unchecked")
             Map<String, RouterInfo> routers = (Map<String, RouterInfo>) context.get(ROUTERS);
-            List<TableInfo> tableInfos = new ArrayList<TableInfo>();
+            List<TableInfo> tableInfos = new ArrayList<>();
             for (RouterInfo routerInfo : routers.values()) {
                 tableInfos.addAll(routerInfo.getTableInfos());
             }
@@ -147,11 +147,11 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
     protected List<TableInfo> sortTableInfos(SimpleRouterContext context, Collection<TableInfo> tableInfos) {
         long ts = System.currentTimeMillis();
         List<Relation> sortedRelations = getAllSortedRelations(context);
-        Map<Table, TableInfo> tableInfosByTable = new HashMap<Table, TableInfo>();
+        Map<Table, TableInfo> tableInfosByTable = new HashMap<>();
         for (TableInfo tableInfo : tableInfos) {
             tableInfosByTable.put(tableInfo.getTable(), tableInfo);
         }
-        List<TableInfo> sortedTableInfos = new ArrayList<TableInfo>();
+        List<TableInfo> sortedTableInfos = new ArrayList<>();
         for (Relation relation : sortedRelations) {
             TableInfo tableInfo = tableInfosByTable.get(relation);
             if (tableInfo != null) {
@@ -173,7 +173,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
             } else {
                 histories = engine.getTriggerRouterService().getActiveTriggerHistoriesFromCache();
             }
-            List<Relation> allRelations = new ArrayList<Relation>(histories.size());
+            List<Relation> allRelations = new ArrayList<>(histories.size());
             for (TriggerHistory history : histories) {
                 Relation relation = engine.getDatabasePlatform().getRelationFromCache(history.getSourceCatalogName(),
                         history.getSourceSchemaName(), history.getSourceTableName(), false);
@@ -211,7 +211,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
             }
         }
         insertTempMs += (System.currentTimeMillis() - ts);
-        Map<String, OutgoingBatch> batchByNode = new HashMap<String, OutgoingBatch>();
+        Map<String, OutgoingBatch> batchByNode = new HashMap<>();
         for (TableInfo tableInfo : tableInfos) {
             RouterInfo routerInfo = tableInfo.getRouterInfo();
             String reloadSql = getTempTableSql(routerInfo, tableInfo, loadId);
@@ -292,8 +292,8 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
 
     class RouterInfo {
         private Router router;
-        private List<String> nodeIds = new ArrayList<String>();
-        private Map<Integer, TableInfo> tableInfos = new HashMap<Integer, TableInfo>();
+        private List<String> nodeIds = new ArrayList<>();
+        private Map<Integer, TableInfo> tableInfos = new HashMap<>();
         private String tempTableName;
         private String nodeQuery;
 
@@ -371,7 +371,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
         protected String pkColumnNamesAsString;
         protected String pkColumnJoinSql;
         protected int[] pkColumnTypes;
-        protected List<Object> compoundIdList = new ArrayList<Object>();
+        protected List<Object> compoundIdList = new ArrayList<>();
 
         public TableInfo(RouterInfo routerInfo, DataMetaData dataMetaData, TriggerRouter triggerRouter) {
             this.routerInfo = routerInfo;

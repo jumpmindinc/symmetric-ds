@@ -62,6 +62,9 @@ import org.slf4j.LoggerFactory;
  * the source.
  */
 public class DbCompare {
+    private static final String TABLE_NAME_PART_CATALOG = "catalog";
+    private static final String TABLE_NAME_PART_SCHEMA = "schema";
+    private static final String TABLE_NAME_PART_TABLE = "table";
     final Logger log = LoggerFactory.getLogger(getClass());
     ISqlRowMapper<Row> defaultRowMapper = new ISqlRowMapper<Row>() {
         @Override
@@ -546,15 +549,17 @@ public class DbCompare {
             if (tableNameParts.size() == 1) {
                 sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableName, true);
             } else {
-                sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get("catalog"), tableNameParts
-                        .get("schema"),
+                sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_CATALOG),
+                        tableNameParts
+                                .get("schema"),
                         tableNameParts
                                 .get("table"), true);
                 if (sourceTable == null) {
-                    sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get("schema"), tableNameParts
-                            .get(
-                                    "catalog"),
-                            tableNameParts.get("table"), true);
+                    sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_SCHEMA),
+                            tableNameParts
+                                    .get(
+                                            "catalog"),
+                            tableNameParts.get(TABLE_NAME_PART_TABLE), true);
                 }
             }
             if (sourceTable == null) {
@@ -661,15 +666,17 @@ public class DbCompare {
             if (tableNameParts.size() == 1) {
                 targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(targetTableName, true);
             } else {
-                targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get("catalog"), tableNameParts
-                        .get("schema"),
+                targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_CATALOG),
+                        tableNameParts
+                                .get("schema"),
                         tableNameParts
                                 .get("table"), true);
                 if (targetTable == null) {
-                    targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get("schema"), tableNameParts
-                            .get(
-                                    "catalog"),
-                            tableNameParts.get("table"), true);
+                    targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_SCHEMA),
+                            tableNameParts
+                                    .get(
+                                            "catalog"),
+                            tableNameParts.get(TABLE_NAME_PART_TABLE), true);
                 }
             }
         }
@@ -718,18 +725,12 @@ public class DbCompare {
     }
 
     protected Table loadTargetTableUsingTransform(TransformTableNodeGroupLink transform) {
-        Table targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(transform.getTargetCatalogName(), transform
-                .getTargetSchemaName(), transform
-                        .getTargetTableName(), true);
-        return targetTable;
+        return (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(transform.getTargetCatalogName(),
+                transform.getTargetSchemaName(), transform.getTargetTableName(), true);
     }
 
     protected Table cloneTable(Table table) {
-        try {
-            return (Table) table.clone();
-        } catch (CloneNotSupportedException ex) {
-            throw new RuntimeException(ex);
-        }
+        return table.copy();
     }
 
     protected List<DbCompareTables> loadTablesFromArguments() {

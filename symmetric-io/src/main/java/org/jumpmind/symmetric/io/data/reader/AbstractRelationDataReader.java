@@ -43,7 +43,7 @@ import org.jumpmind.util.Statistics;
 /**
  * A data reader that knows it will be reading a single batch and a single relation.
  */
-abstract public class AbstractRelationDataReader extends AbstractDataReader implements IDataReader {
+public abstract class AbstractRelationDataReader extends AbstractDataReader implements IDataReader {
     public static final String CTX_LINE_NUMBER = AbstractRelationDataReader.class.getSimpleName()
             + ".lineNumber";
     protected Reader reader;
@@ -56,28 +56,28 @@ abstract public class AbstractRelationDataReader extends AbstractDataReader impl
     protected boolean readingBatch = false;
     protected boolean readingRelation = false;
 
-    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+    protected AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
             String relationName, StringBuilder input) {
         this(batch, catalogName, schemaName, relationName, new BufferedReader(new StringReader(
                 input.toString())));
     }
 
-    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+    protected AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
             String relationName, InputStream is) {
         this(batch, catalogName, schemaName, relationName, toReader(is));
     }
 
-    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+    protected AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
             String relationName, String input) {
         this(batch, catalogName, schemaName, relationName, new BufferedReader(new StringReader(input)));
     }
 
-    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+    protected AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
             String relationName, File file) {
         this(batch, catalogName, schemaName, toRelationName(relationName, file), toReader(file));
     }
 
-    public AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
+    protected AbstractRelationDataReader(Batch batch, String catalogName, String schemaName,
             String relationName, Reader reader) {
         this.reader = reader;
         this.batch = batch;
@@ -86,12 +86,12 @@ abstract public class AbstractRelationDataReader extends AbstractDataReader impl
         }
     }
 
-    public AbstractRelationDataReader(BinaryEncoding binaryEncoding, String catalogName,
+    protected AbstractRelationDataReader(BinaryEncoding binaryEncoding, String catalogName,
             String schemaName, String relationName, Reader reader) {
         this(toBatch(binaryEncoding), catalogName, schemaName, relationName, reader);
     }
 
-    public AbstractRelationDataReader(BinaryEncoding binaryEncoding, String catalogName,
+    protected AbstractRelationDataReader(BinaryEncoding binaryEncoding, String catalogName,
             String schemaName, String relationName, InputStream is) {
         this(toBatch(binaryEncoding), catalogName, schemaName, relationName, is);
     }
@@ -112,9 +112,9 @@ abstract public class AbstractRelationDataReader extends AbstractDataReader impl
         this.init();
     }
 
-    abstract protected void init();
+    protected abstract void init();
 
-    abstract protected CsvData readNext();
+    protected abstract CsvData readNext();
 
     abstract protected void finish();
 
@@ -161,6 +161,7 @@ abstract public class AbstractRelationDataReader extends AbstractDataReader impl
                 reader.close();
             }
         } catch (IOException e) {
+            // Best-effort close; ignore failure
         }
         finish();
     }

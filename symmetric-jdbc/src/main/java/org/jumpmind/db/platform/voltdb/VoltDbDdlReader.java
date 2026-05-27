@@ -74,6 +74,7 @@ public class VoltDbDdlReader extends AbstractJdbcDdlReader {
     }
 
     protected void fixIndexKeyOrder(Relation relation) {
+        // Intentionally empty: subclasses may override to reorder index keys
     }
 
     protected void disableAutoIncrement(Relation relation) {

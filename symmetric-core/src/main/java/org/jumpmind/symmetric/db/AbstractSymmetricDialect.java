@@ -38,6 +38,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IAlterDatabaseInterceptor;
@@ -405,7 +406,9 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
         String sql = getDropTriggerSql(sqlBuffer, catalogName, schemaName, triggerName, tableName);
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
-            log.info("Dropping {} trigger for {}", triggerName, Table.getFullyQualifiedName(catalogName, schemaName, tableName));
+            if (log.isInfoEnabled()) {
+                log.info("Dropping {} trigger for {}", triggerName, SchemaObject.getFullyQualifiedName(catalogName, schemaName, tableName));
+            }
             transaction.execute(sql);
         }
     }
@@ -1002,40 +1005,39 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     @Override
     public String getInitialLoadTwoPassLobSql(String sql, Relation relation, boolean isFirstPass) {
         List<Column> columns = relation.getLobColumns(this.platform);
-        boolean isFirstColumn = true;
         sql = sql == null ? "" : sql;
-        String orderBySql = "";
+        String orderBySql = extractOrderBySuffix(sql);
+        if (!orderBySql.isEmpty()) {
+            sql = sql.substring(0, sql.toUpperCase().indexOf("ORDER BY"));
+        }
+        if (!columns.isEmpty()) {
+            sql = appendLobColumnFilter(sql, columns, isFirstPass);
+        }
+        return sql + orderBySql;
+    }
+
+    private static String extractOrderBySuffix(String sql) {
         int index = sql.toUpperCase().indexOf("ORDER BY");
-        if (index != -1) {
-            orderBySql = " " + sql.substring(index);
-            sql = sql.substring(0, index);
+        return index != -1 ? " " + sql.substring(index) : "";
+    }
+
+    private String appendLobColumnFilter(String sql, List<Column> columns, boolean isFirstPass) {
+        if (!sql.isEmpty()) {
+            sql += " and ";
         }
-        if (columns.size() > 0) {
-            if (!sql.equals("")) {
-                sql += " and ";
-            }
-            sql += "(";
-        }
-        for (Column column : relation.getLobColumns(this.platform)) {
+        sql += "(";
+        boolean isFirstColumn = true;
+        for (Column column : columns) {
             String columnSql = getInitialLoadTwoPassLobLengthSql(column, isFirstPass);
-            if (columnSql != null && !columnSql.trim().equals("")) {
-                if (isFirstColumn) {
-                    isFirstColumn = false;
-                } else {
-                    if (isFirstPass) {
-                        sql += " and ";
-                    } else {
-                        sql += " or ";
-                    }
+            if (columnSql != null && !columnSql.trim().isEmpty()) {
+                if (!isFirstColumn) {
+                    sql += isFirstPass ? " and " : " or ";
                 }
                 sql += columnSql;
+                isFirstColumn = false;
             }
         }
-        if (columns.size() > 0) {
-            sql += ")";
-        }
-        sql += orderBySql;
-        return sql;
+        return sql + ")";
     }
 
     public String getInitialLoadTwoPassLobLengthSql(Column column, boolean isFirstPass) {

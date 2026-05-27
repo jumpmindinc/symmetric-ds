@@ -304,21 +304,17 @@ public class DataService extends AbstractService implements IDataService {
 
     @Override
     public TableReloadRequest getTableReloadRequest(final TableReloadRequestKey key) {
-        return sqlTemplate.queryForObject(getSql("selectTableReloadRequest"),
-                new ISqlRowMapper<TableReloadRequest>() {
-                    @Override
-                    public TableReloadRequest mapRow(Row rs) {
-                        TableReloadRequest request = new TableReloadRequest(key);
-                        request.setReloadSelect(rs.getString("reload_select"));
-                        request.setReloadTime(rs.getDateTime("reload_time"));
-                        request.setBeforeCustomSql(rs.getString("before_custom_sql"));
-                        request.setCreateTime(rs.getDateTime("create_time"));
-                        request.setLastUpdateBy(rs.getString("last_update_by"));
-                        request.setLastUpdateTime(rs.getDateTime("last_update_time"));
-                        request.setLoadId(rs.getInt("load_id"));
-                        return request;
-                    }
-                }, key.getSourceNodeId(), key.getTargetNodeId(), key.getTriggerId(),
+        return sqlTemplate.queryForObject(getSql("selectTableReloadRequest"), rs -> {
+            TableReloadRequest request = new TableReloadRequest(key);
+            request.setReloadSelect(rs.getString("reload_select"));
+            request.setReloadTime(rs.getDateTime("reload_time"));
+            request.setBeforeCustomSql(rs.getString("before_custom_sql"));
+            request.setCreateTime(rs.getDateTime("create_time"));
+            request.setLastUpdateBy(rs.getString("last_update_by"));
+            request.setLastUpdateTime(rs.getDateTime("last_update_time"));
+            request.setLoadId(rs.getInt("load_id"));
+            return request;
+        }, key.getSourceNodeId(), key.getTargetNodeId(), key.getTriggerId(),
                 key.getRouterId(), key.getCreateTime());
     }
 
@@ -1055,10 +1051,11 @@ public class DataService extends AbstractService implements IDataService {
                         channelId = reloadRequests.get(0).getChannelId();
                     }
                     if (!reverse) {
-                        log.info("Queueing up " + (isFullLoad ? "an initial" : "a") + " load to node " + targetNode.getNodeId()
-                                + (isChannelLoad ? " for channel " + channelId : ""));
+                        log.info("Queueing up {} load to node {}{}", isFullLoad ? "an initial" : "a",
+                                targetNode.getNodeId(), isChannelLoad ? " for channel " + channelId : "");
                     } else {
-                        log.info("Queueing up a reverse " + (isFullLoad ? "initial " : "partial ") + "load to node " + targetNode.getNodeId());
+                        log.info("Queueing up a reverse {}load to node {}", isFullLoad ? "initial " : "partial ",
+                                targetNode.getNodeId());
                     }
                     /*
                      * Outgoing data events are pointless because we are reloading all data
@@ -1908,7 +1905,6 @@ public class DataService extends AbstractService implements IDataService {
         return requests;
     }
 
-    @SuppressWarnings("removal")
     protected long getDataCountForReload(Relation relation, Node targetNode, String selectSql, long loadId) throws SqlException {
         long rowCount = -1;
         if (parameterService.is(ParameterConstants.INITIAL_LOAD_USE_ESTIMATED_COUNTS) &&
@@ -1916,29 +1912,7 @@ public class DataService extends AbstractService implements IDataService {
             rowCount = getTargetPlatform().getEstimatedRowCount(relation);
         }
         if (rowCount < 0) {
-            DatabaseInfo dbInfo = getTargetPlatform().getDatabaseInfo();
-            String quote = dbInfo.getDelimiterToken();
-            String catalogSeparator = dbInfo.getCatalogSeparator();
-            String schemaSeparator = dbInfo.getSchemaSeparator();
-            if (selectSql != null && selectSql.trim().toUpperCase().startsWith("WHERE")) {
-                selectSql = selectSql.trim().substring(5);
-            }
-            String sql = String.format("select count(*) from %s t where %s", relation
-                    .getQualifiedName(quote, catalogSeparator, schemaSeparator), selectSql);
-            sql = FormatUtils.replace("groupId", targetNode.getNodeGroupId(), sql);
-            sql = FormatUtils.replace("externalId", targetNode.getExternalId(), sql);
-            sql = FormatUtils.replace("nodeId", targetNode.getNodeId(), sql);
-            if (parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE)) {
-                if (relation instanceof Table table) {
-                    for (IReloadVariableFilter filter : extensionService.getExtensionPointList(IReloadVariableFilter.class)) {
-                        sql = filter.filterPurgeSql(sql, targetNode, table);
-                    }
-                }
-            } else {
-                for (IRelationReloadVariableFilter filter : extensionService.getExtensionPointList(IRelationReloadVariableFilter.class)) {
-                    sql = filter.filterPurgeSql(sql, targetNode, relation);
-                }
-            }
+            String sql = buildRowCountSql(relation, targetNode, selectSql);
             try {
                 rowCount = getTargetPlatform().getSqlTemplateDirty().queryForLong(sql);
             } catch (SqlException ex) {
@@ -1946,6 +1920,38 @@ public class DataService extends AbstractService implements IDataService {
             }
         }
         return rowCount;
+    }
+
+    private String buildRowCountSql(Relation relation, Node targetNode, String selectSql) {
+        DatabaseInfo dbInfo = getTargetPlatform().getDatabaseInfo();
+        String quote = dbInfo.getDelimiterToken();
+        String catalogSeparator = dbInfo.getCatalogSeparator();
+        String schemaSeparator = dbInfo.getSchemaSeparator();
+        if (selectSql != null && selectSql.trim().toUpperCase().startsWith("WHERE")) {
+            selectSql = selectSql.trim().substring(5);
+        }
+        String sql = String.format("select count(*) from %s t where %s",
+                relation.getQualifiedName(quote, catalogSeparator, schemaSeparator), selectSql);
+        sql = FormatUtils.replace("groupId", targetNode.getNodeGroupId(), sql);
+        sql = FormatUtils.replace("externalId", targetNode.getExternalId(), sql);
+        sql = FormatUtils.replace("nodeId", targetNode.getNodeId(), sql);
+        return applyReloadVariableFilters(sql, targetNode, relation);
+    }
+
+    @SuppressWarnings("removal")
+    private String applyReloadVariableFilters(String sql, Node targetNode, Relation relation) {
+        if (parameterService.is(ParameterConstants.EXTENSION_USE_LEGACY_INTERFACE)) {
+            if (relation instanceof Table table) {
+                for (IReloadVariableFilter filter : extensionService.getExtensionPointList(IReloadVariableFilter.class)) {
+                    sql = filter.filterPurgeSql(sql, targetNode, table);
+                }
+            }
+        } else {
+            for (IRelationReloadVariableFilter filter : extensionService.getExtensionPointList(IRelationReloadVariableFilter.class)) {
+                sql = filter.filterPurgeSql(sql, targetNode, relation);
+            }
+        }
+        return sql;
     }
 
     protected int getTransformMultiplier(Relation relation, TriggerRouter triggerRouter) {
@@ -3310,7 +3316,7 @@ public class DataService extends AbstractService implements IDataService {
                     ? ""
                     : databaseInfo.getDelimiterToken();
             sql = "select " + triggerHistory.getColumnNames() + " from "
-                    + Table.getFullyQualifiedName(triggerHistory.getSourceCatalogName(), triggerHistory.getSourceSchemaName(),
+                    + SchemaObject.getFullyQualifiedName(triggerHistory.getSourceCatalogName(), triggerHistory.getSourceSchemaName(),
                             triggerHistory.getSourceTableName(), quote, databaseInfo.getCatalogSeparator(),
                             databaseInfo.getSchemaSeparator()) + " t where " + whereClause;
             Row row = transaction.queryForRow(sql);
@@ -3850,7 +3856,7 @@ public class DataService extends AbstractService implements IDataService {
                     break;
                 }
             }
-            if (relation != null && trigger != null) {
+            if (relation != null) {
                 return reconcileTriggerHistory(trigger, relation, triggerHistId, data, tableName, isExistingTriggerHist);
             }
             return TriggerUtils.buildStubTriggerHistory(triggerHistId, tableName, data.getDataId(), missingConfigTriggerHist);

@@ -198,13 +198,13 @@ public class SymXmlDataReader extends AbstractDataReader implements IDataReader 
     }
 
     public Relation nextRelation() {
-        if (next instanceof Relation relation) {
-            this.relation = relation;
+        if (next instanceof Relation nextRelation) {
+            this.relation = nextRelation;
             next = data;
         } else {
             next = readNext();
-            if (next instanceof Relation relation) {
-                this.relation = relation;
+            if (next instanceof Relation nextRelation) {
+                this.relation = nextRelation;
                 next = data;
             } else {
                 this.relation = null;
@@ -242,7 +242,7 @@ public class SymXmlDataReader extends AbstractDataReader implements IDataReader 
     }
 
     public Map<Batch, Statistics> getStatistics() {
-        Map<Batch, Statistics> map = new HashMap<Batch, Statistics>(1);
+        Map<Batch, Statistics> map = HashMap.newHashMap(1);
         map.put(batch, statistics);
         return map;
     }

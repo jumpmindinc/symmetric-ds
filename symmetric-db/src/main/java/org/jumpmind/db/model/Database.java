@@ -42,6 +42,7 @@ package org.jumpmind.db.model;
 import java.io.Serializable;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -147,8 +148,8 @@ public class Database implements Serializable, Cloneable {
     }
 
     public static Map<String, List<String>> findMissingDependentTableNames(List<Relation> relations) {
-        Map<String, List<String>> missingTablesByChildTable = new HashMap<String, List<String>>();
-        Map<String, Relation> allRelations = new HashMap<String, Relation>();
+        Map<String, List<String>> missingTablesByChildTable = new HashMap<>();
+        Map<String, Relation> allRelations = new HashMap<>();
         for (Relation r : relations) {
             allRelations.put(r.getName(), r);
         }
@@ -158,7 +159,7 @@ public class Database implements Serializable, Cloneable {
                 for (ForeignKey fk : table.getForeignKeys()) {
                     if (allRelations.get(fk.getForeignTableName()) == null) {
                         if (missingTables == null) {
-                            missingTables = new ArrayList<String>();
+                            missingTables = new ArrayList<>();
                             missingTablesByChildTable.put(table.getName(), missingTables);
                         }
                         missingTables.add(fk.getForeignTableName());
@@ -178,13 +179,13 @@ public class Database implements Serializable, Cloneable {
             return;
         }
         if (!temporary.contains(r) && !resolved.contains(r)) {
-            Set<Integer> parentRelationsChannels = new HashSet<Integer>();
+            Set<Integer> parentRelationsChannels = new HashSet<>();
             if (r == null) {
                 if (parentRelation instanceof Table parentTable) {
                     for (ForeignKey fk : parentTable.getForeignKeys()) {
                         if (allRelations.get(fk.getForeignTableName()) == null) {
                             if (missingDependencyMap.get(parentTable) == null) {
-                                missingDependencyMap.put(parentTable, new HashSet<String>());
+                                missingDependencyMap.put(parentTable, new HashSet<>());
                             }
                             missingDependencyMap.get(parentTable).add(fk.getForeignTableName());
                         }
@@ -268,19 +269,16 @@ public class Database implements Serializable, Cloneable {
     public static String printTables(List<Relation> relations) {
         StringBuilder sb = new StringBuilder();
         for (Relation r : relations) {
-            sb.append(r.getName() + ",");
+            sb.append(r.getName()).append(",");
         }
         return sb.toString();
     }
 
     public static Relation[] sortByForeignKeys(Relation... relations) {
         if (relations != null) {
-            List<Relation> list = new ArrayList<>(relations.length);
-            for (Relation relation : relations) {
-                list.add(relation);
-            }
+            List<Relation> list = new ArrayList<>(Arrays.asList(relations));
             list = sortByForeignKeys(list, null, null, null);
-            relations = list.toArray(new Relation[list.size()]);
+            relations = list.toArray(new Relation[0]);
         }
         return relations;
     }
@@ -304,11 +302,7 @@ public class Database implements Serializable, Cloneable {
                 throw new ModelException("Cannot merge the models because table " + table.getName()
                         + " already defined in this model");
             }
-            try {
-                addTable((Table) table.clone());
-            } catch (CloneNotSupportedException ex) {
-                // won't happen
-            }
+            addTable(table.copy());
         }
     }
 
@@ -524,10 +518,10 @@ public class Database implements Serializable, Cloneable {
         // * columns in foreign key references
         // * columns in indices
         // * columns in uniques
-        HashSet<String> namesOfProcessedTables = new HashSet<String>();
-        HashSet<String> namesOfProcessedColumns = new HashSet<String>();
-        HashSet<String> namesOfProcessedFks = new HashSet<String>();
-        HashSet<String> namesOfProcessedIndices = new HashSet<String>();
+        HashSet<String> namesOfProcessedTables = new HashSet<>();
+        HashSet<String> namesOfProcessedColumns = new HashSet<>();
+        HashSet<String> namesOfProcessedFks = new HashSet<>();
+        HashSet<String> namesOfProcessedIndices = new HashSet<>();
         int tableIdx = 0;
         for (Iterator<Table> tableIt = tables.iterator(); tableIt.hasNext(); tableIdx++) {
             Table curTable = tableIt.next();
@@ -769,13 +763,13 @@ public class Database implements Serializable, Cloneable {
         result.schema = schema;
         result.idMethod = idMethod;
         result.version = version;
-        result.tables = new ArrayList<Table>(tables.size());
+        result.tables = new ArrayList<>(tables.size());
         for (Table table : tables) {
-            result.tables.add((Table) table.clone());
+            result.tables.add(table.copy());
         }
-        result.views = new ArrayList<View>(views.size());
+        result.views = new ArrayList<>(views.size());
         for (View view : views) {
-            result.views.add((View) view.clone());
+            result.views.add(view.copy());
         }
         return result;
     }

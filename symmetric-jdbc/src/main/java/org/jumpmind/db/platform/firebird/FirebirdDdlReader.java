@@ -72,6 +72,7 @@ import org.jumpmind.db.sql.SqlException;
  * The Jdbc Model Reader for Firebird.
  */
 public class FirebirdDdlReader extends AbstractJdbcDdlReader {
+    private static final String JAYBIRD_UNDERSCORE_ESCAPE = "\\\\_";
     protected boolean isLegacyJaybird;
 
     public FirebirdDdlReader(IDatabasePlatform platform) {
@@ -286,16 +287,16 @@ public class FirebirdDdlReader extends AbstractJdbcDdlReader {
          * column names for more than one table. Example: DatabaseMetaData.metaData.getColumns(null, null, "SYM\\_NODE", null)
          */
         if (isLegacyJaybird) {
-            return String.format("\"%s\"", relationName).replace("\\_", "\\\\_");
+            return String.format("\"%s\"", relationName).replace("\\_", JAYBIRD_UNDERSCORE_ESCAPE);
         } else {
-            return String.format("%s", relationName).replace("\\_", "\\\\_");
+            return String.format("%s", relationName).replace("\\_", JAYBIRD_UNDERSCORE_ESCAPE);
         }
     }
 
     @Override
     protected String getTableNamePatternForConstraints(String tableName) {
         if (isLegacyJaybird) {
-            return String.format("\"%s\"", tableName).replace("\\_", "\\\\_");
+            return String.format("\"%s\"", tableName).replace("\\_", JAYBIRD_UNDERSCORE_ESCAPE);
         } else {
             return super.getTableNamePatternForConstraints(tableName);
         }

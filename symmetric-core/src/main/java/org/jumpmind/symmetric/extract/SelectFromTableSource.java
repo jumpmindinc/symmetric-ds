@@ -30,6 +30,7 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.sql.ISqlReadCursor;
@@ -252,31 +253,7 @@ public class SelectFromTableSource extends SelectFromSource {
     @SuppressWarnings("removal")
     protected void startNewCursor(final TriggerHistory triggerHistory, final TriggerRouter triggerRouter) {
         ISymmetricDialect symmetricDialectToUse = getSymmetricDialect();
-        String selectSql = overrideSelectSql;
-        if (isSelfReferencingFk) {
-            selectSql = "";
-            if (selfRefLevel == 0) {
-                selectSql += "(" + SymmetricUtils.quote(symmetricDialectToUse, selfRefParentColumnName)
-                        + " is null or " + SymmetricUtils.quote(symmetricDialectToUse, selfRefParentColumnName)
-                        + " = " + SymmetricUtils.quote(symmetricDialectToUse, selfRefChildColumnName) + ") ";
-            } else {
-                DatabaseInfo info = symmetricDialectToUse.getPlatform().getDatabaseInfo();
-                String tableName = Table.getFullyQualifiedName(sourceRelation.getCatalog(), sourceRelation.getSchema(),
-                        sourceRelation.getName(), info.getDelimiterToken(), info.getCatalogSeparator(), info.getSchemaSeparator());
-                String refSql = "select " + SymmetricUtils.quote(symmetricDialectToUse, selfRefChildColumnName)
-                        + " from " + tableName + " where "
-                        + SymmetricUtils.quote(symmetricDialectToUse, selfRefParentColumnName);
-                selectSql += SymmetricUtils.quote(symmetricDialectToUse, selfRefParentColumnName) + " in (";
-                for (int i = 1; i < selfRefLevel; i++) {
-                    selectSql += refSql + " in (";
-                }
-                selectSql += refSql + " is null or " + SymmetricUtils.quote(symmetricDialectToUse, selfRefChildColumnName) + " = " + SymmetricUtils.quote(
-                        symmetricDialectToUse, selfRefParentColumnName) + " ) and " +
-                        SymmetricUtils.quote(symmetricDialectToUse, selfRefParentColumnName) + " != " + SymmetricUtils.quote(symmetricDialectToUse,
-                                selfRefChildColumnName) + StringUtils.repeat(")", selfRefLevel - 1);
-            }
-            log.info("Querying level {} for table {}: {}", selfRefLevel, sourceRelation.getName(), selectSql);
-        }
+        String selectSql = isSelfReferencingFk ? buildSelfReferencingFkSelectSql(symmetricDialectToUse) : overrideSelectSql;
         Channel channel = configurationService.getChannel(triggerRouter.getTrigger().getReloadChannelId());
         if (channel.isReloadFlag() && symmetricDialectToUse.isInitialLoadTwoPassLob(sourceRelation)) {
             channel = new Channel();
@@ -306,6 +283,33 @@ public class SelectFromTableSource extends SelectFromSource {
                         .startsWith(symmetricDialect.getTablePrefix()));
         log.debug(sql);
         cursor = createCursor(symmetricDialectToUse, options);
+    }
+
+    private String buildSelfReferencingFkSelectSql(ISymmetricDialect dialectToUse) {
+        String selectSql;
+        if (selfRefLevel == 0) {
+            selectSql = "(" + SymmetricUtils.quote(dialectToUse, selfRefParentColumnName)
+                    + " is null or " + SymmetricUtils.quote(dialectToUse, selfRefParentColumnName)
+                    + " = " + SymmetricUtils.quote(dialectToUse, selfRefChildColumnName) + ") ";
+        } else {
+            DatabaseInfo info = dialectToUse.getPlatform().getDatabaseInfo();
+            String tableName = SchemaObject.getFullyQualifiedName(sourceRelation.getCatalog(), sourceRelation.getSchema(),
+                    sourceRelation.getName(), info.getDelimiterToken(), info.getCatalogSeparator(), info.getSchemaSeparator());
+            String refSql = "select " + SymmetricUtils.quote(dialectToUse, selfRefChildColumnName)
+                    + " from " + tableName + " where " + SymmetricUtils.quote(dialectToUse, selfRefParentColumnName);
+            StringBuilder sb = new StringBuilder(SymmetricUtils.quote(dialectToUse, selfRefParentColumnName)).append(" in (");
+            for (int i = 1; i < selfRefLevel; i++) {
+                sb.append(refSql).append(" in (");
+            }
+            sb.append(refSql).append(" is null or ").append(SymmetricUtils.quote(dialectToUse, selfRefChildColumnName))
+                    .append(" = ").append(SymmetricUtils.quote(dialectToUse, selfRefParentColumnName))
+                    .append(" ) and ").append(SymmetricUtils.quote(dialectToUse, selfRefParentColumnName))
+                    .append(" != ").append(SymmetricUtils.quote(dialectToUse, selfRefChildColumnName))
+                    .append(StringUtils.repeat(")", selfRefLevel - 1));
+            selectSql = sb.toString();
+        }
+        log.info("Querying level {} for table {}: {}", selfRefLevel, sourceRelation.getName(), selectSql);
+        return selectSql;
     }
 
     protected ISqlReadCursor<Data> createCursor(ISymmetricDialect symmetricDialectToUse, SelectFromTableOptions options) {

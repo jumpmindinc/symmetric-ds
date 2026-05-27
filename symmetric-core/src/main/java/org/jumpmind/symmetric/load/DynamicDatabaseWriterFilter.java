@@ -28,7 +28,7 @@ import java.util.Set;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -142,7 +142,7 @@ public abstract class DynamicDatabaseWriterFilter implements IDatabaseWriterFilt
     }
 
     private List<LoadFilter> lookupFilters(List<LoadFilter> foundFilters, String catalogName, String schemaName, String tableName) {
-        String fullyQualifiedTableName = Relation.getFullyQualifiedName(catalogName, schemaName, tableName);
+        String fullyQualifiedTableName = SchemaObject.getFullyQualifiedName(catalogName, schemaName, tableName);
         if (isIgnoreCase()) {
             fullyQualifiedTableName = fullyQualifiedTableName.toUpperCase();
         }

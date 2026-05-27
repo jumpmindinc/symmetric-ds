@@ -35,6 +35,7 @@ import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.View;
 import org.jumpmind.db.model.ForeignKey.ForeignKeyAction;
@@ -91,7 +92,7 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
                     .executeCallback(new IConnectionCallback<Database>() {
                         public Database execute(Connection connection) throws SQLException {
                             Database db = new Database();
-                            db.setName(Table.getFullyQualifiedPrefix(catalog, schema));
+                            db.setName(SchemaObject.getFullyQualifiedPrefix(catalog, schema));
                             db.setCatalog(catalog);
                             db.setSchema(schema);
                             for (Relation relation : readRelations(connection, catalog, schema, relationTypes)) {
@@ -127,7 +128,7 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
     public Relation readRelation(final String catalog, final String schema, final String relationName) {
         Relation relation = null;
         try {
-            log.debug("reading table: " + relationName);
+            log.debug("reading table: {}", relationName);
             JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
             ISqlTransaction transaction = sqlTemplate.startSqlTransaction();
             try {
@@ -179,7 +180,7 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
             if (e.getMessage() != null && Strings.CI.contains(e.getMessage(), "does not exist")) {
                 return null;
             } else {
-                log.error("Failed to get metadata for {}", Table.getFullyQualifiedName(catalog, schema, relationName));
+                log.error("Failed to get metadata for {}", SchemaObject.getFullyQualifiedName(catalog, schema, relationName));
                 throw e;
             }
         }
