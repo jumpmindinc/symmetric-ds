@@ -30,6 +30,6 @@ public interface IApplicationHealthTracker {
     public Map<String, Boolean> getEngineReadiness();
 
     void setEngineReady(String engineName, boolean ready);
-    
+
     void removeEngine(String engineName);
 }

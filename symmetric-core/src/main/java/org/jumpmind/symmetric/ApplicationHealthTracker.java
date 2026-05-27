@@ -53,14 +53,13 @@ public class ApplicationHealthTracker implements IApplicationHealthTracker {
         return engineReadiness;
     }
 
-	@Override
-	public void setEngineReady(String engineName, boolean ready) {
-		engineReadiness.put(engineName, ready);
-	}
+    @Override
+    public void setEngineReady(String engineName, boolean ready) {
+        engineReadiness.put(engineName, ready);
+    }
 
-	@Override
-	public void removeEngine(String engineName) {
-		engineReadiness.remove(engineName);
-	}
-   
+    @Override
+    public void removeEngine(String engineName) {
+        engineReadiness.remove(engineName);
+    }
 }

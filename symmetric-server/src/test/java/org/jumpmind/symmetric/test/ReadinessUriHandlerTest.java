@@ -33,27 +33,26 @@ import org.jumpmind.symmetric.web.ReadinessUriHandler;
 import org.junit.jupiter.api.Test;
 
 public class ReadinessUriHandlerTest {
-
-    private String invokePrepare(Map<String, Boolean> readiness) throws Exception {
+    private String invokePrepare(Map<String, Boolean> readiness, boolean alive) throws Exception {
         ReadinessUriHandler handler = new ReadinessUriHandler();
-        Method m = ReadinessUriHandler.class.getDeclaredMethod("prepareReadinessJsonRes", Map.class);
+        Method m = ReadinessUriHandler.class.getDeclaredMethod("prepareReadinessJsonRes", Map.class, boolean.class);
         m.setAccessible(true);
-        return (String) m.invoke(handler, readiness);
+        return (String) m.invoke(handler, readiness, alive);
     }
 
     @Test
     public void emptyMapReportsReadyOverall() throws Exception {
-        String result = invokePrepare(Collections.emptyMap());
-        assertEquals("{\"engine_details\": [],{\"status\": \"ready\"}", result);
+        String result = invokePrepare(Collections.emptyMap(), true);
+        assertEquals("{\"engine_details\": [],{\"status\": \"READY\"}", result);
     }
 
     @Test
     public void singleReadyEngineReportsReady() throws Exception {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", true);
-        String result = invokePrepare(readiness);
+        String result = invokePrepare(readiness, true);
         assertEquals(
-                "{\"engine_details\": [{\"engine_name\": \"engine-1\", \"status\": \"ready\"}],{\"status\": \"ready\"}",
+                "{\"engine_details\": [{\"engine_name\": \"engine-1\", \"status\": \"READY\"}],{\"status\": \"READY\"}",
                 result);
     }
 
@@ -61,9 +60,9 @@ public class ReadinessUriHandlerTest {
     public void singleNotReadyEngineReportsNotReady() throws Exception {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", false);
-        String result = invokePrepare(readiness);
+        String result = invokePrepare(readiness, true);
         assertEquals(
-                "{\"engine_details\": [{\"engine_name\": \"engine-1\", \"status\": \"not ready\"}],{\"status\": \"not ready\"}",
+                "{\"engine_details\": [{\"engine_name\": \"engine-1\", \"status\": \"NOT READY\"}],{\"status\": \"NOT READY\"}",
                 result);
     }
 
@@ -72,11 +71,11 @@ public class ReadinessUriHandlerTest {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", true);
         readiness.put("engine-2", true);
-        String result = invokePrepare(readiness);
-        assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"ready\""), result);
-        assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"ready\""), result);
-        assertTrue(result.endsWith("{\"status\": \"ready\"}"), result);
-        assertFalse(result.contains("not ready"), result);
+        String result = invokePrepare(readiness, true);
+        assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"READY\""), result);
+        assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"READY\""), result);
+        assertTrue(result.endsWith("{\"status\": \"READY\"}"), result);
+        assertFalse(result.contains("NOT READY"), result);
     }
 
     @Test
@@ -84,10 +83,10 @@ public class ReadinessUriHandlerTest {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", true);
         readiness.put("engine-2", false);
-        String result = invokePrepare(readiness);
-        assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"ready\""), result);
-        assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"not ready\""), result);
-        assertTrue(result.endsWith("{\"status\": \"not ready\"}"), result);
+        String result = invokePrepare(readiness, true);
+        assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"READY\""), result);
+        assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"NOT READY\""), result);
+        assertTrue(result.endsWith("{\"status\": \"NOT READY\"}"), result);
     }
 
     @Test
@@ -95,9 +94,26 @@ public class ReadinessUriHandlerTest {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", false);
         readiness.put("engine-2", false);
-        String result = invokePrepare(readiness);
-        assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"not ready\""), result);
-        assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"not ready\""), result);
-        assertTrue(result.endsWith("{\"status\": \"not ready\"}"), result);
+        String result = invokePrepare(readiness, true);
+        assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"NOT READY\""), result);
+        assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"NOT READY\""), result);
+        assertTrue(result.endsWith("{\"status\": \"NOT READY\"}"), result);
+    }
+
+    @Test
+    public void notAliveMakesOverallNotReady() throws Exception {
+        Map<String, Boolean> readiness = new LinkedHashMap<>();
+        readiness.put("engine-1", true);
+        readiness.put("engine-2", true);
+        String result = invokePrepare(readiness, false);
+        assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"READY\""), result);
+        assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"READY\""), result);
+        assertTrue(result.endsWith("{\"status\": \"NOT READY\"}"), result);
+    }
+
+    @Test
+    public void notAliveWithEmptyMapReportsNotReady() throws Exception {
+        String result = invokePrepare(Collections.emptyMap(), false);
+        assertEquals("{\"engine_details\": [],{\"status\": \"NOT READY\"}", result);
     }
 }

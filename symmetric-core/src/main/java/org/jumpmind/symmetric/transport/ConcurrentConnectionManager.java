@@ -116,7 +116,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         Map<String, Reservation> reservations = getReservationMap(poolId);
         Reservation reservation = reservations.remove(reservationId);
         if (reservation != null) {
-        	updateReadiness(reservations);
+            updateReadiness(reservations);
             logConnectedTimePeriod(reservationId, reservation.createTime, System.currentTimeMillis(), poolId);
             addConnectionAndUpdateUtilizationGauge(-1);
             return true;
@@ -130,8 +130,8 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         Map<String, Reservation> reservations = getReservationMap(poolId);
         Reservation reservation = reservations.remove(nodeId);
         if (reservation != null) {
-        		updateReadiness(reservations);
-        		logConnectedTimePeriod(nodeId, reservation.createTime, System.currentTimeMillis(), poolId);
+            updateReadiness(reservations);
+            logConnectedTimePeriod(nodeId, reservation.createTime, System.currentTimeMillis(), poolId);
             addConnectionAndUpdateUtilizationGauge(-1);
             return true;
         } else {
@@ -358,14 +358,14 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     public Map<String, Map<String, Reservation>> getActiveReservationsByNodeByPool() {
         return activeReservationsByNodeByPool;
     }
-    
+
     private void updateReadiness(Map<String, Reservation> reservations) {
-    	 IApplicationHealthTracker tracker = ApplicationHealthTracker.getTracker();
-         if (tracker != null) {
-        	 	int maxPoolSize = parameterService.getInt(ParameterConstants.CONCURRENT_WORKERS);
-        	 	boolean engineReady = reservations.size() < maxPoolSize;
+        IApplicationHealthTracker tracker = ApplicationHealthTracker.getTracker();
+        if (tracker != null) {
+            int maxPoolSize = parameterService.getInt(ParameterConstants.CONCURRENT_WORKERS);
+            boolean engineReady = reservations.size() < maxPoolSize;
             tracker.setEngineReady(parameterService.getEngineName(), engineReady);
             log.debug("Engine readiness = {}, reservations = {}, max = {}", engineReady, reservations.size(), maxPoolSize);
-         }
+        }
     }
 }
