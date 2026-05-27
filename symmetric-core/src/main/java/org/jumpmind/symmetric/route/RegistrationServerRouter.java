@@ -48,12 +48,12 @@ public class RegistrationServerRouter extends AbstractDataRouter implements IBui
         Node identity = findIdentity();
         return hasSomewhereToRoute(identity)
                 ? findRegistrationNode(identity, possibleTargetNodes)
-                : new HashSet<String>();
+                : new HashSet<>();
     }
 
     protected Set<String> findRegistrationNode(Node identity, Set<Node> possibleTargetNodes) {
         String registrationNodeId = identity.getCreatedAtNodeId();
-        Set<String> result = new HashSet<String>();
+        Set<String> result = new HashSet<>();
         for (Node node : possibleTargetNodes) {
             if (registrationNodeId.equals(node.getNodeId())) {
                 result.add(registrationNodeId);
