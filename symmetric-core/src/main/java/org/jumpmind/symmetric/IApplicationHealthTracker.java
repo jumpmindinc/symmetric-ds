@@ -27,9 +27,13 @@ public interface IApplicationHealthTracker {
 
     void setAlive(boolean alive);
 
-    public Map<String, Boolean> getEngineReadiness();
+    public Map<String, Boolean> getReadinessMap();
 
-    void setEngineReady(String engineName, boolean ready);
+    void setEngineReadiness(String engineName, boolean ready);
 
-    void removeEngine(String engineName);
+    void stopTrackingEngine(String engineName);
+    
+    boolean isEngineReady(String engineName);
+    
+    boolean isReady();
 }

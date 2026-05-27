@@ -364,7 +364,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
         if (tracker != null) {
             int maxPoolSize = parameterService.getInt(ParameterConstants.CONCURRENT_WORKERS);
             boolean engineReady = reservations.size() < maxPoolSize;
-            tracker.setEngineReady(parameterService.getEngineName(), engineReady);
+            tracker.setEngineReadiness(parameterService.getEngineName(), engineReady);
             log.debug("Engine readiness = {}, reservations = {}, max = {}", engineReady, reservations.size(), maxPoolSize);
         }
     }

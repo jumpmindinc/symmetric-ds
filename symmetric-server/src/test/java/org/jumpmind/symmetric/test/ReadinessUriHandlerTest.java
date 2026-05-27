@@ -41,13 +41,13 @@ public class ReadinessUriHandlerTest {
     }
 
     @Test
-    public void emptyMapReportsReadyOverall() throws Exception {
+    void emptyMapReportsReadyOverall() throws Exception {
         String result = invokePrepare(Collections.emptyMap(), true);
         assertEquals("{\"engine_details\": [],{\"status\": \"READY\"}", result);
     }
 
     @Test
-    public void singleReadyEngineReportsReady() throws Exception {
+    void singleReadyEngineReportsReady() throws Exception {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", true);
         String result = invokePrepare(readiness, true);
@@ -57,7 +57,7 @@ public class ReadinessUriHandlerTest {
     }
 
     @Test
-    public void singleNotReadyEngineReportsNotReady() throws Exception {
+    void singleNotReadyEngineReportsNotReady() throws Exception {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", false);
         String result = invokePrepare(readiness, true);
@@ -67,7 +67,7 @@ public class ReadinessUriHandlerTest {
     }
 
     @Test
-    public void allEnginesReadyMakesOverallReady() throws Exception {
+    void allEnginesReadyMakesOverallReady() throws Exception {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", true);
         readiness.put("engine-2", true);
@@ -79,7 +79,7 @@ public class ReadinessUriHandlerTest {
     }
 
     @Test
-    public void anyEngineNotReadyMakesOverallNotReady() throws Exception {
+    void anyEngineNotReadyMakesOverallNotReady() throws Exception {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", true);
         readiness.put("engine-2", false);
@@ -90,7 +90,7 @@ public class ReadinessUriHandlerTest {
     }
 
     @Test
-    public void allEnginesNotReadyMakesOverallNotReady() throws Exception {
+    void allEnginesNotReadyMakesOverallNotReady() throws Exception {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", false);
         readiness.put("engine-2", false);
@@ -101,7 +101,7 @@ public class ReadinessUriHandlerTest {
     }
 
     @Test
-    public void notAliveMakesOverallNotReady() throws Exception {
+    void notAliveMakesOverallNotReady() throws Exception {
         Map<String, Boolean> readiness = new LinkedHashMap<>();
         readiness.put("engine-1", true);
         readiness.put("engine-2", true);
@@ -112,7 +112,7 @@ public class ReadinessUriHandlerTest {
     }
 
     @Test
-    public void notAliveWithEmptyMapReportsNotReady() throws Exception {
+    void notAliveWithEmptyMapReportsNotReady() throws Exception {
         String result = invokePrepare(Collections.emptyMap(), false);
         assertEquals("{\"engine_details\": [],{\"status\": \"NOT READY\"}", result);
     }

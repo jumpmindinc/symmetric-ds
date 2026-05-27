@@ -1,3 +1,24 @@
+/**
+ * Licensed to JumpMind Inc under one or more contributor
+ * license agreements.  See the NOTICE file distributed
+ * with this work for additional information regarding
+ * copyright ownership.  JumpMind Inc licenses this file
+ * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * (the "License"); you may not use this file except in compliance
+ * with the License.
+ *
+ * You should have received a copy of the GNU General Public License,
+ * version 3.0 (GPLv3) along with this library; if not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.jumpmind.symmetric.web;
 
 import java.io.IOException;
@@ -25,8 +46,8 @@ public class ReadinessUriHandler implements IUriHandler {
             return;
         }
         boolean alive = tracker.isAlive();
-        String response = prepareReadinessJsonRes(tracker.getEngineReadiness(), alive);
-        if (response.endsWith("{\"status\": \"NOT READY\"}")) {
+        String response = prepareReadinessJsonRes(tracker.getReadinessMap(), alive);
+        if (!tracker.isReady()) {
             res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
         res.getWriter().write(response);
@@ -56,10 +77,10 @@ public class ReadinessUriHandler implements IUriHandler {
             response.append(engine.getKey());
             response.append("\", \"status\": \"");
             response.append(engine.getValue() ? "READY" : "NOT READY");
-            response.append("\"}");
+            response.append("\"},");
         }
         response.append("],");
-        response.append("{\"status\": \"").append(ready ? "READY" : "NOT READY").append("\"}");
+        response.append("\"status\": \"").append(ready ? "READY" : "NOT READY").append("\"}");
         return response.toString();
     }
 }

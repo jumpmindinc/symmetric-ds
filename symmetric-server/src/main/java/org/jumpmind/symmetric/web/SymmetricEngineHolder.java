@@ -176,7 +176,7 @@ public class SymmetricEngineHolder {
                     log.warn("Destroy of engine failed", e);
                 }
                 engines.remove(engineName);
-                ApplicationHealthTracker.getTracker().removeEngine(engineName);
+                ApplicationHealthTracker.getTracker().stopTrackingEngine(engineName);
             }
             enginesFailed.remove(engineName);
             if (restartExecutor == null) {
@@ -192,7 +192,7 @@ public class SymmetricEngineHolder {
     public synchronized void stop() {
         for (ServerSymmetricEngine engine : engines.values()) {
             engine.destroy();
-            ApplicationHealthTracker.getTracker().removeEngine(engine.getEngineName());
+            ApplicationHealthTracker.getTracker().stopTrackingEngine(engine.getEngineName());
         }
         engines.clear();
         enginesFailed.clear();
@@ -240,7 +240,7 @@ public class SymmetricEngineHolder {
                 log.error("", e);
             }
             engines.remove(engineName);
-            ApplicationHealthTracker.getTracker().removeEngine(engineName);
+            ApplicationHealthTracker.getTracker().stopTrackingEngine(engineName);
         }
         File enginesDir = new File(PropertiesUtil.getEnginesDir());
         File symmetricProperties = new File(enginesDir, engineName + ".properties");

@@ -59,56 +59,56 @@ class ApplicationHealthTrackerTest {
     }
 
     @Test
-    void getEngineReadinessIsEmptyByDefault() {
+    void getReadinessMapIsEmptyByDefault() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        Map<String, Boolean> readiness = tracker.getEngineReadiness();
+        Map<String, Boolean> readiness = tracker.getReadinessMap();
         assertNotNull(readiness);
         assertTrue(readiness.isEmpty());
     }
 
     @Test
-    void getEngineReadinessReturnsSameLiveMap() {
+    void getReadinessMapReturnsSameLiveMap() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        Map<String, Boolean> first = tracker.getEngineReadiness();
-        tracker.setEngineReady("engine-1", true);
-        Map<String, Boolean> second = tracker.getEngineReadiness();
+        Map<String, Boolean> first = tracker.getReadinessMap();
+        tracker.setEngineReadiness("engine-1", true);
+        Map<String, Boolean> second = tracker.getReadinessMap();
         assertSame(first, second);
         assertEquals(1, second.size());
     }
 
     @Test
-    void setEngineReadyAddsEntryWithTrue() {
+    void setEngineReadinessAddsEntryWithTrue() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        tracker.setEngineReady("engine-1", true);
-        Map<String, Boolean> readiness = tracker.getEngineReadiness();
+        tracker.setEngineReadiness("engine-1", true);
+        Map<String, Boolean> readiness = tracker.getReadinessMap();
         assertEquals(1, readiness.size());
         assertTrue(readiness.get("engine-1"));
     }
 
     @Test
-    void setEngineReadyAddsEntryWithFalse() {
+    void setEngineReadinessAddsEntryWithFalse() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        tracker.setEngineReady("engine-1", false);
-        assertFalse(tracker.getEngineReadiness().get("engine-1"));
+        tracker.setEngineReadiness("engine-1", false);
+        assertFalse(tracker.getReadinessMap().get("engine-1"));
     }
 
     @Test
-    void setEngineReadyOverwritesExistingEntry() {
+    void setEngineReadinessOverwritesExistingEntry() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        tracker.setEngineReady("engine-1", true);
-        tracker.setEngineReady("engine-1", false);
-        Map<String, Boolean> readiness = tracker.getEngineReadiness();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-1", false);
+        Map<String, Boolean> readiness = tracker.getReadinessMap();
         assertEquals(1, readiness.size());
         assertFalse(readiness.get("engine-1"));
     }
 
     @Test
-    void setEngineReadyTracksMultipleEnginesIndependently() {
+    void setEngineReadinessTracksMultipleEnginesIndependently() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        tracker.setEngineReady("engine-1", true);
-        tracker.setEngineReady("engine-2", false);
-        tracker.setEngineReady("engine-3", true);
-        Map<String, Boolean> readiness = tracker.getEngineReadiness();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-2", false);
+        tracker.setEngineReadiness("engine-3", true);
+        Map<String, Boolean> readiness = tracker.getReadinessMap();
         assertEquals(3, readiness.size());
         assertTrue(readiness.get("engine-1"));
         assertFalse(readiness.get("engine-2"));
@@ -118,18 +118,18 @@ class ApplicationHealthTrackerTest {
     @Test
     void removeEngineRemovesExistingEntry() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        tracker.setEngineReady("engine-1", true);
-        tracker.removeEngine("engine-1");
-        assertTrue(tracker.getEngineReadiness().isEmpty());
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.stopTrackingEngine("engine-1");
+        assertTrue(tracker.getReadinessMap().isEmpty());
     }
 
     @Test
     void removeEngineLeavesOtherEnginesUntouched() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        tracker.setEngineReady("engine-1", true);
-        tracker.setEngineReady("engine-2", false);
-        tracker.removeEngine("engine-1");
-        Map<String, Boolean> readiness = tracker.getEngineReadiness();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-2", false);
+        tracker.stopTrackingEngine("engine-1");
+        Map<String, Boolean> readiness = tracker.getReadinessMap();
         assertEquals(1, readiness.size());
         assertFalse(readiness.containsKey("engine-1"));
         assertFalse(readiness.get("engine-2"));
@@ -138,9 +138,9 @@ class ApplicationHealthTrackerTest {
     @Test
     void removeEngineIsNoOpForUnknownEngine() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        tracker.setEngineReady("engine-1", true);
-        tracker.removeEngine("not-present");
-        Map<String, Boolean> readiness = tracker.getEngineReadiness();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.stopTrackingEngine("not-present");
+        Map<String, Boolean> readiness = tracker.getReadinessMap();
         assertEquals(1, readiness.size());
         assertTrue(readiness.get("engine-1"));
     }
@@ -148,7 +148,7 @@ class ApplicationHealthTrackerTest {
     @Test
     void removeEngineIsNoOpOnEmptyMap() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        tracker.removeEngine("engine-1");
-        assertTrue(tracker.getEngineReadiness().isEmpty());
+        tracker.stopTrackingEngine("engine-1");
+        assertTrue(tracker.getReadinessMap().isEmpty());
     }
 }
