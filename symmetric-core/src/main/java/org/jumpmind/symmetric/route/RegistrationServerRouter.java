@@ -20,7 +20,7 @@
  */
 package org.jumpmind.symmetric.route;
 
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.jumpmind.extension.IBuiltInExtensionPoint;
@@ -35,7 +35,6 @@ import org.jumpmind.symmetric.model.TriggerRouter;
  */
 public class RegistrationServerRouter extends AbstractDataRouter implements IBuiltInExtensionPoint {
     public static final String ROUTER_TYPE = "registration_server";
-    private static final Set<String> NO_NODES_TO_ROUTE = Collections.emptySet();
     protected ISymmetricEngine engine;
 
     public RegistrationServerRouter(ISymmetricEngine engine) {
@@ -49,17 +48,19 @@ public class RegistrationServerRouter extends AbstractDataRouter implements IBui
         Node identity = findIdentity();
         return hasSomewhereToRoute(identity)
                 ? findRegistrationNode(identity, possibleTargetNodes)
-                : NO_NODES_TO_ROUTE;
+                : new HashSet<String>();
     }
 
     protected Set<String> findRegistrationNode(Node identity, Set<Node> possibleTargetNodes) {
         String registrationNodeId = identity.getCreatedAtNodeId();
+        Set<String> result = new HashSet<String>();
         for (Node node : possibleTargetNodes) {
             if (registrationNodeId.equals(node.getNodeId())) {
-                return Collections.singleton(registrationNodeId);
+                result.add(registrationNodeId);
+                break;
             }
         }
-        return NO_NODES_TO_ROUTE;
+        return result;
     }
 
     protected boolean hasSomewhereToRoute(Node identity) {

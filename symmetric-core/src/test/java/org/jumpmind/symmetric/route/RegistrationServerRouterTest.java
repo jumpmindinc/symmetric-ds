@@ -208,6 +208,30 @@ class RegistrationServerRouterTest {
     }
 
     @Test
+    void testRouteToNodes_returnedSetIsMutableWhenRoutingToServer() {
+        Node identity = node("client1", "client");
+        identity.setCreatedAtNodeId("server");
+        IDataRouter router = buildRouter(identity, false);
+        Set<Node> targets = new HashSet<Node>();
+        targets.add(node("server", "server"));
+        Set<String> nodeIds = router.routeToNodes(new SimpleRouterContext(),
+                buildDataMetaData(), targets, false, false, null);
+        nodeIds.remove("server");
+        assertTrue(nodeIds.isEmpty());
+    }
+
+    @Test
+    void testRouteToNodes_returnedSetIsMutableWhenEmpty() {
+        IDataRouter router = buildRouter(node("server", "server"), true);
+        Set<Node> targets = new HashSet<Node>();
+        targets.add(node("client1", "client"));
+        Set<String> nodeIds = router.routeToNodes(new SimpleRouterContext(),
+                buildDataMetaData(), targets, false, false, null);
+        nodeIds.remove("client");
+        assertTrue(nodeIds.isEmpty());
+    }
+
+    @Test
     void testIsConfigurable() {
         assertFalse(new RegistrationServerRouter(mock(ISymmetricEngine.class)).isConfigurable());
     }
