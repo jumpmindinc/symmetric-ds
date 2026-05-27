@@ -31,7 +31,6 @@ import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlReadCursor;
-import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.io.data.Batch;
@@ -96,19 +95,16 @@ public class RelationExtractDataReaderSource implements IExtractDataReaderSource
         String sql = String.format("select * from %s %s", relation.getQualifiedName(dbInfo.getDelimiterToken(),
                 dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator()),
                 StringUtils.isNotBlank(whereClause) ? " where " + whereClause : "");
-        this.cursor = platform.getSqlTemplate().queryForCursor(sql, new ISqlRowMapper<CsvData>() {
-            public CsvData mapRow(Row row) {
-                return new CsvData(DataEventType.INSERT, toStringData(row, relation.getPrimaryKeyColumns()), toStringData(row, relation.getColumns()));
-            }
-        });
+        this.cursor = platform.getSqlTemplate().queryForCursor(sql,
+                row -> new CsvData(DataEventType.INSERT, toStringData(row, relation.getPrimaryKeyColumns()), toStringData(row, relation.getColumns())));
     }
 
     protected String[] toStringData(Row row, Column[] columns) {
         String[] stringValues = new String[columns.length];
         for (int i = 0; i < columns.length; i++) {
             Object value = row.get(columns[i].getName());
-            if (value instanceof byte[]) {
-                stringValues[i] = new String(Base64.encodeBase64((byte[]) value), Charset.defaultCharset());
+            if (value instanceof byte[] byteArray) {
+                stringValues[i] = new String(Base64.encodeBase64(byteArray), Charset.defaultCharset());
             } else if (value != null) {
                 stringValues[i] = value.toString();
             }

@@ -460,7 +460,9 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
                 try {
                     logSql(triggerSql, sqlBuffer);
                     if (sqlBuffer == null) {
-                        log.info("Creating {} trigger for {}", hist.getTriggerNameForDmlType(dml), table.getFullyQualifiedName());
+                        if (log.isInfoEnabled()) {
+                            log.info("Creating {} trigger for {}", hist.getTriggerNameForDmlType(dml), table.getFullyQualifiedName());
+                        }
                         log.debug("Running: {}", triggerSql);
                         transaction.execute(triggerSql);
                     }
@@ -1022,22 +1024,24 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
     }
 
     private String appendLobColumnFilter(String sql, List<Column> columns, boolean isFirstPass) {
+        StringBuilder sb = new StringBuilder();
         if (!sql.isEmpty()) {
-            sql += " and ";
+            sb.append(sql).append(" and ");
         }
-        sql += "(";
+        sb.append("(");
         boolean isFirstColumn = true;
         for (Column column : columns) {
             String columnSql = getInitialLoadTwoPassLobLengthSql(column, isFirstPass);
             if (columnSql != null && !columnSql.trim().isEmpty()) {
                 if (!isFirstColumn) {
-                    sql += isFirstPass ? " and " : " or ";
+                    sb.append(isFirstPass ? " and " : " or ");
                 }
-                sql += columnSql;
+                sb.append(columnSql);
                 isFirstColumn = false;
             }
         }
-        return sql + ")";
+        sb.append(")");
+        return sb.toString();
     }
 
     public String getInitialLoadTwoPassLobLengthSql(Column column, boolean isFirstPass) {

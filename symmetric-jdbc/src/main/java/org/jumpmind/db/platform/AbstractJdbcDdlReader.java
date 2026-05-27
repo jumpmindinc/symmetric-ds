@@ -735,45 +735,13 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
                 return null;
             }
             String type = (String) values.get(getName("TABLE_TYPE"));
-            String[] unsupportedRelationTypes = getUnsupportedRelationTypes();
-            for (String unsupportedRelationType : unsupportedRelationTypes) {
-                if (StringUtils.isNotBlank(type) && type.equals(unsupportedRelationType)) {
-                    return null;
-                }
+            if (isUnsupportedRelationType(type)) {
+                return null;
             }
             if ("VIEW".equalsIgnoreCase(type) || "MATERIALIZED VIEW".equalsIgnoreCase(type)) {
                 return readView(metaData, relationName, values);
             }
-            Table table = new Table();
-            table.setName(relationName);
-            table.setType(type);
-            String catalog = (String) values.get(getName(getResultSetCatalogName()));
-            table.setCatalog(catalog);
-            String schema = (String) values.get(getName(getResultSetSchemaName()));
-            table.setSchema(schema);
-            table.setDescription((String) values.get(getName("REMARKS")));
-            table.addColumns(readColumns(metaData, relationName));
-            if (table.getColumnCount() > 0) {
-                table.addForeignKeys(readForeignKeys(connection, metaData, relationName));
-                table.addIndices(readIndices(connection, metaData, relationName));
-                table.addExportedForeignKeys(readExportedForeignKeys(metaData, relationName));
-                Collection<String> primaryKeys = readPrimaryKeyNames(metaData, relationName);
-                int primaryKeySequence = 1;
-                for (Iterator<String> it = primaryKeys.iterator(); it.hasNext();) {
-                    Column column = table.findColumn(it.next(), true);
-                    if (column != null) {
-                        column.setPrimaryKey(true);
-                        column.setPrimaryKeySequence(primaryKeySequence);
-                        primaryKeySequence++;
-                    }
-                }
-                if (getPlatformInfo().isSystemIndicesReturned()) {
-                    removeSystemIndices(connection, metaData, table);
-                }
-                removeGeneratedColumns(connection, metaData, table);
-            } else {
-                table = null;
-            }
+            Table table = buildTable(connection, metaData, values, relationName, type);
             return table;
         } catch (RuntimeException ex) {
             log.error("Failed to read schema object: {}.  Error: {}", relationName, ex.getMessage());
@@ -781,6 +749,50 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
         } catch (SQLException ex) {
             log.error("Failed to read schema object: {}.  Error: {}", relationName, ex.getMessage());
             throw ex;
+        }
+    }
+
+    private boolean isUnsupportedRelationType(String type) {
+        for (String unsupportedRelationType : getUnsupportedRelationTypes()) {
+            if (StringUtils.isNotBlank(type) && type.equals(unsupportedRelationType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Table buildTable(Connection connection, DatabaseMetaDataWrapper metaData,
+            Map<String, Object> values, String relationName, String type) throws SQLException {
+        Table table = new Table();
+        table.setName(relationName);
+        table.setType(type);
+        table.setCatalog((String) values.get(getName(getResultSetCatalogName())));
+        table.setSchema((String) values.get(getName(getResultSetSchemaName())));
+        table.setDescription((String) values.get(getName("REMARKS")));
+        table.addColumns(readColumns(metaData, relationName));
+        if (table.getColumnCount() == 0) {
+            return null;
+        }
+        table.addForeignKeys(readForeignKeys(connection, metaData, relationName));
+        table.addIndices(readIndices(connection, metaData, relationName));
+        table.addExportedForeignKeys(readExportedForeignKeys(metaData, relationName));
+        setPrimaryKeys(table, readPrimaryKeyNames(metaData, relationName));
+        if (getPlatformInfo().isSystemIndicesReturned()) {
+            removeSystemIndices(connection, metaData, table);
+        }
+        removeGeneratedColumns(connection, metaData, table);
+        return table;
+    }
+
+    private void setPrimaryKeys(Table table, Collection<String> primaryKeys) {
+        int primaryKeySequence = 1;
+        for (Iterator<String> it = primaryKeys.iterator(); it.hasNext();) {
+            Column column = table.findColumn(it.next(), true);
+            if (column != null) {
+                column.setPrimaryKey(true);
+                column.setPrimaryKeySequence(primaryKeySequence);
+                primaryKeySequence++;
+            }
         }
     }
 

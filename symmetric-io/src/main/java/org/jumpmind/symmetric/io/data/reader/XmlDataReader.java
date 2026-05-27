@@ -216,8 +216,8 @@ public class XmlDataReader extends AbstractDataReader implements IDataReader {
             readNext();
             if (next.size() > 0) {
                 Object o = next.remove(0);
-                if (o instanceof Relation relation) {
-                    this.relation = relation;
+                if (o instanceof Relation nextRelation) {
+                    this.relation = nextRelation;
                     break;
                 }
             }

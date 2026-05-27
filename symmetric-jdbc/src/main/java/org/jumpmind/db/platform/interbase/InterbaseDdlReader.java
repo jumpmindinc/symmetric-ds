@@ -156,48 +156,50 @@ public class InterbaseDdlReader extends AbstractJdbcDdlReader {
      * @param relation The relation
      */
     protected void determineExtraColumnInfo(Connection connection, Relation relation) throws SQLException {
-        StringBuilder query = new StringBuilder();
-        query.append("SELECT a.RDB$FIELD_NAME, a.RDB$DEFAULT_SOURCE, b.RDB$FIELD_PRECISION, b.RDB$FIELD_SCALE,");
-        query.append(" b.RDB$FIELD_TYPE, b.RDB$FIELD_SUB_TYPE FROM RDB$RELATION_FIELDS a, RDB$FIELDS b");
-        query.append(" WHERE a.RDB$RELATION_NAME=? AND a.RDB$FIELD_SOURCE=b.RDB$FIELD_NAME");
-        PreparedStatement prepStmt = connection.prepareStatement(query.toString());
+        String query = "SELECT a.RDB$FIELD_NAME, a.RDB$DEFAULT_SOURCE, b.RDB$FIELD_PRECISION, b.RDB$FIELD_SCALE,"
+                + " b.RDB$FIELD_TYPE, b.RDB$FIELD_SUB_TYPE FROM RDB$RELATION_FIELDS a, RDB$FIELDS b"
+                + " WHERE a.RDB$RELATION_NAME=? AND a.RDB$FIELD_SOURCE=b.RDB$FIELD_NAME";
+        boolean delimited = getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn();
+        PreparedStatement prepStmt = connection.prepareStatement(query);
         try {
-            prepStmt.setString(1, getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn() ? relation.getName()
-                    : relation.getName().toUpperCase());
+            prepStmt.setString(1, delimited ? relation.getName() : relation.getName().toUpperCase());
             ResultSet rs = prepStmt.executeQuery();
             while (rs.next()) {
                 String columnName = rs.getString(1).trim();
-                Column column = relation.findColumn(columnName, getPlatform().getDdlBuilder()
-                        .isDelimitedIdentifierModeOn());
+                Column column = relation.findColumn(columnName, delimited);
                 if (column != null) {
-                    byte[] defaultBytes = rs.getBytes(2);
-                    String defaultValue = defaultBytes != null ? new String(defaultBytes, Charset.defaultCharset()) : null;
-                    if (!rs.wasNull() && (defaultValue != null)) {
-                        defaultValue = defaultValue.trim();
-                        if (defaultValue.toUpperCase().startsWith("DEFAULT ")) {
-                            defaultValue = defaultValue.substring("DEFAULT ".length());
-                        }
-                        column.setDefaultValue(defaultValue);
-                    }
-                    short precision = rs.getShort(3);
-                    boolean precisionSpecified = !rs.wasNull();
-                    short scale = rs.getShort(4);
-                    boolean scaleSpecified = !rs.wasNull();
-                    if (precisionSpecified) {
-                        // for some reason, Interbase stores the negative scale
-                        column.setSizeAndScale(precision, scaleSpecified ? -scale : 0);
-                    }
-                    short dbType = rs.getShort(5);
-                    short blobSubType = rs.getShort(6);
-                    // CLOBs are returned by the driver as VARCHAR
-                    if (!rs.wasNull() && (dbType == 261) && (blobSubType == 1)) {
-                        column.setMappedTypeCode(Types.CLOB);
-                    }
+                    applyColumnInfoFromResultSet(column, rs);
                 }
             }
             rs.close();
         } finally {
             prepStmt.close();
+        }
+    }
+
+    private void applyColumnInfoFromResultSet(Column column, ResultSet rs) throws SQLException {
+        byte[] defaultBytes = rs.getBytes(2);
+        String defaultValue = defaultBytes != null ? new String(defaultBytes, Charset.defaultCharset()) : null;
+        if (!rs.wasNull() && defaultValue != null) {
+            defaultValue = defaultValue.trim();
+            if (defaultValue.toUpperCase().startsWith("DEFAULT ")) {
+                defaultValue = defaultValue.substring("DEFAULT ".length());
+            }
+            column.setDefaultValue(defaultValue);
+        }
+        short precision = rs.getShort(3);
+        boolean precisionSpecified = !rs.wasNull();
+        short scale = rs.getShort(4);
+        boolean scaleSpecified = !rs.wasNull();
+        if (precisionSpecified) {
+            // for some reason, Interbase stores the negative scale
+            column.setSizeAndScale(precision, scaleSpecified ? -scale : 0);
+        }
+        short dbType = rs.getShort(5);
+        short blobSubType = rs.getShort(6);
+        // CLOBs are returned by the driver as VARCHAR
+        if (!rs.wasNull() && dbType == 261 && blobSubType == 1) {
+            column.setMappedTypeCode(Types.CLOB);
         }
     }
 

@@ -116,7 +116,7 @@ public abstract class AbstractRelationDataReader extends AbstractDataReader impl
 
     protected abstract CsvData readNext();
 
-    abstract protected void finish();
+    protected abstract void finish();
 
     protected CsvData buildCsvData(String[] tokens, DataEventType dml) {
         statistics.increment(DataReaderStatistics.READ_BYTE_COUNT, logDebugAndCountBytes(tokens));

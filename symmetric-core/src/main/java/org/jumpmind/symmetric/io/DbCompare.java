@@ -550,15 +550,11 @@ public class DbCompare {
                 sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableName, true);
             } else {
                 sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_CATALOG),
-                        tableNameParts
-                                .get("schema"),
-                        tableNameParts
-                                .get("table"), true);
+                        tableNameParts.get(TABLE_NAME_PART_SCHEMA),
+                        tableNameParts.get(TABLE_NAME_PART_TABLE), true);
                 if (sourceTable == null) {
                     sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_SCHEMA),
-                            tableNameParts
-                                    .get(
-                                            "catalog"),
+                            tableNameParts.get(TABLE_NAME_PART_CATALOG),
                             tableNameParts.get(TABLE_NAME_PART_TABLE), true);
                 }
             }
@@ -578,7 +574,7 @@ public class DbCompare {
                 TriggerHistory hist = sourceEngine.getTriggerRouterService().findTriggerHistory(catalog, schema,
                         sourceTable.getName());
                 if (hist != null) {
-                    sourceTable = (Table) sourceTable.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
+                    sourceTable = sourceTable.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
                 } else {
                     log.warn("No trigger history found for {}", sourceTable.getFullyQualifiedName());
                 }

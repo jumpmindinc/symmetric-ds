@@ -271,19 +271,7 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
             tablesProcessed.append(table.getFullyQualifiedName());
             tablesProcessed.append(", ");
             desiredDatabase.addTable(table);
-            Table currentTable = null;
-            if (ddlReader.readRelation(table.getCatalog(), table.getSchema(), table.getName()) instanceof Table t) {
-                currentTable = t;
-            }
-            if (currentTable != null) {
-                if (createTableIncludeApplicationTriggers) {
-                    List<Trigger> triggers = ddlReader.getApplicationTriggersForModel(table.getCatalog(), table.getSchema(), table.getName(), triggerPrefix);
-                    if (triggers != null && triggers.size() > 0) {
-                        currentTable.addTriggers(triggers);
-                    }
-                }
-                currentDatabase.addTable(currentTable);
-            }
+            populateCurrentDatabase(currentDatabase, table, createTableIncludeApplicationTriggers, triggerPrefix);
         }
         if (tablesProcessed.length() > 1) {
             tablesProcessed.replace(tablesProcessed.length() - 2, tablesProcessed.length(), "");
@@ -299,6 +287,24 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         } else {
             log.info("Tables up to date.  No alters found for {}", tablesProcessed);
         }
+    }
+
+    private void populateCurrentDatabase(Database currentDatabase, Table table,
+            boolean createTableIncludeApplicationTriggers, String triggerPrefix) {
+        Table currentTable = null;
+        if (ddlReader.readRelation(table.getCatalog(), table.getSchema(), table.getName()) instanceof Table t) {
+            currentTable = t;
+        }
+        if (currentTable == null) {
+            return;
+        }
+        if (createTableIncludeApplicationTriggers) {
+            List<Trigger> triggers = ddlReader.getApplicationTriggersForModel(table.getCatalog(), table.getSchema(), table.getName(), triggerPrefix);
+            if (triggers != null && triggers.size() > 0) {
+                currentTable.addTriggers(triggers);
+            }
+        }
+        currentDatabase.addTable(currentTable);
     }
 
     private String getAlterSql(String alterSql, boolean replaceTokens, Map<String, String> replacementTokens, String delimiter) {
@@ -357,37 +363,9 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
         Relation relation = ddlReader.readRelation(defaultedCatalogName, defaultedSchemaName, relationName);
         if (relation == null && metadataIgnoreCase) {
             IDdlReader reader = getDdlReader();
-            if (isNotBlank(catalogName)) {
-                List<String> catalogNames = reader.getCatalogNames();
-                if (catalogNames != null) {
-                    for (String name : catalogNames) {
-                        if (name != null && name.equalsIgnoreCase(catalogName)) {
-                            defaultedCatalogName = name;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (isNotBlank(schemaName)) {
-                List<String> schemaNames = reader.getSchemaNames(catalogName);
-                if (schemaNames != null) {
-                    for (String name : schemaNames) {
-                        if (name != null && name.equalsIgnoreCase(schemaName)) {
-                            defaultedSchemaName = name;
-                            break;
-                        }
-                    }
-                }
-            }
-            List<String> tableNames = reader.getRelationNames(defaultedCatalogName, defaultedSchemaName, null);
-            if (tableNames != null) {
-                for (String name : tableNames) {
-                    if (name != null && name.equalsIgnoreCase(relationName)) {
-                        relationName = name;
-                        break;
-                    }
-                }
-            }
+            defaultedCatalogName = resolveCaseInsensitiveCatalog(reader, catalogName, defaultedCatalogName);
+            defaultedSchemaName = resolveCaseInsensitiveSchema(reader, catalogName, schemaName, defaultedSchemaName);
+            relationName = resolveCaseInsensitiveRelationName(reader, defaultedCatalogName, defaultedSchemaName, relationName);
             if (!originalFullyQualifiedName.equals(SchemaObject.getFullyQualifiedName(defaultedCatalogName, defaultedSchemaName, relationName))) {
                 relation = ddlReader.readRelation(defaultedCatalogName, defaultedSchemaName, relationName);
             }
@@ -396,6 +374,48 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
             log.debug("Just read table: {}", relation.toVerboseString());
         }
         return relation;
+    }
+
+    private String resolveCaseInsensitiveCatalog(IDdlReader reader, String catalogName, String defaultedCatalogName) {
+        if (!isNotBlank(catalogName)) {
+            return defaultedCatalogName;
+        }
+        List<String> catalogNames = reader.getCatalogNames();
+        if (catalogNames != null) {
+            for (String name : catalogNames) {
+                if (name != null && name.equalsIgnoreCase(catalogName)) {
+                    return name;
+                }
+            }
+        }
+        return defaultedCatalogName;
+    }
+
+    private String resolveCaseInsensitiveSchema(IDdlReader reader, String catalogName, String schemaName, String defaultedSchemaName) {
+        if (!isNotBlank(schemaName)) {
+            return defaultedSchemaName;
+        }
+        List<String> schemaNames = reader.getSchemaNames(catalogName);
+        if (schemaNames != null) {
+            for (String name : schemaNames) {
+                if (name != null && name.equalsIgnoreCase(schemaName)) {
+                    return name;
+                }
+            }
+        }
+        return defaultedSchemaName;
+    }
+
+    private String resolveCaseInsensitiveRelationName(IDdlReader reader, String catalogName, String schemaName, String relationName) {
+        List<String> tableNames = reader.getRelationNames(catalogName, schemaName, null);
+        if (tableNames != null) {
+            for (String name : tableNames) {
+                if (name != null && name.equalsIgnoreCase(relationName)) {
+                    return name;
+                }
+            }
+        }
+        return relationName;
     }
 
     @Override

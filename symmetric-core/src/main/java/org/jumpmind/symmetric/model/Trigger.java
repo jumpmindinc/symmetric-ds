@@ -212,35 +212,38 @@ public class Trigger implements IModelObject, Cloneable {
      * When dealing with columns, always use this method to order the columns so that the primary keys are first.
      */
     public Column[] orderColumnsForTable(Relation table) {
-        if (table != null) {
-            Column[] pks = getSyncKeysColumnsForTable(table);
-            Column[] cols = table.getColumns();
-            List<Column> orderedColumns = new ArrayList<Column>(cols.length);
-            for (int i = 0; i < pks.length; i++) {
-                orderedColumns.add(pks[i]);
-            }
-            List<Column> endingColumns = new ArrayList<Column>();
-            for (int i = 0; i < cols.length; i++) {
-                boolean syncKey = false;
-                for (int j = 0; j < pks.length; j++) {
-                    if (cols[i].getName().equals(pks[j].getName())) {
-                        syncKey = true;
-                        break;
-                    }
-                }
-                if ("LONG".equalsIgnoreCase(cols[i].getJdbcTypeName())) {
-                    endingColumns.add(cols[i]);
-                } else if (!syncKey) {
-                    orderedColumns.add(cols[i]);
-                }
-            }
-            for (Column column : endingColumns) {
-                orderedColumns.add(column);
-            }
-            Column[] result = orderedColumns.toArray(new Column[orderedColumns.size()]);
-            return filterExcludedAndIncludedColumns(result);
-        } else {
+        if (table == null) {
             return new Column[0];
+        }
+        Column[] pks = getSyncKeysColumnsForTable(table);
+        Column[] cols = table.getColumns();
+        List<Column> orderedColumns = new ArrayList<Column>(cols.length);
+        List<Column> endingColumns = new ArrayList<Column>();
+        for (int i = 0; i < pks.length; i++) {
+            orderedColumns.add(pks[i]);
+        }
+        for (int i = 0; i < cols.length; i++) {
+            classifyColumn(cols[i], pks, orderedColumns, endingColumns);
+        }
+        orderedColumns.addAll(endingColumns);
+        Column[] result = orderedColumns.toArray(new Column[orderedColumns.size()]);
+        return filterExcludedAndIncludedColumns(result);
+    }
+
+    private void classifyColumn(Column col, Column[] pks, List<Column> orderedColumns, List<Column> endingColumns) {
+        if ("LONG".equalsIgnoreCase(col.getJdbcTypeName())) {
+            endingColumns.add(col);
+            return;
+        }
+        boolean syncKey = false;
+        for (int j = 0; j < pks.length; j++) {
+            if (col.getName().equals(pks[j].getName())) {
+                syncKey = true;
+                break;
+            }
+        }
+        if (!syncKey) {
+            orderedColumns.add(col);
         }
     }
 

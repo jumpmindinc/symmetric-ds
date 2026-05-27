@@ -197,7 +197,9 @@ public class DbFill {
                         missingTableNames);
             }
         }
-        log.info("TABLES TO FILL ({}): {}", tablesToFill.size(), toString(tablesToFill));
+        if (log.isInfoEnabled()) {
+            log.info("TABLES TO FILL ({}): {}", tablesToFill.size(), toString(tablesToFill));
+        }
         List<Table> orderedTables = Database.sortByForeignKeys(
                 new ArrayList<>(tablesToFill),
                 new HashMap<>(getAllDbTables()),
@@ -515,7 +517,7 @@ public class DbFill {
 
     private void truncateTable(Table table) {
         if (verbose) {
-            log.info("Truncating table " + table.getFullyQualifiedName());
+            log.info("Truncating table {}", table.getFullyQualifiedName());
         }
         String options = "";
         if (platform.getName().startsWith(DatabaseNamesConstants.POSTGRESQL)) {

@@ -117,31 +117,32 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
     }
 
     protected void determineGeneratedColumns(Relation relation, final Column[] columnsToCheck) {
-        StringBuilder query = new StringBuilder();
         if (columnsToCheck == null || columnsToCheck.length == 0) {
             return;
         }
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
-        query.append("select col.name, com.text\n"
+        String query = "select col.name, com.text\n"
                 + "from syscolumns col left join syscomments com\n"
                 + "on col.computedcol = com.id\n"
-                + "where col.id = (select id from sysobjects where name = ?)");
-        List<String> l = new ArrayList<String>();
-        l.add(relation.getName());
-        List<Row> result = sqlTemplate.query(query.toString(), l.toArray());
+                + "where col.id = (select id from sysobjects where name = ?)";
+        List<Row> result = sqlTemplate.query(query, new Object[] { relation.getName() });
         for (Column column : columnsToCheck) {
-            for (Row row : result) {
-                if (column.getName().equalsIgnoreCase(row.getString("name"))) {
-                    String definition = row.getString("text");
-                    if (definition != null) {
-                        column.setGenerated(true);
-                        if (definition.startsWith("AS ")) {
-                            definition = definition.substring(2).trim();
-                        }
-                        column.setDefaultValue(definition);
+            applyGeneratedColumnDefinition(column, result);
+        }
+    }
+
+    private void applyGeneratedColumnDefinition(Column column, List<Row> result) {
+        for (Row row : result) {
+            if (column.getName().equalsIgnoreCase(row.getString("name"))) {
+                String definition = row.getString("text");
+                if (definition != null) {
+                    column.setGenerated(true);
+                    if (definition.startsWith("AS ")) {
+                        definition = definition.substring(2).trim();
                     }
-                    break;
+                    column.setDefaultValue(definition);
                 }
+                break;
             }
         }
     }

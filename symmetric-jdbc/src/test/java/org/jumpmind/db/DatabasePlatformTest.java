@@ -88,7 +88,7 @@ public class DatabasePlatformTest {
     }
 
     @Test
-    public void testTableRebuild() throws Exception {
+    public void testTableRebuild() {
         Table table = new Table("TEST_REBUILD");
         table.addColumn(new Column("ID1", true));
         table.getColumnWithName("ID1").setTypeCode(Types.INTEGER);

@@ -32,7 +32,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -2938,7 +2937,7 @@ public class DataService extends AbstractService implements IDataService {
             row.putAll(dataMap);
             Table localTable = (Table) platform.getRelationFromCache(table.getCatalog(), table.getSchema(), table.getName(), false);
             if (localTable == null) {
-                log.info("Could not find table " + table.getFullyQualifiedName());
+                log.info("Could not find table {}", table.getFullyQualifiedName());
             }
             tableRows.add(new TableRow(localTable, row, null, null, null));
             List<TableRow> foreignTableRows = platform.getDdlReader().getImportedForeignTableRows(tableRows, new HashSet<TableRow>(), symmetricDialect
@@ -3137,13 +3136,10 @@ public class DataService extends AbstractService implements IDataService {
         for (Relation table : sortedTables) {
             tableMap.put(table, index++);
         }
-        Collections.sort(tableRows, new Comparator<>() {
-            @Override
-            public int compare(TableRow t1, TableRow t2) {
-                Integer i1 = tableMap.get(t1.getTable());
-                Integer i2 = tableMap.get(t2.getTable());
-                return i1 == null ? -1 : i2 == null ? 1 : i1.compareTo(i2);
-            }
+        Collections.sort(tableRows, (t1, t2) -> {
+            Integer i1 = tableMap.get(t1.getTable());
+            Integer i2 = tableMap.get(t2.getTable());
+            return i1 == null ? -1 : i2 == null ? 1 : i1.compareTo(i2);
         });
     }
 

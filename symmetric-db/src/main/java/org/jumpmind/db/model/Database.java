@@ -123,8 +123,18 @@ public class Database implements Serializable, Cloneable {
             if (r != null) {
                 depth.setValue(1);
                 parentPosition.setValue(-1);
-                resolveForeignKeyOrder(r, allRelations, resolved, temporary, finalList, null, missingDependencyMap,
-                        dependencyMap, depth, position, resolvedPosition, parentPosition);
+                ForeignKeyResolutionContext context = new ForeignKeyResolutionContext();
+                context.allRelations = allRelations;
+                context.resolved = resolved;
+                context.temporary = temporary;
+                context.finalList = finalList;
+                context.missingDependencyMap = missingDependencyMap;
+                context.dependencyMap = dependencyMap;
+                context.resolvedPosition = resolvedPosition;
+                context.depth = depth;
+                context.position = position;
+                context.parentPosition = parentPosition;
+                resolveForeignKeyOrder(r, null, context);
             }
         }
         Collections.reverse(finalList);
@@ -155,84 +165,93 @@ public class Database implements Serializable, Cloneable {
         }
         for (Relation relation : relations) {
             if (relation instanceof Table table) {
-                List<String> missingTables = missingTablesByChildTable.get(table.getName());
-                for (ForeignKey fk : table.getForeignKeys()) {
-                    if (allRelations.get(fk.getForeignTableName()) == null) {
-                        if (missingTables == null) {
-                            missingTables = new ArrayList<>();
-                            missingTablesByChildTable.put(table.getName(), missingTables);
-                        }
-                        missingTables.add(fk.getForeignTableName());
-                    }
-                }
+                collectMissingForeignKeyTables(table, allRelations, missingTablesByChildTable);
             }
         }
         return missingTablesByChildTable;
     }
 
-    public static void resolveForeignKeyOrder(Relation r, Map<String, Relation> allRelations, Set<Relation> resolved, Set<Relation> temporary,
-            List<Relation> finalList, Relation parentRelation, Map<Relation, Set<String>> missingDependencyMap,
-            Map<Integer, Set<Relation>> dependencyMap, MutableInt depth, MutableInt position,
-            Map<Relation, Integer> resolvedPosition, MutableInt parentPosition) {
-        if (resolved.contains(r)) {
-            parentPosition.setValue(resolvedPosition.get(r));
+    private static void collectMissingForeignKeyTables(Table table, Map<String, Relation> allRelations,
+            Map<String, List<String>> missingTablesByChildTable) {
+        List<String> missingTables = missingTablesByChildTable.get(table.getName());
+        for (ForeignKey fk : table.getForeignKeys()) {
+            if (allRelations.get(fk.getForeignTableName()) == null) {
+                if (missingTables == null) {
+                    missingTables = new ArrayList<>();
+                    missingTablesByChildTable.put(table.getName(), missingTables);
+                }
+                missingTables.add(fk.getForeignTableName());
+            }
+        }
+    }
+
+    public static void resolveForeignKeyOrder(Relation relation, Relation parentRelation, ForeignKeyResolutionContext context) {
+        if (context.resolved.contains(relation)) {
+            context.parentPosition.setValue(context.resolvedPosition.get(relation));
             return;
         }
-        if (!temporary.contains(r) && !resolved.contains(r)) {
-            Set<Integer> parentRelationsChannels = new HashSet<>();
-            if (r == null) {
-                if (parentRelation instanceof Table parentTable) {
-                    for (ForeignKey fk : parentTable.getForeignKeys()) {
-                        if (allRelations.get(fk.getForeignTableName()) == null) {
-                            if (missingDependencyMap.get(parentTable) == null) {
-                                missingDependencyMap.put(parentTable, new HashSet<>());
-                            }
-                            missingDependencyMap.get(parentTable).add(fk.getForeignTableName());
-                        }
-                    }
-                }
-            } else {
-                temporary.add(r);
-                ForeignKey[] foreignKeys = r instanceof Table table ? table.getForeignKeys() : new ForeignKey[0];
-                for (ForeignKey fk : foreignKeys) {
-                    Relation fkRelation = allRelations.get(fk.getForeignTableName());
-                    if (fkRelation != r) {
-                        depth.increment();
-                        resolveForeignKeyOrder(fkRelation, allRelations, resolved, temporary, finalList, r, missingDependencyMap,
-                                dependencyMap, depth, position, resolvedPosition, parentPosition);
-                        Integer resolvedParentRelationChannel = resolvedPosition.get(fkRelation);
-                        if (resolvedParentRelationChannel != null) {
-                            parentRelationsChannels.add(resolvedParentRelationChannel);
-                        }
-                    }
+        if (context.temporary.contains(relation) || context.resolved.contains(relation)) {
+            return;
+        }
+        Set<Integer> parentRelationsChannels = new HashSet<>();
+        if (relation == null) {
+            collectMissingDependencies(parentRelation, context);
+        } else {
+            parentRelationsChannels = resolveRelationDependencies(relation, context);
+        }
+        if (relation != null) {
+            addResolvedRelation(relation, parentRelationsChannels, context);
+        }
+    }
+
+    private static void collectMissingDependencies(Relation parentRelation, ForeignKeyResolutionContext context) {
+        if (!(parentRelation instanceof Table parentTable)) {
+            return;
+        }
+        for (ForeignKey fk : parentTable.getForeignKeys()) {
+            if (context.allRelations.get(fk.getForeignTableName()) == null) {
+                context.missingDependencyMap.computeIfAbsent(parentTable, k -> new HashSet<>()).add(fk.getForeignTableName());
+            }
+        }
+    }
+
+    private static Set<Integer> resolveRelationDependencies(Relation relation, ForeignKeyResolutionContext context) {
+        Set<Integer> parentRelationsChannels = new HashSet<>();
+        context.temporary.add(relation);
+        ForeignKey[] foreignKeys = relation instanceof Table table ? table.getForeignKeys() : new ForeignKey[0];
+        for (ForeignKey fk : foreignKeys) {
+            Relation fkRelation = context.allRelations.get(fk.getForeignTableName());
+            if (fkRelation != relation) {
+                context.depth.increment();
+                resolveForeignKeyOrder(fkRelation, relation, context);
+                Integer resolvedChannel = context.resolvedPosition.get(fkRelation);
+                if (resolvedChannel != null) {
+                    parentRelationsChannels.add(resolvedChannel);
                 }
             }
-            if (r != null) {
-                if (parentPosition.intValue() > 0) {
-                    if (dependencyMap.get(parentPosition.intValue()) == null) {
-                        dependencyMap.put(parentPosition.intValue(), new HashSet<>());
-                    }
-                    if (parentRelationsChannels.size() > 1) {
-                        parentPosition.setValue(mergeChannels(parentRelationsChannels, dependencyMap, resolvedPosition));
-                    }
-                    dependencyMap.get(parentPosition.intValue()).add(r);
-                } else {
-                    if (dependencyMap.get(position.intValue()) == null) {
-                        dependencyMap.put(position.intValue(), new HashSet<>());
-                    }
-                    dependencyMap.get(position.intValue()).add(r);
-                }
-                resolved.add(r);
-                resolvedPosition.put(r, parentPosition.intValue() > 0 ? parentPosition.intValue() : position.intValue());
-                finalList.add(0, r);
-                if (depth.intValue() == 1) {
-                    if (parentPosition.intValue() < 0) {
-                        position.increment();
-                    }
-                } else {
-                    depth.decrement();
-                }
+        }
+        return parentRelationsChannels;
+    }
+
+    private static void addResolvedRelation(Relation relation, Set<Integer> parentRelationsChannels, ForeignKeyResolutionContext context) {
+        if (context.parentPosition.intValue() > 0) {
+            context.dependencyMap.computeIfAbsent(context.parentPosition.intValue(), k -> new HashSet<>());
+            if (parentRelationsChannels.size() > 1) {
+                context.parentPosition.setValue(mergeChannels(parentRelationsChannels, context.dependencyMap, context.resolvedPosition));
             }
+            context.dependencyMap.get(context.parentPosition.intValue()).add(relation);
+        } else {
+            context.dependencyMap.computeIfAbsent(context.position.intValue(), k -> new HashSet<>()).add(relation);
+        }
+        context.resolved.add(relation);
+        context.resolvedPosition.put(relation, context.parentPosition.intValue() > 0 ? context.parentPosition.intValue() : context.position.intValue());
+        context.finalList.add(0, relation);
+        if (context.depth.intValue() == 1) {
+            if (context.parentPosition.intValue() < 0) {
+                context.position.increment();
+            }
+        } else {
+            context.depth.decrement();
         }
     }
 
@@ -823,5 +842,18 @@ public class Database implements Serializable, Cloneable {
             result.append(getTable(idx).toVerboseString());
         }
         return result.toString();
+    }
+
+    public static class ForeignKeyResolutionContext {
+        Map<String, Relation> allRelations;
+        Set<Relation> resolved;
+        Set<Relation> temporary;
+        List<Relation> finalList;
+        Map<Relation, Set<String>> missingDependencyMap;
+        Map<Integer, Set<Relation>> dependencyMap;
+        Map<Relation, Integer> resolvedPosition;
+        MutableInt depth;
+        MutableInt position;
+        MutableInt parentPosition;
     }
 }

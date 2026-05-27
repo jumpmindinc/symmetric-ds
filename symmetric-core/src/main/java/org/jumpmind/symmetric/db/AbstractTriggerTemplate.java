@@ -56,6 +56,8 @@ import org.slf4j.LoggerFactory;
  */
 abstract public class AbstractTriggerTemplate {
     private static final String TOKEN_TABLE_NAME = "tableName";
+    private static final String TOKEN_PK_WHERE_STRING = "primaryKeyWhereString";
+    private static final String TOKEN_TO_CLOB = "toClob";
     protected final Logger log = LoggerFactory.getLogger(getClass());
     protected static final String ORIG_TABLE_ALIAS = "orig";
     protected static final String INSERT_TRIGGER_TEMPLATE = "insertTriggerTemplate";
@@ -175,7 +177,7 @@ abstract public class AbstractTriggerTemplate {
         sql = FormatUtils.replace(TOKEN_TABLE_NAME, SymmetricUtils.quote(symmetricDialect, relation.getName()), sql);
         sql = FormatUtils.replace("schemaName", getSourceTablePrefix(triggerHistory), sql);
         sql = FormatUtils.replace("schemaNameOnly", getSchemaNameOnly(triggerHistory), sql);
-        sql = FormatUtils.replace("primaryKeyWhereString",
+        sql = FormatUtils.replace(TOKEN_PK_WHERE_STRING,
                 getPrimaryKeyWhereString(symmetricDialect.getInitialLoadTableAlias(),
                         relation.hasPrimaryKey() ? relation.getPrimaryKeyColumns() : relation.getColumns()), sql);
         // Replace these parameters to give the initiaLoadContition a chance to
@@ -185,7 +187,7 @@ abstract public class AbstractTriggerTemplate {
         sql = FormatUtils.replace("nodeId", node.getNodeId(), sql);
         sql = replaceDefaultSchemaAndCatalog(sql);
         sql = FormatUtils.replace("prefixName", symmetricDialect.getTablePrefix(), sql);
-        sql = FormatUtils.replace("toClob", triggerRouter.getTrigger().isUseCaptureLobs() ? toClobExpression(relation) : "", sql);
+        sql = FormatUtils.replace(TOKEN_TO_CLOB, triggerRouter.getTrigger().isUseCaptureLobs() ? toClobExpression(relation) : "", sql);
         return sql;
     }
 
@@ -330,7 +332,7 @@ abstract public class AbstractTriggerTemplate {
                 symmetricDialect.getInitialLoadTableAlias(), "", table, columns, DataEventType.INSERT,
                 false, channel, trigger).columnString;
         sql = FormatUtils.replace("columns", columnsText, sql);
-        sql = FormatUtils.replace("toClob",
+        sql = FormatUtils.replace(TOKEN_TO_CLOB,
                 trigger.isUseCaptureLobs() ? toClobExpression(table) : "", sql);
         sql = FormatUtils.replace(TOKEN_TABLE_NAME, SymmetricUtils.quote(symmetricDialect, table.getName()), sql);
         sql = FormatUtils.replace("schemaName", getSourceTablePrefix(triggerHistory), sql);
@@ -353,7 +355,7 @@ abstract public class AbstractTriggerTemplate {
                 symmetricDialect.getInitialLoadTableAlias(), "", table, columns, DataEventType.INSERT,
                 false, channel, trigger).toString();
         sql = FormatUtils.replace("columns", columnsText, sql);
-        sql = FormatUtils.replace("toClob",
+        sql = FormatUtils.replace(TOKEN_TO_CLOB,
                 trigger.isUseCaptureLobs() ? toClobExpression(table) : "", sql);
         sql = FormatUtils.replace(TOKEN_TABLE_NAME, SymmetricUtils.quote(symmetricDialect, table.getName()), sql);
         sql = FormatUtils.replace("schemaName",

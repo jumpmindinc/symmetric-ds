@@ -93,65 +93,78 @@ public class ColumnsAccordingToTriggerHistory {
         String schemaName = triggerHistory.getSourceSchemaName();
         String tableName = triggerHistory.getSourceTableName();
         String tableNameLowerCase = triggerHistory.getSourceTableNameLowerCase();
-        Relation relation = null;
-        if (useDatabaseDefinition) {
-            if (isUsingTargetExternalId && !tableName.startsWith(tablePrefix)) {
-                relation = lookupRelationExpanded(getTargetPlatform(tableNameLowerCase), catalogName, schemaName, tableName, triggerHistory,
-                        addMissingColumns);
-            } else {
-                relation = lookupRelation(getTargetPlatform(tableNameLowerCase), catalogName, schemaName, tableName, triggerHistory, addMissingColumns);
-            }
-        } else {
-            relation = new Table(tableName);
-            relation.addColumns(triggerHistory.getParsedColumnNames());
-            relation.setPrimaryKeys(triggerHistory.getParsedPkColumnNames());
-        }
+        Relation relation = lookupRelationForTriggerHistory(triggerHistory, tableName, tableNameLowerCase, catalogName,
+                schemaName, useDatabaseDefinition, addMissingColumns);
         Router router = triggerRouterService.getRouterById(routerId, false);
         if (router != null && setTargetTableName) {
-            if (router.isUseSourceCatalogSchema()) {
-                relation.setCatalog(catalogName);
-                relation.setSchema(schemaName);
-            } else {
-                relation.setCatalog(null);
-                relation.setSchema(null);
-            }
-            if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
-                relation.setCatalog(null);
-            } else if (StringUtils.isNotBlank(router.getTargetCatalogName())) {
-                relation.setCatalog(SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetCatalogName()));
-                relation.setCatalog(SymmetricUtils.replaceCatalogSchemaVariables(catalogName,
-                        symmetricDialect.getTargetPlatform().getDefaultCatalog(),
-                        schemaName,
-                        symmetricDialect.getTargetPlatform().getDefaultSchema(),
-                        router.getTargetCatalogName()));
-            }
-            if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
-                relation.setSchema(null);
-            } else if (StringUtils.isNotBlank(router.getTargetSchemaName())) {
-                relation.setSchema(SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetSchemaName()));
-                relation.setSchema(SymmetricUtils.replaceCatalogSchemaVariables(catalogName,
-                        symmetricDialect.getTargetPlatform().getDefaultCatalog(),
-                        schemaName,
-                        symmetricDialect.getTargetPlatform().getDefaultSchema(),
-                        router.getTargetSchemaName()));
-            }
-            if (StringUtils.isNotBlank(router.getTargetTableName())) {
-                relation.setName(router.getTargetTableName());
-            }
+            applyRouterTargetNames(relation, router, catalogName, schemaName);
         }
         if (useTransforms) {
-            TransformTable transform = getTransform(relation, TransformPoint.EXTRACT, Integer.MIN_VALUE);
-            while (transform != null) {
-                applyTransform(relation, transform);
-                transform = getTransform(relation, TransformPoint.EXTRACT, transform.getTransformOrder() + 1);
-            }
-            transform = getTransform(relation, TransformPoint.LOAD, Integer.MIN_VALUE);
-            while (transform != null) {
-                applyTransform(relation, transform);
-                transform = getTransform(relation, TransformPoint.LOAD, transform.getTransformOrder() + 1);
-            }
+            applyTransforms(relation, TransformPoint.EXTRACT);
+            applyTransforms(relation, TransformPoint.LOAD);
         }
         return relation;
+    }
+
+    private Relation lookupRelationForTriggerHistory(TriggerHistory triggerHistory, String tableName, String tableNameLowerCase,
+            String catalogName, String schemaName, boolean useDatabaseDefinition, boolean addMissingColumns) {
+        if (!useDatabaseDefinition) {
+            Relation relation = new Table(tableName);
+            relation.addColumns(triggerHistory.getParsedColumnNames());
+            relation.setPrimaryKeys(triggerHistory.getParsedPkColumnNames());
+            return relation;
+        }
+        if (isUsingTargetExternalId && !tableName.startsWith(tablePrefix)) {
+            return lookupRelationExpanded(getTargetPlatform(tableNameLowerCase), catalogName, schemaName, tableName, triggerHistory, addMissingColumns);
+        }
+        return lookupRelation(getTargetPlatform(tableNameLowerCase), catalogName, schemaName, tableName, triggerHistory, addMissingColumns);
+    }
+
+    private void applyRouterTargetNames(Relation relation, Router router, String catalogName, String schemaName) {
+        if (router.isUseSourceCatalogSchema()) {
+            relation.setCatalog(catalogName);
+            relation.setSchema(schemaName);
+        } else {
+            relation.setCatalog(null);
+            relation.setSchema(null);
+        }
+        applyRouterTargetCatalog(relation, router, catalogName, schemaName);
+        applyRouterTargetSchema(relation, router, catalogName, schemaName);
+        if (StringUtils.isNotBlank(router.getTargetTableName())) {
+            relation.setName(router.getTargetTableName());
+        }
+    }
+
+    private void applyRouterTargetCatalog(Relation relation, Router router, String catalogName, String schemaName) {
+        if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
+            relation.setCatalog(null);
+        } else if (StringUtils.isNotBlank(router.getTargetCatalogName())) {
+            relation.setCatalog(SymmetricUtils.replaceCatalogSchemaVariables(catalogName,
+                    symmetricDialect.getTargetPlatform().getDefaultCatalog(),
+                    schemaName,
+                    symmetricDialect.getTargetPlatform().getDefaultSchema(),
+                    router.getTargetCatalogName()));
+        }
+    }
+
+    private void applyRouterTargetSchema(Relation relation, Router router, String catalogName, String schemaName) {
+        if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
+            relation.setSchema(null);
+        } else if (StringUtils.isNotBlank(router.getTargetSchemaName())) {
+            relation.setSchema(SymmetricUtils.replaceCatalogSchemaVariables(catalogName,
+                    symmetricDialect.getTargetPlatform().getDefaultCatalog(),
+                    schemaName,
+                    symmetricDialect.getTargetPlatform().getDefaultSchema(),
+                    router.getTargetSchemaName()));
+        }
+    }
+
+    private void applyTransforms(Relation relation, TransformPoint transformPoint) {
+        TransformTable transform = getTransform(relation, transformPoint, Integer.MIN_VALUE);
+        while (transform != null) {
+            applyTransform(relation, transform);
+            transform = getTransform(relation, transformPoint, transform.getTransformOrder() + 1);
+        }
     }
 
     protected IDatabasePlatform getTargetPlatform(String tableName) {
@@ -227,28 +240,7 @@ public class ColumnsAccordingToTriggerHistory {
         List<TransformColumn> transformColumns = transform.getTransformColumns();
         if (transformColumns != null) {
             for (TransformColumn transformColumn : transformColumns) {
-                if (StringUtils.isNotBlank(transformColumn.getSourceColumnName())) {
-                    Column column = relation.getColumnWithName(transformColumn.getSourceColumnName());
-                    if (column != null) {
-                        columnNamesToRemoveList.remove(column.getName());
-                        column.setName(transformColumn.getTargetColumnName());
-                        if (RemoveColumnTransform.NAME.equals(transformColumn.getTransformType())) {
-                            columnNamesToRemoveList.add(column.getName());
-                        } else {
-                            columnNamesToRemoveList.remove(column.getName());
-                        }
-                        column.setPrimaryKey(transformColumn.isPk());
-                    }
-                } else {
-                    Column column = new Column(transformColumn.getTargetColumnName());
-                    column.setPrimaryKey(transformColumn.isPk());
-                    column.setTypeCode(Types.VARCHAR);
-                    column.setJdbcTypeCode(Types.VARCHAR);
-                    column.setJdbcTypeName("VARCHAR");
-                    column.setSize("100");
-                    relation.addColumn(column);
-                    columnNamesToRemoveList.remove(column.getName());
-                }
+                applyTransformColumn(relation, transformColumn, columnNamesToRemoveList);
             }
         }
         for (String columnName : columnNamesToRemoveList) {
@@ -257,6 +249,31 @@ public class ColumnsAccordingToTriggerHistory {
         relation.setCatalog(transform.getTargetCatalogName());
         relation.setSchema(transform.getTargetSchemaName());
         relation.setName(transform.getTargetTableName());
+    }
+
+    private void applyTransformColumn(Relation relation, TransformColumn transformColumn, List<String> columnNamesToRemoveList) {
+        if (StringUtils.isNotBlank(transformColumn.getSourceColumnName())) {
+            Column column = relation.getColumnWithName(transformColumn.getSourceColumnName());
+            if (column != null) {
+                columnNamesToRemoveList.remove(column.getName());
+                column.setName(transformColumn.getTargetColumnName());
+                if (RemoveColumnTransform.NAME.equals(transformColumn.getTransformType())) {
+                    columnNamesToRemoveList.add(column.getName());
+                } else {
+                    columnNamesToRemoveList.remove(column.getName());
+                }
+                column.setPrimaryKey(transformColumn.isPk());
+            }
+        } else {
+            Column column = new Column(transformColumn.getTargetColumnName());
+            column.setPrimaryKey(transformColumn.isPk());
+            column.setTypeCode(Types.VARCHAR);
+            column.setJdbcTypeCode(Types.VARCHAR);
+            column.setJdbcTypeName("VARCHAR");
+            column.setSize("100");
+            relation.addColumn(column);
+            columnNamesToRemoveList.remove(column.getName());
+        }
     }
 
     static class CacheKey {

@@ -57,34 +57,41 @@ public class RaimaDdlReader extends AbstractJdbcDdlReader {
         Relation relation = super.readRelation(connection, metaData, values);
         if (relation != null) {
             if (relation instanceof Table table) {
-                determineAutoIncrementFromResultSetMetaData(connection, table,
-                        table.getColumns());
-                if (table.getIndexCount() > 0) {
-                    Collection<IIndex> nonPkIndices = new ArrayList<IIndex>();
-                    for (IIndex index : table.getIndices()) {
-                        if (index.getColumnCount() == table.getPrimaryKeyColumnCount()) {
-                            int matches = 0;
-                            for (IndexColumn indexColumn : index.getColumns()) {
-                                for (String pkColName : table.getPrimaryKeyColumnNames()) {
-                                    if (pkColName.equals(indexColumn.getName())) {
-                                        matches++;
-                                    }
-                                }
-                            }
-                            if (matches != index.getColumnCount()) {
-                                nonPkIndices.add(index);
-                            }
-                        } else {
-                            nonPkIndices.add(index);
-                        }
-                    }
-                    table.removeAllIndices();
-                    table.addIndices(nonPkIndices);
-                }
+                determineAutoIncrementFromResultSetMetaData(connection, table, table.getColumns());
+                removeNonPkDuplicateIndices(table);
             }
             relation.setCatalog(null);
         }
         return relation;
+    }
+
+    private void removeNonPkDuplicateIndices(Table table) {
+        if (table.getIndexCount() == 0) {
+            return;
+        }
+        Collection<IIndex> nonPkIndices = new ArrayList<IIndex>();
+        for (IIndex index : table.getIndices()) {
+            if (!isPrimaryKeyIndex(index, table)) {
+                nonPkIndices.add(index);
+            }
+        }
+        table.removeAllIndices();
+        table.addIndices(nonPkIndices);
+    }
+
+    private boolean isPrimaryKeyIndex(IIndex index, Table table) {
+        if (index.getColumnCount() != table.getPrimaryKeyColumnCount()) {
+            return false;
+        }
+        int matches = 0;
+        for (IndexColumn indexColumn : index.getColumns()) {
+            for (String pkColName : table.getPrimaryKeyColumnNames()) {
+                if (pkColName.equals(indexColumn.getName())) {
+                    matches++;
+                }
+            }
+        }
+        return matches == index.getColumnCount();
     }
 
     @Override

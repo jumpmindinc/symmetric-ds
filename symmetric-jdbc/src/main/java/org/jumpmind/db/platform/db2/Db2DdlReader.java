@@ -341,7 +341,7 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
         for (int i = 0; columns != null && i < columns.length; i++) {
             if (columns[i].getMappedTypeCode() == Types.ROWID || columns[i].getName().equals("DB2_GENERATED_ROWID_FOR_LOBS")) {
                 found = true;
-                log.info("Found generated and/or rowid column on table " + table.getFullyQualifiedName() + ", column " + columns[i].getName());
+                log.info("Found generated and/or rowid column on table {}, column {}", table.getFullyQualifiedName(), columns[i].getName());
             } else {
                 tempColumns.add(columns[i]);
             }

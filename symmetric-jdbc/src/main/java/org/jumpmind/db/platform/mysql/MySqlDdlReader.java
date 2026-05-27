@@ -115,44 +115,63 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
                 " FROM information_schema.columns WHERE table_schema = ? AND table_name = ?";
         List<Row> rows = platform.getSqlTemplateDirty().query(sql, new Object[] { relation.getCatalog(), relation.getName() });
         for (Row row : rows) {
-            String extra = row.getString("extra");
             String columnName = row.getString("column_name");
-            String columnType = row.getString("column_type");
-            if (StringUtils.isNotBlank(extra)) {
-                Column column = relation.findColumn(columnName);
-                if (column != null) {
-                    if (column.getMappedTypeCode() == Types.TIMESTAMP && extra.toLowerCase().contains("on update")) {
-                        column.setAutoUpdate(true);
-                        column.setGenerated(false);
-                    } else if (supportsGeneratedColumns && column.isGenerated()) {
-                        if (extra.toUpperCase().contains("DEFAULT_GENERATED")) {
-                            column.setGenerated(false);
-                            column.setExpressionAsDefaultValue(true);
-                        } else if (column.getDefaultValue() == null || column.getDefaultValue().equalsIgnoreCase("NULL")) {
-                            column.setDefaultValue(row.getString("generation_expression"));
-                        }
-                    } else if (extra.equalsIgnoreCase("auto_increment")) {
-                        column.setAutoIncrement(true);
-                    }
-                }
-            }
-            if (columnType != null && (columnType.toLowerCase().startsWith("enum(") || columnType.toLowerCase().startsWith("set("))) {
-                int prefixLength = columnType.toLowerCase().startsWith("enum(") ? 5 : 4;
-                String[] parsedEnums = columnType.substring(prefixLength, columnType.length() - 1).split(",");
-                for (int i = 0; i < parsedEnums.length; i++) {
-                    parsedEnums[i] = StringUtils.unwrap(parsedEnums[i], "'");
-                }
-                Column column = relation.findColumn(columnName);
-                if (column != null) {
-                    PlatformColumn platformColumn = column.getPlatformColumns().get(platform.getName());
-                    if (platformColumn != null) {
-                        platformColumn.setEnumValues(parsedEnums);
-                    }
-                }
-            }
+            applyExtraColumnProperty(relation, row, columnName);
+            applyEnumColumnType(relation, row.getString("column_type"), columnName);
         }
         if (rows.isEmpty()) {
             log.warn("Could not find extra column info for table {}", relation.getFullyQualifiedName());
+        }
+    }
+
+    private void applyExtraColumnProperty(Relation relation, Row row, String columnName) {
+        String extra = row.getString("extra");
+        if (StringUtils.isBlank(extra)) {
+            return;
+        }
+        Column column = relation.findColumn(columnName);
+        if (column == null) {
+            return;
+        }
+        if (column.getMappedTypeCode() == Types.TIMESTAMP && extra.toLowerCase().contains("on update")) {
+            column.setAutoUpdate(true);
+            column.setGenerated(false);
+        } else if (supportsGeneratedColumns && column.isGenerated()) {
+            applyGeneratedColumnExtra(column, row, extra);
+        } else if (extra.equalsIgnoreCase("auto_increment")) {
+            column.setAutoIncrement(true);
+        }
+    }
+
+    private void applyGeneratedColumnExtra(Column column, Row row, String extra) {
+        if (extra.toUpperCase().contains("DEFAULT_GENERATED")) {
+            column.setGenerated(false);
+            column.setExpressionAsDefaultValue(true);
+        } else if (column.getDefaultValue() == null || column.getDefaultValue().equalsIgnoreCase("NULL")) {
+            column.setDefaultValue(row.getString("generation_expression"));
+        }
+    }
+
+    private void applyEnumColumnType(Relation relation, String columnType, String columnName) {
+        if (columnType == null) {
+            return;
+        }
+        String columnTypeLower = columnType.toLowerCase();
+        if (!columnTypeLower.startsWith("enum(") && !columnTypeLower.startsWith("set(")) {
+            return;
+        }
+        int prefixLength = columnTypeLower.startsWith("enum(") ? 5 : 4;
+        String[] parsedEnums = columnType.substring(prefixLength, columnType.length() - 1).split(",");
+        for (int i = 0; i < parsedEnums.length; i++) {
+            parsedEnums[i] = StringUtils.unwrap(parsedEnums[i], "'");
+        }
+        Column column = relation.findColumn(columnName);
+        if (column == null) {
+            return;
+        }
+        PlatformColumn platformColumn = column.getPlatformColumns().get(platform.getName());
+        if (platformColumn != null) {
+            platformColumn.setEnumValues(parsedEnums);
         }
     }
 

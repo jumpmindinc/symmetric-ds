@@ -238,37 +238,44 @@ public class ExtractDataReader implements IDataReader {
     }
 
     protected CsvData enhanceWithLobsFromSourceIfNeeded(Relation relation, CsvData data) {
-        if (this.currentSource.requiresLobsSelectedFromSource(data)
-                && (data.getDataEventType() == DataEventType.UPDATE || data.getDataEventType() == DataEventType.INSERT)) {
-            List<Column> lobColumns = platform.getLobColumns(relation);
-            if (!lobColumns.isEmpty()) {
-                String[] columnNames = relation.getColumnNames();
-                String[] rowData = data.getParsedData(CsvData.ROW_DATA);
-                Column[] orderedColumns = relation.getColumns();
-                Object[] objectValues = platform.getObjectValues(batch.getBinaryEncoding(), rowData, orderedColumns);
-                Map<String, Object> columnDataMap = CollectionUtils.toMap(columnNames, objectValues);
-                Column[] pkColumns = relation.getPrimaryKeyColumns();
-                Object[] args = new Object[pkColumns.length];
-                for (int i = 0; i < pkColumns.length; i++) {
-                    args[i] = columnDataMap.get(pkColumns[i].getName());
-                }
-                String sql = buildSelect(relation, lobColumns, pkColumns);
-                Row row = targetPlatform.getSqlTemplate().queryForRow(sql, args);
-                if (row == null) {
-                    row = createRowForRequiredLobs(lobColumns);
-                }
-                if (row != null) {
-                    for (Column lobColumn : lobColumns) {
-                        String valueForCsv = platform.isBlob(lobColumn)
-                                ? convertBlobValueForCsv(lobColumn, row)
-                                : row.getString(lobColumn.getName());
-                        rowData[ArrayUtils.indexOf(columnNames, lobColumn.getName())] = valueForCsv;
-                    }
-                    data.putParsedData(CsvData.ROW_DATA, rowData);
-                }
-            }
+        if (!this.currentSource.requiresLobsSelectedFromSource(data)) {
+            return data;
+        }
+        if (data.getDataEventType() != DataEventType.UPDATE && data.getDataEventType() != DataEventType.INSERT) {
+            return data;
+        }
+        List<Column> lobColumns = platform.getLobColumns(relation);
+        if (!lobColumns.isEmpty()) {
+            fillLobColumnsFromSource(relation, data, lobColumns);
         }
         return data;
+    }
+
+    private void fillLobColumnsFromSource(Relation relation, CsvData data, List<Column> lobColumns) {
+        String[] columnNames = relation.getColumnNames();
+        String[] rowData = data.getParsedData(CsvData.ROW_DATA);
+        Column[] orderedColumns = relation.getColumns();
+        Object[] objectValues = platform.getObjectValues(batch.getBinaryEncoding(), rowData, orderedColumns);
+        Map<String, Object> columnDataMap = CollectionUtils.toMap(columnNames, objectValues);
+        Column[] pkColumns = relation.getPrimaryKeyColumns();
+        Object[] args = new Object[pkColumns.length];
+        for (int i = 0; i < pkColumns.length; i++) {
+            args[i] = columnDataMap.get(pkColumns[i].getName());
+        }
+        String sql = buildSelect(relation, lobColumns, pkColumns);
+        Row row = targetPlatform.getSqlTemplate().queryForRow(sql, args);
+        if (row == null) {
+            row = createRowForRequiredLobs(lobColumns);
+        }
+        if (row != null) {
+            for (Column lobColumn : lobColumns) {
+                String valueForCsv = platform.isBlob(lobColumn)
+                        ? convertBlobValueForCsv(lobColumn, row)
+                        : row.getString(lobColumn.getName());
+                rowData[ArrayUtils.indexOf(columnNames, lobColumn.getName())] = valueForCsv;
+            }
+            data.putParsedData(CsvData.ROW_DATA, rowData);
+        }
     }
 
     private String convertBlobValueForCsv(Column lobColumn, Row row) {
@@ -302,27 +309,32 @@ public class ExtractDataReader implements IDataReader {
     }
 
     protected CsvData convertUtf16toUTF8(Relation relation, CsvData data) {
-        if (data.getDataEventType() == DataEventType.UPDATE || data.getDataEventType() == DataEventType.INSERT) {
-            List<Column> uniColumns = getUniColumns(relation);
-            if (!uniColumns.isEmpty()) {
-                String[] columnNames = relation.getColumnNames();
-                String[] rowData = data.getParsedData(CsvData.ROW_DATA);
-                boolean skipUnitext = this.currentSource.requiresLobsSelectedFromSource(data);
-                String fullyQualifiedRelationName = relation.getFullyQualifiedName();
-                for (Column uniColumn : uniColumns) {
-                    String jdbcType = uniColumn.getJdbcTypeName();
-                    if (jdbcType != null && jdbcType.equalsIgnoreCase("unitext") && skipUnitext) {
-                        continue;
-                    }
-                    int index = ArrayUtils.indexOf(columnNames, uniColumn.getName());
-                    if (index >= 0 && rowData[index] != null) {
-                        rowData[index] = convertColumnUtf16ToUtf8(uniColumn, rowData[index], fullyQualifiedRelationName);
-                    }
-                }
-                data.putParsedData(CsvData.ROW_DATA, rowData);
-            }
+        if (data.getDataEventType() != DataEventType.UPDATE && data.getDataEventType() != DataEventType.INSERT) {
+            return data;
+        }
+        List<Column> uniColumns = getUniColumns(relation);
+        if (!uniColumns.isEmpty()) {
+            convertUniColumnsInRowData(relation, data, uniColumns);
         }
         return data;
+    }
+
+    private void convertUniColumnsInRowData(Relation relation, CsvData data, List<Column> uniColumns) {
+        String[] columnNames = relation.getColumnNames();
+        String[] rowData = data.getParsedData(CsvData.ROW_DATA);
+        boolean skipUnitext = this.currentSource.requiresLobsSelectedFromSource(data);
+        String fullyQualifiedRelationName = relation.getFullyQualifiedName();
+        for (Column uniColumn : uniColumns) {
+            String jdbcType = uniColumn.getJdbcTypeName();
+            if (jdbcType != null && jdbcType.equalsIgnoreCase("unitext") && skipUnitext) {
+                continue;
+            }
+            int index = ArrayUtils.indexOf(columnNames, uniColumn.getName());
+            if (index >= 0 && rowData[index] != null) {
+                rowData[index] = convertColumnUtf16ToUtf8(uniColumn, rowData[index], fullyQualifiedRelationName);
+            }
+        }
+        data.putParsedData(CsvData.ROW_DATA, rowData);
     }
 
     private String convertColumnUtf16ToUtf8(Column uniColumn, String value, String fullyQualifiedRelationName) {

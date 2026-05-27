@@ -290,7 +290,6 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
 
     public void createTriggersOnChannelForTables(String channelId, String catalogName,
             String schemaName, List<String> tables, String lastUpdateBy) {
-        List<Trigger> createdTriggers = new ArrayList<>();
         List<Trigger> existingTriggers = getTriggers();
         for (String table : tables) {
             Trigger trigger = new Trigger();
@@ -328,7 +327,6 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             trigger.setLastUpdateTime(new Date());
             trigger.setCreateTime(new Date());
             saveTrigger(trigger);
-            createdTriggers.add(trigger);
         }
     }
 
@@ -877,9 +875,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         String myNodeGroupId = parameterService.getNodeGroupId();
         Map<String, TriggerRouterRoutersCache> newTriggerRouterCacheByNodeGroupId = new HashMap<>();
         List<TriggerRouter> triggerRouters = getAllTriggerRoutersForCurrentNode(myNodeGroupId);
-        Map<String, List<TriggerRouter>> triggerRoutersByTriggerId = new HashMap<>(
-                triggerRouters.size());
-        Map<String, Router> routers = new HashMap<>(triggerRouters.size());
+        Map<String, List<TriggerRouter>> triggerRoutersByTriggerId = HashMap.newHashMap(triggerRouters.size());
+        Map<String, Router> routers = HashMap.newHashMap(triggerRouters.size());
         for (TriggerRouter triggerRouter : triggerRouters) {
             if (triggerRouter.isEnabled()) {
                 boolean sourceEnabled = groupletService.isSourceEnabled(triggerRouter);
@@ -1727,7 +1724,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     protected Set<String> getTriggerIdsFrom(List<Trigger> triggersThatShouldBeActive) {
-        Set<String> triggerIds = new HashSet<>(triggersThatShouldBeActive.size());
+        Set<String> triggerIds = HashSet.newHashSet(triggersThatShouldBeActive.size());
         for (Trigger trigger : triggersThatShouldBeActive) {
             triggerIds.add(trigger.getTriggerId());
         }
@@ -2066,7 +2063,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                     }
                 }
             }
-            if (relations.size() > 0) {
+            if (!relations.isEmpty()) {
                 return syncTriggers(relations, force);
             }
         }
@@ -2303,8 +2300,14 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
 
     private String resolveTriggerName(Trigger trigger, Relation relation, DataEventType eventType, int maxLength,
             List<TriggerHistory> activeTriggerHistories, TriggerHistory latestHistory, List<String> generated) {
-        boolean syncOnEvent = eventType == DataEventType.INSERT ? trigger.isSyncOnInsert()
-                : (eventType == DataEventType.UPDATE ? trigger.isSyncOnUpdate() : trigger.isSyncOnDelete());
+        boolean syncOnEvent;
+        if (eventType == DataEventType.INSERT) {
+            syncOnEvent = trigger.isSyncOnInsert();
+        } else if (eventType == DataEventType.UPDATE) {
+            syncOnEvent = trigger.isSyncOnUpdate();
+        } else {
+            syncOnEvent = trigger.isSyncOnDelete();
+        }
         if (!syncOnEvent) {
             return null;
         }
@@ -2397,7 +2400,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             Map<String, List<TriggerRelationSupportingInfo>> triggerToRelationSupportingInfo,
             TriggerRouterContext context) {
         List<TriggerRelationSupportingInfo> triggerRelationSupportingInfoList = triggerToRelationSupportingInfo.get(trigger.getTriggerId());
-        if (triggerRelationSupportingInfoList != null && triggerRelationSupportingInfoList.size() > 0) {
+        if (triggerRelationSupportingInfoList != null && !triggerRelationSupportingInfoList.isEmpty()) {
             for (TriggerRelationSupportingInfo triggerRelationSupportingInfo : triggerRelationSupportingInfoList) {
                 long ts = System.currentTimeMillis();
                 updateOrCreateDatabaseTriggers(trigger, triggerRelationSupportingInfo.getRelation(),
@@ -2561,18 +2564,23 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             context.incrementTriggersSyncedCount(1);
             notifyListenersAfterTriggerSync(newestHistory, trigger, activeTriggerHistories, context);
         } catch (Exception ex) {
-            log.error(String.format("Failed to create triggers for %s", trigger.qualifiedSourceTableName()), ex);
-            invalidateTriggerHistory(newestHistory, ex);
-            boolean usingTargetDialect = !getSymmetricDialect().equals(getTargetDialect())
-                    && !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix());
-            if (newestHistory != null && !usingTargetDialect) {
-                dropTriggers(newestHistory, options.sqlBuffer);
-            }
-            context.incrementTriggersSyncedCount(1);
-            context.addTriggersFailed(trigger.qualifiedSourceTableName(), ex);
-            for (ITriggerCreationListener l : extensionService.getExtensionPointList(ITriggerCreationListener.class)) {
-                l.triggerFailed(context.getTriggersToSyncCount(), context.getTriggersSyncedCount(), trigger, ex);
-            }
+            handleTriggerSyncError(newestHistory, trigger, options, context, ex);
+        }
+    }
+
+    private void handleTriggerSyncError(TriggerHistory newestHistory, Trigger trigger,
+            TriggerSyncOptions options, TriggerRouterContext context, Exception ex) {
+        log.error(String.format("Failed to create triggers for %s", trigger.qualifiedSourceTableName()), ex);
+        invalidateTriggerHistory(newestHistory, ex);
+        boolean usingTargetDialect = !getSymmetricDialect().equals(getTargetDialect())
+                && !trigger.getSourceTableName().startsWith(getSymmetricDialect().getTablePrefix());
+        if (newestHistory != null && !usingTargetDialect) {
+            dropTriggers(newestHistory, options.sqlBuffer);
+        }
+        context.incrementTriggersSyncedCount(1);
+        context.addTriggersFailed(trigger.qualifiedSourceTableName(), ex);
+        for (ITriggerCreationListener l : extensionService.getExtensionPointList(ITriggerCreationListener.class)) {
+            l.triggerFailed(context.getTriggersToSyncCount(), context.getTriggersSyncedCount(), trigger, ex);
         }
     }
 
@@ -3177,8 +3185,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             String sourceNodeGroupId, String targetNodeGroupId, String targetExternalId, List<TriggerHistory> triggerHistories,
             List<TriggerRouter> triggerRouters) {
         triggerRouters = new ArrayList<>(triggerRouters);
-        Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId = new HashMap<>(
-                triggerHistories.size());
+        Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId = HashMap.newHashMap(triggerHistories.size());
         for (TriggerHistory triggerHistory : triggerHistories) {
             List<TriggerRouter> triggerRoutersForTriggerHistory = new ArrayList<>();
             triggerRoutersByHistoryId.put(triggerHistory.getTriggerHistoryId(),

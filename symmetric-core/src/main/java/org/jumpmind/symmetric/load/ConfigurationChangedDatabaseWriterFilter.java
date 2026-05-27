@@ -29,7 +29,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -225,7 +224,7 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
                 && (parameterService.is(ParameterConstants.TRIGGER_CREATE_BEFORE_INITIAL_LOAD)
                         || nodeService.findNodeSecurity(nodeService.findIdentityNodeId(), true).hasInitialLoaded())
                 && engine.getSymmetricDialect().getPlatform().equals(engine.getTargetDialect().getPlatform())) {
-            engine.getTriggerRouterService().syncTriggers(new ArrayList<Relation>(tables), false);
+            engine.getTriggerRouterService().syncTriggers(new ArrayList<>(tables), false);
         }
         if (context.remove(CTX_KEY_INITIAL_LOAD_COMPLETED) != null) {
             long loadId = (long) context.remove(CTX_KEY_INITAL_LOAD_ID);

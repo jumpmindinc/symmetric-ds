@@ -191,39 +191,42 @@ public class IngresDdlReader extends AbstractJdbcDdlReader {
     protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
         Relation relation = super.readRelation(connection, metaData, values);
-        String schema = relation.getSchema();
+        if (relation instanceof Table table) {
+            enrichTableWithColumnInfo(connection, table);
+        }
+        return relation;
+    }
+
+    private void enrichTableWithColumnInfo(Connection connection, Table table) throws SQLException {
+        String schema = table.getSchema();
         // select column_name, column_always_ident, column_bydefault_ident
         // from iicolumns
         // where table_name='test_uppercase_table' and (column_always_ident='Y' OR column_bydefault_ident='Y')
         // column types that can have identity generators are int and bigint
         // only one column per table can have identity generator
-        boolean setTableOwner = schema != null && schema.length() > 0 ? true : false;
+        boolean setTableOwner = schema != null && schema.length() > 0;
         StringBuilder sql = new StringBuilder("select column_name,  column_always_ident, column_bydefault_ident, column_default_val ")
                 .append("from iicolumns ")
                 .append("where table_name=? ")
-                .append(schema != null && schema.length() > 0 ? " and table_owner=? " : "");
-        Object[] args = new Object[] { relation.getName() };
+                .append(setTableOwner ? " and table_owner=? " : "");
         PreparedStatement ps = null;
         ResultSet rs = null;
         try {
             ps = connection.prepareStatement(sql.toString());
-            ps.setString(1, relation.getName());
+            ps.setString(1, table.getName());
             if (setTableOwner) {
                 ps.setString(2, schema);
             }
             ps.setQueryTimeout(((IngresDatabasePlatform) platform).getSettings().getQueryTimeout());
             rs = ps.executeQuery();
-            if (relation instanceof Table table) {
-                processAdditionalColumnInformation(table, rs);
-            }
+            processAdditionalColumnInformation(table, rs);
         } catch (SQLException e) {
-            log.error(sql.toString(), args, e);
+            log.error(sql.toString(), new Object[] { table.getName() }, e);
             throw e;
         } finally {
             close(rs);
             close(ps);
         }
-        return relation;
     }
 
     @Override
