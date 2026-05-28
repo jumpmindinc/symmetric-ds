@@ -664,14 +664,14 @@ public class DbCompare {
             } else {
                 targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_CATALOG),
                         tableNameParts
-                                .get("schema"),
+                                .get(TABLE_NAME_PART_SCHEMA),
                         tableNameParts
-                                .get("table"), true);
+                                .get(TABLE_NAME_PART_TABLE), true);
                 if (targetTable == null) {
                     targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_SCHEMA),
                             tableNameParts
                                     .get(
-                                            "catalog"),
+                                            TABLE_NAME_PART_CATALOG),
                             tableNameParts.get(TABLE_NAME_PART_TABLE), true);
                 }
             }
@@ -762,7 +762,7 @@ public class DbCompare {
         } else {
             Map<String, String> sourceTableNameParts = sourceEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(sourceTableName);
             Map<String, String> targetTableNameParts = targetEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(targetTableName);
-            return Strings.CI.equals(sourceTableNameParts.get("table"), targetTableNameParts.get("table"));
+            return Strings.CI.equals(sourceTableNameParts.get(TABLE_NAME_PART_TABLE), targetTableNameParts.get(TABLE_NAME_PART_TABLE));
         }
     }
 
