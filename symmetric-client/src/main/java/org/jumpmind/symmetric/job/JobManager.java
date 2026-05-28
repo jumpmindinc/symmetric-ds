@@ -86,7 +86,8 @@ public class JobManager extends AbstractService implements IJobManager {
 
     @Override
     public List<JobDefinition> getCustomJobDefinitions() {
-        return sqlTemplate.query(getSql("loadCustomJobs"), new JobMapper());
+        return sqlTemplate.query(getSql("loadCustomJobs"), new JobMapper()).stream()
+                .filter(d -> d != null).collect(Collectors.toList());
     }
 
     @Override
@@ -210,17 +211,16 @@ public class JobManager extends AbstractService implements IJobManager {
     @Override
     public void saveJob(JobDefinition job) {
         if (sqlTemplate.update(getSql("updateJobSql"),
-                new Object[] { job.getDescription(), job.getJobType().toString(), job.getJobExpression(),
+                new Object[] { job.getDescription(), job.getJobType().toString(), job.getJobExpression(), job.getImplementation(),
                         job.isDefaultAutomaticStartup() ? 1 : 0, job.getDefaultSchedule(), job.getNodeGroupId(), job.isClustered() ? 1 : 0,
                         job.getCreateBy(), job.getLastUpdateBy(), new Date(), job.getJobName() }) <= 0) {
             sqlTemplate.update(getSql("insertJobSql"),
-                    new Object[] { job.getDescription(), job.getJobType().toString(), job.getJobExpression(),
+                    new Object[] { job.getDescription(), job.getJobType().toString(), job.getJobExpression(), job.getImplementation(),
                             job.isDefaultAutomaticStartup() ? 1 : 0, job.getDefaultSchedule(), job.getNodeGroupId(), job.isClustered() ? 1 : 0,
                             job.getCreateBy(), new Date(), job.getLastUpdateBy(), new Date(), job.getJobName() });
         }
         if (job.isClustered() || job.getJobType() == JobDefinition.JobType.BSH
-                || job.getJobType() == JobDefinition.JobType.JAVA || job.getJobType() == JobDefinition.JobType.SQL
-                || job.getJobType() == JobDefinition.JobType.REFRESH) {
+                || job.getJobType() == JobDefinition.JobType.JAVA || job.getJobType() == JobDefinition.JobType.SQL) {
             engine.getClusterService().addLock(job.getJobName(), ClusterConstants.TYPE_CLUSTER);
         }
     }

@@ -37,6 +37,8 @@ endif::pro[]
 
 Node Group:: Targets the job at a specific node group id. To target all groups, use the value of 'ALL'.
 
+Implementation:: Fully-qualified class name of a built-in job to extend. When set, takes precedence over Type and Job Expression. Only `com.jumpmind.symmetric.job.DataRefreshJob` is currently supported (Pro only).
+
 ifdef::pro[]
 Schedule:: Specifies how often this job should run.  If the schedule is just a number, it is interpreted as milliseconds.  So 60000 means to run the job every minute.  Otherwise, a cron expression can be specified. Some sample cron expressions include:
 * Every fifth minute: 0 0/5 * * * *

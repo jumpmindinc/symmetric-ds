@@ -24,13 +24,24 @@ import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.symmetric.model.JobDefinition;
 import org.jumpmind.symmetric.model.JobDefinition.JobType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JobMapper implements ISqlRowMapper<JobDefinition> {
+    private static final Logger log = LoggerFactory.getLogger(JobMapper.class);
+
     @Override
     public JobDefinition mapRow(Row row) {
         JobDefinition jobDefinition = new JobDefinition();
-        jobDefinition.setJobName(row.getString("job_name"));
-        jobDefinition.setJobType(JobType.valueOf(row.getString("job_type")));
+        String jobName = row.getString("job_name");
+        jobDefinition.setJobName(jobName);
+        String jobType = row.getString("job_type");
+        try {
+            jobDefinition.setJobType(JobType.valueOf(jobType));
+        } catch (IllegalArgumentException e) {
+            log.warn("Skipping job '{}' with unrecognized job_type '{}'", jobName, jobType);
+            return null;
+        }
         jobDefinition.setRequiresRegistration(row.getBoolean("requires_registration"));
         jobDefinition.setJobExpression(row.getString("job_expression"));
         jobDefinition.setDescription(row.getString("description"));
@@ -39,6 +50,7 @@ public class JobMapper implements ISqlRowMapper<JobDefinition> {
         jobDefinition.setDescription(row.getString("description"));
         jobDefinition.setNodeGroupId(row.getString("node_group_id"));
         jobDefinition.setClustered(row.getBoolean("is_clustered"));
+        jobDefinition.setImplementation(row.getString("implementation"));
         jobDefinition.setCreateBy(row.getString("create_by"));
         jobDefinition.setCreateTime(row.getDateTime("create_time"));
         jobDefinition.setLastUpdateBy(row.getString("last_update_by"));
