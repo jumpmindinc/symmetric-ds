@@ -23,10 +23,6 @@ Job Type:: The type of job. Possible types are listed below.
 
 |SQL|A job that will compile and run a sql script.
 
-ifdef::pro[]
-|REFRESH|A Data Refresh job that processes <<Table Routing>> assigned to it.
-endif::pro[]
-
 |===
 
 ifndef::pro[]
@@ -45,7 +41,7 @@ Schedule:: Specifies how often this job should run.  If the schedule is just a n
 * Every night at midnight: 0 0 0 * * *
 * Every ten minutes at the 1 o'clock hour: 0 0/10 1 * * *
 
-For all custom job types (BSH, JAVA, SQL, and REFRESH), the schedule is stored as a parameter, in the form of `job.<name>.cron` OR `job.<name>.period.time.ms` depending on whether a cron expression or period of time was entered. If both are present, the cron takes precedence. Each job also has its own auto-start parameter in the form of `start.<name>.job`.
+For all custom job types (BSH, JAVA, and SQL), the schedule is stored as a parameter, in the form of `job.<name>.cron` OR `job.<name>.period.time.ms` depending on whether a cron expression or period of time was entered. If both are present, the cron takes precedence. Each job also has its own auto-start parameter in the form of `start.<name>.job`.
 
 In addition to the user-configurable Data Refresh jobs above, there is a built-in "Data Refresh" job that is always present. It is controlled by the `start.data.refresh.job` parameter (default false).
 
