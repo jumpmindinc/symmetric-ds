@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.apache.commons.fileupload2.core.FileUploadException;
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.IApplicationHealthTracker;
 
@@ -37,7 +36,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class ReadinessUriHandler implements IUriHandler {
     @Override
     public void handle(HttpServletRequest req, HttpServletResponse res)
-            throws IOException, ServletException, FileUploadException {
+            throws IOException, ServletException {
         res.setContentType("application/json");
         IApplicationHealthTracker tracker = ApplicationHealthTracker.getTracker();
         if (tracker == null) {
@@ -71,7 +70,7 @@ public class ReadinessUriHandler implements IUriHandler {
         StringBuilder response = new StringBuilder("{\"engine_details\": [");
         boolean ready = alive;
         for (Entry<String, Boolean> engine : engineReadiness.entrySet()) {
-            ready &= engine.getValue();
+            ready &= engine.getValue() != null && engine.getValue();
             response.append("{\"engine_name\": \"");
             response.append(engine.getKey());
             response.append("\", \"status\": \"");

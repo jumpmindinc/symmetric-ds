@@ -32,7 +32,7 @@ import java.util.Map;
 import org.jumpmind.symmetric.web.ReadinessUriHandler;
 import org.junit.jupiter.api.Test;
 
-public class ReadinessUriHandlerTest {
+class ReadinessUriHandlerTest {
     private String invokePrepare(Map<String, Boolean> readiness, boolean alive) throws Exception {
         ReadinessUriHandler handler = new ReadinessUriHandler();
         Method m = ReadinessUriHandler.class.getDeclaredMethod("prepareReadinessJsonRes", Map.class, boolean.class);
