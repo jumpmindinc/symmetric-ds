@@ -32,8 +32,8 @@ public interface IApplicationHealthTracker {
     void setEngineReadiness(String engineName, boolean ready);
 
     void stopTrackingEngine(String engineName);
-    
+
     boolean isEngineReady(String engineName);
-    
+
     boolean isReady();
 }

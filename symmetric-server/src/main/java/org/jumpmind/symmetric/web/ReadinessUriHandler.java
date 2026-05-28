@@ -18,7 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.jumpmind.symmetric.web;
 
 import java.io.IOException;
@@ -79,8 +78,8 @@ public class ReadinessUriHandler implements IUriHandler {
             response.append(engine.getValue() ? "READY" : "NOT READY");
             response.append("\"},");
         }
-        if(engineReadiness.size()>0) {
-        	response.deleteCharAt(response.length() - 1);
+        if (engineReadiness.size() > 0) {
+            response.deleteCharAt(response.length() - 1);
         }
         response.append("],");
         response.append("\"status\": \"").append(ready ? "READY" : "NOT READY").append("\"}");
