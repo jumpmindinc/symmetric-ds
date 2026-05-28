@@ -151,4 +151,87 @@ class ApplicationHealthTrackerTest {
         tracker.stopTrackingEngine("engine-1");
         assertTrue(tracker.getReadinessMap().isEmpty());
     }
+
+    @Test
+    void isEngineReadyReturnsTrueForReadyEngine() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        assertTrue(tracker.isEngineReady("engine-1"));
+    }
+
+    @Test
+    void isEngineReadyReturnsFalseForNotReadyEngine() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", false);
+        assertFalse(tracker.isEngineReady("engine-1"));
+    }
+
+    @Test
+    void isEngineReadyReflectsLatestUpdate() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        assertTrue(tracker.isEngineReady("engine-1"));
+        tracker.setEngineReadiness("engine-1", false);
+        assertFalse(tracker.isEngineReady("engine-1"));
+    }
+
+    @Test
+    void isEngineReadyIsolatesEngines() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-2", false);
+        assertTrue(tracker.isEngineReady("engine-1"));
+        assertFalse(tracker.isEngineReady("engine-2"));
+    }
+
+    @Test
+    void isReadyReturnsTrueWhenNoEnginesTracked() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        assertTrue(tracker.isReady());
+    }
+
+    @Test
+    void isReadyReturnsTrueWhenAllEnginesReady() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-2", true);
+        tracker.setEngineReadiness("engine-3", true);
+        assertTrue(tracker.isReady());
+    }
+
+    @Test
+    void isReadyReturnsFalseWhenAnyEngineNotReady() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-2", false);
+        tracker.setEngineReadiness("engine-3", true);
+        assertFalse(tracker.isReady());
+    }
+
+    @Test
+    void isReadyReturnsFalseWhenAllEnginesNotReady() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", false);
+        tracker.setEngineReadiness("engine-2", false);
+        assertFalse(tracker.isReady());
+    }
+
+    @Test
+    void isReadyFlipsBackToTrueAfterEngineRecovers() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-2", false);
+        assertFalse(tracker.isReady());
+        tracker.setEngineReadiness("engine-2", true);
+        assertTrue(tracker.isReady());
+    }
+
+    @Test
+    void isReadyReturnsTrueAfterRemovingTheOnlyNotReadyEngine() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-2", false);
+        tracker.stopTrackingEngine("engine-2");
+        assertTrue(tracker.isReady());
+    }
 }

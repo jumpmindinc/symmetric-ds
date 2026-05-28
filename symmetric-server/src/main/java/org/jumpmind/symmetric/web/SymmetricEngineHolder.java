@@ -360,6 +360,7 @@ public class SymmetricEngineHolder {
             synchronized (this) {
                 if (!engines.containsKey(engine.getEngineName())) {
                     engines.put(engine.getEngineName(), engine);
+                    ApplicationHealthTracker.getTracker().setEngineReadiness(engine.getEngineName(), false);
                 } else {
                     String message = "An engine with the name of " + engine.getEngineName() +
                             " was not started because an engine of the same name has already been started.  " +

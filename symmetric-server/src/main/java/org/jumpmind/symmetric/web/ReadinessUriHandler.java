@@ -48,7 +48,7 @@ public class ReadinessUriHandler implements IUriHandler {
         boolean alive = tracker.isAlive();
         String response = prepareReadinessJsonRes(tracker.getReadinessMap(), alive);
         if (!tracker.isReady()) {
-            res.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            res.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
         }
         res.getWriter().write(response);
     }
@@ -78,6 +78,9 @@ public class ReadinessUriHandler implements IUriHandler {
             response.append("\", \"status\": \"");
             response.append(engine.getValue() ? "READY" : "NOT READY");
             response.append("\"},");
+        }
+        if(engineReadiness.size()>0) {
+        	response.deleteCharAt(response.length() - 1);
         }
         response.append("],");
         response.append("\"status\": \"").append(ready ? "READY" : "NOT READY").append("\"}");

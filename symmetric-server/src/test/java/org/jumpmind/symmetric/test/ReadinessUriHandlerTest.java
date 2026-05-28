@@ -43,7 +43,7 @@ public class ReadinessUriHandlerTest {
     @Test
     void emptyMapReportsReadyOverall() throws Exception {
         String result = invokePrepare(Collections.emptyMap(), true);
-        assertEquals("{\"engine_details\": [],{\"status\": \"READY\"}", result);
+        assertEquals("{\"engine_details\": [],\"status\": \"READY\"}", result);
     }
 
     @Test
@@ -52,7 +52,7 @@ public class ReadinessUriHandlerTest {
         readiness.put("engine-1", true);
         String result = invokePrepare(readiness, true);
         assertEquals(
-                "{\"engine_details\": [{\"engine_name\": \"engine-1\", \"status\": \"READY\"}],{\"status\": \"READY\"}",
+                "{\"engine_details\": [{\"engine_name\": \"engine-1\", \"status\": \"READY\"}],\"status\": \"READY\"}",
                 result);
     }
 
@@ -62,7 +62,7 @@ public class ReadinessUriHandlerTest {
         readiness.put("engine-1", false);
         String result = invokePrepare(readiness, true);
         assertEquals(
-                "{\"engine_details\": [{\"engine_name\": \"engine-1\", \"status\": \"NOT READY\"}],{\"status\": \"NOT READY\"}",
+                "{\"engine_details\": [{\"engine_name\": \"engine-1\", \"status\": \"NOT READY\"}],\"status\": \"NOT READY\"}",
                 result);
     }
 
@@ -74,7 +74,7 @@ public class ReadinessUriHandlerTest {
         String result = invokePrepare(readiness, true);
         assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"READY\""), result);
         assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"READY\""), result);
-        assertTrue(result.endsWith("{\"status\": \"READY\"}"), result);
+        assertTrue(result.endsWith("\"status\": \"READY\"}"), result);
         assertFalse(result.contains("NOT READY"), result);
     }
 
@@ -86,7 +86,7 @@ public class ReadinessUriHandlerTest {
         String result = invokePrepare(readiness, true);
         assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"READY\""), result);
         assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"NOT READY\""), result);
-        assertTrue(result.endsWith("{\"status\": \"NOT READY\"}"), result);
+        assertTrue(result.endsWith("\"status\": \"NOT READY\"}"), result);
     }
 
     @Test
@@ -97,7 +97,7 @@ public class ReadinessUriHandlerTest {
         String result = invokePrepare(readiness, true);
         assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"NOT READY\""), result);
         assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"NOT READY\""), result);
-        assertTrue(result.endsWith("{\"status\": \"NOT READY\"}"), result);
+        assertTrue(result.endsWith("\"status\": \"NOT READY\"}"), result);
     }
 
     @Test
@@ -108,12 +108,12 @@ public class ReadinessUriHandlerTest {
         String result = invokePrepare(readiness, false);
         assertTrue(result.contains("\"engine_name\": \"engine-1\", \"status\": \"READY\""), result);
         assertTrue(result.contains("\"engine_name\": \"engine-2\", \"status\": \"READY\""), result);
-        assertTrue(result.endsWith("{\"status\": \"NOT READY\"}"), result);
+        assertTrue(result.endsWith("\"status\": \"NOT READY\"}"), result);
     }
 
     @Test
     void notAliveWithEmptyMapReportsNotReady() throws Exception {
         String result = invokePrepare(Collections.emptyMap(), false);
-        assertEquals("{\"engine_details\": [],{\"status\": \"NOT READY\"}", result);
+        assertEquals("{\"engine_details\": [],\"status\": \"NOT READY\"}", result);
     }
 }
