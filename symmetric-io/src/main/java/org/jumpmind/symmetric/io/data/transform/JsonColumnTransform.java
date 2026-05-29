@@ -42,7 +42,7 @@ public class JsonColumnTransform implements ISingleNewAndOldValueColumnTransform
         Map<String, String> oldValues = null;
         Map<String, ?> oldValueMap = null;
         if (csvData.contains(CsvData.OLD_DATA)) {
-            oldValues = csvData.toColumnNameValuePairs(context.getTable().getColumnNames(), CsvData.OLD_DATA);
+            oldValues = csvData.toColumnNameValuePairs(context.getRelation().getColumnNames(), CsvData.OLD_DATA);
             oldValueMap = new LinkedHashMap<String, String>(oldValues);
         }
         Map<String, String> expressionMap = parseExpression(column.getTransformExpression());

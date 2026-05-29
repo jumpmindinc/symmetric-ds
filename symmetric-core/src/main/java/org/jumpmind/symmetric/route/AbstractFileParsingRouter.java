@@ -37,6 +37,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -266,7 +267,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
         }
         IDatabasePlatform platform = getEngine().getDatabasePlatform();
         DatabaseInfo dbInfo = platform.getDatabaseInfo();
-        String tableName = Table.getFullyQualifiedTableName(triggerRouter.getTargetCatalog(null, hist),
+        String tableName = SchemaObject.getFullyQualifiedName(triggerRouter.getTargetCatalog(null, hist),
                 triggerRouter.getTargetSchema(null, hist),
                 hist.getSourceTableName(), null, dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator());
         sql = String.format(sql, tableName);
@@ -381,7 +382,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
 
     public void deleteFileIfNecessary(DataMetaData dataMetaData) {
         Data data = dataMetaData.getData();
-        Table snapshotTable = dataMetaData.getTable();
+        Table snapshotTable = (Table) dataMetaData.getRelation();
         if (data.getDataEventType() == DataEventType.INSERT || data.getDataEventType() == DataEventType.UPDATE) {
             List<File> filesToDelete = new ArrayList<File>();
             Map<String, String> columnData = data.toColumnNameValuePairs(

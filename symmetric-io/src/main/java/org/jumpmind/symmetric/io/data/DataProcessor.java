@@ -148,8 +148,8 @@ public class DataProcessor {
     protected int forEachTableInBatch(DataContext context, boolean processBatch, Batch batch) {
         int dataRow = 0;
         do {
-            currentTable = dataReader.nextTable();
-            context.setTable(currentTable);
+            currentTable = (Table) dataReader.nextRelation();
+            context.setRelation(currentTable);
             if (currentTable != null) {
                 boolean processTable = false;
                 try {

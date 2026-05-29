@@ -63,7 +63,7 @@ abstract public class AbstractDdlTypesTest {
     public void testPlatformSpecificDdl() throws Exception {
         dropTable();
         createTable();
-        Table fromDb1 = platform.readTableFromDatabase(null, null, tableName());
+        Table fromDb1 = (Table) platform.readRelationFromDatabase(null, null, tableName());
         assertNotNull(fromDb1);
         dropTable();
         Column[] columns1 = fromDb1.getColumns();
@@ -80,7 +80,7 @@ abstract public class AbstractDdlTypesTest {
         }
         assertNotNull(fromXml);
         platform.alterTables(false, fromXml);
-        Table fromDb2 = platform.readTableFromDatabase(null, null, tableName());
+        Table fromDb2 = (Table) platform.readRelationFromDatabase(null, null, tableName());
         assertNotNull("Could not find " + tableName() + " in the database", fromDb2);
         for (Column column1 : columns1) {
             PlatformColumn pColumn1 = column1.findPlatformColumn(getName());
@@ -102,7 +102,7 @@ abstract public class AbstractDdlTypesTest {
     }
 
     protected void dropTable() {
-        Table table = platform.readTableFromDatabase(null, null, tableName());
+        Table table = (Table) platform.readRelationFromDatabase(null, null, tableName());
         if (table != null) {
             platform.dropTables(true, table);
         }

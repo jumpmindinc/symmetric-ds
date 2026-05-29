@@ -25,7 +25,7 @@ import java.util.*;
 import bsh.Interpreter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.symmetric.io.data.*;
 import org.jumpmind.symmetric.io.data.transform.TransformColumn.IncludeOnType;
 import org.jumpmind.util.Context;
@@ -78,12 +78,12 @@ public class TransformTable implements Cloneable {
     }
 
     public String getFullyQualifiedSourceTableName() {
-        return Table.getFullyQualifiedTableName(sourceCatalogName, sourceSchemaName,
+        return SchemaObject.getFullyQualifiedName(sourceCatalogName, sourceSchemaName,
                 sourceTableName);
     }
 
     public String getFullyQualifiedTargetTableName() {
-        return Table.getFullyQualifiedTableName(targetCatalogName, targetSchemaName,
+        return SchemaObject.getFullyQualifiedName(targetCatalogName, targetSchemaName,
                 targetTableName);
     }
 

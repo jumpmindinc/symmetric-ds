@@ -27,6 +27,7 @@ import java.util.Set;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.PlatformTrigger;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -34,21 +35,23 @@ import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.db.util.TableRow;
 
 public interface IDdlReader {
-    public Database readTables(String catalog, String schema, String[] tableTypes);
+    public Database readRelations(String catalog, String schema, String[] relationTypes);
 
-    public Table readTable(String catalog, String schema, String tableName);
+    public Relation readRelation(String catalog, String schema, String relationName);
 
-    public Table readTable(ISqlTransaction transaction, String catalog, String schema, String table);
+    public Relation readRelation(ISqlTransaction transaction, String catalog, String schema, String relationName);
 
-    public List<String> getTableTypes();
+    public List<String> getRelationTypes();
 
     public List<String> getCatalogNames();
 
     public List<String> getSchemaNames(String catalog);
 
-    public List<String> getTableNames(String catalog, String schema, String[] tableTypes);
+    public List<String> getRelationNames(String catalog, String schema, String[] relationTypes);
 
-    public List<String> getColumnNames(String catalog, String schema, String tableName);
+    public List<String> getViewNames(String catalog, String schema);
+
+    public List<String> getColumnNames(String catalog, String schema, String relationName);
 
     public List<Trigger> getTriggers(String catalog, String schema, String tableName);
 

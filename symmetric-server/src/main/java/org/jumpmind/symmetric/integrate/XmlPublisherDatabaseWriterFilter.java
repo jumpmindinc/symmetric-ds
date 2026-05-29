@@ -35,9 +35,9 @@ import org.jumpmind.symmetric.io.data.writer.IDatabaseWriterFilter;
  * This is an optional {@link IDatabaseWriterFilter} that is capable of translating table data to XML and publishing it for consumption by the enterprise. It
  * uses JDOM internally to create an XML representation of SymmetricDS data.
  * <p>
- * This filter is typically configured as a Spring bean. The table names that should be published are identified by {@link #setTableNamesToPublishAsGroup(Set)}.
- * Rows from tables can be grouped together (which get synchronized in the same batch) by identifying columns that are the same that act as a 'key' by setting
- * {@link #setGroupByColumnNames(List)}
+ * This filter is typically configured as a Spring bean. The table names that should be published are identified by
+ * {@link #setRelationNamesToPublishAsGroup(Set)}. Rows from tables can be grouped together (which get synchronized in the same batch) by identifying columns
+ * that are the same that act as a 'key' by setting {@link #setGroupByColumnNames(List)}
  * <p>
  * The {@link IPublisher} is typically configured and injected onto this bean as well. Provided is a {@link SimpleJmsPublisher}.
  * <p>
@@ -64,8 +64,8 @@ public class XmlPublisherDatabaseWriterFilter extends AbstractXmlPublisherExtens
 
     public boolean beforeWrite(
             DataContext context, Table table, CsvData data) {
-        if (tableNamesToPublishAsGroup == null
-                || tableNamesToPublishAsGroup.contains(table.getName())) {
+        if (relationNamesToPublishAsGroup == null
+                || relationNamesToPublishAsGroup.contains(table.getName())) {
             String[] rowData = data.getParsedData(CsvData.ROW_DATA);
             if (data.getDataEventType() == DataEventType.DELETE) {
                 rowData = data.getParsedData(CsvData.OLD_DATA);

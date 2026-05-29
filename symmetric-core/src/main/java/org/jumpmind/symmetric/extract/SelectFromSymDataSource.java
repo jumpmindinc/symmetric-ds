@@ -105,8 +105,8 @@ public class SelectFromSymDataSource extends SelectFromSource {
         Data data = null;
         if (reloadSource != null) {
             data = (Data) reloadSource.next();
-            targetTable = reloadSource.getTargetTable();
-            sourceTable = reloadSource.getSourceTable();
+            targetRelation = reloadSource.getTargetRelation();
+            sourceRelation = reloadSource.getSourceRelation();
             if (data == null) {
                 reloadSource.close();
                 reloadSource = null;
@@ -159,9 +159,9 @@ public class SelectFromSymDataSource extends SelectFromSource {
                     Trigger trigger = triggerRouter.getTrigger();
                     if (lastTriggerHistory == null || lastTriggerHistory.getTriggerHistoryId() != triggerHistory.getTriggerHistoryId() ||
                             lastRouterId == null || !lastRouterId.equals(routerId)) {
-                        sourceTable = columnsAccordingToTriggerHistory.lookup(routerId, triggerHistory, false, !isFileParserRouter, false, true);
-                        targetTable = columnsAccordingToTriggerHistory.lookup(routerId, triggerHistory, true, false, false, true);
-                        if (trigger != null && trigger.isUseStreamLobs() || (data.getRowData() != null && hasLobsThatNeedExtract(sourceTable, data))) {
+                        sourceRelation = columnsAccordingToTriggerHistory.lookup(routerId, triggerHistory, false, !isFileParserRouter, false, true);
+                        targetRelation = columnsAccordingToTriggerHistory.lookup(routerId, triggerHistory, true, false, false, true);
+                        if (trigger != null && trigger.isUseStreamLobs() || (data.getRowData() != null && hasLobsThatNeedExtract(sourceRelation, data))) {
                             requiresLobSelectedFromSource = true;
                         } else {
                             requiresLobSelectedFromSource = false;
@@ -222,16 +222,16 @@ public class SelectFromSymDataSource extends SelectFromSource {
         processInfo.setCurrentTableName(triggerHistory.getSourceTableName());
         String initialLoadSelect = data.getRowData();
         if (initialLoadSelect == null && triggerRouter.getTrigger().isStreamRow()) {
-            sourceTable = columnsAccordingToTriggerHistory.lookup(triggerRouter.getRouter().getRouterId(), triggerHistory, false, true, false, false);
-            Column[] columns = sourceTable.getPrimaryKeyColumns();
+            sourceRelation = columnsAccordingToTriggerHistory.lookup(triggerRouter.getRouter().getRouterId(), triggerHistory, false, true, false, false);
+            Column[] columns = sourceRelation.getPrimaryKeyColumns();
             String[] pkData = data.getParsedData(CsvData.PK_DATA);
             boolean[] nullKeyValues = new boolean[columns.length];
             for (int i = 0; i < columns.length; i++) {
                 Column column = columns[i];
                 nullKeyValues[i] = !column.isRequired() && pkData[i] == null;
             }
-            DmlStatement dmlStmt = platform.createDmlStatement(DmlType.WHERE, sourceTable.getCatalog(), sourceTable.getSchema(),
-                    sourceTable.getName(), sourceTable.getPrimaryKeyColumns(), sourceTable.getColumns(), nullKeyValues, null);
+            DmlStatement dmlStmt = platform.createDmlStatement(DmlType.WHERE, sourceRelation.getCatalog(), sourceRelation.getSchema(),
+                    sourceRelation.getName(), sourceRelation.getPrimaryKeyColumns(), sourceRelation.getColumns(), nullKeyValues, null);
             Row row = new Row(columns.length);
             for (int i = 0; i < columns.length; i++) {
                 row.put(columns[i].getName(), pkData[i]);
@@ -245,8 +245,8 @@ public class SelectFromSymDataSource extends SelectFromSource {
         SelectFromTableEvent event = new SelectFromTableEvent(targetNode, triggerRouter, triggerHistory, initialLoadSelect);
         reloadSource = createSelectFromTableSource(event);
         data = (Data) reloadSource.next();
-        sourceTable = reloadSource.getSourceTable();
-        targetTable = reloadSource.getTargetTable();
+        sourceRelation = reloadSource.getSourceRelation();
+        targetRelation = reloadSource.getTargetRelation();
         requiresLobSelectedFromSource = reloadSource.requiresLobsSelectedFromSource(data);
         if (data == null) {
             data = new Data();
@@ -327,9 +327,13 @@ public class SelectFromSymDataSource extends SelectFromSource {
          * Force a reread of table so new columns are picked up. A create event is usually sent after there is a change to the table so we want to make sure
          * that the cache is updated
          */
-        sourceTable = symmetricDialect.getTargetDialect().getPlatform().getTableFromCache(sourceTable.getCatalog(),
-                sourceTable.getSchema(), sourceTable.getName(), true);
-        targetTable = columnsAccordingToTriggerHistory.lookup(routerId, triggerHistory, true, true, true, false);
+        sourceRelation = symmetricDialect.getTargetDialect().getPlatform().getRelationFromCache(sourceRelation.getCatalog(),
+                sourceRelation.getSchema(), sourceRelation.getName(), true);
+        targetRelation = columnsAccordingToTriggerHistory.lookup(routerId, triggerHistory, true, true, true, false);
+        if (!(targetRelation instanceof Table targetTable)) {
+            // Ignore CREATE events for views
+            return false;
+        }
         Table copyTargetTable = targetTable.copy();
         Database db = new Database();
         db.setName("dataextractor");
@@ -349,14 +353,14 @@ public class SelectFromSymDataSource extends SelectFromSource {
             copyTargetTable.removeAllIndexes();
         }
         if (includeTriggerDdl) {
-            List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getApplicationTriggersForModel(sourceTable.getCatalog(), sourceTable
-                    .getSchema(), sourceTable.getName(), symmetricDialect.getTablePrefix());
+            List<org.jumpmind.db.model.Trigger> triggers = platform.getDdlReader().getApplicationTriggersForModel(sourceRelation.getCatalog(), sourceRelation
+                    .getSchema(), sourceRelation.getName(), symmetricDialect.getTablePrefix());
             if (triggers != null && triggers.size() > 0) {
                 copyTargetTable.addTriggers(triggers);
             }
         }
         if (parameterService.is(ParameterConstants.CREATE_TABLE_WITHOUT_PK_IF_SOURCE_WITHOUT_PK, false)
-                && sourceTable.getPrimaryKeyColumnCount() == 0 && copyTargetTable.getPrimaryKeyColumnCount() > 0) {
+                && sourceRelation.getPrimaryKeyColumnCount() == 0 && copyTargetTable.getPrimaryKeyColumnCount() > 0) {
             for (Column column : copyTargetTable.getColumns()) {
                 column.setPrimaryKey(false);
             }
@@ -406,8 +410,8 @@ public class SelectFromSymDataSource extends SelectFromSource {
             cursor = null;
         }
         batch = null;
-        sourceTable = null;
-        targetTable = null;
+        sourceRelation = null;
+        targetRelation = null;
     }
 
     @Override

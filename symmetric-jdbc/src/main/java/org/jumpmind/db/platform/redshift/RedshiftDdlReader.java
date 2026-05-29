@@ -31,6 +31,7 @@ import java.util.Map;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.TypeMap;
@@ -72,13 +73,13 @@ public class RedshiftDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values)
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values)
             throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation instanceof Table table) {
             determineAutoIncrementFromResultSetMetaData(connection, table, table.getColumns());
         }
-        return table;
+        return relation;
     }
 
     @Override

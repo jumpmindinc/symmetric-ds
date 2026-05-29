@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.io.data.DataEventType;
@@ -42,9 +42,9 @@ public final class TriggerUtils {
 
     /**
      * Resolves the catalog and schema for a trigger, substituting concrete values for any wildcarded names by searching the provided active trigger histories,
-     * then returns the corresponding table from the platform cache.
+     * then returns the corresponding relation from the platform cache.
      */
-    public static Table resolveTableForTrigger(Trigger trigger, String tableName,
+    public static Relation resolveRelationForTrigger(Trigger trigger, String tableName,
             List<TriggerHistory> activeTriggerHistories, IDatabasePlatform platform) {
         String catalogName = trigger.getSourceCatalogName();
         String schemaName = trigger.getSourceSchemaName();
@@ -62,28 +62,28 @@ public final class TriggerUtils {
                 schemaName = resolvedHist != null ? resolvedHist.getSourceSchemaName() : null;
             }
         }
-        return platform.getTableFromCache(catalogName, schemaName, tableName, false);
+        return platform.getRelationFromCache(catalogName, schemaName, tableName, false);
     }
 
     /**
-     * Builds a new TriggerHistory for the given trigger and table, names its database triggers, and inserts it. The caller is responsible for adding the
+     * Builds a new TriggerHistory for the given trigger and relation, names its database triggers, and inserts it. The caller is responsible for adding the
      * returned history to any local caches.
      */
-    public static TriggerHistory createNewTriggerHistory(Trigger trigger, Table table,
+    public static TriggerHistory createNewTriggerHistory(Trigger trigger, Relation relation,
             int triggerHistId, boolean isExistingTriggerHist, long dataId,
             List<TriggerHistory> activeTriggerHistories, ISymmetricEngine engine) {
-        TriggerHistory triggerHistory = new TriggerHistory(table, trigger, engine.getSymmetricDialect().getTriggerTemplate());
+        TriggerHistory triggerHistory = new TriggerHistory(relation, trigger, engine.getSymmetricDialect().getTriggerTemplate());
         triggerHistory.setTriggerHistoryId(isExistingTriggerHist ? 0 : triggerHistId);
         triggerHistory.setLastTriggerBuildReason(TriggerReBuildReason.TRIGGER_HIST_MISSING);
         List<String> triggerNamesGeneratedThisSession = new ArrayList<>();
         triggerHistory.setNameForInsertTrigger(engine.getTriggerRouterService().getTriggerName(DataEventType.INSERT,
-                engine.getSymmetricDialect().getMaxTriggerNameLength(), trigger, table, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
+                engine.getSymmetricDialect().getMaxTriggerNameLength(), trigger, relation, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
         triggerHistory.setNameForUpdateTrigger(engine.getTriggerRouterService().getTriggerName(DataEventType.UPDATE,
-                engine.getSymmetricDialect().getMaxTriggerNameLength(), trigger, table, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
+                engine.getSymmetricDialect().getMaxTriggerNameLength(), trigger, relation, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
         triggerHistory.setNameForDeleteTrigger(engine.getTriggerRouterService().getTriggerName(DataEventType.DELETE,
-                engine.getSymmetricDialect().getMaxTriggerNameLength(), trigger, table, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
+                engine.getSymmetricDialect().getMaxTriggerNameLength(), trigger, relation, activeTriggerHistories, null, triggerNamesGeneratedThisSession));
         log.warn("Could not find trigger history {} for table {} for data_id {}.  Generating a new trigger history row.",
-                triggerHistId, table.getName(), dataId);
+                triggerHistId, relation.getName(), dataId);
         engine.getTriggerRouterService().insert(triggerHistory);
         return triggerHistory;
     }

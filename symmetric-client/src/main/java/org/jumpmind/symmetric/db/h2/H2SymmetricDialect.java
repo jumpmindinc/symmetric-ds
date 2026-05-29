@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.TypeMap;
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -91,15 +92,17 @@ public class H2SymmetricDialect extends AbstractEmbeddedSymmetricDialect impleme
     public void removeTrigger(StringBuilder sqlBuffer, String catalogName, String schemaName, String triggerName,
             String tableName, ISqlTransaction transaction) {
         DatabaseInfo dbInfo = getPlatform().getDatabaseInfo();
-        String prefix = Table.getFullyQualifiedTablePrefix(catalogName, schemaName, dbInfo.getDelimiterToken(),
+        String prefix = SchemaObject.getFullyQualifiedPrefix(catalogName, schemaName, dbInfo.getDelimiterToken(),
                 dbInfo.getCatalogSeparator(), dbInfo.getSchemaSeparator());
         final String dropSql = String.format("DROP TRIGGER IF EXISTS %s%s", prefix, triggerName);
         logSql(dropSql, sqlBuffer);
         final String dropTable = String.format("DROP TABLE IF EXISTS %s%s_CONFIG", prefix, triggerName);
         logSql(dropTable, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
-            log.info("Dropping trigger {} for {}", triggerName,
-                    Table.getFullyQualifiedTableName(catalogName, schemaName, tableName));
+            if (log.isInfoEnabled()) {
+                log.info("Dropping trigger {} for {}", triggerName,
+                        SchemaObject.getFullyQualifiedName(catalogName, schemaName, tableName));
+            }
             transaction.execute(dropSql);
             transaction.execute(dropTable);
         }

@@ -190,7 +190,7 @@ public class DbFillCommand extends AbstractCommandLauncher {
             dbFill.fillTables(tableNames, tableProperties);
         } else {
             for (String tableName : tableNames) {
-                Table table = platform.readTableFromDatabase(dbFill.getCatalogToUse(), dbFill.getSchemaToUse(),
+                Table table = (Table) platform.readRelationFromDatabase(dbFill.getCatalogToUse(), dbFill.getSchemaToUse(),
                         tableName);
                 if (table != null) {
                     for (int i = 0; i < dbFill.getRecordCount(); i++) {

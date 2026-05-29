@@ -85,7 +85,7 @@ public class TableRow {
 
     @Override
     public String toString() {
-        return table.getFullyQualifiedTableName() + ":" + whereSql + ":" + getFkColumnValues();
+        return table.getFullyQualifiedName() + ":" + whereSql + ":" + getFkColumnValues();
     }
 
     public Table getTable() {

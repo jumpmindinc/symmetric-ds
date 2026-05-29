@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -137,7 +138,7 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
             @SuppressWarnings("unchecked")
             Set<Table> tables = (Set<Table>) context.get(CTX_KEY_RESYNC_TABLE_NEEDED);
             if (tables == null) {
-                tables = new HashSet<Table>();
+                tables = new HashSet<>();
                 context.put(CTX_KEY_RESYNC_TABLE_NEEDED, tables);
             }
             tables.add(table);
@@ -180,7 +181,7 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
                 @SuppressWarnings("unchecked")
                 List<Long> loadIds = (List<Long>) context.get(CTX_KEY_CANCEL_LOAD);
                 if (loadIds == null) {
-                    loadIds = new ArrayList<Long>();
+                    loadIds = new ArrayList<>();
                     context.put(CTX_KEY_CANCEL_LOAD, loadIds);
                 }
                 loadIds.add(Long.parseLong(loadId));
@@ -224,7 +225,7 @@ public class ConfigurationChangedDatabaseWriterFilter extends DatabaseWriterFilt
                 && (parameterService.is(ParameterConstants.TRIGGER_CREATE_BEFORE_INITIAL_LOAD)
                         || nodeService.findNodeSecurity(nodeService.findIdentityNodeId(), true).hasInitialLoaded())
                 && engine.getSymmetricDialect().getPlatform().equals(engine.getTargetDialect().getPlatform())) {
-            engine.getTriggerRouterService().syncTriggers(new ArrayList<Table>(tables), false);
+            engine.getTriggerRouterService().syncTriggers(new RelationsList(tables), false);
         }
         if (context.remove(CTX_KEY_INITIAL_LOAD_COMPLETED) != null) {
             long loadId = (long) context.remove(CTX_KEY_INITAL_LOAD_ID);

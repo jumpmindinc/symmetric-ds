@@ -31,6 +31,7 @@ import java.util.Map;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.ForeignKey.ForeignKeyAction;
@@ -47,7 +48,7 @@ public class GreenplumDdlReader extends PostgreSqlDdlReader {
         super(platform);
     }
 
-    protected void setDistributionKeys(Connection connection, Table table, String schema)
+    protected void setDistributionKeys(Connection connection, Relation relation, String schema)
             throws SQLException {
         // get the distribution keys for segments
         StringBuilder query = new StringBuilder();
@@ -70,12 +71,12 @@ public class GreenplumDdlReader extends PostgreSqlDdlReader {
         try {
             // set the schema parm in the query
             prepStmt.setString(1, schema);
-            prepStmt.setString(2, table.getName());
+            prepStmt.setString(2, relation.getName());
             ResultSet rs = prepStmt.executeQuery();
             // for every row, set the distributionKey for the corresponding
             // columns
             while (rs.next()) {
-                Column column = table.findColumn(rs.getString(2).trim(), getPlatform().getDdlBuilder()
+                Column column = relation.findColumn(rs.getString(2).trim(), getPlatform().getDdlBuilder()
                         .isDelimitedIdentifierModeOn());
                 if (column != null) {
                     column.setDistributionKey(true);
@@ -90,11 +91,11 @@ public class GreenplumDdlReader extends PostgreSqlDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        setDistributionKeys(connection, table, metaData.getSchemaPattern());
-        return table;
+        Relation relation = super.readRelation(connection, metaData, values);
+        setDistributionKeys(connection, relation, metaData.getSchemaPattern());
+        return relation;
     }
 
     @Override

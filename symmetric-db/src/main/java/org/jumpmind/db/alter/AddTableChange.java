@@ -41,7 +41,6 @@ package org.jumpmind.db.alter;
 
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
-import org.jumpmind.db.platform.DdlException;
 
 /**
  * Represents the addition of a table to a model. Note that this change does not include foreign keys originating from the new table.
@@ -74,10 +73,6 @@ public class AddTableChange implements IModelChange {
      * {@inheritDoc}
      */
     public void apply(Database database, boolean caseSensitive) {
-        try {
-            database.addTable((Table) _newTable.clone());
-        } catch (CloneNotSupportedException ex) {
-            throw new DdlException(ex);
-        }
+        database.addTable(_newTable.copy());
     }
 }

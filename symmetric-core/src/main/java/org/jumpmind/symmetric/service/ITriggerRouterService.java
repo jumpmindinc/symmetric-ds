@@ -25,7 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.cache.TriggerRouterRoutersCache;
 import org.jumpmind.symmetric.config.ITriggerCreationListener;
@@ -221,7 +222,7 @@ public interface ITriggerRouterService {
 
     public Trigger getTriggerById(String triggerId, boolean refreshCache);
 
-    public String getTriggerName(DataEventType dml, int maxTriggerNameLength, Trigger trigger, Table table,
+    public String getTriggerName(DataEventType dml, int maxTriggerNameLength, Trigger trigger, Relation relation,
             List<TriggerHistory> activeTriggerHistories, TriggerHistory oldhist, List<String> triggerNamesGeneratedThisSession);
 
     public void insert(TriggerHistory newAuditRecord);
@@ -262,9 +263,9 @@ public interface ITriggerRouterService {
 
     public boolean syncTriggers(List<Trigger> triggers, ITriggerCreationListener listener, boolean force, boolean verifyInDatabase, boolean useTableCache);
 
-    public boolean syncTriggers(Table table, boolean genAlways);
+    public boolean syncTriggers(Relation relation, boolean genAlways);
 
-    public boolean syncTriggers(List<Table> tables, boolean genAlways);
+    public boolean syncTriggers(RelationsList relations, boolean genAlways);
 
     public boolean syncTriggers(String targetExternalId, boolean force);
 
@@ -295,9 +296,9 @@ public interface ITriggerRouterService {
     public Collection<Trigger> findMatchingTriggers(List<Trigger> triggers, String catalog, String schema,
             String table);
 
-    public List<Table> getTablesFor(List<TriggerHistory> histories);
+    public RelationsList getRelationsFor(List<TriggerHistory> histories);
 
-    public List<Table> getSortedTablesFor(List<TriggerHistory> histories);
+    public RelationsList getSortedRelationsFor(List<TriggerHistory> histories);
 
     public List<Trigger> buildTriggersForSymmetricTables(String version, String... tablesToExclude);
 }

@@ -51,14 +51,14 @@ public class MockDataWriter implements IDataWriter {
 
     public boolean start(Table table) {
         this.currentTable = table;
-        if (!writtenDatas.containsKey(table.getFullyQualifiedTableName())) {
-            writtenDatas.put(table.getFullyQualifiedTableName(), new ArrayList<CsvData>());
+        if (!writtenDatas.containsKey(table.getFullyQualifiedName())) {
+            writtenDatas.put(table.getFullyQualifiedName(), new ArrayList<CsvData>());
         }
         return true;
     }
 
     public void write(CsvData data) {
-        writtenDatas.get(this.currentTable.getFullyQualifiedTableName()).add(data);
+        writtenDatas.get(this.currentTable.getFullyQualifiedName()).add(data);
     }
 
     public void end(Table table) {

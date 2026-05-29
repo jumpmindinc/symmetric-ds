@@ -35,7 +35,7 @@ import org.jumpmind.symmetric.io.data.DataEventType;
 /**
  * Read CSV formatted data for a single table. Requires that the column names be the header of the CSV.
  */
-public class CsvTableDataReader extends AbstractTableDataReader {
+public class CsvTableDataReader extends AbstractRelationDataReader {
     protected CsvReader csvReader;
 
     public CsvTableDataReader(BinaryEncoding binaryEncoding, String catalogName, String schemaName,
@@ -56,7 +56,7 @@ public class CsvTableDataReader extends AbstractTableDataReader {
             this.csvReader.readHeaders();
             String[] columnNames = this.csvReader.getHeaders();
             for (String columnName : columnNames) {
-                table.addColumn(new Column(columnName));
+                relation.addColumn(new Column(columnName));
             }
         } catch (IOException e) {
             throw new IoException(e);

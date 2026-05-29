@@ -585,7 +585,7 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
     protected void processChange(Database currentModel, Database desiredModel, RemoveTriggerChange change,
             StringBuilder ddl) {
         ddl.append("DROP TRIGGER ").append(change.getTrigger().getName());
-        ddl.append(" ON ").append(change.getChangedTable().getFullyQualifiedTableName());
+        ddl.append(" ON ").append(change.getChangedTable().getFullyQualifiedName());
         printEndOfStatement(ddl);
         change.apply(currentModel, delimitedIdentifierModeOn);
     }

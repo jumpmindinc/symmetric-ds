@@ -24,7 +24,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.ProtocolException;
@@ -38,9 +38,9 @@ final public class DataUtils {
         Map<String, String> data = null;
         DataEventType dml = dataMetaData.getData().getDataEventType();
         if (DataEventType.UPDATE.equals(dml) || DataEventType.INSERT.equals(dml) || DataEventType.DELETE.equals(dml)) {
-            Table table = dataMetaData.getTable();
-            if (table != null) {
-                data = new LinkedCaseInsensitiveMap<String>(dataMetaData.getTable().getColumnCount() * 4);
+            Relation relation = dataMetaData.getRelation();
+            if (relation != null) {
+                data = new LinkedCaseInsensitiveMap<String>(relation.getColumnCount() * 4);
             } else {
                 data = new LinkedCaseInsensitiveMap<String>();
             }
@@ -117,18 +117,18 @@ final public class DataUtils {
         DataEventType dml = dataMetaData.getData().getDataEventType();
         switch (dml) {
             case UPDATE:
-                data = new LinkedCaseInsensitiveMap<Object>(dataMetaData.getTable().getColumnCount() * 2);
+                data = new LinkedCaseInsensitiveMap<Object>(dataMetaData.getRelation().getColumnCount() * 2);
                 data.putAll(getNewDataAsObject(null, dataMetaData, symmetricDialect, upperCase));
                 data.putAll(getOldDataAsObject(OLD_, dataMetaData, symmetricDialect, upperCase));
                 break;
             case INSERT:
-                data = new LinkedCaseInsensitiveMap<Object>(dataMetaData.getTable().getColumnCount() * 2);
+                data = new LinkedCaseInsensitiveMap<Object>(dataMetaData.getRelation().getColumnCount() * 2);
                 data.putAll(getNewDataAsObject(null, dataMetaData, symmetricDialect, upperCase));
                 Map<String, Object> map = getNullData(OLD_, dataMetaData);
                 data.putAll(map);
                 break;
             case DELETE:
-                data = new LinkedCaseInsensitiveMap<Object>(dataMetaData.getTable().getColumnCount() * 2);
+                data = new LinkedCaseInsensitiveMap<Object>(dataMetaData.getRelation().getColumnCount() * 2);
                 data.putAll(getOldDataAsObject(null, dataMetaData, symmetricDialect, upperCase));
                 data.putAll(getOldDataAsObject(OLD_, dataMetaData, symmetricDialect, upperCase));
                 if (data.size() == 0) {
@@ -179,7 +179,7 @@ final public class DataUtils {
             Map<String, Object> data = new LinkedCaseInsensitiveMap<Object>(rowData.length);
             String[] columnNames = dataMetaData.getTriggerHistory().getParsedColumnNames();
             Object[] objects = symmetricDialect.getPlatform().getObjectValues(
-                    symmetricDialect.getBinaryEncoding(), dataMetaData.getTable(), columnNames,
+                    symmetricDialect.getBinaryEncoding(), dataMetaData.getRelation(), columnNames,
                     rowData);
             testColumnNamesMatchValues(dataMetaData, columnNames, objects);
             for (int i = 0; i < columnNames.length; i++) {
@@ -208,7 +208,7 @@ final public class DataUtils {
             Map<String, Object> data = new LinkedCaseInsensitiveMap<Object>(rowData.length);
             String[] columnNames = dataMetaData.getTriggerHistory().getParsedPkColumnNames();
             Object[] objects = symmetricDialect.getPlatform().getObjectValues(
-                    symmetricDialect.getBinaryEncoding(), dataMetaData.getTable(), columnNames,
+                    symmetricDialect.getBinaryEncoding(), dataMetaData.getRelation(), columnNames,
                     rowData);
             testColumnNamesMatchValues(dataMetaData, columnNames, objects);
             for (int i = 0; i < columnNames.length; i++) {

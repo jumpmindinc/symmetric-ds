@@ -39,6 +39,7 @@ import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.NonUniqueIndex;
 import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.TypeMap;
@@ -64,15 +65,15 @@ public class SqliteDdlReader implements IDdlReader {
         this.platform = platform;
     }
 
-    public List<String> getTableNames(String catalog, String schema, String[] tableTypes) {
+    public List<String> getRelationNames(String catalog, String schema, String[] relationTypes) {
         return platform.getSqlTemplate().query("select tbl_name from sqlite_master where type='table'", SqlConstants.STRING_MAPPER);
     }
 
-    public Database readTables(String catalog, String schema, String[] tableTypes) {
-        List<String> tableNames = getTableNames(catalog, schema, tableTypes);
+    public Database readRelations(String catalog, String schema, String[] relationTypes) {
+        List<String> tableNames = getRelationNames(catalog, schema, relationTypes);
         Database database = new Database();
         for (String tableName : tableNames) {
-            Table table = readTable(catalog, schema, tableName);
+            Table table = (Table) readRelation(catalog, schema, tableName);
             if (table != null) {
                 database.addTable(table);
             }
@@ -80,39 +81,48 @@ public class SqliteDdlReader implements IDdlReader {
         return database;
     }
 
-    protected void checkColumns(List<Column> columns, String tableName) {
-        String ddl = platform.getSqlTemplate().queryForObject("select sql from sqlite_master where tbl_name=?", String.class, tableName);
-        if (StringUtils.isNotBlank(ddl)) {
-            int openingParen = ddl.indexOf("(");
-            if (openingParen != -1) {
-                ddl = ddl.substring(openingParen + 1);
-            }
-            int closingParen = ddl.lastIndexOf(")");
-            if (closingParen != -1) {
-                ddl = ddl.substring(0, closingParen);
-            }
-            String[] commaSplit = ddl.split(",");
-            for (String string : commaSplit) {
-                for (Column col : columns) {
-                    if (string.contains(col.getName())) {
-                        if (string.toUpperCase().contains("AUTOINCREMENT")) {
-                            col.setAutoIncrement(true);
-                        }
-                        if (col.isGenerated()) {
-                            String[] split = StringUtils.split(string);
-                            int i;
-                            for (i = 0; i < split.length; i++) {
-                                if (split[i].equalsIgnoreCase("as")) {
-                                    break;
-                                }
-                            }
-                            if (i < split.length - 1) {
-                                col.setDefaultValue(String.join(" ", Arrays.copyOfRange(split, i + 1, split.length)));
-                            }
-                        }
-                    }
+    protected void checkColumns(List<Column> columns, String relationName) {
+        String ddl = platform.getSqlTemplate().queryForObject("select sql from sqlite_master where tbl_name=?", String.class, relationName);
+        if (StringUtils.isBlank(ddl)) {
+            return;
+        }
+        int openingParen = ddl.indexOf("(");
+        if (openingParen != -1) {
+            ddl = ddl.substring(openingParen + 1);
+        }
+        int closingParen = ddl.lastIndexOf(")");
+        if (closingParen != -1) {
+            ddl = ddl.substring(0, closingParen);
+        }
+        String[] commaSplit = ddl.split(",");
+        for (String columnDdl : commaSplit) {
+            for (Column col : columns) {
+                if (columnDdl.contains(col.getName())) {
+                    applyColumnFlagsFromDdl(col, columnDdl);
                 }
             }
+        }
+    }
+
+    private void applyColumnFlagsFromDdl(Column col, String columnDdl) {
+        if (columnDdl.toUpperCase().contains("AUTOINCREMENT")) {
+            col.setAutoIncrement(true);
+        }
+        if (col.isGenerated()) {
+            applyGeneratedColumnExpression(col, columnDdl);
+        }
+    }
+
+    private void applyGeneratedColumnExpression(Column col, String columnDdl) {
+        String[] split = StringUtils.split(columnDdl);
+        int i;
+        for (i = 0; i < split.length; i++) {
+            if (split[i].equalsIgnoreCase("as")) {
+                break;
+            }
+        }
+        if (i < split.length - 1) {
+            col.setDefaultValue(String.join(" ", Arrays.copyOfRange(split, i + 1, split.length)));
         }
     }
 
@@ -121,8 +131,8 @@ public class SqliteDdlReader implements IDdlReader {
     }
 
     @Override
-    public Table readTable(ISqlTransaction transaction, String catalog, String schema, String table) {
-        return readTable(catalog, schema, table);
+    public Relation readRelation(ISqlTransaction transaction, String catalog, String schema, String relationName) {
+        return readRelation(catalog, schema, relationName);
     }
 
     private String quote(String name) {
@@ -130,49 +140,67 @@ public class SqliteDdlReader implements IDdlReader {
         return quote + name + quote;
     }
 
-    public Table readTable(String catalog, String schema, String tableName) {
-        Table table = null;
-        List<Column> columns = platform.getSqlTemplate().query("pragma table_xinfo(" + quote(tableName) + ")", COLUMN_MAPPER);
-        checkColumns(columns, tableName);
-        if (columns != null && columns.size() > 0) {
-            table = new Table(tableName);
-            for (Column column : columns) {
-                table.addColumn(column);
-            }
-            List<IIndex> indexes = platform.getSqlTemplate().query("pragma index_list(" + quote(tableName) + ")", INDEX_MAPPER);
-            for (IIndex index : indexes) {
-                List<IndexColumn> indexColumns = platform.getSqlTemplate().query("pragma index_info(" + index.getName() + ")",
-                        INDEX_COLUMN_MAPPER);
-                for (IndexColumn indexColumn : indexColumns) {
-                    /* Ignore auto index columns */
-                    if (!indexColumn.getName().startsWith("sqlite_autoindex_")) {
-                        index.addColumn(indexColumn);
-                        indexColumn.setColumn(table.getColumnWithName(indexColumn.getName()));
-                    }
-                }
-                if (index.isUnique() && index.getName().toLowerCase().contains("autoindex") && !index.hasAllPrimaryKeys()) {
-                    for (IndexColumn indexColumn : indexColumns) {
-                        table.getColumnWithName(indexColumn.getName()).setUnique(true);
-                    }
-                } else if (!((index.hasAllPrimaryKeys() || index.isUnique()) && index.getName().toLowerCase().contains("autoindex"))) {
-                    table.addIndex(index);
-                }
-            }
-            Map<Integer, ForeignKey> keys = new HashMap<Integer, ForeignKey>();
-            List<Row> rows = platform.getSqlTemplate().query("pragma foreign_key_list(" + quote(tableName) + ")", new RowMapper());
-            for (Row row : rows) {
-                Integer id = row.getInt("id");
-                ForeignKey fk = keys.get(id);
-                if (fk == null) {
-                    fk = new ForeignKey();
-                    fk.setForeignTable(new Table(row.getString("table")));
-                    keys.put(id, fk);
-                    table.addForeignKey(fk);
-                }
-                fk.addReference(new Reference(new Column(row.getString("from")), new Column(row.getString("to"))));
+    @Override
+    public Relation readRelation(String catalog, String schema, String relationName) {
+        List<Column> columns = platform.getSqlTemplate().query("pragma table_xinfo(" + quote(relationName) + ")", COLUMN_MAPPER);
+        checkColumns(columns, relationName);
+        if (columns == null || columns.isEmpty()) {
+            return null;
+        }
+        Table table = new Table(relationName);
+        for (Column column : columns) {
+            table.addColumn(column);
+        }
+        readIndexesIntoTable(table, relationName);
+        readForeignKeysIntoTable(table, relationName);
+        return table;
+    }
+
+    private void readIndexesIntoTable(Table table, String relationName) {
+        List<IIndex> indexes = platform.getSqlTemplate().query("pragma index_list(" + quote(relationName) + ")", INDEX_MAPPER);
+        for (IIndex index : indexes) {
+            List<IndexColumn> indexColumns = platform.getSqlTemplate().query("pragma index_info(" + index.getName() + ")",
+                    INDEX_COLUMN_MAPPER);
+            populateIndexColumns(index, indexColumns, table);
+            applyIndexToTable(index, indexColumns, table);
+        }
+    }
+
+    private void populateIndexColumns(IIndex index, List<IndexColumn> indexColumns, Table table) {
+        for (IndexColumn indexColumn : indexColumns) {
+            /* Ignore auto index columns */
+            if (!indexColumn.getName().startsWith("sqlite_autoindex_")) {
+                index.addColumn(indexColumn);
+                indexColumn.setColumn(table.getColumnWithName(indexColumn.getName()));
             }
         }
-        return table;
+    }
+
+    private void applyIndexToTable(IIndex index, List<IndexColumn> indexColumns, Table table) {
+        String nameLower = index.getName().toLowerCase();
+        if (index.isUnique() && nameLower.contains("autoindex") && !index.hasAllPrimaryKeys()) {
+            for (IndexColumn indexColumn : indexColumns) {
+                table.getColumnWithName(indexColumn.getName()).setUnique(true);
+            }
+        } else if (!((index.hasAllPrimaryKeys() || index.isUnique()) && nameLower.contains("autoindex"))) {
+            table.addIndex(index);
+        }
+    }
+
+    private void readForeignKeysIntoTable(Table table, String relationName) {
+        Map<Integer, ForeignKey> keys = new HashMap<Integer, ForeignKey>();
+        List<Row> rows = platform.getSqlTemplate().query("pragma foreign_key_list(" + quote(relationName) + ")", new RowMapper());
+        for (Row row : rows) {
+            Integer id = row.getInt("id");
+            ForeignKey fk = keys.get(id);
+            if (fk == null) {
+                fk = new ForeignKey();
+                fk.setForeignTable(new Table(row.getString("table")));
+                keys.put(id, fk);
+                table.addForeignKey(fk);
+            }
+            fk.addReference(new Reference(new Column(row.getString("from")), new Column(row.getString("to"))));
+        }
     }
 
     public List<String> getCatalogNames() {
@@ -183,11 +211,11 @@ public class SqliteDdlReader implements IDdlReader {
         return new ArrayList<String>(0);
     }
 
-    public List<String> getTableTypes() {
+    public List<String> getRelationTypes() {
         return new ArrayList<String>(0);
     }
 
-    public List<String> getColumnNames(String catalog, String schema, String tableName) {
+    public List<String> getColumnNames(String catalog, String schema, String relationName) {
         return new ArrayList<String>(0);
     }
 
@@ -326,6 +354,11 @@ public class SqliteDdlReader implements IDdlReader {
     @Override
     public List<TableRow> getImportedForeignTableRows(List<TableRow> tableRows, Set<TableRow> visited, BinaryEncoding encoding) {
         return null;
+    }
+
+    @Override
+    public List<String> getViewNames(String catalog, String schema) {
+        return new ArrayList<>();
     }
 
     @Override

@@ -134,14 +134,9 @@ public class FileSyncDataRouter extends AbstractDataRouter implements IBuiltInEx
     }
 
     private void addTopRelativeDirToData(String topRelativeDir, DataMetaData dataMetaData) {
-        Table copy;
-        try {
-            copy = (Table) dataMetaData.getTable().clone();
-        } catch (CloneNotSupportedException e) {
-            throw new RuntimeException(e);
-        }
+        Table copy = ((Table) dataMetaData.getRelation()).copy();
         copy.addColumn(new Column("top_relative_dir", false, Types.VARCHAR, topRelativeDir.length(), 0));
-        dataMetaData.setTable(copy);
+        dataMetaData.setRelation(copy);
         Data data = dataMetaData.getData();
         String oldData = data.getCsvData(Data.OLD_DATA);
         String newData = data.getCsvData(Data.ROW_DATA);

@@ -32,7 +32,7 @@ import java.util.zip.ZipException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.TableNotFoundException;
@@ -259,8 +259,8 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                         this.currentBatch.setSqlCode(se.getErrorCode());
                         this.currentBatch.setSqlMessage(se);
                         ISqlTemplate sqlTemplate = null;
-                        if (context.getTable() != null) {
-                            sqlTemplate = symmetricDialect.getTargetPlatform(context.getTable().getName()).getSqlTemplate();
+                        if (context.getRelation() != null) {
+                            sqlTemplate = symmetricDialect.getTargetPlatform(context.getRelation().getName()).getSqlTemplate();
                         } else {
                             sqlTemplate = symmetricDialect.getTargetPlatform().getSqlTemplate();
                         }
@@ -290,18 +290,18 @@ class ManageIncomingBatchListener implements IDataProcessorListener {
                     transaction = null;
                 }
                 if (currentBatch.getStatus() == Status.ER) {
-                    if (context.getTable() != null && context.getData() != null) {
+                    if (context.getRelation() != null && context.getData() != null) {
                         try {
                             IncomingError error = new IncomingError();
                             error.setBatchId(this.currentBatch.getBatchId());
                             error.setNodeId(this.currentBatch.getNodeId());
-                            error.setTargetCatalogName(context.getTable().getCatalog());
-                            error.setTargetSchemaName(context.getTable().getSchema());
-                            error.setTargetTableName(context.getTable().getName());
-                            error.setColumnNames(Table.getCommaDeliminatedColumns(context
-                                    .getTable().getColumns()));
-                            error.setPrimaryKeyColumnNames(Table.getCommaDeliminatedColumns(context
-                                    .getTable().getPrimaryKeyColumns()));
+                            error.setTargetCatalogName(context.getRelation().getCatalog());
+                            error.setTargetSchemaName(context.getRelation().getSchema());
+                            error.setTargetTableName(context.getRelation().getName());
+                            error.setColumnNames(Relation.getCommaDeliminatedColumns(context
+                                    .getRelation().getColumns()));
+                            error.setPrimaryKeyColumnNames(Relation.getCommaDeliminatedColumns(context
+                                    .getRelation().getPrimaryKeyColumns()));
                             error.setCsvData(context.getData());
                             error.setCurData((String) context.get(DefaultDatabaseWriter.CUR_DATA));
                             error.setBinaryEncoding(context.getBatch().getBinaryEncoding());

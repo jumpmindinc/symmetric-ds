@@ -36,6 +36,8 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -86,7 +88,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
         @SuppressWarnings("unchecked")
         Map<String, RouterInfo> routers = (Map<String, RouterInfo>) context.get(ROUTERS);
         if (routers == null) {
-            routers = new HashMap<String, RouterInfo>();
+            routers = new HashMap<>();
             context.put(ROUTERS, routers);
         }
         String routerId = triggerRouter.getRouterId();
@@ -113,7 +115,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
         } else if (eventType.equals(DataEventType.DELETE)) {
             rowValues = dataMetaData.getData().toParsedPkData();
         }
-        Column[] pkColumns = dataMetaData.getTable().getPrimaryKeyColumns();
+        Column[] pkColumns = dataMetaData.getRelation().getPrimaryKeyColumns();
         String[] pkValues = (String[]) ArrayUtils.subarray(rowValues, 0, pkColumns.length);
         return engine.getDatabasePlatform().getObjectValues(engine.getSymmetricDialect().getBinaryEncoding(), pkValues, pkColumns);
     }
@@ -124,7 +126,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
         if (batch.getNodeId().equals(Constants.UNROUTED_NODE_ID)) {
             @SuppressWarnings("unchecked")
             Map<String, RouterInfo> routers = (Map<String, RouterInfo>) context.get(ROUTERS);
-            List<TableInfo> tableInfos = new ArrayList<TableInfo>();
+            List<TableInfo> tableInfos = new ArrayList<>();
             for (RouterInfo routerInfo : routers.values()) {
                 tableInfos.addAll(routerInfo.getTableInfos());
             }
@@ -145,14 +147,14 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
 
     protected List<TableInfo> sortTableInfos(SimpleRouterContext context, Collection<TableInfo> tableInfos) {
         long ts = System.currentTimeMillis();
-        List<Table> sortedTables = getAllSortedTables(context);
-        Map<Table, TableInfo> tableInfosByTable = new HashMap<Table, TableInfo>();
+        RelationsList sortedRelations = getAllSortedRelations(context);
+        Map<Table, TableInfo> tableInfosByTable = new HashMap<>();
         for (TableInfo tableInfo : tableInfos) {
             tableInfosByTable.put(tableInfo.getTable(), tableInfo);
         }
-        List<TableInfo> sortedTableInfos = new ArrayList<TableInfo>();
-        for (Table table : sortedTables) {
-            TableInfo tableInfo = tableInfosByTable.get(table);
+        List<TableInfo> sortedTableInfos = new ArrayList<>();
+        for (Relation relation : sortedRelations) {
+            TableInfo tableInfo = tableInfosByTable.get(relation);
             if (tableInfo != null) {
                 sortedTableInfos.add(tableInfo);
             }
@@ -161,10 +163,9 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
         return sortedTableInfos;
     }
 
-    protected List<Table> getAllSortedTables(SimpleRouterContext context) {
-        @SuppressWarnings("unchecked")
-        List<Table> sortedTables = (List<Table>) context.get(SORTED_TABLES);
-        if (sortedTables == null) {
+    protected RelationsList getAllSortedRelations(SimpleRouterContext context) {
+        RelationsList sortedRelations = (RelationsList) context.get(SORTED_TABLES);
+        if (sortedRelations == null) {
             List<TriggerHistory> histories = null;
             if (firstTime) {
                 histories = engine.getTriggerRouterService().getActiveTriggerHistories();
@@ -172,17 +173,17 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
             } else {
                 histories = engine.getTriggerRouterService().getActiveTriggerHistoriesFromCache();
             }
-            List<Table> allTables = new ArrayList<Table>(histories.size());
+            RelationsList allRelations = new RelationsList(histories.size());
             for (TriggerHistory history : histories) {
-                Table table = engine.getDatabasePlatform().getTableFromCache(history.getSourceCatalogName(),
+                Relation relation = engine.getDatabasePlatform().getRelationFromCache(history.getSourceCatalogName(),
                         history.getSourceSchemaName(), history.getSourceTableName(), false);
-                if (table != null) {
-                    allTables.add(table);
+                if (relation != null) {
+                    allRelations.add(relation);
                 }
             }
-            sortedTables = Database.sortByForeignKeys(allTables);
+            sortedRelations = Database.sortByForeignKeys(allRelations);
         }
-        return sortedTables;
+        return sortedRelations;
     }
 
     protected void queueEvents(ChannelRouterContext context, ISqlTransaction transaction, OutgoingBatch origBatch, List<TableInfo> tableInfos) {
@@ -210,7 +211,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
             }
         }
         insertTempMs += (System.currentTimeMillis() - ts);
-        Map<String, OutgoingBatch> batchByNode = new HashMap<String, OutgoingBatch>();
+        Map<String, OutgoingBatch> batchByNode = new HashMap<>();
         for (TableInfo tableInfo : tableInfos) {
             RouterInfo routerInfo = tableInfo.getRouterInfo();
             String reloadSql = getTempTableSql(routerInfo, tableInfo, loadId);
@@ -291,8 +292,8 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
 
     class RouterInfo {
         private Router router;
-        private List<String> nodeIds = new ArrayList<String>();
-        private Map<Integer, TableInfo> tableInfos = new HashMap<Integer, TableInfo>();
+        private List<String> nodeIds = new ArrayList<>();
+        private Map<Integer, TableInfo> tableInfos = new HashMap<>();
         private String tempTableName;
         private String nodeQuery;
 
@@ -370,14 +371,14 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
         protected String pkColumnNamesAsString;
         protected String pkColumnJoinSql;
         protected int[] pkColumnTypes;
-        protected List<Object> compoundIdList = new ArrayList<Object>();
+        protected List<Object> compoundIdList = new ArrayList<>();
 
         public TableInfo(RouterInfo routerInfo, DataMetaData dataMetaData, TriggerRouter triggerRouter) {
             this.routerInfo = routerInfo;
             this.channelId = triggerRouter.getTrigger().getChannelId();
             this.sourceCatalog = triggerRouter.getTrigger().getSourceCatalogName();
             this.sourceSchema = triggerRouter.getTrigger().getSourceSchemaName();
-            this.table = dataMetaData.getTable();
+            this.table = (Table) dataMetaData.getRelation();
             this.tableName = table.getName();
             this.pkColumnName = table.getPrimaryKeyColumnNames()[0];
             this.initialLoadSql = triggerRouter.getInitialLoadSelect();

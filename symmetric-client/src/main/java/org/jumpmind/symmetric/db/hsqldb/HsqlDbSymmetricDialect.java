@@ -102,7 +102,7 @@ public class HsqlDbSymmetricDialect extends AbstractEmbeddedSymmetricDialect imp
      * This is for use in the java triggers so we can create a virtual table w/ old and new columns values to bump SQL expressions up against.
      */
     private void createDummyDualTable() {
-        Table table = platform.getTableFromCache(null, null, DUAL_TABLE, true);
+        Table table = (Table) platform.getRelationFromCache(null, null, DUAL_TABLE, true);
         if (table == null) {
             platform.getSqlTemplate().update("CREATE MEMORY TABLE " + DUAL_TABLE + "(DUMMY VARCHAR(1))");
             platform.getSqlTemplate().update("INSERT INTO " + DUAL_TABLE + " VALUES(NULL)");

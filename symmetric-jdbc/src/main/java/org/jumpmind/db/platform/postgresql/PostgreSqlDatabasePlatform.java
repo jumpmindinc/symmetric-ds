@@ -57,6 +57,7 @@ import javax.sql.rowset.serial.SerialBlob;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.platform.AbstractJdbcDatabasePlatform;
@@ -334,10 +335,13 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
-    public long getEstimatedRowCount(Table table) {
+    public long getEstimatedRowCount(Relation relation) {
+        if (!(relation instanceof Table)) {
+            return super.getEstimatedRowCount(relation);
+        }
         return getSqlTemplateDirty().queryForLong("select coalesce(c.reltuples, -1) from pg_catalog.pg_class c inner join pg_catalog.pg_namespace n " +
                 "on n.oid = c.relnamespace where c.relname = ? and n.nspname = ?",
-                table.getName(), table.getSchema());
+                relation.getName(), relation.getSchema());
     }
 
     @Override

@@ -184,7 +184,7 @@ public class MultiBatchStagingWriter implements IDataWriter {
     public boolean start(Table table) {
         this.table = table;
         if (table != null) {
-            processInfo.setCurrentTableName(table.getFullyQualifiedTableName());
+            processInfo.setCurrentTableName(table.getFullyQualifiedName());
         }
         currentDataWriter.start(table);
         return true;

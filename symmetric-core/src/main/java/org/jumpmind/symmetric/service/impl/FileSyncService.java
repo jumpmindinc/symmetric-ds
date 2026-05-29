@@ -40,7 +40,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.monitor.FileAlterationObserver;
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.sql.ISqlReadCursor;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -821,7 +821,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
     public void acknowledgeFiles(OutgoingBatch outgoingBatch) {
         log.debug("Acknowledging file_sync outgoing batch-{}", outgoingBatch.getBatchId());
         List<File> filesToDelete = new ArrayList<File>();
-        Table snapshotTable = platform.getTableFromCache(
+        Relation snapshotTable = platform.getRelationFromCache(
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_SNAPSHOT), false);
         ISqlReadCursor<Data> cursor = engine.getDataService().selectDataFor(
                 outgoingBatch.getBatchId(), outgoingBatch.getChannelId());

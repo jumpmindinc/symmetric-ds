@@ -34,10 +34,10 @@ public class AseJdbcSqlTransaction extends JdbcSqlTransaction {
         if (table != null && table.getAutoIncrementColumns().length > 0) {
             if (allow) {
                 execute(String.format("SET IDENTITY_INSERT %s ON",
-                        table.getQualifiedTableName(quote, catalogSeparator, schemaSepartor)));
+                        table.getQualifiedName(quote, catalogSeparator, schemaSepartor)));
             } else {
                 execute(String.format("SET IDENTITY_INSERT %s OFF",
-                        table.getQualifiedTableName(quote, catalogSeparator, schemaSepartor)));
+                        table.getQualifiedName(quote, catalogSeparator, schemaSepartor)));
             }
         }
     }

@@ -20,12 +20,12 @@
  */
 package org.jumpmind.symmetric.io.data;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 
 public interface IDataReader extends IDataResource {
     public Batch nextBatch();
 
-    public Table nextTable();
+    public Relation nextRelation();
 
     public CsvData nextData();
 }

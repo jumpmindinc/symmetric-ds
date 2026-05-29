@@ -27,7 +27,7 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.SqlUtils;
@@ -73,14 +73,14 @@ public class AdditiveColumnTransform implements ISingleValueColumnTransform, IBu
         if (StringUtils.isNotBlank(column.getTransformExpression())) {
             multiplier = new BigDecimal(column.getTransformExpression());
         }
-        Table table = platform.getTableFromCache(data.getCatalogName(), data.getSchemaName(),
+        Relation relation = platform.getRelationFromCache(data.getCatalogName(), data.getSchemaName(),
                 data.getTableName(), false);
-        if (table == null) {
+        if (relation == null) {
             if (log.isDebugEnabled()) {
                 log.debug("Could not find the target table '{}'", data.getFullyQualifiedTableName());
             }
             throw new IgnoreColumnException();
-        } else if (table.getColumnWithName(column.getTargetColumnName()) == null) {
+        } else if (relation.getColumnWithName(column.getTargetColumnName()) == null) {
             if (log.isDebugEnabled()) {
                 log.debug("Could not find the target column '{}'", column.getTargetColumnName());
             }
@@ -113,7 +113,7 @@ public class AdditiveColumnTransform implements ISingleValueColumnTransform, IBu
             List<String> keyValuesList = new ArrayList<String>();
             boolean addedFirstKey = false;
             for (int i = 0; i < keyNames.length; i++) {
-                Column targetCol = table.getColumnWithName(keyNames[i]);
+                Column targetCol = relation.getColumnWithName(keyNames[i]);
                 if (targetCol != null) {
                     columns.add(targetCol);
                     String value = sourceValues.get(keyNames[i]);

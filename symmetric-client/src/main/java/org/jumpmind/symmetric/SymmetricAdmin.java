@@ -68,7 +68,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.sql.SqlScript;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.properties.TypedProperties;
@@ -734,12 +734,12 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         if (args.size() == 0) {
             triggerService.syncTriggers(file != null ? sqlBuffer : null, genAlways);
         } else {
-            for (String tablename : args) {
-                Table table = platform.getTableFromCache(catalogName, schemaName, tablename, true);
-                if (table != null) {
-                    triggerService.syncTriggers(table, genAlways);
+            for (String relationName : args) {
+                Relation relation = platform.getRelationFromCache(catalogName, schemaName, relationName, true);
+                if (relation != null) {
+                    triggerService.syncTriggers(relation, genAlways);
                 } else {
-                    System.out.println("Unable to find table " + tablename);
+                    System.out.println("Unable to find table or view " + relationName);
                 }
             }
         }

@@ -26,10 +26,12 @@ import org.jumpmind.symmetric.model.Node;
 
 /**
  * Filter the SQL used during initial load to query the source table and purge the target table.
- * 
- * @see org.jumpmind.util.FormatUtils.replace()
  *
+ * @see org.jumpmind.util.FormatUtils.replace()
+ * @deprecated Use {@link org.jumpmind.symmetric.load.IRelationReloadVariableFilter} instead, which accepts {@link org.jumpmind.db.model.Relation} to support
+ *             both tables and views. Enable legacy behavior via the {@code extension.use.legacy.interface.enabled} parameter.
  */
+@Deprecated(forRemoval = true)
 public interface IReloadVariableFilter extends IExtensionPoint {
     public String filterInitalLoadSql(String sql, Node targetNode, Table table);
 

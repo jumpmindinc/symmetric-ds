@@ -98,7 +98,7 @@ public class TransformWriter extends NestedDataWriter {
 
     @Override
     public boolean start(Table table) {
-        List<TransformTable> activeTransformsTemp = transformsBySourceTable.get(table.getFullyQualifiedTableNameLowerCase());
+        List<TransformTable> activeTransformsTemp = transformsBySourceTable.get(table.getFullyQualifiedNameLowerCase());
         if (activeTransformsTemp != null && activeTransformsTemp.size() > 0) {
             this.sourceTable = table;
             activeTransforms = new ArrayList<TransformTable>(activeTransformsTemp.size());
@@ -124,10 +124,10 @@ public class TransformWriter extends NestedDataWriter {
         DataEventType eventType = data.getDataEventType();
         if (activeTransforms != null && activeTransforms.size() > 0 && isTransformable(eventType)) {
             if (data.requiresTable() && sourceTable == null &&
-                    context.getLastParsedTable() != null) {
+                    context.getLastParsedRelation() != null) {
                 // if we cross batches and the table isn't specified, then
                 // use the last table we used
-                start(context.getLastParsedTable());
+                start((Table) context.getLastParsedRelation());
             }
             if (eventType == DataEventType.SQL) {
                 List<TransformTable> transformTables = activeTransforms;
@@ -160,7 +160,7 @@ public class TransformWriter extends NestedDataWriter {
                 log.debug(
                         "{} transformation(s) started because of {} on {}.  The original row data was: {}",
                         new Object[] { activeTransforms.size(), eventType.toString(),
-                                this.sourceTable.getFullyQualifiedTableName(), sourceValues });
+                                this.sourceTable.getFullyQualifiedName(), sourceValues });
             }
             List<TransformTable> transformTables = activeTransforms;
             if (eventType == DataEventType.DELETE) {

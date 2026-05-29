@@ -422,7 +422,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                         DatabaseInfo info = getPlatform().getDatabaseInfo();
                         String quote = getPlatform().getDdlBuilder().isDelimitedIdentifierModeOn() ? info.getDelimiterToken() : "";
                         sql = FormatUtils.replace("fullTableName",
-                                table.getQualifiedTableName(quote, info.getCatalogSeparator(), info.getSchemaSeparator()), sql);
+                                table.getQualifiedName(quote, info.getCatalogSeparator(), info.getSchemaSeparator()), sql);
                         final String old38CompatibilityTable = "sym_node";
                         if ((channelReload.equals(batch.getChannelId()) && sql.matches(TRUNCATE_PATTERN)
                                 && !table.getNameLowerCase().equals(old38CompatibilityTable))

@@ -38,6 +38,7 @@ import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.ForeignKey.ForeignKeyAction;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.PlatformColumn;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -57,16 +58,16 @@ public class InformixDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values) throws SQLException {
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values) throws SQLException {
         String catalog = metaData.getCatalog();
-        Table t = super.readTable(connection, metaData, values);
-        if (t != null && (isBlank(catalog) || catalog.equals(getDefaultCatalogPattern()))) {
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation != null && (isBlank(catalog) || catalog.equals(getDefaultCatalogPattern()))) {
             /*
              * The default catalog is null so by default if no catalog is provided it must be null as well
              */
-            t.setCatalog(null);
+            relation.setCatalog(null);
         }
-        return t;
+        return relation;
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
