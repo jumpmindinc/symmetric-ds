@@ -136,8 +136,9 @@ public class FileSystemStagingResource extends AbstractStagingResource {
         }
         ensureCleanWriteState();
         Charset effective = charset != null ? charset : options.getCharset();
+        long effectiveThreshold = Math.min(memoryThresholdBytes, options.getMemoryThresholdBytes());
         try {
-            spillWriter = new ThresholdSpillWriter(memoryThresholdBytes, new ThresholdSpillWriter.SpillTarget() {
+            spillWriter = new ThresholdSpillWriter(effectiveThreshold, new ThresholdSpillWriter.SpillTarget() {
                 @Override
                 public OutputStream openSpillTarget() throws IOException {
                     File parent = file.getParentFile();

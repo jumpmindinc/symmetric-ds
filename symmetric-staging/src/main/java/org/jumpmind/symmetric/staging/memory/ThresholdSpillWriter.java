@@ -41,8 +41,8 @@ public class ThresholdSpillWriter extends OutputStream {
     public ThresholdSpillWriter(long thresholdBytes, SpillTarget spillTarget) {
         this.thresholdBytes = thresholdBytes;
         this.spillTarget = spillTarget;
-        this.memoryBuffer = thresholdBytes > 0 ? new ByteArrayOutputStream() : null;
-        this.spilled = thresholdBytes <= 0;
+        this.memoryBuffer = new ByteArrayOutputStream();
+        this.spilled = false;
     }
 
     public boolean isSpilled() {

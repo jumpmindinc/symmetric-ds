@@ -59,6 +59,10 @@ public final class StagingOptions {
                 .build();
     }
 
+    public StagingOptions forScratch() {
+        return toBuilder().withMemoryThresholdBytes(0L).build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }

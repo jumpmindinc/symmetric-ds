@@ -141,6 +141,20 @@ class FileSystemStagingManagerTest {
         scratch.delete();
     }
 
+    @Test
+    void createScratchResource_neverBuffersInMemory(@TempDir Path stagingDir, @TempDir Path scratchDir) throws Exception {
+        FileSystemStagingManager manager = newManager(stagingDir, scratchDir);
+        IStagedResource scratch = manager.createScratchResource(StagingOptions.plain(), "tmp", "no-memory");
+        assertEquals(0L, scratch.getOptions().getMemoryThresholdBytes());
+        try (java.io.BufferedWriter writer = scratch.openWriter(StandardCharsets.UTF_8, 1024L * 1024L)) {
+            writer.write("tiny");
+        }
+        assertNotNull(scratch.getFilesystemFile());
+        assertTrue(scratch.getFilesystemFile().exists());
+        assertEquals(ResourceLocation.FILESYSTEM_SCRATCH, scratch.getCurrentLocation());
+        scratch.delete();
+    }
+
     private static FileSystemStagingManager newManager(Path stagingDir, Path scratchDir) {
         try {
             Files.createDirectories(stagingDir);

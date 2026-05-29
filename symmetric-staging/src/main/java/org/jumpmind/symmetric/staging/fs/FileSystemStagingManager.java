@@ -99,7 +99,7 @@ public class FileSystemStagingManager extends AbstractStagingManager {
     public IStagedResource createScratchResource(StagingOptions options, Object... path) {
         StagingKey key = new StagingKey(path);
         FileSystemStagingResource resource = new FileSystemStagingResource(
-                key, options, scratchBackend, this, ResourceLocation.FILESYSTEM_SCRATCH);
+                key, options.forScratch(), scratchBackend, this, ResourceLocation.FILESYSTEM_SCRATCH);
         inUse.put(key, resource);
         return resource;
     }
