@@ -117,7 +117,11 @@ public class SnapshotUtil {
     public static final String ERROR_BATCHES_SUBDIR = "batches";
 
     public static File getSnapshotDirectory(ISymmetricEngine engine) {
-        File snapshotsDir = new File(engine.getParameterService().getTempDirectory(), SNAPSHOT_DIR);
+        // SYM-7504: route snapshot scratch through the staging manager's scratch
+        // directory so it lives on the same writable volume that staging uses.
+        // TODO follow-up: rewrite to call stagingManager.createScratchResource()
+        // per file and zip-stream them, eliminating the per-file File handles.
+        File snapshotsDir = new File(engine.getStagingManager().getScratchDirectory(), SNAPSHOT_DIR);
         snapshotsDir.mkdirs();
         return snapshotsDir;
     }
@@ -127,7 +131,7 @@ public class SnapshotUtil {
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
         String dirName = engine.getEngineName().replaceAll(" ", "-") + "-" + dateFormat.format(new Date());
         IParameterService parameterService = engine.getParameterService();
-        File tmpDir = new File(parameterService.getTempDirectory(), dirName);
+        File tmpDir = new File(engine.getStagingManager().getScratchDirectory(), dirName);
         tmpDir.mkdirs();
         log.info("Creating snapshot file in " + tmpDir.getAbsolutePath());
         int stepNumber = 0, totalSteps = 36;

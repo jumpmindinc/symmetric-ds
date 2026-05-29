@@ -26,7 +26,7 @@ import java.util.List;
 
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.io.data.writer.StructureDataWriter.PayloadType;
-import org.jumpmind.symmetric.io.stage.StagingFileLock;
+import org.jumpmind.symmetric.staging.api.IStagingLock;
 import org.jumpmind.symmetric.model.ExtractRequest;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.OutgoingBatch;
@@ -69,7 +69,7 @@ public interface IDataExtractorService {
 
     public void removeBatchFromStaging(OutgoingBatch batch);
 
-    public StagingFileLock acquireStagingFileLock(OutgoingBatch batch);
+    public IStagingLock acquireStagingFileLock(OutgoingBatch batch);
 
     public List<ExtractRequest> getTablesForExtractByLoadId(long loadId);
 

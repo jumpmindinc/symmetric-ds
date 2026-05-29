@@ -20,34 +20,26 @@
  */
 package org.jumpmind.symmetric.staging.api;
 
-import java.util.Set;
+import java.util.ServiceLoader;
 
-public interface IStagingManager {
-    IStagedResource find(StagingKey key);
+import org.jumpmind.symmetric.staging.factory.NotImplementedException;
 
-    IStagedResource find(Object... path);
+public final class StreamCipherRegistry {
+    private StreamCipherRegistry() {
+    }
 
-    IStagedResource create(StagingOptions options, Object... path);
-
-    IStagedResource createScratchResource(StagingOptions options, Object... path);
-
-    IStagingLock acquireLock(String serverInfo, long ttlMs, Object... path);
-
-    boolean breakExpiredLock(long ttlMs, Object... path);
-
-    long clean(long timeToLiveMs);
-
-    Set<StagingKey> listResources();
-
-    StorageKind getStorageKind();
-
-    boolean supportsRandomAccess();
-
-    boolean isLocalStorageAvailable();
-
-    String getLocalStorageFailureReason();
-
-    boolean verifyChecksum(StagingKey key);
-
-    java.io.File getScratchDirectory();
+    public static IStreamCipherProvider lookup(String cipherId, IStreamCipherContext context) {
+        if (cipherId == null || cipherId.isBlank()) {
+            return null;
+        }
+        ServiceLoader<IStreamCipherProvider> loader = ServiceLoader.load(IStreamCipherProvider.class);
+        for (IStreamCipherProvider provider : loader) {
+            if (provider.getCipherId().equalsIgnoreCase(cipherId)) {
+                provider.init(context);
+                return provider;
+            }
+        }
+        throw new NotImplementedException("Staging cipher '" + cipherId
+                + "' not available — install symmetric-pro-staging or an equivalent provider");
+    }
 }

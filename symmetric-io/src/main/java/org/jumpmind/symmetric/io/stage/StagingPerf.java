@@ -31,6 +31,7 @@ import java.util.Map;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.symmetric.staging.api.IStagingLock;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.Batch.BatchType;
@@ -106,12 +107,12 @@ public class StagingPerf {
     protected void testBatch(Batch batch, Map<String, PerfResult> results) {
         String timestampedHeaderLine = String.format("TEST: SymmetricDS staging file with random contents. Current Timestamp: %tc", System.currentTimeMillis());
         long ts = System.currentTimeMillis();
-        StagingFileLock lock = stagingMgr.acquireFileLock(serverInfo, STAGE_PATH, batch.getStagedLocation(), batch.getBatchId());
+        IStagingLock lock = stagingMgr.acquireFileLock(serverInfo, STAGE_PATH, batch.getStagedLocation(), batch.getBatchId());
         if (lock.isAcquired()) {
             incrementTaskDuration(results, STAT_LOCK_ACQUIRE, System.currentTimeMillis() - ts);
-            lock.releaseLock();
+            lock.release();
         } else {
-            String errorMsg = "Failed to create staging file " + lock.getLockFile().getAbsolutePath();
+            String errorMsg = "Failed to create staging file " + lock;
             failTask(results, STAT_LOCK_ACQUIRE, errorMsg);
             throw new RuntimeException(errorMsg);
         }

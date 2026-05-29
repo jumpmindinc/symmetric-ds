@@ -117,7 +117,7 @@ import org.jumpmind.symmetric.io.data.writer.TransformWriter;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
-import org.jumpmind.symmetric.io.stage.StagingFileLock;
+import org.jumpmind.symmetric.staging.api.IStagingLock;
 import org.jumpmind.symmetric.io.stage.StagingLowFreeSpace;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
@@ -1093,7 +1093,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         try {
             lock.acquire(); // In-memory, intra-process lock.
             if (isStagingFileLockRequired(batch)) { // File-system, inter-process lock for clustering.
-                StagingFileLock fileLock = acquireStagingFileLock(batch);
+                IStagingLock fileLock = acquireStagingFileLock(batch);
                 if (fileLock.isAcquired()) {
                     lock.fileLock = fileLock;
                 } else {
@@ -1119,29 +1119,28 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     @Override
-    public StagingFileLock acquireStagingFileLock(OutgoingBatch batch) {
+    public IStagingLock acquireStagingFileLock(OutgoingBatch batch) {
         boolean stagingFileAcquired = false;
-        StagingFileLock fileLock = null;
+        IStagingLock fileLock = null;
         int iterations = 0;
         while (!stagingFileAcquired) {
             fileLock = stagingManager.acquireFileLock(getLockingServerInfo(), Constants.STAGING_CATEGORY_OUTGOING,
                     batch.getStagedLocation(), batch.getBatchId());
             stagingFileAcquired = fileLock.isAcquired();
             if (!stagingFileAcquired) {
-                if (fileLock.getLockFile() == null) {
-                    log.warn("Staging lock file not acquired " + fileLock.getLockFailureMessage());
-                    return fileLock;
+                if (fileLock.getFailureMessage() != null) {
+                    log.warn("Staging lock not acquired: {}", fileLock.getFailureMessage());
                 }
-                long lockAge = fileLock.getLockAge();
+                long lockAge = fileLock.getAgeMs();
                 if (lockAge >= parameterService.getLong(ParameterConstants.LOCK_TIMEOUT_MS)) {
-                    log.warn("Lock {} in place for {} > about to BREAK the lock.", fileLock.getLockFile(), DurationFormatUtils.formatDurationWords(lockAge,
+                    log.warn("Lock {} in place for {} > about to BREAK the lock.", fileLock, DurationFormatUtils.formatDurationWords(lockAge,
                             true, true));
                     fileLock.breakLock();
                 } else {
                     if ((iterations % 10) == 0) {
-                        log.info("Lock {} in place for {}, waiting...", fileLock.getLockFile(), DurationFormatUtils.formatDurationWords(lockAge, true, true));
+                        log.info("Lock {} in place for {}, waiting...", fileLock, DurationFormatUtils.formatDurationWords(lockAge, true, true));
                     } else {
-                        log.debug("Lock {} in place for {}, waiting...", fileLock.getLockFile(), DurationFormatUtils.formatDurationWords(lockAge, true, true));
+                        log.debug("Lock {} in place for {}, waiting...", fileLock, DurationFormatUtils.formatDurationWords(lockAge, true, true));
                     }
                     try {
                         Thread.sleep(parameterService.getLong(ParameterConstants.LOCK_WAIT_RETRY_MILLIS));
@@ -1169,7 +1168,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 lock.release();
             }
             if (lock.fileLock != null) {
-                lock.fileLock.releaseLock();
+                lock.fileLock.release();
             }
         }
     }
@@ -2387,7 +2386,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
 
         String semaphoreKey;
         private Semaphore inMemoryLock = new Semaphore(1);
-        StagingFileLock fileLock;
+        IStagingLock fileLock;
         int referenceCount = 0;
     }
 }

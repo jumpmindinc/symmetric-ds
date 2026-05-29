@@ -5,6 +5,7 @@ apply from: symAssembleDir + '/common.gradle'
     dependencies {
         api project(":symmetric-csv")
         api project(":symmetric-db")
+        api project(":symmetric-staging")
         api "org.apache-extras.beanshell:bsh:$bshVersion"
         api "net.sourceforge.jeval:jeval:0.9.4"
         api "com.google.code.gson:gson:$gsonVersion"

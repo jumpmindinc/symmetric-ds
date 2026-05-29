@@ -137,6 +137,11 @@ public abstract class AbstractStagingManager implements IStagingManager {
         return true;
     }
 
+    @Override
+    public File getScratchDirectory() {
+        return scratchDir.toFile();
+    }
+
     public void removeResource(StagingKey key) {
         inUse.remove(key);
     }
