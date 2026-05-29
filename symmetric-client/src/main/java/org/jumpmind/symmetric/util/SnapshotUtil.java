@@ -124,12 +124,7 @@ public class SnapshotUtil {
     }
 
     /**
-     * Allocate a scratch resource for one snapshot file. Returns the underlying File so existing FileWriter / DbExport / FileUtils call sites work unchanged.
-     * The resource lives under <code>&lt;scratchDir&gt;/snapshots/&lt;dirName&gt;/&lt;relativePath&gt;</code> and is registered with the staging manager for
-     * later cleanup.
-     * <p>
-     * Helpers that internally create files (writeRuntimeStats, createThreadsFile, etc.) still use {@code scratchFile(engine, tmpDir,...)} directly today; that
-     * follow-up is tracked separately. Their files still land on the staging scratch volume because tmpDir itself lives under the staging scratch directory.
+     * Allocates a scratch resource for one snapshot file (local temporary location).
      */
     protected static File scratchFile(ISymmetricEngine engine, File tmpDir, String... relativePath) {
         Object[] parts = new Object[relativePath.length + 2];
@@ -463,16 +458,16 @@ public class SnapshotUtil {
         }
         log.info("Writing threads info");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        createThreadsFile(tmpDir.getPath(), false);
-        createThreadsFile(tmpDir.getPath(), true);
-        createThreadStatsFile(tmpDir.getPath());
-        createProcessInfoFile(engine, tmpDir.getPath());
+        createThreadsFile(engine, tmpDir, false);
+        createThreadsFile(engine, tmpDir, true);
+        createThreadStatsFile(engine, tmpDir);
+        createProcessInfoFile(engine, tmpDir);
         checkpoint(engine, listener, stepNumber++, totalSteps);
         try {
             log.info("Writing transactions file");
             List<Transaction> transactions = targetPlatform.getTransactions();
             if (!transactions.isEmpty()) {
-                createTransactionsFile(engine, tmpDir.getPath(), transactions);
+                createTransactionsFile(engine, tmpDir, transactions);
             }
         } catch (Throwable e) {
             log.warn("Failed to create transactions file", e);
@@ -854,8 +849,8 @@ public class SnapshotUtil {
         }
     }
 
-    public static File createThreadsFile(String parent, boolean isFiltered) {
-        File file = new File(parent, isFiltered ? "threads-filtered.txt" : "threads.txt");
+    public static File createThreadsFile(ISymmetricEngine engine, File tmpDir, boolean isFiltered) {
+        File file = scratchFile(engine, tmpDir, isFiltered ? "threads-filtered.txt" : "threads.txt");
         try (FileWriter fwriter = new FileWriter(file)) {
             ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
             long[] threadIds = threadBean.getAllThreadIds();
@@ -889,8 +884,8 @@ public class SnapshotUtil {
         return file;
     }
 
-    public static File createThreadStatsFile(String parent) {
-        File file = new File(parent, "threads-stats.csv");
+    public static File createThreadStatsFile(ISymmetricEngine engine, File tmpDir) {
+        File file = scratchFile(engine, tmpDir, "threads-stats.csv");
         try (OutputStream outputStream = new FileOutputStream(file);
                 CsvWriter csvWriter = new CsvWriter(outputStream, ',', Charset.forName("ISO-8859-1"))) {
             csvWriter.setEscapeMode(CsvWriter.ESCAPE_MODE_DOUBLED);
@@ -922,10 +917,10 @@ public class SnapshotUtil {
         return file;
     }
 
-    public static void createProcessInfoFile(ISymmetricEngine engine, String parent) {
+    public static void createProcessInfoFile(ISymmetricEngine engine, File tmpDir) {
         try {
-            File file = new File(parent, "process-info.csv");
-            File fileActive = new File(parent, "process-info-active.csv");
+            File file = scratchFile(engine, tmpDir, "process-info.csv");
+            File fileActive = scratchFile(engine, tmpDir, "process-info-active.csv");
             List<ProcessInfo> infos = engine.getStatisticManager().getProcessInfos();
             SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             try (OutputStream outputStream = new FileOutputStream(file);
@@ -960,7 +955,7 @@ public class SnapshotUtil {
         }
     }
 
-    private static File createTransactionsFile(ISymmetricEngine engine, String parent, List<Transaction> transactions) {
+    private static File createTransactionsFile(ISymmetricEngine engine, File tmpDir, List<Transaction> transactions) {
         Map<String, Transaction> transactionMap = new HashMap<String, Transaction>();
         for (Transaction transaction : transactions) {
             transactionMap.put(transaction.getId(), transaction);
@@ -970,7 +965,7 @@ public class SnapshotUtil {
         for (Transaction transaction : transactions) {
             SymmetricUtils.filterTransactions(transaction, transactionMap, filteredTransactions, dbUser, false, false);
         }
-        File file = new File(parent, "transactions.csv");
+        File file = scratchFile(engine, tmpDir, "transactions.csv");
         try (OutputStream outputStream = new FileOutputStream(file);
                 CsvWriter csvWriter = new CsvWriter(outputStream, ',', Charset.forName("ISO-8859-1"))) {
             csvWriter.setEscapeMode(CsvWriter.ESCAPE_MODE_DOUBLED);
@@ -1011,7 +1006,7 @@ public class SnapshotUtil {
                         errorDir = scratchFile(engine, tmpDir, ERROR_BATCHES_SUBDIR);
                         errorDir.mkdirs();
                     }
-                    extract(export, 10000, whereClause, new File(errorDir, filenameCaptured),
+                    extract(export, 10000, whereClause, scratchFile(engine, tmpDir, ERROR_BATCHES_SUBDIR, filenameCaptured),
                             TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA));
                     // Write parsed row data to file
                     String filenameParsed = errorDir + File.separator + batch.getBatchId() + "_parsed.csv";
