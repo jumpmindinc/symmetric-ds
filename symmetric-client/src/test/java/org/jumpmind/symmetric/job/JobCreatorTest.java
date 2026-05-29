@@ -78,8 +78,9 @@ class JobCreatorTest {
     }
 
     @Test
-    void testCreateJob_refreshType_throwsForCommunityEdition() {
-        JobDefinition def = jobDefinition(ClusterConstants.DATA_REFRESH_DAILY_MIDNIGHT, JobType.REFRESH);
+    void testCreateJob_unknownType_throwsSymmetricException() {
+        JobDefinition def = new JobDefinition();
+        def.setJobName("UnknownJob");
         assertThrows(SymmetricException.class, () -> creator.createJob(def, engine, taskScheduler));
     }
 
