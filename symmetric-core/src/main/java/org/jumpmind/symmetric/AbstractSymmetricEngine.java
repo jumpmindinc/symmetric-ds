@@ -771,6 +771,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                     statisticManager.incrementRestart();
                     startMetricsAggregation();
                     started = true;
+                    ApplicationHealthTracker.getTracker().setEngineReadiness(getEngineName(), true);
                     for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
                         ext.started(this);
                     }

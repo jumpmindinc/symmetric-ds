@@ -50,6 +50,7 @@ import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
+import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
 import org.jumpmind.symmetric.SymmetricException;
@@ -175,6 +176,7 @@ public class SymmetricEngineHolder {
                     log.warn("Destroy of engine failed", e);
                 }
                 engines.remove(engineName);
+                ApplicationHealthTracker.getTracker().stopTrackingEngine(engineName);
             }
             enginesFailed.remove(engineName);
             if (restartExecutor == null) {
@@ -190,6 +192,7 @@ public class SymmetricEngineHolder {
     public synchronized void stop() {
         for (ServerSymmetricEngine engine : engines.values()) {
             engine.destroy();
+            ApplicationHealthTracker.getTracker().stopTrackingEngine(engine.getEngineName());
         }
         engines.clear();
         enginesFailed.clear();
@@ -237,6 +240,7 @@ public class SymmetricEngineHolder {
                 log.error("", e);
             }
             engines.remove(engineName);
+            ApplicationHealthTracker.getTracker().stopTrackingEngine(engineName);
         }
         File enginesDir = new File(PropertiesUtil.getEnginesDir());
         File symmetricProperties = new File(enginesDir, engineName + ".properties");
@@ -356,6 +360,7 @@ public class SymmetricEngineHolder {
             synchronized (this) {
                 if (!engines.containsKey(engine.getEngineName())) {
                     engines.put(engine.getEngineName(), engine);
+                    ApplicationHealthTracker.getTracker().setEngineReadiness(engine.getEngineName(), false);
                 } else {
                     String message = "An engine with the name of " + engine.getEngineName() +
                             " was not started because an engine of the same name has already been started.  " +

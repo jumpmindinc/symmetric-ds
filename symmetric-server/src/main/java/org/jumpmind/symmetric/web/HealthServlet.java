@@ -39,6 +39,7 @@ public class HealthServlet extends HttpServlet {
     @Override
     public void init() {
         handlers.add(new LivelinessUriHandler());
+        handlers.add(new ReadinessUriHandler());
     }
 
     @Override

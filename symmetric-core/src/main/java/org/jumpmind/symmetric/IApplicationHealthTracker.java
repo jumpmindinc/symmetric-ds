@@ -20,12 +20,20 @@
  */
 package org.jumpmind.symmetric;
 
+import java.util.Map;
+
 public interface IApplicationHealthTracker {
     boolean isAlive();
 
     void setAlive(boolean alive);
 
-    boolean isReady();
+    public Map<String, Boolean> getReadinessMap();
 
-    void setReady(boolean ready);
+    void setEngineReadiness(String engineName, boolean ready);
+
+    void stopTrackingEngine(String engineName);
+
+    boolean isEngineReady(String engineName);
+
+    boolean isReady();
 }
