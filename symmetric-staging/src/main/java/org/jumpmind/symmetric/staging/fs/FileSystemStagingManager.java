@@ -78,7 +78,7 @@ public class FileSystemStagingManager extends AbstractStagingManager {
             return cached;
         }
         if (primaryBackend.findExistingFile(key) != null) {
-            FileSystemStagingResource resource = new FileSystemStagingResource(
+            FileSystemStagedResource resource = new FileSystemStagedResource(
                     key, config.defaultOptions(), primaryBackend, this, ResourceLocation.FILESYSTEM_PRIMARY);
             inUse.put(key, resource);
             return resource;
@@ -89,7 +89,7 @@ public class FileSystemStagingManager extends AbstractStagingManager {
     @Override
     public IStagedResource create(StagingOptions options, Object... path) {
         StagingKey key = new StagingKey(path);
-        FileSystemStagingResource resource = new FileSystemStagingResource(
+        FileSystemStagedResource resource = new FileSystemStagedResource(
                 key, options, primaryBackend, this, ResourceLocation.MEMORY);
         inUse.put(key, resource);
         return resource;
@@ -98,7 +98,7 @@ public class FileSystemStagingManager extends AbstractStagingManager {
     @Override
     public IStagedResource createScratchResource(StagingOptions options, Object... path) {
         StagingKey key = new StagingKey(path);
-        FileSystemStagingResource resource = new FileSystemStagingResource(
+        FileSystemStagedResource resource = new FileSystemStagedResource(
                 key, options.forScratch(), scratchBackend, this, ResourceLocation.FILESYSTEM_SCRATCH);
         inUse.put(key, resource);
         return resource;

@@ -42,12 +42,12 @@ import org.jumpmind.symmetric.staging.api.ResourceState;
 import org.jumpmind.symmetric.staging.api.StagingKey;
 import org.jumpmind.symmetric.staging.api.StagingOptions;
 import org.jumpmind.symmetric.staging.memory.ThresholdSpillWriter;
-import org.jumpmind.symmetric.staging.spi.AbstractStagingResource;
+import org.jumpmind.symmetric.staging.spi.AbstractStagedResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FileSystemStagingResource extends AbstractStagingResource {
-    private static final Logger log = LoggerFactory.getLogger(FileSystemStagingResource.class);
+public class FileSystemStagedResource extends AbstractStagedResource {
+    private static final Logger log = LoggerFactory.getLogger(FileSystemStagedResource.class);
     private final FileSystemBackend backend;
     private final FileSystemStagingManager manager;
     private final ResourceLocation filesystemLocation;
@@ -59,7 +59,7 @@ public class FileSystemStagingResource extends AbstractStagingResource {
     private Map<Thread, BufferedReader> readers;
     private BufferedWriter writer;
 
-    public FileSystemStagingResource(StagingKey key, StagingOptions options,
+    public FileSystemStagedResource(StagingKey key, StagingOptions options,
             FileSystemBackend backend, FileSystemStagingManager manager,
             ResourceLocation filesystemLocation) {
         super(key, options,

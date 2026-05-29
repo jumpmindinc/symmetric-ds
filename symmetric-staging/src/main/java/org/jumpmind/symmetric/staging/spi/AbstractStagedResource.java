@@ -32,7 +32,7 @@ import org.jumpmind.symmetric.staging.api.ResourceState;
 import org.jumpmind.symmetric.staging.api.StagingKey;
 import org.jumpmind.symmetric.staging.api.StagingOptions;
 
-public abstract class AbstractStagingResource implements IStagedResource {
+public abstract class AbstractStagedResource implements IStagedResource {
     protected final StagingKey key;
     protected final StagingOptions options;
     private final AtomicInteger references = new AtomicInteger(0);
@@ -41,7 +41,7 @@ public abstract class AbstractStagingResource implements IStagedResource {
     protected final Set<ResourceLocation> allLocations = EnumSet.noneOf(ResourceLocation.class);
     protected volatile long lastUpdateTime;
 
-    protected AbstractStagingResource(StagingKey key, StagingOptions options, ResourceLocation initialLocation) {
+    protected AbstractStagedResource(StagingKey key, StagingOptions options, ResourceLocation initialLocation) {
         this.key = key;
         this.options = options;
         this.state = ResourceState.CREATE;
