@@ -329,7 +329,7 @@ subprojects { subproject ->
         hamcrestVersion = '1.3'
         h2Version = '2.2.224'
         derbyVersion = '10.16.1.1'
-        postgresqlVersion =  '42.7.3'
+        postgresqlVersion =  '42.7.11'
         hsqldbVersion = '2.7.0'
         sqliteVersion = '3.45.3.0'
         // Also update mssql-jdbc_auth*.dll (in symmetric-pro:/src/izpack/x64 and x86) and install.xml
