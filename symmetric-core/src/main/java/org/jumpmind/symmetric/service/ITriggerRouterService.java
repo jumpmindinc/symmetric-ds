@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.cache.TriggerRouterRoutersCache;
 import org.jumpmind.symmetric.config.ITriggerCreationListener;
@@ -264,7 +265,7 @@ public interface ITriggerRouterService {
 
     public boolean syncTriggers(Relation relation, boolean genAlways);
 
-    public boolean syncTriggers(List<Relation> relations, boolean genAlways);
+    public boolean syncTriggers(RelationsList relations, boolean genAlways);
 
     public boolean syncTriggers(String targetExternalId, boolean force);
 
@@ -295,9 +296,9 @@ public interface ITriggerRouterService {
     public Collection<Trigger> findMatchingTriggers(List<Trigger> triggers, String catalog, String schema,
             String table);
 
-    public List<Relation> getRelationsFor(List<TriggerHistory> histories);
+    public RelationsList getRelationsFor(List<TriggerHistory> histories);
 
-    public List<Relation> getSortedRelationsFor(List<TriggerHistory> histories);
+    public RelationsList getSortedRelationsFor(List<TriggerHistory> histories);
 
     public List<Trigger> buildTriggersForSymmetricTables(String version, String... tablesToExclude);
 }

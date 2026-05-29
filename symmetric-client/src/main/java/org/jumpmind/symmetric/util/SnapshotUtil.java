@@ -66,6 +66,7 @@ import org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
@@ -167,7 +168,7 @@ public class SnapshotUtil {
         IDatabasePlatform targetPlatform = engine.getSymmetricDialect().getTargetPlatform();
         ISymmetricDialect targetDialect = engine.getTargetDialect();
         try {
-            Map<CatalogSchema, List<Relation>> catalogSchemas = getRelationsForCaptureByCatalogSchema(engine);
+            Map<CatalogSchema, RelationsList> catalogSchemas = getRelationsForCaptureByCatalogSchema(engine);
             checkpoint(engine, listener, stepNumber++, totalSteps);
             addRelationsForLoadByCatalogSchema(engine, catalogSchemas);
             checkpoint(engine, listener, stepNumber++, totalSteps);
@@ -195,7 +196,7 @@ public class SnapshotUtil {
                     filename = "table-definitions-" + extra + ".xml";
                 }
                 try (FileOutputStream fos = new FileOutputStream(new File(tmpDir, filename))) {
-                    List<Relation> relations = catalogSchemas.get(catalogSchema);
+                    RelationsList relations = catalogSchemas.get(catalogSchema);
                     List<Table> tables = new ArrayList<>();
                     List<View> views = new ArrayList<>();
                     for (Relation relation : relations) {
@@ -1009,9 +1010,9 @@ public class SnapshotUtil {
         }
     }
 
-    public static Map<CatalogSchema, List<Relation>> getRelationsForCaptureByCatalogSchema(ISymmetricEngine engine) {
+    public static Map<CatalogSchema, RelationsList> getRelationsForCaptureByCatalogSchema(ISymmetricEngine engine) {
         IDatabasePlatform targetPlatform = engine.getSymmetricDialect().getTargetPlatform();
-        Map<CatalogSchema, List<Relation>> catalogSchemas = new HashMap<>();
+        Map<CatalogSchema, RelationsList> catalogSchemas = new HashMap<>();
         ITriggerRouterService triggerRouterService = engine.getTriggerRouterService();
         List<TriggerHistory> triggerHistories = triggerRouterService.getActiveTriggerHistories();
         String tablePrefix = engine.getTablePrefix().toUpperCase();
@@ -1045,13 +1046,13 @@ public class SnapshotUtil {
         return trigger != null && trigger.getSourceTableName().contains("$(targetExternalId)");
     }
 
-    public static Map<CatalogSchema, List<Relation>> getRelationsForLoadByCatalogSchema(ISymmetricEngine engine) {
-        Map<CatalogSchema, List<Relation>> relations = new HashMap<>();
+    public static Map<CatalogSchema, RelationsList> getRelationsForLoadByCatalogSchema(ISymmetricEngine engine) {
+        Map<CatalogSchema, RelationsList> relations = new HashMap<>();
         addRelationsForLoadByCatalogSchema(engine, relations);
         return relations;
     }
 
-    protected static void addRelationsForLoadByCatalogSchema(ISymmetricEngine engine, Map<CatalogSchema, List<Relation>> catalogSchemas) {
+    protected static void addRelationsForLoadByCatalogSchema(ISymmetricEngine engine, Map<CatalogSchema, RelationsList> catalogSchemas) {
         ITriggerRouterService triggerRouterService = engine.getTriggerRouterService();
         IParameterService parameterService = engine.getParameterService();
         Node targetNode = engine.getNodeService().findIdentity();
@@ -1081,7 +1082,7 @@ public class SnapshotUtil {
 
     private static void addRelationsForTriggerRouter(TriggerRouter triggerRouter, Node targetNode,
             Map<String, Node> sampleNodeForGroup, LoadContext context,
-            Map<CatalogSchema, List<Relation>> catalogSchemas) {
+            Map<CatalogSchema, RelationsList> catalogSchemas) {
         Trigger trigger = triggerRouter.getTrigger();
         Router router = triggerRouter.getRouter();
         Node sourceNode = sampleNodeForGroup.get(router.getNodeGroupLink().getSourceNodeGroupId());
@@ -1160,8 +1161,8 @@ public class SnapshotUtil {
         return tablesToLookup;
     }
 
-    private static void addRelationToMap(Map<CatalogSchema, List<Relation>> catalogSchemas, CatalogSchema catalogSchema, Relation relation) {
-        List<Relation> relations = catalogSchemas.computeIfAbsent(catalogSchema, k -> new ArrayList<>());
+    private static void addRelationToMap(Map<CatalogSchema, RelationsList> catalogSchemas, CatalogSchema catalogSchema, Relation relation) {
+        RelationsList relations = catalogSchemas.computeIfAbsent(catalogSchema, k -> new RelationsList());
         if (!relations.contains(relation)) {
             relations.add(relation);
         }

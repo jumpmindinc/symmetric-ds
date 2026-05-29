@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
-import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -368,7 +368,7 @@ public class SqlExplorer extends CustomSplitLayout {
             tables.add(table);
             tableToTreeNode.put(table, treeNode);
         }
-        tables = Database.sortByForeignKeys(new ArrayList<Relation>(tables))
+        tables = Database.sortByForeignKeys(new RelationsList(tables))
                 .stream().map(r -> (Table) r).collect(Collectors.toList());
         Collections.reverse(tables);
         dropTables(tables, tableToTreeNode);

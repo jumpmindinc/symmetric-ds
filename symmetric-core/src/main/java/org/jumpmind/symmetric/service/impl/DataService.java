@@ -52,6 +52,7 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -3126,16 +3127,8 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     protected void sortTableRowsByForeignKeys(List<TableRow> tableRows) {
-        List<Table> tables = new ArrayList<>();
-        for (TableRow tableRow : tableRows) {
-            tables.add(tableRow.getTable());
-        }
-        List<Relation> sortedTables = Database.sortByForeignKeys(new ArrayList<>(tables));
-        Map<Relation, Integer> tableMap = new HashMap<>();
-        int index = 0;
-        for (Relation table : sortedTables) {
-            tableMap.put(table, index++);
-        }
+        RelationsList sortedTables = Database.sortByForeignKeys(RelationsList.of(tableRows));
+        Map<Relation, Integer> tableMap = sortedTables.getPositionMap();
         Collections.sort(tableRows, (t1, t2) -> {
             Integer i1 = tableMap.get(t1.getTable());
             Integer i2 = tableMap.get(t2.getTable());

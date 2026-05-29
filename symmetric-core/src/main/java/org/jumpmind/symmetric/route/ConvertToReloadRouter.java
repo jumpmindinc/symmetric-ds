@@ -37,6 +37,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -146,7 +147,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
 
     protected List<TableInfo> sortTableInfos(SimpleRouterContext context, Collection<TableInfo> tableInfos) {
         long ts = System.currentTimeMillis();
-        List<Relation> sortedRelations = getAllSortedRelations(context);
+        RelationsList sortedRelations = getAllSortedRelations(context);
         Map<Table, TableInfo> tableInfosByTable = new HashMap<>();
         for (TableInfo tableInfo : tableInfos) {
             tableInfosByTable.put(tableInfo.getTable(), tableInfo);
@@ -162,9 +163,8 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
         return sortedTableInfos;
     }
 
-    protected List<Relation> getAllSortedRelations(SimpleRouterContext context) {
-        @SuppressWarnings("unchecked")
-        List<Relation> sortedRelations = (List<Relation>) context.get(SORTED_TABLES);
+    protected RelationsList getAllSortedRelations(SimpleRouterContext context) {
+        RelationsList sortedRelations = (RelationsList) context.get(SORTED_TABLES);
         if (sortedRelations == null) {
             List<TriggerHistory> histories = null;
             if (firstTime) {
@@ -173,7 +173,7 @@ public class ConvertToReloadRouter extends AbstractDataRouter implements IDataRo
             } else {
                 histories = engine.getTriggerRouterService().getActiveTriggerHistoriesFromCache();
             }
-            List<Relation> allRelations = new ArrayList<>(histories.size());
+            RelationsList allRelations = new RelationsList(histories.size());
             for (TriggerHistory history : histories) {
                 Relation relation = engine.getDatabasePlatform().getRelationFromCache(history.getSourceCatalogName(),
                         history.getSourceSchemaName(), history.getSourceTableName(), false);

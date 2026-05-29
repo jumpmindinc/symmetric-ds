@@ -52,6 +52,7 @@ import org.jumpmind.db.model.CatalogSchema;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -2053,7 +2054,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public boolean syncTriggers(String targetExternalId, boolean force) {
         if (cacheManager.isUsingTargetExternalId(false)) {
             List<Trigger> triggers = getTriggersForCurrentNode();
-            List<Relation> relations = new ArrayList<>();
+            RelationsList relations = new RelationsList();
             for (Trigger trigger : triggers) {
                 if (trigger.getSourceTableName().contains("targetExternalId")) {
                     Relation relation = platform.readRelationFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
@@ -2071,10 +2072,10 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public boolean syncTriggers(Relation relation, boolean force) {
-        return syncTriggers(Arrays.asList(relation), force);
+        return syncTriggers(new RelationsList(Arrays.asList(relation)), force);
     }
 
-    public boolean syncTriggers(List<Relation> relations, boolean force) {
+    public boolean syncTriggers(RelationsList relations, boolean force) {
         if (clusterService.lock(ClusterConstants.SYNC_TRIGGERS)) {
             TriggerRouterContext context = new TriggerRouterContext();
             long startTime = System.currentTimeMillis();
@@ -2085,7 +2086,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 List<TriggerHistory> activeTriggerHistories = getActiveTriggerHistoriesWithTimings(context);
                 Map<String, List<TriggerRelationSupportingInfo>> triggerToRelationSupportingInfo = getTriggerToRelationSupportingInfo(
                         triggersForCurrentNode, activeTriggerHistories, false, context);
-                Map<Trigger, List<Relation>> triggersToProcess = buildTriggersToProcess(relations, triggersForCurrentNode, ignoreCase);
+                Map<Trigger, RelationsList> triggersToProcess = buildTriggersToProcess(relations, triggersForCurrentNode, ignoreCase);
                 if (!triggersToProcess.isEmpty()) {
                     context.incrementTriggersToSyncCount(triggersToProcess.size());
                     processRelationTriggerSync(triggersToProcess, triggerToRelationSupportingInfo, activeTriggerHistories, force, context);
@@ -2129,25 +2130,25 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return histories;
     }
 
-    private Map<Trigger, List<Relation>> buildTriggersToProcess(List<Relation> relations, List<Trigger> triggersForCurrentNode, boolean ignoreCase) {
-        Map<Trigger, List<Relation>> triggersToProcess = new HashMap<>();
+    private Map<Trigger, RelationsList> buildTriggersToProcess(RelationsList relations, List<Trigger> triggersForCurrentNode, boolean ignoreCase) {
+        Map<Trigger, RelationsList> triggersToProcess = new HashMap<>();
         for (Relation relation : relations) {
             IDatabasePlatform targetPlatform = symmetricDialect.getTargetPlatform(relation.getName());
             for (Trigger trigger : triggersForCurrentNode) {
                 if (trigger.matches(relation, targetPlatform.getDefaultCatalog(), targetPlatform.getDefaultSchema(), ignoreCase)
                         && (!trigger.isSourceTableNameWildCarded() || !trigger.isSourceTableNameExpanded()
                                 || !containsExactMatchForSourceTableName(relation, triggersForCurrentNode, ignoreCase))) {
-                    triggersToProcess.computeIfAbsent(trigger, k -> new ArrayList<>()).add(relation);
+                    triggersToProcess.computeIfAbsent(trigger, k -> new RelationsList()).add(relation);
                 }
             }
         }
         return triggersToProcess;
     }
 
-    private void processRelationTriggerSync(Map<Trigger, List<Relation>> triggersToProcess,
+    private void processRelationTriggerSync(Map<Trigger, RelationsList> triggersToProcess,
             Map<String, List<TriggerRelationSupportingInfo>> triggerToRelationSupportingInfo,
             List<TriggerHistory> activeTriggerHistories, boolean force, TriggerRouterContext context) {
-        for (Map.Entry<Trigger, List<Relation>> entry : triggersToProcess.entrySet()) {
+        for (Map.Entry<Trigger, RelationsList> entry : triggersToProcess.entrySet()) {
             Trigger trigger = entry.getKey();
             List<TriggerRelationSupportingInfo> supportingInfoList = triggerToRelationSupportingInfo.get(trigger.getTriggerId());
             for (Relation relation : entry.getValue()) {
@@ -3135,7 +3136,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             List<TriggerRouter> triggerRouters, boolean sortByFk) {
         final Map<Integer, List<TriggerRouter>> triggerRoutersByHistoryId = fillTriggerRoutersByHistId(
                 sourceNodeGroupId, targetNodeGroupId, targetExternalId, triggerHistories, triggerRouters);
-        final List<Relation> sortedRelations = sortByFk ? getSortedRelationsFor(triggerHistories) : null;
+        final RelationsList sortedRelations = sortByFk ? getSortedRelationsFor(triggerHistories) : null;
         Collections.sort(triggerHistories, (o1, o2) -> {
             int order1 = getMaxInitialLoadOrder(triggerRoutersByHistoryId.get(o1.getTriggerHistoryId()));
             int order2 = getMaxInitialLoadOrder(triggerRoutersByHistoryId.get(o2.getTriggerHistoryId()));
@@ -3204,12 +3205,12 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return triggerRoutersByHistoryId;
     }
 
-    public List<Relation> getSortedRelationsFor(List<TriggerHistory> histories) {
-        return Database.sortByForeignKeys(new ArrayList<>(getRelationsFor(histories)), null, null, null);
+    public RelationsList getSortedRelationsFor(List<TriggerHistory> histories) {
+        return Database.sortByForeignKeys(new RelationsList(getRelationsFor(histories)), null, null, null);
     }
 
-    public List<Relation> getRelationsFor(List<TriggerHistory> histories) {
-        List<Relation> relations = new ArrayList<>(histories.size());
+    public RelationsList getRelationsFor(List<TriggerHistory> histories) {
+        RelationsList relations = new RelationsList(histories.size());
         for (TriggerHistory triggerHistory : histories) {
             Relation relation = null;
             if (!triggerHistory.getSourceTableName().startsWith(tablePrefix)) {

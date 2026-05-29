@@ -98,7 +98,7 @@ public class Database implements Serializable, Cloneable {
      *            This is a used for any relations that are missing from the relations param that should be included in synchronization to avoid FK issues.
      * @return List of relations in their dependency order - if relation A has a foreign key for relation B then relation B will precede relation A in the list.
      */
-    public static List<Relation> sortByForeignKeys(List<Relation> relations, Map<String, Relation> allRelations,
+    public static RelationsList sortByForeignKeys(RelationsList relations, Map<String, Relation> allRelations,
             Map<Integer, Set<Relation>> dependencyMap, Map<Relation, Set<String>> missingDependencyMap) {
         if (allRelations == null) {
             allRelations = new HashMap<>();
@@ -114,7 +114,7 @@ public class Database implements Serializable, Cloneable {
         }
         Set<Relation> resolved = new HashSet<>();
         Set<Relation> temporary = new HashSet<>();
-        List<Relation> finalList = new ArrayList<>();
+        RelationsList finalList = new RelationsList();
         MutableInt depth = new MutableInt(1);
         MutableInt position = new MutableInt(1);
         MutableInt parentPosition = new MutableInt(-1);
@@ -141,7 +141,7 @@ public class Database implements Serializable, Cloneable {
         return finalList;
     }
 
-    public static void logMissingDependentTableNames(List<Relation> relations) {
+    public static void logMissingDependentTableNames(RelationsList relations) {
         Map<String, List<String>> missingTablesByChildTable = findMissingDependentTableNames(relations);
         for (String childTableName : missingTablesByChildTable.keySet()) {
             List<String> missingTables = missingTablesByChildTable.get(childTableName);
@@ -157,7 +157,7 @@ public class Database implements Serializable, Cloneable {
         }
     }
 
-    public static Map<String, List<String>> findMissingDependentTableNames(List<Relation> relations) {
+    public static Map<String, List<String>> findMissingDependentTableNames(RelationsList relations) {
         Map<String, List<String>> missingTablesByChildTable = new HashMap<>();
         Map<String, Relation> allRelations = new HashMap<>();
         for (Relation r : relations) {
@@ -285,7 +285,7 @@ public class Database implements Serializable, Cloneable {
         return minChannelId;
     }
 
-    public static String printTables(List<Relation> relations) {
+    public static String printTables(RelationsList relations) {
         StringBuilder sb = new StringBuilder();
         for (Relation r : relations) {
             sb.append(r.getName()).append(",");
@@ -295,14 +295,14 @@ public class Database implements Serializable, Cloneable {
 
     public static Relation[] sortByForeignKeys(Relation... relations) {
         if (relations != null) {
-            List<Relation> list = new ArrayList<>(Arrays.asList(relations));
+            RelationsList list = new RelationsList(Arrays.asList(relations));
             list = sortByForeignKeys(list, null, null, null);
             relations = list.toArray(new Relation[0]);
         }
         return relations;
     }
 
-    public static List<Relation> sortByForeignKeys(List<Relation> relations) {
+    public static RelationsList sortByForeignKeys(RelationsList relations) {
         return sortByForeignKeys(relations, null, null, null);
     }
 
@@ -848,7 +848,7 @@ public class Database implements Serializable, Cloneable {
         Map<String, Relation> allRelations;
         Set<Relation> resolved;
         Set<Relation> temporary;
-        List<Relation> finalList;
+        RelationsList finalList;
         Map<Relation, Set<String>> missingDependencyMap;
         Map<Integer, Set<Relation>> dependencyMap;
         Map<Relation, Integer> resolvedPosition;

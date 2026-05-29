@@ -78,6 +78,7 @@ import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.PlatformTrigger;
 import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
@@ -564,7 +565,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
      * 
      * @return The relations
      */
-    protected Collection<Relation> readRelations(Connection connection, String catalog,
+    protected RelationsList readRelations(Connection connection, String catalog,
             String schemaPattern, String[] relationTypes) throws SQLException {
         ResultSet tableData = null;
         try {
@@ -576,7 +577,7 @@ public abstract class AbstractJdbcDdlReader implements IDdlReader {
             metaData.setRelationTypes((relationTypes == null) || (relationTypes.length == 0) ? getDefaultRelationTypes()
                     : relationTypes);
             tableData = metaData.getTables(getDefaultTablePattern());
-            List<Relation> relations = new ArrayList<>();
+            RelationsList relations = new RelationsList();
             while (tableData.next()) {
                 Map<String, Object> values = readMetaData(tableData, getColumnsForTable());
                 Relation relation = readRelation(connection, metaData, values);

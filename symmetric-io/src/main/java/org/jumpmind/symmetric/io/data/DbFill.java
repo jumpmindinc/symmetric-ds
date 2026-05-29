@@ -46,6 +46,7 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -201,7 +202,7 @@ public class DbFill {
             log.info("TABLES TO FILL ({}): {}", tablesToFill.size(), toString(tablesToFill));
         }
         List<Table> orderedTables = Database.sortByForeignKeys(
-                new ArrayList<>(tablesToFill),
+                new RelationsList(tablesToFill),
                 new HashMap<>(getAllDbTables()),
                 null, null)
                 .stream().map(r -> (Table) r).toList();
