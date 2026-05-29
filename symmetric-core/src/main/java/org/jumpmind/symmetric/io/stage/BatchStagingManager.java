@@ -93,6 +93,11 @@ public class BatchStagingManager implements IStagingManager {
     }
 
     @Override
+    public IStagedResource createScratchResource(Object... path) {
+        return adapt(delegate.createScratchResource(StagingOptions.plain(), path));
+    }
+
+    @Override
     public IStagingLock acquireFileLock(String serverInfo, Object... path) {
         return delegate.acquireLock(serverInfo, lockTtlMs, path);
     }

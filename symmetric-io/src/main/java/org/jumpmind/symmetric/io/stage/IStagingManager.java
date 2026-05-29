@@ -32,6 +32,8 @@ public interface IStagingManager {
 
     public IStagedResource create(Object... path);
 
+    public IStagedResource createScratchResource(Object... path);
+
     public long clean(long timeToLiveInMs);
 
     public Set<String> getResourceReferences();
