@@ -150,10 +150,11 @@ class JobManagerTest {
     }
 
     @Test
-    void testSaveJob_withRefreshJob_addsClusterLock() {
+    void testSaveJob_withDataRefreshJob_addsClusterLock() {
         JobDefinition job = new JobDefinition();
         job.setJobName(ClusterConstants.DATA_REFRESH_DAILY_MIDNIGHT);
-        job.setJobType(JobType.REFRESH);
+        job.setJobType(JobType.JAVA);
+        job.setImplementation("com.jumpmind.symmetric.job.DataRefreshJob");
         job.setDefaultSchedule("0 0 0 * * *");
         job.setClustered(false);
         job.setCreateBy("SymmetricDS");

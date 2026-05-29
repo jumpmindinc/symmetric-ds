@@ -37,11 +37,9 @@ public class JobCreator {
         } else if (jobDefinition.getJobType() == JobType.SQL) {
             job = new SqlJob(jobDefinition.getJobName(), engine, taskScheduler);
         } else if (jobDefinition.getJobType() == JobType.BUILT_IN) {
-            job = instantiateJavaJob(jobDefinition, engine, taskScheduler);
+            job = instantiateJavaJob(jobDefinition.getJobExpression(), jobDefinition, engine, taskScheduler);
         } else if (jobDefinition.getJobType() == JobType.JAVA) {
             job = new JavaJob(jobDefinition.getJobName(), engine, taskScheduler);
-        } else if (jobDefinition.getJobType() == JobType.REFRESH) {
-            throw new SymmetricException("The " + JobType.REFRESH + " job type requires SymmetricDS Pro");
         } else {
             throw new SymmetricException("Unknown job type " + jobDefinition.getJobType());
         }
@@ -50,8 +48,7 @@ public class JobCreator {
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    protected AbstractJob instantiateJavaJob(JobDefinition jobDefinition, ISymmetricEngine engine, ThreadPoolTaskScheduler taskScheduler) {
-        String className = jobDefinition.getJobExpression();
+    protected AbstractJob instantiateJavaJob(String className, JobDefinition jobDefinition, ISymmetricEngine engine, ThreadPoolTaskScheduler taskScheduler) {
         try {
             Class jobClass = ClassUtils.getClass(className);
             Constructor[] constructors = jobClass.getConstructors();

@@ -29,13 +29,14 @@ public class JobDefinition implements IModelObject {
     private static final long serialVersionUID = 1L;
 
     public enum JobType {
-        BUILT_IN, BSH, JAVA, SQL, REFRESH
+        BUILT_IN, BSH, JAVA, SQL
     }
 
     private String jobName;
     private JobType jobType;
     private boolean requiresRegistration;
     private String jobExpression;
+    private String implementation;
     private String description;
     private String createBy;
     private Date createTime;
@@ -86,6 +87,14 @@ public class JobDefinition implements IModelObject {
 
     public void setJobExpression(String jobExpression) {
         this.jobExpression = jobExpression;
+    }
+
+    public String getImplementation() {
+        return implementation;
+    }
+
+    public void setImplementation(String implementation) {
+        this.implementation = implementation;
     }
 
     public String getDescription() {
