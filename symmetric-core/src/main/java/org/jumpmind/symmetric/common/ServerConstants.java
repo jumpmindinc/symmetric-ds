@@ -49,5 +49,6 @@ public class ServerConstants {
     public final static String SERVER_CONNECTION_IDLE_TIMEOUT = "server.connection.idle.timeout";
     public final static String SERVER_SERVLET_CONTEXT_PATH = "symmetric.server.web.home";
     public final static String SERVER_SINGLE_PROPERTIES_FILE = "server.single.properties.file";
+    public static final String CONTAINER_MODE_ENABLED = "container.mode.enable";
     public static final String SYM_ENV_PREFIX = "SYM_";
 }
