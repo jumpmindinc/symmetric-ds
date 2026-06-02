@@ -271,7 +271,7 @@ public class SnapshotUtil {
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, maxBatches, "order by start_id, end_id desc", scratchFile(engine, tmpDir, "export", "data_gap.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA_GAP));
-        extractQuery(engine.getDatabasePlatform().getSqlTemplateDirty(), exportDir + File.separator + "outgoing_batch_summary.csv",
+        extractQuery(engine.getDatabasePlatform().getSqlTemplateDirty(), scratchFile(engine, tmpDir, "export", "outgoing_batch_summary.csv").getAbsolutePath(),
                 "select node_id, " + byChannelId + "status, count(*) batch_count, sum(data_row_count) data_row_count, sum(byte_count) byte_count, " +
                         "sum(error_flag) error_flag, min(create_time) min_create_time, sum(router_millis) router_millis, sum(extract_millis) extract_millis, " +
                         "sum(network_millis) network_millis, sum(filter_millis) filter_millis, sum(load_millis) load_millis, " +
@@ -298,7 +298,7 @@ public class SnapshotUtil {
         extract(export, maxBatches, "where status != 'OK' order by create_time", scratchFile(engine, tmpDir, "export", "incoming_batch_not_ok.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_INCOMING_BATCH));
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extractQuery(engine.getDatabasePlatform().getSqlTemplateDirty(), exportDir + File.separator + "incoming_batch_summary.csv",
+        extractQuery(engine.getDatabasePlatform().getSqlTemplateDirty(), scratchFile(engine, tmpDir, "export", "incoming_batch_summary.csv").getAbsolutePath(),
                 "select node_id, " + byChannelId + "status, count(*) batch_count, sum(data_row_count) data_row_count, sum(byte_count) byte_count, " +
                         "sum(error_flag) error_flag, min(create_time) min_create_time, sum(router_millis) router_millis, sum(extract_millis) extract_millis, " +
                         "sum(network_millis) network_millis, sum(filter_millis) filter_millis, sum(load_millis) load_millis, " +
@@ -432,11 +432,11 @@ public class SnapshotUtil {
         }
         if (targetDialect instanceof MySqlSymmetricDialect) {
             log.info("Writing MySQL info");
-            extractQuery(targetPlatform.getSqlTemplate(), tmpDir + File.separator + "mysql-processlist.csv",
+            extractQuery(targetPlatform.getSqlTemplate(), scratchFile(engine, tmpDir, "mysql-processlist.csv").getAbsolutePath(),
                     "show processlist");
-            extractQuery(targetPlatform.getSqlTemplate(), tmpDir + File.separator + "mysql-global-variables.csv",
+            extractQuery(targetPlatform.getSqlTemplate(), scratchFile(engine, tmpDir, "mysql-global-variables.csv").getAbsolutePath(),
                     "show global variables");
-            extractQuery(targetPlatform.getSqlTemplate(), tmpDir + File.separator + "mysql-session-variables.csv",
+            extractQuery(targetPlatform.getSqlTemplate(), scratchFile(engine, tmpDir, "mysql-session-variables.csv").getAbsolutePath(),
                     "show session variables");
         }
         checkpoint(engine, listener, stepNumber++, totalSteps);
@@ -1009,7 +1009,7 @@ public class SnapshotUtil {
                     extract(export, 10000, whereClause, scratchFile(engine, tmpDir, ERROR_BATCHES_SUBDIR, filenameCaptured),
                             TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA));
                     // Write parsed row data to file
-                    String filenameParsed = errorDir + File.separator + batch.getBatchId() + "_parsed.csv";
+                    String filenameParsed = scratchFile(engine, tmpDir, ERROR_BATCHES_SUBDIR, batch.getBatchId() + "_parsed.csv").getAbsolutePath();
                     try (CsvWriter writer = new CsvWriter(filenameParsed)) {
                         writer.setEscapeMode(CsvWriter.ESCAPE_MODE_DOUBLED);
                         writer.writeRecord(data.getTriggerHistory().getParsedColumnNames());
