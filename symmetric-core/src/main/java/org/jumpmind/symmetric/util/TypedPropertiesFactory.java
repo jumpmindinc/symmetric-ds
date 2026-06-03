@@ -65,7 +65,7 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
     @Override
     public TypedProperties reload() {
         TypedProperties fileProperties = loadPropertiesFromConfigLocations();
-        mergeAndOverrideWithEnvironmentVariables(fileProperties, true);
+        mergeAndOverrideWithJvmAndEnvironmentVariables(fileProperties, true);
         return fileProperties;
     }
 
@@ -81,12 +81,13 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
         return properties;
     }
 
-    public static void mergeAndOverrideWithEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties) {
-        mergeAndOverrideWithEnvironmentVariables(fileProperties, addMissingProperties, getEnvironmentVariables());
+    public static void mergeAndOverrideWithJvmAndEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties) {
+        mergeAndOverrideWithJvmAndEnvironmentVariables(fileProperties, addMissingProperties, getEnvironmentVariables(), new TypedProperties(System
+                .getProperties()));
     }
 
-    public static void mergeAndOverrideWithEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties,
-            TypedProperties envProperties) {
+    public static void mergeAndOverrideWithJvmAndEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties,
+            TypedProperties envProperties, TypedProperties jvmProperties) {
         TypedProperties otelEnvProperties = envProperties.renameKeysWithUnderscores(SymMetricConstants.OTEL_ENV_PREFIX);
         TypedProperties symEnvProperties = new TypedProperties();
         symEnvProperties.collectFrom(envProperties, ServerConstants.SYM_ENV_PREFIX, true);
@@ -100,7 +101,16 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
             fileProperties.merge(otelEnvProperties);
             fileProperties.merge(symEnvProperties);
         }
+        fileProperties.merge(jvmProperties);
         replaceSystemAndEnvironmentVariables(fileProperties);
+        for (Map.Entry<String, String> override : ServerConstants.JVM_OVERRIDE_ENV_VARS.entrySet()) {
+            String envVarName = override.getKey();
+            envVarName = envVarName.substring(4).toLowerCase().replace('_', '.');
+            String jvmPropertyName = override.getValue();
+            if (symEnvProperties.containsKey(envVarName) && (addMissingProperties || fileProperties.containsKey(jvmPropertyName))) {
+                fileProperties.put(jvmPropertyName, symEnvProperties.getProperty(envVarName));
+            }
+        }
         if (log.isDebugEnabled()) {
             otelEnvProperties.logAllKeys("OTelEnvProperties");
             symEnvProperties.logAllKeys("SymEnvProperties");

@@ -114,9 +114,7 @@ public abstract class AbstractCommandLauncher {
                 return;
             }
             TypedProperties serverProperties = new TypedProperties(serverPropertiesFile);
-            TypedProperties jvmProperties = new TypedProperties(System.getProperties());
-            serverProperties.merge(jvmProperties);
-            TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(serverProperties, false);
+            TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(serverProperties, false);
             System.getProperties().putAll(serverProperties);
             serverPropertiesInitialized = true;
         }

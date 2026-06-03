@@ -12,46 +12,46 @@ import org.junit.jupiter.api.Test;
 
 class TypedPropertiesFactoryTest {
     @Test
-    void testMergeAndOverrideWithEnvironmentVariablesAddVariable() {
+    void testMergeAndOverrideWithJvmAndEnvironmentVariablesAddVariable() {
         TypedProperties fileProps = new TypedProperties();
         fileProps.setProperty("db.url", "url");
         fileProps.setProperty("db.user", "user");
-        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, true,
-                TypedPropertiesFactory.getEnvironmentVariables(Map.of("SYM_DB_PASSWORD", "password")));
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, true,
+                TypedPropertiesFactory.getEnvironmentVariables(Map.of("SYM_DB_PASSWORD", "password")), new TypedProperties());
         assertEquals(3, fileProps.size());
         assertEquals("password", fileProps.getProperty("db.password"));
     }
 
     @Test
-    void testMergeAndOverrideWithEnvironmentVariablesOverrideAndAddVariable() {
+    void testMergeAndOverrideWithJvmAndEnvironmentVariablesOverrideAndAddVariable() {
         TypedProperties fileProps = new TypedProperties();
         fileProps.setProperty("db.url", "url");
         fileProps.setProperty("db.user", "user");
-        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, true,
-                TypedPropertiesFactory.getEnvironmentVariables(Map.of("SYM_DB_USER", "updated-user", "SYM_DB_PASSWORD", "password")));
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, true,
+                TypedPropertiesFactory.getEnvironmentVariables(Map.of("SYM_DB_USER", "updated-user", "SYM_DB_PASSWORD", "password")), new TypedProperties());
         assertEquals(3, fileProps.size());
         assertEquals("updated-user", fileProps.getProperty("db.user"));
         assertEquals("password", fileProps.getProperty("db.password"));
     }
 
     @Test
-    void testMergeAndOverrideWithEnvironmentVariablesNoAddedVariable() {
+    void testMergeAndOverrideWithJvmAndEnvironmentVariablesNoAddedVariable() {
         TypedProperties fileProps = new TypedProperties();
         fileProps.setProperty("db.url", "url");
         fileProps.setProperty("db.user", "user");
-        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, false,
-                TypedPropertiesFactory.getEnvironmentVariables(Map.of("SYM_DB_PASSWORD", "password")));
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, false,
+                TypedPropertiesFactory.getEnvironmentVariables(Map.of("SYM_DB_PASSWORD", "password")), new TypedProperties());
         assertEquals(2, fileProps.size());
         assertNull(fileProps.getProperty("db.password"));
     }
 
     @Test
-    void testMergeAndOverrideWithEnvironmentVariablesOverrideAndNoAddedVariable() {
+    void testMergeAndOverrideWithJvmAndEnvironmentVariablesOverrideAndNoAddedVariable() {
         TypedProperties fileProps = new TypedProperties();
         fileProps.setProperty("db.url", "url");
         fileProps.setProperty("db.user", "user");
-        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, false,
-                TypedPropertiesFactory.getEnvironmentVariables(Map.of("SYM_DB_USER", "updated-user", "SYM_DB_PASSWORD", "password")));
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, false,
+                TypedPropertiesFactory.getEnvironmentVariables(Map.of("SYM_DB_USER", "updated-user", "SYM_DB_PASSWORD", "password")), new TypedProperties());
         assertEquals(2, fileProps.size());
         assertEquals("updated-user", fileProps.getProperty("db.user"));
         assertEquals(null, fileProps.getProperty("db.password"));
@@ -61,8 +61,8 @@ class TypedPropertiesFactoryTest {
     void testOtelEnvVariableAddedAsPropertyKey() {
         TypedProperties fileProps = new TypedProperties();
         fileProps.setProperty("db.url", "url");
-        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, true,
-                TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "my-service")));
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, true,
+                TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "my-service")), new TypedProperties());
         assertEquals("my-service", fileProps.getProperty("otel.service.name"));
     }
 
@@ -70,8 +70,8 @@ class TypedPropertiesFactoryTest {
     void testOtelEnvVariableNotAddedWhenNotMissingProperties() {
         TypedProperties fileProps = new TypedProperties();
         fileProps.setProperty("db.url", "url");
-        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, false,
-                TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "my-service")));
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, false,
+                TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "my-service")), new TypedProperties());
         assertNull(fileProps.getProperty("otel.service.name"));
     }
 
@@ -79,9 +79,21 @@ class TypedPropertiesFactoryTest {
     void testOtelEnvVariableOverriddenBySymVariable() {
         TypedProperties fileProps = new TypedProperties();
         fileProps.setProperty("db.url", "url");
-        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, true,
-                TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "otel-name", "SYM_OTEL_SERVICE_NAME", "sym-name")));
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, true,
+                TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "otel-name", "SYM_OTEL_SERVICE_NAME", "sym-name")),
+                new TypedProperties());
         assertEquals("sym-name", fileProps.getProperty("otel.service.name"));
+    }
+
+    @Test
+    void testJvmPropertyOverridesEnvironmentVariable() {
+        TypedProperties fileProps = new TypedProperties();
+        fileProps.setProperty("db.url", "url");
+        TypedProperties jvmProps = new TypedProperties();
+        jvmProps.setProperty("db.user", "jvm-user");
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, true,
+                TypedPropertiesFactory.getEnvironmentVariables(Map.of("SYM_DB_USER", "env-user")), jvmProps);
+        assertEquals("jvm-user", fileProps.getProperty("db.user"));
     }
 
     @Test
@@ -138,11 +150,11 @@ class TypedPropertiesFactoryTest {
     }
 
     @Test
-    void testMergeAndOverrideWithEnvironmentVariables_throwsWhenBothEmpty() {
+    void testMergeAndOverrideWithJvmAndEnvironmentVariables_throwsWhenBothEmpty() {
         TypedProperties fileProps = new TypedProperties();
         try {
-            TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(fileProps, true,
-                    TypedPropertiesFactory.getEnvironmentVariables(Map.of()));
+            TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, true,
+                    TypedPropertiesFactory.getEnvironmentVariables(Map.of()), new TypedProperties());
             throw new AssertionError("Expected RuntimeException");
         } catch (RuntimeException e) {
             assertEquals("Property files were not found", e.getMessage());
