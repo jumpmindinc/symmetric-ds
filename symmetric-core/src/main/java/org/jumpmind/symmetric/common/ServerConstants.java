@@ -21,6 +21,9 @@
 package org.jumpmind.symmetric.common;
 
 import java.util.Map;
+
+import org.jumpmind.security.SecurityConstants;
+
 import static java.util.Map.entry;
 
 /**
@@ -55,13 +58,13 @@ public class ServerConstants {
     public static final String CONTAINER_MODE_ENABLED = "container.mode.enable";
     public static final String SYM_ENV_PREFIX = "SYM_";
     public static final Map<String, String> JVM_OVERRIDE_ENV_VARS = Map.ofEntries(entry("SYM_FILE_ENCODING", "file.encoding"),
-            entry("SYM_STAGING_DIR", "java.io.tmpdir"),
+            entry("SYM_STAGING_DIR", SecurityConstants.SYSPROP_KEYSTORE),
             entry("SYM_WEB_MAX_FORM_SIZE", "org.eclipse.jetty.server.Request.maxFormContentSize"),
             entry("SYM_WEB_MAX_FORM_KEYS", "org.eclipse.jetty.server.Request.maxFormKeys"),
-            entry("SYM_KEYSTORE_VAULT", "sym.keystore.file"),
-            entry("SYM_KEYSTORE_PASSWORD", "javax.net.ssl.keyStorePassword"),
-            entry("SYM_CERT_TRUST_VAULT", "javax.net.ssl.trustStore"),
-            entry("SYM_CRYPTO_IGNORE_CIPHERS", "symmetric.ssl.ignore.ciphers"),
+            entry("SYM_KEYSTORE_VAULT", SecurityConstants.SYSPROP_KEYSTORE_TYPE),
+            entry("SYM_KEYSTORE_PASSWORD", SecurityConstants.SYSPROP_KEYSTORE_PASSWORD),
+            entry("SYM_CERT_TRUST_VAULT", SecurityConstants.SYSPROP_TRUSTSTORE),
+            entry("SYM_CRYPTO_IGNORE_CIPHERS", SecurityConstants.SYSPROP_SSL_IGNORE_CIPHERS),
             entry("SYM_HTTP_CONNECT_TIMEOUT", "sun.net.client.defaultConnectTimeout"),
             entry("SYM_HTTP_RESPONSE_TIMEOUT", "sun.net.client.defaultReadTimeout"),
             entry("SYM_NET_PREFER_IPV4STACK", "java.net.preferIPv4Stack"));
