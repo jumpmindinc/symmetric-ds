@@ -322,8 +322,7 @@ public class ModuleManager {
         List<String> fileNames = new ArrayList<String>();
         for (String moduleId : list()) {
             File file = new File(joinDirName(modulesDir, moduleId + EXT_PROPERTIES));
-            try {
-                FileReader reader = new FileReader(file);
+            try (FileReader reader = new FileReader(file)) {
                 Properties prop = new Properties();
                 prop.load(reader);
                 String oldDepString = removeBlankSpace(prop.getProperty(moduleId));
@@ -342,21 +341,22 @@ public class ModuleManager {
         checkModuleInstalled(moduleId, true);
         log.info("Checking if module {} needs upgraded", moduleId);
         File file = new File(joinDirName(modulesDir, moduleId + EXT_PROPERTIES));
-        try {
-            FileReader reader = new FileReader(file);
+        boolean needsUpgrade = false;
+        try (FileReader reader = new FileReader(file)) {
             Properties prop = new Properties();
             prop.load(reader);
             String oldDepString = removeBlankSpace(prop.getProperty(moduleId));
             String newDepString = removeBlankSpace(properties.getProperty(moduleId));
-            if (oldDepString == null || !oldDepString.equals(newDepString)) {
-                log.info("Upgrading module {}", moduleId);
-                remove(moduleId);
-                if (modules.containsKey(moduleId)) {
-                    install(moduleId);
-                }
-            }
+            needsUpgrade = oldDepString == null || !oldDepString.equals(newDepString);
         } catch (IOException e) {
             logAndThrow("Unable to list files for module " + moduleId + " because: " + e.getMessage(), e);
+        }
+        if (needsUpgrade) {
+            log.info("Upgrading module {}", moduleId);
+            remove(moduleId);
+            if (modules.containsKey(moduleId)) {
+                install(moduleId);
+            }
         }
     }
 
@@ -513,8 +513,7 @@ public class ModuleManager {
         checkModuleInstalled(moduleId, true);
         File file = new File(joinDirName(modulesDir, moduleId + EXT_PROPERTIES));
         if (file.canRead()) {
-            try {
-                FileReader reader = new FileReader(file);
+            try (FileReader reader = new FileReader(file)) {
                 Properties prop = new Properties();
                 prop.load(reader);
                 String defaultVersion = prop.getProperty(PROP_VERSION, Version.version());
