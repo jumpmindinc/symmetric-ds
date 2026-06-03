@@ -798,8 +798,8 @@ public class SnapshotUtil {
                 FileUtils.byteCountToDisplaySize(tmpDir.getUsableSpace()));
     }
 
-    protected static void writeProperties(Properties properties, File tmpDir, String fileName) {
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(new File(tmpDir, fileName)))) {
+    protected static void writeProperties(ISymmetricEngine engine, Properties properties, File tmpDir, String fileName) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(scratchFile(engine, tmpDir, fileName)))) {
             List<String> keys = new ArrayList<>();
             for (Object key : properties.keySet()) {
                 keys.add(key.toString());
@@ -977,7 +977,7 @@ public class SnapshotUtil {
         }
     }
 
-    private static File createTransactionsFile(ISymmetricEngine engine, String parent, List<Transaction> transactions) {
+    private static File createTransactionsFile(ISymmetricEngine engine, File tmpDir, List<Transaction> transactions) {
         Map<String, Transaction> transactionMap = new HashMap<>();
         for (Transaction transaction : transactions) {
             transactionMap.put(transaction.getId(), transaction);
