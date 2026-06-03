@@ -38,11 +38,18 @@ import org.jumpmind.symmetric.staging.api.ResourceState;
 public class LegacyStagedResourceAdapter implements IStagedResource {
     private final org.jumpmind.symmetric.staging.api.IStagedResource delegate;
     private final IStreamCipherProvider cipher;
+    private final boolean checksumEnabled;
 
     public LegacyStagedResourceAdapter(org.jumpmind.symmetric.staging.api.IStagedResource delegate,
             IStreamCipherProvider cipher) {
+        this(delegate, cipher, false);
+    }
+
+    public LegacyStagedResourceAdapter(org.jumpmind.symmetric.staging.api.IStagedResource delegate,
+            IStreamCipherProvider cipher, boolean checksumEnabled) {
         this.delegate = delegate;
         this.cipher = cipher;
+        this.checksumEnabled = checksumEnabled;
     }
 
     public org.jumpmind.symmetric.staging.api.IStagedResource getDelegate() {
@@ -77,6 +84,9 @@ public class LegacyStagedResourceAdapter implements IStagedResource {
     @Override
     public OutputStream getOutputStream(boolean append) {
         OutputStream raw = delegate.openOutputStream(append);
+        if (checksumEnabled) {
+            raw = new org.jumpmind.symmetric.staging.checksum.ChecksumWriteStream(raw, delegate);
+        }
         if (cipher == null) {
             return raw;
         }

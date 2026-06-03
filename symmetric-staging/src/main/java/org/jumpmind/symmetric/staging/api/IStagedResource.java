@@ -87,4 +87,8 @@ public interface IStagedResource extends AutoCloseable {
 
     @Override
     void close();
+
+    void writeSidecar(String suffix, byte[] payload) throws java.io.IOException;
+
+    byte[] readSidecar(String suffix) throws java.io.IOException;
 }

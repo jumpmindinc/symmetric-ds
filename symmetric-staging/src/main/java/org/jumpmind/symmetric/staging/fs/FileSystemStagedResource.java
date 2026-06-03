@@ -426,6 +426,16 @@ public class FileSystemStagedResource extends AbstractStagedResource {
     }
 
     @Override
+    public void writeSidecar(String suffix, byte[] payload) throws IOException {
+        backend.writeSidecar(key, suffix, payload);
+    }
+
+    @Override
+    public byte[] readSidecar(String suffix) throws IOException {
+        return backend.readSidecar(key, suffix);
+    }
+
+    @Override
     public String toString() {
         return (file != null && file.exists())
                 ? file.getAbsolutePath()

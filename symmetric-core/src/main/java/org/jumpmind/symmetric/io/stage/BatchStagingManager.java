@@ -57,10 +57,14 @@ public class BatchStagingManager extends LegacyStagingManagerAdapter {
     public BatchStagingManager(ISymmetricEngine engine, String directory) {
         super(buildDelegate(engine, directory),
                 resolveCipher(engine.getParameterService(), engine),
-                engine.getParameterService().getLong(ParameterConstants.LOCK_TIMEOUT_MS, DEFAULT_LOCK_TTL_MS));
+                engine.getParameterService().getLong(ParameterConstants.LOCK_TIMEOUT_MS, DEFAULT_LOCK_TTL_MS),
+                engine.getParameterService().is("staging.checksum.enabled", false));
         this.engine = engine;
         if (getCipher() != null) {
             log.info("Staging encryption enabled with cipher '{}'", getCipher().getCipherId());
+        }
+        if (engine.getParameterService().is("staging.checksum.enabled", false)) {
+            log.info("Staging checksum sidecars enabled (SHA-256)");
         }
     }
 

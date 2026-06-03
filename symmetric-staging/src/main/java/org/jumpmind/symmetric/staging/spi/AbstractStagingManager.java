@@ -134,7 +134,11 @@ public abstract class AbstractStagingManager implements IStagingManager {
 
     @Override
     public boolean verifyChecksum(StagingKey key) {
-        return true;
+        IStagedResource resource = find(key);
+        if (resource == null) {
+            return true;
+        }
+        return org.jumpmind.symmetric.staging.checksum.ChecksumVerifier.verify(resource);
     }
 
     @Override
