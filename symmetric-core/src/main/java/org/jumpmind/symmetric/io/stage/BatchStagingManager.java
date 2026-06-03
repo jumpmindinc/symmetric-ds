@@ -40,9 +40,12 @@ import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.staging.api.IStreamCipherContext;
 import org.jumpmind.symmetric.staging.api.IStreamCipherProvider;
+import org.jumpmind.symmetric.staging.api.IStreamCompressionProvider;
 import org.jumpmind.symmetric.staging.api.StagingConfig;
 import org.jumpmind.symmetric.staging.api.StagingKey;
 import org.jumpmind.symmetric.staging.api.StreamCipherRegistry;
+import org.jumpmind.symmetric.staging.api.StreamCompressionRegistry;
+import org.jumpmind.symmetric.staging.compression.GzipStreamCompressionProvider;
 import org.jumpmind.symmetric.staging.factory.DefaultStagingFactory;
 import org.jumpmind.symmetric.staging.factory.StagingParameterNames;
 import org.jumpmind.symmetric.staging.factory.StagingParameterResolver;
@@ -57,11 +60,15 @@ public class BatchStagingManager extends LegacyStagingManagerAdapter {
     public BatchStagingManager(ISymmetricEngine engine, String directory) {
         super(buildDelegate(engine, directory),
                 resolveCipher(engine.getParameterService(), engine),
+                resolveCompression(engine.getParameterService()),
                 engine.getParameterService().getLong(ParameterConstants.LOCK_TIMEOUT_MS, DEFAULT_LOCK_TTL_MS),
                 engine.getParameterService().is("staging.checksum.enabled", false));
         this.engine = engine;
         if (getCipher() != null) {
             log.info("Staging encryption enabled with cipher '{}'", getCipher().getCipherId());
+        }
+        if (getCompression() != null) {
+            log.info("Staging compression enabled with codec '{}'", getCompression().getCompressionId());
         }
         if (engine.getParameterService().is("staging.checksum.enabled", false)) {
             log.info("Staging checksum sidecars enabled (SHA-256)");
@@ -268,6 +275,18 @@ public class BatchStagingManager extends LegacyStagingManagerAdapter {
         if (value != null && !value.isBlank()) {
             paramMap.put(name, value);
         }
+    }
+
+    private static IStreamCompressionProvider resolveCompression(IParameterService params) {
+        String compressionId = params.getString("staging.compression.codec", null);
+        if (compressionId == null || compressionId.isBlank()) {
+            if (params.is(ServerConstants.STREAM_TO_FILE_COMPRESSION_ENABLED, false)) {
+                compressionId = GzipStreamCompressionProvider.COMPRESSION_ID;
+            } else {
+                return null;
+            }
+        }
+        return StreamCompressionRegistry.lookup(compressionId);
     }
 
     private static IStreamCipherProvider resolveCipher(IParameterService params, ISymmetricEngine engine) {

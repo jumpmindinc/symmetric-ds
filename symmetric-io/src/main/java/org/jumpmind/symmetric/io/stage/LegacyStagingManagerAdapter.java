@@ -26,6 +26,7 @@ import java.util.Set;
 
 import org.jumpmind.symmetric.staging.api.IStagingLock;
 import org.jumpmind.symmetric.staging.api.IStreamCipherProvider;
+import org.jumpmind.symmetric.staging.api.IStreamCompressionProvider;
 import org.jumpmind.symmetric.staging.api.StagingKey;
 import org.jumpmind.symmetric.staging.api.StagingOptions;
 
@@ -33,25 +34,33 @@ public class LegacyStagingManagerAdapter implements IStagingManager {
     public static final long DEFAULT_LOCK_TTL_MS = 300_000L;
     private final org.jumpmind.symmetric.staging.api.IStagingManager delegate;
     private final IStreamCipherProvider cipher;
+    private final IStreamCompressionProvider compression;
     private final long lockTtlMs;
     private final boolean checksumEnabled;
 
     public LegacyStagingManagerAdapter(org.jumpmind.symmetric.staging.api.IStagingManager delegate) {
-        this(delegate, null, DEFAULT_LOCK_TTL_MS, false);
+        this(delegate, null, null, DEFAULT_LOCK_TTL_MS, false);
     }
 
     public LegacyStagingManagerAdapter(org.jumpmind.symmetric.staging.api.IStagingManager delegate,
             IStreamCipherProvider cipher, long lockTtlMs) {
-        this(delegate, cipher, lockTtlMs, false);
+        this(delegate, cipher, null, lockTtlMs, false);
     }
 
     public LegacyStagingManagerAdapter(org.jumpmind.symmetric.staging.api.IStagingManager delegate,
             IStreamCipherProvider cipher, long lockTtlMs, boolean checksumEnabled) {
+        this(delegate, cipher, null, lockTtlMs, checksumEnabled);
+    }
+
+    public LegacyStagingManagerAdapter(org.jumpmind.symmetric.staging.api.IStagingManager delegate,
+            IStreamCipherProvider cipher, IStreamCompressionProvider compression,
+            long lockTtlMs, boolean checksumEnabled) {
         if (delegate == null) {
             throw new IllegalArgumentException("delegate must not be null");
         }
         this.delegate = delegate;
         this.cipher = cipher;
+        this.compression = compression;
         this.lockTtlMs = lockTtlMs;
         this.checksumEnabled = checksumEnabled;
     }
@@ -62,6 +71,10 @@ public class LegacyStagingManagerAdapter implements IStagingManager {
 
     public IStreamCipherProvider getCipher() {
         return cipher;
+    }
+
+    public IStreamCompressionProvider getCompression() {
+        return compression;
     }
 
     public long getLockTtlMs() {
@@ -124,6 +137,6 @@ public class LegacyStagingManagerAdapter implements IStagingManager {
     }
 
     protected IStagedResource adapt(org.jumpmind.symmetric.staging.api.IStagedResource resource) {
-        return resource == null ? null : new LegacyStagedResourceAdapter(resource, cipher, checksumEnabled);
+        return resource == null ? null : new LegacyStagedResourceAdapter(resource, cipher, compression, checksumEnabled);
     }
 }

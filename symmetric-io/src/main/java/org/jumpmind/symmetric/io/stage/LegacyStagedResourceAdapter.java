@@ -33,22 +33,30 @@ import java.nio.charset.StandardCharsets;
 
 import org.jumpmind.exception.IoException;
 import org.jumpmind.symmetric.staging.api.IStreamCipherProvider;
+import org.jumpmind.symmetric.staging.api.IStreamCompressionProvider;
 import org.jumpmind.symmetric.staging.api.ResourceState;
 
 public class LegacyStagedResourceAdapter implements IStagedResource {
     private final org.jumpmind.symmetric.staging.api.IStagedResource delegate;
     private final IStreamCipherProvider cipher;
+    private final IStreamCompressionProvider compression;
     private final boolean checksumEnabled;
 
     public LegacyStagedResourceAdapter(org.jumpmind.symmetric.staging.api.IStagedResource delegate,
             IStreamCipherProvider cipher) {
-        this(delegate, cipher, false);
+        this(delegate, cipher, null, false);
     }
 
     public LegacyStagedResourceAdapter(org.jumpmind.symmetric.staging.api.IStagedResource delegate,
             IStreamCipherProvider cipher, boolean checksumEnabled) {
+        this(delegate, cipher, null, checksumEnabled);
+    }
+
+    public LegacyStagedResourceAdapter(org.jumpmind.symmetric.staging.api.IStagedResource delegate,
+            IStreamCipherProvider cipher, IStreamCompressionProvider compression, boolean checksumEnabled) {
         this.delegate = delegate;
         this.cipher = cipher;
+        this.compression = compression;
         this.checksumEnabled = checksumEnabled;
     }
 
@@ -83,15 +91,18 @@ public class LegacyStagedResourceAdapter implements IStagedResource {
 
     @Override
     public OutputStream getOutputStream(boolean append) {
-        OutputStream raw = delegate.openOutputStream(append);
-        if (checksumEnabled) {
-            raw = new org.jumpmind.symmetric.staging.checksum.ChecksumWriteStream(raw, delegate);
-        }
-        if (cipher == null) {
-            return raw;
-        }
         try {
-            return cipher.wrapEncrypt(raw, aad());
+            OutputStream stream = delegate.openOutputStream(append);
+            if (checksumEnabled) {
+                stream = new org.jumpmind.symmetric.staging.checksum.ChecksumWriteStream(stream, delegate);
+            }
+            if (cipher != null) {
+                stream = cipher.wrapEncrypt(stream, aad());
+            }
+            if (compression != null) {
+                stream = compression.wrapCompress(stream);
+            }
+            return stream;
         } catch (IOException ex) {
             throw new IoException(ex);
         }
@@ -99,12 +110,15 @@ public class LegacyStagedResourceAdapter implements IStagedResource {
 
     @Override
     public InputStream getInputStream() {
-        InputStream raw = delegate.openInputStream();
-        if (cipher == null) {
-            return raw;
-        }
         try {
-            return cipher.wrapDecrypt(raw, aad());
+            InputStream stream = delegate.openInputStream();
+            if (cipher != null) {
+                stream = cipher.wrapDecrypt(stream, aad());
+            }
+            if (compression != null) {
+                stream = compression.wrapDecompress(stream);
+            }
+            return stream;
         } catch (IOException ex) {
             throw new IoException(ex);
         }

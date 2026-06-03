@@ -80,6 +80,25 @@ public interface ISecurityService {
 
     public Cipher getCipher(int cipherMode) throws Exception;
 
+    default byte[] generateStreamingIv() {
+        byte[] iv = new byte[12];
+        new java.security.SecureRandom().nextBytes(iv);
+        return iv;
+    }
+
+    default byte getStreamingAlgorithmId() {
+        return 0x01;
+    }
+
+    default Cipher getStreamingCipher(int mode, byte[] iv) throws Exception {
+        throw new UnsupportedOperationException(
+                "Streaming cipher not implemented by " + getClass().getName());
+    }
+
+    default Cipher getStreamingCipher(int mode, byte[] iv, byte algorithmId) throws Exception {
+        return getStreamingCipher(mode, iv);
+    }
+
     public String getKeystoreEntry(String key) throws Exception;
 
     public void setKeystoreEntry(String alias, String value) throws Exception;
