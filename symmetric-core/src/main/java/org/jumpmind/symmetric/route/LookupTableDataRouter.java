@@ -94,7 +94,7 @@ public class LookupTableDataRouter extends AbstractDataRouter implements IDataRo
                 log.error(
                         "Could not route data with an id of {} using the {} router because the column {} was not captured for the {} table",
                         new Object[] { dataMetaData.getData().getDataId(), getClass().getSimpleName(),
-                                column, dataMetaData.getTable().getName() });
+                                column, dataMetaData.getRelation().getName() });
             }
         }
         return nodeIds;

@@ -20,17 +20,17 @@
  */
 package org.jumpmind.symmetric.model;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 
 public class DataMetaData {
     private Data data;
-    private Table table;
+    private Relation relation;
     private Router router;
     private NodeChannel nodeChannel;
 
-    public DataMetaData(Data data, Table table, Router router, NodeChannel nodeChannel) {
+    public DataMetaData(Data data, Relation relation, Router router, NodeChannel nodeChannel) {
         this.data = data;
-        this.table = table;
+        this.relation = relation;
         this.router = router;
         this.nodeChannel = nodeChannel;
     }
@@ -43,12 +43,12 @@ public class DataMetaData {
         this.data = data;
     }
 
-    public Table getTable() {
-        return table;
+    public Relation getRelation() {
+        return relation;
     }
 
-    public void setTable(Table table) {
-        this.table = table;
+    public void setRelation(Relation relation) {
+        this.relation = relation;
     }
 
     public Router getRouter() {

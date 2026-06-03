@@ -47,24 +47,24 @@ public class ObjectDefinitionCacheTest {
     @Test
     public void tableNameCacheTest() {
         ObjectDefinitionCache cache = new ObjectDefinitionCache(ddlReader);
-        when(ddlReader.getTableNamesFromDatabase("catalog", "schema", null)).thenReturn(Arrays.asList("table0"));
+        when(ddlReader.getRelationNamesFromDatabase("catalog", "schema", null)).thenReturn(Arrays.asList("table0"));
         when(platform.getClearCacheModelTimeoutInMs()).thenReturn(3600000l);
         CatalogSchema catalogSchema = new CatalogSchema("catalog", "schema");
-        List<String> tableNames = cache.getTableNames(catalogSchema, null);
+        List<String> tableNames = cache.getRelationNames(catalogSchema, null);
         assertEquals(1, tableNames.size());
-        when(ddlReader.getTableNamesFromDatabase("catalog", "schema", null)).thenReturn(Arrays.asList("table0", "table1"));
-        tableNames = cache.getTableNames(catalogSchema, null);
+        when(ddlReader.getRelationNamesFromDatabase("catalog", "schema", null)).thenReturn(Arrays.asList("table0", "table1"));
+        tableNames = cache.getRelationNames(catalogSchema, null);
         assertEquals(1, tableNames.size());
-        cache.clearTableNameCache();
-        tableNames = cache.getTableNames(catalogSchema, null);
+        cache.clearRelationNameCache();
+        tableNames = cache.getRelationNames(catalogSchema, null);
         assertEquals(2, tableNames.size());
         when(platform.getClearCacheModelTimeoutInMs()).thenReturn(5l);
-        when(ddlReader.getTableNamesFromDatabase("catalog", "schema", null)).thenReturn(Arrays.asList("table0"));
+        when(ddlReader.getRelationNamesFromDatabase("catalog", "schema", null)).thenReturn(Arrays.asList("table0"));
         try {
             Thread.sleep(10l);
         } catch (InterruptedException e) {
         }
-        tableNames = cache.getTableNames(catalogSchema, null);
+        tableNames = cache.getRelationNames(catalogSchema, null);
         assertEquals(1, tableNames.size());
         assertEquals("table0", tableNames.get(0));
     }

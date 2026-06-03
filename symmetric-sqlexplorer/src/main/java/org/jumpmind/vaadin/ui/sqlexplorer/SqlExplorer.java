@@ -31,9 +31,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.RelationsList;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -366,7 +368,8 @@ public class SqlExplorer extends CustomSplitLayout {
             tables.add(table);
             tableToTreeNode.put(table, treeNode);
         }
-        tables = Database.sortByForeignKeys(tables);
+        tables = Database.sortByForeignKeys(new RelationsList(tables))
+                .stream().map(r -> (Table) r).collect(Collectors.toList());
         Collections.reverse(tables);
         dropTables(tables, tableToTreeNode);
     }
@@ -377,7 +380,7 @@ public class SqlExplorer extends CustomSplitLayout {
             msg = "Do you want to drop " + tables.size() + " tables?";
         } else if (tables.size() == 1) {
             Table table = tables.get(0);
-            msg = "Do you want to drop " + table.getFullyQualifiedTableName() + "?";
+            msg = "Do you want to drop " + table.getFullyQualifiedName() + "?";
         }
         new ConfirmDialog("Drop Tables?", msg, "Ok", e -> {
             for (Table table : tables) {
@@ -386,7 +389,7 @@ public class SqlExplorer extends CustomSplitLayout {
                 try {
                     db.getPlatform().dropTables(false, table);
                 } catch (Exception ex) {
-                    String message = "Failed to drop " + table.getFullyQualifiedTableName() + ".  ";
+                    String message = "Failed to drop " + table.getFullyQualifiedName() + ".  ";
                     CommonUiUtils.notify(message + "See log file for more details");
                     log.warn(message, ex);
                 }
@@ -440,7 +443,7 @@ public class SqlExplorer extends CustomSplitLayout {
                             IDb db = dbTree.getDbForNode(treeNode);
                             TableInfoPanel tableInfoTab = new TableInfoPanel(table, user, db, settingsProvider.get(), SqlExplorer.this,
                                     selectedTabCaption);
-                            EnhancedTab tab = contentTabs.add(tableInfoTab, table.getFullyQualifiedTableName(),
+                            EnhancedTab tab = contentTabs.add(tableInfoTab, table.getFullyQualifiedName(),
                                     new Icon(VaadinIcon.TABLE), 0);
                             tab.setCloseable(true);
                             infoTabs.add(tableInfoTab);
@@ -529,7 +532,7 @@ public class SqlExplorer extends CustomSplitLayout {
                                 Table table = treeNode.getTableFor();
                                 if (table != null) {
                                     QueryPanel panel = findQueryPanelForDb(db);
-                                    panel.appendSql(table.getQualifiedTableName(quote, catalogSeparator, schemaSeparator));
+                                    panel.appendSql(table.getQualifiedName(quote, catalogSeparator, schemaSeparator));
                                     contentTabs.setSelectedTab(panel);
                                 }
                             }

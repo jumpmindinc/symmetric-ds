@@ -88,7 +88,7 @@ public class DatabasePlatformTest {
     }
 
     @Test
-    public void testTableRebuild() throws Exception {
+    public void testTableRebuild() {
         Table table = new Table("TEST_REBUILD");
         table.addColumn(new Column("ID1", true));
         table.getColumnWithName("ID1").setTypeCode(Types.INTEGER);
@@ -97,7 +97,7 @@ public class DatabasePlatformTest {
         table.getColumnWithName("NOTES").setTypeCode(Types.VARCHAR);
         table.getColumnWithName("NOTES").setSize("20");
         table.getColumnWithName("NOTES").setDefaultValue("1234");
-        Table origTable = (Table) table.clone();
+        Table origTable = table.copy();
         Table tableFromDatabase = dropCreateAndThenReadTable(table);
         assertNotNull(tableFromDatabase);
         assertEquals(2, tableFromDatabase.getColumnCount());
@@ -116,13 +116,13 @@ public class DatabasePlatformTest {
         table.getColumnWithName("NOTES2").setDefaultValue("1234");
         // alter to add two columns that will cause a table rebuild
         platform.alterTables(false, table);
-        tableFromDatabase = platform.getTableFromCache(table.getName(), true);
+        tableFromDatabase = (Table) platform.getRelationFromCache(table.getName(), true);
         assertNotNull(tableFromDatabase);
         assertEquals(4, tableFromDatabase.getColumnCount());
         assertEquals(1, template.queryForLong(String.format("select count(*) from %s%s%s", delimiter, tableFromDatabase.getName(), delimiter)));
         // alter to remove two columns that will cause a table rebuild
         platform.alterTables(false, origTable);
-        tableFromDatabase = platform.getTableFromCache(origTable.getName(), true);
+        tableFromDatabase = (Table) platform.getRelationFromCache(origTable.getName(), true);
         assertNotNull(tableFromDatabase);
         assertEquals(2, tableFromDatabase.getColumnCount());
         assertEquals(1, template.queryForLong(String.format("select count(*) from %s%s%s", delimiter, tableFromDatabase.getName(), delimiter)));
@@ -141,7 +141,7 @@ public class DatabasePlatformTest {
         final String DEFAULT_VALUE = "SOMETHING";
         table.getColumnWithName("NOTES").setDefaultValue(DEFAULT_VALUE);
         platform.alterTables(false, table);
-        Table tableFromDatabase = platform.getTableFromCache(table.getName(), true);
+        Table tableFromDatabase = (Table) platform.getRelationFromCache(table.getName(), true);
         assertEquals(DEFAULT_VALUE, tableFromDatabase.getColumnWithName("NOTES").getDefaultValue());
     }
 
@@ -157,7 +157,7 @@ public class DatabasePlatformTest {
         dropCreateAndThenReadTable(table);
         table.getColumnWithName("ANUM").setRequired(false);
         platform.alterTables(false, table);
-        Table tableFromDatabase = platform.getTableFromCache(table.getName(), true);
+        Table tableFromDatabase = (Table) platform.getRelationFromCache(table.getName(), true);
         assertFalse(tableFromDatabase.getColumnWithName("ANUM").isRequired());
     }
 
@@ -180,7 +180,7 @@ public class DatabasePlatformTest {
         Database database = new Database();
         database.addTable(table);
         platform.createDatabase(database, true, false);
-        return platform.getTableFromCache(table.getName(), true);
+        return (Table) platform.getRelationFromCache(table.getName(), true);
     }
 
     @Test
@@ -199,7 +199,7 @@ public class DatabasePlatformTest {
         table.getColumnWithName("COL1").setSize("254");
         table.getColumnWithName("COL1").setRequired(true);
         platform.alterTables(false, table);
-        tableFromDatabase = platform.getTableFromCache(table.getName(), true);
+        tableFromDatabase = (Table) platform.getRelationFromCache(table.getName(), true);
         assertFalse(tableFromDatabase.getColumnWithName("ID").isAutoIncrement());
         /* sqlite character fields do not limit based on size */
         if (!platform.getName().equals(DatabaseNamesConstants.SQLITE)) {
@@ -249,7 +249,7 @@ public class DatabasePlatformTest {
             String alterSql = builder.alterTable(tableFromDatabase, table);
             assertFalse(alterSql, alterSql.toLowerCase().contains("create table"));
             new SqlScript(alterSql, platform.getSqlTemplate(), true, platform.getSqlScriptReplacementTokens()).execute(true);
-            tableFromDatabase = platform.getTableFromCache(table.getName(), true);
+            tableFromDatabase = (Table) platform.getRelationFromCache(table.getName(), true);
             assertEquals(Types.BIGINT, table.getColumnWithName("ID").getMappedTypeCode());
             assertTrue(tableFromDatabase.getColumnWithName("ID").isPrimaryKey());
             transaction = template.startSqlTransaction();
@@ -276,7 +276,7 @@ public class DatabasePlatformTest {
 
     @Test
     public void testCreateAndReadTestSimpleTable() throws Exception {
-        Table table = platform.getTableFromCache(SIMPLE_TABLE, true);
+        Table table = (Table) platform.getRelationFromCache(SIMPLE_TABLE, true);
         assertNotNull("Could not find " + SIMPLE_TABLE, table);
         assertEquals("The id column was not read in as an autoincrement column", true, table
                 .getColumnWithName("id").isAutoIncrement());
@@ -284,7 +284,7 @@ public class DatabasePlatformTest {
 
     @Test
     public void testReadTestUppercase() throws Exception {
-        Table table = platform.getTableFromCache(UPPERCASE_TABLE, true);
+        Table table = (Table) platform.getRelationFromCache(UPPERCASE_TABLE, true);
         assertNotNull("Could not find " + UPPERCASE_TABLE, table);
         assertEquals("The id column was not read in as an autoincrement column", true, table
                 .getColumnWithName("id").isAutoIncrement());
@@ -328,7 +328,7 @@ public class DatabasePlatformTest {
             Database database = new Database();
             database.addTable(table);
             platform.createDatabase(database, true, false);
-            Database readDatabase = platform.getDdlReader().readTables(null, null, null);
+            Database readDatabase = platform.getDdlReader().readRelations(null, null, null);
             Table[] readTables = readDatabase.getTables();
             for (Table t : readTables) {
                 if (t.getName().equalsIgnoreCase("table1")) {
@@ -353,7 +353,7 @@ public class DatabasePlatformTest {
             ISqlTransaction transaction = null;
             try {
                 transaction = template.startSqlTransaction();
-                Table table = platform.getTableFromCache(UPPERCASE_TABLE, true);
+                Table table = (Table) platform.getRelationFromCache(UPPERCASE_TABLE, true);
                 DatabaseInfo dbInfo = platform.getDatabaseInfo();
                 String quote = dbInfo.getDelimiterToken();
                 String catalogSeparator = dbInfo.getCatalogSeparator();

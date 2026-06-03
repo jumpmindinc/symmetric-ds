@@ -46,7 +46,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Database;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -289,10 +289,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     private void initEngineParametersFromDatabase(TypedProperties engineProperties) {
         this.parameterService = new ParameterService(this.platform, propertiesFactory,
                 engineProperties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym"));
-        Table paramTable = this.platform.readTableFromDatabase(null, null,
+        Relation paramTable = this.platform.readRelationFromDatabase(null, null,
                 TableConstants.getTableName(engineProperties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER));
         if (paramTable != null) {
-            log.debug("Reading parameters because found {}", paramTable.getFullyQualifiedTableName());
+            log.debug("Reading parameters because found {}", paramTable.getFullyQualifiedName());
             this.parameterService.setDatabaseHasBeenInitialized(true);
             this.parameterService.rereadParameters();
         }
@@ -771,6 +771,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                     statisticManager.incrementRestart();
                     startMetricsAggregation();
                     started = true;
+                    ApplicationHealthTracker.getTracker().setEngineReadiness(getEngineName(), true);
                     for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
                         ext.started(this);
                     }
@@ -927,43 +928,43 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         log.info("Just cleaned {} files in the staging area during the uninstall.", getStagingManager().clean(0));
         try {
             String prefix = parameterService.getTablePrefix();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_GROUPLET)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_GROUPLET)) != null) {
                 groupletService.deleteAllGrouplets();
             }
             processInfo.incrementCurrentDataCount();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_TRIGGER_ROUTER)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_TRIGGER_ROUTER)) != null) {
                 triggerRouterService.deleteAllTriggerRouters();
             }
             processInfo.incrementCurrentDataCount();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_FILE_TRIGGER_ROUTER)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_FILE_TRIGGER_ROUTER)) != null) {
                 fileSyncService.deleteAllFileTriggerRouters();
             }
             processInfo.incrementCurrentDataCount();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_ROUTER)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_ROUTER)) != null) {
                 triggerRouterService.deleteAllRouters();
             }
             processInfo.incrementCurrentDataCount();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_CONFLICT)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_CONFLICT)) != null) {
                 dataLoaderService.deleteAllConflicts();
             }
             processInfo.incrementCurrentDataCount();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_TRANSFORM_TABLE)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_TRANSFORM_TABLE)) != null) {
                 transformService.deleteAllTransformTables();
             }
             processInfo.incrementCurrentDataCount();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_ROUTER)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_ROUTER)) != null) {
                 triggerRouterService.deleteAllRouters();
             }
             processInfo.incrementCurrentDataCount();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_CONFLICT)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_CONFLICT)) != null) {
                 dataLoaderService.deleteAllConflicts();
             }
             processInfo.incrementCurrentDataCount();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_NODE_GROUP_LINK)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_NODE_GROUP_LINK)) != null) {
                 configurationService.deleteAllNodeGroupLinks();
             }
             processInfo.incrementCurrentDataCount();
-            if (platform.readTableFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_LOCK)) != null) {
+            if (platform.readRelationFromDatabase(null, null, TableConstants.getTableName(prefix, TableConstants.SYM_LOCK)) != null) {
                 disableParameter(ParameterConstants.TRIGGER_CAPTURE_DDL_CHANGES);
                 disableParameter(ParameterConstants.POSTGRES_TRIGGER_CAPTURE_TRUNCATE);
                 // this should remove all triggers because we have removed all the trigger configuration
@@ -1166,7 +1167,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 && (getParameterService().is(ParameterConstants.AUTO_INSERT_REG_SVR_IF_NOT_FOUND,
                         false) || StringUtils.isNotBlank(getParameterService().getString(
                                 ParameterConstants.AUTO_CONFIGURE_REG_SVR_SQL_SCRIPT)));
-        Table symNodeTable = symmetricDialect.getPlatform().getTableFromCache(null, null,
+        Relation symNodeTable = symmetricDialect.getPlatform().getRelationFromCache(null, null,
                 TableConstants.getTableName(parameterService.getTablePrefix(),
                         TableConstants.SYM_NODE), false);
         Node node = symNodeTable != null ? getNodeService().findIdentity() : null;

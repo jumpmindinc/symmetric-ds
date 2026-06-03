@@ -271,7 +271,7 @@ public class ReadOnlyTextAreaDialog extends ResizableDialog {
         sql.append(column.getName());
         sql.append(quote);
         sql.append(" from ");
-        sql.append(table.getQualifiedTableName(quote, dbInfo.getCatalogSeparator(),
+        sql.append(table.getQualifiedName(quote, dbInfo.getCatalogSeparator(),
                 dbInfo.getSchemaSeparator()));
         sql.append(" where ");
         for (Column col : pkColumns) {
@@ -288,7 +288,7 @@ public class ReadOnlyTextAreaDialog extends ResizableDialog {
         StringBuilder sql = new StringBuilder("update ");
         DatabaseInfo dbInfo = platform.getDatabaseInfo();
         String quote = platform.getDdlBuilder().isDelimitedIdentifierModeOn() ? dbInfo.getDelimiterToken() : "";
-        sql.append(table.getQualifiedTableName(quote, dbInfo.getCatalogSeparator(),
+        sql.append(table.getQualifiedName(quote, dbInfo.getCatalogSeparator(),
                 dbInfo.getSchemaSeparator()));
         sql.append(" set ");
         sql.append(quote);

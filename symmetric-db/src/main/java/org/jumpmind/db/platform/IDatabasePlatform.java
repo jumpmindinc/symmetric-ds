@@ -45,6 +45,7 @@ import java.util.Map;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.sql.DmlStatement;
@@ -116,15 +117,15 @@ public interface IDatabasePlatform {
 
     public Database readFromDatabase(Table... tables);
 
-    public Table readTableFromDatabase(String catalogName, String schemaName, String tablename);
+    public Relation readRelationFromDatabase(String catalogName, String schemaName, String relationName);
 
-    public Table readTableFromDatabase(ISqlTransaction transaction, String catalogName, String schemaName, String tableName);
+    public Relation readRelationFromDatabase(ISqlTransaction transaction, String catalogName, String schemaName, String relationName);
 
-    public void resetCachedTableModel();
+    public void resetCachedRelationModel();
 
-    public Table getTableFromCache(String tableName, boolean forceReread);
+    public Relation getRelationFromCache(String relationName, boolean forceReread);
 
-    public Table getTableFromCache(String catalogName, String schemaName, String tableName,
+    public Relation getRelationFromCache(String catalogName, String schemaName, String relationName,
             boolean forceReread);
 
     public void createDatabase(Database targetDatabase, boolean dropTablesFirst,
@@ -146,13 +147,13 @@ public interface IDatabasePlatform {
 
     public void dropTables(boolean continueOnError, Table... tables);
 
-    public DmlStatement createDmlStatement(DmlType dmlType, Table table, String textColumnExpression);
+    public DmlStatement createDmlStatement(DmlType dmlType, Relation relation, String textColumnExpression);
 
     public DmlStatement createDmlStatement(DmlType dmlType, String catalogName, String schemaName,
-            String tableName, Column[] keys, Column[] columns, boolean[] nullKeyValues, String textColumnExpression);
+            String relationName, Column[] keys, Column[] columns, boolean[] nullKeyValues, String textColumnExpression);
 
     public DmlStatement createDmlStatement(DmlType dmlType, String catalogName, String schemaName,
-            String tableName, Column[] keys, Column[] columns, boolean[] nullKeyValues, String textColumnExpression,
+            String relationName, Column[] keys, Column[] columns, boolean[] nullKeyValues, String textColumnExpression,
             boolean namedParameters);
 
     public DmlStatement createDmlStatement(DmlStatementOptions options);
@@ -160,10 +161,10 @@ public interface IDatabasePlatform {
     public Object[] getObjectValues(BinaryEncoding encoding, String[] values,
             Column[] orderedMetaData);
 
-    public Object[] getObjectValues(BinaryEncoding encoding, Table table, String[] columnNames,
+    public Object[] getObjectValues(BinaryEncoding encoding, Relation relation, String[] columnNames,
             String[] values);
 
-    public Object[] getObjectValues(BinaryEncoding encoding, Table table, String[] columnNames,
+    public Object[] getObjectValues(BinaryEncoding encoding, Relation relation, String[] columnNames,
             String[] values, boolean useVariableDates, boolean fitToColumn);
 
     public Object[] getObjectValues(BinaryEncoding encoding, String[] values,
@@ -181,9 +182,9 @@ public interface IDatabasePlatform {
 
     public String alterCaseToMatchDatabaseDefaultCase(String values);
 
-    public void alterCaseToMatchDatabaseDefaultCase(Table table);
+    public void alterCaseToMatchDatabaseDefaultCase(Relation relation);
 
-    public void alterCaseToMatchDatabaseDefaultCase(Table... tables);
+    public void alterCaseToMatchDatabaseDefaultCase(Relation... relations);
 
     public void alterCaseToMatchDatabaseDefaultCase(Database database);
 
@@ -195,7 +196,7 @@ public interface IDatabasePlatform {
 
     public boolean isBlob(Column column);
 
-    public List<Column> getLobColumns(Table table);
+    public List<Column> getLobColumns(Relation relation);
 
     public Map<String, String> getSqlScriptReplacementTokens();
 
@@ -217,7 +218,7 @@ public interface IDatabasePlatform {
 
     public Map<String, String> parseQualifiedTableName(String tableName);
 
-    public Table makeAllColumnsPrimaryKeys(Table table);
+    public Relation makeAllColumnsPrimaryKeys(Relation relation);
 
     public boolean canColumnBeUsedInWhereClause(Column column);
 
@@ -237,7 +238,7 @@ public interface IDatabasePlatform {
 
     public boolean allowsUniqueIndexDuplicatesWithNulls();
 
-    public long getEstimatedRowCount(Table table);
+    public long getEstimatedRowCount(Relation relation);
 
     public String getTruncateSql(Table table);
 

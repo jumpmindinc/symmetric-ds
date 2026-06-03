@@ -68,6 +68,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DdlBuilderFactory;
 import org.jumpmind.db.platform.IDdlBuilder;
@@ -251,7 +252,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         && helper.shouldSendTable(tableName)) {
                     TriggerHistory triggerHistory = triggerRouterService.getNewestTriggerHistoryForTrigger(trigger.getTriggerId(), null, null, tableName);
                     if (triggerHistory == null) {
-                        Table table = platform.getTableFromCache(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(), tableName, false);
+                        Table table = (Table) platform.getRelationFromCache(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(), tableName, false);
                         if (table == null) {
                             throw new IllegalStateException("Could not find a required table: " + tableName);
                         }
@@ -319,7 +320,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         if (!tableName.endsWith(TableConstants.SYM_CONSOLE_ROLE)) {
             initialLoadSql += " order by ";
             String quote = platform.getDdlBuilder().getDatabaseInfo().getDelimiterToken();
-            Table table = symmetricDialect.getPlatform().getTableFromCache(triggerHistory.getSourceCatalogName(),
+            Relation table = symmetricDialect.getPlatform().getRelationFromCache(triggerHistory.getSourceCatalogName(),
                     triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(), false);
             Column[] pkColumns = table.getPrimaryKeyColumns();
             for (int j = 0; j < pkColumns.length; j++) {

@@ -127,7 +127,7 @@ abstract public class AbstractDatabaseWriter implements IDataWriter {
          */
         if (sourceTable != null && targetTable == null && data.requiresTable() && (writerSettings.isIgnoreMissingTables()
                 || batch.getBatchId() == IoConstants.IGNORE_TABLES_BATCH || IoConstants.CHANNEL_CONFIG.equals(batch.getChannelId()))) {
-            String qualifiedName = sourceTable.getFullyQualifiedTableName();
+            String qualifiedName = sourceTable.getFullyQualifiedName();
             if (missingTables.add(qualifiedName)) {
                 log.info("Did not find the {} table in the target database", qualifiedName);
             }
@@ -135,9 +135,9 @@ abstract public class AbstractDatabaseWriter implements IDataWriter {
             context.put(CONFLICT_ERROR, null);
             if (data.requiresTable() && sourceTable != null
                     && targetTable == null && data.getDataEventType() != DataEventType.SQL) {
-                Table lastTable = context.getLastParsedTable();
+                Table lastTable = (Table) context.getLastParsedRelation();
                 if (lastTable != null
-                        && lastTable.getFullyQualifiedTableNameLowerCase().equals(sourceTable.getFullyQualifiedTableNameLowerCase())) {
+                        && lastTable.getFullyQualifiedNameLowerCase().equals(sourceTable.getFullyQualifiedNameLowerCase())) {
                     // if we cross batches and the table isn't specified, then
                     // use the last table we used
                     start(lastTable);
@@ -261,7 +261,7 @@ abstract public class AbstractDatabaseWriter implements IDataWriter {
                     statistics.get(batch).increment(DataWriterStatisticConstants.ROWCOUNT);
                     statistics.get(batch).increment(DataWriterStatisticConstants.LINENUMBER);
                     throw new TableNotFoundException(String.format("Could not find the target table '%s'",
-                            sourceTable.getFullyQualifiedTableName()));
+                            sourceTable.getFullyQualifiedName()));
                 } else {
                     throw new SqlException("The target table was not specified");
                 }

@@ -45,7 +45,7 @@ public class ConflictException extends RuntimeException {
         Map<String, String> pks = data.toKeyColumnValuePairs(table);
         String msg = String.format(
                 "Detected conflict while executing %s on %s.  The primary key data was: %s. %s",
-                data.getDataEventType().toString(), table.getFullyQualifiedTableName(), pks,
+                data.getDataEventType().toString(), table.getFullyQualifiedName(), pks,
                 fallbackOperationFailed ? "Failed to fallback.  " : "  ");
         if (originalCause != null) {
             Throwable originalRoot = ExceptionUtils.getRootCause(originalCause);

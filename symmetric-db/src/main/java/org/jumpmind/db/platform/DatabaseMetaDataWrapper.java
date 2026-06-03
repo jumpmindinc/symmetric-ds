@@ -51,12 +51,12 @@ import java.sql.SQLException;
 public class DatabaseMetaDataWrapper {
     /** The database meta data. */
     private DatabaseMetaData _metaData;
-    /** The catalog to acess in the database. */
+    /** The catalog to access in the database. */
     private String _catalog;
-    /** The schema(s) to acess in the database. */
+    /** The schema(s) to access in the database. */
     private String _schemaPattern;
-    /** The table types to process. */
-    private String[] _tableTypes;
+    /** The relation types to process. */
+    private String[] relationTypes;
 
     /**
      * Returns the database meta data.
@@ -116,26 +116,26 @@ public class DatabaseMetaDataWrapper {
     }
 
     /**
-     * Returns the table types to recognize.
+     * Returns the relation types to recognize.
      * 
-     * @return The table types
+     * @return The relation types
      */
-    public String[] getTableTypes() {
-        return _tableTypes;
+    public String[] getRelationTypes() {
+        return relationTypes;
     }
 
     /**
-     * Sets the table types to recognize.
+     * Sets the relation types to recognize.
      * 
      * @param types
-     *            The table types
+     *            The relation types
      */
-    public void setTableTypes(String[] types) {
-        _tableTypes = types;
+    public void setRelationTypes(String[] types) {
+        relationTypes = types;
     }
 
     /**
-     * Convenience method to return the table meta data using the configured catalog, schema pattern and table types.
+     * Convenience method to return the table meta data using the configured catalog, schema pattern and relation types.
      * 
      * @param tableNamePattern
      *            The pattern identifying for which tables to return info
@@ -146,7 +146,7 @@ public class DatabaseMetaDataWrapper {
      */
     public ResultSet getTables(String tableNamePattern) throws SQLException {
         return getMetaData().getTables(getCatalog(), getSchemaPattern(), tableNamePattern,
-                getTableTypes());
+                getRelationTypes());
     }
 
     /**

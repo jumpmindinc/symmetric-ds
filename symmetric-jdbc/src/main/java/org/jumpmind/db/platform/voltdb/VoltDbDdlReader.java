@@ -27,6 +27,7 @@ import java.util.Map;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.ForeignKey.ForeignKeyAction;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
@@ -64,19 +65,20 @@ public class VoltDbDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        disableAutoIncrement(table);
-        fixIndexKeyOrder(table);
-        return table;
+        Relation relation = super.readRelation(connection, metaData, values);
+        disableAutoIncrement(relation);
+        fixIndexKeyOrder(relation);
+        return relation;
     }
 
-    protected void fixIndexKeyOrder(Table table) {
+    protected void fixIndexKeyOrder(Relation relation) {
+        // Intentionally empty: subclasses may override to reorder index keys
     }
 
-    protected void disableAutoIncrement(Table table) {
-        for (Column column : table.getColumns()) {
+    protected void disableAutoIncrement(Relation relation) {
+        for (Column column : relation.getColumns()) {
             column.setAutoIncrement(false);
         }
     }

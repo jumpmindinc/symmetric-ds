@@ -1,7 +1,7 @@
 
 ==== Expandable Triggers
 
-When a set of tables is repeated for each node and the tables all contain a prefix which groups them together an expandable trigger can be used.  The prefix will be resolved to the external id that the source node replicates with either through a push or pull.
+When a set of tables is repeated for each node and the tables all contain a prefix which groups them together an expandable trigger can be used.  The prefix will be resolved to the external id that the source node replicates with either through a push or pull.  Expandable triggers do not apply to views.
 
 .Variable
 [cols=".^2,2"]

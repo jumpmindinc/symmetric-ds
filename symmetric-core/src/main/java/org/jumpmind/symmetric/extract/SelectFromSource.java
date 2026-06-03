@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.jumpmind.db.model.Column;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
@@ -49,8 +49,8 @@ public abstract class SelectFromSource implements IExtractDataReaderSource {
     protected INodeService nodeService;
     protected IExtensionService extensionService;
     protected Batch batch;
-    protected Table sourceTable;
-    protected Table targetTable;
+    protected Relation sourceRelation;
+    protected Relation targetRelation;
 
     public SelectFromSource(ISymmetricEngine engine) {
         this.engine = engine;
@@ -70,20 +70,20 @@ public abstract class SelectFromSource implements IExtractDataReaderSource {
     }
 
     @Override
-    public Table getSourceTable() {
-        return sourceTable;
+    public Relation getSourceRelation() {
+        return sourceRelation;
     }
 
     @Override
-    public Table getTargetTable() {
-        return targetTable;
+    public Relation getTargetRelation() {
+        return targetRelation;
     }
 
-    protected boolean hasLobsThatNeedExtract(Table table, CsvData data) {
-        if (table.containsLobColumns(platform)) {
-            String[] colNames = table.getColumnNames();
+    protected boolean hasLobsThatNeedExtract(Relation relation, CsvData data) {
+        if (relation.containsLobColumns(platform)) {
+            String[] colNames = relation.getColumnNames();
             Map<String, String> colMap = data.toColumnNameValuePairs(colNames, CsvData.ROW_DATA);
-            List<Column> lobColumns = table.getLobColumns(platform);
+            List<Column> lobColumns = relation.getLobColumns(platform);
             for (Column c : lobColumns) {
                 String value = colMap.get(c.getName());
                 if (value != null && (value.equals("\b") || value.equals("08"))) {

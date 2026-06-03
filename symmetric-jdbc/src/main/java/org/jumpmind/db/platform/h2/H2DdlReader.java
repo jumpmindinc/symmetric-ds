@@ -51,6 +51,7 @@ import java.util.Map;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -80,17 +81,17 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null && table.getColumnsAsList().stream().anyMatch(col -> col.getDefaultValue() != null
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation != null && relation.getColumnsAsList().stream().anyMatch(col -> col.getDefaultValue() != null
                 && col.getDefaultValue().contains("(") && col.getDefaultValue().contains(")"))) {
-            determineGeneratedColumns(connection, table, table.getColumns());
+            determineGeneratedColumns(relation, relation.getColumns());
         }
-        return table;
+        return relation;
     }
 
-    protected void determineGeneratedColumns(Connection conn, Table table, final Column columnsToCheck[]) {
+    protected void determineGeneratedColumns(Relation relation, final Column[] columnsToCheck) {
         StringBuilder query = new StringBuilder();
         if (columnsToCheck == null || columnsToCheck.length == 0) {
             return;
@@ -101,28 +102,28 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
             isGeneratedColumnName = "is_generated";
         }
         query.append("SELECT column_name, " + isGeneratedColumnName + " FROM information_schema.columns WHERE ");
-        List<String> l = new ArrayList<String>();
-        if (table.getCatalog() != null) {
+        List<String> l = new ArrayList<>();
+        if (relation.getCatalog() != null) {
             query.append("table_catalog = ? AND ");
-            l.add(table.getCatalog());
+            l.add(relation.getCatalog());
         }
-        if (table.getSchema() != null) {
+        if (relation.getSchema() != null) {
             query.append("table_schema = ? AND ");
-            l.add(table.getSchema());
+            l.add(relation.getSchema());
         }
         query.append("table_name = ?");
-        l.add(table.getName());
+        l.add(relation.getName());
         List<Row> result = sqlTemplate.query(query.toString(), l.toArray());
         for (Column column : columnsToCheck) {
-            for (Row row : result) {
-                if (column.getName().equalsIgnoreCase(row.getString("column_name"))) {
-                    if (isVersion2) {
-                        column.setGenerated("ALWAYS".equals(row.getString("is_generated")));
-                    } else {
-                        column.setGenerated(row.getBoolean("is_computed"));
-                    }
-                    break;
-                }
+            updateColumnGenerationStatus(column, result, isVersion2);
+        }
+    }
+
+    private static void updateColumnGenerationStatus(Column column, List<Row> generationInfo, boolean isVersion2) {
+        for (Row row : generationInfo) {
+            if (column.getName().equalsIgnoreCase(row.getString("column_name"))) {
+                column.setGenerated(isVersion2 ? "ALWAYS".equals(row.getString("is_generated")) : row.getBoolean("is_computed"));
+                break;
             }
         }
     }
@@ -252,13 +253,12 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
             tableNameColumnName = "TABLE_NAME";
             triggerTypeColumnName = "TRIGGER_TYPE";
         }
-        List<Trigger> triggers = new ArrayList<Trigger>();
-        log.debug("Reading triggers for: " + tableName);
+        log.debug("Reading triggers for: {}", tableName);
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform
                 .getSqlTemplate();
         String sql = "SELECT * FROM INFORMATION_SCHEMA.TRIGGERS "
                 + "WHERE " + tableNameColumnName + "=? and TRIGGER_SCHEMA=? and TRIGGER_CATALOG=? ;";
-        triggers = sqlTemplate.query(sql, new ISqlRowMapper<Trigger>() {
+        List<Trigger> triggers = sqlTemplate.query(sql, new ISqlRowMapper<Trigger>() {
             public Trigger mapRow(Row row) {
                 Trigger trigger = new Trigger();
                 trigger.setName(row.getString("TRIGGER_NAME"));

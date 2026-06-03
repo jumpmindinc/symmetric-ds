@@ -49,6 +49,7 @@ import java.util.Map;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -72,10 +73,10 @@ public class HsqlDbDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation instanceof Table table) {
             // For at least version 1.7.2 we have to determine the
             // auto-increment columns from a result set meta data because the
             // database does not put this info into the database metadata
@@ -84,7 +85,7 @@ public class HsqlDbDdlReader extends AbstractJdbcDdlReader {
             determineAutoIncrementFromResultSetMetaData(connection, table,
                     table.getPrimaryKeyColumns());
         }
-        return table;
+        return relation;
     }
 
     @Override

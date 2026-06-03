@@ -62,6 +62,9 @@ import org.slf4j.LoggerFactory;
  * the source.
  */
 public class DbCompare {
+    private static final String TABLE_NAME_PART_CATALOG = "catalog";
+    private static final String TABLE_NAME_PART_SCHEMA = "schema";
+    private static final String TABLE_NAME_PART_TABLE = "table";
     final Logger log = LoggerFactory.getLogger(getClass());
     ISqlRowMapper<Row> defaultRowMapper = new ISqlRowMapper<Row>() {
         @Override
@@ -544,15 +547,15 @@ public class DbCompare {
             Table sourceTable = null;
             Map<String, String> tableNameParts = sourceEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(tableName);
             if (tableNameParts.size() == 1) {
-                sourceTable = sourceEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableName, true);
+                sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableName, true);
             } else {
-                sourceTable = sourceEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableNameParts.get("catalog"), tableNameParts.get("schema"),
-                        tableNameParts
-                                .get("table"), true);
+                sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_CATALOG),
+                        tableNameParts.get(TABLE_NAME_PART_SCHEMA),
+                        tableNameParts.get(TABLE_NAME_PART_TABLE), true);
                 if (sourceTable == null) {
-                    sourceTable = sourceEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableNameParts.get("schema"), tableNameParts.get(
-                            "catalog"),
-                            tableNameParts.get("table"), true);
+                    sourceTable = (Table) sourceEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_SCHEMA),
+                            tableNameParts.get(TABLE_NAME_PART_CATALOG),
+                            tableNameParts.get(TABLE_NAME_PART_TABLE), true);
                 }
             }
             if (sourceTable == null) {
@@ -573,7 +576,7 @@ public class DbCompare {
                 if (hist != null) {
                     sourceTable = sourceTable.copyAndFilterColumns(hist.getParsedColumnNames(), hist.getParsedPkColumnNames(), true, false);
                 } else {
-                    log.warn("No trigger history found for {}", sourceTable.getFullyQualifiedTableName());
+                    log.warn("No trigger history found for {}", sourceTable.getFullyQualifiedName());
                 }
             }
             // could put a check here before copying table?
@@ -652,20 +655,24 @@ public class DbCompare {
                         tableName = triggerRouter.getTargetTable(null);
                     }
                 }
-                targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(catalog, schema, tableName, true);
+                targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(catalog, schema, tableName, true);
             }
         } else {
             Map<String, String> tableNameParts = targetEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(targetTableName);
             if (tableNameParts.size() == 1) {
-                targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(targetTableName, true);
+                targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(targetTableName, true);
             } else {
-                targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableNameParts.get("catalog"), tableNameParts.get("schema"),
+                targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_CATALOG),
                         tableNameParts
-                                .get("table"), true);
+                                .get(TABLE_NAME_PART_SCHEMA),
+                        tableNameParts
+                                .get(TABLE_NAME_PART_TABLE), true);
                 if (targetTable == null) {
-                    targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(tableNameParts.get("schema"), tableNameParts.get(
-                            "catalog"),
-                            tableNameParts.get("table"), true);
+                    targetTable = (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(tableNameParts.get(TABLE_NAME_PART_SCHEMA),
+                            tableNameParts
+                                    .get(
+                                            TABLE_NAME_PART_CATALOG),
+                            tableNameParts.get(TABLE_NAME_PART_TABLE), true);
                 }
             }
         }
@@ -714,18 +721,12 @@ public class DbCompare {
     }
 
     protected Table loadTargetTableUsingTransform(TransformTableNodeGroupLink transform) {
-        Table targetTable = targetEngine.getTargetDialect().getTargetPlatform().getTableFromCache(transform.getTargetCatalogName(), transform
-                .getTargetSchemaName(), transform
-                        .getTargetTableName(), true);
-        return targetTable;
+        return (Table) targetEngine.getTargetDialect().getTargetPlatform().getRelationFromCache(transform.getTargetCatalogName(),
+                transform.getTargetSchemaName(), transform.getTargetTableName(), true);
     }
 
     protected Table cloneTable(Table table) {
-        try {
-            return (Table) table.clone();
-        } catch (CloneNotSupportedException ex) {
-            throw new RuntimeException(ex);
-        }
+        return table.copy();
     }
 
     protected List<DbCompareTables> loadTablesFromArguments() {
@@ -761,7 +762,7 @@ public class DbCompare {
         } else {
             Map<String, String> sourceTableNameParts = sourceEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(sourceTableName);
             Map<String, String> targetTableNameParts = targetEngine.getTargetDialect().getTargetPlatform().parseQualifiedTableName(targetTableName);
-            return Strings.CI.equals(sourceTableNameParts.get("table"), targetTableNameParts.get("table"));
+            return Strings.CI.equals(sourceTableNameParts.get(TABLE_NAME_PART_TABLE), targetTableNameParts.get(TABLE_NAME_PART_TABLE));
         }
     }
 

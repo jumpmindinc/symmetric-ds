@@ -11,7 +11,7 @@ and the exclamation ('!') for negation.
 * When a table match is made, the table is either added to or removed from the list of 
 tables. If another trigger already exists for a table, then that table is not included in the wildcard match (the explicitly defined 
 trigger entry take precedence).
-* System tables and any table names that start with the SymmetricDS table prefix will be excluded.
+* Views, system tables, and any table names that start with the SymmetricDS table prefix will be excluded.
 * To negate the expression and exclude tables, start the expression with an exclamation.
 * Double up special characters to match a single literal character.  (Use two asterisks to match a single asterisk.)
 The entire expression is processed as wildcarded when an odd number of consecutive special characters are found.  

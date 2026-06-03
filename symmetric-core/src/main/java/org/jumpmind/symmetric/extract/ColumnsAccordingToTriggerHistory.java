@@ -31,6 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -51,8 +53,8 @@ import org.jumpmind.symmetric.service.impl.TransformService.TransformTableNodeGr
 import org.jumpmind.symmetric.util.SymmetricUtils;
 
 public class ColumnsAccordingToTriggerHistory {
-    private static Map<String, Map<String, Table>> cacheByEngine = new ConcurrentHashMap<String, Map<String, Table>>();
-    private Map<CacheKey, Table> cache = new HashMap<CacheKey, Table>();
+    private static Map<String, Map<String, Relation>> cacheByEngine = new ConcurrentHashMap<>();
+    private Map<CacheKey, Relation> cache = new HashMap<>();
     private ISymmetricEngine engine;
     private Node sourceNode;
     private Node targetNode;
@@ -72,153 +74,156 @@ public class ColumnsAccordingToTriggerHistory {
         this.targetNode = targetNode;
     }
 
-    public Table lookup(String routerId, TriggerHistory triggerHistory, boolean setTargetTableName,
+    public Relation lookup(String routerId, TriggerHistory triggerHistory, boolean setTargetTableName,
             boolean useDatabaseDefinition, boolean useTransforms, boolean addMissingColumns) {
         CacheKey key = new CacheKey(routerId, triggerHistory.getTriggerHistoryId(), setTargetTableName,
                 useDatabaseDefinition, useTransforms, addMissingColumns);
-        Table table = cache.get(key);
-        if (table == null) {
-            table = lookupAndOrderColumnsAccordingToTriggerHistory(routerId, triggerHistory, setTargetTableName,
+        Relation relation = cache.get(key);
+        if (relation == null) {
+            relation = lookupAndOrderColumnsAccordingToTriggerHistory(routerId, triggerHistory, setTargetTableName,
                     useDatabaseDefinition, useTransforms, addMissingColumns);
-            cache.put(key, table);
+            cache.put(key, relation);
         }
-        return table;
+        return relation;
     }
 
-    protected Table lookupAndOrderColumnsAccordingToTriggerHistory(String routerId, TriggerHistory triggerHistory,
+    protected Relation lookupAndOrderColumnsAccordingToTriggerHistory(String routerId, TriggerHistory triggerHistory,
             boolean setTargetTableName, boolean useDatabaseDefinition, boolean useTransforms, boolean addMissingColumns) {
         String catalogName = triggerHistory.getSourceCatalogName();
         String schemaName = triggerHistory.getSourceSchemaName();
         String tableName = triggerHistory.getSourceTableName();
         String tableNameLowerCase = triggerHistory.getSourceTableNameLowerCase();
-        Table table = null;
-        if (useDatabaseDefinition) {
-            if (isUsingTargetExternalId && !tableName.startsWith(tablePrefix)) {
-                table = lookupTableExpanded(getTargetPlatform(tableNameLowerCase), catalogName, schemaName, tableName, triggerHistory,
-                        addMissingColumns);
-            } else {
-                table = lookupTable(getTargetPlatform(tableNameLowerCase), catalogName, schemaName, tableName, triggerHistory, addMissingColumns);
-            }
-        } else {
-            table = new Table(tableName);
-            table.addColumns(triggerHistory.getParsedColumnNames());
-            table.setPrimaryKeys(triggerHistory.getParsedPkColumnNames());
-        }
+        Relation relation = lookupRelationForTriggerHistory(triggerHistory, tableName, tableNameLowerCase, catalogName,
+                schemaName, useDatabaseDefinition, addMissingColumns);
         Router router = triggerRouterService.getRouterById(routerId, false);
         if (router != null && setTargetTableName) {
-            if (router.isUseSourceCatalogSchema()) {
-                table.setCatalog(catalogName);
-                table.setSchema(schemaName);
-            } else {
-                table.setCatalog(null);
-                table.setSchema(null);
-            }
-            if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
-                table.setCatalog(null);
-            } else if (StringUtils.isNotBlank(router.getTargetCatalogName())) {
-                table.setCatalog(SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetCatalogName()));
-                table.setCatalog(SymmetricUtils.replaceCatalogSchemaVariables(catalogName,
-                        symmetricDialect.getTargetPlatform().getDefaultCatalog(),
-                        schemaName,
-                        symmetricDialect.getTargetPlatform().getDefaultSchema(),
-                        router.getTargetCatalogName()));
-            }
-            if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
-                table.setSchema(null);
-            } else if (StringUtils.isNotBlank(router.getTargetSchemaName())) {
-                table.setSchema(SymmetricUtils.replaceNodeVariables(sourceNode, targetNode, router.getTargetSchemaName()));
-                table.setSchema(SymmetricUtils.replaceCatalogSchemaVariables(catalogName,
-                        symmetricDialect.getTargetPlatform().getDefaultCatalog(),
-                        schemaName,
-                        symmetricDialect.getTargetPlatform().getDefaultSchema(),
-                        router.getTargetSchemaName()));
-            }
-            if (StringUtils.isNotBlank(router.getTargetTableName())) {
-                table.setName(router.getTargetTableName());
-            }
+            applyRouterTargetNames(relation, router, catalogName, schemaName);
         }
         if (useTransforms) {
-            TransformTable transform = getTransform(sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), table,
-                    TransformPoint.EXTRACT, Integer.MIN_VALUE);
-            while (transform != null) {
-                applyTransform(table, transform);
-                transform = getTransform(sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), table,
-                        TransformPoint.EXTRACT, transform.getTransformOrder() + 1);
-            }
-            transform = getTransform(sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), table,
-                    TransformPoint.LOAD, Integer.MIN_VALUE);
-            while (transform != null) {
-                applyTransform(table, transform);
-                transform = getTransform(sourceNode.getNodeGroupId(), targetNode.getNodeGroupId(), table,
-                        TransformPoint.LOAD, transform.getTransformOrder() + 1);
-            }
+            applyTransforms(relation, TransformPoint.EXTRACT);
+            applyTransforms(relation, TransformPoint.LOAD);
         }
-        return table;
+        return relation;
+    }
+
+    private Relation lookupRelationForTriggerHistory(TriggerHistory triggerHistory, String tableName, String tableNameLowerCase,
+            String catalogName, String schemaName, boolean useDatabaseDefinition, boolean addMissingColumns) {
+        if (!useDatabaseDefinition) {
+            Relation relation = new Table(tableName);
+            relation.addColumns(triggerHistory.getParsedColumnNames());
+            relation.setPrimaryKeys(triggerHistory.getParsedPkColumnNames());
+            return relation;
+        }
+        if (isUsingTargetExternalId && !tableName.startsWith(tablePrefix)) {
+            return lookupRelationExpanded(getTargetPlatform(tableNameLowerCase), catalogName, schemaName, tableName, triggerHistory, addMissingColumns);
+        }
+        return lookupRelation(getTargetPlatform(tableNameLowerCase), catalogName, schemaName, tableName, triggerHistory, addMissingColumns);
+    }
+
+    private void applyRouterTargetNames(Relation relation, Router router, String catalogName, String schemaName) {
+        if (router.isUseSourceCatalogSchema()) {
+            relation.setCatalog(catalogName);
+            relation.setSchema(schemaName);
+        } else {
+            relation.setCatalog(null);
+            relation.setSchema(null);
+        }
+        applyRouterTargetCatalog(relation, router, catalogName, schemaName);
+        applyRouterTargetSchema(relation, router, catalogName, schemaName);
+        if (StringUtils.isNotBlank(router.getTargetTableName())) {
+            relation.setName(router.getTargetTableName());
+        }
+    }
+
+    private void applyRouterTargetCatalog(Relation relation, Router router, String catalogName, String schemaName) {
+        if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetCatalogName())) {
+            relation.setCatalog(null);
+        } else if (StringUtils.isNotBlank(router.getTargetCatalogName())) {
+            relation.setCatalog(SymmetricUtils.replaceCatalogSchemaVariables(catalogName,
+                    symmetricDialect.getTargetPlatform().getDefaultCatalog(),
+                    schemaName,
+                    symmetricDialect.getTargetPlatform().getDefaultSchema(),
+                    router.getTargetCatalogName()));
+        }
+    }
+
+    private void applyRouterTargetSchema(Relation relation, Router router, String catalogName, String schemaName) {
+        if (Strings.CS.equals(Constants.NONE_TOKEN, router.getTargetSchemaName())) {
+            relation.setSchema(null);
+        } else if (StringUtils.isNotBlank(router.getTargetSchemaName())) {
+            relation.setSchema(SymmetricUtils.replaceCatalogSchemaVariables(catalogName,
+                    symmetricDialect.getTargetPlatform().getDefaultCatalog(),
+                    schemaName,
+                    symmetricDialect.getTargetPlatform().getDefaultSchema(),
+                    router.getTargetSchemaName()));
+        }
+    }
+
+    private void applyTransforms(Relation relation, TransformPoint transformPoint) {
+        TransformTable transform = getTransform(relation, transformPoint, Integer.MIN_VALUE);
+        while (transform != null) {
+            applyTransform(relation, transform);
+            transform = getTransform(relation, transformPoint, transform.getTransformOrder() + 1);
+        }
     }
 
     protected IDatabasePlatform getTargetPlatform(String tableName) {
         return tableName.startsWith(tablePrefix) ? symmetricDialect.getPlatform() : symmetricDialect.getTargetDialect().getPlatform();
     }
 
-    protected Table lookupTable(IDatabasePlatform platform, String catalogName, String schemaName, String tableName, TriggerHistory triggerHistory,
+    protected Relation lookupRelation(IDatabasePlatform platform, String catalogName, String schemaName, String relationName, TriggerHistory triggerHistory,
             boolean addMissingColumns) {
-        Table table = platform.getTableFromCache(catalogName, schemaName, tableName, false);
-        if (table != null && table.getColumnCount() < triggerHistory.getParsedColumnNames().length) {
+        Relation relation = platform.getRelationFromCache(catalogName, schemaName, relationName, false);
+        if (relation != null && relation.getColumnCount() < triggerHistory.getParsedColumnNames().length) {
             /*
              * If the column count is less than what trigger history reports, then chances are the table cache is out of date.
              */
-            table = platform.getTableFromCache(catalogName, schemaName, tableName, true);
+            relation = platform.getRelationFromCache(catalogName, schemaName, relationName, true);
         }
-        if (table != null) {
-            table = table.copyAndFilterColumns(triggerHistory.getParsedColumnNames(),
+        if (relation != null) {
+            relation = relation.copyAndFilterColumns(triggerHistory.getParsedColumnNames(),
                     triggerHistory.getParsedPkColumnNames(), true, addMissingColumns);
         } else {
             throw new SymmetricException("Could not find the following table.  It might have been dropped: %s",
-                    Table.getFullyQualifiedTableName(catalogName, schemaName, tableName));
+                    SchemaObject.getFullyQualifiedName(catalogName, schemaName, relationName));
         }
-        return table;
+        return relation;
     }
 
-    protected Table lookupTableExpanded(IDatabasePlatform platform, String catalogName, String schemaName, String tableName,
+    protected Relation lookupRelationExpanded(IDatabasePlatform platform, String catalogName, String schemaName, String relationName,
             TriggerHistory triggerHistory, boolean addMissingColumns) {
-        Table table = null;
-        if (!tableName.contains(targetNode.getExternalId())) {
-            table = lookupTable(platform, catalogName, schemaName, tableName, triggerHistory, addMissingColumns);
+        Relation relation = null;
+        if (!relationName.contains(targetNode.getExternalId())) {
+            relation = lookupRelation(platform, catalogName, schemaName, relationName, triggerHistory, addMissingColumns);
         } else {
-            String baseTableName = tableName.replace(targetNode.getExternalId(), "") + (addMissingColumns ? "-t" : "-f");
-            Map<String, Table> sourceTableMap = getSourceTableMap(engine.getEngineName());
-            table = sourceTableMap.get(baseTableName);
-            if (table == null) {
-                table = lookupTable(platform, catalogName, schemaName, tableName, triggerHistory, addMissingColumns);
-                sourceTableMap.put(baseTableName, table);
+            String baseTableName = relationName.replace(targetNode.getExternalId(), "") + (addMissingColumns ? "-t" : "-f");
+            Map<String, Relation> sourceRelationMap = getSourceRelationMap(engine.getEngineName());
+            relation = sourceRelationMap.get(baseTableName);
+            if (relation == null) {
+                relation = lookupRelation(platform, catalogName, schemaName, relationName, triggerHistory, addMissingColumns);
+                sourceRelationMap.put(baseTableName, relation);
             } else {
-                table = table.copyAndFilterColumns(triggerHistory.getParsedColumnNames(),
+                relation = relation.copyAndFilterColumns(triggerHistory.getParsedColumnNames(),
                         triggerHistory.getParsedPkColumnNames(), true, addMissingColumns);
             }
-            if (table != null) {
-                table.setName(tableName);
+            if (relation != null) {
+                relation.setName(relationName);
             }
         }
-        return table;
+        return relation;
     }
 
-    protected Map<String, Table> getSourceTableMap(String engineName) {
-        Map<String, Table> map = cacheByEngine.get(engineName);
-        if (map == null) {
-            map = new ConcurrentHashMap<String, Table>();
-            cacheByEngine.put(engineName, map);
-        }
-        return map;
+    protected Map<String, Relation> getSourceRelationMap(String engineName) {
+        return cacheByEngine.computeIfAbsent(engineName, k -> new ConcurrentHashMap<>());
     }
 
-    protected TransformTable getTransform(String sourceNodeGroupId, String targetNodeGroupId, Table table,
-            TransformPoint transformPoint, int order) {
+    protected TransformTable getTransform(Relation relation, TransformPoint transformPoint, int order) {
         List<TransformTableNodeGroupLink> transforms = transformService.findTransformsFor(sourceNode.getNodeGroupId(),
-                targetNode.getNodeGroupId(), table.getName(), table.getSchema(), table.getCatalog());
+                targetNode.getNodeGroupId(), relation.getName(), relation.getSchema(), relation.getCatalog());
         if (transforms != null) {
             for (TransformTableNodeGroupLink transform : transforms) {
-                if (Strings.CS.equals(transform.getSourceCatalogName(), table.getCatalog())
-                        && Strings.CS.equals(transform.getSourceSchemaName(), table.getSchema())
+                if (Strings.CS.equals(transform.getSourceCatalogName(), relation.getCatalog())
+                        && Strings.CS.equals(transform.getSourceSchemaName(), relation.getSchema())
                         && transform.getTransformPoint().equals(transformPoint) && transform.getTransformOrder() >= order) {
                     return transform;
                 }
@@ -227,44 +232,48 @@ public class ColumnsAccordingToTriggerHistory {
         return null;
     }
 
-    protected void applyTransform(Table table, TransformTable transform) {
-        List<String> columnNamesToRemoveList = new ArrayList<String>();
+    protected void applyTransform(Relation relation, TransformTable transform) {
+        List<String> columnNamesToRemoveList = new ArrayList<>();
         if (transform.getColumnPolicy().equals(ColumnPolicy.SPECIFIED)) {
-            columnNamesToRemoveList.addAll(Arrays.asList(table.getColumnNames()));
+            columnNamesToRemoveList.addAll(Arrays.asList(relation.getColumnNames()));
         }
         List<TransformColumn> transformColumns = transform.getTransformColumns();
         if (transformColumns != null) {
             for (TransformColumn transformColumn : transformColumns) {
-                if (StringUtils.isNotBlank(transformColumn.getSourceColumnName())) {
-                    Column column = table.getColumnWithName(transformColumn.getSourceColumnName());
-                    if (column != null) {
-                        columnNamesToRemoveList.remove(column.getName());
-                        column.setName(transformColumn.getTargetColumnName());
-                        if (RemoveColumnTransform.NAME.equals(transformColumn.getTransformType())) {
-                            columnNamesToRemoveList.add(column.getName());
-                        } else {
-                            columnNamesToRemoveList.remove(column.getName());
-                        }
-                        column.setPrimaryKey(transformColumn.isPk());
-                    }
-                } else {
-                    Column column = new Column(transformColumn.getTargetColumnName());
-                    column.setPrimaryKey(transformColumn.isPk());
-                    column.setTypeCode(Types.VARCHAR);
-                    column.setJdbcTypeCode(Types.VARCHAR);
-                    column.setJdbcTypeName("VARCHAR");
-                    column.setSize("100");
-                    table.addColumn(column);
-                    columnNamesToRemoveList.remove(column.getName());
-                }
+                applyTransformColumn(relation, transformColumn, columnNamesToRemoveList);
             }
         }
         for (String columnName : columnNamesToRemoveList) {
-            table.removeColumn(table.getColumnIndex(columnName));
+            relation.removeColumn(relation.getColumnIndex(columnName));
         }
-        table.setCatalog(transform.getTargetCatalogName());
-        table.setSchema(transform.getTargetSchemaName());
-        table.setName(transform.getTargetTableName());
+        relation.setCatalog(transform.getTargetCatalogName());
+        relation.setSchema(transform.getTargetSchemaName());
+        relation.setName(transform.getTargetTableName());
+    }
+
+    private void applyTransformColumn(Relation relation, TransformColumn transformColumn, List<String> columnNamesToRemoveList) {
+        if (StringUtils.isNotBlank(transformColumn.getSourceColumnName())) {
+            Column column = relation.getColumnWithName(transformColumn.getSourceColumnName());
+            if (column != null) {
+                columnNamesToRemoveList.remove(column.getName());
+                column.setName(transformColumn.getTargetColumnName());
+                if (RemoveColumnTransform.NAME.equals(transformColumn.getTransformType())) {
+                    columnNamesToRemoveList.add(column.getName());
+                } else {
+                    columnNamesToRemoveList.remove(column.getName());
+                }
+                column.setPrimaryKey(transformColumn.isPk());
+            }
+        } else {
+            Column column = new Column(transformColumn.getTargetColumnName());
+            column.setPrimaryKey(transformColumn.isPk());
+            column.setTypeCode(Types.VARCHAR);
+            column.setJdbcTypeCode(Types.VARCHAR);
+            column.setJdbcTypeName("VARCHAR");
+            column.setSize("100");
+            relation.addColumn(column);
+            columnNamesToRemoveList.remove(column.getName());
+        }
     }
 
     static class CacheKey {

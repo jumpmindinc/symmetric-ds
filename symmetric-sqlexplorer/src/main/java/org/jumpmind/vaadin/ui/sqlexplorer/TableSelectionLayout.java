@@ -219,7 +219,7 @@ public class TableSelectionLayout extends VerticalLayout {
     }
 
     public List<String> getTables() {
-        List<String> tableNames = databasePlatform.getDdlReader().getTableNames((String) catalogSelect.getValue(),
+        List<String> tableNames = databasePlatform.getDdlReader().getRelationNames((String) catalogSelect.getValue(),
                 (String) schemaSelect.getValue(), new String[] { "TABLE" });
         Iterator<String> iter = tableNames.iterator();
         while (iter.hasNext()) {

@@ -50,6 +50,7 @@ import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Transaction;
 import org.jumpmind.db.model.TypeMap;
@@ -248,9 +249,12 @@ public class MySqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
-    public long getEstimatedRowCount(Table table) {
+    public long getEstimatedRowCount(Relation relation) {
+        if (!(relation instanceof Table)) {
+            return super.getEstimatedRowCount(relation);
+        }
         return getSqlTemplateDirty().queryForLong("select ifnull(table_rows,-1) from information_schema.tables where table_name = ? and table_schema = ?",
-                table.getName(), table.getCatalog());
+                relation.getName(), relation.getCatalog());
     }
 
     @Override

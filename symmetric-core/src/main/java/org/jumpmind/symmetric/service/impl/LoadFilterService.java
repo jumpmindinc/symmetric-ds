@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -104,7 +104,7 @@ public class LoadFilterService extends AbstractService implements ILoadFilterSer
                 } else if (ignoreCase) {
                     catalogName = catalogName.toUpperCase();
                 }
-                String qualifiedName = Table.getFullyQualifiedTableName(
+                String qualifiedName = SchemaObject.getFullyQualifiedName(
                         catalogName, schemaName, tableName);
                 List<LoadFilter> loadFiltersForTable = loadFiltersByTable.get(qualifiedName);
                 if (loadFiltersForTable == null) {

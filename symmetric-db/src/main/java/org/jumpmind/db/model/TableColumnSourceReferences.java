@@ -36,7 +36,7 @@ public class TableColumnSourceReferences extends ArrayList<TableColumnSourceRefe
      * Builds key for storing/searching this object in a map
      */
     public static String generateSearchKey(Table sourceTable, Table targetTable) {
-        return sourceTable.getFullyQualifiedTableName() + targetTable.getFullyQualifiedTableName();
+        return sourceTable.getFullyQualifiedName() + targetTable.getFullyQualifiedName();
     }
 
     public String getSearchKey() {

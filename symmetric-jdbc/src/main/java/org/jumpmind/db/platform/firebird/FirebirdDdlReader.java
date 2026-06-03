@@ -54,6 +54,7 @@ import org.apache.commons.collections4.map.ListOrderedMap;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -71,6 +72,7 @@ import org.jumpmind.db.sql.SqlException;
  * The Jdbc Model Reader for Firebird.
  */
 public class FirebirdDdlReader extends AbstractJdbcDdlReader {
+    private static final String JAYBIRD_UNDERSCORE_ESCAPE = "\\\\_";
     protected boolean isLegacyJaybird;
 
     public FirebirdDdlReader(IDatabasePlatform platform) {
@@ -86,14 +88,14 @@ public class FirebirdDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values)
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values)
             throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation instanceof Table table) {
             determineAutoIncrementColumns(connection, table);
             setPrimaryKeyConstraintName(connection, table);
         }
-        return table;
+        return relation;
     }
 
     protected void setPrimaryKeyConstraintName(Connection connection, Table table) throws SQLException {
@@ -279,22 +281,22 @@ public class FirebirdDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected String getTableNamePattern(String tableName) {
+    protected String getRelationNamePattern(String relationName) {
         /*
          * When looking up a table definition, Jaybird treats underscore (_) in the table name as a wildcard, so it needs to be escaped, or you'll get back
          * column names for more than one table. Example: DatabaseMetaData.metaData.getColumns(null, null, "SYM\\_NODE", null)
          */
         if (isLegacyJaybird) {
-            return String.format("\"%s\"", tableName).replaceAll("\\_", "\\\\_");
+            return String.format("\"%s\"", relationName).replace("\\_", JAYBIRD_UNDERSCORE_ESCAPE);
         } else {
-            return String.format("%s", tableName).replaceAll("\\_", "\\\\_");
+            return String.format("%s", relationName).replace("\\_", JAYBIRD_UNDERSCORE_ESCAPE);
         }
     }
 
     @Override
     protected String getTableNamePatternForConstraints(String tableName) {
         if (isLegacyJaybird) {
-            return String.format("\"%s\"", tableName).replaceAll("\\_", "\\\\_");
+            return String.format("\"%s\"", tableName).replace("\\_", JAYBIRD_UNDERSCORE_ESCAPE);
         } else {
             return super.getTableNamePatternForConstraints(tableName);
         }

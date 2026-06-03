@@ -55,7 +55,6 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
-import java.util.Map;
 
 import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.model.Column;
@@ -75,6 +74,7 @@ import org.jumpmind.db.model.Reference;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.TypeMap;
+import org.jumpmind.db.model.View;
 import org.jumpmind.db.model.UniqueIndex;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.exception.IoException;
@@ -88,6 +88,10 @@ import org.xmlpull.v1.XmlPullParserFactory;
  */
 public class DatabaseXmlUtil {
     public static final String DTD_PREFIX = "http://db.apache.org/torque/dtd/database";
+    private static final String ATTR_DESCRIPTION = "description";
+    private static final String ATTR_DEFAULT = "default";
+    private static final String ELEMENT_INDEX = "index";
+    private static final String ELEMENT_UNIQUE = "unique";
 
     private DatabaseXmlUtil() {
     }
@@ -175,6 +179,11 @@ public class DatabaseXmlUtil {
                             if (table != null) {
                                 database.addTable(table);
                             }
+                        } else if (name.equalsIgnoreCase("view")) {
+                            View view = nextView(parser, database.getCatalog(), database.getSchema());
+                            if (view != null) {
+                                database.addView(view);
+                            }
                         }
                         break;
                     case XmlPullParser.END_TAG:
@@ -182,6 +191,8 @@ public class DatabaseXmlUtil {
                         if (name.equalsIgnoreCase("database")) {
                             done = true;
                         }
+                        break;
+                    default:
                         break;
                 }
                 eventType = parser.next();
@@ -203,308 +214,428 @@ public class DatabaseXmlUtil {
 
     public static Table nextTable(XmlPullParser parser, String catalog, String schema) {
         try {
-            Table table = null;
-            ForeignKey fk = null;
-            IIndex index = null;
-            Trigger trigger = null;
-            PlatformTrigger platformTrigger = null;
-            Function function = null;
-            PlatformFunction platformFunction = null;
-            boolean done = false;
+            TableParseContext context = new TableParseContext();
             int eventType = parser.getEventType();
-            while (eventType != XmlPullParser.END_DOCUMENT && !done) {
+            while (eventType != XmlPullParser.END_DOCUMENT && !context.done) {
                 switch (eventType) {
                     case XmlPullParser.START_TAG:
-                        String name = parser.getName();
-                        if (name.equalsIgnoreCase("table")) {
-                            table = new Table();
-                            table.setCatalog(catalog);
-                            table.setSchema(schema);
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    table.setName(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("description")) {
-                                    table.setDescription(attributeValue);
-                                }
-                                if (attributeName.equalsIgnoreCase("logging")) {
-                                    boolean logging = !("false".equalsIgnoreCase(attributeValue));
-                                    table.setLogging(logging);
-                                } else if (attributeName.equalsIgnoreCase("compression")) {
-                                    if (CompressionTypes.PAGE.name().equalsIgnoreCase(attributeValue)) {
-                                        table.setCompressionType(CompressionTypes.PAGE);
-                                    } else if (CompressionTypes.ROW.name().equalsIgnoreCase(attributeValue)) {
-                                        table.setCompressionType(CompressionTypes.ROW);
-                                    } else if (CompressionTypes.COLUMNSTORE.name().equalsIgnoreCase(attributeValue)) {
-                                        table.setCompressionType(CompressionTypes.COLUMNSTORE);
-                                    } else if (CompressionTypes.COLUMNSTORE_ARCHIVE.name().equals(attributeValue)) {
-                                        table.setCompressionType(CompressionTypes.COLUMNSTORE_ARCHIVE);
-                                    } else {
-                                        table.setCompressionType(CompressionTypes.NONE);
-                                    }
-                                }
-                            }
-                        } else if (name.equalsIgnoreCase("column")) {
-                            Column column = new Column();
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    column.setName(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("primaryKey")) {
-                                    column.setPrimaryKey(FormatUtils.toBoolean(attributeValue));
-                                } else if (attributeName.equalsIgnoreCase("primaryKeySeq")) {
-                                    column.setPrimaryKeySequence(Integer.parseInt(attributeValue));
-                                } else if (attributeName.equalsIgnoreCase("required")) {
-                                    column.setRequired(FormatUtils.toBoolean(attributeValue));
-                                } else if (attributeName.equalsIgnoreCase("type")) {
-                                    column.setMappedType(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("size")) {
-                                    column.setSize(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("default")) {
-                                    column.setDefaultValue(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("autoIncrement")) {
-                                    column.setAutoIncrement(FormatUtils.toBoolean(attributeValue));
-                                } else if (attributeName.equalsIgnoreCase("autoUpdate")) {
-                                    column.setAutoUpdate(FormatUtils.toBoolean(attributeValue));
-                                } else if (attributeName.equalsIgnoreCase("javaName")) {
-                                    column.setJavaName(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("description")) {
-                                    column.setDescription(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("unique")) {
-                                    column.setUnique(FormatUtils.toBoolean(attributeValue));
-                                } else if (attributeName.equalsIgnoreCase("generated")) {
-                                    column.setGenerated(FormatUtils.toBoolean(attributeValue));
-                                } else if (attributeName.equalsIgnoreCase("expressionAsDefault")) {
-                                    column.setExpressionAsDefaultValue(FormatUtils.toBoolean(attributeValue));
-                                }
-                            }
-                            if (table != null) {
-                                table.addColumn(column);
-                            }
-                        } else if (name.equalsIgnoreCase("platform-column")) {
-                            PlatformColumn platformColumn = new PlatformColumn();
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    platformColumn.setName(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("type")) {
-                                    platformColumn.setType(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("default")) {
-                                    platformColumn.setDefaultValue(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("size")) {
-                                    if (isNotBlank(attributeValue)) {
-                                        platformColumn.setSize(Integer.parseInt(attributeValue));
-                                    }
-                                } else if (attributeName.equalsIgnoreCase("decimalDigits")) {
-                                    if (isNotBlank(attributeValue)) {
-                                        platformColumn.setDecimalDigits(Integer.parseInt(attributeValue));
-                                    }
-                                } else if (attributeName.equalsIgnoreCase("enumValues")) {
-                                    if (isNotBlank(attributeValue)) {
-                                        platformColumn.setEnumValues(attributeValue.split(","));
-                                    }
-                                } else if (attributeName.equalsIgnoreCase("userDefinedType")) {
-                                    platformColumn.setUserDefinedType(Boolean.parseBoolean(attributeValue));
-                                }
-                            }
-                            if (table != null && table.getColumnCount() > 0) {
-                                table.getColumn(table.getColumnCount() - 1).addPlatformColumn(platformColumn);
-                            }
-                        } else if (name.equalsIgnoreCase("foreign-key")) {
-                            fk = new ForeignKey();
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    fk.setName(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("foreignTable")) {
-                                    fk.setForeignTableName(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("foreignTableCatalog")) {
-                                    fk.setForeignTableCatalog(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("foreignTableSchema")) {
-                                    fk.setForeignTableSchema(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("foreignOnUpdateAction")) {
-                                    fk.setOnUpdateAction(ForeignKey.getForeignKeyActionByForeignKeyActionName(attributeValue));
-                                } else if (attributeName.equalsIgnoreCase("foreignOnDeleteAction")) {
-                                    fk.setOnDeleteAction(ForeignKey.getForeignKeyActionByForeignKeyActionName(attributeValue));
-                                }
-                            }
-                            table.addForeignKey(fk);
-                        } else if (name.equalsIgnoreCase("reference")) {
-                            Reference ref = new Reference();
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("local")) {
-                                    ref.setLocalColumnName(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("foreign")) {
-                                    ref.setForeignColumnName(attributeValue);
-                                }
-                            }
-                            fk.addReference(ref);
-                        } else if (name.equalsIgnoreCase("index")
-                                || name.equalsIgnoreCase("unique")) {
-                            if (name.equalsIgnoreCase("index")) {
-                                index = new NonUniqueIndex();
-                            } else {
-                                index = new UniqueIndex();
-                            }
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    index.setName(attributeValue);
-                                }
-                            }
-                            table.addIndex(index);
-                        } else if (name.equalsIgnoreCase("index-column")
-                                || name.equalsIgnoreCase("unique-column")) {
-                            IndexColumn indexColumn = new IndexColumn();
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    indexColumn.setName(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("size")) {
-                                    indexColumn.setSize(attributeValue);
-                                }
-                            }
-                            indexColumn.setColumn(table.getColumnWithName(indexColumn.getName()));
-                            if (index != null) {
-                                index.addColumn(indexColumn);
-                            }
-                        } else if (name.equalsIgnoreCase("include-column")) {
-                            IndexColumn indexColumn = new IndexColumn();
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    indexColumn.setName(attributeValue);
-                                }
-                            }
-                            indexColumn.setColumn(table.getColumnWithName(indexColumn.getName()));
-                            if (index != null) {
-                                index.addIncludedColumn(indexColumn);
-                            }
-                        } else if (name.equalsIgnoreCase("platform-index")) {
-                            PlatformIndex platformIndex = new PlatformIndex();
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    platformIndex.setName(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("filter-condition")) {
-                                    platformIndex.setFilterCondition(attributeValue);
-                                } else if (attributeName.equalsIgnoreCase("compression")) {
-                                    if (CompressionTypes.ROW.name().equalsIgnoreCase(attributeValue)) {
-                                        platformIndex.setCompressionType(CompressionTypes.ROW);
-                                    } else if (CompressionTypes.PAGE.name().equalsIgnoreCase(attributeValue)) {
-                                        platformIndex.setCompressionType(CompressionTypes.PAGE);
-                                    } else if (CompressionTypes.COLUMNSTORE.name().equalsIgnoreCase(attributeValue)) {
-                                        platformIndex.setCompressionType(CompressionTypes.COLUMNSTORE);
-                                    } else if (CompressionTypes.COLUMNSTORE_ARCHIVE.name().equals(attributeValue)) {
-                                        platformIndex.setCompressionType(CompressionTypes.COLUMNSTORE_ARCHIVE);
-                                    } else {
-                                        platformIndex.setCompressionType(CompressionTypes.NONE);
-                                    }
-                                }
-                            }
-                            if (index != null) {
-                                index.addPlatformIndex(platformIndex);
-                            }
-                        } else if (name.equalsIgnoreCase("trigger")) {
-                            trigger = new Trigger();
-                            trigger.setCatalogName(catalog);
-                            trigger.setSchemaName(schema);
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    trigger.setName(attributeValue);
-                                }
-                            }
-                            if (table != null) {
-                                table.addTrigger(trigger);
-                            }
-                        } else if (name.equalsIgnoreCase("platform-trigger")) {
-                            platformTrigger = new PlatformTrigger();
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    platformTrigger.setName(attributeValue);
-                                }
-                            }
-                            if (trigger != null) {
-                                trigger.addPlatformTrigger(platformTrigger);
-                            }
-                        } else if (name.equalsIgnoreCase("trigger-text")) {
-                            String triggerText = parser.nextText();
-                            platformTrigger.setTriggerText(triggerText);
-                        } else if (name.equalsIgnoreCase("function")) {
-                            function = new Function();
-                            function.setCatalogName(catalog);
-                            function.setSchemaName(schema);
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    function.setFunctionName(attributeValue);
-                                }
-                            }
-                            if (platformTrigger != null) {
-                                platformTrigger.setFunction(function);
-                            }
-                        } else if (name.equalsIgnoreCase("platform-function")) {
-                            platformFunction = new PlatformFunction();
-                            for (int i = 0; i < parser.getAttributeCount(); i++) {
-                                String attributeName = parser.getAttributeName(i);
-                                String attributeValue = parser.getAttributeValue(i);
-                                if (attributeName.equalsIgnoreCase("name")) {
-                                    platformFunction.setName(attributeValue);
-                                }
-                            }
-                            if (function != null) {
-                                function.addPlatformFunction(platformFunction);
-                            }
-                        } else if (name.equalsIgnoreCase("function-text")) {
-                            String functionText = parser.nextText();
-                            platformFunction.setFunctionText(functionText);
-                        }
+                        processTableStartTag(context, parser.getName(), catalog, schema, parser);
                         break;
                     case XmlPullParser.END_TAG:
-                        name = parser.getName();
-                        if (name.equalsIgnoreCase("table")) {
-                            done = true;
-                        } else if (name.equalsIgnoreCase("index")
-                                || name.equalsIgnoreCase("unique")) {
-                            index = null;
-                        } else if (name.equalsIgnoreCase("foreign-key")) {
-                            fk = null;
-                        } else if (name.equalsIgnoreCase("trigger")) {
-                            trigger = null;
-                        } else if (name.equalsIgnoreCase("platform-trigger")) {
-                            platformTrigger = null;
-                        } else if (name.equalsIgnoreCase("function")) {
-                            function = null;
-                        } else if (name.equalsIgnoreCase("platform-function")) {
-                            platformFunction = null;
-                        }
+                        processTableEndTag(context, parser.getName());
+                        break;
+                    default:
                         break;
                 }
-                if (!done) {
+                if (!context.done) {
                     eventType = parser.next();
                 }
             }
-            return table;
+            return context.table;
         } catch (XmlPullParserException e) {
             throw new IoException(e);
         } catch (IOException e) {
             throw new IoException(e);
         }
+    }
+
+    private static void processTableStartTag(TableParseContext context, String name, String catalog, String schema,
+            XmlPullParser parser) throws XmlPullParserException, IOException {
+        if (name.equalsIgnoreCase("table")) {
+            context.table = parseTableElement(catalog, schema, parser);
+        } else if (name.equalsIgnoreCase("column")) {
+            Column column = parseColumnElement(parser);
+            if (context.table != null) {
+                context.table.addColumn(column);
+            }
+        } else if (name.equalsIgnoreCase("platform-column")) {
+            PlatformColumn pc = parsePlatformColumnElement(parser);
+            if (context.table != null && context.table.getColumnCount() > 0) {
+                context.table.getColumn(context.table.getColumnCount() - 1).addPlatformColumn(pc);
+            }
+        } else {
+            processFkIndexOrTriggerStartTag(context, name, catalog, schema, parser);
+        }
+    }
+
+    private static void processFkIndexOrTriggerStartTag(TableParseContext context, String name,
+            String catalog, String schema, XmlPullParser parser) throws XmlPullParserException, IOException {
+        if (name.equalsIgnoreCase("foreign-key")) {
+            context.fk = parseForeignKeyElement(parser);
+            context.table.addForeignKey(context.fk);
+        } else if (name.equalsIgnoreCase("reference")) {
+            context.fk.addReference(parseReferenceElement(parser));
+        } else if (name.equalsIgnoreCase(ELEMENT_INDEX) || name.equalsIgnoreCase(ELEMENT_UNIQUE)) {
+            context.index = parseIndexElement(name, parser);
+            context.table.addIndex(context.index);
+        } else if (name.equalsIgnoreCase("index-column") || name.equalsIgnoreCase("unique-column")) {
+            IndexColumn ic = parseIndexColumnElement(parser);
+            ic.setColumn(context.table.getColumnWithName(ic.getName()));
+            if (context.index != null) {
+                context.index.addColumn(ic);
+            }
+        } else if (name.equalsIgnoreCase("include-column")) {
+            IndexColumn ic = parseIncludeColumnElement(parser);
+            ic.setColumn(context.table.getColumnWithName(ic.getName()));
+            if (context.index != null) {
+                context.index.addIncludedColumn(ic);
+            }
+        } else if (name.equalsIgnoreCase("platform-index")) {
+            if (context.index != null) {
+                context.index.addPlatformIndex(parsePlatformIndexElement(parser));
+            }
+        } else {
+            processTriggerStartTag(context, name, catalog, schema, parser);
+        }
+    }
+
+    private static void processTriggerStartTag(TableParseContext context, String name,
+            String catalog, String schema, XmlPullParser parser) throws XmlPullParserException, IOException {
+        if (name.equalsIgnoreCase("trigger")) {
+            context.trigger = parseTriggerElement(catalog, schema, parser);
+            if (context.table != null) {
+                context.table.addTrigger(context.trigger);
+            }
+        } else if (name.equalsIgnoreCase("platform-trigger")) {
+            context.platformTrigger = parsePlatformTriggerElement(parser);
+            if (context.trigger != null) {
+                context.trigger.addPlatformTrigger(context.platformTrigger);
+            }
+        } else if (name.equalsIgnoreCase("trigger-text")) {
+            context.platformTrigger.setTriggerText(parser.nextText());
+        } else if (name.equalsIgnoreCase("function")) {
+            context.function = parseFunctionElement(catalog, schema, parser);
+            if (context.platformTrigger != null) {
+                context.platformTrigger.setFunction(context.function);
+            }
+        } else if (name.equalsIgnoreCase("platform-function")) {
+            context.platformFunction = parsePlatformFunctionElement(parser);
+            if (context.function != null) {
+                context.function.addPlatformFunction(context.platformFunction);
+            }
+        } else if (name.equalsIgnoreCase("function-text")) {
+            context.platformFunction.setFunctionText(parser.nextText());
+        }
+    }
+
+    private static void processTableEndTag(TableParseContext context, String name) {
+        if (name.equalsIgnoreCase("table")) {
+            context.done = true;
+        } else if (name.equalsIgnoreCase(ELEMENT_INDEX) || name.equalsIgnoreCase(ELEMENT_UNIQUE)) {
+            context.index = null;
+        } else if (name.equalsIgnoreCase("foreign-key")) {
+            context.fk = null;
+        } else if (name.equalsIgnoreCase("trigger")) {
+            context.trigger = null;
+        } else if (name.equalsIgnoreCase("platform-trigger")) {
+            context.platformTrigger = null;
+        } else if (name.equalsIgnoreCase("function")) {
+            context.function = null;
+        } else if (name.equalsIgnoreCase("platform-function")) {
+            context.platformFunction = null;
+        }
+    }
+
+    private static Table parseTableElement(String catalog, String schema, XmlPullParser parser) {
+        Table table = new Table();
+        table.setCatalog(catalog);
+        table.setSchema(schema);
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            String attrName = parser.getAttributeName(i);
+            String attrValue = parser.getAttributeValue(i);
+            if (attrName.equalsIgnoreCase("name")) {
+                table.setName(attrValue);
+            } else if (attrName.equalsIgnoreCase(ATTR_DESCRIPTION)) {
+                table.setDescription(attrValue);
+            } else if (attrName.equalsIgnoreCase("logging")) {
+                table.setLogging(!("false".equalsIgnoreCase(attrValue)));
+            } else if (attrName.equalsIgnoreCase("compression")) {
+                if (CompressionTypes.PAGE.name().equalsIgnoreCase(attrValue)) {
+                    table.setCompressionType(CompressionTypes.PAGE);
+                } else if (CompressionTypes.ROW.name().equalsIgnoreCase(attrValue)) {
+                    table.setCompressionType(CompressionTypes.ROW);
+                } else if (CompressionTypes.COLUMNSTORE.name().equalsIgnoreCase(attrValue)) {
+                    table.setCompressionType(CompressionTypes.COLUMNSTORE);
+                } else if (CompressionTypes.COLUMNSTORE_ARCHIVE.name().equals(attrValue)) {
+                    table.setCompressionType(CompressionTypes.COLUMNSTORE_ARCHIVE);
+                } else {
+                    table.setCompressionType(CompressionTypes.NONE);
+                }
+            }
+        }
+        return table;
+    }
+
+    private static Column parseColumnElement(XmlPullParser parser) {
+        Column column = new Column();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            applyColumnAttribute(column, parser.getAttributeName(i), parser.getAttributeValue(i));
+        }
+        return column;
+    }
+
+    private static void applyColumnAttribute(Column column, String attrName, String attrValue) {
+        if (attrName.equalsIgnoreCase("name")) {
+            column.setName(attrValue);
+        } else if (attrName.equalsIgnoreCase("primaryKey")) {
+            column.setPrimaryKey(FormatUtils.toBoolean(attrValue));
+        } else if (attrName.equalsIgnoreCase("primaryKeySeq")) {
+            column.setPrimaryKeySequence(Integer.parseInt(attrValue));
+        } else if (attrName.equalsIgnoreCase("required")) {
+            column.setRequired(FormatUtils.toBoolean(attrValue));
+        } else if (attrName.equalsIgnoreCase("type")) {
+            column.setMappedType(attrValue);
+        } else if (attrName.equalsIgnoreCase("size")) {
+            column.setSize(attrValue);
+        } else if (attrName.equalsIgnoreCase(ATTR_DEFAULT)) {
+            column.setDefaultValue(attrValue);
+        } else if (attrName.equalsIgnoreCase("autoIncrement")) {
+            column.setAutoIncrement(FormatUtils.toBoolean(attrValue));
+        } else if (attrName.equalsIgnoreCase("autoUpdate")) {
+            column.setAutoUpdate(FormatUtils.toBoolean(attrValue));
+        } else if (attrName.equalsIgnoreCase("javaName")) {
+            column.setJavaName(attrValue);
+        } else if (attrName.equalsIgnoreCase(ATTR_DESCRIPTION)) {
+            column.setDescription(attrValue);
+        } else if (attrName.equalsIgnoreCase("unique")) {
+            column.setUnique(FormatUtils.toBoolean(attrValue));
+        } else if (attrName.equalsIgnoreCase("generated")) {
+            column.setGenerated(FormatUtils.toBoolean(attrValue));
+        } else if (attrName.equalsIgnoreCase("expressionAsDefault")) {
+            column.setExpressionAsDefaultValue(FormatUtils.toBoolean(attrValue));
+        }
+    }
+
+    private static PlatformColumn parsePlatformColumnElement(XmlPullParser parser) {
+        PlatformColumn pc = new PlatformColumn();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            String attrName = parser.getAttributeName(i);
+            String attrValue = parser.getAttributeValue(i);
+            if (attrName.equalsIgnoreCase("name")) {
+                pc.setName(attrValue);
+            } else if (attrName.equalsIgnoreCase("type")) {
+                pc.setType(attrValue);
+            } else if (attrName.equalsIgnoreCase(ATTR_DEFAULT)) {
+                pc.setDefaultValue(attrValue);
+            } else if (attrName.equalsIgnoreCase("size") && isNotBlank(attrValue)) {
+                pc.setSize(Integer.parseInt(attrValue));
+            } else if (attrName.equalsIgnoreCase("decimalDigits") && isNotBlank(attrValue)) {
+                pc.setDecimalDigits(Integer.parseInt(attrValue));
+            } else if (attrName.equalsIgnoreCase("enumValues") && isNotBlank(attrValue)) {
+                pc.setEnumValues(attrValue.split(","));
+            } else if (attrName.equalsIgnoreCase("userDefinedType")) {
+                pc.setUserDefinedType(Boolean.parseBoolean(attrValue));
+            }
+        }
+        return pc;
+    }
+
+    private static ForeignKey parseForeignKeyElement(XmlPullParser parser) {
+        ForeignKey fk = new ForeignKey();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            String attrName = parser.getAttributeName(i);
+            String attrValue = parser.getAttributeValue(i);
+            if (attrName.equalsIgnoreCase("name")) {
+                fk.setName(attrValue);
+            } else if (attrName.equalsIgnoreCase("foreignTable")) {
+                fk.setForeignTableName(attrValue);
+            } else if (attrName.equalsIgnoreCase("foreignTableCatalog")) {
+                fk.setForeignTableCatalog(attrValue);
+            } else if (attrName.equalsIgnoreCase("foreignTableSchema")) {
+                fk.setForeignTableSchema(attrValue);
+            } else if (attrName.equalsIgnoreCase("foreignOnUpdateAction")) {
+                fk.setOnUpdateAction(ForeignKey.getForeignKeyActionByForeignKeyActionName(attrValue));
+            } else if (attrName.equalsIgnoreCase("foreignOnDeleteAction")) {
+                fk.setOnDeleteAction(ForeignKey.getForeignKeyActionByForeignKeyActionName(attrValue));
+            }
+        }
+        return fk;
+    }
+
+    private static Reference parseReferenceElement(XmlPullParser parser) {
+        Reference ref = new Reference();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            String attrName = parser.getAttributeName(i);
+            String attrValue = parser.getAttributeValue(i);
+            if (attrName.equalsIgnoreCase("local")) {
+                ref.setLocalColumnName(attrValue);
+            } else if (attrName.equalsIgnoreCase("foreign")) {
+                ref.setForeignColumnName(attrValue);
+            }
+        }
+        return ref;
+    }
+
+    private static IIndex parseIndexElement(String elementName, XmlPullParser parser) {
+        IIndex index = elementName.equalsIgnoreCase("index") ? new NonUniqueIndex() : new UniqueIndex();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            if (parser.getAttributeName(i).equalsIgnoreCase("name")) {
+                index.setName(parser.getAttributeValue(i));
+            }
+        }
+        return index;
+    }
+
+    private static IndexColumn parseIndexColumnElement(XmlPullParser parser) {
+        IndexColumn ic = new IndexColumn();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            String attrName = parser.getAttributeName(i);
+            String attrValue = parser.getAttributeValue(i);
+            if (attrName.equalsIgnoreCase("name")) {
+                ic.setName(attrValue);
+            } else if (attrName.equalsIgnoreCase("size")) {
+                ic.setSize(attrValue);
+            }
+        }
+        return ic;
+    }
+
+    private static IndexColumn parseIncludeColumnElement(XmlPullParser parser) {
+        IndexColumn ic = new IndexColumn();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            if (parser.getAttributeName(i).equalsIgnoreCase("name")) {
+                ic.setName(parser.getAttributeValue(i));
+            }
+        }
+        return ic;
+    }
+
+    private static PlatformIndex parsePlatformIndexElement(XmlPullParser parser) {
+        PlatformIndex pi = new PlatformIndex();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            String attrName = parser.getAttributeName(i);
+            String attrValue = parser.getAttributeValue(i);
+            if (attrName.equalsIgnoreCase("name")) {
+                pi.setName(attrValue);
+            } else if (attrName.equalsIgnoreCase("filter-condition")) {
+                pi.setFilterCondition(attrValue);
+            } else if (attrName.equalsIgnoreCase("compression")) {
+                if (CompressionTypes.ROW.name().equalsIgnoreCase(attrValue)) {
+                    pi.setCompressionType(CompressionTypes.ROW);
+                } else if (CompressionTypes.PAGE.name().equalsIgnoreCase(attrValue)) {
+                    pi.setCompressionType(CompressionTypes.PAGE);
+                } else if (CompressionTypes.COLUMNSTORE.name().equalsIgnoreCase(attrValue)) {
+                    pi.setCompressionType(CompressionTypes.COLUMNSTORE);
+                } else if (CompressionTypes.COLUMNSTORE_ARCHIVE.name().equals(attrValue)) {
+                    pi.setCompressionType(CompressionTypes.COLUMNSTORE_ARCHIVE);
+                } else {
+                    pi.setCompressionType(CompressionTypes.NONE);
+                }
+            }
+        }
+        return pi;
+    }
+
+    private static Trigger parseTriggerElement(String catalog, String schema, XmlPullParser parser) {
+        Trigger trigger = new Trigger();
+        trigger.setCatalogName(catalog);
+        trigger.setSchemaName(schema);
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            if (parser.getAttributeName(i).equalsIgnoreCase("name")) {
+                trigger.setName(parser.getAttributeValue(i));
+            }
+        }
+        return trigger;
+    }
+
+    private static PlatformTrigger parsePlatformTriggerElement(XmlPullParser parser) {
+        PlatformTrigger pt = new PlatformTrigger();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            if (parser.getAttributeName(i).equalsIgnoreCase("name")) {
+                pt.setName(parser.getAttributeValue(i));
+            }
+        }
+        return pt;
+    }
+
+    private static Function parseFunctionElement(String catalog, String schema, XmlPullParser parser) {
+        Function function = new Function();
+        function.setCatalogName(catalog);
+        function.setSchemaName(schema);
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            if (parser.getAttributeName(i).equalsIgnoreCase("name")) {
+                function.setFunctionName(parser.getAttributeValue(i));
+            }
+        }
+        return function;
+    }
+
+    private static PlatformFunction parsePlatformFunctionElement(XmlPullParser parser) {
+        PlatformFunction pf = new PlatformFunction();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            if (parser.getAttributeName(i).equalsIgnoreCase("name")) {
+                pf.setName(parser.getAttributeValue(i));
+            }
+        }
+        return pf;
+    }
+
+    public static View nextView(XmlPullParser parser, String catalog, String schema) {
+        try {
+            View view = null;
+            boolean done = false;
+            int eventType = parser.getEventType();
+            while (eventType != XmlPullParser.END_DOCUMENT && !done) {
+                switch (eventType) {
+                    case XmlPullParser.START_TAG:
+                        view = processViewStartTag(view, catalog, schema, parser.getName(), parser);
+                        break;
+                    case XmlPullParser.END_TAG:
+                        if (parser.getName().equalsIgnoreCase("view")) {
+                            done = true;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                eventType = parser.next();
+            }
+            return view;
+        } catch (XmlPullParserException | IOException e) {
+            throw new IoException(e);
+        }
+    }
+
+    private static View processViewStartTag(View view, String catalog, String schema, String name, XmlPullParser parser) {
+        if (name.equalsIgnoreCase("view")) {
+            view = new View();
+            view.setCatalog(catalog);
+            view.setSchema(schema);
+            for (int i = 0; i < parser.getAttributeCount(); i++) {
+                applyViewAttribute(view, parser.getAttributeName(i), parser.getAttributeValue(i));
+            }
+        } else if (name.equalsIgnoreCase("column") && view != null) {
+            view.addColumn(parseViewColumn(parser));
+        }
+        return view;
+    }
+
+    private static void applyViewAttribute(View view, String attrName, String attrValue) {
+        if (attrName.equalsIgnoreCase("name")) {
+            view.setName(attrValue);
+        } else if (attrName.equalsIgnoreCase(ATTR_DESCRIPTION)) {
+            view.setDescription(attrValue);
+        }
+    }
+
+    private static Column parseViewColumn(XmlPullParser parser) {
+        Column column = new Column();
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            String attrName = parser.getAttributeName(i);
+            String attrValue = parser.getAttributeValue(i);
+            if (attrName.equalsIgnoreCase("name")) {
+                column.setName(attrValue);
+            } else if (attrName.equalsIgnoreCase("type")) {
+                column.setMappedType(attrValue);
+            } else if (attrName.equalsIgnoreCase("size")) {
+                column.setSize(attrValue);
+            } else if (attrName.equalsIgnoreCase("required")) {
+                column.setRequired(FormatUtils.toBoolean(attrValue));
+            } else if (attrName.equalsIgnoreCase(ATTR_DEFAULT)) {
+                column.setDefaultValue(attrValue);
+            }
+        }
+        return column;
     }
 
     /*
@@ -573,6 +704,9 @@ public class DatabaseXmlUtil {
             for (Table table : model.getTables()) {
                 write(table, output);
             }
+            for (View view : model.getViews()) {
+                write(view, output);
+            }
             output.write("</database>\n");
         } catch (IOException e) {
             throw new IoException(e);
@@ -623,192 +757,214 @@ public class DatabaseXmlUtil {
             if (table.getCompressionType() != CompressionTypes.NONE) {
                 output.write(" compression=\"" + table.getCompressionType().name() + "\"");
             }
-            if (table.getLogging() != true) {
+            if (!table.getLogging()) {
                 output.write(" logging=\"false\"");
             }
             output.write(">\n");
             for (Column column : table.getColumns()) {
-                output.write("\t\t<column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"");
-                if (column.isPrimaryKey()) {
-                    output.write(" primaryKey=\"" + column.isPrimaryKey() + "\"");
-                    output.write(" primaryKeySeq=\"" + column.getPrimaryKeySequence() + "\"");
-                }
-                if (column.isRequired()) {
-                    output.write(" required=\"" + column.isRequired() + "\"");
-                }
-                if (column.getMappedType() != null) {
-                    if (isOracle(column) && column.getMappedType().equalsIgnoreCase("date")) {
-                        output.write(" type=\"" + TypeMap.TIMESTAMP + "\"");
-                    } else {
-                        output.write(" type=\"" + column.getMappedType() + "\"");
-                    }
-                }
-                if (column.getSize() != null) {
-                    output.write(" size=\"" + column.getSize() + "\"");
-                }
-                if (column.getDefaultValue() != null) {
-                    output.write(" default=\"" + StringEscapeUtils.escapeXml10(column.getDefaultValue()) + "\"");
-                }
-                if (column.isAutoIncrement()) {
-                    output.write(" autoIncrement=\"" + column.isAutoIncrement() + "\"");
-                }
-                if (column.isAutoUpdate()) {
-                    output.write(" autoUpdate=\"" + column.isAutoUpdate() + "\"");
-                }
-                if (column.getJavaName() != null) {
-                    output.write(" javaName=\"" + column.getJavaName() + "\"");
-                }
-                if (column.isUnique()) {
-                    output.write(" unique=\"" + column.isUnique() + "\"");
-                }
-                if (column.isGenerated()) {
-                    output.write(" generated=\"" + column.isGenerated() + "\"");
-                }
-                if (column.isExpressionAsDefaultValue()) {
-                    output.write(" expressionAsDefault=\"" + column.isExpressionAsDefaultValue() + "\"");
-                }
-                if (column.getPlatformColumns() != null && column.getPlatformColumns().size() > 0) {
-                    Collection<PlatformColumn> platformColumns = column.getPlatformColumns()
-                            .values();
-                    output.write(">\n");
-                    for (PlatformColumn platformColumn : platformColumns) {
-                        output.write("\t\t\t<platform-column name=\""
-                                + platformColumn.getName() + "\"");
-                        output.write(" type=\"" + StringEscapeUtils.escapeXml10(platformColumn.getType()) + "\"");
-                        if (platformColumn.getSize() > 0 || (platformColumn.getSize() == 0 && isMySql(column)
-                                && column.getMappedType().equalsIgnoreCase("varchar"))) {
-                            output.write(" size=\"" + platformColumn.getSize() + "\"");
-                        }
-                        if (platformColumn.getDecimalDigits() > 0) {
-                            output.write(" decimalDigits=\""
-                                    + platformColumn.getDecimalDigits() + "\"");
-                        }
-                        if (platformColumn.getDefaultValue() != null) {
-                            output.write(" default=\"" + StringEscapeUtils.escapeXml10(platformColumn.getDefaultValue()) + "\"");
-                        }
-                        if (platformColumn.getEnumValues() != null && platformColumn.getEnumValues().length > 0) {
-                            output.write(" enumValues=\"");
-                            boolean writeComma = false;
-                            for (String enumValue : platformColumn.getEnumValues()) {
-                                if (writeComma) {
-                                    output.write(",");
-                                }
-                                output.write(enumValue);
-                                writeComma = true;
-                            }
-                            output.write("\"");
-                        }
-                        if (platformColumn.isUserDefinedType()) {
-                            output.write(" userDefinedType=\"" + platformColumn.isUserDefinedType() + "\"");
-                        }
-                        output.write("/>\n");
-                    }
-                    output.write("\t\t</column>\n");
-                } else {
-                    output.write("/>\n");
-                }
+                writeColumn(column, output);
             }
-            for (ForeignKey fk : table.getForeignKeys()) {
-                String name = fk.getName() == null ? "" : fk.getName();
-                output.write("\t\t<foreign-key name=\"" + StringEscapeUtils.escapeXml10(name) + "\" foreignTable=\""
-                        + StringEscapeUtils.escapeXml10(fk.getForeignTableName()) + "\" foreignTableCatalog=\""
-                        + StringEscapeUtils.escapeXml10(fk.getForeignTableCatalog() == null || fk.getForeignTableCatalog().equals(table.getCatalog())
-                                ? ""
-                                : fk.getForeignTableCatalog()) +
-                        "\" foreignTableSchema=\"" + StringEscapeUtils.escapeXml10(fk.getForeignTableSchema() == null ||
-                                fk.getForeignTableSchema().equals(table.getSchema()) ? "" : fk.getForeignTableSchema()) + "\""
-                        +
-                        writeForeignKeyOnUpdateClause(fk)
-                        +
-                        writeForeignKeyOnDeleteClause(fk)
-                        +
-                        ">\n");
-                for (Reference ref : fk.getReferences()) {
-                    output.write("\t\t\t<reference local=\"" + StringEscapeUtils.escapeXml10(ref.getLocalColumnName())
-                            + "\" foreign=\"" + StringEscapeUtils.escapeXml10(ref.getForeignColumnName()) + "\"/>\n");
-                }
-                output.write("\t\t</foreign-key>\n");
-            }
-            for (IIndex index : table.getIndices()) {
-                if (index.isUnique()) {
-                    output.write("\t\t<unique name=\"" + StringEscapeUtils.escapeXml10(index.getName()) + "\">\n");
-                    for (IndexColumn column : index.getColumns()) {
-                        output.write("\t\t\t<unique-column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"/>\n");
-                    }
-                    handleIncludeColumns(output, index);
-                } else {
-                    output.write("\t\t<index name=\"" + StringEscapeUtils.escapeXml10(index.getName()) + "\">\n");
-                    for (IndexColumn column : index.getColumns()) {
-                        output.write("\t\t\t<index-column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"");
-                        if (column.getSize() != null) {
-                            output.write(" size=\"" + column.getSize() + "\"");
-                        }
-                        output.write("/>\n");
-                    }
-                    handleIncludeColumns(output, index);
-                }
-                if (index.getPlatformIndexes() != null && index.getPlatformIndexes().size() > 0) {
-                    Map<String, PlatformIndex> platformIndexes = index.getPlatformIndexes();
-                    for (String key : platformIndexes.keySet()) {
-                        PlatformIndex platformIndex = platformIndexes.get(key);
-                        if ((platformIndex.getFilterCondition() != null && platformIndex.getFilterCondition().length() > 0) ||
-                                platformIndex.getCompressionType() != CompressionTypes.NONE) {
-                            output.write("\t\t\t<platform-index name=\"" + StringEscapeUtils.escapeXml10(platformIndex.getName()) + "\"");
-                            if (platformIndex.getFilterCondition() != null && platformIndex.getFilterCondition().length() > 0) {
-                                output.write(" filter-condition=\"" + platformIndex.getFilterCondition() + "\"");
-                            }
-                            if (platformIndex.getCompressionType() != CompressionTypes.NONE) {
-                                output.write(" compression=\"" + platformIndex.getCompressionType().name() + "\"");
-                            }
-                            output.write("/>\n");
-                        }
-                    }
-                }
-                if (index.isUnique()) {
-                    output.write("\t\t</unique>\n");
-                } else {
-                    output.write("\t\t</index>\n");
-                }
-            }
-            for (Trigger trigger : table.getTriggers()) {
-                output.write("\t\t<trigger name=\"" + StringEscapeUtils.escapeXml10(trigger.getName()) + "\">\n");
-                if (trigger.getPlatformTriggers() != null) {
-                    Map<String, PlatformTrigger> platformTriggers = trigger.getPlatformTriggers();
-                    for (String key : platformTriggers.keySet()) {
-                        PlatformTrigger platformTrigger = platformTriggers.get(key);
-                        String triggerText = platformTrigger.getTriggerText();
-                        output.write("\t\t\t<platform-trigger name=\"" + StringEscapeUtils.escapeXml10(platformTrigger.getName()) + "\">\n");
-                        output.write("\t\t\t\t<trigger-text>");
-                        output.write("<![CDATA[");
-                        output.write(triggerText);
-                        output.write("]]>");
-                        output.write("</trigger-text>\n");
-                        Function function = platformTrigger.getFunction();
-                        if (function != null) {
-                            output.write("\t\t\t\t<function name=\"" + StringEscapeUtils.escapeXml10(function.getFunctionName()) + "\">\n");
-                            Map<String, PlatformFunction> platformFunctions = function.getPlatformFunctions();
-                            for (String functionKey : platformFunctions.keySet()) {
-                                PlatformFunction platformFunction = platformFunctions.get(functionKey);
-                                String functionText = platformFunction.getFunctionText();
-                                output.write("\t\t\t\t\t<platform-function name=\"" + StringEscapeUtils.escapeXml10(platformFunction.getName()) + "\">\n");
-                                output.write("\t\t\t\t\t\t<function-text>");
-                                output.write("<![CDATA[");
-                                output.write(functionText);
-                                output.write("]]>");
-                                output.write("</function-text>\n");
-                                output.write("\t\t\t\t\t</platform-function>\n");
-                            }
-                            output.write("\t\t\t\t</function>\n");
-                        }
-                        output.write("\t\t\t</platform-trigger>\n");
-                    }
-                }
-                output.write("\t\t</trigger>\n");
-            }
+            writeForeignKeyElements(table, output);
+            writeIndexElements(table, output);
+            writeTriggerElements(table, output);
             output.write("\t</table>\n");
         } catch (IOException e) {
             throw new IoException(e);
         }
+    }
+
+    private static void writeForeignKeyElements(Table table, Writer output) throws IOException {
+        for (ForeignKey fk : table.getForeignKeys()) {
+            String name = fk.getName() == null ? "" : fk.getName();
+            output.write("\t\t<foreign-key name=\"" + StringEscapeUtils.escapeXml10(name) + "\" foreignTable=\""
+                    + StringEscapeUtils.escapeXml10(fk.getForeignTableName()) + "\" foreignTableCatalog=\""
+                    + StringEscapeUtils.escapeXml10(fk.getForeignTableCatalog() == null || fk.getForeignTableCatalog().equals(table.getCatalog())
+                            ? ""
+                            : fk.getForeignTableCatalog())
+                    + "\" foreignTableSchema=\"" + StringEscapeUtils.escapeXml10(
+                            fk.getForeignTableSchema() == null || fk.getForeignTableSchema().equals(table.getSchema())
+                                    ? ""
+                                    : fk.getForeignTableSchema()) + "\""
+                    + writeForeignKeyOnUpdateClause(fk) + writeForeignKeyOnDeleteClause(fk) + ">\n");
+            for (Reference ref : fk.getReferences()) {
+                output.write("\t\t\t<reference local=\"" + StringEscapeUtils.escapeXml10(ref.getLocalColumnName())
+                        + "\" foreign=\"" + StringEscapeUtils.escapeXml10(ref.getForeignColumnName()) + "\"/>\n");
+            }
+            output.write("\t\t</foreign-key>\n");
+        }
+    }
+
+    private static void writeIndexElements(Table table, Writer output) throws IOException {
+        for (IIndex index : table.getIndices()) {
+            writeIndexElement(index, output);
+        }
+    }
+
+    private static void writeIndexElement(IIndex index, Writer output) throws IOException {
+        if (index.isUnique()) {
+            output.write("\t\t<unique name=\"" + StringEscapeUtils.escapeXml10(index.getName()) + "\">\n");
+            for (IndexColumn column : index.getColumns()) {
+                output.write("\t\t\t<unique-column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"/>\n");
+            }
+        } else {
+            output.write("\t\t<index name=\"" + StringEscapeUtils.escapeXml10(index.getName()) + "\">\n");
+            for (IndexColumn column : index.getColumns()) {
+                output.write("\t\t\t<index-column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"");
+                if (column.getSize() != null) {
+                    output.write(" size=\"" + column.getSize() + "\"");
+                }
+                output.write("/>\n");
+            }
+        }
+        handleIncludeColumns(output, index);
+        writePlatformIndexElements(index, output);
+        output.write(index.isUnique() ? "\t\t</unique>\n" : "\t\t</index>\n");
+    }
+
+    private static void writePlatformIndexElements(IIndex index, Writer output) throws IOException {
+        if (index.getPlatformIndexes() == null || index.getPlatformIndexes().isEmpty()) {
+            return;
+        }
+        for (PlatformIndex platformIndex : index.getPlatformIndexes().values()) {
+            boolean hasFilter = platformIndex.getFilterCondition() != null && !platformIndex.getFilterCondition().isEmpty();
+            boolean hasCompression = platformIndex.getCompressionType() != CompressionTypes.NONE;
+            if (hasFilter || hasCompression) {
+                output.write("\t\t\t<platform-index name=\"" + StringEscapeUtils.escapeXml10(platformIndex.getName()) + "\"");
+                if (hasFilter) {
+                    output.write(" filter-condition=\"" + platformIndex.getFilterCondition() + "\"");
+                }
+                if (hasCompression) {
+                    output.write(" compression=\"" + platformIndex.getCompressionType().name() + "\"");
+                }
+                output.write("/>\n");
+            }
+        }
+    }
+
+    private static void writeTriggerElements(Table table, Writer output) throws IOException {
+        for (Trigger trigger : table.getTriggers()) {
+            output.write("\t\t<trigger name=\"" + StringEscapeUtils.escapeXml10(trigger.getName()) + "\">\n");
+            if (trigger.getPlatformTriggers() != null) {
+                for (PlatformTrigger platformTrigger : trigger.getPlatformTriggers().values()) {
+                    writePlatformTriggerElement(platformTrigger, output);
+                }
+            }
+            output.write("\t\t</trigger>\n");
+        }
+    }
+
+    private static void writePlatformTriggerElement(PlatformTrigger platformTrigger, Writer output) throws IOException {
+        output.write("\t\t\t<platform-trigger name=\"" + StringEscapeUtils.escapeXml10(platformTrigger.getName()) + "\">\n");
+        output.write("\t\t\t\t<trigger-text><![CDATA[" + platformTrigger.getTriggerText() + "]]></trigger-text>\n");
+        Function function = platformTrigger.getFunction();
+        if (function != null) {
+            output.write("\t\t\t\t<function name=\"" + StringEscapeUtils.escapeXml10(function.getFunctionName()) + "\">\n");
+            for (PlatformFunction platformFunction : function.getPlatformFunctions().values()) {
+                output.write("\t\t\t\t\t<platform-function name=\"" + StringEscapeUtils.escapeXml10(platformFunction.getName()) + "\">\n");
+                output.write("\t\t\t\t\t\t<function-text><![CDATA[" + platformFunction.getFunctionText() + "]]></function-text>\n");
+                output.write("\t\t\t\t\t</platform-function>\n");
+            }
+            output.write("\t\t\t\t</function>\n");
+        }
+        output.write("\t\t\t</platform-trigger>\n");
+    }
+
+    public static void write(View view, Writer output) {
+        try {
+            output.write("\t<view name=\"" + StringEscapeUtils.escapeXml10(view.getName()) + "\"");
+            if (isNotBlank(view.getDescription())) {
+                output.write(" description=\"" + StringEscapeUtils.escapeXml10(view.getDescription()) + "\"");
+            }
+            output.write(">\n");
+            for (Column column : view.getColumns()) {
+                writeColumn(column, output);
+            }
+            output.write("\t</view>\n");
+        } catch (IOException e) {
+            throw new IoException(e);
+        }
+    }
+
+    private static void writeColumn(Column column, Writer output) throws IOException {
+        output.write("\t\t<column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"");
+        if (column.isPrimaryKey()) {
+            output.write(" primaryKey=\"" + column.isPrimaryKey() + "\"");
+            output.write(" primaryKeySeq=\"" + column.getPrimaryKeySequence() + "\"");
+        }
+        if (column.isRequired()) {
+            output.write(" required=\"" + column.isRequired() + "\"");
+        }
+        if (column.getMappedType() != null) {
+            if (isOracle(column) && column.getMappedType().equalsIgnoreCase("date")) {
+                output.write(" type=\"" + TypeMap.TIMESTAMP + "\"");
+            } else {
+                output.write(" type=\"" + column.getMappedType() + "\"");
+            }
+        }
+        if (column.getSize() != null) {
+            output.write(" size=\"" + column.getSize() + "\"");
+        }
+        if (column.getDefaultValue() != null) {
+            output.write(" default=\"" + StringEscapeUtils.escapeXml10(column.getDefaultValue()) + "\"");
+        }
+        if (column.isAutoIncrement()) {
+            output.write(" autoIncrement=\"" + column.isAutoIncrement() + "\"");
+        }
+        if (column.isAutoUpdate()) {
+            output.write(" autoUpdate=\"" + column.isAutoUpdate() + "\"");
+        }
+        if (column.getJavaName() != null) {
+            output.write(" javaName=\"" + column.getJavaName() + "\"");
+        }
+        if (column.isUnique()) {
+            output.write(" unique=\"" + column.isUnique() + "\"");
+        }
+        if (column.isGenerated()) {
+            output.write(" generated=\"" + column.isGenerated() + "\"");
+        }
+        if (column.isExpressionAsDefaultValue()) {
+            output.write(" expressionAsDefault=\"" + column.isExpressionAsDefaultValue() + "\"");
+        }
+        if (column.getPlatformColumns() != null && !column.getPlatformColumns().isEmpty()) {
+            output.write(">\n");
+            for (PlatformColumn platformColumn : column.getPlatformColumns().values()) {
+                writePlatformColumn(column, platformColumn, output);
+            }
+            output.write("\t\t</column>\n");
+        } else {
+            output.write("/>\n");
+        }
+    }
+
+    private static void writePlatformColumn(Column column, PlatformColumn platformColumn, Writer output) throws IOException {
+        output.write("\t\t\t<platform-column name=\"" + platformColumn.getName() + "\"");
+        output.write(" type=\"" + StringEscapeUtils.escapeXml10(platformColumn.getType()) + "\"");
+        if (platformColumn.getSize() > 0 || (platformColumn.getSize() == 0 && isMySql(column)
+                && column.getMappedType().equalsIgnoreCase("varchar"))) {
+            output.write(" size=\"" + platformColumn.getSize() + "\"");
+        }
+        if (platformColumn.getDecimalDigits() > 0) {
+            output.write(" decimalDigits=\"" + platformColumn.getDecimalDigits() + "\"");
+        }
+        if (platformColumn.getDefaultValue() != null) {
+            output.write(" default=\"" + StringEscapeUtils.escapeXml10(platformColumn.getDefaultValue()) + "\"");
+        }
+        if (platformColumn.getEnumValues() != null && platformColumn.getEnumValues().length > 0) {
+            output.write(" enumValues=\"");
+            boolean writeComma = false;
+            for (String enumValue : platformColumn.getEnumValues()) {
+                if (writeComma) {
+                    output.write(",");
+                }
+                output.write(enumValue);
+                writeComma = true;
+            }
+            output.write("\"");
+        }
+        if (platformColumn.isUserDefinedType()) {
+            output.write(" userDefinedType=\"" + platformColumn.isUserDefinedType() + "\"");
+        }
+        output.write("/>\n");
     }
 
     public static String writeForeignKeyOnUpdateClause(ForeignKey fk) {
@@ -835,5 +991,16 @@ public class DatabaseXmlUtil {
         for (IndexColumn column : index.getIncludedColumns()) {
             output.write("\t\t\t<include-column name=\"" + StringEscapeUtils.escapeXml10(column.getName()) + "\"/>\n");
         }
+    }
+
+    private static final class TableParseContext {
+        Table table;
+        ForeignKey fk;
+        IIndex index;
+        Trigger trigger;
+        PlatformTrigger platformTrigger;
+        Function function;
+        PlatformFunction platformFunction;
+        boolean done;
     }
 }

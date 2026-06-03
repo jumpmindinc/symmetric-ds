@@ -28,6 +28,7 @@ import java.util.Set;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.PermissionType;
@@ -110,10 +111,10 @@ public interface ISymmetricDialect {
 
     public String getTransactionId(ISqlTransaction transaction);
 
-    public String createInitialLoadSqlFor(Node node, TriggerRouter trigger, Table table, TriggerHistory triggerHistory, Channel channel,
+    public String createInitialLoadSqlFor(Node node, TriggerRouter trigger, Relation relation, TriggerHistory triggerHistory, Channel channel,
             String overrideSelectSql);
 
-    public boolean[] getColumnPositionUsingTemplate(Table originalTable, TriggerHistory triggerHistory);
+    public boolean[] getColumnPositionUsingTemplate(Relation originalRelation, TriggerHistory triggerHistory);
 
     public String createPurgeSqlFor(Node node, TriggerRouter triggerRouter, TriggerHistory triggerHistory);
 
@@ -239,9 +240,9 @@ public interface ISymmetricDialect {
 
     public String massageForLob(String sql, boolean isContainsBigLob);
 
-    public boolean isInitialLoadTwoPassLob(Table table);
+    public boolean isInitialLoadTwoPassLob(Relation relation);
 
-    public String getInitialLoadTwoPassLobSql(String sql, Table table, boolean isFirstPass);
+    public String getInitialLoadTwoPassLobSql(String sql, Relation relation, boolean isFirstPass);
 
     /*
      * Indicates that the dialect relies on SQL that is to be inserted into the database for use by embedded Java triggers. H2 is an example dialect that needs

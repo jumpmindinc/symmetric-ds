@@ -462,7 +462,7 @@ class PostgreSqlDdlReaderTest {
         when(rsMetaData5.getColumnLabel(2)).thenReturn("TABLE_NAME");
         when(rsMetaData5.getColumnName(2)).thenReturn("TABLE_NAME");
         when(rs5.getString(2)).thenReturn(DdlReaderTestConstants.TESTNAME);
-        Table testTable = spyReader.readTable(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
+        Table testTable = (Table) spyReader.readRelation(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
         Table expectedTable = new Table();
         expectedTable.setName(DdlReaderTestConstants.TESTNAME);
         expectedTable.setType(DdlReaderTestConstants.TABLE_TYPE_TEST_VALUE);
@@ -645,7 +645,7 @@ class PostgreSqlDdlReaderTest {
                 testColumnMappedType, platformColumnSize, platformColumnType);
         NonUniqueIndex testIndex = generateNonUniqueIndexOneColumn(primaryKeyConstaintName, 0);
         Table expectedTable = generateOneColumnTable(expectedColumn, testIndex);
-        Table testTable = spyReader.readTable(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
+        Table testTable = (Table) spyReader.readRelation(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
         assertEquals(expectedTable, testTable);
         // assertEquals(expectedTable.getPrimaryKeyConstraintName(), testTable.getPrimaryKeyConstraintName());
     }
@@ -803,7 +803,7 @@ class PostgreSqlDdlReaderTest {
         when(rsMetaData5.getColumnName(2)).thenReturn("TABLE_NAME");
         when(rs5.getString(2)).thenReturn(DdlReaderTestConstants.TESTNAME);
         // TODO: Arg matching! //doReturn(1).when(spyTemplate).queryForInt(ArgumentMatchers.anyString(), ArgumentMatchers.any());
-        Table testTable = spyReader.readTable(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
+        Table testTable = (Table) spyReader.readRelation(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
         Table expectedTable = new Table();
         expectedTable.setName(DdlReaderTestConstants.TESTNAME);
         expectedTable.setType(DdlReaderTestConstants.TABLE_TYPE_TEST_VALUE);
@@ -978,7 +978,7 @@ class PostgreSqlDdlReaderTest {
         when(rsMetaData5.getColumnLabel(2)).thenReturn("TABLE_NAME");
         when(rsMetaData5.getColumnName(2)).thenReturn("TABLE_NAME");
         when(rs5.getString(2)).thenReturn(DdlReaderTestConstants.TESTNAME);
-        Table testTable = spyReader.readTable(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
+        Table testTable = (Table) spyReader.readRelation(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
         Table expectedTable = new Table();
         expectedTable.setName(DdlReaderTestConstants.TESTNAME);
         expectedTable.setType(DdlReaderTestConstants.TABLE_TYPE_TEST_VALUE);
@@ -1143,7 +1143,7 @@ class PostgreSqlDdlReaderTest {
         when(rsMetaData5.getColumnLabel(2)).thenReturn("TABLE_NAME");
         when(rsMetaData5.getColumnName(2)).thenReturn("TABLE_NAME");
         when(rs5.getString(2)).thenReturn(DdlReaderTestConstants.TESTNAME);
-        Table testTable = spyReader.readTable(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
+        Table testTable = (Table) spyReader.readRelation(DdlReaderTestConstants.CATALOG, DdlReaderTestConstants.SCHEMA, DdlReaderTestConstants.TABLE);
         Table expectedTable = new Table();
         expectedTable.setName(DdlReaderTestConstants.TESTNAME);
         expectedTable.setType(DdlReaderTestConstants.TABLE_TYPE_TEST_VALUE);

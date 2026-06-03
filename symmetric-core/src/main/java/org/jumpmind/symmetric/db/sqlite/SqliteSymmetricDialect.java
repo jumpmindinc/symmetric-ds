@@ -128,7 +128,7 @@ public class SqliteSymmetricDialect extends AbstractSymmetricDialect {
         int tryCount = 5;
         while (!success && tryCount > 0) {
             try {
-                Table table = platform.getTableFromCache(tableName, false);
+                Table table = (Table) platform.getRelationFromCache(tableName, false);
                 if (table != null) {
                     platform.getSqlTemplate().update(
                             String.format("delete from %s%s%s", quote, table.getName(), quote));

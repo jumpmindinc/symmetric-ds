@@ -56,6 +56,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.ISqlRowMapper;
@@ -643,13 +644,13 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                     && listener.getCurrentBatch().getSqlCode() == ErrorConstants.FK_VIOLATION_CODE
                     && !Version.isOlderThanVersion(sourceNode.getSymmetricVersion(), "3.12.6")) {
                 engine.getDataService().reloadMissingForeignKeyRowsForLoad(sourceNode.getNodeId(), ctx.getBatch().getBatchId(),
-                        listener.getCurrentBatch().getFailedLineNumber(), ctx.getTable(), ctx.getData(), Constants.CHANNEL_CONFIG);
+                        listener.getCurrentBatch().getFailedLineNumber(), (Table) ctx.getRelation(), ctx.getData(), Constants.CHANNEL_CONFIG);
             }
             if (parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION_REVERSE)
                     && listener.getCurrentBatch() != null && listener.isNewErrorForCurrentBatch()
                     && !listener.getCurrentBatch().isLoadFlag()
                     && listener.getCurrentBatch().getSqlCode() == ErrorConstants.FK_VIOLATION_CODE) {
-                engine.getDataService().reloadMissingForeignKeyRowsReverse(sourceNode.getNodeId(), ctx.getTable(), ctx.getData(), null,
+                engine.getDataService().reloadMissingForeignKeyRowsReverse(sourceNode.getNodeId(), (Table) ctx.getRelation(), ctx.getData(), null,
                         parameterService.is(ParameterConstants.AUTO_RESOLVE_FOREIGN_KEY_VIOLATION_REVERSE_PEERS));
             }
             logOrRethrow(ex, sourceNode.getNodeId(), transport.getUrl() == null || transport.getUrl().endsWith(WebConstants.URL_REGISTRATION));
@@ -1091,12 +1092,12 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
         protected ProtocolDataReader buildDataReader(final Batch batchInStaging, final IStagedResource resource) {
             return new ProtocolDataReader(BatchType.LOAD, batchInStaging.getTargetNodeId(), resource) {
                 @Override
-                public Table nextTable() {
-                    Table table = super.nextTable();
-                    if (table != null && listener.currentBatch != null) {
-                        listener.currentBatch.incrementTableCount(table.getNameLowerCase());
+                public Relation nextRelation() {
+                    Relation relation = super.nextRelation();
+                    if (relation != null && listener.currentBatch != null) {
+                        listener.currentBatch.incrementTableCount(relation.getNameLowerCase());
                     }
-                    return table;
+                    return relation;
                 }
 
                 @Override

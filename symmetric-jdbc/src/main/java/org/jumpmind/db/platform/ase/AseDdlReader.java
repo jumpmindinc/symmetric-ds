@@ -59,6 +59,7 @@ import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -99,46 +100,49 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData,
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData,
             Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation != null) {
             // Sybase does not return the auto-increment status or the generated
             // column status via the database metadata
-            determineAutoIncrementFromResultSetMetaData(connection, table, table.getColumns());
+            if (relation instanceof Table table) {
+                determineAutoIncrementFromResultSetMetaData(connection, table, table.getColumns());
+            }
             if (getMajorVersion(metaData) >= 15) {
-                determineGeneratedColumns(connection, table, table.getColumns());
+                determineGeneratedColumns(relation, relation.getColumns());
             }
         }
-        return table;
+        return relation;
     }
 
-    protected void determineGeneratedColumns(Connection conn, Table table, final Column columnsToCheck[]) {
-        StringBuilder query = new StringBuilder();
+    protected void determineGeneratedColumns(Relation relation, final Column[] columnsToCheck) {
         if (columnsToCheck == null || columnsToCheck.length == 0) {
             return;
         }
         JdbcSqlTemplate sqlTemplate = (JdbcSqlTemplate) platform.getSqlTemplateDirty();
-        query.append("select col.name, com.text\n"
+        String query = "select col.name, com.text\n"
                 + "from syscolumns col left join syscomments com\n"
                 + "on col.computedcol = com.id\n"
-                + "where col.id = (select id from sysobjects where name = ?)");
-        List<String> l = new ArrayList<String>();
-        l.add(table.getName());
-        List<Row> result = sqlTemplate.query(query.toString(), l.toArray());
+                + "where col.id = (select id from sysobjects where name = ?)";
+        List<Row> result = sqlTemplate.query(query, new Object[] { relation.getName() });
         for (Column column : columnsToCheck) {
-            for (Row row : result) {
-                if (column.getName().equalsIgnoreCase(row.getString("name"))) {
-                    String definition = row.getString("text");
-                    if (definition != null) {
-                        column.setGenerated(true);
-                        if (definition.startsWith("AS ")) {
-                            definition = definition.substring(2).trim();
-                        }
-                        column.setDefaultValue(definition);
+            applyGeneratedColumnDefinition(column, result);
+        }
+    }
+
+    private void applyGeneratedColumnDefinition(Column column, List<Row> result) {
+        for (Row row : result) {
+            if (column.getName().equalsIgnoreCase(row.getString("name"))) {
+                String definition = row.getString("text");
+                if (definition != null) {
+                    column.setGenerated(true);
+                    if (definition.startsWith("AS ")) {
+                        definition = definition.substring(2).trim();
                     }
-                    break;
+                    column.setDefaultValue(definition);
                 }
+                break;
             }
         }
     }
@@ -386,10 +390,10 @@ public class AseDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected String getTableNamePattern(String tableName) {
-        tableName = tableName.replace("_", "\\_");
-        tableName = tableName.replace("%", "\\%");
-        return tableName;
+    protected String getRelationNamePattern(String relationName) {
+        relationName = relationName.replace("_", "\\_");
+        relationName = relationName.replace("%", "\\%");
+        return relationName;
     }
 
     @Override

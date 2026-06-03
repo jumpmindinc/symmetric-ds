@@ -29,6 +29,11 @@ import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.impl.TriggerRouterContext;
 
+/**
+ * @deprecated Use {@link org.jumpmind.symmetric.config.IRelationResolver} instead, which accepts {@link org.jumpmind.db.model.Relation} to support both tables
+ *             and views. Enable legacy behavior via the {@code extension.use.legacy.interface.enabled} parameter.
+ */
+@Deprecated(forRemoval = true)
 public interface ITableResolver extends IExtensionPoint {
     public void resolve(String catalog, String schema, Set<Table> tables, IDatabasePlatform platform,
             INodeService nodeService, Trigger trigger, boolean useTableCache, TriggerRouterContext triggerRouterContext);

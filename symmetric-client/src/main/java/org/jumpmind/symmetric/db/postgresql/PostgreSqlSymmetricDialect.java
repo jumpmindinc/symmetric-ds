@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.db.model.SchemaObject;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -230,7 +231,7 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
     @Override
     public void removeTrigger(StringBuilder sqlBuffer, String catalogName, String schemaName,
             String triggerName, String tableName, ISqlTransaction transaction) {
-        Table table = platform.getTableFromCache(catalogName, schemaName, tableName, false);
+        Table table = (Table) platform.getRelationFromCache(catalogName, schemaName, tableName, false);
         if (table != null) {
             String quoteChar = platform.getDatabaseInfo().getDelimiterToken();
             String schemaPrefix = table.getSchema() == null ? ""
@@ -243,7 +244,9 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
                     + "() cascade";
             logSql(dropFunction, sqlBuffer);
             if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
-                log.info("Dropping {} trigger for {}", triggerName, Table.getFullyQualifiedTableName(catalogName, schemaName, tableName));
+                if (log.isInfoEnabled()) {
+                    log.info("Dropping {} trigger for {}", triggerName, SchemaObject.getFullyQualifiedName(catalogName, schemaName, tableName));
+                }
                 transaction.execute(dropSql);
                 transaction.execute(dropFunction);
             }

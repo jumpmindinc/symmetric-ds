@@ -28,6 +28,7 @@ import java.util.Set;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.PlatformTrigger;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -44,22 +45,22 @@ public class KafkaDdlReader implements IDdlReader {
     }
 
     @Override
-    public Database readTables(String catalog, String schema, String[] tableTypes) {
+    public Database readRelations(String catalog, String schema, String[] relationTypes) {
         return null;
     }
 
     @Override
-    public Table readTable(String catalog, String schema, String tableName) {
+    public Relation readRelation(String catalog, String schema, String relationName) {
         return null;
     }
 
     @Override
-    public Table readTable(ISqlTransaction transaction, String catalog, String schema, String table) {
-        return readTable(catalog, schema, table);
+    public Relation readRelation(ISqlTransaction transaction, String catalog, String schema, String relationName) {
+        return readRelation(catalog, schema, relationName);
     }
 
     @Override
-    public List<String> getTableTypes() {
+    public List<String> getRelationTypes() {
         return null;
     }
 
@@ -74,12 +75,12 @@ public class KafkaDdlReader implements IDdlReader {
     }
 
     @Override
-    public List<String> getTableNames(String catalog, String schema, String[] tableTypes) {
+    public List<String> getRelationNames(String catalog, String schema, String[] relationTypes) {
         return null;
     }
 
     @Override
-    public List<String> getColumnNames(String catalog, String schema, String tableName) {
+    public List<String> getColumnNames(String catalog, String schema, String relationName) {
         return null;
     }
 
@@ -116,6 +117,11 @@ public class KafkaDdlReader implements IDdlReader {
     @Override
     public List<Trigger> getApplicationTriggersForModel(String catalog, String schema, String tableName, String triggerPrefix) {
         return new ArrayList<Trigger>(0);
+    }
+
+    @Override
+    public List<String> getViewNames(String catalog, String schema) {
+        return new ArrayList<>();
     }
 
     @Override

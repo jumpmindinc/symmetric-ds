@@ -20,12 +20,15 @@
  */
 package org.jumpmind.symmetric;
 
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ApplicationHealthTracker implements IApplicationHealthTracker {
     private static final AtomicReference<IApplicationHealthTracker> tracker = new AtomicReference<>();
     private volatile boolean alive = true;
-    private volatile boolean ready = false;
+    private final Map<String, Boolean> engineReadiness = new ConcurrentHashMap<>();
 
     public static void setTracker(IApplicationHealthTracker tracker) {
         ApplicationHealthTracker.tracker.set(tracker);
@@ -46,12 +49,31 @@ public class ApplicationHealthTracker implements IApplicationHealthTracker {
     }
 
     @Override
-    public boolean isReady() {
-        return ready;
+    public Map<String, Boolean> getReadinessMap() {
+        return engineReadiness;
     }
 
     @Override
-    public void setReady(boolean ready) {
-        this.ready = ready;
+    public void setEngineReadiness(String engineName, boolean ready) {
+        engineReadiness.put(engineName, ready);
+    }
+
+    @Override
+    public void stopTrackingEngine(String engineName) {
+        engineReadiness.remove(engineName);
+    }
+
+    @Override
+    public boolean isEngineReady(String engineName) {
+        return engineReadiness.get(engineName);
+    }
+
+    @Override
+    public boolean isReady() {
+        boolean ready = true;
+        for (Entry<String, Boolean> engine : engineReadiness.entrySet()) {
+            ready &= engine.getValue();
+        }
+        return ready;
     }
 }

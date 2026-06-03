@@ -49,44 +49,44 @@ import org.jumpmind.db.platform.AbstractJdbcDdlReader;
 
 public class ObjectDefinitionCache {
     private AbstractJdbcDdlReader ddlReader;
-    private Object tableNameCacheLock = new Object();
-    volatile private Map<TableNameCacheKey, List<String>> tableNameCache = new HashMap<TableNameCacheKey, List<String>>();
-    volatile private long tableNameCacheTime;
+    private Object relationNameCacheLock = new Object();
+    volatile private Map<RelationNameCacheKey, List<String>> relationNameCache = new HashMap<RelationNameCacheKey, List<String>>();
+    volatile private long relationNameCacheTime;
 
     public ObjectDefinitionCache(AbstractJdbcDdlReader ddlReader) {
         this.ddlReader = ddlReader;
     }
 
-    public List<String> getTableNames(CatalogSchema catalogSchema, String[] tableTypes) {
-        TableNameCacheKey cacheKey = new TableNameCacheKey(catalogSchema, tableTypes);
+    public List<String> getRelationNames(CatalogSchema catalogSchema, String[] tableTypes) {
+        RelationNameCacheKey cacheKey = new RelationNameCacheKey(catalogSchema, tableTypes);
         long cacheTimeoutInMs = ddlReader.getPlatform().getClearCacheModelTimeoutInMs();
-        List<String> tableNames;
-        synchronized (tableNameCacheLock) {
-            boolean timedOut = System.currentTimeMillis() - tableNameCacheTime >= cacheTimeoutInMs;
-            tableNames = tableNameCache.get(cacheKey);
-            if (timedOut || tableNames == null) {
+        List<String> relationNames;
+        synchronized (relationNameCacheLock) {
+            boolean timedOut = System.currentTimeMillis() - relationNameCacheTime >= cacheTimeoutInMs;
+            relationNames = relationNameCache.get(cacheKey);
+            if (timedOut || relationNames == null) {
                 if (timedOut) {
-                    clearTableNameCache();
+                    clearRelationNameCache();
                 }
-                tableNames = ddlReader.getTableNamesFromDatabase(catalogSchema.getCatalog(), catalogSchema.getSchema(), tableTypes);
-                tableNameCache.put(cacheKey, tableNames);
+                relationNames = ddlReader.getRelationNamesFromDatabase(catalogSchema.getCatalog(), catalogSchema.getSchema(), tableTypes);
+                relationNameCache.put(cacheKey, relationNames);
             }
         }
-        return tableNames;
+        return relationNames;
     }
 
-    public void clearTableNameCache() {
-        synchronized (tableNameCacheLock) {
-            tableNameCache.clear();
-            tableNameCacheTime = System.currentTimeMillis();
+    public void clearRelationNameCache() {
+        synchronized (relationNameCacheLock) {
+            relationNameCache.clear();
+            relationNameCacheTime = System.currentTimeMillis();
         }
     }
 
-    private class TableNameCacheKey {
+    private class RelationNameCacheKey {
         private CatalogSchema catalogSchema;
         private String[] tableTypes;
 
-        public TableNameCacheKey(CatalogSchema catalogSchema, String[] tableTypes) {
+        public RelationNameCacheKey(CatalogSchema catalogSchema, String[] tableTypes) {
             this.catalogSchema = catalogSchema;
             this.tableTypes = tableTypes;
         }
@@ -105,10 +105,10 @@ public class ObjectDefinitionCache {
             if (this == obj) {
                 return true;
             }
-            if (!(obj instanceof TableNameCacheKey)) {
+            if (!(obj instanceof RelationNameCacheKey)) {
                 return false;
             }
-            TableNameCacheKey other = (TableNameCacheKey) obj;
+            RelationNameCacheKey other = (RelationNameCacheKey) obj;
             if (catalogSchema == null) {
                 if (other.catalogSchema != null) {
                     return false;

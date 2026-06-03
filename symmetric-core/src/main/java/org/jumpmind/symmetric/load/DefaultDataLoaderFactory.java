@@ -299,12 +299,9 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
                     if (!table.getName().contains(batch.getSourceNodeId())) {
                         return super.getTableKey(table);
                     } else {
-                        try {
-                            table = (Table) table.clone();
-                            table.setName(table.getName().replace(batch.getSourceNodeId(), ""));
-                        } catch (CloneNotSupportedException e) {
-                        }
-                        return table.getTableKey();
+                        table = table.copy();
+                        table.setName(table.getName().replace(batch.getSourceNodeId(), ""));
+                        return table.getKey();
                     }
                 }
 
@@ -315,11 +312,8 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
                     } else {
                         Table table = targetTableMap.get(tableKey);
                         if (table != null) {
-                            try {
-                                table = (Table) table.clone();
-                                table.setName(sourceTable.getName());
-                            } catch (CloneNotSupportedException e) {
-                            }
+                            table = table.copy();
+                            table.setName(sourceTable.getName());
                         }
                         return table;
                     }

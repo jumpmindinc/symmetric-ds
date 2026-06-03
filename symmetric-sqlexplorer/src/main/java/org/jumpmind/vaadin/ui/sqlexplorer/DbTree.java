@@ -255,7 +255,7 @@ public class DbTree extends TreeGrid<DbTreeNode> {
     protected List<DbTreeNode> getTableTreeNodes(IDdlReader reader,
             DbTreeNode parent, String catalogName, String schemaName) {
         List<DbTreeNode> list = new ArrayList<DbTreeNode>();
-        List<String> tables = reader.getTableNames(catalogName, schemaName, TABLE_TYPES);
+        List<String> tables = reader.getRelationNames(catalogName, schemaName, TABLE_TYPES);
         Collections.sort(tables, new Comparator<String>() {
             @Override
             public int compare(String o1, String o2) {

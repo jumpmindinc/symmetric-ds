@@ -23,7 +23,7 @@ package org.jumpmind.symmetric.io.data;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.io.data.writer.DefaultDatabaseWriter;
 import org.jumpmind.symmetric.io.data.writer.NestedDataWriter;
@@ -33,11 +33,11 @@ public class DataContext extends Context {
     protected IDataWriter writer;
     protected IDataReader reader;
     protected Batch batch;
-    protected Table table;
+    protected Relation relation;
     protected CsvData data;
     protected Throwable lastError;
-    protected Map<String, Table> parsedTables = new HashMap<String, Table>();
-    protected Table lastParsedTable = null;
+    protected Map<String, Relation> parsedRelations = new HashMap<String, Relation>();
+    protected Relation lastParsedRelation = null;
 
     public DataContext() {
     }
@@ -82,12 +82,12 @@ public class DataContext extends Context {
         return data;
     }
 
-    public void setTable(Table table) {
-        this.table = table;
+    public void setRelation(Relation relation) {
+        this.relation = relation;
     }
 
-    public Table getTable() {
-        return table;
+    public Relation getRelation() {
+        return relation;
     }
 
     public void setLastError(Throwable lastError) {
@@ -98,16 +98,16 @@ public class DataContext extends Context {
         return lastError;
     }
 
-    public Map<String, Table> getParsedTables() {
-        return parsedTables;
+    public Map<String, Relation> getParsedRelations() {
+        return parsedRelations;
     }
 
-    public Table getLastParsedTable() {
-        return lastParsedTable;
+    public Relation getLastParsedRelation() {
+        return lastParsedRelation;
     }
 
-    public void setLastParsedTable(Table lastParsedTable) {
-        this.lastParsedTable = lastParsedTable;
+    public void setLastParsedRelation(Relation relation) {
+        this.lastParsedRelation = relation;
     }
 
     public ISqlTransaction findTransaction() {

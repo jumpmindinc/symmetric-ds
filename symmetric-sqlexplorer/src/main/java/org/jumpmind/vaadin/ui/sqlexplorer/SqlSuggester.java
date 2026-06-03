@@ -451,7 +451,7 @@ public class SqlSuggester {
         String key = getFullName(catalog, schema, null);
         List<String> tableNames = tableNameCache.get(key);
         if (tableNames == null) {
-            tableNames = reader.getTableNames(catalog, schema, TABLE_TYPES);
+            tableNames = reader.getRelationNames(catalog, schema, TABLE_TYPES);
             tableNameCache.put(key, tableNames);
         }
         return tableNames;

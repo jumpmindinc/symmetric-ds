@@ -33,6 +33,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.exception.IoException;
@@ -51,7 +52,7 @@ public class XmlDataReader extends AbstractDataReader implements IDataReader {
     protected Reader reader;
     protected DataContext context;
     protected Batch batch;
-    protected Table table;
+    protected Relation relation;
     protected String sourceNodeId;
     protected int lineNumber = 0;
     protected XmlPullParser parser;
@@ -172,7 +173,7 @@ public class XmlDataReader extends AbstractDataReader implements IDataReader {
                             String[] columnValues = rowData.values().toArray(
                                     new String[rowData.size()]);
                             data.putParsedData(CsvData.ROW_DATA, columnValues);
-                            if (this.table == null || !this.table.equals(table)) {
+                            if (this.relation == null || !this.relation.equals(table)) {
                                 next.add(table);
                             }
                             next.add(data);
@@ -209,22 +210,22 @@ public class XmlDataReader extends AbstractDataReader implements IDataReader {
         return null;
     }
 
-    public Table nextTable() {
-        this.table = null;
+    public Relation nextRelation() {
+        this.relation = null;
         do {
             readNext();
             if (next.size() > 0) {
                 Object o = next.remove(0);
-                if (o instanceof Table) {
-                    this.table = (Table) o;
+                if (o instanceof Relation nextRelation) {
+                    this.relation = nextRelation;
                     break;
                 }
             }
         } while (next.size() > 0);
-        if (this.table == null && batch != null) {
+        if (this.relation == null && batch != null) {
             batch.setComplete(true);
         }
-        return this.table;
+        return this.relation;
     }
 
     public CsvData nextData() {
@@ -245,7 +246,7 @@ public class XmlDataReader extends AbstractDataReader implements IDataReader {
     }
 
     public Map<Batch, Statistics> getStatistics() {
-        Map<Batch, Statistics> map = new HashMap<Batch, Statistics>(1);
+        Map<Batch, Statistics> map = HashMap.newHashMap(1);
         map.put(batch, statistics);
         return map;
     }

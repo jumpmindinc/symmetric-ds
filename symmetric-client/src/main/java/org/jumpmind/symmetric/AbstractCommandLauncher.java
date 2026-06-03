@@ -114,9 +114,7 @@ public abstract class AbstractCommandLauncher {
                 return;
             }
             TypedProperties serverProperties = new TypedProperties(serverPropertiesFile);
-            TypedProperties jvmProperties = new TypedProperties(System.getProperties());
-            serverProperties.merge(jvmProperties);
-            TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(serverProperties, false);
+            TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(serverProperties, false);
             System.getProperties().putAll(serverProperties);
             serverPropertiesInitialized = true;
         }
@@ -353,6 +351,7 @@ public abstract class AbstractCommandLauncher {
 
     protected void setContainerized(boolean containerized) {
         isContainerEnabled = containerized;
+        System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, containerized ? "true" : "false");
     }
 
     protected boolean isContainerized() {

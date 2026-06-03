@@ -29,7 +29,7 @@ public class TriggerRouterContext extends Context {
     long dropTriggerTime;
     long doesTriggerExistTime;
     long inactivateTriggerHistTime;
-    long triggerToTableSupportingInfoTime;
+    long triggerToRelationSupportingInfoTime;
     long tableDoesNotExistTime;
     long updateOrCreateDatabaseTriggersTime;
     long triggerInactivatedTime;
@@ -183,12 +183,12 @@ public class TriggerRouterContext extends Context {
         return inactivateTriggerHistTime;
     }
 
-    synchronized public void incrementTriggerToTableSupportingInfoTime(long t) {
-        triggerToTableSupportingInfoTime += t;
+    synchronized public void incrementTriggerToRelationSupportingInfoTime(long t) {
+        triggerToRelationSupportingInfoTime += t;
     }
 
-    synchronized public long getTriggerToTableSupportingInfoTime() {
-        return triggerToTableSupportingInfoTime;
+    synchronized public long getTriggerToRelationSupportingInfoTime() {
+        return triggerToRelationSupportingInfoTime;
     }
 
     synchronized public void incrementTableDoesNotExistTime(long t) {

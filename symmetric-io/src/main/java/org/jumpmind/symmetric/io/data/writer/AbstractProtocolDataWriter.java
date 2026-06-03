@@ -27,6 +27,7 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.io.data.Batch;
@@ -135,8 +136,8 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
                 String schemaName = table.getSchema();
                 println(CsvConstants.SCHEMA, StringUtils.isNotBlank(schemaName) ? schemaName : "");
             }
-            String tableKey = table.getTableKey();
-            String fullyQualifiedTableName = table.getFullyQualifiedTableName();
+            String tableKey = table.getKey();
+            String fullyQualifiedTableName = table.getFullyQualifiedName();
             String previousTableKey = processedTables.get(fullyQualifiedTableName);
             println(CsvConstants.TABLE, CsvUtils.escapeAndQuoteCsvData(table.getName()));
             if (!tableKey.equals(previousTableKey)) {
@@ -258,7 +259,7 @@ abstract public class AbstractProtocolDataWriter implements IDataWriter {
         for (int i = 0; i < columns.length; i++) {
             buffer.append(delimiter);
             String name = columns[i].getName();
-            buffer.append(Table.escapeColumnNameForCsv(name));
+            buffer.append(Relation.escapeColumnNameForCsv(name));
         }
         println(buffer.toString());
         return buffer.length();

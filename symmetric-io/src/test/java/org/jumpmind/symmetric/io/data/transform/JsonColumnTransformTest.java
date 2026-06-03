@@ -15,7 +15,7 @@ public class JsonColumnTransformTest {
         DataContext context = new DataContext();
         Table table = new Table();
         table.addColumns(new String[] { "id", "col0", "col1", "col2" });
-        context.setTable(table);
+        context.setRelation(table);
         CsvData data = new CsvData();
         data.putParsedData(CsvData.OLD_DATA, new String[] { "0", "old_val0", "old_val1", "old_val2" });
         context.setData(data);

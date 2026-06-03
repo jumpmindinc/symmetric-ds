@@ -111,9 +111,7 @@ public class SymmetricContextListener implements ServletContextListener {
             return;
         }
         TypedProperties serverProperties = new TypedProperties(serverPropertiesURL);
-        TypedProperties jvmProperties = new TypedProperties(System.getProperties());
-        serverProperties.merge(jvmProperties);
-        TypedPropertiesFactory.mergeAndOverrideWithEnvironmentVariables(serverProperties, false);
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(serverProperties, false);
         System.getProperties().putAll(serverProperties);
     }
 }

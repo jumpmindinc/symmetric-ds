@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.Strings;
+import org.jumpmind.db.model.Table;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -67,12 +68,12 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
             helper.setSyncTriggersAllowed(routingContext, engine.getParameterService().is(ParameterConstants.AUTO_SYNC_TRIGGERS) &&
                     engine.getParameterService().is(ParameterConstants.AUTO_SYNC_TRIGGERS_AFTER_CONFIG_CHANGED));
         }
-        helper.handleChange(routingContext, dataMetaData.getTable(), dataMetaData.getData());
+        helper.handleChange(routingContext, (Table) dataMetaData.getRelation(), dataMetaData.getData());
         // the list of nodeIds that we will return
         Set<String> nodeIds = new HashSet<String>();
         // the inbound data
         Map<String, String> columnValues = getDataMap(dataMetaData, engine != null ? engine.getSymmetricDialect() : null);
-        possibleTargetNodes = helper.filterNodes(possibleTargetNodes, dataMetaData.getTable().getNameLowerCase(), columnValues);
+        possibleTargetNodes = helper.filterNodes(possibleTargetNodes, dataMetaData.getRelation().getNameLowerCase(), columnValues);
         Node me = findIdentity();
         if (me != null) {
             NetworkedNode rootNetworkedNode = getRootNetworkNodeFromContext(routingContext);
@@ -172,7 +173,7 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
 
     private void buildReloadEvents(DataMetaData dataMetaData, Map<String, String> columnValues) {
         String symTablePrefix = engine.getTablePrefix();
-        String tableName = dataMetaData.getTable().getName();
+        String tableName = dataMetaData.getRelation().getName();
         if (TableConstants.getTableName(symTablePrefix, TableConstants.SYM_NODE_GROUP_LINK).equalsIgnoreCase(tableName)) {
             if (engine.getParameterService().isRegistrationServer()) {
                 if (dataMetaData.getData().getDataEventType() == DataEventType.INSERT) {
@@ -418,7 +419,7 @@ public class ConfigurationChangedDataRouter extends AbstractDataRouter implement
 
     private boolean tableMatches(DataMetaData dataMetaData, String tableName) {
         boolean matches = false;
-        if (dataMetaData.getTable().getName().equalsIgnoreCase(tableName(tableName))) {
+        if (dataMetaData.getRelation().getName().equalsIgnoreCase(tableName(tableName))) {
             matches = true;
         }
         return matches;

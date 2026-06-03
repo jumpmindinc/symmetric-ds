@@ -38,6 +38,7 @@ import org.jumpmind.db.model.ForeignKey;
 import org.jumpmind.db.model.ForeignKey.ForeignKeyAction;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.Trigger;
 import org.jumpmind.db.model.Trigger.TriggerType;
@@ -113,13 +114,15 @@ public class NuoDbDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values) throws SQLException {
-        Table table = super.readTable(connection, metaData, values);
-        if (table != null) {
-            determineAutoIncrementFromResultSetMetaData(connection, table, table.getColumns());
-            table.setCatalog(null);
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values) throws SQLException {
+        Relation relation = super.readRelation(connection, metaData, values);
+        if (relation != null) {
+            if (relation instanceof Table table) {
+                determineAutoIncrementFromResultSetMetaData(connection, table, relation.getColumns());
+            }
+            relation.setCatalog(null);
         }
-        return table;
+        return relation;
     }
 
     @Override

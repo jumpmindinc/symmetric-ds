@@ -26,6 +26,7 @@ import java.util.Map;
 
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.AbstractJdbcDdlReader;
 import org.jumpmind.db.platform.DatabaseMetaDataWrapper;
@@ -43,28 +44,28 @@ public class GenericJdbcSqlDdlReader extends AbstractJdbcDdlReader {
     }
 
     @Override
-    protected Table readTable(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values)
+    protected Relation readRelation(Connection connection, DatabaseMetaDataWrapper metaData, Map<String, Object> values)
             throws SQLException {
         try {
-            return super.readTable(connection, metaData, values);
+            return super.readRelation(connection, metaData, values);
         } catch (Exception e) {
             return null;
         }
     }
 
     @Override
-    public Table readTable(String catalog, String schema, String table) {
+    public Relation readRelation(String catalog, String schema, String table) {
         try {
-            return super.readTable(catalog, schema, table);
+            return super.readRelation(catalog, schema, table);
         } catch (Exception e) {
             return null;
         }
     }
 
     @Override
-    public Database readTables(String catalog, String schema, String[] tableTypes) {
+    public Database readRelations(String catalog, String schema, String[] relationTypes) {
         try {
-            return super.readTables(catalog, schema, tableTypes);
+            return super.readRelations(catalog, schema, relationTypes);
         } catch (Exception e) {
             return null;
         }
