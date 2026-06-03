@@ -26,10 +26,8 @@ import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_INCOMING;
 import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_LOG_MINER;
 import static org.jumpmind.symmetric.common.Constants.STAGING_CATEGORY_OUTGOING;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,12 +38,10 @@ import org.jumpmind.symmetric.ext.IBatchStagingExtension;
 import org.jumpmind.symmetric.model.BatchId;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.IParameterService;
-import org.jumpmind.symmetric.staging.api.IStagingLock;
 import org.jumpmind.symmetric.staging.api.IStreamCipherContext;
 import org.jumpmind.symmetric.staging.api.IStreamCipherProvider;
 import org.jumpmind.symmetric.staging.api.StagingConfig;
 import org.jumpmind.symmetric.staging.api.StagingKey;
-import org.jumpmind.symmetric.staging.api.StagingOptions;
 import org.jumpmind.symmetric.staging.api.StreamCipherRegistry;
 import org.jumpmind.symmetric.staging.factory.DefaultStagingFactory;
 import org.jumpmind.symmetric.staging.factory.StagingParameterNames;
@@ -53,75 +49,19 @@ import org.jumpmind.symmetric.staging.factory.StagingParameterResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BatchStagingManager implements IStagingManager {
+public class BatchStagingManager extends LegacyStagingManagerAdapter {
     private static final Logger log = LoggerFactory.getLogger(BatchStagingManager.class);
     private static final String LEGACY_DEFAULT_CIPHER = "aes";
     protected final ISymmetricEngine engine;
-    protected final org.jumpmind.symmetric.staging.api.IStagingManager delegate;
-    protected final IStreamCipherProvider cipher;
-    protected final long lockTtlMs;
 
     public BatchStagingManager(ISymmetricEngine engine, String directory) {
+        super(buildDelegate(engine, directory),
+                resolveCipher(engine.getParameterService(), engine),
+                engine.getParameterService().getLong(ParameterConstants.LOCK_TIMEOUT_MS, DEFAULT_LOCK_TTL_MS));
         this.engine = engine;
-        IParameterService params = engine.getParameterService();
-        Map<String, String> paramMap = collectStagingParams(params, directory);
-        StagingConfig config = new StagingParameterResolver(paramMap, System.getenv()).buildConfig();
-        this.delegate = new DefaultStagingFactory().create(config);
-        this.cipher = resolveCipher(params, engine);
-        this.lockTtlMs = params.getLong(ParameterConstants.LOCK_TIMEOUT_MS, 300_000L);
-        if (cipher != null) {
-            log.info("Staging encryption enabled with cipher '{}'", cipher.getCipherId());
+        if (getCipher() != null) {
+            log.info("Staging encryption enabled with cipher '{}'", getCipher().getCipherId());
         }
-    }
-
-    @Override
-    public IStagedResource find(Object... path) {
-        return adapt(delegate.find(path));
-    }
-
-    @Override
-    public IStagedResource find(String path) {
-        if (path == null || path.isEmpty()) {
-            return null;
-        }
-        return adapt(delegate.find(StagingKey.ofPath(path)));
-    }
-
-    @Override
-    public IStagedResource create(Object... path) {
-        return adapt(delegate.create(StagingOptions.defaults(), path));
-    }
-
-    @Override
-    public IStagedResource createScratchResource(Object... path) {
-        return adapt(delegate.createScratchResource(StagingOptions.plain(), path));
-    }
-
-    @Override
-    public IStagingLock acquireFileLock(String serverInfo, Object... path) {
-        return delegate.acquireLock(serverInfo, lockTtlMs, path);
-    }
-
-    @Override
-    public Set<String> getResourceReferences() {
-        Set<String> result = new LinkedHashSet<>();
-        for (StagingKey key : delegate.listResources()) {
-            result.add(key.asPath());
-        }
-        return result;
-    }
-
-    @Override
-    public File getStagingDirectory() {
-        if (delegate instanceof org.jumpmind.symmetric.staging.fs.FileSystemStagingManager) {
-            return ((org.jumpmind.symmetric.staging.fs.FileSystemStagingManager) delegate).getStagingDirectory();
-        }
-        return delegate.getScratchDirectory();
-    }
-
-    @Override
-    public File getScratchDirectory() {
-        return delegate.getScratchDirectory();
     }
 
     @Override
@@ -164,12 +104,12 @@ public class BatchStagingManager implements IStagingManager {
             }
             long freedBytes = 0L;
             int purgedCount = 0;
-            for (StagingKey key : delegate.listResources()) {
-                org.jumpmind.symmetric.staging.api.IStagedResource delegateResource = delegate.find(key);
+            for (StagingKey key : getDelegate().listResources()) {
+                org.jumpmind.symmetric.staging.api.IStagedResource delegateResource = getDelegate().find(key);
                 if (delegateResource == null) {
                     continue;
                 }
-                LegacyStagedResourceAdapter resource = new LegacyStagedResourceAdapter(delegateResource, cipher);
+                LegacyStagedResourceAdapter resource = new LegacyStagedResourceAdapter(delegateResource, getCipher());
                 if (!shouldCleanPath(resource, ttlInMs, context)) {
                     continue;
                 }
@@ -297,8 +237,11 @@ public class BatchStagingManager implements IStagingManager {
         return biggest;
     }
 
-    private IStagedResource adapt(org.jumpmind.symmetric.staging.api.IStagedResource delegateResource) {
-        return delegateResource == null ? null : new LegacyStagedResourceAdapter(delegateResource, cipher);
+    private static org.jumpmind.symmetric.staging.api.IStagingManager buildDelegate(ISymmetricEngine engine, String directory) {
+        IParameterService params = engine.getParameterService();
+        Map<String, String> paramMap = collectStagingParams(params, directory);
+        StagingConfig config = new StagingParameterResolver(paramMap, System.getenv()).buildConfig();
+        return new DefaultStagingFactory().create(config);
     }
 
     private static Map<String, String> collectStagingParams(IParameterService params, String directory) {

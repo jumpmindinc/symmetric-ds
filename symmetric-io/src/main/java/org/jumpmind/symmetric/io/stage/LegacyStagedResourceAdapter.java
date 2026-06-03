@@ -35,17 +35,17 @@ import org.jumpmind.exception.IoException;
 import org.jumpmind.symmetric.staging.api.IStreamCipherProvider;
 import org.jumpmind.symmetric.staging.api.ResourceState;
 
-class LegacyStagedResourceAdapter implements IStagedResource {
+public class LegacyStagedResourceAdapter implements IStagedResource {
     private final org.jumpmind.symmetric.staging.api.IStagedResource delegate;
     private final IStreamCipherProvider cipher;
 
-    LegacyStagedResourceAdapter(org.jumpmind.symmetric.staging.api.IStagedResource delegate,
+    public LegacyStagedResourceAdapter(org.jumpmind.symmetric.staging.api.IStagedResource delegate,
             IStreamCipherProvider cipher) {
         this.delegate = delegate;
         this.cipher = cipher;
     }
 
-    org.jumpmind.symmetric.staging.api.IStagedResource getDelegate() {
+    public org.jumpmind.symmetric.staging.api.IStagedResource getDelegate() {
         return delegate;
     }
 

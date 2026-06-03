@@ -20,10 +20,10 @@
  */
 package org.jumpmind.symmetric.io.data.writer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -41,18 +41,26 @@ import org.jumpmind.symmetric.io.data.DataContext;
 import org.jumpmind.symmetric.io.data.DataProcessor;
 import org.jumpmind.symmetric.io.data.reader.ProtocolDataReader;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
-import org.junit.jupiter.api.BeforeEach;
+import org.jumpmind.symmetric.io.stage.IStagingManager;
+import org.jumpmind.symmetric.io.stage.LegacyStagingManagerAdapter;
+import org.jumpmind.symmetric.staging.api.StagingConfig;
+import org.jumpmind.symmetric.staging.api.StorageKind;
+import org.jumpmind.symmetric.staging.fs.FileSystemStagingManager;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class StagingDataWriterTest {
     static final File DIR = new File("target/tmp");
+    static final File SCRATCH_DIR = new File("target/tmp-scratch");
     List<String> batchesWritten = new ArrayList<String>();
 
     @BeforeAll
     public static void setup() throws Exception {
         FileUtils.deleteDirectory(DIR);
+        FileUtils.deleteDirectory(SCRATCH_DIR);
+        DIR.mkdirs();
+        SCRATCH_DIR.mkdirs();
     }
 
     @BeforeEach
@@ -61,13 +69,11 @@ public class StagingDataWriterTest {
     }
 
     @Test
-    @Disabled("SYM-7504: needs rewrite — legacy StagingManager removed; rewrite to use BatchStagingManager with a mocked ISymmetricEngine")
     public void testReadThenWriteToFile() throws Exception {
         readThenWrite(0);
     }
 
     @Test
-    @Disabled("SYM-7504: needs rewrite — legacy StagingManager removed; rewrite to use BatchStagingManager with a mocked ISymmetricEngine")
     public void testReadThenWriteToMemory() throws Exception {
         readThenWrite(10000000);
     }
@@ -76,14 +82,14 @@ public class StagingDataWriterTest {
         InputStreamReader is = new InputStreamReader(getClass().getResourceAsStream("FileCsvDataWriterTest.1.csv"));
         String origCsv = IOUtils.toString(is);
         is.close();
-        org.jumpmind.symmetric.io.stage.IStagingManager stagingManager = null;
+        IStagingManager stagingManager = newStagingManager();
         ProtocolDataReader reader = new ProtocolDataReader(BatchType.LOAD, "test", origCsv);
         StagingDataWriter writer = new StagingDataWriter(threshold, false, "aaa", "test", stagingManager, false, false, new BatchListener());
         DataProcessor processor = new DataProcessor(reader, writer, "test");
         processor.process(new DataContext());
         assertEquals(1, batchesWritten.size());
         assertEquals(convertEol(origCsv), convertEol(batchesWritten.get(0)));
-        IStagedResource resource = (IStagedResource) stagingManager.find("test", "aaa", 1);
+        IStagedResource resource = stagingManager.find("test", "aaa", 1);
         assertNotNull(resource);
         if (threshold > origCsv.length()) {
             assertFalse(resource.getFile().exists());
@@ -92,6 +98,15 @@ public class StagingDataWriterTest {
         }
         resource.delete();
         assertFalse(resource.getFile().exists());
+    }
+
+    private static IStagingManager newStagingManager() {
+        StagingConfig config = StagingConfig.builder()
+                .withStorageKind(StorageKind.FILESYSTEM)
+                .withStagingDir(DIR.getAbsolutePath())
+                .withScratchDir(SCRATCH_DIR.getAbsolutePath())
+                .build();
+        return new LegacyStagingManagerAdapter(new FileSystemStagingManager(config));
     }
 
     private String convertEol(String str) {
