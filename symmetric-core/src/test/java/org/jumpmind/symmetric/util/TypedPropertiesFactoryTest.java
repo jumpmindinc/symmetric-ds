@@ -80,7 +80,8 @@ class TypedPropertiesFactoryTest {
         TypedProperties fileProps = new TypedProperties();
         fileProps.setProperty("db.url", "url");
         TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(fileProps, true,
-                TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "otel-name", "SYM_OTEL_SERVICE_NAME", "sym-name")), new TypedProperties());
+                TypedPropertiesFactory.getEnvironmentVariables(Map.of("OTEL_SERVICE_NAME", "otel-name", "SYM_OTEL_SERVICE_NAME", "sym-name")),
+                new TypedProperties());
         assertEquals("sym-name", fileProps.getProperty("otel.service.name"));
     }
 

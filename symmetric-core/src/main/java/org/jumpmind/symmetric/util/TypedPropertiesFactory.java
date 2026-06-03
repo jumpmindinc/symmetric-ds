@@ -82,7 +82,8 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
     }
 
     public static void mergeAndOverrideWithJvmAndEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties) {
-        mergeAndOverrideWithJvmAndEnvironmentVariables(fileProperties, addMissingProperties, getEnvironmentVariables(), new TypedProperties(System.getProperties()));
+        mergeAndOverrideWithJvmAndEnvironmentVariables(fileProperties, addMissingProperties, getEnvironmentVariables(), new TypedProperties(System
+                .getProperties()));
     }
 
     public static void mergeAndOverrideWithJvmAndEnvironmentVariables(TypedProperties fileProperties, boolean addMissingProperties,
@@ -97,19 +98,18 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
             fileProperties.putAll(otelEnvProperties);
             fileProperties.putAll(symEnvProperties);
             fileProperties.putAll(jvmProperties);
-            
         } else {
             fileProperties.merge(otelEnvProperties);
             fileProperties.merge(symEnvProperties);
             fileProperties.merge(jvmProperties);
         }
         replaceSystemAndEnvironmentVariables(fileProperties);
-        for(Map.Entry<String, String> override : ServerConstants.JVM_OVERRIDE_ENV_VARS.entrySet()) {
-        	String envVarName = override.getKey();
-        	envVarName.substring(4).toLowerCase().replace('_', '.');
+        for (Map.Entry<String, String> override : ServerConstants.JVM_OVERRIDE_ENV_VARS.entrySet()) {
+            String envVarName = override.getKey();
+            envVarName.substring(4).toLowerCase().replace('_', '.');
             String jvmPropertyName = override.getValue();
-            if(symEnvProperties.containsKey(envVarName) && (addMissingProperties || (!addMissingProperties && fileProperties.containsKey(jvmPropertyName)))) {
-            	fileProperties.put(jvmPropertyName, symEnvProperties.getProperty(envVarName));
+            if (symEnvProperties.containsKey(envVarName) && (addMissingProperties || (!addMissingProperties && fileProperties.containsKey(jvmPropertyName)))) {
+                fileProperties.put(jvmPropertyName, symEnvProperties.getProperty(envVarName));
             }
         }
         if (log.isDebugEnabled()) {
