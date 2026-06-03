@@ -39,6 +39,7 @@ import org.jumpmind.symmetric.config.IParameterSaveFilter;
 import org.jumpmind.symmetric.model.DatabaseParameter;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 
 /**
  * @see IParameterService
@@ -189,6 +190,7 @@ public class ParameterService extends AbstractParameterService implements IParam
         TypedProperties p = this.factory.reload();
         p.putAll(systemProperties);
         p.putAll(rereadDatabaseParameters(p));
+        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(p, true);
         rereadOfflineNodeParameters();
         return p;
     }
