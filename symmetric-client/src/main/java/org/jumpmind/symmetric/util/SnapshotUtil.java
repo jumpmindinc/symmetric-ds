@@ -1227,7 +1227,7 @@ public class SnapshotUtil {
                 }
             }
             Properties effectiveParameters = engine.getParameterService().getAllParameters();
-            Properties changedParameters = ParametersUtil.deepCopy(effectiveParameters);
+            Properties changedParameters = new Properties();
             Properties sysProp = System.getProperties();
             Map<String, String> env = System.getenv();
             for (String key : effectiveParameters.stringPropertyNames()) {
