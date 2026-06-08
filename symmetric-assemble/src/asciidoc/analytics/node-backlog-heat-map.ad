@@ -1,0 +1,27 @@
+
+=== Node Backlog Heat Map
+
+The Node Backlog Heat Map screen shows the size of the outgoing batch backlog for each target node over a rolling time window.
+Each row in the heat map represents a target node, and each cell shows the average pending row count for that node on a given day.
+The *Current* column shows the most recent backlog reading available.
+Hovering over a cell displays the exact value for that day.
+
+image::images/analytics/analytics-node-backlog-heat-map.png[]
+
+Only batches with statuses other than OK (successful) and IG (ignored) are counted toward the backlog.
+
+The summary cards at the top of the report show the total number of nodes being tracked with their online and offline counts, the total pending rows across all nodes, the node with the largest current backlog, and the node whose backlog is growing most quickly.
+
+When offline nodes collectively hold 50% or more of the total backlog, a warning message appears below the cards identifying those nodes.
+This warning message is a signal that a network problem may be causing rows to accumulate on nodes that are no longer reachable.
+
+Use the *Time Range* filter to switch between the last 8, 15, or 30 days.
+Use the *Nodes* filter to limit the heat map to the top 20, 50, or 100 nodes by current backlog size.
+Options are shown only when enough nodes are present to support them.
+
+The heat map grid includes a *Status* column indicating whether each node is currently online or offline.
+The `console.report.as.offline.minutes` parameter determines whether a node appears as offline. By default, a node is considered offline if it has not sent a heartbeat in 24 hours.
+Online/offline status is determined from the report generation time, not the time the screen is viewed, so the status reflects the state of the network when the data was collected.
+
+The data backing this report is collected by the *Refresh Backlog Report* job rather than the *Refresh Analytics* job. The info bar shows when the report was last generated and how often the job is scheduled to run. Use the *Run Now* button to trigger it immediately.
+The `purge.metric.stats.retention.minutes` parameter controls how long backlog history is retained.
