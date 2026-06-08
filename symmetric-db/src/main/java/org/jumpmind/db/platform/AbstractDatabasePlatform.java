@@ -1487,23 +1487,25 @@ public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
 
     @Override
     public String getTruncateSql(Table table) {
-        String sql = null;
         if (supportsTruncate) {
-            sql = "truncate table ";
-            String quote = getDdlBuilder().isDelimitedIdentifierModeOn() ? getDatabaseInfo().getDelimiterToken() : "";
-            sql += table.getQualifiedName(quote, getDatabaseInfo().getCatalogSeparator(), getDatabaseInfo().getSchemaSeparator());
-        } else {
-            log.info("Truncate is not supported on " + getName() + ". Changing to equivalent delete statement");
-            sql = getDeleteSql(table);
+            String sql = "truncate table ";
+            if (table != null) {
+                String quote = getDdlBuilder().isDelimitedIdentifierModeOn() ? getDatabaseInfo().getDelimiterToken() : "";
+                sql += table.getQualifiedName(quote, getDatabaseInfo().getCatalogSeparator(), getDatabaseInfo().getSchemaSeparator());
+            }
+            return sql;
         }
-        return sql;
+        log.info("Truncate is not supported on {}. Changing to equivalent delete statement", getName());
+        return getDeleteSql(table);
     }
 
     @Override
     public String getDeleteSql(Table table) {
         String sql = "delete from ";
-        String quote = getDdlBuilder().isDelimitedIdentifierModeOn() ? getDatabaseInfo().getDelimiterToken() : "";
-        sql += table.getQualifiedName(quote, getDatabaseInfo().getCatalogSeparator(), getDatabaseInfo().getSchemaSeparator());
+        if (table != null) {
+            String quote = getDdlBuilder().isDelimitedIdentifierModeOn() ? getDatabaseInfo().getDelimiterToken() : "";
+            sql += table.getQualifiedName(quote, getDatabaseInfo().getCatalogSeparator(), getDatabaseInfo().getSchemaSeparator());
+        }
         return sql;
     }
 

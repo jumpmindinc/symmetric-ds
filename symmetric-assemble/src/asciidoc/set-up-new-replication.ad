@@ -225,6 +225,26 @@ If any of the endpoints are using a time-based capture type, then it will be nec
 
 If the Deploy Wizard finds a suitable column for a table, its name will be displayed in green next to the table name. If there is more than one suitable column for a table and none of their names match the names at the top of the screen, the Deploy Wizard will allow the column name to be chosen via a dropdown field next to the table name. If no suitable columns are found for a table, then time-based change capture will not be possible for that table.
 
+==== Data Refresh Configuration
+
+image::images/wizard-deploy/DataRefreshScreen.png[]
+
+Tables or views that cannot be captured using Change Data Capture (CDC) must instead be kept in sync using a Data Refresh job. The Deploy Wizard will display the Data Refresh Configuration screen whenever any of the following conditions apply:
+
+* A view has been configured.
+* A table with no compatible timestamp or numeric columns has been configured on a time-based source endpoint.
+* A table with no primary key has been configured on a log-based SQL Server source endpoint.
+
+Each table or view listed must be assigned both a reload strategy and a schedule before the wizard can proceed.
+
+The *Reload Strategy* dropdown offers three options:
+
+Full Truncate & Reload:: Truncates the target table and reloads all rows from the source.
+Full Delete & Reload:: Deletes all rows from the target table and reloads all rows from the source.
+Compare & Repair:: Compares rows between source and target and synchronizes only the differences. This option requires a Compare & Repair license.
+
+The *Schedule* dropdown lists available Data Refresh jobs to assign. Predefined schedules such as hourly, daily, and weekly options are included. To define a custom schedule, select *+ Create New Schedule...*, enter a name for the schedule (up to 35 characters), and configure the desired frequency using the cron or periodic schedule editor. Custom schedules are saved as new Data Refresh jobs and become available for selection by other tables and views on the same screen.
+
 ==== Configuration Change Overview
 
 image::images/wizard-deploy/ConfigChangeScreen.png[]
