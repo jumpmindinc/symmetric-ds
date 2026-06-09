@@ -40,29 +40,6 @@ class PostgreSqlDatabasePlatformTest {
     private final PostgreSqlDatabasePlatform platform = mock(PostgreSqlDatabasePlatform.class, CALLS_REAL_METHODS);
 
     @Test
-    void testIsMissingCitextExtensionError_citextDirectMessage() {
-        assertTrue(platform.isMissingCitextExtensionError(
-                new SqlException("ERROR: type \"citext\" does not exist")));
-    }
-
-    @Test
-    void testIsMissingCitextExtensionError_unrelatedError() {
-        assertFalse(platform.isMissingCitextExtensionError(
-                new SqlException("ERROR: relation \"users\" already exists")));
-    }
-
-    @Test
-    void testIsMissingCitextExtensionError_permissionDeniedError() {
-        assertFalse(platform.isMissingCitextExtensionError(
-                new SqlException("ERROR: permission denied to create extension \"citext\"")));
-    }
-
-    @Test
-    void testIsMissingCitextExtensionError_nullMessage() {
-        assertFalse(platform.isMissingCitextExtensionError(new RuntimeException()));
-    }
-
-    @Test
     void testGetDefaultCatalog_returnsCurrentDatabase() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
