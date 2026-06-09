@@ -20,11 +20,19 @@
  */
 package org.jumpmind.db.platform.postgresql;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.SqlException;
 import org.junit.jupiter.api.Test;
 
@@ -52,5 +60,30 @@ class PostgreSqlDatabasePlatformTest {
     @Test
     void testIsMissingCitextExtensionError_nullMessage() {
         assertFalse(platform.isMissingCitextExtensionError(new RuntimeException()));
+    }
+
+    @Test
+    void testGetDefaultCatalog_returnsCurrentDatabase() {
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(sqlTemplate.queryForObject("select current_database()", String.class))
+                .thenReturn("test_database");
+        String catalog = platform.getDefaultCatalog();
+        assertNotNull(catalog);
+        assertEquals("test_database", catalog);
+        verify(sqlTemplate).queryForObject("select current_database()", String.class);
+    }
+
+    @Test
+    void testGetDefaultCatalog_cachesCatalogValue() {
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(sqlTemplate.queryForObject("select current_database()", String.class))
+                .thenReturn("test_database");
+        String catalog1 = platform.getDefaultCatalog();
+        String catalog2 = platform.getDefaultCatalog();
+        assertEquals("test_database", catalog1);
+        assertEquals("test_database", catalog2);
+        verify(sqlTemplate, times(1)).queryForObject(anyString(), eq(String.class));
     }
 }
