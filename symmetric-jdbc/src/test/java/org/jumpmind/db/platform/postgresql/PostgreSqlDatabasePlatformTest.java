@@ -21,7 +21,6 @@
 package org.jumpmind.db.platform.postgresql;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,7 +32,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.jumpmind.db.sql.ISqlTemplate;
-import org.jumpmind.db.sql.SqlException;
 import org.junit.jupiter.api.Test;
 
 class PostgreSqlDatabasePlatformTest {
