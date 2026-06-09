@@ -155,7 +155,10 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
 
     @Override
     public String getDefaultCatalog() {
-        return null;
+        if (StringUtils.isBlank(defaultCatalog)) {
+            defaultCatalog = getSqlTemplate().queryForObject("select current_database()", String.class);
+        }
+        return defaultCatalog;
     }
 
     @Override
