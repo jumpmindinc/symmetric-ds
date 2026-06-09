@@ -99,6 +99,7 @@ some of the data and the transformed data needs to be returned to the source nod
 
 Data Refresh Type:: When the assigned Data Refresh job runs, this controls how to refresh data in the table.
 Auto chooses between full reload or compare and repair. Full (or leaving this field blank) uses a table reload request with delete first option.
+The full (truncate) type is similar but truncates the target table instead of deleting from it.
 Differences uses a compare and repair request. This field is disabled when the Data Refresh Job is set to "CDC".
 
 Data Refresh Job:: Assigns this table routing to a specific Data Refresh job. The default value is "CDC", which means the table
