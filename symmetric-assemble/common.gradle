@@ -311,6 +311,7 @@ subprojects { subproject ->
         commonsLangVersion = '3.18.0'
         commonsTextVersion = '1.12.0'
         commonsCodecVersion = '1.16.1'
+        commonsJcsVersion = '3.2.1'
         commonsCollectionVersion = '4.5.0-M3'
         commonsVfs = '2.10.0'
         hamcrestVersion = '1.3'

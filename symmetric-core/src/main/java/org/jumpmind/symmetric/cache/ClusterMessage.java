@@ -1,0 +1,65 @@
+/**
+ * Licensed to JumpMind Inc under one or more contributor
+ * license agreements.  See the NOTICE file distributed
+ * with this work for additional information regarding
+ * copyright ownership.  JumpMind Inc licenses this file
+ * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * (the "License"); you may not use this file except in compliance
+ * with the License.
+ *
+ * You should have received a copy of the GNU General Public License,
+ * version 3.0 (GPLv3) along with this library; if not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.jumpmind.symmetric.cache;
+
+import java.io.Serializable;
+
+public class ClusterMessage implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    public enum Type {
+        PEER_JOINING, PEER_HEARTBEAT, PEER_LEAVING
+    }
+
+    private Type type;
+    private String serverId;
+    private String instanceId;
+    private String version;
+    private long timestamp;
+
+    public ClusterMessage(Type type, String serverId, String instanceId, String version) {
+        this.type = type;
+        this.serverId = serverId;
+        this.instanceId = instanceId;
+        this.version = version;
+        this.timestamp = System.currentTimeMillis();
+    }
+
+    public Type getType() {
+        return type;
+    }
+
+    public String getServerId() {
+        return serverId;
+    }
+
+    public String getInstanceId() {
+        return instanceId;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+}

@@ -644,6 +644,18 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
         } while (!unlocked);
     }
 
+    @Override
+    public void clearLocksForServer(String serverId) {
+        try {
+            int count = sqlTemplate.update(getSql("clearLocksForServerSql"), serverId);
+            if (count > 0) {
+                log.info("Cleared {} node communication lock(s) held by server '{}'", count, serverId);
+            }
+        } catch (Exception e) {
+            log.debug("Could not clear node communication locks for server '{}': {}", serverId, e.getMessage());
+        }
+    }
+
     public void stop() {
         Collection<CommunicationType> services = new HashSet<NodeCommunication.CommunicationType>(
                 executors.keySet());

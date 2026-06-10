@@ -33,6 +33,7 @@ public class ServerConstants {
     public final static String HOST_BIND_NAME = "host.bind.name";
     public final static String HTTP_ENABLE = "http.enable";
     public final static String HTTP_PORT = "http.port";
+    public final static String JCS_PORT = "cluster.jcs.port";
     public final static String HTTPS_ENABLE = "https.enable";
     public final static String HTTPS_PORT = "https.port";
     public final static String HTTPS2_ENABLE = "https2.enable";

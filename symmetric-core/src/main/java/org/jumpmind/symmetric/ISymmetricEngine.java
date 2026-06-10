@@ -29,6 +29,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.cache.ICacheManager;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.extension.IProcessInfoListener;
 import org.jumpmind.extension.IProgressListener;
@@ -338,4 +339,6 @@ public interface ISymmetricEngine {
     public String getEngineDescription(String mesage);
 
     public ICacheManager getCacheManager();
+
+    public IClusteredCacheManager getClusteredCacheManager();
 }

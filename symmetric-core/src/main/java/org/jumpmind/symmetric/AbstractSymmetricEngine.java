@@ -63,7 +63,10 @@ import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.cache.CacheManager;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ICacheManager;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager;
+import org.jumpmind.symmetric.model.NodeHost;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.LoggingConstants;
@@ -217,6 +220,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected IUpdateService updateService;
     protected IEngineMetricsService metricsService;
     protected ICacheManager cacheManager;
+    protected IClusteredCacheManager clusteredCacheManager;
     protected Date lastRestartTime = null;
 
     abstract protected ITypedPropertiesFactory createTypedPropertiesFactory();
@@ -373,6 +377,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.configurationService = new ConfigurationService(this, symmetricDialect);
         this.dataService = createDataService();
         this.clusterService = createClusterService();
+        this.clusteredCacheManager = ClusteredCacheManager.getInstance();
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
@@ -726,6 +731,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                     node = checkSystemIntegrity(node);
                     isInitialized = true;
                     if (node != null) {
+                        refreshClusterPeers(node.getNodeId());
+                        clusteredCacheManager.registerEngine(this);
                         log.info(
                                 "Starting registered node [group={}, id={}, nodeId={}]",
                                 new Object[] { node.getNodeGroupId(), node.getNodeId(),
@@ -1027,6 +1034,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         log.info("Stopping SymmetricDS externalId={} version={} database={}",
                 new Object[] { parameterService == null ? "?" : parameterService.getExternalId(), Version.version(),
                         symmetricDialect == null ? "?" : symmetricDialect.getName() });
+        if (clusteredCacheManager != null) {
+            clusteredCacheManager.unregisterEngine(this);
+        }
         if (jobManager != null) {
             jobManager.stopJobs();
         }
@@ -1232,6 +1242,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     public void heartbeat(boolean force) {
         LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         dataService.heartbeat(force);
+        Node identity = nodeService.findIdentity();
+        if (identity != null) {
+            refreshClusterPeers(identity.getNodeId());
+        }
     }
 
     @Override
@@ -1590,6 +1604,26 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     @Override
     public ICacheManager getCacheManager() {
         return cacheManager;
+    }
+
+    @Override
+    public IClusteredCacheManager getClusteredCacheManager() {
+        return clusteredCacheManager;
+    }
+
+    protected void refreshClusterPeers(String nodeId) {
+        if (clusteredCacheManager == null || nodeId == null) {
+            return;
+        }
+        long oneDayMs = 24L * 60 * 60 * 1000;
+        long cutoff = System.currentTimeMillis() - oneDayMs;
+        String myServerId = clusterService.getServerId();
+        for (NodeHost host : nodeService.findNodeHosts(nodeId)) {
+            if (host.getHeartbeatTime() != null && host.getHeartbeatTime().getTime() > cutoff
+                    && !myServerId.equals(host.getHostName())) {
+                clusteredCacheManager.addPeer(host.getHostName());
+            }
+        }
     }
 
     protected boolean detectStartupDbParametersDifferentFromLastStart() {

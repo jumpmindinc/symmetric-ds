@@ -26,6 +26,7 @@ VOLUME /opt/symmetric-ds/security
 
 EXPOSE 31415
 EXPOSE 31417
+EXPOSE 1101
 
 # Ensure Java virtual machine running SymmetricDS is PID 1:
 ENTRYPOINT ["/bin/sh","-c","/opt/symmetric-ds/bin/sym","--container"]

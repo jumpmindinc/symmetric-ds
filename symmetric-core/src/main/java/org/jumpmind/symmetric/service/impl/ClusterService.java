@@ -627,4 +627,26 @@ public class ClusterService extends AbstractService implements IClusterService {
     public boolean isClusteringEnabled() {
         return false;
     }
+
+    @Override
+    public void clearLocksForServer(String serverId) {
+        for (Lock lock : lockCache.values()) {
+            synchronized (lock) {
+                if (serverId.equals(lock.getLockingServerId())) {
+                    lock.setLockingServerId(null);
+                    lock.setLockTime(null);
+                    if (TYPE_SHARED.equals(lock.getLockType())) {
+                        lock.setSharedCount(0);
+                        lock.setSharedEnable(false);
+                    }
+                }
+            }
+        }
+        try {
+            sqlTemplate.update(getSql("clearLocksForServerSql"), serverId);
+        } catch (Exception e) {
+            log.debug("Could not clear sym_lock rows for server '{}': {}", serverId, e.getMessage());
+        }
+        log.info("Cleared cluster locks held by server '{}'", serverId);
+    }
 }
