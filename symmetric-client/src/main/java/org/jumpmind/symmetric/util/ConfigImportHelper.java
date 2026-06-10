@@ -26,6 +26,7 @@ import java.io.StringWriter;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.sql.SqlScript;
 import org.jumpmind.db.sql.SqlScriptReader;
@@ -63,6 +64,9 @@ public class ConfigImportHelper implements AutoCloseable {
         String syncUrl = "http://localhost/sync/" + engineName;
         engineProperties.setProperty(ParameterConstants.SYNC_URL, syncUrl);
         engineProperties.setProperty(ParameterConstants.REGISTRATION_URL, syncUrl);
+        if (StringUtils.isNotBlank(tablePrefix)) {
+            engineProperties.setProperty(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, tablePrefix);
+        }
         tempEngine = new ClientSymmetricEngine(engineProperties, false);
         tempEngine.setup();
     }
