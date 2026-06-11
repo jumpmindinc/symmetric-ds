@@ -136,7 +136,8 @@ public class SnapshotUtil {
         File tmpDir = new File(parameterService.getTempDirectory(), dirName);
         tmpDir.mkdirs();
         log.info("Creating snapshot file in " + tmpDir.getAbsolutePath());
-        int stepNumber = 0, totalSteps = 37;
+        int stepNumber = 0;
+        int totalSteps = 37;
         checkpoint(engine, listener, stepNumber++, totalSteps);
         try {
             log.info("Calling beforeSnapshot()");
