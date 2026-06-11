@@ -176,14 +176,14 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private String buildPeerList(int port) {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder result = new StringBuilder();
         for (String peerId : knownPeers) {
-            if (sb.length() > 0) {
-                sb.append(",");
+            if (result.isEmpty()) {
+                result.append(",");
             }
-            sb.append(peerId).append(":").append(port);
+            result.append(peerId).append(":").append(port);
         }
-        return sb.toString();
+        return result.toString();
     }
 
     private void sendMessage(ClusterMessage.Type type, ISymmetricEngine engine) {
