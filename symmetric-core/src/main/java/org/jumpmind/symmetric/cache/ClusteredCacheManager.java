@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
  * instance, one TCP port, and one heartbeat thread. When a remote peer is detected as crashed, locks are cleared across all registered engines.
  */
 public class ClusteredCacheManager implements IClusteredCacheManager {
+    private static final String THREAD_NAME_HEARTBEAT= "sym-cluster-heartbeat";
     private static final ClusteredCacheManager INSTANCE = new ClusteredCacheManager();
     private static final String REGION = "CLUSTER_PEERS";
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
@@ -52,6 +53,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private volatile CacheAccess<String, ClusterMessage> peerCache;
     private Thread heartbeatThread;
     private volatile boolean running;
+    private String myServerId;
+    private String myInstanceId;
 
     private ClusteredCacheManager() {
     }
@@ -107,6 +110,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private void startInternal(ISymmetricEngine engine) {
+        myServerId = engine.getClusterService().getServerId();
+        myInstanceId = engine.getClusterService().getInstanceId();
         running = true;
         initJcs(engine);
         if (running) {
@@ -187,39 +192,50 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private void sendMessage(ClusterMessage.Type type, ISymmetricEngine engine) {
-        if (peerCache == null || engine == null) {
+        CacheAccess<String, ClusterMessage> cache = peerCache;
+        if (cache == null || engine == null) {
+            log.debug("Skipping messaging cluster because it is not initialized! myServerId={}", myServerId);
             return;
         }
-        String myServerId = engine.getClusterService().getServerId();
-        String instanceId = engine.getClusterService().getInstanceId();
-        ClusterMessage msg = new ClusterMessage(type, myServerId, instanceId, Version.version());
+        ClusterMessage msg = new ClusterMessage(type, myServerId, myInstanceId, Version.version());
+        String details = String.format("cluster-wide message type={}, myServerId={}", type, myServerId);
         try {
-            peerCache.put(myServerId, msg);
-        } catch (CacheException e) {
-            log.debug("Failed to send {} message: {}", type, e.getMessage());
+            cache.put(myServerId, msg);
+            log.debug("Sent " + details);
+        } catch (CacheException ex) {
+            log.debug("Failed to send " + details, ex);
         }
     }
 
     private void startHeartbeatThread(ISymmetricEngine firstEngine) {
-        heartbeatThread = new Thread(() -> {
-            while (running) {
-                try {
-                    ISymmetricEngine engine = getAnyEngine();
-                    if (engine != null) {
-                        sendMessage(ClusterMessage.Type.PEER_HEARTBEAT, engine);
-                        checkPeers(engine);
-                    }
-                    Thread.sleep(getHeartbeatMs(firstEngine));
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                } catch (Exception e) {
-                    log.error("Error in cluster peer heartbeat", e);
-                }
-            }
-        }, "sym-cluster-heartbeat");
+        heartbeatThread = new Thread(() -> sendHeartbeatToClusterPeers(firstEngine), THREAD_NAME_HEARTBEAT);
         heartbeatThread.setDaemon(true);
+        log.debug("Initializing cluster peer heartbeat thread = {}", THREAD_NAME_HEARTBEAT);
         heartbeatThread.start();
+    }
+
+    private void sendHeartbeatToClusterPeers(ISymmetricEngine firstEngine) {
+        log.debug("Started cluster peer heartbeat thread = {}", THREAD_NAME_HEARTBEAT);
+        while (running) {
+            try {
+                ISymmetricEngine engine = getAnyEngine();
+                if (engine != null) {
+                    sendMessage(ClusterMessage.Type.PEER_HEARTBEAT, engine);
+                    checkPeers(engine);
+                }
+                Thread.sleep(getHeartbeatMs(firstEngine));
+            } catch (InterruptedException ex) {
+                if(log.isDebugEnabled()){
+                    log.debug("Cluster peer heartbeat thread interrupted, shutting down.", ex);
+                } else {
+                    log.info("Cluster peer heartbeat thread interrupted, shutting down. "+ ex.getMessage());
+                }
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                log.error("Error in cluster peer heartbeat", e);
+            }
+        }
     }
 
     private long getHeartbeatMs(ISymmetricEngine engine) {
