@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  * instance, one TCP port, and one heartbeat thread. When a remote peer is detected as crashed, locks are cleared across all registered engines.
  */
 public class ClusteredCacheManager implements IClusteredCacheManager {
-    private static final String THREAD_NAME_HEARTBEAT= "sym-cluster-heartbeat";
+    private static final String THREAD_NAME_HEARTBEAT = "sym-cluster-heartbeat";
     private static final ClusteredCacheManager INSTANCE = new ClusteredCacheManager();
     private static final String REGION = "CLUSTER_PEERS";
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
@@ -50,7 +50,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet();
     private final Map<String, Boolean> peerStateMap = new ConcurrentHashMap<>();
     private volatile CompositeCacheManager jcsCacheManager;
-    private volatile CacheAccess<String, ClusterMessage> peerCache;
+    private volatile CacheAccess<String, ClusterPeerStateMessage> peerHeartbeatCache;
     private Thread heartbeatThread;
     private volatile boolean running;
     private String myServerId;
@@ -115,7 +115,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         running = true;
         initJcs(engine);
         if (running) {
-            sendMessageToPeers(ClusterMessage.Type.PEER_JOINING, engine);
+            sendMessageToPeers(ClusterPeerStateMessage.Type.PEER_JOINING, engine);
             startHeartbeatThread(engine);
         }
     }
@@ -125,10 +125,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (heartbeatThread != null) {
             heartbeatThread.interrupt();
         }
-        sendMessageToPeers(ClusterMessage.Type.PEER_LEAVING, lastEngine);
+        sendMessageToPeers(ClusterPeerStateMessage.Type.PEER_LEAVING, lastEngine);
         if (jcsCacheManager != null) {
             jcsCacheManager = null;
-            peerCache = null;
+            peerHeartbeatCache = null;
             jcsCacheManager.shutDown();
         }
     }
@@ -139,9 +139,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         try {
             jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
             jcsCacheManager.configure(buildJcsProperties(port, peerList));
-            peerCache = new CacheAccess<>(jcsCacheManager.getCache(REGION));
-            log.info("Started JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]", 
-                port, myServerId, myInstanceId, peerList);
+            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(REGION));
+            log.info("Started JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]",
+                    port, myServerId, myInstanceId, peerList);
         } catch (Exception e) {
             log.error("Failed to initialize JCS cluster cache on port {}: {}", port, e.getMessage());
             running = false;
@@ -159,9 +159,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             jcsCacheManager.shutDown();
             jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
             jcsCacheManager.configure(buildJcsProperties(port, peerList));
-            peerCache = new CacheAccess<>(jcsCacheManager.getCache(REGION));
-            log.info("Reinitialized JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]", 
-                port, myServerId, myInstanceId, peerList);
+            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(REGION));
+            log.info("Reinitialized JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]",
+                    port, myServerId, myInstanceId, peerList);
         } catch (Exception e) {
             log.error("Failed to reinitialize JCS cluster cache: {}", e.getMessage());
         }
@@ -194,20 +194,20 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Broadcasts a message to all cluster peers by putting it in the JCS cache. Peers will receive the message when they do their next heartbeat check.
-     * Does not need to be synchronized, because peerCache is read once, atomically.
+     * Broadcasts a message to all cluster peers by putting it in the JCS cache. Peers will receive the message when they do their next heartbeat check. Does
+     * not need to be synchronized, because peerHeartbeatCache is read once, atomically.
      */
-    private void sendMessageToPeers(ClusterMessage.Type type, ISymmetricEngine engine) {
-        CacheAccess<String, ClusterMessage> cache = peerCache;
-        if (cache == null ) {
+    private void sendMessageToPeers(ClusterPeerStateMessage.Type type, ISymmetricEngine engine) {
+        CacheAccess<String, ClusterPeerStateMessage> cache = peerHeartbeatCache;
+        if (cache == null) {
             log.debug("Skipping messaging cluster peers because JCS is not initialized! myServerId={}", myServerId);
             return;
-        }        
-        if ( engine == null) {
+        }
+        if (engine == null) {
             log.warn("Skipping messaging cluster peers because engine is null! myServerId={}", myServerId);
             return;
         }
-        ClusterMessage msg = new ClusterMessage(type, myServerId, myInstanceId, Version.version());
+        ClusterPeerStateMessage msg = new ClusterPeerStateMessage(type, myServerId, myInstanceId, Version.version());
         String details = String.format("Type={}, myServerId={}", type, myServerId);
         try {
             cache.put(myServerId, msg); // Propagates to all peers via JCS
@@ -230,21 +230,22 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         while (running) {
             try {
                 int activeMembers = 0;
+                long staleThresholdMs = 0;
                 ISymmetricEngine engine = getAnyEngine();
                 if (engine != null) {
                     sleepMs = getHeartbeatMs(engine);
-                    sendMessageToPeers(ClusterMessage.Type.PEER_HEARTBEAT, engine);
-                    long staleThresholdMs = 3 * engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS, 3000L);
+                    sendMessageToPeers(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, engine);
+                    staleThresholdMs = 3 * engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS, 3000L);
                     activeMembers = checkAllClusterPeers(engine, staleThresholdMs);
-                } 
-                log.debug("Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, staleThresholdMs={}, sleepMs={}", 
-                    activeMembers, knownPeers.size(), myServerId, staleThresholdMs, sleepMs);
+                }
+                log.debug("Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, staleThresholdMs={}, sleepMs={}",
+                        activeMembers, knownPeers.size(), myServerId, staleThresholdMs, sleepMs);
                 Thread.sleep(sleepMs);
             } catch (InterruptedException ex) {
-                if(log.isDebugEnabled()){
+                if (log.isDebugEnabled()) {
                     log.debug("Cluster peer heartbeat thread interrupted, shutting down.", ex);
                 } else {
-                    log.info("Cluster peer heartbeat thread interrupted, shutting down. "+ ex.getMessage());
+                    log.info("Cluster peer heartbeat thread interrupted, shutting down. " + ex.getMessage());
                 }
                 Thread.currentThread().interrupt();
                 break;
@@ -263,36 +264,45 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private int checkAllClusterPeers(ISymmetricEngine engine, long staleThresholdMs) {
-        CacheAccess<String, ClusterMessage> cache = peerCache;
+        CacheAccess<String, ClusterPeerStateMessage> cache = peerHeartbeatCache;
         if (cache == null) {
             return 0;
         }
         long now = System.currentTimeMillis();
         int activeMembers = 0;
         for (String peerId : knownPeers) {
-            ClusterMessage messageFromPeer = cache.get(peerId);
-            boolean wasAlive = Boolean.TRUE.equals(peerStateMap.get(peerId));
-            if (messageFromPeer != null && messageFromPeer.getType() == ClusterMessage.Type.PEER_LEAVING) {
-                if (wasAlive) {
-                    onPeerLeft(peerId);
-                }
-                peerStateMap.remove(peerId);
-            } else if (messageFromPeer == null || now - messageFromPeer.getTimestamp() > staleThresholdMs) {
-                if (wasAlive) {
-                    onPeerCrashed(peerId);
-                    peerStateMap.put(peerId, false);
-                }
-            } else {
-                if (!wasAlive) {
-                    onPeerJoined(messageFromPeer);
-                }
-                peerStateMap.put(peerId, true);
+            ClusterPeerStateMessage messageFromPeer = cache.get(peerId);
+            if (detectPeerState(peerId, messageFromPeer, now, staleThresholdMs)) {
+                activeMembers++;
             }
         }
         return activeMembers;
     }
 
-    protected void onPeerJoined(ClusterMessage msg) {
+    private boolean detectPeerState(String peerId, ClusterPeerStateMessage messageFromPeer, long now, long staleThresholdMs) {
+        boolean peerIsActive = false;
+        boolean wasAlive = Boolean.TRUE.equals(peerStateMap.get(peerId));
+        if (messageFromPeer != null && messageFromPeer.getType() == ClusterPeerStateMessage.Type.PEER_LEAVING) {
+            if (wasAlive) {
+                onPeerLeft(peerId);
+            }
+            peerStateMap.remove(peerId);
+        } else if (messageFromPeer == null || now - messageFromPeer.getTimestamp() > staleThresholdMs) {
+            if (wasAlive) {
+                onPeerCrashed(peerId);
+                peerStateMap.put(peerId, false);
+            }
+        } else {
+            if (!wasAlive) {
+                onPeerJoined(messageFromPeer);
+            }
+            peerStateMap.put(peerId, true);
+            peerIsActive = true;
+        }
+        return peerIsActive;
+    }
+
+    protected void onPeerJoined(ClusterPeerStateMessage msg) {
         for (ISymmetricEngine engine : registeredEngines.values()) {
             String myInstanceId = engine.getClusterService().getInstanceId();
             if (myInstanceId != null && myInstanceId.equals(msg.getInstanceId())

@@ -22,7 +22,7 @@ package org.jumpmind.symmetric.cache;
 
 import java.io.Serializable;
 
-public class ClusterMessage implements Serializable {
+public class ClusterPeerStateMessage implements Serializable {
     private static final long serialVersionUID = 1L;
 
     public enum Type {
@@ -35,7 +35,7 @@ public class ClusterMessage implements Serializable {
     private String version;
     private long timestamp;
 
-    public ClusterMessage(Type type, String serverId, String instanceId, String version) {
+    public ClusterPeerStateMessage(Type type, String serverId, String instanceId, String version) {
         this.type = type;
         this.serverId = serverId;
         this.instanceId = instanceId;
