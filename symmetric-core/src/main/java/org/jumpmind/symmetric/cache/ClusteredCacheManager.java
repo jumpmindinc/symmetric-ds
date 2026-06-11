@@ -48,7 +48,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet();
-    private final Map<String, Boolean> peerAliveState = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> peerStateMap = new ConcurrentHashMap<>();
     private volatile CompositeCacheManager jcsCacheManager;
     private volatile CacheAccess<String, ClusterMessage> peerCache;
     private Thread heartbeatThread;
@@ -92,7 +92,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public Set<String> getActiveServerIds() {
         Set<String> active = new HashSet<>();
-        for (Map.Entry<String, Boolean> entry : peerAliveState.entrySet()) {
+        for (Map.Entry<String, Boolean> entry : peerStateMap.entrySet()) {
             if (Boolean.TRUE.equals(entry.getValue())) {
                 active.add(entry.getKey());
             }
@@ -140,7 +140,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
             jcsCacheManager.configure(buildJcsProperties(port, peerList));
             peerCache = new CacheAccess<>(jcsCacheManager.getCache(REGION));
-            log.info("Started cluster peer cache on port {} with peers: [{}]", port, peerList);
+            log.info("Started JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]", 
+                port, myServerId, myInstanceId, peerList);
         } catch (Exception e) {
             log.error("Failed to initialize JCS cluster cache on port {}: {}", port, e.getMessage());
             running = false;
@@ -159,7 +160,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
             jcsCacheManager.configure(buildJcsProperties(port, peerList));
             peerCache = new CacheAccess<>(jcsCacheManager.getCache(REGION));
-            log.info("Reinitialized cluster peer cache with peers: [{}]", peerList);
+            log.info("Reinitialized JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]", 
+                port, myServerId, myInstanceId, peerList);
         } catch (Exception e) {
             log.error("Failed to reinitialize JCS cluster cache: {}", e.getMessage());
         }
@@ -268,23 +270,23 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long now = System.currentTimeMillis();
         int activeMembers = 0;
         for (String peerId : knownPeers) {
-            ClusterMessage msg = cache.get(peerId);
-            boolean wasAlive = Boolean.TRUE.equals(peerAliveState.get(peerId));
-            if (msg != null && msg.getType() == ClusterMessage.Type.PEER_LEAVING) {
+            ClusterMessage messageFromPeer = cache.get(peerId);
+            boolean wasAlive = Boolean.TRUE.equals(peerStateMap.get(peerId));
+            if (messageFromPeer != null && messageFromPeer.getType() == ClusterMessage.Type.PEER_LEAVING) {
                 if (wasAlive) {
                     onPeerLeft(peerId);
                 }
-                peerAliveState.remove(peerId);
-            } else if (msg == null || now - msg.getTimestamp() > staleThresholdMs) {
+                peerStateMap.remove(peerId);
+            } else if (messageFromPeer == null || now - messageFromPeer.getTimestamp() > staleThresholdMs) {
                 if (wasAlive) {
                     onPeerCrashed(peerId);
-                    peerAliveState.put(peerId, false);
+                    peerStateMap.put(peerId, false);
                 }
             } else {
                 if (!wasAlive) {
-                    onPeerJoined(msg);
+                    onPeerJoined(messageFromPeer);
                 }
-                peerAliveState.put(peerId, true);
+                peerStateMap.put(peerId, true);
             }
         }
         return activeMembers;
