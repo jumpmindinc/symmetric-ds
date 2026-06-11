@@ -332,6 +332,16 @@ public class SnapshotUtil {
             extract(export, 5000, "order by relative_dir, file_name", new File(exportDir, "file_snapshot.csv"),
                     TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_SNAPSHOT));
         }
+        log.info("Writing runtime data - metrics");
+        checkpoint(engine, listener, stepNumber++, totalSteps);
+        extract(export, 10000, "order by last_update_time desc", new File(exportDir, "metric_key.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_METRIC_KEY));
+        extract(export, 10000, "order by create_time desc", new File(exportDir, "metric_context.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_METRIC_CONTEXT));
+        extract(export, 10000, "order by interval_start_time desc", new File(exportDir, "metric_stats_float64.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_METRIC_STATS_FLOAT64));
+        extract(export, 10000, "order by interval_start_time desc", new File(exportDir, "metric_stats_int64.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_METRIC_STATS_INT64));
         log.info("Writing runtime data - export config");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, new File(exportDir, "channel.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CHANNEL));
@@ -372,22 +382,11 @@ public class SnapshotUtil {
         extract(export, new File(exportDir, "table_group_hier.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_GROUP_HIER));
         extract(export, new File(exportDir, "console_role.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE));
         extract(export, new File(exportDir, "console_role_privilege.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE_PRIVILEGE));
+        extract(export, new File(exportDir, "analytics_report.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_ANALYTICS_REPORT));
         log.info("Writing runtime data - parameters");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         writeRuntimeParameters(engine, tmpDir);
         writeChangedParameters(engine, tmpDir);
-        log.info("Writing runtime data - metrics");
-        checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, 10000, "order by last_update_time desc", new File(exportDir, "metric_key.csv"), TableConstants.getTableName(tablePrefix,
-                TableConstants.SYM_METRIC_KEY));
-        extract(export, 10000, "order by create_time desc", new File(exportDir, "metric_context.csv"), TableConstants.getTableName(tablePrefix,
-                TableConstants.SYM_METRIC_CONTEXT));
-        extract(export, 10000, "order by interval_start_time desc", new File(exportDir, "metric_stats_float64.csv"), TableConstants.getTableName(tablePrefix,
-                TableConstants.SYM_METRIC_STATS_FLOAT64));
-        extract(export, 10000, "order by interval_start_time desc", new File(exportDir, "metric_stats_int64.csv"), TableConstants.getTableName(tablePrefix,
-                TableConstants.SYM_METRIC_STATS_INT64));
-        // extract for analytics_report added here because...
-        extract(export, new File(exportDir, "analytics_report.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_ANALYTICS_REPORT));
         try {
             Properties props = new Properties();
             props.putAll(System.getProperties());
