@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.cache;
 
 import java.io.Serializable;
+import java.time.Instant;
 
 public class ClusterPeerStateMessage implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -61,5 +62,13 @@ public class ClusterPeerStateMessage implements Serializable {
 
     public long getTimestamp() {
         return timestamp;
+    }
+
+    public String getTimestampAsDate() {
+        return Instant.ofEpochMilli(timestamp).toString();
+    }
+
+    public boolean isStale(long now, long staleThresholdMs) {
+        return now - timestamp > staleThresholdMs;
     }
 }
