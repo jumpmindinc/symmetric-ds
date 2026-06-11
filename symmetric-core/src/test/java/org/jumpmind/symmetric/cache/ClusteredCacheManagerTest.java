@@ -64,7 +64,7 @@ public class ClusteredCacheManagerTest {
         return (boolean) detectPeerState.invoke(manager, peerId, msg, System.currentTimeMillis(), THRESHOLD_MS);
     }
 
-    private ClusterPeerStateMessage msg(ClusterPeerStateMessage.Type type, String peerId) {
+    private ClusterPeerStateMessage msg(ClusterPeerSecureMessage.Type type, String peerId) {
         return new ClusterPeerStateMessage(type, peerId, "inst-" + peerId, "1.0");
     }
     // --- isPeerAlive ---
@@ -76,37 +76,37 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void isPeerAlive_peerLeaving_returnsFalse() throws Exception {
-        assertFalse(callIsPeerAlive("peer1", msg(ClusterPeerStateMessage.Type.PEER_LEAVING, "peer1")));
+        assertFalse(callIsPeerAlive("peer1", msg(ClusterPeerSecureMessage.Type.PEER_LEAVING, "peer1")));
     }
 
     @Test
     public void isPeerAlive_staleHeartbeat_returnsFalse() throws Exception {
-        ClusterPeerStateMessage stale = msg(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "peer1");
+        ClusterPeerStateMessage stale = msg(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, "peer1");
         long farFuture = System.currentTimeMillis() + THRESHOLD_MS + 1000L;
         assertFalse((boolean) isPeerAlive.invoke(manager, "peer1", stale, farFuture, THRESHOLD_MS));
     }
 
     @Test
     public void isPeerAlive_freshHeartbeat_returnsTrue() throws Exception {
-        assertTrue(callIsPeerAlive("peer1", msg(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "peer1")));
+        assertTrue(callIsPeerAlive("peer1", msg(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, "peer1")));
     }
 
     @Test
     public void isPeerAlive_peerJoining_returnsTrue() throws Exception {
-        assertTrue(callIsPeerAlive("peer1", msg(ClusterPeerStateMessage.Type.PEER_JOINING, "peer1")));
+        assertTrue(callIsPeerAlive("peer1", msg(ClusterPeerSecureMessage.Type.PEER_JOINING, "peer1")));
     }
     // --- detectPeerStateAndFireEvents ---
 
     @Test
     public void detectPeerState_firstHeartbeat_peerMarkedAlive() throws Exception {
-        boolean isActive = callDetectPeerState("peer1", msg(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "peer1"));
+        boolean isActive = callDetectPeerState("peer1", msg(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, "peer1"));
         assertTrue(isActive);
         assertTrue(peerStateMap.get("peer1"));
     }
 
     @Test
     public void detectPeerState_consecutiveHeartbeats_staysAlive() throws Exception {
-        ClusterPeerStateMessage hb = msg(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "peer1");
+        ClusterPeerStateMessage hb = msg(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, "peer1");
         callDetectPeerState("peer1", hb);
         assertTrue((boolean) callDetectPeerState("peer1", hb));
         assertTrue(peerStateMap.get("peer1"));
@@ -114,14 +114,14 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void detectPeerState_peerJoining_peerMarkedAlive() throws Exception {
-        boolean isActive = callDetectPeerState("peer1", msg(ClusterPeerStateMessage.Type.PEER_JOINING, "peer1"));
+        boolean isActive = callDetectPeerState("peer1", msg(ClusterPeerSecureMessage.Type.PEER_JOINING, "peer1"));
         assertTrue(isActive);
         assertTrue(peerStateMap.get("peer1"));
     }
 
     @Test
     public void detectPeerState_nullMessageAfterAlive_peerMarkedCrashed() throws Exception {
-        callDetectPeerState("peer1", msg(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "peer1"));
+        callDetectPeerState("peer1", msg(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, "peer1"));
         boolean isActive = callDetectPeerState("peer1", null);
         assertFalse(isActive);
         assertFalse(peerStateMap.get("peer1"));
@@ -129,8 +129,8 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void detectPeerState_staleMessageAfterAlive_peerMarkedCrashed() throws Exception {
-        callDetectPeerState("peer1", msg(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "peer1"));
-        ClusterPeerStateMessage stale = msg(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "peer1");
+        callDetectPeerState("peer1", msg(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, "peer1"));
+        ClusterPeerStateMessage stale = msg(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, "peer1");
         long farFuture = System.currentTimeMillis() + THRESHOLD_MS + 1000L;
         boolean isActive = (boolean) detectPeerState.invoke(manager, "peer1", stale, farFuture, THRESHOLD_MS);
         assertFalse(isActive);
@@ -139,8 +139,8 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void detectPeerState_peerLeavingAfterAlive_removedFromStateMap() throws Exception {
-        callDetectPeerState("peer1", msg(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "peer1"));
-        boolean isActive = callDetectPeerState("peer1", msg(ClusterPeerStateMessage.Type.PEER_LEAVING, "peer1"));
+        callDetectPeerState("peer1", msg(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, "peer1"));
+        boolean isActive = callDetectPeerState("peer1", msg(ClusterPeerSecureMessage.Type.PEER_LEAVING, "peer1"));
         assertFalse(isActive);
         assertNull(peerStateMap.get("peer1"));
     }
@@ -154,10 +154,10 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void detectPeerState_crashedPeerRejoins_markedAliveAgain() throws Exception {
-        callDetectPeerState("peer1", msg(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "peer1"));
+        callDetectPeerState("peer1", msg(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, "peer1"));
         callDetectPeerState("peer1", null);
         assertFalse(peerStateMap.get("peer1"));
-        boolean isActive = callDetectPeerState("peer1", msg(ClusterPeerStateMessage.Type.PEER_JOINING, "peer1"));
+        boolean isActive = callDetectPeerState("peer1", msg(ClusterPeerSecureMessage.Type.PEER_JOINING, "peer1"));
         assertTrue(isActive);
         assertTrue(peerStateMap.get("peer1"));
     }

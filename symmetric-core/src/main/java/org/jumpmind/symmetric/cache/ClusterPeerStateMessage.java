@@ -20,55 +20,40 @@
  */
 package org.jumpmind.symmetric.cache;
 
-import java.io.Serializable;
-import java.time.Instant;
-
-public class ClusterPeerStateMessage implements Serializable {
+public class ClusterPeerStateMessage extends ClusterPeerSecureMessage {
     private static final long serialVersionUID = 1L;
-
-    public enum Type {
-        PEER_JOINING, PEER_HEARTBEAT, PEER_LEAVING
-    }
-
-    private Type type;
-    private String serverId;
-    private String instanceId;
-    private String version;
-    private long timestamp;
+    private transient Type cachedType;
+    private transient String cachedInstanceId;
+    private transient boolean decrypted;
 
     public ClusterPeerStateMessage(Type type, String serverId, String instanceId, String version) {
-        this.type = type;
-        this.serverId = serverId;
-        this.instanceId = instanceId;
-        this.version = version;
-        this.timestamp = System.currentTimeMillis();
+        this(type, serverId, instanceId, version, System.currentTimeMillis());
+    }
+
+    private ClusterPeerStateMessage(Type type, String serverId, String instanceId, String version, long timestamp) {
+        super(serverId, version, timestamp, type.name() + "|" + instanceId);
+        this.cachedType = type;
+        this.cachedInstanceId = instanceId;
+        this.decrypted = true;
+    }
+
+    private void ensureDecrypted() {
+        if (!decrypted) {
+            String payload = decryptPayload();
+            String[] parts = payload.split("\\|", 2);
+            cachedType = Type.valueOf(parts[0]);
+            cachedInstanceId = parts[1];
+            decrypted = true;
+        }
     }
 
     public Type getType() {
-        return type;
-    }
-
-    public String getServerId() {
-        return serverId;
+        ensureDecrypted();
+        return cachedType;
     }
 
     public String getInstanceId() {
-        return instanceId;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public String getTimestampAsDate() {
-        return Instant.ofEpochMilli(timestamp).toString();
-    }
-
-    public boolean isStale(long now, long staleThresholdMs) {
-        return now - timestamp > staleThresholdMs;
+        ensureDecrypted();
+        return cachedInstanceId;
     }
 }

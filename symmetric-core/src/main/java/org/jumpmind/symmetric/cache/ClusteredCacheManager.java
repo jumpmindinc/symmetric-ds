@@ -110,12 +110,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private void startInternal(ISymmetricEngine engine) {
+        ClusterPeerSecureMessage.setSecurityService(engine.getSecurityService());
         myServerId = engine.getClusterService().getServerId();
         myInstanceId = engine.getClusterService().getInstanceId();
         running = true;
         initJcs(engine);
         if (running) {
-            sendMessageToPeers(ClusterPeerStateMessage.Type.PEER_JOINING, engine);
+            sendMessageToPeers(ClusterPeerSecureMessage.Type.PEER_JOINING, engine);
             startHeartbeatThread(engine);
         }
     }
@@ -125,7 +126,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (heartbeatThread != null) {
             heartbeatThread.interrupt();
         }
-        sendMessageToPeers(ClusterPeerStateMessage.Type.PEER_LEAVING, lastEngine);
+        sendMessageToPeers(ClusterPeerSecureMessage.Type.PEER_LEAVING, lastEngine);
         if (jcsCacheManager != null) {
             jcsCacheManager = null;
             peerHeartbeatCache = null;
@@ -197,7 +198,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      * Broadcasts a message to all cluster peers by putting it in the JCS cache. Peers will receive the message when they do their next heartbeat check. Does
      * not need to be synchronized, because peerHeartbeatCache is read once, atomically.
      */
-    private void sendMessageToPeers(ClusterPeerStateMessage.Type type, ISymmetricEngine engine) {
+    private void sendMessageToPeers(ClusterPeerSecureMessage.Type type, ISymmetricEngine engine) {
         CacheAccess<String, ClusterPeerStateMessage> cache = peerHeartbeatCache;
         if (cache == null) {
             log.debug("Skipping messaging cluster peers because JCS is not initialized! myServerId={}", myServerId);
@@ -235,7 +236,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 if (engine != null) {
                     MDC.put("engineName", engine.getParameterService().getEngineName());
                     sleepMs = getHeartbeatMs(engine);
-                    sendMessageToPeers(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, engine);
+                    sendMessageToPeers(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, engine);
                     staleThresholdMs = 3 * engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS, 3000L);
                     activeMembers = checkAllClusterPeers(engine, staleThresholdMs);
                 }
@@ -286,8 +287,12 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             log.debug("Skipping null message from cluster peer={}", peerId);
             return false;
         }
-        ClusterPeerStateMessage.Type messageType = messageFromPeer.getType();
-        if (messageType == ClusterPeerStateMessage.Type.PEER_LEAVING) {
+        if (!messageFromPeer.isHeaderChecksumValid()) {
+            log.warn("Rejecting message from cluster peer={} — checksum invalid, message may be corrupt or from an unauthorized host", peerId);
+            return false;
+        }
+        ClusterPeerSecureMessage.Type messageType = messageFromPeer.getType();
+        if (messageType == ClusterPeerSecureMessage.Type.PEER_LEAVING) {
             log.info("Cluster peer sent message about leaving the cluster. Peer={}, Last heartbeat={}, Type={}",
                     peerId, messageFromPeer.getTimestampAsDate(), messageType);
             return false;
@@ -297,7 +302,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     peerId, messageFromPeer.getTimestampAsDate(), messageType);
             return false;
         }
-        if (messageType == ClusterPeerStateMessage.Type.PEER_JOINING) {
+        if (messageType == ClusterPeerSecureMessage.Type.PEER_JOINING) {
             log.info("Cluster peer sent message about joining this cluster. Peer={}, Last heartbeat={}, Type={}",
                     peerId, messageFromPeer.getTimestampAsDate(), messageType);
         } else {
