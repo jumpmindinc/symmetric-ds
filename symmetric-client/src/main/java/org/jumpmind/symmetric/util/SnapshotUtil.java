@@ -386,6 +386,7 @@ public class SnapshotUtil {
                 TableConstants.SYM_METRIC_STATS_FLOAT64));
         extract(export, 10000, "order by interval_start_time desc", new File(exportDir, "metric_stats_int64.csv"), TableConstants.getTableName(tablePrefix,
                 TableConstants.SYM_METRIC_STATS_INT64));
+        // extract for analytics_report added here because...
         extract(export, new File(exportDir, "analytics_report.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_ANALYTICS_REPORT));
         try {
             Properties props = new Properties();
