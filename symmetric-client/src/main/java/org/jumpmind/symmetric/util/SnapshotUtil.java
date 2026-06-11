@@ -139,6 +139,7 @@ public class SnapshotUtil {
         int stepNumber = 0;
         int totalSteps = 37;
         checkpoint(engine, listener, stepNumber++, totalSteps);
+
         try {
             log.info("Calling beforeSnapshot()");
             for (ISnapshotUtilListener snapshotListener : engine.getExtensionService().getExtensionPointList(ISnapshotUtilListener.class)) {
