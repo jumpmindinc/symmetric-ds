@@ -384,11 +384,16 @@ is allowed to re-acquire the lock.  If the locking instance remains down, the lo
 
 SymmetricDS uses Apache JCS lateral TCP cache for direct peer-to-peer communication within the cluster.
 Each server listens on the port defined by the `cluster.jcs.port` property (default 1101) and sends a
-heartbeat message to all peer servers at the interval defined by `cache.peer.heartbeat.ms` (default 3000 ms).
+heartbeat message to all peer servers at the interval defined by `cluster.peer.heartbeat.ms` (default 3 seconds).
 When a peer misses three consecutive heartbeats — that is, after three times the heartbeat interval (9 seconds by default) —
 its locks in the `sym_lock` and `sym_node_communication` tables are cleared automatically so other cluster members
 can immediately acquire those locks without waiting for `cluster.lock.timeout.ms` to expire.
 If a server shuts down gracefully, it broadcasts a leave message and peers clear its locks at once.
+
+WARNING: JCS lateral TCP communication is not encrypted or authenticated.
+Messages are plain serialized Java objects sent over raw TCP sockets.
+Cluster nodes must be deployed on a private, firewalled network, and `cluster.jcs.port` must not be exposed to untrusted hosts.
+A rogue node with network access to this port could spoof heartbeats to clear another node's locks or trigger a duplicate-instance shutdown.
 
 The load balancer should be configured to use sticky sessions if the cluster will receive push synchronization.
 Push connections first request a reservation from the target node and then connect again using the reservation to push changes.
