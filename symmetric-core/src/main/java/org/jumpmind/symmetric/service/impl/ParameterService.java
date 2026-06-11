@@ -51,6 +51,7 @@ public class ParameterService extends AbstractParameterService implements IParam
     private ISqlTemplate sqlTemplate;
     private Date lastUpdateTime;
     private List<DatabaseParameter> offlineParameters;
+    protected volatile boolean initialLoadUseExtractJobOverridden = false;
 
     public ParameterService(IDatabasePlatform platform, ITypedPropertiesFactory factory, String tablePrefix) {
         this.tablePrefix = SqlUtils.sanitizeTablePrefix(tablePrefix);
@@ -191,6 +192,12 @@ public class ParameterService extends AbstractParameterService implements IParam
         p.putAll(systemProperties);
         p.putAll(rereadDatabaseParameters(p));
         TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(p, true);
+        if (p.is(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)
+                && p.is(ParameterConstants.CLUSTER_STAGING_ENABLED, true)
+                && p.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true)) {
+            p.setProperty(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, "false");
+            initialLoadUseExtractJobOverridden = true;
+        }
         rereadOfflineNodeParameters();
         return p;
     }
@@ -261,5 +268,9 @@ public class ParameterService extends AbstractParameterService implements IParam
         }
         log.debug("Combined hash of {} parameters={}", parameterNames.length, combinedHash);
         return combinedHash;
+    }
+    
+    public boolean isInitialLoadUseExtractJobOverridden() {
+        return initialLoadUseExtractJobOverridden;
     }
 }

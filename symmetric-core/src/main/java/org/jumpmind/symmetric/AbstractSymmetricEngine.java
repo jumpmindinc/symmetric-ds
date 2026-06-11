@@ -818,79 +818,113 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     protected Node checkSystemIntegrity(Node node) {
+        checkNodeIdentityMatchesConfiguration(node);
+        checkExtractJobCompatibleWithStreaming(node);
+        checkClusteredExtractJobAllowed(node);
+        if (extensionService.getExtensionPoint(INodePasswordFilter.class) != null) {
+            checkKeystoreIntegrity();
+            node = checkNodeSecurityIntegrity(node);
+        }
+        return node;
+    }
+
+    protected void checkNodeIdentityMatchesConfiguration(Node node) {
         if (node != null && (!node.getExternalId().equals(getParameterService().getExternalId())
                 || !node.getNodeGroupId().equals(getParameterService().getNodeGroupId()))) {
             if (parameterService.is(ParameterConstants.NODE_COPY_MODE_ENABLED, false)) {
                 registrationService.requestNodeCopy();
             } else {
                 throw new SymmetricException(
-                        "The configured state does not match recorded database state.  The recorded external id is '%s' while the configured external id is '%s'. The recorded node group id is '%s' while the configured node group id is '%s'",
-                        new Object[] { node.getExternalId(),
-                                getParameterService().getExternalId(),
-                                node.getNodeGroupId(),
-                                getParameterService().getNodeGroupId() });
+                        "The configured state does not match recorded database state.  The recorded external id is '%s' "
+                                + "while the configured external id is '%s'. The recorded node group id is '%s' while the"
+                                + "configured node group id is '%s'",
+                        new Object[] { node.getExternalId(), getParameterService().getExternalId(),
+                                node.getNodeGroupId(), getParameterService().getNodeGroupId() });
             }
         }
+    }
+
+    protected void checkExtractJobCompatibleWithStreaming(Node node) {
         boolean useExtractJob = parameterService.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true);
         boolean streamToFile = parameterService.is(ParameterConstants.STREAM_TO_FILE_ENABLED, true);
         if (useExtractJob && !streamToFile) {
             throw new SymmetricException(String.format(
-                    "Node '%s' is configured with conflicting parameters which may result in replication stopping and/or empty load batches. "
-                            + "One of these two parameters needs to be changed: %s=%s and %s=%s",
+                    "Node '%s' is configured with conflicting parameters which may result in replication stopping "
+                            + "and/or empty load batches. One of these two parameters needs to be changed: %s=%s and %s=%s",
                     node != null ? node.getNodeId() : "null", ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB,
                     useExtractJob, ParameterConstants.STREAM_TO_FILE_ENABLED, streamToFile));
         }
-        INodePasswordFilter filter = extensionService.getExtensionPoint(INodePasswordFilter.class);
-        if (filter != null) {
-            log.info("Testing keystore integrity");
-            try {
-                securityService.encrypt(ParameterConstants.EXTERNAL_ID);
-            } catch (Exception e) {
-                if (ExceptionUtils.is(e, UnrecoverableKeyException.class)) {
-                    throw new SymmetricException("Failed to open keystore because keystore password is wrong.  "
-                            + "Check javax.net.ssl.keyStorePassword in conf/sym_service.conf and bin/setenv.", e);
-                }
-                throw e;
+    }
+
+    protected void checkClusteredExtractJobAllowed(Node node) {
+        if (parameterService.isInitialLoadUseExtractJobOverridden()) {
+            throw new SymmetricException(String.format(
+                    "Node '%s' is configured with conflicting parameters. The initial load extract job "
+                            + "cannot be used when cluster locking is enabled but staging is not clustered. "
+                            + "One of these parameters needs to be changed: %s=true, %s=true, %s=false",
+                    node != null ? node.getNodeId() : "null", ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB,
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED, ParameterConstants.CLUSTER_STAGING_ENABLED));
+        }
+    }
+
+    protected void checkKeystoreIntegrity() {
+        log.info("Testing keystore integrity");
+        try {
+            securityService.encrypt(ParameterConstants.EXTERNAL_ID);
+        } catch (Exception e) {
+            if (ExceptionUtils.is(e, UnrecoverableKeyException.class)) {
+                throw new SymmetricException("Failed to open keystore because keystore password is wrong.  "
+                        + "Check javax.net.ssl.keyStorePassword in conf/sym_service.conf and bin/setenv.", e);
             }
-            log.info("Testing node security integrity");
-            Map<String, NodeSecurity> nodeSecurities = nodeService.findAllNodeSecurity(false);
-            List<NodeSecurity> badNodeSecurities = new ArrayList<NodeSecurity>();
-            for (NodeSecurity nodeSecurity : nodeSecurities.values()) {
-                if (StringUtils.isBlank(nodeSecurity.getNodePassword())) {
-                    badNodeSecurities.add(nodeSecurity);
-                }
-            }
-            if (badNodeSecurities.size() > 0) {
-                List<String> nodeIds = new ArrayList<String>();
-                for (NodeSecurity nodeSecurity : badNodeSecurities) {
-                    nodeIds.add(nodeSecurity.getNodeId());
-                }
-                if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
-                    throw new IllegalStateException("Unable to decrypt " + badNodeSecurities.size()
-                            + " node security rows.  Copy the security/keystore file from a working node in the cluster.  Nodes affected: " + nodeIds);
-                } else if (parameterService.isRegistrationServer()) {
-                    log.error("Found {} bad node securities.  Attempting to re-open registration to fix them.  Nodes affected: {}", badNodeSecurities.size(),
-                            nodeIds);
-                    String myNodeId = nodeService.findIdentityNodeId();
-                    for (NodeSecurity nodeSecurity : badNodeSecurities) {
-                        if (nodeSecurity.getNodeId().equals(myNodeId)) {
-                            log.info("Re-generating my node password");
-                            String password = extensionService.getExtensionPoint(INodeIdCreator.class).generatePassword(node);
-                            nodeSecurity.setNodePassword(password);
-                            nodeService.updateNodeSecurity(nodeSecurity);
-                        } else {
-                            registrationService.reOpenRegistration(nodeSecurity.getNodeId(), true);
-                        }
-                    }
-                } else {
-                    log.error("Found {} bad node securities.  Removing identity and attempting re-registration to fix them.  " +
-                            "You may need to approve the registration request.  Nodes affected: {}", badNodeSecurities.size(), nodeIds);
-                    nodeService.deleteIdentity();
-                    node = null;
-                }
+            throw e;
+        }
+    }
+
+    protected Node checkNodeSecurityIntegrity(Node node) {
+        log.info("Testing node security integrity");
+        Map<String, NodeSecurity> nodeSecurities = nodeService.findAllNodeSecurity(false);
+        List<NodeSecurity> badNodeSecurities = new ArrayList<NodeSecurity>();
+        for (NodeSecurity nodeSecurity : nodeSecurities.values()) {
+            if (StringUtils.isBlank(nodeSecurity.getNodePassword())) {
+                badNodeSecurities.add(nodeSecurity);
             }
         }
+        if (badNodeSecurities.size() > 0) {
+            node = repairNodeSecurities(node, badNodeSecurities);
+        }
         return node;
+    }
+
+    protected Node repairNodeSecurities(Node node, List<NodeSecurity> badNodeSecurities) {
+        List<String> nodeIds = new ArrayList<String>();
+        for (NodeSecurity nodeSecurity : badNodeSecurities) {
+            nodeIds.add(nodeSecurity.getNodeId());
+        }
+        if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+            throw new IllegalStateException("Unable to decrypt " + badNodeSecurities.size()
+                    + " node security rows.  Copy the security/keystore file from a working node in the cluster.  Nodes affected: " + nodeIds);
+        } else if (parameterService.isRegistrationServer()) {
+            log.error("Found {} bad node securities.  Attempting to re-open registration to fix them.  Nodes affected: {}",
+                    badNodeSecurities.size(), nodeIds);
+            String myNodeId = nodeService.findIdentityNodeId();
+            for (NodeSecurity nodeSecurity : badNodeSecurities) {
+                if (nodeSecurity.getNodeId().equals(myNodeId)) {
+                    log.info("Re-generating my node password");
+                    String password = extensionService.getExtensionPoint(INodeIdCreator.class).generatePassword(node);
+                    nodeSecurity.setNodePassword(password);
+                    nodeService.updateNodeSecurity(nodeSecurity);
+                } else {
+                    registrationService.reOpenRegistration(nodeSecurity.getNodeId(), true);
+                }
+            }
+            return node;
+        } else {
+            log.error("Found {} bad node securities.  Removing identity and attempting re-registration to fix them.  "
+                    + "You may need to approve the registration request.  Nodes affected: {}", badNodeSecurities.size(),
+    nodeIds);
+            nodeService.deleteIdentity();
+            return null;
+        }
     }
 
     @Override
