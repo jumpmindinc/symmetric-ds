@@ -376,7 +376,6 @@ public class SnapshotUtil {
         checkpoint(engine, listener, stepNumber++, totalSteps);
         writeRuntimeParameters(engine, tmpDir);
         writeChangedParameters(engine, tmpDir);
-
         log.info("Writing runtime data - metrics");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, 10000, "order by last_update_time desc", new File(exportDir, "metric_key.csv"), TableConstants.getTableName(tablePrefix,
@@ -388,7 +387,6 @@ public class SnapshotUtil {
         extract(export, 10000, "order by interval_start_time desc", new File(exportDir, "metric_stats_int64.csv"), TableConstants.getTableName(tablePrefix,
                 TableConstants.SYM_METRIC_STATS_INT64));
         extract(export, new File(exportDir, "analytics_report.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_ANALYTICS_REPORT));
-
         try {
             Properties props = new Properties();
             props.putAll(System.getProperties());
