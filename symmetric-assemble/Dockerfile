@@ -18,11 +18,14 @@ RUN chmod -R u=rwX,g=,o= /opt/symmetric-ds/security
 
 ENV SYM_HOME /opt/symmetric-ds
 
-# Create a volume containing the engines, tmp, conf, and security directories
-VOLUME /opt/symmetric-ds/engines
-VOLUME /opt/symmetric-ds/tmp
+# Create volumes to persist container's configuration and security directories
 VOLUME /opt/symmetric-ds/conf
+VOLUME /opt/symmetric-ds/engines
 VOLUME /opt/symmetric-ds/security
+
+# Create volumes to persist container's temporary directories  
+VOLUME /opt/symmetric-ds/tmp
+VOLUME /opt/symmetric-ds/logs
 
 EXPOSE 31415
 EXPOSE 31417
