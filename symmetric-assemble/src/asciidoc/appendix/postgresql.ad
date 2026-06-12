@@ -47,6 +47,17 @@ grant create on schema {schema name} to {user name};
 
 ==== Permissions
 
+
+SymmetricDS creates and manages variety of objects (runtime tables, sequences, functions, and triggers). A `SUPERUSER` level permissions are recommended for the SymmetricDS database account (also known as role in PostgreSQL) when used for Trigger-based change capture (see Log-Miner section in PRO editions for adjustements).
+
+
+[source, Sql]
+----
+CREATE ROLE symds WITH LOGIN SUPERUSER PASSWORD 'secure_password';
+
+----
+
+
 If SymmetricDS is connected into a different schema than the application tables and a different user account is used to write to the the application tables the following permissions need to be granted to the application user to access the SymmetricDS schema
 
 
@@ -59,11 +70,16 @@ GRANT ALL ON ALL FUNCTIONS IN SCHEMA {SYMMETRIC_SCHEMA} TO  {APPLICATION USER}
 
 ----
 
-NOTE: To execute `DROP TRIGGER`, the current user must be the owner of the table for which the trigger is defined. See the https://www.postgresql.org/docs/current/sql-droptrigger.html[PostgreSQL DROP TRIGGER documentation] for more information. As a workaround, a role can be created for SymmetricDS that inherits from the role that owns the application tables.
+NOTE: To execute `DROP TRIGGER` commands, the SymmetricDS database account must be the owner of all table for which the trigger is defined (configured for replication) or it should can have SUPERUSER privileges. To works around this a role can be created for SymmetricDS database account that inherits from the role that already owns all business application tables.
+See the https://www.postgresql.org/docs/current/sql-droptrigger.html[PostgreSQL DROP TRIGGER documentation] for more information. 
 
-NOTE: Due to the variety of objects SymmetricDS creates and manages (tables, sequences, functions, and triggers), `SUPERUSER` level permissions are recommended for the SymmetricDS database user.
 
-To support multiple database client connections initiated by SymmetricDS, inspect and increase number of connections allowed by the PostgreSQL server. Review  and change the max_connections system parameter (restart the PostgreSQL server to take effect!).
+ifdef::pro[]
+When using replicating DDL changes (see DDL Event Capture below) the SUPERUSER privilege is mandatory for the SymmetricDS database account on the target database! This is because SymmetricDS creates a variety of new objects and/or change ones that already exist - to match the source database.
+endif::pro[]
+
+
+To support multiple database client connections initiated by SymmetricDS, inspect and increase number of connections allowed by the PostgreSQL server. Review and change the max_connections system parameter (restart the PostgreSQL server to take effect!).
 
 [source, Sql]
 ----
