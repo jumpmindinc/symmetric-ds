@@ -53,11 +53,16 @@ If SymmetricDS is connected into a different schema than the application tables 
 [source, Sql]
 ----
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA {SYMMETRIC_SCHEMA} TO  {APPLICATION USER}
-GRANT ALL ON SCHEMA {SYMMETRIC_SCHEMA} TO {APPLICATION USER} 
+GRANT ALL ON SCHEMA {SYMMETRIC_SCHEMA} TO {APPLICATION USER}
 GRANT ALL ON ALL SEQUENCES IN SCHEMA {SYMMETRIC_SCHEMA} TO  {APPLICATION USER}
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA {SYMMETRIC_SCHEMA} TO  {APPLICATION USER}
 
 ----
+
+NOTE: To execute `DROP TRIGGER`, the current user must be the owner of the table for which the trigger is defined. See the https://www.postgresql.org/docs/current/sql-droptrigger.html[PostgreSQL DROP TRIGGER documentation] for more information. As a workaround, a role can be created for SymmetricDS that inherits from the role that owns the application tables.
+
+NOTE: Due to the variety of objects SymmetricDS creates and manages (tables, sequences, functions, and triggers), `SUPERUSER` level permissions are recommended for the SymmetricDS database user.
+
 To support multiple database client connections initiated by SymmetricDS, inspect and increase number of connections allowed by the PostgreSQL server. Review  and change the max_connections system parameter (restart the PostgreSQL server to take effect!).
 
 [source, Sql]
