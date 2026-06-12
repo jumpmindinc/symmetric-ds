@@ -22,17 +22,17 @@ package org.jumpmind.symmetric.cache;
 
 public class ClusterPeerStateMessage extends ClusterPeerSecureMessage {
     private static final long serialVersionUID = 1L;
-    private transient Type cachedType;
+    private transient EventType cachedEventType;
     private transient String cachedInstanceId;
     private transient boolean decrypted;
 
-    public ClusterPeerStateMessage(Type type, String serverId, String instanceId, String version) {
+    public ClusterPeerStateMessage(EventType type, String serverId, String instanceId, String version) {
         this(type, serverId, instanceId, version, System.currentTimeMillis());
     }
 
-    private ClusterPeerStateMessage(Type type, String serverId, String instanceId, String version, long timestamp) {
+    private ClusterPeerStateMessage(EventType type, String serverId, String instanceId, String version, long timestamp) {
         super(serverId, version, timestamp, type.name() + "|" + instanceId);
-        this.cachedType = type;
+        this.cachedEventType = type;
         this.cachedInstanceId = instanceId;
         this.decrypted = true;
     }
@@ -41,15 +41,15 @@ public class ClusterPeerStateMessage extends ClusterPeerSecureMessage {
         if (!decrypted) {
             String payload = decryptPayload();
             String[] parts = payload.split("\\|", 2);
-            cachedType = Type.valueOf(parts[0]);
+            cachedEventType = EventType.valueOf(parts[0]);
             cachedInstanceId = parts[1];
             decrypted = true;
         }
     }
 
-    public Type getType() {
+    public EventType getEventType() {
         ensureDecrypted();
-        return cachedType;
+        return cachedEventType;
     }
 
     public String getInstanceId() {

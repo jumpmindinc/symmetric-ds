@@ -30,7 +30,7 @@ public class ClusterPeerStateMessageTest {
     private static final long THRESHOLD_MS = 9000L;
 
     private ClusterPeerStateMessage heartbeat() {
-        return new ClusterPeerStateMessage(ClusterPeerStateMessage.Type.PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        return new ClusterPeerStateMessage(ClusterPeerSecureMessage.EventType.PEER_HEARTBEAT, "server1", "inst1", "1.0");
     }
 
     @Test

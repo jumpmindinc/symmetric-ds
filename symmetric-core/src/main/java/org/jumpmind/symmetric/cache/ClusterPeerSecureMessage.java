@@ -41,7 +41,7 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
     private static final long serialVersionUID = 1L;
     private static final int FORMAT = 20260611;
 
-    public enum Type {
+    public enum EventType {
         PEER_JOINING, PEER_HEARTBEAT, PEER_LEAVING
     }
 
@@ -122,4 +122,6 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
     public boolean isStale(long now, long staleThresholdMs) {
         return now - timestamp > staleThresholdMs;
     }
+
+    public abstract EventType getEventType();
 }
