@@ -23,11 +23,24 @@ package org.jumpmind.symmetric.cache;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import org.jumpmind.security.ISecurityService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class ClusterPeerStateMessageTest {
     private static final long THRESHOLD_MS = 9000L;
+
+    @BeforeEach
+    public void setUp() {
+        ISecurityService securityService = mock(ISecurityService.class);
+        when(securityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        when(securityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        ClusterPeerSecureMessage.setSecurityService(securityService);
+    }
 
     private ClusterPeerStateMessage heartbeat() {
         return new ClusterPeerStateMessage(ClusterPeerSecureMessage.EventType.PEER_HEARTBEAT, "server1", "inst1", "1.0");

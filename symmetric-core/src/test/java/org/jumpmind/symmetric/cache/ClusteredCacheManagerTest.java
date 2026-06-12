@@ -23,12 +23,16 @@ package org.jumpmind.symmetric.cache;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
 
+import org.jumpmind.security.ISecurityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +46,10 @@ public class ClusteredCacheManagerTest {
     @BeforeEach
     @SuppressWarnings("unchecked")
     public void setUp() throws Exception {
+        ISecurityService securityService = mock(ISecurityService.class);
+        when(securityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        when(securityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        ClusterPeerSecureMessage.setSecurityService(securityService);
         Constructor<ClusteredCacheManager> ctor = ClusteredCacheManager.class.getDeclaredConstructor();
         ctor.setAccessible(true);
         manager = ctor.newInstance();
