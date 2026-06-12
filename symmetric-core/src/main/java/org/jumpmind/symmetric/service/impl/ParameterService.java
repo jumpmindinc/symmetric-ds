@@ -39,7 +39,6 @@ import org.jumpmind.symmetric.config.IParameterSaveFilter;
 import org.jumpmind.symmetric.model.DatabaseParameter;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IParameterService;
-import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 
 /**
  * @see IParameterService
@@ -191,7 +190,6 @@ public class ParameterService extends AbstractParameterService implements IParam
         TypedProperties p = this.factory.reload();
         p.putAll(systemProperties);
         p.putAll(rereadDatabaseParameters(p));
-        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(p, true);
         if (p.is(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)
                 && p.is(ParameterConstants.CLUSTER_STAGING_ENABLED, true)
                 && p.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true)) {
@@ -199,6 +197,7 @@ public class ParameterService extends AbstractParameterService implements IParam
             initialLoadUseExtractJobOverridden = true;
         }
         rereadOfflineNodeParameters();
+        // p = auditor.auditParameters(p);
         return p;
     }
 
@@ -269,7 +268,7 @@ public class ParameterService extends AbstractParameterService implements IParam
         log.debug("Combined hash of {} parameters={}", parameterNames.length, combinedHash);
         return combinedHash;
     }
-    
+
     public boolean isInitialLoadUseExtractJobOverridden() {
         return initialLoadUseExtractJobOverridden;
     }

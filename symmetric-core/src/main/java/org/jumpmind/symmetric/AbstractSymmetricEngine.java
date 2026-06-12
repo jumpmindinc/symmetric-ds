@@ -858,12 +858,12 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     protected void checkClusteredExtractJobAllowed(Node node) {
         if (parameterService.isInitialLoadUseExtractJobOverridden()) {
-            throw new SymmetricException(String.format(
-                    "Node '%s' is configured with conflicting parameters. The initial load extract job "
+            log.error(
+                    "Node {} is configured with conflicting parameters. The initial load extract job "
                             + "cannot be used when cluster locking is enabled but staging is not clustered. "
-                            + "One of these parameters needs to be changed: %s=true, %s=true, %s=false",
+                            + "One of these parameters needs to be changed: {}=true, {}=true, {}=false",
                     node != null ? node.getNodeId() : "null", ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB,
-                    ParameterConstants.CLUSTER_LOCKING_ENABLED, ParameterConstants.CLUSTER_STAGING_ENABLED));
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED, ParameterConstants.CLUSTER_STAGING_ENABLED);
         }
     }
 
@@ -921,7 +921,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         } else {
             log.error("Found {} bad node securities.  Removing identity and attempting re-registration to fix them.  "
                     + "You may need to approve the registration request.  Nodes affected: {}", badNodeSecurities.size(),
-    nodeIds);
+                    nodeIds);
             nodeService.deleteIdentity();
             return null;
         }
