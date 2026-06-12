@@ -20,34 +20,34 @@
  */
 package org.jumpmind.symmetric.cache;
 
-public class ClusterPeerStateMessage extends ClusterPeerSecureMessage {
+public class ClusterPeerStatusMessage extends ClusterPeerSecureMessage {
     private static final long serialVersionUID = 1L;
-    private transient EventType cachedEventType;
+    public static final String EVENT_PEER_JOINING = "PEER_JOINING";
+    public static final String EVENT_PEER_HEARTBEAT = "PEER_HEARTBEAT";
+    public static final String EVENT_PEER_LEAVING = "PEER_LEAVING";
+    private transient String cachedEventType;
     private transient String cachedInstanceId;
-    private transient boolean decrypted;
 
-    public ClusterPeerStateMessage(EventType type, String serverId, String instanceId, String version) {
-        this(type, serverId, instanceId, version, System.currentTimeMillis());
+    public ClusterPeerStatusMessage(String eventType, String serverId, String instanceId, String version) {
+        this(eventType, serverId, instanceId, version, System.currentTimeMillis());
     }
 
-    private ClusterPeerStateMessage(EventType type, String serverId, String instanceId, String version, long timestamp) {
-        super(serverId, version, timestamp, type.name() + "|" + instanceId);
-        this.cachedEventType = type;
+    private ClusterPeerStatusMessage(String eventType, String serverId, String instanceId, String version, long timestamp) {
+        super(serverId, version, timestamp, eventType + "|" + instanceId);
+        this.cachedEventType = eventType;
         this.cachedInstanceId = instanceId;
-        this.decrypted = true;
+        markDecrypted();
     }
 
-    private void ensureDecrypted() {
-        if (!decrypted) {
-            String payload = decryptPayload();
-            String[] parts = payload.split("\\|", 2);
-            cachedEventType = EventType.valueOf(parts[0]);
-            cachedInstanceId = parts[1];
-            decrypted = true;
-        }
+    @Override
+    protected void parsePayload(String plainPayload) {
+        String[] parts = plainPayload.split("\\|", 2);
+        cachedEventType = parts[0];
+        cachedInstanceId = parts[1];
     }
 
-    public EventType getEventType() {
+    @Override
+    public String getEventType() {
         ensureDecrypted();
         return cachedEventType;
     }

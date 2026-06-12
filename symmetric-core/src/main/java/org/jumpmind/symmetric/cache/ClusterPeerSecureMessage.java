@@ -12,7 +12,7 @@
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
+ * software distributed under the LICENSE is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
@@ -36,15 +36,14 @@ import org.jumpmind.security.ISecurityService;
  * Plain fields (serverId, version, timestamp) are visible to peers without decryption so they can route, log, and perform stale checks efficiently.
  * headerChecksum is SHA-256(messageSalt|timestamp|serverId) and is validated first to quickly reject corrupt or malformed messages before decryption is
  * attempted. All remaining message content is encrypted using the shared sym.secret AES key so that rogue nodes cannot read or forge payload details.
+ *
+ * Subclasses define the payload structure by implementing parsePayload(String). The ensureDecrypted() template method lazily decrypts the payload on first
+ * access and caches the result. Subclasses that construct a message locally (not deserialized) must call markDecrypted() in their constructor to skip the
+ * unnecessary decrypt round-trip.
  */
 public abstract class ClusterPeerSecureMessage implements Serializable {
     private static final long serialVersionUID = 1L;
     private static final int FORMAT = 20260611;
-
-    public enum EventType {
-        PEER_JOINING, PEER_HEARTBEAT, PEER_LEAVING
-    }
-
     private static final SecureRandom RANDOM = new SecureRandom();
     private static volatile ISecurityService securityService;
     private final int format;
@@ -54,6 +53,7 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
     private final long messageSalt;
     private final String headerChecksum;
     private final String encryptedPayload;
+    private transient volatile boolean payloadDecrypted;
 
     protected ClusterPeerSecureMessage(String serverId, String version, long timestamp, String plainPayload) {
         this.format = FORMAT;
@@ -68,6 +68,24 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
     public static void setSecurityService(ISecurityService service) {
         securityService = service;
     }
+
+    /** Called by subclass constructors to skip decryption when fields are already populated. */
+    protected final void markDecrypted() {
+        payloadDecrypted = true;
+    }
+
+    /** Lazily decrypts the payload on first access, delegating field population to parsePayload. */
+    protected final void ensureDecrypted() {
+        if (!payloadDecrypted) {
+            parsePayload(decryptPayload());
+            payloadDecrypted = true;
+        }
+    }
+
+    /** Subclass parses the decrypted plaintext string and populates its transient cached fields. */
+    protected abstract void parsePayload(String plainPayload);
+
+    public abstract String getEventType();
 
     private static String computeChecksum(String serverId, long timestamp, long messageSalt) {
         try {
@@ -122,6 +140,4 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
     public boolean isStale(long now, long staleThresholdMs) {
         return now - timestamp > staleThresholdMs;
     }
-
-    public abstract EventType getEventType();
 }

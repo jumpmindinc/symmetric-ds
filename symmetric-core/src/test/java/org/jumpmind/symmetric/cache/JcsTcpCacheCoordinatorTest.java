@@ -1,0 +1,133 @@
+/**
+ * Licensed to JumpMind Inc under one or more contributor
+ * license agreements.  See the NOTICE file distributed
+ * with this work for additional information regarding
+ * copyright ownership.  JumpMind Inc licenses this file
+ * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * (the "License"); you may not use this file except in compliance
+ * with the License.
+ *
+ * You should have received a copy of the GNU General Public License,
+ * version 3.0 (GPLv3) along with this library; if not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.jumpmind.symmetric.cache;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
+import org.jumpmind.security.ISecurityService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+public class JcsTcpCacheCoordinatorTest {
+    private JcsTcpCacheCoordinator coordinator;
+
+    @BeforeEach
+    public void setUp() {
+        ISecurityService mockSecurityService = mock(ISecurityService.class);
+        when(mockSecurityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        when(mockSecurityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
+        ClusterPeerSecureMessage.setSecurityService(mockSecurityService);
+        coordinator = new JcsTcpCacheCoordinator();
+    }
+    // --- addPeer / getPeerIds ---
+
+    @Test
+    public void getPeerIds_emptyByDefault() {
+        assertTrue(coordinator.getPeerIds().isEmpty());
+    }
+
+    @Test
+    public void addPeer_addsToPeerIds() {
+        coordinator.addPeer("server1");
+        assertTrue(coordinator.getPeerIds().contains("server1"));
+        assertEquals(1, coordinator.getPeerIds().size());
+    }
+
+    @Test
+    public void addPeer_duplicate_notAddedTwice() {
+        coordinator.addPeer("server1");
+        coordinator.addPeer("server1");
+        assertEquals(1, coordinator.getPeerIds().size());
+    }
+
+    @Test
+    public void addPeer_multiplePeers_allTracked() {
+        coordinator.addPeer("server1");
+        coordinator.addPeer("server2");
+        coordinator.addPeer("server3");
+        assertEquals(3, coordinator.getPeerIds().size());
+    }
+    // --- getMessage before start ---
+
+    @Test
+    public void getMessage_notStarted_returnsNull() {
+        assertNull(coordinator.getPeerStatusMessage("server1"));
+    }
+    // --- sendMessageToPeers before start ---
+
+    @Test
+    public void sendMessageToPeers_notStarted_doesNotThrow() {
+        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        coordinator.sendMessageToPeers(msg);
+    }
+    // --- stop before start ---
+
+    @Test
+    public void stop_notStarted_doesNotThrow() {
+        coordinator.stop();
+    }
+    // --- buildPeerList ---
+
+    @Test
+    public void buildPeerList_noPeers_returnsEmptyString() throws Exception {
+        setPort(1101);
+        assertEquals("", invokeBuildPeerList());
+    }
+
+    @Test
+    public void buildPeerList_onePeer_returnsHostColonPort() throws Exception {
+        setPort(1101);
+        coordinator.addPeer("host1");
+        assertEquals("host1:1101", invokeBuildPeerList());
+    }
+
+    @Test
+    public void buildPeerList_multiplePeers_returnsCommaSeparated() throws Exception {
+        setPort(2200);
+        coordinator.addPeer("host1");
+        coordinator.addPeer("host2");
+        String result = invokeBuildPeerList();
+        assertTrue(result.contains("host1:2200"));
+        assertTrue(result.contains("host2:2200"));
+        assertTrue(result.contains(","));
+    }
+
+    private String invokeBuildPeerList() throws Exception {
+        Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildPeerList");
+        m.setAccessible(true);
+        return (String) m.invoke(coordinator);
+    }
+
+    private void setPort(int port) throws Exception {
+        Field f = JcsTcpCacheCoordinator.class.getDeclaredField("port");
+        f.setAccessible(true);
+        f.set(coordinator, port);
+    }
+}

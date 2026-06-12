@@ -95,9 +95,22 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     @Override
-    public ClusterPeerSecureMessage getMessage(String peerId) {
+    public ClusterPeerStatusMessage getPeerStatusMessage(String peerId) {
         CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
-        return cache != null ? cache.get(peerId) : null;
+        if (cache == null) {
+            return null;
+        }
+        ClusterPeerSecureMessage msg = cache.get(peerId);
+        return msg instanceof ClusterPeerStatusMessage ? (ClusterPeerStatusMessage) msg : null;
+    }
+
+    @Override
+    public ClusterPeerSecureMessage getMessage(String region, String key) {
+        // Only SYM_CLUSTER_PEERS is managed by this coordinator; additional regions require separate coordinator instances.
+        if (JCS_REGION.equals(region)) {
+            return getPeerStatusMessage(key);
+        }
+        return null;
     }
 
     @Override

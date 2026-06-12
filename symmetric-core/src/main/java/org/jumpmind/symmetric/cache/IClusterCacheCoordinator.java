@@ -37,7 +37,14 @@ public interface IClusterCacheCoordinator {
 
     void sendMessageToPeers(ClusterPeerSecureMessage message);
 
-    ClusterPeerSecureMessage getMessage(String peerId);
+    /** Returns the latest peer status message (heartbeat/join/leave) for the given peer server ID. */
+    ClusterPeerStatusMessage getPeerStatusMessage(String peerId);
+
+    /**
+     * Returns the latest message stored in the given cache region for the given key. Supports future message types beyond peer status (e.g. cache invalidation
+     * notifications keyed by cache variable name). Returns null if the region or key is not found.
+     */
+    ClusterPeerSecureMessage getMessage(String region, String key);
 
     Set<String> getPeerIds();
 }

@@ -113,7 +113,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             running = false;
             return;
         }
-        sendMessageToPeers(ClusterPeerSecureMessage.EventType.PEER_JOINING);
+        sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_JOINING);
         startHeartbeatThread(engine);
     }
 
@@ -122,12 +122,12 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (heartbeatThread != null) {
             heartbeatThread.interrupt();
         }
-        sendMessageToPeers(ClusterPeerSecureMessage.EventType.PEER_LEAVING);
+        sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_LEAVING);
         coordinator.stop();
     }
 
-    private void sendMessageToPeers(ClusterPeerSecureMessage.EventType eventType) {
-        ClusterPeerStateMessage msg = new ClusterPeerStateMessage(eventType, myServerId, myInstanceId, Version.version());
+    private void sendMessageToPeers(String eventType) {
+        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(eventType, myServerId, myInstanceId, Version.version());
         coordinator.sendMessageToPeers(msg);
     }
 
@@ -152,7 +152,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     sleepHeartbeatMs = getHeartbeatMs(engine);
                     staleThresholdMs = getStaleMs(engine);
                 }
-                sendMessageToPeers(ClusterPeerSecureMessage.EventType.PEER_HEARTBEAT);
+                sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT);
                 activeMembers = checkAllClusterPeers(staleThresholdMs);
                 long durationMs = System.currentTimeMillis() - startTime;
                 long adjustedSleepMs = Math.max(0, sleepHeartbeatMs - durationMs);
@@ -193,8 +193,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long now = System.currentTimeMillis();
         int activeMembers = 0;
         for (String peerId : coordinator.getPeerIds()) {
-            ClusterPeerSecureMessage messageFromPeer = coordinator.getMessage(peerId);
-            if (detectPeerStateAndFireEvents(peerId, messageFromPeer, now, staleThresholdMs)) {
+            ClusterPeerSecureMessage messageFromPeer = coordinator.getPeerStatusMessage(peerId);
+            if (dispatchMessage(peerId, messageFromPeer, now, staleThresholdMs)) {
                 activeMembers++;
             }
         }
@@ -210,8 +210,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             log.warn("Rejecting message from cluster peer={} — checksum invalid, message may be corrupt or from an unauthorized host", peerId);
             return false;
         }
-        ClusterPeerSecureMessage.EventType eventType = messageFromPeer.getEventType();
-        if (eventType == ClusterPeerSecureMessage.EventType.PEER_LEAVING) {
+        String eventType = messageFromPeer.getEventType();
+        if (ClusterPeerStatusMessage.EVENT_PEER_LEAVING.equals(eventType)) {
             log.info("Cluster peer sent message about leaving the cluster. Peer={}, Last heartbeat={}, EventType={}",
                     peerId, messageFromPeer.getTimestampAsDate(), eventType);
             return false;
@@ -221,7 +221,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     peerId, messageFromPeer.getTimestampAsDate(), eventType);
             return false;
         }
-        if (eventType == ClusterPeerSecureMessage.EventType.PEER_JOINING) {
+        if (ClusterPeerStatusMessage.EVENT_PEER_JOINING.equals(eventType)) {
             log.info("Cluster peer sent message about joining this cluster. Peer={}, Last heartbeat={}, EventType={}",
                     peerId, messageFromPeer.getTimestampAsDate(), eventType);
         } else {
@@ -229,6 +229,12 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     peerId, messageFromPeer.getTimestampAsDate(), eventType, now, staleThresholdMs);
         }
         return true;
+    }
+
+    private boolean dispatchMessage(String peerId, ClusterPeerSecureMessage message, long now, long staleThresholdMs) {
+        // Future: route to type-specific handlers based on message.getEventType() or the cache region it arrived from.
+        // Additional coordinator regions (e.g. cache invalidation) would add branches here without changing the state machine.
+        return detectPeerStateAndFireEvents(peerId, message, now, staleThresholdMs);
     }
 
     private boolean detectPeerStateAndFireEvents(String peerId, ClusterPeerSecureMessage messageFromPeer, long now, long staleThresholdMs) {
@@ -252,7 +258,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     protected void onPeerJoined(ClusterPeerSecureMessage msg) {
-        String peerInstanceId = msg instanceof ClusterPeerStateMessage ? ((ClusterPeerStateMessage) msg).getInstanceId() : null;
+        String peerInstanceId = msg instanceof ClusterPeerStatusMessage ? ((ClusterPeerStatusMessage) msg).getInstanceId() : null;
         for (ISymmetricEngine engine : registeredEngines.values()) {
             MDC.put("engineName", engine.getParameterService().getEngineName());
             String myInstanceId = engine.getClusterService().getInstanceId();

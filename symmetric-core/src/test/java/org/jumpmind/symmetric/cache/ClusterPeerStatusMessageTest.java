@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -31,7 +32,7 @@ import org.jumpmind.security.ISecurityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class ClusterPeerStateMessageTest {
+public class ClusterPeerStatusMessageTest {
     private static final long THRESHOLD_MS = 9000L;
 
     @BeforeEach
@@ -42,34 +43,49 @@ public class ClusterPeerStateMessageTest {
         ClusterPeerSecureMessage.setSecurityService(securityService);
     }
 
-    private ClusterPeerStateMessage heartbeat() {
-        return new ClusterPeerStateMessage(ClusterPeerSecureMessage.EventType.PEER_HEARTBEAT, "server1", "inst1", "1.0");
+    private ClusterPeerStatusMessage heartbeat() {
+        return new ClusterPeerStatusMessage(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+    }
+
+    @Test
+    public void eventTypeConstants_areNonNull() {
+        assertNotNull(ClusterPeerStatusMessage.EVENT_PEER_JOINING);
+        assertNotNull(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT);
+        assertNotNull(ClusterPeerStatusMessage.EVENT_PEER_LEAVING);
+    }
+
+    @Test
+    public void getEventType_returnsConstructedType() {
+        assertEquals(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, heartbeat().getEventType());
+    }
+
+    @Test
+    public void getInstanceId_returnsConstructedInstance() {
+        assertEquals("inst1", heartbeat().getInstanceId());
     }
 
     @Test
     public void isStaleReturnsTrueWhenAgeExceedsThreshold() {
-        ClusterPeerStateMessage msg = heartbeat();
+        ClusterPeerStatusMessage msg = heartbeat();
         long now = System.currentTimeMillis() + THRESHOLD_MS + 1;
         assertTrue(msg.isStale(now, THRESHOLD_MS));
     }
 
     @Test
     public void isStaleReturnsFalseWhenAgeEqualsThreshold() {
-        ClusterPeerStateMessage msg = heartbeat();
+        ClusterPeerStatusMessage msg = heartbeat();
         long now = msg.getTimestamp() + THRESHOLD_MS;
         assertFalse(msg.isStale(now, THRESHOLD_MS));
     }
 
     @Test
     public void isStaleReturnsFalseWhenFresh() {
-        ClusterPeerStateMessage msg = heartbeat();
-        assertFalse(msg.isStale(System.currentTimeMillis(), THRESHOLD_MS));
+        assertFalse(heartbeat().isStale(System.currentTimeMillis(), THRESHOLD_MS));
     }
 
     @Test
     public void getTimestampAsDateReturnsNonEmptyString() {
-        ClusterPeerStateMessage msg = heartbeat();
-        String date = msg.getTimestampAsDate();
+        String date = heartbeat().getTimestampAsDate();
         assertNotNull(date);
         assertFalse(date.isEmpty());
     }
