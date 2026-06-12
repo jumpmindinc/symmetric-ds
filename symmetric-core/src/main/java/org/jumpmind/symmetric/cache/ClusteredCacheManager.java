@@ -128,9 +128,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         sendMessageToPeers(ClusterPeerSecureMessage.Type.PEER_LEAVING, lastEngine);
         if (jcsCacheManager != null) {
+            jcsCacheManager.shutDown();
             jcsCacheManager = null;
             peerHeartbeatCache = null;
-            jcsCacheManager.shutDown();
         }
     }
 
@@ -230,19 +230,21 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         log.debug("Started cluster peer heartbeat thread = {}", THREAD_NAME_HEARTBEAT);
         while (running) {
             try {
+                long startTime = System.currentTimeMillis();
                 int activeMembers = 0;
                 long staleThresholdMs = 0;
                 ISymmetricEngine engine = getAnyEngine();
                 if (engine != null) {
-                    MDC.put("engineName", engine.getParameterService().getEngineName());
                     sleepMs = getHeartbeatMs(engine);
                     sendMessageToPeers(ClusterPeerSecureMessage.Type.PEER_HEARTBEAT, engine);
                     staleThresholdMs = 3 * engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS, 3000L);
                     activeMembers = checkAllClusterPeers(engine, staleThresholdMs);
                 }
-                log.debug("Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, staleThresholdMs={}, sleepMs={}",
-                        activeMembers, knownPeers.size(), myServerId, staleThresholdMs, sleepMs);
-                Thread.sleep(sleepMs);
+                long durationMs = System.currentTimeMillis() - startTime;
+                long adjustedSleepMs = Math.max(0, sleepMs - durationMs);
+                log.debug("Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
+                        activeMembers, knownPeers.size(), myServerId, staleThresholdMs, durationMs, adjustedSleepMs);
+                Thread.sleep(adjustedSleepMs);
             } catch (InterruptedException ex) {
                 if (log.isDebugEnabled()) {
                     log.debug("Cluster peer heartbeat thread interrupted, shutting down.", ex);
