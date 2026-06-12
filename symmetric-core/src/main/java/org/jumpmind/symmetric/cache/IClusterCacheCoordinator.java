@@ -20,6 +20,8 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import java.util.Set;
+
 import org.jumpmind.symmetric.ISymmetricEngine;
 
 /**
@@ -36,4 +38,6 @@ public interface IClusterCacheCoordinator {
     void sendMessageToPeers(ClusterPeerSecureMessage message);
 
     ClusterPeerSecureMessage getMessage(String peerId);
+
+    Set<String> getPeerIds();
 }
