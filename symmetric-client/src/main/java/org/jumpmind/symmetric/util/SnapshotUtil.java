@@ -58,7 +58,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.sql.DataSource;
 
-import org.jumpmind.db.util.IPooledDataSource;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -74,6 +73,7 @@ import org.jumpmind.db.model.View;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.Row;
+import org.jumpmind.db.util.IPooledDataSource;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.extension.IProgressListener;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -136,7 +136,8 @@ public class SnapshotUtil {
         File tmpDir = new File(parameterService.getTempDirectory(), dirName);
         tmpDir.mkdirs();
         log.info("Creating snapshot file in " + tmpDir.getAbsolutePath());
-        int stepNumber = 0, totalSteps = 36;
+        int stepNumber = 0;
+        int totalSteps = 37;
         checkpoint(engine, listener, stepNumber++, totalSteps);
         try {
             log.info("Calling beforeSnapshot()");
@@ -331,6 +332,16 @@ public class SnapshotUtil {
             extract(export, 5000, "order by relative_dir, file_name", new File(exportDir, "file_snapshot.csv"),
                     TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_SNAPSHOT));
         }
+        log.info("Writing runtime data - metrics");
+        checkpoint(engine, listener, stepNumber++, totalSteps);
+        extract(export, 10000, "order by last_update_time desc", new File(exportDir, "metric_key.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_METRIC_KEY));
+        extract(export, 10000, "order by create_time desc", new File(exportDir, "metric_context.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_METRIC_CONTEXT));
+        extract(export, 10000, "order by interval_start_time desc", new File(exportDir, "metric_stats_float64.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_METRIC_STATS_FLOAT64));
+        extract(export, 10000, "order by interval_start_time desc", new File(exportDir, "metric_stats_int64.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_METRIC_STATS_INT64));
         log.info("Writing runtime data - export config");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, new File(exportDir, "channel.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CHANNEL));
