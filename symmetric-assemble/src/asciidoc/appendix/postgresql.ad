@@ -70,7 +70,7 @@ GRANT ALL ON ALL FUNCTIONS IN SCHEMA {SYMMETRIC_SCHEMA} TO  {APPLICATION USER}
 
 ----
 
-NOTE: To execute `DROP TRIGGER` commands, the SymmetricDS database account must be the owner of all table for which the trigger is defined (configured for replication) or it should can have SUPERUSER privileges. To works around this a role can be created for SymmetricDS database account that inherits from the role that already owns all business application tables.
+NOTE: To execute `DROP TRIGGER` commands, the SymmetricDS database account must be the owner of all tables for which the trigger is defined (configured for replication) or it should have the SUPERUSER privilege. To work around this a role can be created for SymmetricDS database account that inherits from the role that already owns all business application tables.
 See the https://www.postgresql.org/docs/current/sql-droptrigger.html[PostgreSQL DROP TRIGGER documentation] for more information. 
 
 
