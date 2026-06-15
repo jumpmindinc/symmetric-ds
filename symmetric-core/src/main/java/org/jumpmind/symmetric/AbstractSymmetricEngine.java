@@ -857,7 +857,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     protected void checkClusteredExtractJobAllowed(Node node) {
-        if (parameterService.isInitialLoadUseExtractJobOverridden()) {
+        if (parameterService.getInitialLoadUseExtractJobOverridden()) {
             log.error(
                     "Node {} is configured with conflicting parameters. The initial load extract job "
                             + "cannot be used when cluster locking is enabled but staging is not clustered. "

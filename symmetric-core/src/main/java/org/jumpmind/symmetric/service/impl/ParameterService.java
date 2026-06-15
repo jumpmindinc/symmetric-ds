@@ -50,13 +50,15 @@ public class ParameterService extends AbstractParameterService implements IParam
     private ISqlTemplate sqlTemplate;
     private Date lastUpdateTime;
     private List<DatabaseParameter> offlineParameters;
-    protected volatile boolean initialLoadUseExtractJobOverridden = false;
+    protected volatile boolean isInitialLoadUseExtractJobOverridden = false;
+    private List<IParameterAuditor> auditors;
 
     public ParameterService(IDatabasePlatform platform, ITypedPropertiesFactory factory, String tablePrefix) {
         this.tablePrefix = SqlUtils.sanitizeTablePrefix(tablePrefix);
         this.factory = factory;
         this.sql = new ParameterServiceSqlMap(platform, tablePrefix);
         this.sqlTemplate = platform.getSqlTemplate();
+        this.auditors = List.of(new ClusteredExtractJobParameterAuditor());
     }
 
     @Override
@@ -190,14 +192,11 @@ public class ParameterService extends AbstractParameterService implements IParam
         TypedProperties p = this.factory.reload();
         p.putAll(systemProperties);
         p.putAll(rereadDatabaseParameters(p));
-        if (p.is(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)
-                && p.is(ParameterConstants.CLUSTER_STAGING_ENABLED, true)
-                && p.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true)) {
-            p.setProperty(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, "false");
-            initialLoadUseExtractJobOverridden = true;
-        }
         rereadOfflineNodeParameters();
-        // p = auditor.auditParameters(p);
+        setInitialLoadUseExtractJobOverriden(false);
+        for (IParameterAuditor auditor : auditors) {
+            auditor.audit(p, this);
+        }
         return p;
     }
 
@@ -269,7 +268,11 @@ public class ParameterService extends AbstractParameterService implements IParam
         return combinedHash;
     }
 
-    public boolean isInitialLoadUseExtractJobOverridden() {
-        return initialLoadUseExtractJobOverridden;
+    public boolean getInitialLoadUseExtractJobOverridden() {
+        return isInitialLoadUseExtractJobOverridden;
+    }
+    
+    public void setInitialLoadUseExtractJobOverriden(boolean overriden) {
+    		isInitialLoadUseExtractJobOverridden = overriden;
     }
 }
