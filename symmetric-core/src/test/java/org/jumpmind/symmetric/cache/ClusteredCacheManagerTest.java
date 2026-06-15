@@ -128,7 +128,6 @@ public class ClusteredCacheManagerTest {
         f.setAccessible(true);
         return (boolean) f.get(manager);
     }
-    // --- registerEngine ---
 
     @Test
     public void registerEngine_firstEngine_startsCoordinator() throws Exception {
@@ -147,7 +146,6 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(engine2);
         verify(mockCoordinator, times(1)).start(any());
     }
-    // --- unregisterEngine ---
 
     @Test
     public void unregisterEngine_lastEngine_stopsCoordinator() throws Exception {
@@ -168,7 +166,6 @@ public class ClusteredCacheManagerTest {
         manager.unregisterEngine(engine2);
         verify(mockCoordinator, never()).stop();
     }
-    // --- addPeer ---
 
     @Test
     public void addPeer_null_ignored() {
@@ -189,7 +186,6 @@ public class ClusteredCacheManagerTest {
         manager.addPeer("server2");
         verify(mockCoordinator).addPeer("server2");
     }
-    // --- getActiveServerIds ---
 
     @Test
     public void getActiveServerIds_emptyStateMap_returnsEmpty() {
@@ -207,7 +203,6 @@ public class ClusteredCacheManagerTest {
         assertTrue(active.contains("server3"));
         assertFalse(active.contains("server2"));
     }
-    // --- isOwnServerId ---
 
     @Test
     public void isOwnServerId_matchesRegisteredEngine_returnsTrue() throws Exception {
@@ -231,7 +226,6 @@ public class ClusteredCacheManagerTest {
         m.setAccessible(true);
         assertFalse((boolean) m.invoke(manager, "server1"));
     }
-    // --- stopInternal ---
 
     @Test
     public void stopInternal_setsRunningFalseAndCallsCoordinatorStop() throws Exception {
@@ -265,7 +259,6 @@ public class ClusteredCacheManagerTest {
             thread.join(500);
         }
     }
-    // --- sendMessageToPeers ---
 
     @Test
     public void sendMessageToPeers_constructsMessageAndCallsCoordinator() throws Exception {
@@ -275,7 +268,6 @@ public class ClusteredCacheManagerTest {
         m.invoke(manager, ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT);
         verify(mockCoordinator, times(2)).sendMessageToPeers(any(ClusterPeerStatusMessage.class));
     }
-    // --- startHeartbeatThread ---
 
     @Test
     public void startHeartbeatThread_createsDaemonThreadWithCorrectName() throws Exception {
@@ -288,7 +280,6 @@ public class ClusteredCacheManagerTest {
         assertEquals("sym-cluster-heartbeat", thread.getName());
         stopHeartbeatThread();
     }
-    // --- getHeartbeatMs ---
 
     @Test
     public void getHeartbeatMs_nullEngine_returnsDefault() throws Exception {
@@ -304,7 +295,6 @@ public class ClusteredCacheManagerTest {
         m.setAccessible(true);
         assertEquals(5000L, m.invoke(manager, mockEngine));
     }
-    // --- checkAllClusterPeers ---
 
     @Test
     public void checkAllClusterPeers_noPeers_returnsZero() throws Exception {
@@ -336,7 +326,6 @@ public class ClusteredCacheManagerTest {
         m.setAccessible(true);
         assertEquals(0, m.invoke(manager, THRESHOLD_MS));
     }
-    // --- isPeerAlive ---
 
     @Test
     public void isPeerAlive_nullMessage_returnsFalse() throws Exception {
@@ -364,7 +353,6 @@ public class ClusteredCacheManagerTest {
     public void isPeerAlive_peerJoining_returnsTrue() throws Exception {
         assertTrue(callIsPeerAlive("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, "peer1")));
     }
-    // --- detectPeerStateAndFireEvents ---
 
     @Test
     public void detectPeerState_firstHeartbeat_peerMarkedAlive() throws Exception {
@@ -424,7 +412,6 @@ public class ClusteredCacheManagerTest {
         assertTrue(callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, "peer1")));
         assertTrue(peerStateMap.get("peer1"));
     }
-    // --- onPeerJoined ---
 
     @Test
     public void onPeerJoined_differentInstanceWithLockingEnabled_doesNotShutdown() throws Exception {
@@ -441,12 +428,12 @@ public class ClusteredCacheManagerTest {
     @Test
     public void onPeerJoined_sameInstanceDifferentServer_triggersShutdown() throws Exception {
         manager.registerEngine(mockEngine);
+        suppressExit();
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", "instance1", "1.0");
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);
-        Thread.sleep(100);
         verify(mockEngine).stop();
     }
 
@@ -454,15 +441,21 @@ public class ClusteredCacheManagerTest {
     public void onPeerJoined_clusterLockingDisabled_triggersShutdown() throws Exception {
         when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
         manager.registerEngine(mockEngine);
+        suppressExit();
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", "other-instance", "1.0");
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);
-        Thread.sleep(100);
         verify(mockEngine).stop();
     }
-    // --- onPeerCrashed ---
+
+    private void suppressExit() throws Exception {
+        Field f = ClusteredCacheManager.class.getDeclaredField("exitAction");
+        f.setAccessible(true);
+        f.set(manager, (Runnable) () -> {
+        });
+    }
 
     @Test
     public void onPeerCrashed_clearsLocksOnAllEngines() throws Exception {
@@ -473,7 +466,6 @@ public class ClusteredCacheManagerTest {
         verify(mockClusterService).clearLocksForServer("crashed-server");
         verify(mockNodeCommService).clearLocksForServer("crashed-server");
     }
-    // --- getAnyEngine ---
 
     @Test
     public void getAnyEngine_noEngines_returnsNull() throws Exception {

@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Properties;
 
 import org.jumpmind.security.ISecurityService;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +46,6 @@ public class JcsTcpCacheCoordinatorTest {
         ClusterPeerSecureMessage.setSecurityService(mockSecurityService);
         coordinator = new JcsTcpCacheCoordinator();
     }
-    // --- addPeer / getPeerIds ---
 
     @Test
     public void getPeerIds_emptyByDefault() {
@@ -73,13 +73,11 @@ public class JcsTcpCacheCoordinatorTest {
         coordinator.addPeer("server3");
         assertEquals(3, coordinator.getPeerIds().size());
     }
-    // --- getMessage before start ---
 
     @Test
     public void getMessage_notStarted_returnsNull() {
         assertNull(coordinator.getPeerStatusMessage("server1"));
     }
-    // --- sendMessageToPeers before start ---
 
     @Test
     public void sendMessageToPeers_notStarted_doesNotThrow() {
@@ -87,13 +85,11 @@ public class JcsTcpCacheCoordinatorTest {
                 ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         coordinator.sendMessageToPeers(msg);
     }
-    // --- stop before start ---
 
     @Test
     public void stop_notStarted_doesNotThrow() {
         coordinator.stop();
     }
-    // --- buildPeerList ---
 
     @Test
     public void buildPeerList_noPeers_returnsEmptyString() throws Exception {
@@ -117,6 +113,44 @@ public class JcsTcpCacheCoordinatorTest {
         assertTrue(result.contains("host1:2200"));
         assertTrue(result.contains("host2:2200"));
         assertTrue(result.contains(","));
+    }
+
+    @Test
+    public void getMessage_knownRegion_notStarted_returnsNull() {
+        assertNull(coordinator.getMessage("SYM_CLUSTER_PEERS", "server1"));
+    }
+
+    @Test
+    public void getMessage_unknownRegion_returnsNull() {
+        assertNull(coordinator.getMessage("OTHER_REGION", "server1"));
+    }
+
+    @Test
+    public void stop_calledTwice_doesNotThrow() {
+        coordinator.stop();
+        coordinator.stop();
+    }
+
+    @Test
+    public void buildJcsProperties_containsRequiredKeys() throws Exception {
+        setPort(1101);
+        Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildJcsProperties", String.class);
+        m.setAccessible(true);
+        Properties props = (Properties) m.invoke(coordinator, "host1:1101");
+        assertTrue(props.containsKey("jcs.region.SYM_CLUSTER_PEERS"));
+        assertTrue(props.containsKey("jcs.auxiliary.LATERAL_TCP"));
+        assertTrue(props.containsKey("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort"));
+        assertEquals("1101", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort"));
+        assertEquals("host1:1101", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpServers"));
+    }
+
+    @Test
+    public void buildJcsProperties_allowGetIsFalse() throws Exception {
+        setPort(1101);
+        Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildJcsProperties", String.class);
+        m.setAccessible(true);
+        Properties props = (Properties) m.invoke(coordinator, "");
+        assertEquals("false", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.AllowGet"));
     }
 
     private String invokeBuildPeerList() throws Exception {

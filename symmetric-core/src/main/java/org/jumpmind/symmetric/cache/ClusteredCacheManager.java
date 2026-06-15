@@ -48,6 +48,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private volatile boolean running;
     private String myServerId;
     private String myInstanceId;
+    Runnable exitAction = () -> System.exit(1);
 
     private ClusteredCacheManager() {
     }
@@ -273,7 +274,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                         + "Multiple SymmetricDS instances cannot share a database without cluster locking! Shutting down.",
                         msg.getServerId());
                 stopRegisteredEngines();
-                System.exit(1);
+                exitAction.run();
                 return;
             }
         }
