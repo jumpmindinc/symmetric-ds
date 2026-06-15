@@ -44,25 +44,31 @@ public class ServletUtils {
      * @return true if the error could be sent to the response
      * @throws IOException
      */
+    private static String unknown = "unknown";
+
+    private ServletUtils() {
+        
+    }
+
     public static boolean sendError(final HttpServletResponse resp, final int statusCode) throws IOException {
         return sendError(resp, statusCode, null);
     }
 
     public static String whereAreYou(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
             ip = request.getHeader("Proxy-Client-IP");
         }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
             ip = request.getHeader("WL-Proxy-Client-IP");
         }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
             ip = request.getHeader("HTTP_CLIENT_IP");
         }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
             ip = request.getHeader("HTTP_X_FORWARDED_FOR");
         }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
             ip = request.getRemoteAddr();
         }
         return ip;
@@ -113,8 +119,8 @@ public class ServletUtils {
     public static boolean sendError(final ServletResponse resp, final int statusCode, final String message)
             throws IOException {
         boolean retVal = false;
-        if (resp instanceof HttpServletResponse) {
-            retVal = sendError((HttpServletResponse) resp, statusCode, message);
+        if (resp instanceof HttpServletResponse httpResponse) {
+            retVal = sendError(httpResponse, statusCode, message);
         }
         return retVal;
     }
@@ -140,7 +146,7 @@ public class ServletUtils {
     }
 
     public static ServerSymmetricEngine findEngine(HttpServletRequest req, ServletContext ctx) {
-        String engineName = getEngineNameFromUrl((HttpServletRequest) req);
+        String engineName = getEngineNameFromUrl(req);
         ServerSymmetricEngine engine = null;
         SymmetricEngineHolder holder = ServletUtils.getSymmetricEngineHolder(ctx);
         if (holder != null) {
@@ -197,14 +203,21 @@ public class ServletUtils {
                 WebConstants.ATTR_ENGINE_HOLDER);
     }
 
-    public static String getEndpointNameFromUrl(HttpServletRequest request) {
+    public static String getEndpointNameFromUrl(HttpServletRequest request, ServletContext ctx) {
         String endpointName = null;
         String normalizedUri = ServletUtils.normalizeRequestUri(request);
-        if (normalizedUri.startsWith("/")) {
-            normalizedUri = normalizedUri.replaceFirst("/" + ServletUtils.getEngineNameFromUrl(request) + "/", "");
-        } else {
-            normalizedUri = normalizedUri.replaceFirst(ServletUtils.getEngineNameFromUrl(request) + "/", "");
+        String engineName = ServletUtils.getEngineNameFromUrl(request);
+        boolean isValid = ((SymmetricEngineHolder) ctx.getAttribute(WebConstants.ATTR_ENGINE_HOLDER)).getEngines().containsKey(engineName);
+        if (!isValid) {
+            throw new IllegalArgumentException("Engine " + engineName + " not found");
         }
+        String regex = null;
+        if (normalizedUri.startsWith("/")) {
+            regex = "/" + engineName + "/";
+        } else {
+            regex = engineName + "/";
+        }
+        normalizedUri = normalizedUri.replaceFirst(regex, "");
         int endIndex = normalizedUri.indexOf("/");
         if (endIndex > 0) {
             endpointName = normalizedUri.substring(0, endIndex);
