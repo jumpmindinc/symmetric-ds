@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -155,7 +156,35 @@ public class SymmetricEngineHolder {
                 }
                 int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT, "5"));
                 ExecutorService executor = Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-startup"));
+                SymmetricEngineStarter registrationStarter = null;
                 for (SymmetricEngineStarter starter : enginesStarting) {
+                    Properties props = new Properties();
+                    try (InputStream is = new FileInputStream(starter.getPropertiesFile())) {
+                        props.load(is);
+                    } catch (IOException e) {
+                        log.warn("Unable to read properties file to determine registration node: {}", starter.getPropertiesFile());
+                    }
+                    String registrationUrl = props.getProperty(ParameterConstants.REGISTRATION_URL, "");
+                    if (StringUtils.isBlank(registrationUrl)) {
+                        registrationStarter = starter;
+                        break;
+                    }
+                }
+                if (registrationStarter != null) {
+                    log.info("Starting registration engine first from {}", registrationStarter.getPropertiesFile());
+                    enginesStarting.remove(registrationStarter);
+                    ExecutorService regExecutor = Executors.newSingleThreadExecutor(new CustomizableThreadFactory("symmetric-engine-startup"));
+                    regExecutor.execute(registrationStarter);
+                    regExecutor.shutdown();
+                    try {
+                        regExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+                    } catch (InterruptedException e) {
+                        log.warn("Interrupted while waiting for registration engine to start", e);
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                for (SymmetricEngineStarter starter : enginesStarting) {
+                    log.info("Now starting remaining engines");
                     executor.execute(starter);
                 }
                 executor.shutdown();
