@@ -32,6 +32,7 @@ import java.net.NetworkInterface;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Properties;
@@ -303,20 +304,20 @@ public class AppUtils {
     }
 
     public static File resolveZipEntry(File toDir, ZipEntry entry) throws IOException {
-        File file = new File(toDir, entry.getName());
-        if (file.getCanonicalPath().startsWith(toDir.getCanonicalPath() + File.separator)) {
-            return file;
+        Path targetDir = toDir.toPath().toAbsolutePath().normalize();
+        Path entryPath = targetDir.resolve(entry.getName()).normalize();
+        if (!entryPath.startsWith(targetDir)) {
+            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
         }
-        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+        return entryPath.toFile();
     }
 
     public static File resolveZipEntry(ZipEntry entry) throws IOException {
-        File file = new File(entry.getName());
-        String canonical = file.getCanonicalPath();
-        if (canonical.equals(file.getAbsolutePath())) {
-            return new File(canonical);
+        Path entryPath = Path.of(entry.getName()).normalize();
+        if (!entryPath.equals(Path.of(entry.getName()))) {
+            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
         }
-        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+        return entryPath.toFile();
     }
 
     public static void unzip(InputStream in, File toDir) {
