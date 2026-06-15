@@ -40,11 +40,19 @@ jobs:
       - name: Test with Gradle
         if: ${{ inputs.skip-tests != 'true' }}
         run: |
-          ./gradlew test
+          ./gradlew test codeCoverageReport
         working-directory: symmetric-assemble
 
       - name: Style check with Gradle
         if: ${{ inputs.skip-style-check != 'true' }}
         run: |
           ./gradlew spotlessJavaCheck
-        working-directory: symmetric-assemble  
+        working-directory: symmetric-assemble
+
+      - name: Upload JaCoCo unit test coverage report
+        if: ${{ inputs.skip-tests != 'true' }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: jacoco-unit-test-coverage-report
+          path: symmetric-assemble/build/reports/jacoco/codeCoverageReport/
+          retention-days: 3
