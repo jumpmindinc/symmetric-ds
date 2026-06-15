@@ -95,14 +95,12 @@ class AppUtilsTest {
 
     @Test
     void testAssertPathWithinDirectory_escapesDirectory() {
-        assertThrows(IOException.class, () ->
-                AppUtils.assertPathWithinDirectory(Path.of("/etc/passwd"), Path.of("/tmp/a"), "../../etc/passwd"));
+        assertThrows(IOException.class, () -> AppUtils.assertPathWithinDirectory(Path.of("/etc/passwd"), Path.of("/tmp/a"), "../../etc/passwd"));
     }
 
     @Test
     void testAssertPathWithinDirectory_exactDirectoryMatch() {
-        assertThrows(IOException.class, () ->
-                AppUtils.assertPathWithinDirectory(Path.of("/tmp"), Path.of("/tmp/a"), ".."));
+        assertThrows(IOException.class, () -> AppUtils.assertPathWithinDirectory(Path.of("/tmp"), Path.of("/tmp/a"), ".."));
     }
 
     @Test
