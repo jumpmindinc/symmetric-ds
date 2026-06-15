@@ -20,7 +20,6 @@
  */
 package org.jumpmind.symmetric.cache;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -262,23 +261,30 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         for (ISymmetricEngine engine : registeredEngines.values()) {
             MDC.put("engineName", engine.getParameterService().getEngineName());
             String myInstanceId = engine.getClusterService().getInstanceId();
-            if (peerInstanceId != null && myInstanceId != null && myInstanceId.equals(peerInstanceId)
-                    && !engine.getClusterService().getServerId().equals(msg.getServerId())) {
-                log.error("Detected another host is already running for the same instance of SymmetricDS. Shutting down.");
-                Collection<ISymmetricEngine> engines = registeredEngines.values();
-                new Thread(() -> engines.forEach(ISymmetricEngine::stop), "sym-cluster-shutdown").start();
-                return;
+            if (peerInstanceId != null) {
+                if (myInstanceId.equals(peerInstanceId)) {
+                    log.info("Detected another host is already running for the same instance of SymmetricDS.");
+                } else {
+                    log.warn("Detected another host is already running with a different instance of SymmetricDS.");
+                }
             }
             if (!engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
-                log.error(
-                        "Detected cluster peer {} but cluster.lock.enabled=false. Multiple SymmetricDS instances cannot share a database (and stating area) without cluster locking. Shutting down.",
+                log.error("Detected another cluster peer {} but cluster.lock.enabled=false. "
+                        + "Multiple SymmetricDS instances cannot share a database without cluster locking! Shutting down.",
                         msg.getServerId());
-                Collection<ISymmetricEngine> engines = registeredEngines.values();
-                new Thread(() -> engines.forEach(ISymmetricEngine::stop), "sym-cluster-shutdown").start();
+                stopRegisteredEngines();
+                System.exit(1);
                 return;
             }
         }
         log.info("Cluster peer joined: serverId={} version={}", msg.getServerId(), msg.getVersion());
+    }
+
+    private void stopRegisteredEngines() {
+        for (ISymmetricEngine engine : registeredEngines.values()) {
+            MDC.put("engineName", engine.getParameterService().getEngineName());
+            engine.stop();
+        }
     }
 
     protected void onPeerCrashed(String serverId) {
