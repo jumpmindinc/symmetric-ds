@@ -136,9 +136,9 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         props.setProperty("jcs.default", "");
         props.setProperty("jcs.region." + JCS_REGION, "LATERAL_TCP");
         props.setProperty("jcs.auxiliary.LATERAL_TCP",
-                "org.apache.commons.jcs3.auxiliary.lateral.tcp.LateralTCPCacheFactory");
+                "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.LateralTCPCacheFactory");
         props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes",
-                "org.apache.commons.jcs3.auxiliary.lateral.tcp.LateralTCPCacheAttributes");
+                "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes");
         props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort", String.valueOf(port));
         props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpServers", peerList);
         props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes.AllowGet", "false");

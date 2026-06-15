@@ -23,10 +23,13 @@ package org.jumpmind.symmetric.cache;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -36,6 +39,11 @@ import java.util.Properties;
 import org.apache.commons.jcs3.access.CacheAccess;
 import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
 import org.jumpmind.security.ISecurityService;
+import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ServerConstants;
+import org.jumpmind.symmetric.service.IClusterService;
+import org.jumpmind.symmetric.service.IParameterService;
+import org.mockito.MockedStatic;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -191,6 +199,64 @@ public class JcsTcpCacheCoordinatorTest {
         doThrow(new RuntimeException("shutdown failed")).when(mockManager).shutDown();
         setJcsCacheManager(mockManager);
         coordinator.addPeer("server1");
+    }
+
+    @Test
+    public void start_regularPath_initializesManager() {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
+            coordinator.start(buildMockEngine(1101));
+            verify(mockManager).configure(any(Properties.class));
+        }
+    }
+
+    @Test
+    public void start_exceptionDuringConfigure_throwsRuntimeException() {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            doThrow(new RuntimeException("configure failed")).when(mockManager).configure(any(Properties.class));
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
+            assertThrows(RuntimeException.class, () -> coordinator.start(buildMockEngine(1101)));
+        }
+    }
+
+    @Test
+    public void stop_afterStarted_shutsDownManager() {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
+            coordinator.start(buildMockEngine(1101));
+            coordinator.stop();
+            verify(mockManager).shutDown();
+            assertNull(coordinator.getPeerStatusMessage("server1"));
+        }
+    }
+
+    @Test
+    public void reinitJcs_regularPath_shutsDownAndReinitsManager() {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager firstManager = mock(CompositeCacheManager.class);
+            CompositeCacheManager secondManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance())
+                    .thenReturn(firstManager, secondManager);
+            coordinator.start(buildMockEngine(1101));
+            coordinator.addPeer("newPeer");
+            verify(firstManager).shutDown();
+            verify(secondManager).configure(any(Properties.class));
+        }
+    }
+
+    private ISymmetricEngine buildMockEngine(int port) {
+        ISymmetricEngine engine = mock(ISymmetricEngine.class);
+        IClusterService clusterService = mock(IClusterService.class);
+        IParameterService parameterService = mock(IParameterService.class);
+        when(engine.getClusterService()).thenReturn(clusterService);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(clusterService.getServerId()).thenReturn("server1");
+        when(clusterService.getInstanceId()).thenReturn("inst1");
+        when(parameterService.getInt(ServerConstants.CLUSTER_JCS_PORT, 1101)).thenReturn(port);
+        return engine;
     }
 
     private String invokeBuildPeerList() throws Exception {
