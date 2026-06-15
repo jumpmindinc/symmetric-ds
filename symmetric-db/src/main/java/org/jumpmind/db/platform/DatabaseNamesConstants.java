@@ -82,10 +82,10 @@ final public class DatabaseNamesConstants {
     public final static String DATABRICKS = "databricks";
     public static final String AWSSQS = "awssqs";
     public static final String FILESYNC = "filesync";
-    public final static String FILESYNC_LOCAL = "local-filesystem";
-    public final static String FILESYNC_S3 = "filesync-s3";
-    public final static String FILESYNC_SFTP = "filesync-sftp";
-    public final static String FILESYNC_AZURE_BLOB = "filesync-azure-blob";
-    public final static String FILESYNC_GOOGLE_DRIVE = "filesync-google-drive";
-    public final static String FILESYNC_MINIO = "filesync-minio";
+    public static final String FILESYNC_LOCAL = "local-filesystem";
+    public static final String FILESYNC_S3 = "filesync-s3";
+    public static final String FILESYNC_SFTP = "filesync-sftp";
+    public static final String FILESYNC_AZURE_BLOB = "filesync-azure-blob";
+    public static final String FILESYNC_GOOGLE_DRIVE = "filesync-google-drive";
+    public static final String FILESYNC_MINIO = "filesync-minio";
 }
