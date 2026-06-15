@@ -105,7 +105,7 @@ public class ClusterPeerSecureMessageTest {
     public void computeChecksum_noSuchAlgorithm_throwsRuntimeException() {
         try (MockedStatic<MessageDigest> mocked = mockStatic(MessageDigest.class)) {
             mocked.when(() -> MessageDigest.getInstance(anyString()))
-                  .thenThrow(new NoSuchAlgorithmException("mocked"));
+                    .thenThrow(new NoSuchAlgorithmException("mocked"));
             try {
                 new ClusterPeerStatusMessage(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "s1", "i1", "1.0");
                 fail("Expected RuntimeException");
