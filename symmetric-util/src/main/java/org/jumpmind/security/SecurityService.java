@@ -79,7 +79,7 @@ public class SecurityService implements ISecurityService {
                         + File.separator + "cacerts";
             }
         }
-        random  = new SecureRandom();
+        random = new SecureRandom();
     }
 
     protected SecurityService() {
