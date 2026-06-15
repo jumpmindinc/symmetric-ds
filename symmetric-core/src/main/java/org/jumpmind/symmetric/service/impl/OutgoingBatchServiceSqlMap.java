@@ -139,10 +139,12 @@ public class OutgoingBatchServiceSqlMap extends AbstractSqlMap {
                         "where channel_id = 'heartbeat' " +
                         "  and status in ('NE', 'RT', 'RQ') " +
                         "  and batch_id not in ( " +
-                        "      select max(batch_id) from $(outgoing_batch) " +
-                        "       where channel_id = 'heartbeat' " +
-                        "         and status in ('NE', 'RT', 'RQ') " +
-                        "       group by node_id" +
+                        "      select batch_id from ( " +
+                        "          select max(batch_id) as batch_id from $(outgoing_batch) " +
+                        "           where channel_id = 'heartbeat' " +
+                        "             and status in ('NE', 'RT', 'RQ') " +
+                        "           group by node_id " +
+                        "      ) latest_batches " +
                         "  )");
         putSql("countUnsentBatchesBlocked", "select count(*) as batch_count, count(distinct b1.node_id) as node_count from sym_outgoing_batch b1 "
                 + "inner join sym_outgoing_batch b2 "
