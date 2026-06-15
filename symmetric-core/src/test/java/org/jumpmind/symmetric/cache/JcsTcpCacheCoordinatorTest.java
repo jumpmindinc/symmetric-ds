@@ -23,7 +23,9 @@ package org.jumpmind.symmetric.cache;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -31,6 +33,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Properties;
 
+import org.apache.commons.jcs3.access.CacheAccess;
+import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
 import org.jumpmind.security.ISecurityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -153,6 +157,42 @@ public class JcsTcpCacheCoordinatorTest {
         assertEquals("false", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.AllowGet"));
     }
 
+    @Test
+    public void getPeerStatusMessage_cacheHasStatusMessage_returnsIt() throws Exception {
+        ClusterPeerStatusMessage expected = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1", "inst1", "1.0");
+        CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
+        when(mockCache.get("peer1")).thenReturn(expected);
+        setPeerHeartbeatCache(mockCache);
+        assertEquals(expected, coordinator.getPeerStatusMessage("peer1"));
+    }
+
+    @Test
+    public void getPeerStatusMessage_keyNotInCache_returnsNull() throws Exception {
+        CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
+        when(mockCache.get("peer1")).thenReturn(null);
+        setPeerHeartbeatCache(mockCache);
+        assertNull(coordinator.getPeerStatusMessage("peer1"));
+    }
+
+    @Test
+    public void sendMessageToPeers_cachePutThrows_doesNotThrow() throws Exception {
+        CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
+        doThrow(new RuntimeException("JCS failure")).when(mockCache).put(anyString(), any());
+        setPeerHeartbeatCache(mockCache);
+        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        coordinator.sendMessageToPeers(msg);
+    }
+
+    @Test
+    public void reinitJcs_shutdownThrows_doesNotThrow() throws Exception {
+        CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+        doThrow(new RuntimeException("shutdown failed")).when(mockManager).shutDown();
+        setJcsCacheManager(mockManager);
+        coordinator.addPeer("server1");
+    }
+
     private String invokeBuildPeerList() throws Exception {
         Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildPeerList");
         m.setAccessible(true);
@@ -163,5 +203,17 @@ public class JcsTcpCacheCoordinatorTest {
         Field f = JcsTcpCacheCoordinator.class.getDeclaredField("port");
         f.setAccessible(true);
         f.set(coordinator, port);
+    }
+
+    private void setPeerHeartbeatCache(CacheAccess<String, ClusterPeerSecureMessage> cache) throws Exception {
+        Field f = JcsTcpCacheCoordinator.class.getDeclaredField("peerHeartbeatCache");
+        f.setAccessible(true);
+        f.set(coordinator, cache);
+    }
+
+    private void setJcsCacheManager(CompositeCacheManager manager) throws Exception {
+        Field f = JcsTcpCacheCoordinator.class.getDeclaredField("jcsCacheManager");
+        f.setAccessible(true);
+        f.set(coordinator, manager);
     }
 }
