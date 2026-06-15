@@ -427,7 +427,8 @@ public class ClusteredCacheManagerTest {
     // --- onPeerJoined ---
 
     @Test
-    public void onPeerJoined_differentInstance_doesNotShutdown() throws Exception {
+    public void onPeerJoined_differentInstanceWithLockingEnabled_doesNotShutdown() throws Exception {
+        when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
         manager.registerEngine(mockEngine);
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", "other-instance", "1.0");
@@ -442,6 +443,19 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", "instance1", "1.0");
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
+        m.setAccessible(true);
+        m.invoke(manager, joinMsg);
+        Thread.sleep(100);
+        verify(mockEngine).stop();
+    }
+
+    @Test
+    public void onPeerJoined_clusterLockingDisabled_triggersShutdown() throws Exception {
+        when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
+        manager.registerEngine(mockEngine);
+        ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", "other-instance", "1.0");
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);

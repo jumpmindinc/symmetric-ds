@@ -269,6 +269,14 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 new Thread(() -> engines.forEach(ISymmetricEngine::stop), "sym-cluster-shutdown").start();
                 return;
             }
+            if (!engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+                log.error(
+                        "Detected cluster peer {} but cluster.lock.enabled=false. Multiple SymmetricDS instances cannot share a database (and stating area) without cluster locking. Shutting down.",
+                        msg.getServerId());
+                Collection<ISymmetricEngine> engines = registeredEngines.values();
+                new Thread(() -> engines.forEach(ISymmetricEngine::stop), "sym-cluster-shutdown").start();
+                return;
+            }
         }
         log.info("Cluster peer joined: serverId={} version={}", msg.getServerId(), msg.getVersion());
     }
