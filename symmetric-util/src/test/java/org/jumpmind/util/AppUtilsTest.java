@@ -89,6 +89,23 @@ class AppUtilsTest {
     }
 
     @Test
+    void testAssertPathWithinDirectory_validPath() throws IOException {
+        AppUtils.assertPathWithinDirectory(Path.of("/tmp/a/file.txt"), Path.of("/tmp/a"), "file.txt");
+    }
+
+    @Test
+    void testAssertPathWithinDirectory_escapesDirectory() {
+        assertThrows(IOException.class, () ->
+                AppUtils.assertPathWithinDirectory(Path.of("/etc/passwd"), Path.of("/tmp/a"), "../../etc/passwd"));
+    }
+
+    @Test
+    void testAssertPathWithinDirectory_exactDirectoryMatch() {
+        assertThrows(IOException.class, () ->
+                AppUtils.assertPathWithinDirectory(Path.of("/tmp"), Path.of("/tmp/a"), ".."));
+    }
+
+    @Test
     void testGetLocalDateForOffset() {
         Date gmt = AppUtils.getLocalDateForOffset("+00:00");
         Date plusFour = AppUtils.getLocalDateForOffset("+04:00");

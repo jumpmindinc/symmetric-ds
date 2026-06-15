@@ -303,20 +303,23 @@ public class AppUtils {
                 .equalsIgnoreCase(System.getProperty(propName, Boolean.toString(defaultValue)));
     }
 
+    static void assertPathWithinDirectory(Path path, Path directory, String entryName) throws IOException {
+        if (!path.startsWith(directory)) {
+            throw new IOException("Zip Slip attack detected in entry: " + entryName);
+        }
+    }
+
     public static File resolveZipEntry(File toDir, ZipEntry entry) throws IOException {
         Path targetDir = toDir.toPath().toAbsolutePath().normalize();
         Path entryPath = targetDir.resolve(entry.getName()).normalize();
-        if (!entryPath.startsWith(targetDir)) {
-            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
-        }
+        assertPathWithinDirectory(entryPath, targetDir, entry.getName());
         return entryPath.toFile();
     }
 
     public static File resolveZipEntry(ZipEntry entry) throws IOException {
-        Path entryPath = Path.of(entry.getName()).normalize();
-        if (!entryPath.equals(Path.of(entry.getName()))) {
-            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
-        }
+        Path rawPath = Path.of(entry.getName());
+        Path entryPath = rawPath.normalize();
+        assertPathWithinDirectory(rawPath, entryPath, entry.getName());
         return entryPath.toFile();
     }
 
