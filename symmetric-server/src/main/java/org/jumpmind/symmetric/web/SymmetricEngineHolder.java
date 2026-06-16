@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.web;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -69,12 +70,37 @@ import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
+import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.jumpmind.util.CustomizableThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
 public class SymmetricEngineHolder {
+    protected static final String[] ENGINE_MANDATORY_STARTUP_PARAMETERS = {
+            DataSourceProperties.DB_POOL_URL,
+            DataSourceProperties.DB_POOL_DRIVER,
+            ParameterConstants.REGISTRATION_URL,
+            ParameterConstants.NODE_GROUP_ID,
+            ParameterConstants.EXTERNAL_ID,
+            ParameterConstants.SYNC_URL
+    };
+    protected static final String[] ENGINE_OPTIONAL_STARTUP_PARAMETERS = {
+            DataSourceProperties.DB_POOL_USER,
+            DataSourceProperties.DB_POOL_PASSWORD,
+            DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES,
+            DataSourceProperties.DB_POOL_VALIDATION_QUERY,
+            DataSourceProperties.DB_POOL_INIT_SQL,
+            ParameterConstants.AUTO_REGISTER_ENABLED,
+            ParameterConstants.NODE_LOAD_ONLY,
+            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_DRIVER,
+            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_URL,
+            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_USER,
+            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_PASSWORD,
+            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES,
+            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_VALIDATION_QUERY,
+            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_INIT_SQL
+    };
     private final Logger log = LoggerFactory.getLogger(getClass());
     private static Map<String, ServerSymmetricEngine> staticEngines = Collections.synchronizedMap(new HashMap<String, ServerSymmetricEngine>());
     private static Set<SymmetricEngineStarter> staticEnginesStarting = Collections.synchronizedSet(new HashSet<SymmetricEngineStarter>());
@@ -106,6 +132,8 @@ public class SymmetricEngineHolder {
             }
             if (autoCreate) {
                 log.info("Current directory is {}", System.getProperty("user.dir"));
+                TypedProperties envProps = new TypedProperties();
+                TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(envProps, true);
                 if (isMultiServerMode()) {
                     String enginesDirname = PropertiesUtil.getEnginesDir();
                     log.info("Starting in multi-server mode with engines directory at {}", enginesDirname);
@@ -134,7 +162,12 @@ public class SymmetricEngineHolder {
                             }
                         }
                         if (!found) {
-                            log.info("No engine *.properties files found");
+                            if (isEngineConnectionSpecified(envProps)) {
+                                File engineFile = createEngineFileFromEnvironment(envProps);
+                                enginesStarting.add(new SymmetricEngineStarter(engineFile.getAbsolutePath(), this));
+                            } else {
+                                log.info("No engine *.properties files found");
+                            }
                         }
                     } else {
                         log.error("Unable to retrieve engine properties files from default location or from current working directory.  No engines to start.");
@@ -150,7 +183,12 @@ public class SymmetricEngineHolder {
                     if (StringUtils.isNotBlank(singleServerPropertiesFile)) {
                         enginesStarting.add(new SymmetricEngineStarter(singleServerPropertiesFile, this));
                     } else {
-                        log.info("No engine symmetric.properties file found");
+                        if (isEngineConnectionSpecified(envProps)) {
+                            File engineFile = createEngineFileFromEnvironment(envProps);
+                            enginesStarting.add(new SymmetricEngineStarter(engineFile.getAbsolutePath(), this));
+                        } else {
+                            log.info("No engine symmetric.properties file found");
+                        }
                     }
                 }
                 int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT, "5"));
@@ -474,6 +512,44 @@ public class SymmetricEngineHolder {
             properties.setProperty(ParameterConstants.REGISTRATION_URL, "");
         }
         return engineName;
+    }
+
+    private boolean isEngineConnectionSpecified(TypedProperties envProps) {
+        for (String param : ENGINE_MANDATORY_STARTUP_PARAMETERS) {
+            if (param.equals(ParameterConstants.REGISTRATION_URL)) {
+                if (!envProps.containsKey(param)) {
+                    return false;
+                }
+            } else if (StringUtils.isBlank(envProps.getProperty(param))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private File createEngineFileFromEnvironment(TypedProperties envProps) {
+        Properties props = new Properties();
+        for (String param : ENGINE_MANDATORY_STARTUP_PARAMETERS) {
+            props.setProperty(param, envProps.getProperty(param));
+        }
+        for (String param : ENGINE_OPTIONAL_STARTUP_PARAMETERS) {
+            String value = envProps.getProperty(param);
+            if (StringUtils.isNotBlank(value)) {
+                props.setProperty(param, value);
+            }
+        }
+        String engineName = getEngineName(props);
+        props.setProperty(ParameterConstants.ENGINE_NAME, engineName);
+        File enginesDir = new File(PropertiesUtil.getEnginesDir());
+        enginesDir.mkdirs();
+        File engineFile = new File(enginesDir, engineName + ".properties");
+        try (FileOutputStream fos = new FileOutputStream(engineFile)) {
+            props.store(fos, "Auto-generated from environment variables");
+            log.info("Created engine properties file {} from environment variables", engineFile.getAbsolutePath());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create engine properties file " + engineFile, e);
+        }
+        return engineFile;
     }
 
     public boolean hasAnyEngineInitialized() {
