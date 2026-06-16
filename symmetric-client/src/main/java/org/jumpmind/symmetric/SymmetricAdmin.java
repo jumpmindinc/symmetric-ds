@@ -689,7 +689,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         }
     }
 
-    private void restore(CommandLine line, List<String> args) throws IOException {
+    protected void restore(CommandLine line, List<String> args) throws IOException {
         String filename = line.getOptionValue(OPTION_IN);
         if (filename == null) {
             throw new IoException("Input filename must be specified");
