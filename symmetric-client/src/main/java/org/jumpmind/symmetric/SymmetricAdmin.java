@@ -28,6 +28,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
@@ -36,6 +37,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyManagementException;
 import java.security.KeyStore.TrustedCertificateEntry;
 import java.security.NoSuchAlgorithmException;
@@ -699,18 +702,22 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                     continue;
                 }
                 System.out.println("Restoring " + entry.getName());
-                File fileToOpen;
-                if (new File(entry.getName()).isAbsolute()) {
-                    fileToOpen = AppUtils.resolveZipEntry(entry);
-                    fileToOpen.getParentFile().mkdirs();
+                Path entryPath;
+                if (Path.of(entry.getName()).isAbsolute()) {
+                    Path rawPath = Path.of(entry.getName());
+                    entryPath = rawPath.normalize();
+                    AppUtils.assertPathWithinDirectory(rawPath, entryPath, entry.getName());
                 } else {
-                    fileToOpen = AppUtils.resolveZipEntry(symHome, entry);
+                    Path targetDir = symHome.toPath().toAbsolutePath().normalize();
+                    entryPath = targetDir.resolve(entry.getName()).normalize();
+                    AppUtils.assertPathWithinDirectory(entryPath, targetDir, entry.getName());
                 }
-                try (FileOutputStream foutput = new FileOutputStream(fileToOpen)) {
+                Files.createDirectories(entryPath.getParent());
+                try (OutputStream fileOutputStream = Files.newOutputStream(entryPath)) {
                     final byte buffer[] = new byte[4096];
                     int readCount;
                     while ((readCount = zip.read(buffer, 0, buffer.length)) > 0) {
-                        foutput.write(buffer, 0, readCount);
+                        fileOutputStream.write(buffer, 0, readCount);
                     }
                 }
             }
