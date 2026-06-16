@@ -701,7 +701,21 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                     continue;
                 }
                 System.out.println("Restoring " + entry.getName());
-                Path entryPath = resolveFilePath(entry);
+                Path entryPath = null;
+                if (Path.of(entry.getName()).isAbsolute()) {
+                    Path rawPath = Path.of(entry.getName());
+                    entryPath = rawPath.normalize();
+                    if (!entryPath.startsWith(rawPath)) {
+                        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+                    }
+                } else {
+                    File symHome = new File(AppUtils.getSymHome());
+                    Path targetDir = symHome.toPath().toAbsolutePath().normalize();
+                    entryPath = targetDir.resolve(entry.getName()).normalize();
+                    if (!entryPath.startsWith(targetDir)) {
+                        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+                    }
+                }
                 Files.createDirectories(entryPath.getParent());
                 try (OutputStream fileOutputStream = Files.newOutputStream(entryPath)) {
                     final byte buffer[] = new byte[4096];
@@ -711,31 +725,6 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                     }
                 }
             }
-        }
-    }
-
-    protected Path resolveFilePath(ZipEntry entry) throws IOException {
-        return Path.of(entry.getName()).isAbsolute() ? resolveAbsoluteFilePath(entry) : resolveRelativeFilePath(entry);
-    }
-
-    protected Path resolveAbsoluteFilePath(ZipEntry entry) throws IOException {
-        Path rawPath = Path.of(entry.getName());
-        Path entryPath = rawPath.normalize();
-        assertPathWithinDirectory(entryPath, rawPath, entry);
-        return entryPath;
-    }
-
-    protected Path resolveRelativeFilePath(ZipEntry entry) throws IOException {
-        File symHome = new File(AppUtils.getSymHome());
-        Path targetDir = symHome.toPath().toAbsolutePath().normalize();
-        Path entryPath = targetDir.resolve(entry.getName()).normalize();
-        assertPathWithinDirectory(entryPath, targetDir, entry);
-        return entryPath;
-    }
-
-    protected void assertPathWithinDirectory(Path entryPath, Path targetDir, ZipEntry entry) throws IOException {
-        if (!entryPath.startsWith(targetDir)) {
-            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
         }
     }
 
