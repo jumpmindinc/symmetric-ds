@@ -132,7 +132,7 @@ public class ClusteredCacheManagerTest {
     @Test
     public void registerEngine_firstEngine_startsCoordinator() throws Exception {
         manager.registerEngine(mockEngine);
-        verify(mockCoordinator).start(mockEngine);
+        verify(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
@@ -144,7 +144,7 @@ public class ClusteredCacheManagerTest {
         when(engine2.getSecurityService()).thenReturn(mockSecurityService);
         manager.registerEngine(mockEngine);
         manager.registerEngine(engine2);
-        verify(mockCoordinator, times(1)).start(any());
+        verify(mockCoordinator, times(1)).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test

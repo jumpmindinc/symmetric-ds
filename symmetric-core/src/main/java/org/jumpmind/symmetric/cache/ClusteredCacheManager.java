@@ -25,10 +25,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
+import org.jumpmind.symmetric.common.SystemConstants;
+import org.jumpmind.symmetric.service.impl.ClusterService;
+import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -39,6 +45,8 @@ import org.slf4j.MDC;
  * registered engines.
  */
 public class ClusteredCacheManager implements IClusteredCacheManager {
+    public static final long UPGRADE_WAIT_MS = 60_000L;
+    public static final long DEFAULT_HEARTBEAT_MS = 3_000L;
     private static final ClusteredCacheManager GLOBAL_INSTANCE = new ClusteredCacheManager();
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
@@ -47,6 +55,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private final Map<String, Boolean> peerStateMap = new ConcurrentHashMap<>();
     private Thread heartbeatThread;
     private volatile boolean running;
+    private volatile boolean isClusterPeerListenerStarted;
+    private volatile String lastBroadcastEventType = ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT;
+    private final Map<String, String> lastEngineStates = new ConcurrentHashMap<>();
     private String myServerId;
     private String myInstanceId;
     Runnable exitAction = () -> System.exit(1);
@@ -102,20 +113,95 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return false;
     }
 
+    public synchronized void startClusterPeerListener(ISecurityService securityService) {
+        ClusterPeerSecureMessage.setSecurityService(securityService);
+        myInstanceId = ClusterService.initInstanceId(null);
+        myServerId = StringUtils.defaultIfBlank(
+                System.getProperty(SystemConstants.SYSPROP_CLUSTER_SERVER_ID), AppUtils.getHostName());
+        int port = Integer.parseInt(System.getProperty(
+                ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
+        ensurePeerListenerStarted(myServerId, myInstanceId, port);
+    }
+
+    private synchronized void ensurePeerListenerStarted(String serverId, String instanceId, int port) {
+        if (isClusterPeerListenerStarted) {
+            return;
+        }
+        try {
+            coordinator.start(serverId, instanceId, port);
+            isClusterPeerListenerStarted = true;
+        } catch (Exception e) {
+            log.error("Failed to start cluster peer listener: {}", e.getMessage());
+            throw new RuntimeException("Failed to start cluster peer listener on port " + port, e);
+        }
+    }
+
+    public boolean isAnyPeerInState(String eventType) {
+        for (String peerId : coordinator.getPeerIds()) {
+            ClusterPeerStatusMessage msg = coordinator.getPeerStatusMessage(peerId);
+            if (msg != null && eventType.equals(msg.getEventType())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isAnyPeerOnline() {
+        long staleThresholdMs = 3 * DEFAULT_HEARTBEAT_MS;
+        long now = System.currentTimeMillis();
+        for (String peerId : coordinator.getPeerIds()) {
+            if (isPeerAlive(peerId, coordinator.getPeerStatusMessage(peerId), now, staleThresholdMs)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void broadcastPeerState(String eventType) {
+        if (isClusterPeerListenerStarted) {
+            sendMessageToPeers(eventType);
+        }
+    }
+
+    public void broadcastEngineState(String engineName, String engineState) {
+        if (isClusterPeerListenerStarted) {
+            lastEngineStates.put(engineName, engineState);
+            ClusterEngineStateMessage msg = new ClusterEngineStateMessage(
+                    engineState, engineName, myServerId, myInstanceId, Version.version());
+            coordinator.sendEngineStateMessage(msg);
+        }
+    }
+
+    public boolean isAnyPeerWithEngineInState(String engineName, String engineState) {
+        long staleThresholdMs = 3 * DEFAULT_HEARTBEAT_MS;
+        long now = System.currentTimeMillis();
+        for (String peerId : coordinator.getPeerIds()) {
+            ClusterEngineStateMessage msg = coordinator.getEngineStateMessage(peerId, engineName);
+            if (msg != null && engineState.equals(msg.getEngineState())
+                    && !msg.isStale(now, staleThresholdMs)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void startInternal(ISymmetricEngine engine) {
         ClusterPeerSecureMessage.setSecurityService(engine.getSecurityService());
         myServerId = engine.getClusterService().getServerId();
         myInstanceId = engine.getClusterService().getInstanceId();
+        ensurePeerListenerStarted(myServerId, myInstanceId,
+                engine.getParameterService().getInt(ServerConstants.CLUSTER_JCS_PORT, 1101));
         running = true;
-        try {
-            coordinator.start(engine);
-        } catch (Exception e) {
-            log.error("Failed to start cluster coordinator: {}", e.getMessage());
-            running = false;
+        sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);
+        startHeartbeatThread(engine);
+    }
+
+    private synchronized void stopPeerListener() {
+        if (!isClusterPeerListenerStarted) {
             return;
         }
-        sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_JOINING);
-        startHeartbeatThread(engine);
+        coordinator.stop();
+        isClusterPeerListenerStarted = false;
     }
 
     private void stopInternal() {
@@ -124,10 +210,16 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             heartbeatThread.interrupt();
         }
         sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_LEAVING);
-        coordinator.stop();
+        stopPeerListener();
+    }
+
+    private void rebroadcastEngineStates() {
+        new java.util.HashMap<>(lastEngineStates).forEach((name, state) -> coordinator.sendEngineStateMessage(new ClusterEngineStateMessage(
+                state, name, myServerId, myInstanceId, Version.version())));
     }
 
     private void sendMessageToPeers(String eventType) {
+        lastBroadcastEventType = eventType;
         ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(eventType, myServerId, myInstanceId, Version.version());
         coordinator.sendMessageToPeers(msg);
     }
@@ -153,7 +245,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     sleepHeartbeatMs = getHeartbeatMs(engine);
                     staleThresholdMs = getStaleMs(engine);
                 }
-                sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT);
+                sendMessageToPeers(lastBroadcastEventType);
+                rebroadcastEngineStates();
                 activeMembers = checkAllClusterPeers(staleThresholdMs);
                 long durationMs = System.currentTimeMillis() - startTime;
                 long adjustedSleepMs = Math.max(0, sleepHeartbeatMs - durationMs);
@@ -175,7 +268,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private long getHeartbeatMs(ISymmetricEngine engine) {
-        long defaultMs = 3000L;
+        long defaultMs = DEFAULT_HEARTBEAT_MS;
         if (engine == null) {
             return defaultMs;
         }
@@ -222,11 +315,15 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     peerId, messageFromPeer.getTimestampAsDate(), eventType);
             return false;
         }
-        if (ClusterPeerStatusMessage.EVENT_PEER_JOINING.equals(eventType)) {
-            log.info("Cluster peer sent message about joining this cluster. Peer={}, Last heartbeat={}, EventType={}",
+        if (ClusterPeerStatusMessage.EVENT_PEER_JOINING.equals(eventType)
+                || ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING.equals(eventType)) {
+            log.info("Cluster peer is starting up. Peer={}, Last heartbeat={}, EventType={}",
+                    peerId, messageFromPeer.getTimestampAsDate(), eventType);
+        } else if (ClusterPeerStatusMessage.EVENT_PEER_UPGRADING_DB.equals(eventType)) {
+            log.info("Cluster peer is upgrading database. Peer={}, Last heartbeat={}, EventType={}",
                     peerId, messageFromPeer.getTimestampAsDate(), eventType);
         } else {
-            log.debug("Processing heartbeat message from cluster peer={}, Last heartbeat={}, EventType={}, now={}, staleThresholdMs={}",
+            log.debug("Cluster peer heartbeat. Peer={}, Last heartbeat={}, EventType={}, now={}, staleThresholdMs={}",
                     peerId, messageFromPeer.getTimestampAsDate(), eventType, now, staleThresholdMs);
         }
         return true;

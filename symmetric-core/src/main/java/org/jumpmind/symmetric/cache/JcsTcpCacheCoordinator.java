@@ -12,7 +12,7 @@
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
+ * software distributed under the LICENSE is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
@@ -37,25 +37,35 @@ import org.slf4j.LoggerFactory;
  */
 public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
-    private static final int DEFAULT_PORT = 1101;
-    private static final String JCS_REGION = "SYM_CLUSTER_PEERS";
+    static final int DEFAULT_PORT = 1101;
+    private static final String JCS_PEER_REGION = "SYM_CLUSTER_PEERS";
+    private static final String JCS_ENGINE_REGION = "SYM_CLUSTER_ENGINES";
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet();
     private volatile CompositeCacheManager jcsCacheManager;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache;
+    private volatile CacheAccess<String, ClusterEngineStateMessage> engineStateCache;
     private int port;
     private String serverId;
     private String instanceId;
 
     @Override
     public void start(ISymmetricEngine engine) {
-        this.serverId = engine.getClusterService().getServerId();
-        this.instanceId = engine.getClusterService().getInstanceId();
-        this.port = engine.getParameterService().getInt(ServerConstants.CLUSTER_JCS_PORT, DEFAULT_PORT);
+        start(engine.getClusterService().getServerId(),
+                engine.getClusterService().getInstanceId(),
+                engine.getParameterService().getInt(ServerConstants.CLUSTER_JCS_PORT, DEFAULT_PORT));
+    }
+
+    @Override
+    public void start(String serverId, String instanceId, int port) {
+        this.serverId = serverId;
+        this.instanceId = instanceId;
+        this.port = port;
         String peerList = buildPeerList();
         try {
             jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
             jcsCacheManager.configure(buildJcsProperties(peerList));
-            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_REGION));
+            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_PEER_REGION));
+            engineStateCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_ENGINE_REGION));
             log.info("Started JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]", port, serverId, instanceId, peerList);
         } catch (Exception e) {
             log.error("Failed to initialize JCS cluster cache on port {}: {}", port, e.getMessage());
@@ -69,6 +79,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             jcsCacheManager.shutDown();
             jcsCacheManager = null;
             peerHeartbeatCache = null;
+            engineStateCache = null;
         }
     }
 
@@ -95,6 +106,24 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     @Override
+    public void sendEngineStateMessage(ClusterEngineStateMessage message) {
+        CacheAccess<String, ClusterEngineStateMessage> cache = engineStateCache;
+        if (cache == null) {
+            log.debug("Skipping engine state message — JCS not initialized. serverId={}", serverId);
+            return;
+        }
+        String key = message.getServerId() + ":" + message.getEngineName();
+        try {
+            cache.put(key, message);
+            log.debug("Sent engine state message. engineState={}, engineName={}, serverId={}",
+                    message.getEngineState(), message.getEngineName(), message.getServerId());
+        } catch (Exception ex) {
+            log.warn("Failed to send engine state message. engineState={}, engineName={}, serverId={}",
+                    message.getEngineState(), message.getEngineName(), message.getServerId(), ex);
+        }
+    }
+
+    @Override
     public ClusterPeerStatusMessage getPeerStatusMessage(String peerId) {
         CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
         if (cache == null) {
@@ -105,9 +134,17 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     @Override
+    public ClusterEngineStateMessage getEngineStateMessage(String peerId, String engineName) {
+        CacheAccess<String, ClusterEngineStateMessage> cache = engineStateCache;
+        if (cache == null) {
+            return null;
+        }
+        return cache.get(peerId + ":" + engineName);
+    }
+
+    @Override
     public ClusterPeerSecureMessage getMessage(String region, String key) {
-        // Only SYM_CLUSTER_PEERS is managed by this coordinator; additional regions require separate coordinator instances.
-        if (JCS_REGION.equals(region)) {
+        if (JCS_PEER_REGION.equals(region)) {
             return getPeerStatusMessage(key);
         }
         return null;
@@ -124,7 +161,8 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             jcsCacheManager.shutDown();
             jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
             jcsCacheManager.configure(buildJcsProperties(peerList));
-            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_REGION));
+            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_PEER_REGION));
+            engineStateCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_ENGINE_REGION));
             log.info("Reinitialized JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]", port, serverId, instanceId, peerList);
         } catch (Exception e) {
             log.error("Failed to reinitialize JCS cluster cache: {}", e.getMessage());
@@ -134,7 +172,8 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private Properties buildJcsProperties(String peerList) {
         Properties props = new Properties();
         props.setProperty("jcs.default", "");
-        props.setProperty("jcs.region." + JCS_REGION, "LATERAL_TCP");
+        props.setProperty("jcs.region." + JCS_PEER_REGION, "LATERAL_TCP");
+        props.setProperty("jcs.region." + JCS_ENGINE_REGION, "LATERAL_TCP");
         props.setProperty("jcs.auxiliary.LATERAL_TCP",
                 "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.LateralTCPCacheFactory");
         props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes",

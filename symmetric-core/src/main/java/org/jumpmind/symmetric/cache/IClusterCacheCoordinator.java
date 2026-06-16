@@ -31,7 +31,13 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 public interface IClusterCacheCoordinator {
     void start(ISymmetricEngine engine);
 
+    void start(String serverId, String instanceId, int port);
+
     void stop();
+
+    void sendEngineStateMessage(ClusterEngineStateMessage message);
+
+    ClusterEngineStateMessage getEngineStateMessage(String serverId, String engineName);
 
     void addPeer(String serverId);
 

@@ -25,6 +25,8 @@ public class ClusterPeerStatusMessage extends ClusterPeerSecureMessage {
     public static final String EVENT_PEER_JOINING = "PEER_JOINING";
     public static final String EVENT_PEER_HEARTBEAT = "PEER_HEARTBEAT";
     public static final String EVENT_PEER_LEAVING = "PEER_LEAVING";
+    public static final String EVENT_PEER_INITIALIZING = "PEER_INITIALIZING";
+    public static final String EVENT_PEER_UPGRADING_DB = "PEER_UPGRADING_DB";
     private transient String cachedEventType;
     private transient String cachedInstanceId;
 

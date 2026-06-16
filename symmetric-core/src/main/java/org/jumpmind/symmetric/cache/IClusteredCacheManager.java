@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.cache;
 
 import java.util.Set;
 
+import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
 
 public interface IClusteredCacheManager {
@@ -43,4 +44,16 @@ public interface IClusteredCacheManager {
     void addPeer(String serverId);
 
     Set<String> getActiveServerIds();
+
+    void startClusterPeerListener(ISecurityService securityService);
+
+    boolean isAnyPeerInState(String eventType);
+
+    boolean isAnyPeerOnline();
+
+    void broadcastPeerState(String eventType);
+
+    void broadcastEngineState(String engineName, String engineState);
+
+    boolean isAnyPeerWithEngineInState(String engineName, String engineState);
 }

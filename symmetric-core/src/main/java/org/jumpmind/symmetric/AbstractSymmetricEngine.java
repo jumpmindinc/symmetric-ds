@@ -63,7 +63,9 @@ import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.cache.CacheManager;
+import org.jumpmind.symmetric.cache.ClusterEngineStateMessage;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
+import org.jumpmind.symmetric.cache.ClusterPeerStatusMessage;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.model.NodeHost;
@@ -507,19 +509,47 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         isStartupDbParametersDifferentFromLastStart = detectStartupDbParametersDifferentFromLastStart();
         setupDatabase(isStartupDbParametersDifferentFromLastStart);
         parameterService.setDatabaseHasBeenInitialized(true);
-        String databaseVersion = this.getNodeService().findIdentity() != null ? this.getNodeService().findIdentity().getSymmetricVersion() : null;
+        String databaseVersion = waitForClusterPeerUpgradeDatabaseAndGetVersion();
         String softwareVersion = Version.version();
         log.info("SymmetricDS database version : " + databaseVersion);
         log.info("SymmetricDS software version : " + softwareVersion);
         if (databaseVersion != null && !softwareVersion.equals(databaseVersion)) {
             log.info("SymmetricDS database version does not match the current software version, running software upgrade listeners.");
-            List<ISoftwareUpgradeListener> softwareUpgradeListeners = extensionService.getExtensionPointList(ISoftwareUpgradeListener.class);
-            for (ISoftwareUpgradeListener listener : softwareUpgradeListeners) {
-                listener.upgrade(databaseVersion, softwareVersion);
-            }
+            upgradeDatabaseVersion(databaseVersion, softwareVersion);
         }
         parameterService.setDatabaseHasBeenSetup(true);
         dbSetupDone = true;
+    }
+
+    private String getInstalledDatabaseVersion() {
+        Node identity = this.getNodeService().findIdentity();
+        return identity != null ? identity.getSymmetricVersion() : null;
+    }
+
+    private void upgradeDatabaseVersion(String databaseVersion, String softwareVersion) {
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB);
+        try {
+            callUpgradeListeners(databaseVersion, softwareVersion);
+        } catch (Exception ex) {
+            throw new SymmetricException("Failed to upgrade database from version " + databaseVersion
+                    + " to " + softwareVersion, ex);
+        }
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
+    }
+
+    private void callUpgradeListeners(String databaseVersion, String softwareVersion) {
+        List<ISoftwareUpgradeListener> softwareUpgradeListeners = extensionService.getExtensionPointList(ISoftwareUpgradeListener.class);
+        for (ISoftwareUpgradeListener listener : softwareUpgradeListeners) {
+            listener.upgrade(databaseVersion, softwareVersion);
+            String newDatabaseVersion = getInstalledDatabaseVersion();
+            if (databaseVersion.equals(newDatabaseVersion) || log.isDebugEnabled()) {
+                log.debug("Processed database upgrade listener {}. SymmetricDS database version={}, Prior version={}",
+                        listener.getClass().getName(), newDatabaseVersion, databaseVersion);
+            } else {
+                log.info("Processed database upgrade listener {}. SymmetricDS database version={}",
+                        listener.getClass().getName(), newDatabaseVersion);
+            }
+        }
     }
 
     @Override
@@ -723,65 +753,13 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (!starting && !started) {
             try {
                 starting = true;
+                initClusterPeerCoordinator();
                 symmetricDialect.verifyDatabaseIsCompatible();
                 checkForProOnlyDatabase();
                 setup();
                 if (isConfigured()) {
                     Node node = nodeService.findIdentity();
-                    node = checkSystemIntegrity(node);
-                    isInitialized = true;
-                    if (node != null) {
-                        refreshClusterPeers(node.getNodeId());
-                        clusteredCacheManager.registerEngine(this);
-                        log.info(
-                                "Starting registered node [group={}, id={}, nodeId={}]",
-                                new Object[] { node.getNodeGroupId(), node.getNodeId(),
-                                        node.getExternalId() });
-                        boolean force = isStartupDbParametersDifferentFromLastStart
-                                || parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP_FORCE);
-                        if (force || parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP, true)
-                                || triggerRouterService.getActiveTriggerHistories().size() == 0) {
-                            triggerRouterService.syncTriggers(force);
-                        } else {
-                            log.info(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP
-                                    + " is turned off");
-                        }
-                        if (parameterService
-                                .is(ParameterConstants.HEARTBEAT_SYNC_ON_STARTUP, false)
-                                || isBlank(node.getDatabaseType())
-                                || !Strings.CS.equals(node.getSyncUrl(),
-                                        parameterService.getSyncUrl())) {
-                            heartbeat(false);
-                        }
-                        if (parameterService.is(ParameterConstants.AUTO_SYNC_CONFIG_AT_STARTUP, true)) {
-                            pullService.pullConfigData(false);
-                        }
-                    } else {
-                        log.info("Starting unregistered node [group={}, externalId={}]",
-                                parameterService.getNodeGroupId(), parameterService.getExternalId());
-                    }
-                    if (jobManager != null) {
-                        jobManager.init();
-                    }
-                    if (startJobs && jobManager != null) {
-                        jobManager.startJobs();
-                    }
-                    if (parameterService.isRegistrationServer()) {
-                        this.updateService.init();
-                    }
-                    if (isFirstStart) {
-                        isFirstStart = false;
-                    } else {
-                        this.clearCaches();
-                    }
-                    lastRestartTime = new Date();
-                    statisticManager.incrementRestart();
-                    startMetricsAggregation();
-                    started = true;
-                    ApplicationHealthTracker.getTracker().setEngineReadiness(getEngineName(), true);
-                    for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
-                        ext.started(this);
-                    }
+                    startNodeAndJobs(node, startJobs);
                 } else {
                     log.error("Did not start SymmetricDS.  It has not been configured properly");
                 }
@@ -800,6 +778,92 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             log.info(getEngineDescription("NOT STARTED:"));
         }
         return started;
+    }
+
+    private void initClusterPeerCoordinator() {
+        clusteredCacheManager.startClusterPeerListener(securityService);
+        clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
+    }
+
+    private String waitForClusterPeerUpgradeDatabaseAndGetVersion() {
+        long heartbeatMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS,
+                ClusteredCacheManager.DEFAULT_HEARTBEAT_MS);
+        try {
+            log.debug("Waiting {} ms for cluster peer messages to arrive", heartbeatMs);
+            Thread.sleep(heartbeatMs);
+        } catch (InterruptedException e) {
+            log.warn("Interrupted while waiting for cluster peer messages to arrive");
+            Thread.currentThread().interrupt();
+        }
+        String databaseVersion = getInstalledDatabaseVersion();
+        while (clusteredCacheManager.isAnyPeerWithEngineInState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
+            log.info("A cluster peer is upgrading the database. Pausing startup for {} ms.",
+                    ClusteredCacheManager.UPGRADE_WAIT_MS);
+            try {
+                log.info("Waiting for cluster peer to finish database upgrade. Current databaseVersion={}", databaseVersion);
+                Thread.sleep(ClusteredCacheManager.UPGRADE_WAIT_MS);
+                databaseVersion = getInstalledDatabaseVersion();
+            } catch (InterruptedException e) {
+                log.warn("Interrupted while waiting for peer database upgrade to complete. Current databaseVersion={}", databaseVersion);
+                Thread.currentThread().interrupt();
+            }
+        }
+        return databaseVersion;
+    }
+
+    private void startNodeAndJobs(Node node, boolean startJobs) {
+        node = checkSystemIntegrity(node);
+        isInitialized = true;
+        if (node != null) {
+            refreshClusterPeers(node.getNodeId());
+            clusteredCacheManager.registerEngine(this);
+            log.info("Starting registered node [group={}, id={}, nodeId={}]",
+                    new Object[] { node.getNodeGroupId(), node.getNodeId(), node.getExternalId() });
+            boolean force = isStartupDbParametersDifferentFromLastStart
+                    || parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP_FORCE);
+            if (force || parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP, true)
+                    || triggerRouterService.getActiveTriggerHistories().size() == 0) {
+                triggerRouterService.syncTriggers(force);
+            } else {
+                log.info(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP + " is turned off");
+            }
+            if (parameterService.is(ParameterConstants.HEARTBEAT_SYNC_ON_STARTUP, false)
+                    || isBlank(node.getDatabaseType())
+                    || !Strings.CS.equals(node.getSyncUrl(), parameterService.getSyncUrl())) {
+                heartbeat(false);
+            }
+            if (parameterService.is(ParameterConstants.AUTO_SYNC_CONFIG_AT_STARTUP, true)) {
+                pullService.pullConfigData(false);
+            }
+        } else {
+            log.info("Starting unregistered node [group={}, externalId={}]",
+                    parameterService.getNodeGroupId(), parameterService.getExternalId());
+        }
+        if (jobManager != null) {
+            jobManager.init();
+        }
+        if (startJobs && jobManager != null) {
+            jobManager.startJobs();
+        }
+        if (parameterService.isRegistrationServer()) {
+            this.updateService.init();
+        }
+        if (isFirstStart) {
+            isFirstStart = false;
+        } else {
+            this.clearCaches();
+        }
+        lastRestartTime = new Date();
+        statisticManager.incrementRestart();
+        startMetricsAggregation();
+        started = true;
+        clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT);
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_ONLINE);
+        ApplicationHealthTracker.getTracker().setEngineReadiness(getEngineName(), true);
+        for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
+            ext.started(this);
+        }
     }
 
     protected void checkForProOnlyDatabase() {
@@ -1035,6 +1099,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 new Object[] { parameterService == null ? "?" : parameterService.getExternalId(), Version.version(),
                         symmetricDialect == null ? "?" : symmetricDialect.getName() });
         if (clusteredCacheManager != null) {
+            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_OFFLINE);
             clusteredCacheManager.unregisterEngine(this);
         }
         if (jobManager != null) {
