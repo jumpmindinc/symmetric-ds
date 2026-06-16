@@ -50,6 +50,7 @@ public class SecurityConstants {
             (byte) 0xB4, (byte) 0xC6, (byte) 0xD8 };
     public static final String ALIAS_SYM_PRIVATE_KEY = "sym";
     public static final String ALIAS_SYM_SECRET_KEY = "sym.secret";
+    public static final String SYSPROP_CLUSTER_KEYSTORE_SEED = "cluster.keystore.seed";
     public static final String ALIAS_SAML_PRIVATE_KEY = "saml";
     public static final int DEFAULT_CERT_LIFETIME_IN_DAYS = 9125;
     public static final String EMBEDDED_WEBSERVER_DEFAULT_ROLE = "symmetric";

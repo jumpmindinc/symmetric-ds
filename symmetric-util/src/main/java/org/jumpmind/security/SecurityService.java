@@ -404,8 +404,9 @@ public class SecurityService implements ISecurityService {
                     KeyStore ks = getKeyStore();
                     KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry) ks.getEntry(SecurityConstants.ALIAS_SYM_SECRET_KEY, param);
                     if (entry == null) {
-                        log.info("Generating secret key");
-                        entry = new KeyStore.SecretKeyEntry(getDefaultSecretKey());
+                        String seed = resolveConfiguredSeed();
+                        SecretKey key = StringUtils.isNotBlank(seed) ? createSecretKeyFromSeed(seed) : getDefaultSecretKey();
+                        entry = new KeyStore.SecretKeyEntry(key);
                         ks.setEntry(SecurityConstants.ALIAS_SYM_SECRET_KEY, entry, param);
                         saveKeyStore(ks, password);
                     } else {
@@ -416,6 +417,25 @@ public class SecurityService implements ISecurityService {
                 }
             }
         }
+    }
+
+    protected String resolveConfiguredSeed() {
+        String seed = System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
+        if (StringUtils.isBlank(seed)) {
+            String legacy = System.getProperty(SecurityConstants.ALIAS_SYM_SECRET_KEY);
+            if (StringUtils.isNotBlank(legacy)) {
+                log.warn("System property -D{} as a key seed is deprecated; use -D{} instead",
+                        SecurityConstants.ALIAS_SYM_SECRET_KEY, SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
+                seed = legacy;
+            }
+        }
+        return seed;
+    }
+
+    protected SecretKey createSecretKeyFromSeed(String base64Seed) {
+        byte[] keyBytes = Base64.decodeBase64(base64Seed);
+        log.info("Using configured secret key");
+        return new SecretKeySpec(keyBytes, "AES");
     }
 
     @Override

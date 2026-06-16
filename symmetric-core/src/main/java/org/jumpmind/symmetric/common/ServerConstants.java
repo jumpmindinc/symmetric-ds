@@ -73,5 +73,6 @@ public class ServerConstants {
             entry("SYM_CRYPTO_IGNORE_CIPHERS", SecurityConstants.SYSPROP_SSL_IGNORE_CIPHERS),
             entry("SYM_HTTP_CONNECT_TIMEOUT", "sun.net.client.defaultConnectTimeout"),
             entry("SYM_HTTP_RESPONSE_TIMEOUT", "sun.net.client.defaultReadTimeout"),
-            entry("SYM_NET_PREFER_IPV4STACK", "java.net.preferIPv4Stack"));
+            entry("SYM_NET_PREFER_IPV4STACK", "java.net.preferIPv4Stack"),
+            entry("SYM_CLUSTER_KEYSTORE_SEED", SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED));
 }

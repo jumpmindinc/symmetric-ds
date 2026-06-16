@@ -370,9 +370,10 @@ Use the following steps to setup a cluster:
 2. Optionally, set the `cluster.server.id` property to a unique name, otherwise the hostname will be used
 3. Set the `sync.url` property to the URL of the load balancer
 4. Set the `initial.load.use.extract.job.enabled` property to `false` if using local staging
-5. Copy the engine properties, `security/keystore`, and `conf/sym_service.conf` files to each installation
-6. Configure the load balancer for sticky sessions
-7. If the load balancer requires cookies, then client nodes need to set the `server.http.cookies.enabled` property to `true` in `conf/symmetric-server.properties`
+5. Ensure all nodes share the same encryption secret key — either copy the `security/keystore` file to each installation, or set `cluster.keystore.seed` to the same Base64-encoded 256-bit AES key on every node (see below)
+6. Copy the engine properties and `conf/sym_service.conf` files to each installation
+7. Configure the load balancer for sticky sessions
+8. If the load balancer requires cookies, then client nodes need to set the `server.http.cookies.enabled` property to `true` in `conf/symmetric-server.properties`
 
 With the `cluster.lock.enabled` property set to `true`, jobs will acquire an entry in the <<LOCK>> table to ensure that only
 one instance of the job runs across the cluster.  When a lock is acquired, a row is updated in the lock table with the time of the lock
@@ -407,6 +408,12 @@ batches on the node serving the request, rather than extracting in the backgroun
 To use shared staging in a cluster, set the `staging.dir` property to the directory path of the network drive and enable the
 `cluster.staging.enabled` property so files are locked during use.  With shared staging, the initial load extracts in the background on one node,
 but batches can be served from any of the nodes in the cluster, which can improve performance.
+
+When deploying in containers (Docker, Kubernetes), all nodes in the cluster must share the same encryption secret key so that encrypted values written to the database by one node can be decrypted by another.
+Set the `cluster.keystore.seed` property (or the `SYM_CLUSTER_KEYSTORE_SEED` environment variable) to the same Base64-encoded 256-bit AES key on every container.
+On first startup, SymmetricDS writes this value into the `sym.secret` entry of the node's keystore; on subsequent restarts the keystore is the source of truth and the property is ignored.
+This allows each container to maintain its own SSL certificate while sharing a common encryption key.
+Generate a suitable key with: `openssl rand -base64 32`
 
 When deploying nodes in a cluster to an application server like Tomcat or JBoss, the application server does NOT need any clustering of sessions configured.
  
