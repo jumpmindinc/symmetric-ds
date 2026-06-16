@@ -96,11 +96,13 @@ public class JcsTcpCacheCoordinatorTest {
         ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         coordinator.sendMessageToPeers(msg);
+        assertNull(coordinator.getPeerStatusMessage("server1"));
     }
 
     @Test
     public void stop_notStarted_doesNotThrow() {
         coordinator.stop();
+        assertTrue(coordinator.getPeerIds().isEmpty());
     }
 
     @Test
@@ -191,6 +193,7 @@ public class JcsTcpCacheCoordinatorTest {
         ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         coordinator.sendMessageToPeers(msg);
+        assertNull(coordinator.getPeerStatusMessage("server1"));
     }
 
     @Test
@@ -199,6 +202,7 @@ public class JcsTcpCacheCoordinatorTest {
         doThrow(new RuntimeException("shutdown failed")).when(mockManager).shutDown();
         setJcsCacheManager(mockManager);
         coordinator.addPeer("server1");
+        assertTrue(coordinator.getPeerIds().contains("server1"));
     }
 
     @Test

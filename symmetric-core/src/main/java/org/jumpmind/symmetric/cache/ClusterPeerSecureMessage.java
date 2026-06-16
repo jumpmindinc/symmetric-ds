@@ -43,10 +43,10 @@ import org.jumpmind.security.ISecurityService;
  */
 public abstract class ClusterPeerSecureMessage implements Serializable {
     private static final long serialVersionUID = 1L;
-    private static final int FORMAT = 20260611;
+    private static final int CURRENT_VERSION_NO = 20260611;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static volatile ISecurityService securityService;
-    private final int format;
+    private final int versionNo;
     private final String serverId;
     private final String version;
     private final long timestamp;
@@ -56,7 +56,7 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
     private transient volatile boolean payloadDecrypted;
 
     protected ClusterPeerSecureMessage(String serverId, String version, long timestamp, String plainPayload) {
-        this.format = FORMAT;
+        this.versionNo = CURRENT_VERSION_NO;
         this.serverId = serverId;
         this.version = version;
         this.timestamp = timestamp;
@@ -117,8 +117,8 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
         return svc.decrypt(encryptedPayload);
     }
 
-    public int getFormat() {
-        return format;
+    public int getVersionNo() {
+        return versionNo;
     }
 
     public String getServerId() {

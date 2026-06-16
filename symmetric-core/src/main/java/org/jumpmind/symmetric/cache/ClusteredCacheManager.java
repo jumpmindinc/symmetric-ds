@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
+import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,7 +149,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 long staleThresholdMs = 0;
                 ISymmetricEngine engine = getAnyEngine();
                 if (engine != null) {
-                    MDC.put("engineName", engine.getParameterService().getEngineName());
+                    MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
                     sleepHeartbeatMs = getHeartbeatMs(engine);
                     staleThresholdMs = getStaleMs(engine);
                 }
@@ -260,7 +261,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     protected void onPeerJoined(ClusterPeerSecureMessage msg) {
         String peerInstanceId = msg instanceof ClusterPeerStatusMessage ? ((ClusterPeerStatusMessage) msg).getInstanceId() : null;
         for (ISymmetricEngine engine : registeredEngines.values()) {
-            MDC.put("engineName", engine.getParameterService().getEngineName());
+            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
             String myInstanceId = engine.getClusterService().getInstanceId();
             if (peerInstanceId != null) {
                 if (myInstanceId.equals(peerInstanceId)) {
@@ -283,7 +284,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private void stopRegisteredEngines() {
         for (ISymmetricEngine engine : registeredEngines.values()) {
-            MDC.put("engineName", engine.getParameterService().getEngineName());
+            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
             engine.stop();
         }
     }
@@ -291,7 +292,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     protected void onPeerCrashed(String serverId) {
         log.warn("Cluster peer {} stopped sending heartbeats. Clearing its orphaned locks.", serverId);
         for (ISymmetricEngine engine : registeredEngines.values()) {
-            MDC.put("engineName", engine.getParameterService().getEngineName());
+            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
             engine.getClusterService().clearLocksForServer(serverId);
             engine.getNodeCommunicationService().clearLocksForServer(serverId);
         }

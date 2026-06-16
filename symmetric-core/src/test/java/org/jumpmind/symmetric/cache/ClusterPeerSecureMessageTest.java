@@ -64,8 +64,8 @@ public class ClusterPeerSecureMessageTest {
     }
 
     @Test
-    public void getFormat_returnsExpectedConstant() {
-        assertEquals(20260611, heartbeat().getFormat());
+    public void getVersionNo_returnsExpectedConstant() {
+        assertEquals(20260611, heartbeat().getVersionNo());
     }
 
     @Test
