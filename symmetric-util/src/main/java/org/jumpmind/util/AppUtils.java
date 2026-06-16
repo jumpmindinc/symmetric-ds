@@ -304,7 +304,7 @@ public class AppUtils {
                 .equalsIgnoreCase(System.getProperty(propName, Boolean.toString(defaultValue)));
     }
 
-    public static void assertPathWithinDirectory(Path path, Path directory, String entryName) throws IOException {
+    static void assertPathWithinDirectory(Path path, Path directory, String entryName) throws IOException {
         if (!path.startsWith(directory)) {
             throw new IOException("Zip Slip attack detected in entry: " + entryName);
         }

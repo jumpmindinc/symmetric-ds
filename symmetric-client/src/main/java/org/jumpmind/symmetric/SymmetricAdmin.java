@@ -433,7 +433,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
             backup(line, args);
             return true;
         } else if (cmd.equals(CMD_RESTORE_FILE_CONFIGURATION)) {
-            restore(line, args);
+            restore(line);
             return true;
         } else if (cmd.equals(CMD_IMPORT_CONFIG)) {
             importConfig(line, args);
@@ -689,29 +689,19 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         }
     }
 
-    protected void restore(CommandLine line, List<String> args) throws IOException {
+    protected void restore(CommandLine line) throws IOException {
         String filename = line.getOptionValue(OPTION_IN);
         if (filename == null) {
             throw new IoException("Input filename must be specified");
         }
         try (FileInputStream finput = new FileInputStream(filename); ZipInputStream zip = new ZipInputStream(finput)) {
             ZipEntry entry = null;
-            File symHome = new File(AppUtils.getSymHome());
             for (entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
                 if (entry.isDirectory()) {
                     continue;
                 }
                 System.out.println("Restoring " + entry.getName());
-                Path entryPath;
-                if (Path.of(entry.getName()).isAbsolute()) {
-                    Path rawPath = Path.of(entry.getName());
-                    entryPath = rawPath.normalize();
-                    AppUtils.assertPathWithinDirectory(rawPath, entryPath, entry.getName());
-                } else {
-                    Path targetDir = symHome.toPath().toAbsolutePath().normalize();
-                    entryPath = targetDir.resolve(entry.getName()).normalize();
-                    AppUtils.assertPathWithinDirectory(entryPath, targetDir, entry.getName());
-                }
+                Path entryPath = resolveFilePath(entry);
                 Files.createDirectories(entryPath.getParent());
                 try (OutputStream fileOutputStream = Files.newOutputStream(entryPath)) {
                     final byte buffer[] = new byte[4096];
@@ -721,6 +711,31 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
                     }
                 }
             }
+        }
+    }
+
+    protected Path resolveFilePath(ZipEntry entry) throws IOException {
+        return Path.of(entry.getName()).isAbsolute() ? resolveAbsoluteFilePath(entry) : resolveRelativeFilePath(entry);
+    }
+
+    protected Path resolveAbsoluteFilePath(ZipEntry entry) throws IOException {
+        Path rawPath = Path.of(entry.getName());
+        Path entryPath = rawPath.normalize();
+        assertPathWithinDirectory(entryPath, rawPath, entry);
+        return entryPath;
+    }
+
+    protected Path resolveRelativeFilePath(ZipEntry entry) throws IOException {
+        File symHome = new File(AppUtils.getSymHome());
+        Path targetDir = symHome.toPath().toAbsolutePath().normalize();
+        Path entryPath = targetDir.resolve(entry.getName()).normalize();
+        assertPathWithinDirectory(entryPath, targetDir, entry);
+        return entryPath;
+    }
+
+    protected void assertPathWithinDirectory(Path entryPath, Path targetDir, ZipEntry entry) throws IOException {
+        if (!entryPath.startsWith(targetDir)) {
+            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
         }
     }
 

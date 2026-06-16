@@ -54,7 +54,7 @@ class SymmetricAdminTest {
     @Test
     void testRestore_nullFilenameThrows() throws Exception {
         CommandLine line = new DefaultParser().parse(inOptions(), new String[0]);
-        assertThrows(IoException.class, () -> ADMIN.restore(line, null));
+        assertThrows(IoException.class, () -> ADMIN.restore(line));
     }
 
     @Test
@@ -66,7 +66,7 @@ class SymmetricAdminTest {
             zos.write("restored".getBytes());
             zos.closeEntry();
         }
-        ADMIN.restore(commandLineWithIn(zipFile.getAbsolutePath()), null);
+        ADMIN.restore(commandLineWithIn(zipFile.getAbsolutePath()));
         assertTrue(targetFile.exists());
     }
 
@@ -81,7 +81,7 @@ class SymmetricAdminTest {
         }
         File expected = new File(AppUtils.getSymHome(), relativeEntry);
         try {
-            ADMIN.restore(commandLineWithIn(zipFile.getAbsolutePath()), null);
+            ADMIN.restore(commandLineWithIn(zipFile.getAbsolutePath()));
             assertTrue(expected.exists());
         } finally {
             expected.delete();
