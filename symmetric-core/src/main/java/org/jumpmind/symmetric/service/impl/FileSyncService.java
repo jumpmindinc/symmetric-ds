@@ -26,6 +26,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Date;
@@ -1015,15 +1017,16 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
 
     protected List<IncomingBatch> processZip(InputStream is, String sourceNodeId,
             ProcessInfo processInfo) throws IOException {
-        File tempDir = new File(parameterService.getTempDirectory());
-        File unzipDir = new File(tempDir, String.format(
+        Path tempDirPath = Path.of(parameterService.getTempDirectory()).toAbsolutePath().normalize();
+        Path unzipPath = tempDirPath.resolve(String.format(
                 "filesync_incoming/%s/%s", engine.getNodeService().findIdentityNodeId(),
-                sourceNodeId));
-        if (!unzipDir.getCanonicalPath().startsWith(tempDir.getCanonicalPath() + File.separator)) {
+                sourceNodeId)).normalize();
+        if (!unzipPath.startsWith(tempDirPath)) {
             throw new IOException("Potential path traversal detected in sourceNodeId: " + sourceNodeId);
         }
+        File unzipDir = unzipPath.toFile();
         FileUtils.deleteDirectory(unzipDir);
-        unzipDir.mkdirs();
+        Files.createDirectories(unzipPath);
         try {
             AppUtils.unzip(is, unzipDir);
         } catch (IoException ex) {
