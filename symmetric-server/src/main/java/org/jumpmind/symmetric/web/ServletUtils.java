@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.web;
 
 import java.io.IOException;
+import java.util.List;
 
 import jakarta.servlet.Servlet;
 import jakarta.servlet.ServletContext;
@@ -36,6 +37,9 @@ import org.apache.commons.text.StringEscapeUtils;
  * Utility methods for working with {@link Servlet}s
  */
 public class ServletUtils {
+    private ServletUtils() {
+    }
+
     /**
      * Because you can't send an error when the response is already committed, this helps to avoid unnecessary errors in the logs.
      * 
@@ -44,34 +48,20 @@ public class ServletUtils {
      * @return true if the error could be sent to the response
      * @throws IOException
      */
-    private static String unknown = "unknown";
-
-    private ServletUtils() {
-        
-    }
-
     public static boolean sendError(final HttpServletResponse resp, final int statusCode) throws IOException {
         return sendError(resp, statusCode, null);
     }
 
     public static String whereAreYou(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
+        List<String> headerKeys = List.of(
+                "X-Forwarded-For", "Proxy-Client-IP", "WL-Proxy-Client-IP", "HTTP_CLIENT_IP", "HTTP_X_FORWARDED_FOR");
+        for (String headerKey : headerKeys) {
+            String ip = request.getHeader(headerKey);
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                return ip;
+            }
         }
-        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
-            ip = request.getHeader("HTTP_CLIENT_IP");
-        }
-        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
-            ip = request.getHeader("HTTP_X_FORWARDED_FOR");
-        }
-        if (ip == null || ip.isEmpty() || unknown.equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        return ip;
+        return request.getRemoteAddr();
     }
 
     /**
