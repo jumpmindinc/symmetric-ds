@@ -20,10 +20,13 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -50,8 +53,8 @@ public class ParameterService extends AbstractParameterService implements IParam
     private ISqlTemplate sqlTemplate;
     private Date lastUpdateTime;
     private List<DatabaseParameter> offlineParameters;
-    protected volatile boolean isInitialLoadUseExtractJobOverridden = false;
     private List<IParameterAuditor> auditors;
+    private List<String> parameterViolations;
 
     public ParameterService(IDatabasePlatform platform, ITypedPropertiesFactory factory, String tablePrefix) {
         this.tablePrefix = SqlUtils.sanitizeTablePrefix(tablePrefix);
@@ -59,6 +62,7 @@ public class ParameterService extends AbstractParameterService implements IParam
         this.sql = new ParameterServiceSqlMap(platform, tablePrefix);
         this.sqlTemplate = platform.getSqlTemplate();
         this.auditors = List.of(new ClusteredExtractJobParameterAuditor());
+        this.parameterViolations = new ArrayList<String>();
     }
 
     @Override
@@ -190,13 +194,13 @@ public class ParameterService extends AbstractParameterService implements IParam
     @Override
     protected TypedProperties rereadApplicationParameters() {
         TypedProperties p = this.factory.reload();
-        p.putAll(systemProperties);
         p.putAll(rereadDatabaseParameters(p));
         rereadOfflineNodeParameters();
-        setInitialLoadUseExtractJobOverriden(false);
-        for (IParameterAuditor auditor : auditors) {
-            auditor.audit(p, this);
-        }
+        parameterViolations = auditors.stream()
+                .<Optional<String>> map(a -> a.audit(p, this))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
         return p;
     }
 
@@ -268,11 +272,7 @@ public class ParameterService extends AbstractParameterService implements IParam
         return combinedHash;
     }
 
-    public boolean getInitialLoadUseExtractJobOverridden() {
-        return isInitialLoadUseExtractJobOverridden;
-    }
-
-    public void setInitialLoadUseExtractJobOverriden(boolean overriden) {
-        isInitialLoadUseExtractJobOverridden = overriden;
+    public List<String> getParameterViolations() {
+        return parameterViolations;
     }
 }

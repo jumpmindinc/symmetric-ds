@@ -838,7 +838,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                         "The configured state does not match recorded database state.  The recorded external id is '%s' "
                                 + "while the configured external id is '%s'. The recorded node group id is '%s' while the"
                                 + "configured node group id is '%s'",
-                        new Object[] { node.getExternalId(), getParameterService().getExternalId(),
+                        (Object[]) new Object[] { node.getExternalId(), getParameterService().getExternalId(),
                                 node.getNodeGroupId(), getParameterService().getNodeGroupId() });
             }
         }
@@ -857,14 +857,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     protected void checkClusteredExtractJobAllowed(Node node) {
-        if (parameterService.getInitialLoadUseExtractJobOverridden()) {
-            log.error(
-                    "Node {} is configured with conflicting parameters. The initial load extract job "
-                            + "cannot be used when cluster locking is enabled but staging is not clustered. "
-                            + "One of these parameters needs to be changed: {}=true, {}=true, {}=false",
-                    node != null ? node.getNodeId() : "null", ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB,
-                    ParameterConstants.CLUSTER_LOCKING_ENABLED, ParameterConstants.CLUSTER_STAGING_ENABLED);
-        }
+        parameterService.getParameterViolations().forEach(msg -> log.error(msg));
     }
 
     protected void checkKeystoreIntegrity() {
