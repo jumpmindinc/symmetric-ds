@@ -544,7 +544,7 @@ public class SymmetricEngineHolder {
         enginesDir.mkdirs();
         File engineFile = new File(enginesDir, engineName + ".properties");
         try (FileOutputStream fos = new FileOutputStream(engineFile)) {
-            props.store(fos, "Auto-generated from environment variables");
+            props.store(fos, "Auto-generated from environment variables by SymmetricDS version " + SymmetricUtils.getSymmetricVersion());
             log.info("Created engine properties file {} from environment variables", engineFile.getAbsolutePath());
         } catch (IOException e) {
             throw new RuntimeException("Failed to create engine properties file " + engineFile, e);
