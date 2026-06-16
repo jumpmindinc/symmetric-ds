@@ -301,7 +301,6 @@ final public class ParameterConstants {
     public static final String NODE_ID_CREATOR_SCRIPT = "node.id.creator.script";
     public static final String NODE_ID_CREATOR_MAX_NODES = "node.id.creator.max.nodes";
     public static final String EXTERNAL_ID_IS_UNIQUE = "external.id.is.unique.enabled";
-    public static final String CLUSTER_SERVER_ID = "cluster.server.id";
     public static final String CLUSTER_PEER_HEARTBEAT_MS = "cluster.peer.heartbeat.ms";
     public static final String CLUSTER_PEER_STALE_MS = "cluster.peer.stale.ms";
     public static final String CLUSTER_LOCKING_ENABLED = "cluster.lock.enabled";
