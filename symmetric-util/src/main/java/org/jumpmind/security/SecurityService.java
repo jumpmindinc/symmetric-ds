@@ -64,6 +64,7 @@ public class SecurityService implements ISecurityService {
     protected static volatile boolean hasInitKeyStore;
     protected static String trustStoreFileName;
     protected static URL trustStoreURL;
+    protected static SecureRandom random;
     static {
         keyStoreFileName = StringUtils.trimToNull(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE));
         if (keyStoreFileName == null) {
@@ -78,6 +79,7 @@ public class SecurityService implements ISecurityService {
                         + File.separator + "cacerts";
             }
         }
+        random = new SecureRandom();
     }
 
     protected SecurityService() {
@@ -369,7 +371,9 @@ public class SecurityService implements ISecurityService {
             paramSpec = new PBEParameterSpec(SecurityConstants.SALT, SecurityConstants.ITERATION_COUNT);
             cipher.init(mode, secretKey, paramSpec);
         } else if (paramSpec instanceof IvParameterSpec) {
-            paramSpec = new IvParameterSpec(SecurityConstants.SALT);
+            byte[] iv = new byte[8];
+            random.nextBytes(iv);
+            paramSpec = new IvParameterSpec(iv);
             cipher.init(mode, secretKey, paramSpec);
         } else {
             cipher.init(mode, secretKey);
@@ -452,7 +456,6 @@ public class SecurityService implements ISecurityService {
         if (len <= 0) {
             throw new IllegalArgumentException("length must be positive");
         }
-        SecureRandom random = new SecureRandom();
         int maxInt = SecurityConstants.PASSWORD_CHARS.length();
         char[] password = new char[len];
         for (int i = 0; i < len; i++) {
@@ -486,7 +489,6 @@ public class SecurityService implements ISecurityService {
         byte[] bytes = new byte[byteSize];
         if (keyStoreFileName != null) {
             log.info("Using random bytes for secret key");
-            SecureRandom random = new SecureRandom();
             random.nextBytes(bytes);
         } else {
             log.info("Using keystore password as bytes for secret key");
