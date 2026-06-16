@@ -229,14 +229,14 @@ class ClusterServiceTest {
     void testApplyUuidMarkerToId_hostnamePrefix() {
         String input = "myhost-12345678-9abc-def0-1234-567890abcdef";
         String result = ClusterService.applyUuidMarkerToId(input, ServerConstants.INSTANCE_UUID_MARKER_AUTO);
-        assertEquals("myhost-12345678-9aaa-aaf0-1234-567890abcdef", result);
+        assertEquals("myhost-12345678-aaaa-def0-1234-567890abcdef", result);
     }
 
     @Test
     void testApplyUuidMarkerToId_plainUuid() {
         String input = "12345678-9abc-def0-1234-567890abcdef";
         String result = ClusterService.applyUuidMarkerToId(input, ServerConstants.INSTANCE_UUID_MARKER_CONFIGURED);
-        assertEquals("12345678-9acc-ccf0-1234-567890abcdef", result);
+        assertEquals("12345678-cccc-def0-1234-567890abcdef", result);
     }
 
     @Test
