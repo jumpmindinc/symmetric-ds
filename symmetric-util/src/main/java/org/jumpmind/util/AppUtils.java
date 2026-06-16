@@ -23,8 +23,8 @@ package org.jumpmind.util;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.net.InetAddress;
@@ -32,6 +32,8 @@ import java.net.NetworkInterface;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Properties;
@@ -302,43 +304,45 @@ public class AppUtils {
                 .equalsIgnoreCase(System.getProperty(propName, Boolean.toString(defaultValue)));
     }
 
-    public static File resolveZipEntry(File toDir, ZipEntry entry) throws IOException {
-        File file = new File(toDir, entry.getName());
-        if (file.getCanonicalPath().startsWith(toDir.getCanonicalPath() + File.separator)) {
-            return file;
+    static void assertPathWithinDirectory(Path path, Path directory, String entryName) throws IOException {
+        if (!path.startsWith(directory)) {
+            throw new IOException("Zip Slip attack detected in entry: " + entryName);
         }
-        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+    }
+
+    public static File resolveZipEntry(File toDir, ZipEntry entry) throws IOException {
+        Path targetDir = toDir.toPath().toAbsolutePath().normalize();
+        Path entryPath = targetDir.resolve(entry.getName()).normalize();
+        assertPathWithinDirectory(entryPath, targetDir, entry.getName());
+        return entryPath.toFile();
     }
 
     public static File resolveZipEntry(ZipEntry entry) throws IOException {
-        File file = new File(entry.getName());
-        String canonical = file.getCanonicalPath();
-        if (canonical.equals(file.getAbsolutePath())) {
-            return new File(canonical);
-        }
-        throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
+        Path rawPath = Path.of(entry.getName());
+        Path entryPath = rawPath.normalize();
+        assertPathWithinDirectory(rawPath, entryPath, entry.getName());
+        return entryPath.toFile();
     }
 
     public static void unzip(InputStream in, File toDir) {
         try {
             ZipInputStream is = new ZipInputStream(in);
+            Path targetDir = toDir.toPath().toAbsolutePath().normalize();
             ZipEntry entry = null;
             do {
                 entry = is.getNextEntry();
                 if (entry != null) {
+                    Path entryPath = targetDir.resolve(entry.getName()).normalize();
+                    assertPathWithinDirectory(entryPath, targetDir, entry.getName());
                     if (entry.isDirectory()) {
-                        File dir = resolveZipEntry(toDir, entry);
-                        dir.mkdirs();
-                        dir.setLastModified(entry.getTime());
+                        Files.createDirectories(entryPath);
+                        entryPath.toFile().setLastModified(entry.getTime());
                     } else {
-                        File file = resolveZipEntry(toDir, entry);
-                        if (!file.getParentFile().exists()) {
-                            file.getParentFile().mkdirs();
-                            file.getParentFile().setLastModified(entry.getTime());
-                        }
-                        try (FileOutputStream fos = new FileOutputStream(file)) {
+                        Files.createDirectories(entryPath.getParent());
+                        entryPath.getParent().toFile().setLastModified(entry.getTime());
+                        try (OutputStream fos = Files.newOutputStream(entryPath)) {
                             IOUtils.copy(is, fos);
-                            file.setLastModified(entry.getTime());
+                            entryPath.toFile().setLastModified(entry.getTime());
                         }
                     }
                 }
