@@ -28,6 +28,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
@@ -36,6 +37,8 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyManagementException;
 import java.security.KeyStore.TrustedCertificateEntry;
 import java.security.NoSuchAlgorithmException;
@@ -430,7 +433,7 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
             backup(line, args);
             return true;
         } else if (cmd.equals(CMD_RESTORE_FILE_CONFIGURATION)) {
-            restore(line, args);
+            restore(line);
             return true;
         } else if (cmd.equals(CMD_IMPORT_CONFIG)) {
             importConfig(line, args);
@@ -686,34 +689,53 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
         }
     }
 
-    private void restore(CommandLine line, List<String> args) throws IOException {
+    protected void restore(CommandLine line) throws IOException {
         String filename = line.getOptionValue(OPTION_IN);
         if (filename == null) {
             throw new IoException("Input filename must be specified");
         }
         try (FileInputStream finput = new FileInputStream(filename); ZipInputStream zip = new ZipInputStream(finput)) {
             ZipEntry entry = null;
-            File symHome = new File(AppUtils.getSymHome());
             for (entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
                 if (entry.isDirectory()) {
                     continue;
                 }
                 System.out.println("Restoring " + entry.getName());
-                File fileToOpen;
-                if (new File(entry.getName()).isAbsolute()) {
-                    fileToOpen = AppUtils.resolveZipEntry(entry);
-                    fileToOpen.getParentFile().mkdirs();
-                } else {
-                    fileToOpen = AppUtils.resolveZipEntry(symHome, entry);
-                }
-                try (FileOutputStream foutput = new FileOutputStream(fileToOpen)) {
+                Path entryPath = resolveFilePath(entry);
+                Files.createDirectories(entryPath.getParent());
+                try (OutputStream fileOutputStream = Files.newOutputStream(entryPath)) {
                     final byte buffer[] = new byte[4096];
                     int readCount;
                     while ((readCount = zip.read(buffer, 0, buffer.length)) > 0) {
-                        foutput.write(buffer, 0, readCount);
+                        fileOutputStream.write(buffer, 0, readCount);
                     }
                 }
             }
+        }
+    }
+
+    protected Path resolveFilePath(ZipEntry entry) throws IOException {
+        return Path.of(entry.getName()).isAbsolute() ? resolveAbsoluteFilePath(entry) : resolveRelativeFilePath(entry);
+    }
+
+    protected Path resolveAbsoluteFilePath(ZipEntry entry) throws IOException {
+        Path rawPath = Path.of(entry.getName());
+        Path entryPath = rawPath.normalize();
+        assertPathWithinDirectory(entryPath, rawPath, entry);
+        return entryPath;
+    }
+
+    protected Path resolveRelativeFilePath(ZipEntry entry) throws IOException {
+        File symHome = new File(AppUtils.getSymHome());
+        Path targetDir = symHome.toPath().toAbsolutePath().normalize();
+        Path entryPath = targetDir.resolve(entry.getName()).normalize();
+        assertPathWithinDirectory(entryPath, targetDir, entry);
+        return entryPath;
+    }
+
+    protected void assertPathWithinDirectory(Path entryPath, Path targetDir, ZipEntry entry) throws IOException {
+        if (!entryPath.startsWith(targetDir)) {
+            throw new IOException("Zip Slip attack detected in entry: " + entry.getName());
         }
     }
 
