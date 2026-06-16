@@ -156,20 +156,7 @@ public class SymmetricEngineHolder {
                 }
                 int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT, "5"));
                 ExecutorService executor = Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-startup"));
-                SymmetricEngineStarter registrationStarter = null;
-                for (SymmetricEngineStarter starter : enginesStarting) {
-                    Properties props = new Properties();
-                    try (InputStream is = new FileInputStream(starter.getPropertiesFile())) {
-                        props.load(is);
-                    } catch (IOException e) {
-                        log.warn("Unable to read properties file to determine registration node: {}", starter.getPropertiesFile());
-                    }
-                    String registrationUrl = props.getProperty(ParameterConstants.REGISTRATION_URL, "");
-                    if (StringUtils.isBlank(registrationUrl)) {
-                        registrationStarter = starter;
-                        break;
-                    }
-                }
+                SymmetricEngineStarter registrationStarter = findRegistrationStarter(enginesStarting);
                 if (registrationStarter != null) {
                     log.info("Starting registration engine first from {}", registrationStarter.getPropertiesFile());
                     enginesStarting.remove(registrationStarter);
@@ -183,6 +170,7 @@ public class SymmetricEngineHolder {
                         Thread.currentThread().interrupt();
                     }
                 }
+                // Start rest of engines only after the registration engine
                 for (SymmetricEngineStarter starter : enginesStarting) {
                     log.info("Now starting remaining engines");
                     executor.execute(starter);
@@ -192,6 +180,23 @@ public class SymmetricEngineHolder {
         } finally {
             holderHasBeenStarted = true;
         }
+    }
+
+    public SymmetricEngineStarter findRegistrationStarter(Set<SymmetricEngineStarter> starters) {
+        for (SymmetricEngineStarter starter : starters) {
+            Properties props = new Properties();
+            try (InputStream is = new FileInputStream(starter.getPropertiesFile())) {
+                props.load(is);
+            } catch (IOException e) {
+                log.warn("Unable to read properties file to determine registration node: {}", starter.getPropertiesFile());
+            }
+            String registrationUrl = props.getProperty(ParameterConstants.REGISTRATION_URL, "");
+            String syncUrl = props.getProperty(ParameterConstants.SYNC_URL, "");
+            if (StringUtils.isBlank(registrationUrl) || registrationUrl.equals(syncUrl)) {
+                return starter;
+            }
+        }
+        return null;
     }
 
     public synchronized void restart(String engineName) {
