@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -79,6 +80,7 @@ class ClusterServiceTest {
         when(dialect.getPlatform()).thenReturn(platform);
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
         when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(parameterService.getLong(anyString(), anyLong())).thenAnswer(inv -> inv.getArgument(1));
         when(parameterService.getLong(ParameterConstants.CLUSTER_LOCK_TIMEOUT_MS)).thenReturn(60000L);
         when(parameterService.getLong(ParameterConstants.LOCK_TIMEOUT_MS)).thenReturn(60000L);
         when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
@@ -292,9 +294,12 @@ class ClusterServiceTest {
     @AfterEach
     @SuppressWarnings("unchecked")
     void clearActivePeers() throws Exception {
-        Field f = ClusteredCacheManager.class.getDeclaredField("peerStateMap");
-        f.setAccessible(true);
-        ((Map<String, Boolean>) f.get(ClusteredCacheManager.getInstance())).clear();
+        Field peerState = ClusteredCacheManager.class.getDeclaredField("peerStateMap");
+        peerState.setAccessible(true);
+        ((Map<String, Boolean>) peerState.get(ClusteredCacheManager.getInstance())).clear();
+        Field peerOffline = ClusteredCacheManager.class.getDeclaredField("peerOfflineTimestampMs");
+        peerOffline.setAccessible(true);
+        ((Map<String, Long>) peerOffline.get(ClusteredCacheManager.getInstance())).clear();
     }
 
     @SuppressWarnings("unchecked")

@@ -488,6 +488,7 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void detectPeerState_peerLeavingAfterAlive_clearsLocks() throws Exception {
+        when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
         manager.registerEngine(mockEngine);
         callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1"));
         callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, "peer1"));
