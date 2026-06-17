@@ -531,6 +531,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         try {
             callUpgradeListeners(databaseVersion, softwareVersion);
         } catch (Exception ex) {
+            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_OFFLINE);
             throw new SymmetricException("Failed to upgrade database from version " + databaseVersion
                     + " to " + softwareVersion, ex);
         }
@@ -782,6 +783,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     private void initClusterPeerCoordinator() {
         clusteredCacheManager.startClusterPeerListener(securityService);
+        clusteredCacheManager.startClusterHeartbeat();
         clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);
         clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
     }

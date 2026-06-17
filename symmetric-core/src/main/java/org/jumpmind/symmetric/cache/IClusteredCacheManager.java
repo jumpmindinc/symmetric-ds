@@ -47,6 +47,10 @@ public interface IClusteredCacheManager {
 
     void startClusterPeerListener(ISecurityService securityService);
 
+    void startClusterHeartbeat();
+
+    void stopClusterCommunication();
+
     boolean isAnyPeerInState(String eventType);
 
     boolean isAnyPeerOnline();

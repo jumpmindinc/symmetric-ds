@@ -53,6 +53,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private final IClusterCacheCoordinator coordinator = new JcsTcpCacheCoordinator();
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerStateMap = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
     private Thread heartbeatThread;
     private volatile boolean running;
     private volatile boolean isClusterPeerListenerStarted;
@@ -72,16 +73,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public synchronized void registerEngine(ISymmetricEngine engine) {
         registeredEngines.put(engine.getEngineName(), engine);
-        if (registeredEngines.size() == 1) {
-            startInternal(engine);
-        }
     }
 
     @Override
     public synchronized void unregisterEngine(ISymmetricEngine engine) {
-        if (registeredEngines.size() == 1 && registeredEngines.containsKey(engine.getEngineName())) {
-            stopInternal();
-        }
         registeredEngines.remove(engine.getEngineName());
     }
 
@@ -185,15 +180,23 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return false;
     }
 
-    private void startInternal(ISymmetricEngine engine) {
-        ClusterPeerSecureMessage.setSecurityService(engine.getSecurityService());
-        myServerId = engine.getClusterService().getServerId();
-        myInstanceId = engine.getClusterService().getInstanceId();
-        ensurePeerListenerStarted(myServerId, myInstanceId,
-                engine.getParameterService().getInt(ServerConstants.CLUSTER_JCS_PORT, 1101));
+    public synchronized void startClusterHeartbeat() {
+        if (running) {
+            return;
+        }
         running = true;
-        sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);
-        startHeartbeatThread(engine);
+        startHeartbeatThread(null);
+    }
+
+    public synchronized void stopClusterCommunication() {
+        running = false;
+        if (heartbeatThread != null) {
+            heartbeatThread.interrupt();
+        }
+        if (isClusterPeerListenerStarted) {
+            sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_LEAVING);
+        }
+        stopPeerListener();
     }
 
     private synchronized void stopPeerListener() {
@@ -202,15 +205,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         coordinator.stop();
         isClusterPeerListenerStarted = false;
-    }
-
-    private void stopInternal() {
-        running = false;
-        if (heartbeatThread != null) {
-            heartbeatThread.interrupt();
-        }
-        sendMessageToPeers(ClusterPeerStatusMessage.EVENT_PEER_LEAVING);
-        stopPeerListener();
     }
 
     private void rebroadcastEngineStates() {
@@ -291,8 +285,27 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             if (dispatchMessage(peerId, messageFromPeer, now, staleThresholdMs)) {
                 activeMembers++;
             }
+            for (String engineName : registeredEngines.keySet()) {
+                ClusterEngineStateMessage engineMsg = coordinator.getEngineStateMessage(peerId, engineName);
+                detectEngineStateAndFireEvents(peerId, engineName, engineMsg, now, staleThresholdMs);
+            }
         }
         return activeMembers;
+    }
+
+    private void detectEngineStateAndFireEvents(String peerId, String engineName,
+            ClusterEngineStateMessage msg, long now, long staleThresholdMs) {
+        String key = peerId + ":" + engineName;
+        boolean isActive = msg != null
+                && !ClusterEngineStateMessage.ENGINE_OFFLINE.equals(msg.getEngineState())
+                && !msg.isStale(now, staleThresholdMs);
+        boolean wasActive = Boolean.TRUE.equals(engineStateMap.get(key));
+        if (isActive) {
+            engineStateMap.put(key, true);
+        } else if (wasActive) {
+            engineStateMap.put(key, false);
+            onPeerEngineCrashed(peerId, engineName);
+        }
     }
 
     private boolean isPeerAlive(String peerId, ClusterPeerSecureMessage messageFromPeer, long now, long staleThresholdMs) {
@@ -392,6 +405,16 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
             engine.getClusterService().clearLocksForServer(serverId);
             engine.getNodeCommunicationService().clearLocksForServer(serverId);
+        }
+    }
+
+    protected void onPeerEngineCrashed(String peerId, String engineName) {
+        log.warn("Engine {} on peer {} stopped sending heartbeats. Clearing its orphaned locks.", engineName, peerId);
+        ISymmetricEngine localEngine = registeredEngines.get(engineName);
+        if (localEngine != null) {
+            MDC.put(LoggingConstants.CONTEXT_ENGINE, engineName);
+            localEngine.getClusterService().clearLocksForServer(peerId);
+            localEngine.getNodeCommunicationService().clearLocksForServer(peerId);
         }
     }
 

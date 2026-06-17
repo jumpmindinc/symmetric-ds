@@ -55,6 +55,7 @@ import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
 import org.jumpmind.symmetric.SymmetricException;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
@@ -235,6 +236,7 @@ public class SymmetricEngineHolder {
         }
         engines.clear();
         enginesFailed.clear();
+        ClusteredCacheManager.getInstance().stopClusterCommunication();
     }
 
     public ISymmetricEngine install(Properties passedInProperties) throws Exception {
