@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -37,6 +39,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.UniqueKeyException;
@@ -48,6 +51,7 @@ import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -283,5 +287,94 @@ class ClusterServiceTest {
         String instanceId = ClusterService.generateInstanceId(longHost);
         String prefix = instanceId.substring(0, instanceId.length() - 37);
         assertEquals(23, prefix.length());
+    }
+
+    @AfterEach
+    @SuppressWarnings("unchecked")
+    void clearActivePeers() throws Exception {
+        Field f = ClusteredCacheManager.class.getDeclaredField("peerStateMap");
+        f.setAccessible(true);
+        ((Map<String, Boolean>) f.get(ClusteredCacheManager.getInstance())).clear();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void injectActivePeer(String peerId) throws Exception {
+        Field f = ClusteredCacheManager.class.getDeclaredField("peerStateMap");
+        f.setAccessible(true);
+        ((Map<String, Boolean>) f.get(ClusteredCacheManager.getInstance())).put(peerId, Boolean.TRUE);
+    }
+
+    @Test
+    void testIsStaleServer_nullOwner_returnsFalse() {
+        assertFalse(clusterService.isStaleServer(null));
+    }
+
+    @Test
+    void testIsStaleServer_emptyActivePeers_returnsFalse() {
+        assertFalse(clusterService.isStaleServer("other-server"));
+    }
+
+    @Test
+    void testIsStaleServer_ownerInActivePeers_returnsFalse() throws Exception {
+        injectActivePeer("other-server");
+        assertFalse(clusterService.isStaleServer("other-server"));
+    }
+
+    @Test
+    void testIsStaleServer_ownerAbsentFromActivePeers_returnsTrue() throws Exception {
+        injectActivePeer("some-active-peer");
+        assertTrue(clusterService.isStaleServer("absent-server"));
+    }
+
+    @Test
+    void testIsStaleServer_ownServerId_returnsFalse() throws Exception {
+        injectActivePeer("some-active-peer");
+        assertFalse(clusterService.isStaleServer(clusterService.getServerId()));
+    }
+
+    @Test
+    void testIsLockExpiredOrServerStale_nullLockTime_returnsTrue() {
+        assertTrue(clusterService.isLockExpiredOrServerStale(null, null, new Date()));
+    }
+
+    @Test
+    void testIsLockExpiredOrServerStale_expiredLock_returnsTrue() {
+        Date lockTime = new Date(System.currentTimeMillis() - 120_000);
+        Date lockTimeout = new Date(System.currentTimeMillis() - 60_000);
+        assertTrue(clusterService.isLockExpiredOrServerStale("other-server", lockTime, lockTimeout));
+    }
+
+    @Test
+    void testIsLockExpiredOrServerStale_freshLock_notStale_returnsFalse() {
+        Date lockTime = new Date();
+        Date lockTimeout = new Date(System.currentTimeMillis() - 60_000);
+        assertFalse(clusterService.isLockExpiredOrServerStale("other-server", lockTime, lockTimeout));
+    }
+
+    @Test
+    void testIsLockExpiredOrServerStale_freshLock_ownerStale_returnsTrue() throws Exception {
+        injectActivePeer("some-active-peer");
+        Date lockTime = new Date();
+        Date lockTimeout = new Date(System.currentTimeMillis() - 60_000);
+        assertTrue(clusterService.isLockExpiredOrServerStale("absent-server", lockTime, lockTimeout));
+    }
+
+    @Test
+    void testLockCluster_staleOwner_breaksLockBeforeTimeout() throws Exception {
+        injectActivePeer("some-active-peer");
+        Lock lock = clusterService.lockCache.get(ClusterConstants.PUSH);
+        lock.setLockingServerId("absent-server");
+        lock.setLockTime(new Date());
+        Date timeToBreakLock = new Date(System.currentTimeMillis() - 1);
+        assertTrue(clusterService.lockCluster(ClusterConstants.PUSH, timeToBreakLock, new Date(), clusterService.getServerId()));
+    }
+
+    @Test
+    void testLockCluster_freshLockNotStale_doesNotBreak() {
+        Lock lock = clusterService.lockCache.get(ClusterConstants.PUSH);
+        lock.setLockingServerId("active-server");
+        lock.setLockTime(new Date());
+        Date timeToBreakLock = new Date(System.currentTimeMillis() - 1);
+        assertFalse(clusterService.lockCluster(ClusterConstants.PUSH, timeToBreakLock, new Date(), clusterService.getServerId()));
     }
 }

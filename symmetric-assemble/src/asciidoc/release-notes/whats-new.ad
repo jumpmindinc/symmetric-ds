@@ -93,6 +93,27 @@ The following categories of metrics are collected automatically:
 Metrics are published via the OpenTelemetry API under the scope `symmetricds` and are used to power the Analytics reports in SymmetricDS Pro.
 --
 
+=== Cluster Lock Recovery via JCS Peer Heartbeat
+--
+SymmetricDS 3.18 introduces a peer-to-peer heartbeat mechanism using Apache JCS lateral TCP cache to detect crashed cluster members and automatically recover their orphaned database locks.
+
+Each endpoint broadcasts a heartbeat every 3 seconds to all known peers.
+When an endpoint misses three consecutive heartbeats — for example, because the JVM was killed by an out-of-memory condition, the container was evicted by the orchestrator, or the host was terminated — the surviving endpoints detect the stale heartbeat and immediately clear all database locks held by the crashed endpoint.
+This eliminates the previous behaviour where surviving endpoints had to wait for the `cluster.lock.timeout.ms` expiry (default 2 hours) before they could acquire those locks.
+
+In a multi-endpoint deployment where each JVM hosts multiple database endpoints independently, lock recovery is additionally scoped per endpoint.
+If only one endpoint on a JVM crashes while others remain healthy, only the locks held by that specific endpoint are cleared — the running endpoints are unaffected.
+
+Multiple clusters for different environments — Production, Staging, and Testing — remain fully isolated even when deployed on the same orchestrator platform or shared subnet.
+Peer discovery is driven entirely by the `SYM_NODE_HOST` table: each endpoint only learns the hostnames of other endpoints that share the same database.
+Because each environment uses its own database, its `SYM_NODE_HOST` table contains only that environment's endpoints, so JCS heartbeats are never exchanged across environments.
+As a second layer of defence, assigning a distinct `cluster.jcs.port` per environment provides network-level isolation and prevents accidental cross-environment traffic in scenarios where network segmentation is not strict.
+
+The peer communication port is configured via the `cluster.jcs.port` property (default 1101, must be the same across all cluster members within an environment).
+Each endpoint's stable identity within the cluster is set via `cluster.instance.uuid` (or the `SYM_CLUSTER_INSTANCE_UUID` environment variable), which ensures consistent lock ownership tracking across container restarts.
+All endpoints must be reachable on the JCS port; it should be protected by network-level firewall rules as the channel is not encrypted.
+--
+
 === Container Mode
 --
 SymmetricDS 3.18 adds first-class container support via the `bin/sym --container` command. This mode runs SymmetricDS as PID 1 inside the container, enabling proper signal handling and graceful shutdown behavior expected by container orchestrators.

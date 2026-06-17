@@ -490,4 +490,55 @@ public class ClusteredCacheManagerTest {
         m.setAccessible(true);
         assertNotNull(m.invoke(manager));
     }
+
+    @Test
+    public void getStaleMs_nullEngine_returns100xDefaultHeartbeat() throws Exception {
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("getStaleMs", ISymmetricEngine.class);
+        m.setAccessible(true);
+        assertEquals(100 * ClusteredCacheManager.DEFAULT_HEARTBEAT_MS, m.invoke(manager, (Object) null));
+    }
+
+    @Test
+    public void getStaleMs_withEngine_returnsConfiguredValue() throws Exception {
+        when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_STALE_MS), anyLong())).thenReturn(120_000L);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("getStaleMs", ISymmetricEngine.class);
+        m.setAccessible(true);
+        assertEquals(120_000L, m.invoke(manager, mockEngine));
+    }
+
+    @Test
+    public void isPeerAlive_ageAtExact20xHeartbeat_returnsTrue() throws Exception {
+        long heartbeatMs = 1000L;
+        Field f = ClusteredCacheManager.class.getDeclaredField("currentHeartbeatMs");
+        f.setAccessible(true);
+        f.set(manager, heartbeatMs);
+        ClusterPeerStatusMessage msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        long now = msg.getTimestamp() + 20 * heartbeatMs;
+        long staleThresholdMs = 200 * heartbeatMs;
+        assertTrue((boolean) isPeerAlive.invoke(manager, "peer1", msg, now, staleThresholdMs));
+    }
+
+    @Test
+    public void isPeerAlive_ageAt21xHeartbeat_returnsTrue() throws Exception {
+        long heartbeatMs = 1000L;
+        Field f = ClusteredCacheManager.class.getDeclaredField("currentHeartbeatMs");
+        f.setAccessible(true);
+        f.set(manager, heartbeatMs);
+        ClusterPeerStatusMessage msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        long now = msg.getTimestamp() + 21 * heartbeatMs;
+        long staleThresholdMs = 200 * heartbeatMs;
+        assertTrue((boolean) isPeerAlive.invoke(manager, "peer1", msg, now, staleThresholdMs));
+    }
+
+    @Test
+    public void isPeerAlive_ageAt40xHeartbeat_returnsTrue() throws Exception {
+        long heartbeatMs = 1000L;
+        Field f = ClusteredCacheManager.class.getDeclaredField("currentHeartbeatMs");
+        f.setAccessible(true);
+        f.set(manager, heartbeatMs);
+        ClusterPeerStatusMessage msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        long now = msg.getTimestamp() + 40 * heartbeatMs;
+        long staleThresholdMs = 200 * heartbeatMs;
+        assertTrue((boolean) isPeerAlive.invoke(manager, "peer1", msg, now, staleThresholdMs));
+    }
 }
