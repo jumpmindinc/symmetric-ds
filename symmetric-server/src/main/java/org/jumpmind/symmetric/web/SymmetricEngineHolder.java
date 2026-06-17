@@ -161,13 +161,19 @@ public class SymmetricEngineHolder {
                     log.info("Starting registration engine first from {}", registrationStarter.getPropertiesFile());
                     enginesStarting.remove(registrationStarter);
                     ExecutorService regExecutor = Executors.newSingleThreadExecutor(new CustomizableThreadFactory("symmetric-engine-startup"));
-                    regExecutor.execute(registrationStarter);
-                    regExecutor.shutdown();
                     try {
-                        regExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
-                    } catch (InterruptedException e) {
-                        log.warn("Interrupted while waiting for registration engine to start", e);
-                        Thread.currentThread().interrupt();
+                        regExecutor.execute(registrationStarter);
+                        regExecutor.shutdown();
+                        try {
+                            regExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+                        } catch (InterruptedException e) {
+                            log.warn("Interrupted while waiting for registration engine to start", e);
+                            Thread.currentThread().interrupt();
+                        }
+                    } finally {
+                        if (!regExecutor.isShutdown()) {
+                            regExecutor.shutdownNow();
+                        }
                     }
                 }
                 if (registrationStarter != null)

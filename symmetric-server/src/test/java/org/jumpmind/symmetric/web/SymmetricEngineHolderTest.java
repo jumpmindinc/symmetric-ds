@@ -41,6 +41,8 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 
 class SymmetricEngineHolderTest {
@@ -66,7 +68,7 @@ class SymmetricEngineHolderTest {
         }
 
         @Test
-        public void testFindsRegistrationNodeWithBlankUrl() throws IOException {
+        void testFindsRegistrationNodeWithBlankUrl() throws IOException {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             Set<SymmetricEngineStarter> starters = new LinkedHashSet<>();
             File regFile = createPropertiesFile("corp", "", "http://localhost:31415/sync/corp");
@@ -79,7 +81,7 @@ class SymmetricEngineHolderTest {
         }
 
         @Test
-        public void testFindsRegistrationNodeWhenUrlEqualsSyncUrl() throws IOException {
+        void testFindsRegistrationNodeWhenUrlEqualsSyncUrl() throws IOException {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             Set<SymmetricEngineStarter> starters = new LinkedHashSet<>();
             File regFile = createPropertiesFile("corp", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/corp");
@@ -92,7 +94,7 @@ class SymmetricEngineHolderTest {
         }
 
         @Test
-        public void testReturnsNullWhenNoRegistrationNode() throws IOException {
+        void testReturnsNullWhenNoRegistrationNode() throws IOException {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             Set<SymmetricEngineStarter> starters = new LinkedHashSet<>();
             File client1 = createPropertiesFile("store1", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/store1");
@@ -107,39 +109,26 @@ class SymmetricEngineHolderTest {
     @Nested
     class GetEngineName {
 
-        @Test
-        void usesEngineNamePropertyWhenSet() {
+        @ParameterizedTest
+        @CsvSource({
+                "my-engine, , , my-engine",
+                ", corp, store-001, corp-store-001",
+                ", corp, corp, corp",
+                ", my group, store 1, my_group-store_1"
+        })
+        void testEngineNameGeneration(String engineName, String groupId, String externalId, String expected) {
             Properties props = new Properties();
-            props.setProperty(ParameterConstants.ENGINE_NAME, "my-engine");
+            if (engineName != null) {
+                props.setProperty(ParameterConstants.ENGINE_NAME, engineName);
+            }
+            if (groupId != null) {
+                props.setProperty(ParameterConstants.NODE_GROUP_ID, groupId);
+            }
+            if (externalId != null) {
+                props.setProperty(ParameterConstants.EXTERNAL_ID, externalId);
+            }
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            assertEquals("my-engine", holder.getEngineName(props));
-        }
-
-        @Test
-        void combinesGroupAndExternalIdWhenDifferent() {
-            Properties props = new Properties();
-            props.setProperty(ParameterConstants.NODE_GROUP_ID, "corp");
-            props.setProperty(ParameterConstants.EXTERNAL_ID, "store-001");
-            SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            assertEquals("corp-store-001", holder.getEngineName(props));
-        }
-
-        @Test
-        void usesGroupIdAloneWhenSameAsExternalId() {
-            Properties props = new Properties();
-            props.setProperty(ParameterConstants.NODE_GROUP_ID, "corp");
-            props.setProperty(ParameterConstants.EXTERNAL_ID, "corp");
-            SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            assertEquals("corp", holder.getEngineName(props));
-        }
-
-        @Test
-        void replacesSpacesWithUnderscores() {
-            Properties props = new Properties();
-            props.setProperty(ParameterConstants.NODE_GROUP_ID, "my group");
-            props.setProperty(ParameterConstants.EXTERNAL_ID, "store 1");
-            SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            assertEquals("my_group-store_1", holder.getEngineName(props));
+            assertEquals(expected, holder.getEngineName(props));
         }
     }
 
