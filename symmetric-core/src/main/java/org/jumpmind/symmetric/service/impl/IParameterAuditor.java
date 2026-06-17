@@ -25,5 +25,7 @@ import java.util.Optional;
 import org.jumpmind.properties.TypedProperties;
 
 public interface IParameterAuditor {
-    public Optional<String> audit(TypedProperties parameters, ParameterService parameterService);
+    public void audit(TypedProperties parameters, ParameterService parameterService);
+
+    public Optional<String> validate(TypedProperties parameters, ParameterService parameterService);
 }

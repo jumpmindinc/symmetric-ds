@@ -26,13 +26,20 @@ import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.ParameterConstants;
 
 public class ClusteredExtractJobParameterAuditor implements IParameterAuditor {
+    private boolean parametersOverriden = false;
+
     @Override
-    public Optional<String> audit(TypedProperties parameters, ParameterService parameterService) {
+    public void audit(TypedProperties parameters, ParameterService parameterService) {
         if (parameters.is(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)
                 && parameters.is(ParameterConstants.CLUSTER_STAGING_ENABLED, true)
                 && parameters.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true)) {
             parameters.setProperty(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, "false");
-            parameterService.setDatabaseHasBeenInitialized(true);
+            this.parametersOverriden = true;
+        }
+    }
+
+    public Optional<String> validate(TypedProperties parameters, ParameterService parameterService) {
+        if (this.parametersOverriden) {
             return Optional.of(String.format("Engine %s is configured with conflicting parameters. The initial load extract job "
                     + "cannot be used when cluster locking is enabled but staging is not clustered. "
                     + "One of these parameters needs to be changed: %s=true, %s=true, %s=false",

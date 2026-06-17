@@ -20,7 +20,6 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +53,6 @@ public class ParameterService extends AbstractParameterService implements IParam
     private Date lastUpdateTime;
     private List<DatabaseParameter> offlineParameters;
     private List<IParameterAuditor> auditors;
-    private List<String> parameterViolations;
 
     public ParameterService(IDatabasePlatform platform, ITypedPropertiesFactory factory, String tablePrefix) {
         this.tablePrefix = SqlUtils.sanitizeTablePrefix(tablePrefix);
@@ -62,7 +60,6 @@ public class ParameterService extends AbstractParameterService implements IParam
         this.sql = new ParameterServiceSqlMap(platform, tablePrefix);
         this.sqlTemplate = platform.getSqlTemplate();
         this.auditors = List.of(new ClusteredExtractJobParameterAuditor());
-        this.parameterViolations = new ArrayList<String>();
     }
 
     @Override
@@ -196,11 +193,9 @@ public class ParameterService extends AbstractParameterService implements IParam
         TypedProperties p = this.factory.reload();
         p.putAll(rereadDatabaseParameters(p));
         rereadOfflineNodeParameters();
-        parameterViolations = auditors.stream()
-                .<Optional<String>> map(a -> a.audit(p, this))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
+        for (IParameterAuditor auditor : auditors) {
+            auditor.audit(p, this);
+        }
         return p;
     }
 
@@ -273,6 +268,13 @@ public class ParameterService extends AbstractParameterService implements IParam
     }
 
     public List<String> getParameterViolations() {
-        return parameterViolations;
+        TypedProperties p = this.factory.reload();
+        p.putAll(rereadDatabaseParameters(p));
+        rereadOfflineNodeParameters();
+        return auditors.stream()
+                .<Optional<String>> map(a -> a.validate(p, this))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
     }
 }
