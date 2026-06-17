@@ -20,10 +20,10 @@
  */
 package org.jumpmind.symmetric.cache;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -34,9 +34,9 @@ import org.jumpmind.security.ISecurityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class ClusterEngineStateMessageTest {
+class ClusterEngineStateMessageTest {
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         ISecurityService mockSecurityService = mock(ISecurityService.class);
         when(mockSecurityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(mockSecurityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
@@ -48,23 +48,23 @@ public class ClusterEngineStateMessageTest {
     }
 
     @Test
-    public void getEngineState_returnsConstructedState() {
+    void getEngineState_returnsConstructedState() {
         assertEquals(ClusterEngineStateMessage.ENGINE_ONLINE, msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng1").getEngineState());
     }
 
     @Test
-    public void getEngineName_returnsConstructedName() {
+    void getEngineName_returnsConstructedName() {
         assertEquals("my-engine", msg(ClusterEngineStateMessage.ENGINE_ONLINE, "my-engine").getEngineName());
     }
 
     @Test
-    public void getEventType_matchesEngineState() {
+    void getEventType_matchesEngineState() {
         ClusterEngineStateMessage m = msg(ClusterEngineStateMessage.ENGINE_STARTING, "eng1");
         assertEquals(m.getEngineState(), m.getEventType());
     }
 
     @Test
-    public void allStateConstants_roundtripThroughMessage() {
+    void allStateConstants_roundtripThroughMessage() {
         String[] states = {
                 ClusterEngineStateMessage.ENGINE_STARTING,
                 ClusterEngineStateMessage.ENGINE_UPGRADING_DB,
@@ -79,17 +79,17 @@ public class ClusterEngineStateMessageTest {
     }
 
     @Test
-    public void getServerId_returnsConstructedServerId() {
+    void getServerId_returnsConstructedServerId() {
         assertEquals("server1", msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng").getServerId());
     }
 
     @Test
-    public void getVersion_returnsConstructedVersion() {
+    void getVersion_returnsConstructedVersion() {
         assertEquals("1.0", msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng").getVersion());
     }
 
     @Test
-    public void getTimestamp_isRecentEpochMs() {
+    void getTimestamp_isRecentEpochMs() {
         long before = System.currentTimeMillis();
         ClusterEngineStateMessage m = msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng");
         long after = System.currentTimeMillis();
@@ -98,37 +98,37 @@ public class ClusterEngineStateMessageTest {
     }
 
     @Test
-    public void getTimestampAsDate_returnsIsoString() {
+    void getTimestampAsDate_returnsIsoString() {
         String ts = msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng").getTimestampAsDate();
         assertNotNull(ts);
         assertTrue(ts.contains("T"));
     }
 
     @Test
-    public void getVersionNo_returnsPositiveInt() {
+    void getVersionNo_returnsPositiveInt() {
         assertTrue(msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng").getVersionNo() > 0);
     }
 
     @Test
-    public void isStale_freshMessage_returnsFalse() {
+    void isStale_freshMessage_returnsFalse() {
         ClusterEngineStateMessage m = msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng");
         assertFalse(m.isStale(System.currentTimeMillis(), 9000L));
     }
 
     @Test
-    public void isStale_oldMessage_returnsTrue() {
+    void isStale_oldMessage_returnsTrue() {
         ClusterEngineStateMessage m = msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng");
         long now = m.getTimestamp() + 10_000L;
         assertTrue(m.isStale(now, 9000L));
     }
 
     @Test
-    public void isHeaderChecksumValid_freshMessage_returnsTrue() {
+    void isHeaderChecksumValid_freshMessage_returnsTrue() {
         assertTrue(msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng").isHeaderChecksumValid());
     }
 
     @Test
-    public void parsePayload_twoPartPayload_setsStateAndName() throws Exception {
+    void parsePayload_twoPartPayload_setsStateAndName() throws Exception {
         ClusterEngineStateMessage m = msg(ClusterEngineStateMessage.ENGINE_ONLINE, "original");
         Method parsePayload = ClusterEngineStateMessage.class.getDeclaredMethod("parsePayload", String.class);
         parsePayload.setAccessible(true);
@@ -138,7 +138,7 @@ public class ClusterEngineStateMessageTest {
     }
 
     @Test
-    public void parsePayload_singlePartPayload_setsStateAndEmptyName() throws Exception {
+    void parsePayload_singlePartPayload_setsStateAndEmptyName() throws Exception {
         ClusterEngineStateMessage m = msg(ClusterEngineStateMessage.ENGINE_ONLINE, "original");
         Method parsePayload = ClusterEngineStateMessage.class.getDeclaredMethod("parsePayload", String.class);
         parsePayload.setAccessible(true);
@@ -148,7 +148,7 @@ public class ClusterEngineStateMessageTest {
     }
 
     @Test
-    public void parsePayload_nameWithPipe_preservesFullName() throws Exception {
+    void parsePayload_nameWithPipe_preservesFullName() throws Exception {
         ClusterEngineStateMessage m = msg(ClusterEngineStateMessage.ENGINE_ONLINE, "original");
         Method parsePayload = ClusterEngineStateMessage.class.getDeclaredMethod("parsePayload", String.class);
         parsePayload.setAccessible(true);

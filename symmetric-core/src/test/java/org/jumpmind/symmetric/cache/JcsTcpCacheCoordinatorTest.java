@@ -20,10 +20,10 @@
  */
 package org.jumpmind.symmetric.cache;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -47,11 +47,11 @@ import org.mockito.MockedStatic;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class JcsTcpCacheCoordinatorTest {
+class JcsTcpCacheCoordinatorTest {
     private JcsTcpCacheCoordinator coordinator;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         ISecurityService mockSecurityService = mock(ISecurityService.class);
         when(mockSecurityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(mockSecurityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
@@ -60,26 +60,26 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void getPeerIds_emptyByDefault() {
+    void getPeerIds_emptyByDefault() {
         assertTrue(coordinator.getPeerIds().isEmpty());
     }
 
     @Test
-    public void addPeer_addsToPeerIds() {
+    void addPeer_addsToPeerIds() {
         coordinator.addPeer("server1");
         assertTrue(coordinator.getPeerIds().contains("server1"));
         assertEquals(1, coordinator.getPeerIds().size());
     }
 
     @Test
-    public void addPeer_duplicate_notAddedTwice() {
+    void addPeer_duplicate_notAddedTwice() {
         coordinator.addPeer("server1");
         coordinator.addPeer("server1");
         assertEquals(1, coordinator.getPeerIds().size());
     }
 
     @Test
-    public void addPeer_multiplePeers_allTracked() {
+    void addPeer_multiplePeers_allTracked() {
         coordinator.addPeer("server1");
         coordinator.addPeer("server2");
         coordinator.addPeer("server3");
@@ -87,12 +87,12 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void getMessage_notStarted_returnsNull() {
+    void getMessage_notStarted_returnsNull() {
         assertNull(coordinator.getPeerStatusMessage("server1"));
     }
 
     @Test
-    public void sendMessageToPeers_notStarted_doesNotThrow() {
+    void sendMessageToPeers_notStarted_doesNotThrow() {
         ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         coordinator.sendMessageToPeers(msg);
@@ -100,26 +100,26 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void stop_notStarted_doesNotThrow() {
+    void stop_notStarted_doesNotThrow() {
         coordinator.stop();
         assertTrue(coordinator.getPeerIds().isEmpty());
     }
 
     @Test
-    public void buildPeerList_noPeers_returnsEmptyString() throws Exception {
+    void buildPeerList_noPeers_returnsEmptyString() throws Exception {
         setPort(1101);
         assertEquals("", invokeBuildPeerList());
     }
 
     @Test
-    public void buildPeerList_onePeer_returnsHostColonPort() throws Exception {
+    void buildPeerList_onePeer_returnsHostColonPort() throws Exception {
         setPort(1101);
         coordinator.addPeer("host1");
         assertEquals("host1:1101", invokeBuildPeerList());
     }
 
     @Test
-    public void buildPeerList_multiplePeers_returnsCommaSeparated() throws Exception {
+    void buildPeerList_multiplePeers_returnsCommaSeparated() throws Exception {
         setPort(2200);
         coordinator.addPeer("host1");
         coordinator.addPeer("host2");
@@ -130,23 +130,23 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void getMessage_knownRegion_notStarted_returnsNull() {
+    void getMessage_knownRegion_notStarted_returnsNull() {
         assertNull(coordinator.getMessage("SYM_CLUSTER_PEERS", "server1"));
     }
 
     @Test
-    public void getMessage_unknownRegion_returnsNull() {
+    void getMessage_unknownRegion_returnsNull() {
         assertNull(coordinator.getMessage("OTHER_REGION", "server1"));
     }
 
     @Test
-    public void stop_calledTwice_doesNotThrow() {
+    void stop_calledTwice_doesNotThrow() {
         coordinator.stop();
         coordinator.stop();
     }
 
     @Test
-    public void buildJcsProperties_containsRequiredKeys() throws Exception {
+    void buildJcsProperties_containsRequiredKeys() throws Exception {
         setPort(1101);
         Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildJcsProperties", String.class);
         m.setAccessible(true);
@@ -159,7 +159,7 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void buildJcsProperties_allowGetIsFalse() throws Exception {
+    void buildJcsProperties_allowGetIsFalse() throws Exception {
         setPort(1101);
         Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildJcsProperties", String.class);
         m.setAccessible(true);
@@ -168,7 +168,7 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void getPeerStatusMessage_cacheHasStatusMessage_returnsIt() throws Exception {
+    void getPeerStatusMessage_cacheHasStatusMessage_returnsIt() throws Exception {
         ClusterPeerStatusMessage expected = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1", "inst1", "1.0");
         CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
@@ -178,7 +178,7 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void getPeerStatusMessage_keyNotInCache_returnsNull() throws Exception {
+    void getPeerStatusMessage_keyNotInCache_returnsNull() throws Exception {
         CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
         when(mockCache.get("peer1")).thenReturn(null);
         setPeerHeartbeatCache(mockCache);
@@ -186,7 +186,7 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void sendMessageToPeers_cachePutThrows_doesNotThrow() throws Exception {
+    void sendMessageToPeers_cachePutThrows_doesNotThrow() throws Exception {
         CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
         doThrow(new RuntimeException("JCS failure")).when(mockCache).put(anyString(), any());
         setPeerHeartbeatCache(mockCache);
@@ -197,7 +197,7 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void reinitJcs_shutdownThrows_doesNotThrow() throws Exception {
+    void reinitJcs_shutdownThrows_doesNotThrow() throws Exception {
         CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
         doThrow(new RuntimeException("shutdown failed")).when(mockManager).shutDown();
         setJcsCacheManager(mockManager);
@@ -206,7 +206,7 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void start_regularPath_initializesManager() {
+    void start_regularPath_initializesManager() {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
@@ -216,7 +216,7 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void start_exceptionDuringConfigure_throwsRuntimeException() {
+    void start_exceptionDuringConfigure_throwsRuntimeException() {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             doThrow(new RuntimeException("configure failed")).when(mockManager).configure(any(Properties.class));
@@ -226,7 +226,7 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void stop_afterStarted_shutsDownManager() {
+    void stop_afterStarted_shutsDownManager() {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
@@ -238,7 +238,7 @@ public class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    public void reinitJcs_regularPath_shutsDownAndReinitsManager() {
+    void reinitJcs_regularPath_shutsDownAndReinitsManager() {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager firstManager = mock(CompositeCacheManager.class);
             CompositeCacheManager secondManager = mock(CompositeCacheManager.class);

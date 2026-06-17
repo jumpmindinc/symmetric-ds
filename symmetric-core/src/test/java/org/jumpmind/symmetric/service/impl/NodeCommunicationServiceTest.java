@@ -20,8 +20,8 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -44,7 +44,7 @@ import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class NodeCommunicationServiceTest {
+class NodeCommunicationServiceTest {
     private IParameterService parameterService;
     private ISymmetricDialect dialect;
     private IDatabasePlatform platform;
@@ -78,11 +78,11 @@ public class NodeCommunicationServiceTest {
     }
 
     @Test
-    public void testNodeCommunicationTypeLengths() {
+    void testNodeCommunicationTypeLengths() {
         final int MAX_LENGTH_IN_DB = 10;
         for (CommunicationType communicationType : NodeCommunication.CommunicationType.values()) {
             String msg = communicationType.name() + " is too long for DB. " + communicationType.name().length() + " <= " + MAX_LENGTH_IN_DB;
-            assertTrue(msg, communicationType.name().length() <= MAX_LENGTH_IN_DB);
+            assertTrue(communicationType.name().length() <= MAX_LENGTH_IN_DB, msg);
         }
     }
 

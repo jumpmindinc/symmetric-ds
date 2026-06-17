@@ -56,7 +56,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     @Override
-    public void start(String serverId, String instanceId, int port) {
+    public synchronized void start(String serverId, String instanceId, int port) {
         this.serverId = serverId;
         this.instanceId = instanceId;
         this.port = port;
@@ -74,7 +74,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     @Override
-    public void stop() {
+    public synchronized void stop() {
         if (jcsCacheManager != null) {
             jcsCacheManager.shutDown();
             jcsCacheManager = null;

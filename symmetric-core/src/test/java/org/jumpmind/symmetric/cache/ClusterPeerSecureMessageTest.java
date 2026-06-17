@@ -20,11 +20,11 @@
  */
 package org.jumpmind.symmetric.cache;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -43,9 +43,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-public class ClusterPeerSecureMessageTest {
+class ClusterPeerSecureMessageTest {
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         ISecurityService mockSecurityService = mock(ISecurityService.class);
         when(mockSecurityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(mockSecurityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
@@ -64,17 +64,17 @@ public class ClusterPeerSecureMessageTest {
     }
 
     @Test
-    public void getVersionNo_returnsExpectedConstant() {
+    void getVersionNo_returnsExpectedConstant() {
         assertEquals(20260611, heartbeat().getVersionNo());
     }
 
     @Test
-    public void isHeaderChecksumValid_freshMessage_returnsTrue() {
+    void isHeaderChecksumValid_freshMessage_returnsTrue() {
         assertTrue(heartbeat().isHeaderChecksumValid());
     }
 
     @Test
-    public void isHeaderChecksumValid_tamperedChecksum_returnsFalse() throws Exception {
+    void isHeaderChecksumValid_tamperedChecksum_returnsFalse() throws Exception {
         ClusterPeerStatusMessage msg = heartbeat();
         Field f = ClusterPeerSecureMessage.class.getDeclaredField("headerChecksum");
         f.setAccessible(true);
@@ -83,14 +83,14 @@ public class ClusterPeerSecureMessageTest {
     }
 
     @Test
-    public void ensureDecrypted_deserializedMessage_lazyDecryptsPayload() throws Exception {
+    void ensureDecrypted_deserializedMessage_lazyDecryptsPayload() throws Exception {
         ClusterPeerStatusMessage deserialized = serializeRoundTrip(heartbeat());
         assertEquals(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, deserialized.getEventType());
         assertEquals("inst1", deserialized.getInstanceId());
     }
 
     @Test
-    public void decryptPayload_securityServiceNull_throwsIllegalStateException() throws Exception {
+    void decryptPayload_securityServiceNull_throwsIllegalStateException() throws Exception {
         ClusterPeerStatusMessage deserialized = serializeRoundTrip(heartbeat());
         ClusterPeerSecureMessage.setSecurityService(null);
         try {
@@ -102,7 +102,7 @@ public class ClusterPeerSecureMessageTest {
     }
 
     @Test
-    public void computeChecksum_noSuchAlgorithm_throwsRuntimeException() {
+    void computeChecksum_noSuchAlgorithm_throwsRuntimeException() {
         try (MockedStatic<MessageDigest> mocked = mockStatic(MessageDigest.class)) {
             mocked.when(() -> MessageDigest.getInstance(anyString()))
                     .thenThrow(new NoSuchAlgorithmException("mocked"));

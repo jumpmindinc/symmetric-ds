@@ -821,7 +821,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             refreshClusterPeers(node.getNodeId());
             clusteredCacheManager.registerEngine(this);
             log.info("Starting registered node [group={}, id={}, nodeId={}]",
-                    new Object[] { node.getNodeGroupId(), node.getNodeId(), node.getExternalId() });
+                    (Object) node.getNodeGroupId(), node.getNodeId(), node.getExternalId());
             boolean force = isStartupDbParametersDifferentFromLastStart
                     || parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP_FORCE);
             if (force || parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP, true)
