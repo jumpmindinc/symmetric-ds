@@ -170,9 +170,9 @@ public class SymmetricEngineHolder {
                         Thread.currentThread().interrupt();
                     }
                 }
-                // Start rest of engines only after the registration engine
-                for (SymmetricEngineStarter starter : enginesStarting) {
+                if (registrationStarter != null)
                     log.info("Now starting remaining engines");
+                for (SymmetricEngineStarter starter : enginesStarting) {
                     executor.execute(starter);
                 }
                 executor.shutdown();
@@ -189,6 +189,7 @@ public class SymmetricEngineHolder {
                 props.load(is);
             } catch (IOException e) {
                 log.warn("Unable to read properties file to determine registration node: {}", starter.getPropertiesFile());
+                continue;
             }
             String registrationUrl = props.getProperty(ParameterConstants.REGISTRATION_URL, "");
             String syncUrl = props.getProperty(ParameterConstants.SYNC_URL, "");

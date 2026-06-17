@@ -35,7 +35,9 @@ import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.Set;
 
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.SymmetricException;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -52,10 +54,10 @@ class SymmetricEngineHolderTest {
             File file = new File(tempDir, name + ".properties");
             Properties props = new Properties();
             if (registrationUrl != null) {
-                props.setProperty("registration.url", registrationUrl);
+                props.setProperty(ParameterConstants.REGISTRATION_URL, registrationUrl);
             }
             if (syncUrl != null) {
-                props.setProperty("sync.url", syncUrl);
+                props.setProperty(ParameterConstants.SYNC_URL, syncUrl);
             }
             try (FileOutputStream out = new FileOutputStream(file)) {
                 props.store(out, null);
@@ -108,7 +110,7 @@ class SymmetricEngineHolderTest {
         @Test
         void usesEngineNamePropertyWhenSet() {
             Properties props = new Properties();
-            props.setProperty("engine.name", "my-engine");
+            props.setProperty(ParameterConstants.ENGINE_NAME, "my-engine");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertEquals("my-engine", holder.getEngineName(props));
         }
@@ -116,8 +118,8 @@ class SymmetricEngineHolderTest {
         @Test
         void combinesGroupAndExternalIdWhenDifferent() {
             Properties props = new Properties();
-            props.setProperty("group.id", "corp");
-            props.setProperty("external.id", "store-001");
+            props.setProperty(ParameterConstants.NODE_GROUP_ID, "corp");
+            props.setProperty(ParameterConstants.EXTERNAL_ID, "store-001");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertEquals("corp-store-001", holder.getEngineName(props));
         }
@@ -125,8 +127,8 @@ class SymmetricEngineHolderTest {
         @Test
         void usesGroupIdAloneWhenSameAsExternalId() {
             Properties props = new Properties();
-            props.setProperty("group.id", "corp");
-            props.setProperty("external.id", "corp");
+            props.setProperty(ParameterConstants.NODE_GROUP_ID, "corp");
+            props.setProperty(ParameterConstants.EXTERNAL_ID, "corp");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertEquals("corp", holder.getEngineName(props));
         }
@@ -134,8 +136,8 @@ class SymmetricEngineHolderTest {
         @Test
         void replacesSpacesWithUnderscores() {
             Properties props = new Properties();
-            props.setProperty("group.id", "my group");
-            props.setProperty("external.id", "store 1");
+            props.setProperty(ParameterConstants.NODE_GROUP_ID, "my group");
+            props.setProperty(ParameterConstants.EXTERNAL_ID, "store 1");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertEquals("my_group-store_1", holder.getEngineName(props));
         }
@@ -147,7 +149,7 @@ class SymmetricEngineHolderTest {
         @Test
         void throwsWhenExternalIdMissing() {
             Properties props = new Properties();
-            props.setProperty("group.id", "corp");
+            props.setProperty(ParameterConstants.NODE_GROUP_ID, "corp");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertThrows(IllegalStateException.class, () -> holder.validateRequiredProperties(props));
         }
@@ -155,7 +157,7 @@ class SymmetricEngineHolderTest {
         @Test
         void throwsWhenGroupIdMissing() {
             Properties props = new Properties();
-            props.setProperty("external.id", "store-001");
+            props.setProperty(ParameterConstants.EXTERNAL_ID, "store-001");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertThrows(IllegalStateException.class, () -> holder.validateRequiredProperties(props));
         }
@@ -163,9 +165,9 @@ class SymmetricEngineHolderTest {
         @Test
         void throwsWhenDbDriverMissing() {
             Properties props = new Properties();
-            props.setProperty("external.id", "store-001");
-            props.setProperty("group.id", "corp");
-            props.setProperty("engine.name", "test");
+            props.setProperty(ParameterConstants.EXTERNAL_ID, "store-001");
+            props.setProperty(ParameterConstants.NODE_GROUP_ID, "corp");
+            props.setProperty(ParameterConstants.ENGINE_NAME, "test");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertThrows(IllegalStateException.class, () -> holder.validateRequiredProperties(props));
         }
@@ -173,16 +175,16 @@ class SymmetricEngineHolderTest {
         @Test
         void defaultsRegistrationUrlToBlankWhenMissing() {
             Properties props = new Properties();
-            props.setProperty("external.id", "store-001");
-            props.setProperty("group.id", "corp");
-            props.setProperty("engine.name", "test");
-            props.setProperty("db.driver", "org.postgresql.Driver");
-            props.setProperty("db.url", "jdbc:postgresql://localhost/test");
-            props.setProperty("db.user", "postgres");
-            props.setProperty("db.password", "postgres");
+            props.setProperty(ParameterConstants.EXTERNAL_ID, "store-001");
+            props.setProperty(ParameterConstants.NODE_GROUP_ID, "corp");
+            props.setProperty(ParameterConstants.ENGINE_NAME, "test");
+            props.setProperty(DataSourceProperties.DB_POOL_DRIVER, "org.postgresql.Driver");
+            props.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:postgresql://localhost/test");
+            props.setProperty(DataSourceProperties.DB_POOL_USER, "postgres");
+            props.setProperty(DataSourceProperties.DB_POOL_PASSWORD, "postgres");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             holder.validateRequiredProperties(props);
-            assertEquals("", props.getProperty("registration.url"));
+            assertEquals("", props.getProperty(ParameterConstants.REGISTRATION_URL));
         }
     }
 
@@ -194,8 +196,8 @@ class SymmetricEngineHolderTest {
             File file1 = new File(tempDir, "engine1.properties");
             File file2 = new File(tempDir, "engine2.properties");
             Properties props = new Properties();
-            props.setProperty("db.user", "postgres");
-            props.setProperty("db.url", "jdbc:postgresql://localhost/mydb");
+            props.setProperty(DataSourceProperties.DB_POOL_USER, "postgres");
+            props.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:postgresql://localhost/mydb");
             try (var out = new java.io.FileOutputStream(file1)) { props.store(out, null); }
             try (var out = new java.io.FileOutputStream(file2)) { props.store(out, null); }
 
@@ -209,11 +211,11 @@ class SymmetricEngineHolderTest {
             File file1 = new File(tempDir, "engine1.properties");
             File file2 = new File(tempDir, "engine2.properties");
             Properties props1 = new Properties();
-            props1.setProperty("db.user", "postgres");
-            props1.setProperty("db.url", "jdbc:postgresql://localhost:5432/db1");
+            props1.setProperty(DataSourceProperties.DB_POOL_USER, "postgres");
+            props1.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:postgresql://localhost:5432/db1");
             Properties props2 = new Properties();
-            props2.setProperty("db.user", "postgres");
-            props2.setProperty("db.url", "jdbc:postgresql://localhost:5433/db2");
+            props2.setProperty(DataSourceProperties.DB_POOL_USER, "postgres");
+            props2.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:postgresql://localhost:5433/db2");
             try (var out = new java.io.FileOutputStream(file1)) { props1.store(out, null); }
             try (var out = new java.io.FileOutputStream(file2)) { props2.store(out, null); }
 
