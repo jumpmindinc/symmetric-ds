@@ -129,10 +129,16 @@ public class ClusteredCacheManagerTest {
         return (boolean) f.get(manager);
     }
 
+    private void setListenerStarted(boolean value) throws Exception {
+        Field f = ClusteredCacheManager.class.getDeclaredField("isClusterPeerListenerStarted");
+        f.setAccessible(true);
+        f.set(manager, value);
+    }
+
     @Test
-    public void registerEngine_firstEngine_startsCoordinator() throws Exception {
+    public void registerEngine_doesNotStartCoordinator() throws Exception {
         manager.registerEngine(mockEngine);
-        verify(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
+        verify(mockCoordinator, never()).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
@@ -144,13 +150,20 @@ public class ClusteredCacheManagerTest {
         when(engine2.getSecurityService()).thenReturn(mockSecurityService);
         manager.registerEngine(mockEngine);
         manager.registerEngine(engine2);
-        verify(mockCoordinator, times(1)).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
+        verify(mockCoordinator, never()).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
-    public void unregisterEngine_lastEngine_stopsCoordinator() throws Exception {
+    public void unregisterEngine_doesNotStopCoordinator() throws Exception {
         manager.registerEngine(mockEngine);
         manager.unregisterEngine(mockEngine);
+        verify(mockCoordinator, never()).stop();
+    }
+
+    @Test
+    public void stopClusterCommunication_stopsCoordinator() throws Exception {
+        setListenerStarted(true);
+        manager.stopClusterCommunication();
         verify(mockCoordinator).stop();
     }
 
@@ -228,25 +241,22 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
-    public void stopInternal_setsRunningFalseAndCallsCoordinatorStop() throws Exception {
-        manager.registerEngine(mockEngine);
+    public void stopClusterCommunication_setsRunningFalseAndCallsCoordinatorStop() throws Exception {
+        setListenerStarted(true);
+        manager.startClusterHeartbeat();
         assertTrue(getRunning());
-        Method m = ClusteredCacheManager.class.getDeclaredMethod("stopInternal");
-        m.setAccessible(true);
-        m.invoke(manager);
+        manager.stopClusterCommunication();
         assertFalse(getRunning());
         verify(mockCoordinator).stop();
     }
 
     @Test
-    public void stopInternal_sendsPeerLeavingMessage() throws Exception {
-        manager.registerEngine(mockEngine);
+    public void stopClusterCommunication_doesNotSendLeavingWhenListenerNotStarted() throws Exception {
+        manager.startClusterHeartbeat();
         stopHeartbeatThread();
         clearInvocations(mockCoordinator);
-        Method m = ClusteredCacheManager.class.getDeclaredMethod("stopInternal");
-        m.setAccessible(true);
-        m.invoke(manager);
-        verify(mockCoordinator, times(1)).sendMessageToPeers(any(ClusterPeerStatusMessage.class));
+        manager.stopClusterCommunication();
+        verify(mockCoordinator, never()).sendMessageToPeers(any(ClusterPeerStatusMessage.class));
     }
 
     private void stopHeartbeatThread() throws Exception {
@@ -262,16 +272,15 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void sendMessageToPeers_constructsMessageAndCallsCoordinator() throws Exception {
-        manager.registerEngine(mockEngine);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("sendMessageToPeers", String.class);
         m.setAccessible(true);
         m.invoke(manager, ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT);
-        verify(mockCoordinator, times(2)).sendMessageToPeers(any(ClusterPeerStatusMessage.class));
+        verify(mockCoordinator, times(1)).sendMessageToPeers(any(ClusterPeerStatusMessage.class));
     }
 
     @Test
-    public void startHeartbeatThread_createsDaemonThreadWithCorrectName() throws Exception {
-        manager.registerEngine(mockEngine);
+    public void startClusterHeartbeat_createsDaemonThreadWithCorrectName() throws Exception {
+        manager.startClusterHeartbeat();
         Field f = ClusteredCacheManager.class.getDeclaredField("heartbeatThread");
         f.setAccessible(true);
         Thread thread = (Thread) f.get(manager);
