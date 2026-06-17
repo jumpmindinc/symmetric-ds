@@ -400,11 +400,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     protected void onPeerCrashed(String serverId) {
-        log.warn("Cluster peer {} stopped sending heartbeats. Clearing its orphaned locks.", serverId);
+        log.warn("Cluster peer JVM {} stopped sending heartbeats. Clearing its orphaned locks.", serverId);
         for (ISymmetricEngine engine : registeredEngines.values()) {
             MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
             engine.getClusterService().clearLocksForServer(serverId);
             engine.getNodeCommunicationService().clearLocksForServer(serverId);
+            engineStateMap.put(IClusterCacheCoordinator.generateEngineClusterPeerKey(serverId, engine.getEngineName()),
+                    Boolean.FALSE);
         }
     }
 
