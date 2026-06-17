@@ -583,12 +583,34 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
 
     protected boolean lock(NodeCommunication nodeCommunication, Date lockTime) {
         Date lockTimeout = getLockTimeoutDate(nodeCommunication.getCommunicationType());
+        String currentOwner = nodeCommunication.getLockingServerId();
         if (clusterService.isClusteringEnabled()) {
-            return sqlTemplate.update(getSql("aquireLockSql"), clusterService.getServerId(), lockTime, lockTime,
+            boolean locked = sqlTemplate.update(getSql("aquireLockSql"), clusterService.getServerId(), lockTime, lockTime,
                     nodeCommunication.getNodeId(), nodeCommunication.getQueue(),
                     nodeCommunication.getCommunicationType().name(), lockTimeout) == 1;
+            if (!locked && clusterService.isStaleServer(currentOwner)) {
+                log.warn("Breaking node communication lock for node '{}' queue '{}' held by stale cluster peer '{}'",
+                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner);
+                locked = sqlTemplate.update(getSql("acquireLockFromStaleSql"), clusterService.getServerId(), lockTime, lockTime,
+                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(),
+                        nodeCommunication.getCommunicationType().name(), currentOwner) == 1;
+            }
+            return locked;
         } else {
-            if (nodeCommunication.getLockTime() == null || nodeCommunication.getLockTime().before(lockTimeout)) {
+            Date lockTimeVal = nodeCommunication.getLockTime();
+            if (lockTimeVal == null || lockTimeVal.before(lockTimeout)) {
+                if (lockTimeVal != null && currentOwner != null) {
+                    log.warn("Breaking node communication lock for node '{}' queue '{}' held by '{}' due to expiry",
+                            nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner);
+                }
+                nodeCommunication.setLockingServerId(clusterService.getServerId());
+                nodeCommunication.setLockTime(lockTime);
+                nodeCommunication.setLastLockTime(lockTime);
+                return true;
+            }
+            if (clusterService.isStaleServer(currentOwner)) {
+                log.warn("Breaking node communication lock for node '{}' queue '{}' held by stale cluster peer '{}'",
+                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner);
                 nodeCommunication.setLockingServerId(clusterService.getServerId());
                 nodeCommunication.setLockTime(lockTime);
                 nodeCommunication.setLastLockTime(lockTime);

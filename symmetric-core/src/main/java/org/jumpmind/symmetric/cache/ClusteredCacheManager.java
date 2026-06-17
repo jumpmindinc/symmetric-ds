@@ -56,6 +56,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
     private Thread heartbeatThread;
     private volatile boolean running;
+    private volatile long currentHeartbeatMs = DEFAULT_HEARTBEAT_MS;
     private volatile boolean isClusterPeerListenerStarted;
     private volatile String lastBroadcastEventType = ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT;
     private final Map<String, String> lastEngineStates = new ConcurrentHashMap<>();
@@ -237,6 +238,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 if (engine != null) {
                     MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
                     sleepHeartbeatMs = getHeartbeatMs(engine);
+                    currentHeartbeatMs = sleepHeartbeatMs;
                     staleThresholdMs = getStaleMs(engine);
                 }
                 sendMessageToPeers(lastBroadcastEventType);
@@ -270,7 +272,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private long getStaleMs(ISymmetricEngine engine) {
-        long defaultMs = 3 * getHeartbeatMs(engine);
+        long defaultMs = 100 * getHeartbeatMs(engine);
         if (engine == null) {
             return defaultMs;
         }
@@ -336,8 +338,21 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             log.info("Cluster peer is upgrading database. Peer={}, Last heartbeat={}, EventType={}",
                     peerId, messageFromPeer.getTimestampAsDate(), eventType);
         } else {
-            log.debug("Cluster peer heartbeat. Peer={}, Last heartbeat={}, EventType={}, now={}, staleThresholdMs={}",
-                    peerId, messageFromPeer.getTimestampAsDate(), eventType, now, staleThresholdMs);
+            long ageMs = now - messageFromPeer.getTimestamp();
+            long heartbeatMs = currentHeartbeatMs;
+            if (heartbeatMs > 0) {
+                long ageIntervals = ageMs / heartbeatMs;
+                if (ageIntervals > 0 && ageIntervals % 20 == 0) {
+                    log.warn("Cluster peer heartbeat delayed by {} heartbeat interval(s) ({} ms). Peer={}, Last heartbeat={}",
+                            ageIntervals, ageMs, peerId, messageFromPeer.getTimestampAsDate());
+                } else {
+                    log.debug("Cluster peer heartbeat. Peer={}, Last heartbeat={}, EventType={}, now={}, staleThresholdMs={}",
+                            peerId, messageFromPeer.getTimestampAsDate(), eventType, now, staleThresholdMs);
+                }
+            } else {
+                log.debug("Cluster peer heartbeat. Peer={}, Last heartbeat={}, EventType={}, now={}, staleThresholdMs={}",
+                        peerId, messageFromPeer.getTimestampAsDate(), eventType, now, staleThresholdMs);
+            }
         }
         return true;
     }

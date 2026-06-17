@@ -58,6 +58,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -76,6 +77,7 @@ import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.model.NodeHost;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.service.IClusterInstanceGenerator;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IExtensionService;
@@ -361,8 +363,10 @@ public class ClusterService extends AbstractService implements IClusterService {
         Lock lock = lockCache.get(action);
         if (lock != null) {
             synchronized (lock) {
-                if (lock.getLockType().equals(TYPE_CLUSTER) && (lock.getLockTime() == null
-                        || lock.getLockTime().before(timeToBreakLock) || argServerId.equals(lock.getLockingServerId()))) {
+                boolean isClusterLock = lock.getLockType().equals(TYPE_CLUSTER);
+                boolean isOwnLock = argServerId.equals(lock.getLockingServerId());
+                boolean isStealable = isLockExpiredOrServerStale(lock.getLockingServerId(), lock.getLockTime(), timeToBreakLock);
+                if (isClusterLock && (isOwnLock || isStealable)) {
                     lock.setLockingServerId(argServerId);
                     lock.setLockTime(timeLockAcquired);
                     return true;
@@ -673,6 +677,33 @@ public class ClusterService extends AbstractService implements IClusterService {
             log.debug("Could not clear sym_lock rows for server '{}': {}", serverId, e.getMessage());
         }
         log.info("Cleared cluster locks held by server '{}'", serverId);
+    }
+
+    @Override
+    public boolean isStaleServer(String lockingServerId) {
+        if (lockingServerId == null || getServerId().equals(lockingServerId)) {
+            return false;
+        }
+        Set<String> active = ClusteredCacheManager.getInstance().getActiveServerIds();
+        return !active.isEmpty() && !active.contains(lockingServerId);
+    }
+
+    protected boolean isLockExpiredOrServerStale(String lockingServerId, Date lockTime, Date lockTimeout) {
+        if (lockTime == null || lockTime.before(lockTimeout)) {
+            if (lockingServerId != null) {
+                if (getServerId().equals(lockingServerId)) {
+                    log.debug("Resetting own cluster lock due to expiry, serverId='{}'", lockingServerId);
+                } else {
+                    log.warn("Stealing cluster lock from '{}' due to expiry", lockingServerId);
+                }
+            }
+            return true;
+        }
+        if (isStaleServer(lockingServerId)) {
+            log.warn("Stealing cluster lock from stale cluster peer '{}'", lockingServerId);
+            return true;
+        }
+        return false;
     }
 
     private static class ConfiguredClusterInstanceGenerator implements IClusterInstanceGenerator {
