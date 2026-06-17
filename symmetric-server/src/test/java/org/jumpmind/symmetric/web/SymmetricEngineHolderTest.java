@@ -44,9 +44,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-
 class SymmetricEngineHolderTest {
-
     @TempDir
     File tempDir;
 
@@ -105,10 +103,9 @@ class SymmetricEngineHolderTest {
             assertNull(result);
         }
     }
-    
+
     @Nested
     class GetEngineName {
-
         @ParameterizedTest
         @CsvSource({
                 "my-engine, , , my-engine",
@@ -134,7 +131,6 @@ class SymmetricEngineHolderTest {
 
     @Nested
     class ValidateRequiredProperties {
-
         @Test
         void throwsWhenExternalIdMissing() {
             Properties props = new Properties();
@@ -179,7 +175,6 @@ class SymmetricEngineHolderTest {
 
     @Nested
     class ValidateEngineFiles {
-
         @Test
         void throwsOnDuplicateDbConnections() throws IOException {
             File file1 = new File(tempDir, "engine1.properties");
@@ -187,12 +182,15 @@ class SymmetricEngineHolderTest {
             Properties props = new Properties();
             props.setProperty(DataSourceProperties.DB_POOL_USER, "postgres");
             props.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:postgresql://localhost/mydb");
-            try (var out = new java.io.FileOutputStream(file1)) { props.store(out, null); }
-            try (var out = new java.io.FileOutputStream(file2)) { props.store(out, null); }
-
+            try (var out = new java.io.FileOutputStream(file1)) {
+                props.store(out, null);
+            }
+            try (var out = new java.io.FileOutputStream(file2)) {
+                props.store(out, null);
+            }
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertThrows(SymmetricException.class,
-                () -> holder.validateEngineFiles(new File[] { file1, file2 }));
+                    () -> holder.validateEngineFiles(new File[] { file1, file2 }));
         }
 
         @Test
@@ -205,18 +203,20 @@ class SymmetricEngineHolderTest {
             Properties props2 = new Properties();
             props2.setProperty(DataSourceProperties.DB_POOL_USER, "postgres");
             props2.setProperty(DataSourceProperties.DB_POOL_URL, "jdbc:postgresql://localhost:5433/db2");
-            try (var out = new java.io.FileOutputStream(file1)) { props1.store(out, null); }
-            try (var out = new java.io.FileOutputStream(file2)) { props2.store(out, null); }
-
+            try (var out = new java.io.FileOutputStream(file1)) {
+                props1.store(out, null);
+            }
+            try (var out = new java.io.FileOutputStream(file2)) {
+                props2.store(out, null);
+            }
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertDoesNotThrow(
-                () -> holder.validateEngineFiles(new File[] { file1, file2 }));
+                    () -> holder.validateEngineFiles(new File[] { file1, file2 }));
         }
     }
 
     @Nested
     class EngineStateChecks {
-
         @Test
         void areEnginesStartingTrueBeforeHolderStarts() {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
@@ -252,5 +252,4 @@ class SymmetricEngineHolderTest {
             assertTrue(holder.areEnginesStarting());
         }
     }
-    
 }
