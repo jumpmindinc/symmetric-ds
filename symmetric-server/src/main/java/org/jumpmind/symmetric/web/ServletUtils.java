@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.web;
 
 import java.io.IOException;
+import java.util.List;
 
 import jakarta.servlet.Servlet;
 import jakarta.servlet.ServletContext;
@@ -36,6 +37,9 @@ import org.apache.commons.text.StringEscapeUtils;
  * Utility methods for working with {@link Servlet}s
  */
 public class ServletUtils {
+    private ServletUtils() {
+    }
+
     /**
      * Because you can't send an error when the response is already committed, this helps to avoid unnecessary errors in the logs.
      * 
@@ -49,23 +53,15 @@ public class ServletUtils {
     }
 
     public static String whereAreYou(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
+        List<String> headerKeys = List.of(
+                "X-Forwarded-For", "Proxy-Client-IP", "WL-Proxy-Client-IP", "HTTP_CLIENT_IP", "HTTP_X_FORWARDED_FOR");
+        for (String headerKey : headerKeys) {
+            String ip = request.getHeader(headerKey);
+            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
+                return ip;
+            }
         }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("HTTP_CLIENT_IP");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("HTTP_X_FORWARDED_FOR");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        return ip;
+        return request.getRemoteAddr();
     }
 
     /**
@@ -113,8 +109,8 @@ public class ServletUtils {
     public static boolean sendError(final ServletResponse resp, final int statusCode, final String message)
             throws IOException {
         boolean retVal = false;
-        if (resp instanceof HttpServletResponse) {
-            retVal = sendError((HttpServletResponse) resp, statusCode, message);
+        if (resp instanceof HttpServletResponse httpResponse) {
+            retVal = sendError(httpResponse, statusCode, message);
         }
         return retVal;
     }
@@ -140,7 +136,7 @@ public class ServletUtils {
     }
 
     public static ServerSymmetricEngine findEngine(HttpServletRequest req, ServletContext ctx) {
-        String engineName = getEngineNameFromUrl((HttpServletRequest) req);
+        String engineName = getEngineNameFromUrl(req);
         ServerSymmetricEngine engine = null;
         SymmetricEngineHolder holder = ServletUtils.getSymmetricEngineHolder(ctx);
         if (holder != null) {
@@ -197,14 +193,21 @@ public class ServletUtils {
                 WebConstants.ATTR_ENGINE_HOLDER);
     }
 
-    public static String getEndpointNameFromUrl(HttpServletRequest request) {
+    public static String getEndpointNameFromUrl(HttpServletRequest request, ServletContext ctx) {
         String endpointName = null;
         String normalizedUri = ServletUtils.normalizeRequestUri(request);
-        if (normalizedUri.startsWith("/")) {
-            normalizedUri = normalizedUri.replaceFirst("/" + ServletUtils.getEngineNameFromUrl(request) + "/", "");
-        } else {
-            normalizedUri = normalizedUri.replaceFirst(ServletUtils.getEngineNameFromUrl(request) + "/", "");
+        String engineName = ServletUtils.getEngineNameFromUrl(request);
+        boolean isValid = ((SymmetricEngineHolder) ctx.getAttribute(WebConstants.ATTR_ENGINE_HOLDER)).getEngines().containsKey(engineName);
+        if (!isValid) {
+            throw new IllegalArgumentException("Engine " + engineName + " not found");
         }
+        String regex = null;
+        if (normalizedUri.startsWith("/")) {
+            regex = "/" + engineName + "/";
+        } else {
+            regex = engineName + "/";
+        }
+        normalizedUri = normalizedUri.replaceFirst(regex, "");
         int endIndex = normalizedUri.indexOf("/");
         if (endIndex > 0) {
             endpointName = normalizedUri.substring(0, endIndex);
