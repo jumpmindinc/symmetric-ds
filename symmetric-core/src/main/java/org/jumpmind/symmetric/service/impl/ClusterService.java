@@ -692,15 +692,15 @@ public class ClusterService extends AbstractService implements IClusterService {
         if (lockTime == null || lockTime.before(lockTimeout)) {
             if (lockingServerId != null) {
                 if (getServerId().equals(lockingServerId)) {
-                    log.debug("Resetting own cluster lock due to expiry, serverId='{}'", lockingServerId);
+                    log.debug("Resetting own cluster lock due to expiry, serverId='{}', lockTime={}", lockingServerId, lockTime);
                 } else {
-                    log.warn("Stealing cluster lock from '{}' due to expiry", lockingServerId);
+                    log.warn("Breaking cluster lock from '{}' due to expiry, lockTime={}", lockingServerId, lockTime);
                 }
             }
             return true;
         }
         if (isStaleServer(lockingServerId)) {
-            log.warn("Stealing cluster lock from stale cluster peer '{}'", lockingServerId);
+            log.warn("Breaking cluster lock from stale cluster peer '{}', lockTime={}", lockingServerId, lockTime);
             return true;
         }
         return false;

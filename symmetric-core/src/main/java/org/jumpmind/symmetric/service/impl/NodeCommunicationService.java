@@ -589,8 +589,8 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
                     nodeCommunication.getNodeId(), nodeCommunication.getQueue(),
                     nodeCommunication.getCommunicationType().name(), lockTimeout) == 1;
             if (!locked && clusterService.isStaleServer(currentOwner)) {
-                log.warn("Breaking node communication lock for node '{}' queue '{}' held by stale cluster peer '{}'",
-                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner);
+                log.warn("Breaking node communication lock for node '{}' queue '{}' from stale cluster peer '{}', lockTime={}",
+                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner, nodeCommunication.getLockTime());
                 locked = sqlTemplate.update(getSql("acquireLockFromStaleSql"), clusterService.getServerId(), lockTime, lockTime,
                         nodeCommunication.getNodeId(), nodeCommunication.getQueue(),
                         nodeCommunication.getCommunicationType().name(), currentOwner) == 1;
@@ -600,8 +600,8 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
             Date lockTimeVal = nodeCommunication.getLockTime();
             if (lockTimeVal == null || lockTimeVal.before(lockTimeout)) {
                 if (lockTimeVal != null && currentOwner != null) {
-                    log.warn("Breaking node communication lock for node '{}' queue '{}' held by '{}' due to expiry",
-                            nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner);
+                    log.warn("Breaking node communication lock for node '{}' queue '{}' from '{}' due to expiry, lockTime={}",
+                            nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner, lockTimeVal);
                 }
                 nodeCommunication.setLockingServerId(clusterService.getServerId());
                 nodeCommunication.setLockTime(lockTime);
@@ -609,8 +609,8 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
                 return true;
             }
             if (clusterService.isStaleServer(currentOwner)) {
-                log.warn("Breaking node communication lock for node '{}' queue '{}' held by stale cluster peer '{}'",
-                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner);
+                log.warn("Breaking node communication lock for node '{}' queue '{}' from stale cluster peer '{}', lockTime={}",
+                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner, nodeCommunication.getLockTime());
                 nodeCommunication.setLockingServerId(clusterService.getServerId());
                 nodeCommunication.setLockTime(lockTime);
                 nodeCommunication.setLastLockTime(lockTime);
