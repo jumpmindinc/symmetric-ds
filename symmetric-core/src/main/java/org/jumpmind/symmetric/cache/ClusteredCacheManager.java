@@ -295,15 +295,15 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private void detectEngineStateAndFireEvents(String peerId, String engineName,
             ClusterEngineStateMessage msg, long now, long staleThresholdMs) {
-        String key = peerId + ":" + engineName;
+        String key = IClusterCacheCoordinator.generateEngineClusterPeerKey(peerId, engineName);
         boolean isActive = msg != null
                 && !ClusterEngineStateMessage.ENGINE_OFFLINE.equals(msg.getEngineState())
                 && !msg.isStale(now, staleThresholdMs);
         boolean wasActive = Boolean.TRUE.equals(engineStateMap.get(key));
         if (isActive) {
-            engineStateMap.put(key, true);
+            engineStateMap.put(key, Boolean.TRUE);
         } else if (wasActive) {
-            engineStateMap.put(key, false);
+            engineStateMap.put(key, Boolean.FALSE);
             onPeerEngineCrashed(peerId, engineName);
         }
     }

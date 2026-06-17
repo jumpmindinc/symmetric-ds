@@ -29,6 +29,10 @@ import org.jumpmind.symmetric.ISymmetricEngine;
  * ClusteredCacheManager to remain agnostic of the underlying transport (JCS lateral TCP, UDP multicast, etc.).
  */
 public interface IClusterCacheCoordinator {
+    static String generateEngineClusterPeerKey(String serverId, String engineName) {
+        return serverId + "|" + engineName;
+    }
+
     void start(ISymmetricEngine engine);
 
     void start(String serverId, String instanceId, int port);

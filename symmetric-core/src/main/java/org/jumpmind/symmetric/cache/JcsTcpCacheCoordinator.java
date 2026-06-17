@@ -112,7 +112,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             log.debug("Skipping engine state message — JCS not initialized. serverId={}", serverId);
             return;
         }
-        String key = message.getServerId() + ":" + message.getEngineName();
+        String key = IClusterCacheCoordinator.generateEngineClusterPeerKey(message.getServerId(), message.getEngineName());
         try {
             cache.put(key, message);
             log.debug("Sent engine state message. engineState={}, engineName={}, serverId={}",
@@ -139,7 +139,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         if (cache == null) {
             return null;
         }
-        return cache.get(peerId + ":" + engineName);
+        return cache.get(IClusterCacheCoordinator.generateEngineClusterPeerKey(peerId, engineName));
     }
 
     @Override
