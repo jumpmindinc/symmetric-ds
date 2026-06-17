@@ -78,6 +78,7 @@ import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.model.NodeHost;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.service.IClusterInstanceGenerator;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IExtensionService;
@@ -684,8 +685,14 @@ public class ClusterService extends AbstractService implements IClusterService {
         if (lockingServerId == null || getServerId().equals(lockingServerId)) {
             return false;
         }
-        Set<String> active = ClusteredCacheManager.getInstance().getActiveServerIds();
-        return !active.isEmpty() && !active.contains(lockingServerId);
+        IClusteredCacheManager cacheManager = ClusteredCacheManager.getInstance();
+        Set<String> active = cacheManager.getActiveServerIds();
+        if (!active.isEmpty()) {
+            return !active.contains(lockingServerId);
+        }
+        long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_STALE_MS,
+                100L * ClusteredCacheManager.DEFAULT_HEARTBEAT_MS);
+        return cacheManager.isPeerOfflineLongEnough(lockingServerId, staleThresholdMs);
     }
 
     protected boolean isLockExpiredOrServerStale(String lockingServerId, Date lockTime, Date lockTimeout) {
@@ -698,6 +705,16 @@ public class ClusterService extends AbstractService implements IClusterService {
                 }
             }
             return true;
+        }
+        if (lockingServerId != null && !getServerId().equals(lockingServerId)) {
+            boolean isNew = ClusteredCacheManager.getInstance().recordPeerOffline(lockingServerId);
+            if (isNew) {
+                long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_STALE_MS,
+                        100L * ClusteredCacheManager.DEFAULT_HEARTBEAT_MS);
+                log.warn("Cluster lock owner '{}' was not detected via JCS peer heartbeat. Starting offline timer — "
+                        + "lock will be eligible for breaking in {} ms if peer does not reconnect, lockTime={}",
+                        lockingServerId, staleThresholdMs, lockTime);
+            }
         }
         if (isStaleServer(lockingServerId)) {
             log.warn("Breaking cluster lock from stale cluster peer '{}', lockTime={}", lockingServerId, lockTime);

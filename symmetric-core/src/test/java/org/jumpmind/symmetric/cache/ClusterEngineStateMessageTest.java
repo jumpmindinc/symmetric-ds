@@ -66,10 +66,10 @@ public class ClusterEngineStateMessageTest {
     @Test
     public void allStateConstants_roundtripThroughMessage() {
         String[] states = {
-            ClusterEngineStateMessage.ENGINE_STARTING,
-            ClusterEngineStateMessage.ENGINE_UPGRADING_DB,
-            ClusterEngineStateMessage.ENGINE_ONLINE,
-            ClusterEngineStateMessage.ENGINE_OFFLINE
+                ClusterEngineStateMessage.ENGINE_STARTING,
+                ClusterEngineStateMessage.ENGINE_UPGRADING_DB,
+                ClusterEngineStateMessage.ENGINE_ONLINE,
+                ClusterEngineStateMessage.ENGINE_OFFLINE
         };
         for (String state : states) {
             ClusterEngineStateMessage m = msg(state, "eng");

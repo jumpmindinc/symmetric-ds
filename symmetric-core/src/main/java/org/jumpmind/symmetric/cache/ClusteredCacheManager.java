@@ -53,6 +53,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private final IClusterCacheCoordinator coordinator = new JcsTcpCacheCoordinator();
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerStateMap = new ConcurrentHashMap<>();
+    private final Map<String, Long> peerOfflineTimestampMs = new ConcurrentHashMap<>();
     private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
     private Thread heartbeatThread;
     private volatile boolean running;
@@ -87,6 +88,22 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             return;
         }
         coordinator.addPeer(serverId);
+    }
+
+    @Override
+    public boolean recordPeerOffline(String serverId) {
+        if (serverId == null || isOwnServerId(serverId)) {
+            return false;
+        }
+        boolean isNew = peerOfflineTimestampMs.putIfAbsent(serverId, System.currentTimeMillis()) == null;
+        peerStateMap.putIfAbsent(serverId, Boolean.FALSE);
+        return isNew;
+    }
+
+    @Override
+    public boolean isPeerOfflineLongEnough(String serverId, long staleThresholdMs) {
+        Long since = peerOfflineTimestampMs.get(serverId);
+        return since != null && System.currentTimeMillis() - since > staleThresholdMs;
     }
 
     @Override
@@ -404,6 +421,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 return;
             }
         }
+        peerOfflineTimestampMs.remove(msg.getServerId());
         log.info("Cluster peer joined: serverId={} version={}", msg.getServerId(), msg.getVersion());
     }
 
@@ -416,13 +434,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     protected void onPeerCrashed(String serverId) {
         log.warn("Cluster peer JVM {} stopped sending heartbeats. Clearing its orphaned locks.", serverId);
-        for (ISymmetricEngine engine : registeredEngines.values()) {
-            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
-            engine.getClusterService().clearLocksForServer(serverId);
-            engine.getNodeCommunicationService().clearLocksForServer(serverId);
-            engineStateMap.put(IClusterCacheCoordinator.generateEngineClusterPeerKey(serverId, engine.getEngineName()),
-                    Boolean.FALSE);
-        }
+        clearLocksForPeer(serverId);
     }
 
     protected void onPeerEngineCrashed(String peerId, String engineName) {
@@ -436,7 +448,19 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     protected void onPeerLeft(String serverId) {
-        log.info("Cluster peer {} was removed from rotation.", serverId);
+        peerOfflineTimestampMs.remove(serverId);
+        log.info("Cluster peer {} left the cluster. Clearing its locks.", serverId);
+        clearLocksForPeer(serverId);
+    }
+
+    private void clearLocksForPeer(String serverId) {
+        for (ISymmetricEngine engine : registeredEngines.values()) {
+            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
+            engine.getClusterService().clearLocksForServer(serverId);
+            engine.getNodeCommunicationService().clearLocksForServer(serverId);
+            engineStateMap.put(IClusterCacheCoordinator.generateEngineClusterPeerKey(serverId, engine.getEngineName()),
+                    Boolean.FALSE);
+        }
     }
 
     private ISymmetricEngine getAnyEngine() {

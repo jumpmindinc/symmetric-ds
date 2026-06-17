@@ -477,6 +477,25 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
+    public void onPeerLeft_clearsLocksOnAllEngines() throws Exception {
+        manager.registerEngine(mockEngine);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerLeft", String.class);
+        m.setAccessible(true);
+        m.invoke(manager, "leaving-server");
+        verify(mockClusterService).clearLocksForServer("leaving-server");
+        verify(mockNodeCommService).clearLocksForServer("leaving-server");
+    }
+
+    @Test
+    public void detectPeerState_peerLeavingAfterAlive_clearsLocks() throws Exception {
+        manager.registerEngine(mockEngine);
+        callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1"));
+        callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, "peer1"));
+        verify(mockClusterService).clearLocksForServer("peer1");
+        verify(mockNodeCommService).clearLocksForServer("peer1");
+    }
+
+    @Test
     public void getAnyEngine_noEngines_returnsNull() throws Exception {
         Method m = ClusteredCacheManager.class.getDeclaredMethod("getAnyEngine");
         m.setAccessible(true);
