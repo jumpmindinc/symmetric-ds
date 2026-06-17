@@ -800,7 +800,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
         String databaseVersion = getInstalledDatabaseVersion();
         while (clusteredCacheManager.isAnyPeerWithEngineInState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
-            log.info("A cluster peer is upgrading the database. Pausing startup for {} ms.",
+            log.info("A cluster peer is upgrading the database. Pausing engine startup for {} ms.",
                     ClusteredCacheManager.UPGRADE_WAIT_MS);
             try {
                 log.info("Waiting for cluster peer to finish database upgrade. Current databaseVersion={}", databaseVersion);
