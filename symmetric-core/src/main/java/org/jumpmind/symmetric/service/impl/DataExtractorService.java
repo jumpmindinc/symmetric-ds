@@ -2166,7 +2166,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         }
         List<ExtractRequest> allRequestsForLoad = getTablesForExtractByLoadId(request.getLoadId());
         boolean isMultiThreaded = allRequestsForLoad.stream().anyMatch(r -> r.getLoadThreadId() != null && r.getLoadThreadId() > 0);
-        if (isMultiThreaded) {
+        if (request.isDeferCreateConstraints() && isMultiThreaded) {
             boolean allComplete = allRequestsForLoad.stream().allMatch(r -> r.getStatus() == ExtractStatus.OK);
             if (!allComplete) {
                 log.info("Skipped sending deferred constraints for load {} because some export threads are not done. Table={}",
