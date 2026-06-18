@@ -94,96 +94,112 @@ public class SymmetricEngineHolder {
     private String singleServerPropertiesFile;
     private String deploymentType = Constants.DEPLOYMENT_TYPE_SERVER;
     private boolean holderHasBeenStarted = false;
+    private static final String DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT = "5";
 
     public void start() {
         try {
             SymmetricUtils.logNotices();
             if (staticEnginesMode) {
-                log.info("In static engine mode");
-                engines = staticEngines;
-                enginesStarting = staticEnginesStarting;
-                enginesStartingNames = staticEnginesStartingNames;
-                enginesFailed = staticEnginesFailed;
+                switchToStaticEnginesMode();
             }
             if (autoCreate) {
-                log.info("Current directory is {}", System.getProperty("user.dir"));
+                log.info("Reading property files -> load SymmetricEngineStarters into enginesStarting. Current directory is {}", System.getProperty(
+                        "user.dir"));
                 if (isMultiServerMode()) {
-                    String enginesDirname = PropertiesUtil.getEnginesDir();
-                    log.info("Starting in multi-server mode with engines directory at {}", enginesDirname);
-                    File enginesDir = new File(enginesDirname);
-                    File[] files = null;
-                    if (enginesDir != null) {
-                        files = enginesDir.listFiles();
-                    }
-                    if (files == null) {
-                        String firstAttempt = enginesDir.getAbsolutePath();
-                        enginesDir = new File(".");
-                        log.warn("Unable to retrieve engine properties files from {}.  Trying current working directory {}",
-                                firstAttempt, enginesDir.getAbsolutePath());
-                        if (enginesDir != null) {
-                            files = enginesDir.listFiles();
-                        }
-                    }
-                    if (files != null) {
-                        validateEngineFiles(files);
-                        boolean found = false;
-                        for (int i = 0; i < files.length; i++) {
-                            File file = files[i];
-                            if (file.getName().endsWith(".properties")) {
-                                enginesStarting.add(new SymmetricEngineStarter(file.getAbsolutePath(), this));
-                                found = true;
-                            }
-                        }
-                        if (!found) {
-                            log.info("No engine *.properties files found");
-                        }
-                    } else {
-                        log.error("Unable to retrieve engine properties files from default location or from current working directory.  No engines to start.");
-                    }
+                    String enginesDirName = PropertiesUtil.getEnginesDir();
+                    loadMultiServerEngines(enginesDirName);
                 } else {
-                    log.info("Starting in single-server mode");
-                    if (StringUtils.isBlank(singleServerPropertiesFile)) {
-                        URL singleServerPropertiesURL = getClass().getClassLoader().getResource("/symmetric.properties");
-                        if (singleServerPropertiesURL != null) {
-                            singleServerPropertiesFile = singleServerPropertiesURL.getFile();
-                        }
-                    }
-                    if (StringUtils.isNotBlank(singleServerPropertiesFile)) {
-                        enginesStarting.add(new SymmetricEngineStarter(singleServerPropertiesFile, this));
-                    } else {
-                        log.info("No engine symmetric.properties file found");
-                    }
+                    String engineFileName = singleServerPropertiesFile;
+                    loadSingleServerEngine(engineFileName);
                 }
-                int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT, "5"));
-                ExecutorService executor = Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-startup"));
+                log.info("Finding registration engine to start first");
                 SymmetricEngineStarter registrationStarter = findRegistrationStarter(enginesStarting);
-                if (registrationStarter != null) {
-                    log.info("Starting registration engine first from {}", registrationStarter.getPropertiesFile());
-                    enginesStarting.remove(registrationStarter);
-                    try (ExecutorService regExecutor = Executors.newSingleThreadExecutor(new CustomizableThreadFactory("symmetric-engine-startup"))) {
-                        regExecutor.execute(registrationStarter);
-                        regExecutor.shutdown();
-                        try {
-                            regExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
-                        } catch (InterruptedException e) {
-                            log.warn("Interrupted while waiting for registration engine to start", e);
-                            Thread.currentThread().interrupt();
-                        }
-                    }
+                if (registrationStarter == null) {
+                    log.info("Didn't find a registration engine to start. Starting all engines.");
+                } else {
+                    startRegEngineFirst(registrationStarter);
+                    log.info("Registration engine was started. Now starting the remaining non-registration engines");
                 }
-                if (registrationStarter != null)
-                    log.info("Now starting remaining engines");
-                for (SymmetricEngineStarter starter : enginesStarting) {
-                    executor.execute(starter);
-                }
-                executor.shutdown();
+                startNonRegEngines(enginesStarting);
             }
         } finally {
             holderHasBeenStarted = true;
         }
     }
 
-    public SymmetricEngineStarter findRegistrationStarter(Set<SymmetricEngineStarter> starters) {
+    private void switchToStaticEnginesMode() {
+        // Switch engine holder class instance variables to static for multi-holder deployments.
+        log.info("In static engine mode");
+        engines = staticEngines;
+        enginesStarting = staticEnginesStarting;
+        enginesStartingNames = staticEnginesStartingNames;
+        enginesFailed = staticEnginesFailed;
+    }
+
+    private void loadMultiServerEngines(String enginesDirName) {
+        log.info("Starting in multi-server mode with engines directory at {}", enginesDirName);
+        File enginesDir = new File(enginesDirName);
+        File[] files = null;
+        files = enginesDir.listFiles();
+        if (files == null) {
+            String firstAttempt = enginesDir.getAbsolutePath();
+            enginesDir = new File(".");
+            log.warn("Unable to retrieve engine properties files from {}.  Trying current working directory {}",
+                    firstAttempt, enginesDir.getAbsolutePath());
+            files = enginesDir.listFiles();
+        }
+        if (files != null) {
+            validateEngineFiles(files);
+            boolean found = false;
+            for (File file : files) {
+                if (file.getName().endsWith(".properties")) {
+                    enginesStarting.add(new SymmetricEngineStarter(file.getAbsolutePath(), this));
+                    found = true;
+                }
+            }
+            if (!found) {
+                log.info("No engine *.properties files found");
+            }
+        } else {
+            log.error("Unable to retrieve engine properties files from default location or from current working directory.  No engines to start.");
+        }
+    }
+
+    private void loadSingleServerEngine(String engineFileName) {
+        log.info("Load single engine from symmetric.properties file in single-server mode");
+        if (StringUtils.isBlank(engineFileName)) {
+            URL singleServerPropertiesURL = getClass().getClassLoader().getResource("/symmetric.properties");
+            if (singleServerPropertiesURL != null) {
+                engineFileName = singleServerPropertiesURL.getFile();
+            }
+        }
+        if (StringUtils.isNotBlank(engineFileName)) {
+            enginesStarting.add(new SymmetricEngineStarter(engineFileName, this));
+        } else {
+            log.info("No engine symmetric.properties file found");
+        }
+    }
+
+    private ExecutorService regEngineExecutor() {
+        ExecutorService regExecutor = Executors.newSingleThreadExecutor(new CustomizableThreadFactory("symmetric-engine-startup"));
+        return regExecutor;
+    }
+
+    private ExecutorService nonRegEngineExecutor() {
+        int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT,
+                DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT));
+        ExecutorService nonRegExecutor = Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-startup"));
+        return nonRegExecutor;
+    }
+
+    private void executeEngineStarters(ExecutorService executor, Set<SymmetricEngineStarter> engineStarters) {
+        for (SymmetricEngineStarter starter : engineStarters) {
+            executor.execute(starter);
+        }
+        executor.shutdown();
+    }
+
+    protected SymmetricEngineStarter findRegistrationStarter(Set<SymmetricEngineStarter> starters) {
         for (SymmetricEngineStarter starter : starters) {
             Properties props = new Properties();
             try (InputStream is = new FileInputStream(starter.getPropertiesFile())) {
@@ -199,6 +215,27 @@ public class SymmetricEngineHolder {
             }
         }
         return null;
+    }
+
+    private void startRegEngineFirst(SymmetricEngineStarter registrationStarter) {
+        log.info("Starting registration engine first from {}", registrationStarter.getPropertiesFile());
+        Set<SymmetricEngineStarter> regEngineStarter = Collections.synchronizedSet(new HashSet<SymmetricEngineStarter>());
+        regEngineStarter.add(registrationStarter);
+        try (ExecutorService regExecutor = regEngineExecutor()) {
+            executeEngineStarters(regExecutor, regEngineStarter);
+            try {
+                regExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+            } catch (InterruptedException e) {
+                log.warn("Interrupted while waiting for registration engine to start", e);
+                Thread.currentThread().interrupt();
+            }
+        }
+        enginesStarting.remove(registrationStarter); // so only nonReg engines left for execution
+    }
+
+    private void startNonRegEngines(Set<SymmetricEngineStarter> nonRegEngineStarters) {
+        ExecutorService nonRegExecutor = nonRegEngineExecutor();
+        executeEngineStarters(nonRegExecutor, nonRegEngineStarters);
     }
 
     public synchronized void restart(String engineName) {
