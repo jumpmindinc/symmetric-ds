@@ -2159,17 +2159,18 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     }
 
     protected void checkSendDeferredConstraints(ExtractRequest request, List<ExtractRequest> childRequests, Node targetNode) {
-        boolean deferConstraintsEnabled = parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false);       
+        boolean deferConstraintsEnabled = parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false);
         if (!deferConstraintsEnabled) {
             log.debug("Not sending deferred constraints for load {} because parameter {} is not enabled. Table={}", request.getLoadId(),
                     ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, request.getTableName());
             return;
         }
         List<ExtractRequest> allRequestsForLoad = getTablesForExtractByLoadId(request.getLoadId());
-        TableReloadRequest load = dataService.getTableReloadRequest(request.getLoadId());        
-        boolean isLoadDefferingConstraints = load == null ? true : (load.isCreateTable() && deferConstraintsEnabled);
+        TableReloadRequest load = dataService.getTableReloadRequest(request.getLoadId());
+        // Safety check: if the load can't be found, we assume the most complex scenario and assume constraints ARE being deferred:
+        boolean isLoadDeferringConstraints = load == null ? true : (load.isCreateTable() && deferConstraintsEnabled);
         boolean isMultiThreaded = allRequestsForLoad.stream().anyMatch(r -> r.getLoadThreadId() != null && r.getLoadThreadId() > 0);
-        if (isLoadDefferingConstraints && isMultiThreaded) {
+        if (isLoadDeferringConstraints && isMultiThreaded) {
             boolean allComplete = allRequestsForLoad.stream().allMatch(r -> r.getStatus() == ExtractStatus.OK);
             if (!allComplete) {
                 log.info("Skipped sending deferred constraints for load {} because some export threads are not done. Table={}",
