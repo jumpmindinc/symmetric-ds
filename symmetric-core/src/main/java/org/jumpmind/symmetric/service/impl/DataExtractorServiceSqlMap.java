@@ -33,7 +33,7 @@ public class DataExtractorServiceSqlMap extends AbstractSqlMap {
         
         putSql("selectExtractRequestForNodeSql", "select * from $(extract_request) where node_id=? and queue=? and status=? and parent_request_id=0 and source_node_id = ? order by request_id");
 
-        putSql("selectExtractRequestForNodeThreadSql", "select * from $(extract_request) where node_id=? and queue=? and extract_thread_id = ? and status=? and parent_request_id=0 and source_node_id = ? order by load_id, total_rows desc");
+        putSql("selectExtractRequestForNodeThreadSql", "select * from $(extract_request) where node_id=? and queue=? and extract_thread_id = ? and status=? and parent_request_id=0 and source_node_id = ? order by load_id, request_id");
 
         putSql("selectExtractRequestForBatchSql", "select * from $(extract_request) where start_batch_id <= ? and end_batch_id >= ? and node_id = ? and load_id = ? and source_node_id = ?");
 
@@ -51,7 +51,7 @@ public class DataExtractorServiceSqlMap extends AbstractSqlMap {
 
         putSql("selectExtractRequestsForThreadingSql", "select * from $(extract_request) where source_node_id = ? and queue = ? and " +
                 "(status = ? or (status = ? and loaded_time is null)) " +
-                "order by load_id asc, total_rows desc");
+                "order by load_id asc, request_id asc");
 
         putSql("releaseExtractChildRequestFromParent",
                 "update $(extract_request) set parent_request_id = 0 where request_id = ?");
