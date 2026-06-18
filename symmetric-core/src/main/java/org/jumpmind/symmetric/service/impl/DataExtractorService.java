@@ -2169,61 +2169,77 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         if (isMultiThreaded) {
             boolean allComplete = allRequestsForLoad.stream().allMatch(r -> r.getStatus() == ExtractStatus.OK);
             if (!allComplete) {
-                log.info("Skipped sending deferred constraints for load {} because some export threads are not done. Table={}", 
-                    request.getLoadId(), request.getTableName());
+                log.info("Skipped sending deferred constraints for load {} because some export threads are not done. Table={}",
+                        request.getLoadId(), request.getTableName());
                 return;
             }
             for (ExtractRequest loadRequest : allRequestsForLoad) {
                 List<ExtractRequest> requestChildRequests = loadRequest.getRequestId() == request.getRequestId() ? childRequests : null;
-                sendDeferredConstraintEvent(loadRequest, requestChildRequests, targetNode);
+                sendDeferredConstraintEventForTable(loadRequest, requestChildRequests, targetNode);
             }
         } else {
-            sendDeferredConstraintEvent(request, childRequests, targetNode);
+            sendDeferredConstraintEventForTable(request, childRequests, targetNode);
         }
     }
 
-    private void sendDeferredConstraintEvent(ExtractRequest request, List<ExtractRequest> childRequests, Node targetNode) {
+    private void sendDeferredConstraintEventForTable(ExtractRequest request, List<ExtractRequest> childRequests, Node targetNode) {
         TableReloadRequest reloadRequest = dataService.getTableReloadRequest(request.getLoadId(), request.getTriggerId(), request.getRouterId());
         boolean isCreateTable = (reloadRequest != null && reloadRequest.isCreateTable()) ||
                 (reloadRequest == null && parameterService.is(ParameterConstants.INITIAL_LOAD_CREATE_SCHEMA_BEFORE_RELOAD));
         if (!isCreateTable) {
             return;
         }
-        boolean success = false;
         Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
-        if (trigger != null) {
-            Channel channel = configurationService.getChannel(trigger.getReloadChannelId());
-            if (channel.isFileSyncFlag()) {
-                return;
-            }
-            List<TriggerHistory> histories = triggerRouterService.getActiveTriggerHistories(trigger);
-            if (histories != null && histories.size() > 0) {
-                for (TriggerHistory history : histories) {
-                    if (history.getSourceTableName().equalsIgnoreCase(request.getTableName())) {
-                        Data data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
-                                history, trigger.getChannelId(), String.valueOf(request.getLoadId()), null);
-                        data.setNodeList(targetNode.getNodeId());
-                        log.info("Deferred create event for load {} table {} on channel {}", request.getLoadId(), history.getSourceTableName(),
-                                trigger.getChannelId());
+        if (trigger == null) {
+            log.warn("Unable to find trigger_id='{}' ! Router='{}', Load={}, Table={}",
+                    request.getTriggerId(), request.getRouterId(), request.getLoadId(), request.getTableName());
+            return;
+        }
+        Channel channel = configurationService.getChannel(trigger.getReloadChannelId());
+        if (channel.isFileSyncFlag()) {
+            return;
+        }
+        if (!findTriggerHistoryEntryAndSendDeferredConstraintEvent(trigger, request, childRequests, targetNode)) {
+            log.warn("Unable to send deferred constraints for trigger_id='{}' ! Router='{}', Load={}, Table={}",
+                    trigger.getTriggerId(), request.getRouterId(), request.getLoadId(), request.getTableName());
+        }
+    }
+
+    private boolean findTriggerHistoryEntryAndSendDeferredConstraintEvent(Trigger trigger, ExtractRequest request, List<ExtractRequest> childRequests,
+            Node targetNode) {
+        if (trigger == null) {
+            return false;
+        }
+        List<TriggerHistory> histories = triggerRouterService.getActiveTriggerHistories(trigger);
+        if (histories == null || histories.isEmpty()) {
+            log.warn("Found no active trigger histories for trigger_id='{}' ! Router='{}', Load={}, Table={}",
+                    trigger.getTriggerId(), request.getRouterId(), request.getLoadId(), request.getTableName());
+            return false;
+        }
+        for (TriggerHistory history : histories) {
+            if (history.getSourceTableName().equalsIgnoreCase(request.getTableName())) {
+                Data data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
+                        history, trigger.getChannelId(), String.valueOf(request.getLoadId()), null);
+                data.setNodeList(targetNode.getNodeId());
+                log.info("Deferred create event for load {} table {} on channel {}", request.getLoadId(), history.getSourceTableName(),
+                        trigger.getChannelId());
+                dataService.insertData(data);
+                if (childRequests != null) {
+                    for (ExtractRequest childRequest : childRequests) {
+                        data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
+                                history, trigger.getChannelId(), String.valueOf(childRequest.getLoadId()), null);
+                        data.setNodeList(childRequest.getNodeId());
                         dataService.insertData(data);
-                        if (childRequests != null) {
-                            for (ExtractRequest childRequest : childRequests) {
-                                data = new Data(history.getSourceTableName(), DataEventType.CREATE, null, null,
-                                        history, trigger.getChannelId(), String.valueOf(childRequest.getLoadId()), null);
-                                data.setNodeList(childRequest.getNodeId());
-                                dataService.insertData(data);
-                            }
-                        }
-                        success = true;
-                        break;
                     }
                 }
+                return true;
+            } else {
+                log.debug("Trigger history entry {} for trigger_id='{}' does not match table name {} for request_id={} ! Router='{}', Load={}, Table={}",
+                        history.getTriggerHistoryId(), trigger.getTriggerId(), history.getSourceTableName(), request.getRequestId(),
+                        request.getRouterId(), request.getLoadId(), request.getTableName());
             }
         }
-        if (!success) {
-            log.warn("Unable to send deferred constraints for trigger_id='{}' ! Router='{}', Load={}, Table={}",
-                    request.getTriggerId(), request.getRouterId(), request.getLoadId(), request.getTableName());
-        }
+        return false;
     }
 
     protected boolean isApplicable(NodeCommunication nodeCommunication) {
