@@ -275,6 +275,6 @@ public class ParameterService extends AbstractParameterService implements IParam
                 .<Optional<String>> map(a -> a.validate(p, this))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
-                .collect(Collectors.toList());
+                .toList();
     }
 }

@@ -820,7 +820,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected Node checkSystemIntegrity(Node node) {
         checkNodeIdentityMatchesConfiguration(node);
         checkExtractJobCompatibleWithStreaming(node);
-        checkClusteredExtractJobAllowed(node);
+        checkParameterViolations();
         if (extensionService.getExtensionPoint(INodePasswordFilter.class) != null) {
             checkKeystoreIntegrity();
             node = checkNodeSecurityIntegrity(node);
@@ -838,7 +838,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                         "The configured state does not match recorded database state.  The recorded external id is '%s' "
                                 + "while the configured external id is '%s'. The recorded node group id is '%s' while the"
                                 + "configured node group id is '%s'",
-                        (Object[]) new Object[] { node.getExternalId(), getParameterService().getExternalId(),
+                        new Object[] { node.getExternalId(), getParameterService().getExternalId(),
                                 node.getNodeGroupId(), getParameterService().getNodeGroupId() });
             }
         }
@@ -856,8 +856,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
     }
 
-    protected void checkClusteredExtractJobAllowed(Node node) {
-        parameterService.getParameterViolations().forEach(msg -> log.error(msg));
+    protected void checkParameterViolations() {
+        parameterService.getParameterViolations().forEach(log::error);
     }
 
     protected void checkKeystoreIntegrity() {
