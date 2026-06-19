@@ -69,12 +69,12 @@ class SettingsDialogTest extends BrowserlessTest {
 
     @Test
     void init_createsWithoutException() {
-        assertDoesNotThrow(() -> createAndOpen());
+        assertDoesNotThrow(this::createAndOpen);
     }
 
     @Test
     void init_doesNotThrowOnOpen() {
-        assertDoesNotThrow(() -> createAndOpen());
+        assertDoesNotThrow(this::createAndOpen);
     }
 
     @Test

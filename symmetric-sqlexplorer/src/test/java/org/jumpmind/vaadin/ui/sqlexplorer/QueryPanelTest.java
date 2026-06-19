@@ -59,7 +59,7 @@ class QueryPanelTest extends BrowserlessTest {
 
     @Test
     void init_doesNotThrow_withValidMocks() {
-        assertDoesNotThrow(() -> createAndAttach());
+        assertDoesNotThrow(this::createAndAttach);
     }
 
     @Test

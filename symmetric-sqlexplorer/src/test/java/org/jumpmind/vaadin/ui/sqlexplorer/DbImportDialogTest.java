@@ -69,7 +69,7 @@ class DbImportDialogTest extends BrowserlessTest {
 
     @Test
     void constructor_doesNotThrow() {
-        assertDoesNotThrow(() -> createAndOpen());
+        assertDoesNotThrow(this::createAndOpen);
     }
 
     @Test

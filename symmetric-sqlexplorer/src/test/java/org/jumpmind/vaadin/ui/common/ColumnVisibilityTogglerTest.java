@@ -49,7 +49,7 @@ class ColumnVisibilityTogglerTest extends BrowserlessTest {
     void addColumn_registersColumn() {
         ColumnVisibilityToggler toggler = createAndAttach();
         Grid<Span> grid = new Grid<>();
-        Grid.Column<Span> col = grid.addColumn(s -> s.getText()).setHeader("Test");
+        Grid.Column<Span> col = grid.addColumn(Span::getText).setHeader("Test");
         toggler.addColumn(col, "Test");
         assertFalse(toggler.isEmpty());
     }
@@ -64,7 +64,7 @@ class ColumnVisibilityTogglerTest extends BrowserlessTest {
     void removeColumn_columnIsRemoved() {
         ColumnVisibilityToggler toggler = createAndAttach();
         Grid<Span> grid = new Grid<>();
-        Grid.Column<Span> col = grid.addColumn(s -> s.getText()).setHeader("Test");
+        Grid.Column<Span> col = grid.addColumn(Span::getText).setHeader("Test");
         toggler.addColumn(col, "Test");
         toggler.removeColumn(col);
         assertTrue(toggler.isEmpty());

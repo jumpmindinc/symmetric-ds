@@ -49,6 +49,7 @@ class TabbedApplicationPanelTest extends BrowserlessTest {
 
         @Override
         public void deselected() {
+            // no action needed on deselection
         }
 
         @Override

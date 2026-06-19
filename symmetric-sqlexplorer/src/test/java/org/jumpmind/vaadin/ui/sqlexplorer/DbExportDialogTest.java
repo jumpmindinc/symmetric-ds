@@ -72,17 +72,11 @@ class DbExportDialogTest extends BrowserlessTest {
 
     @Test
     void constructor_doesNotThrow() {
-        assertDoesNotThrow(() -> createAndOpen());
+        assertDoesNotThrow(this::createAndOpen);
     }
 
     @Test
     void init_buttonsArePresent() {
-        createAndOpen();
-        assertTrue($(Button.class).exists());
-    }
-
-    @Test
-    void init_tableSelectionIsPresent() {
         createAndOpen();
         assertTrue($(Button.class).exists());
     }

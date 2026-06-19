@@ -76,7 +76,7 @@ class SqlHistoryDialogTest extends BrowserlessTest {
 
     @Test
     void init_dialogOpensWithoutException() {
-        assertDoesNotThrow(() -> createAndOpen());
+        assertDoesNotThrow(this::createAndOpen);
     }
 
     @Test

@@ -106,7 +106,7 @@ class SqlExplorerTabPanelTest extends BrowserlessTest {
     }
 
     @Test
-    void remove_withQueryPanelCommitTrue_opensNotifyDialog() throws Exception {
+    void remove_withQueryPanelCommitTrue_opensNotifyDialog() {
         SqlExplorerTabPanel panel = createAndAttach();
         QueryPanel queryPanel = createQueryPanel();
         queryPanel.commitButtonValue = true;
