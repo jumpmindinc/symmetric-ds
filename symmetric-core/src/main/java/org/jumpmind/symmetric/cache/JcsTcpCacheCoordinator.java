@@ -101,8 +101,8 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             cache.put(message.getServerId(), message);
             log.debug("Sent cluster-wide message. eventType={}, serverId={}", message.getEventType(), message.getServerId());
         } catch (Exception ex) {
-            String msg = String.format("Failed to send cluster-wide message. eventType=%s, serverId=%s", 
-                message.getEventType(), message.getServerId());
+            String msg = String.format("Failed to send cluster-wide message. eventType=%s, serverId=%s",
+                    message.getEventType(), message.getServerId());
             log.warn(msg, ex);
         }
     }
@@ -120,8 +120,8 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             log.debug("Sent engine state message. engineState={}, engineName={}, serverId={}",
                     message.getEngineState(), message.getEngineName(), message.getServerId());
         } catch (Exception ex) {
-            String msg = String.format("Failed to send engine state message. engineState=%s, engineName=%s, serverId=%s", 
-                message.getEngineState(), message.getEngineName(), message.getServerId());
+            String msg = String.format("Failed to send engine state message. engineState=%s, engineName=%s, serverId=%s",
+                    message.getEngineState(), message.getEngineName(), message.getServerId());
             log.warn(msg, ex);
         }
     }

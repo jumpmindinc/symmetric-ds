@@ -30,6 +30,7 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ext.IOfflineServerListener;
 import org.jumpmind.symmetric.io.IOfflineClientListener;
 import org.jumpmind.symmetric.model.NetworkedNode;
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
 import org.jumpmind.symmetric.model.NodeHost;
@@ -153,7 +154,11 @@ public interface INodeService {
 
     public void updateNodeHost(NodeHost nodeHost);
 
+    public void updateNodeHost(ISqlTransaction transaction, NodeHost nodeHost);
+
     public void updateNodeHostForCurrentNode();
+
+    public void updateNodeHostForCurrentNode(ISqlTransaction transaction);
 
     public void insertNodeIdentity(String nodeId);
 

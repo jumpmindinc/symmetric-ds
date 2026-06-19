@@ -830,11 +830,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             } else {
                 log.info(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP + " is turned off");
             }
-            if (parameterService.is(ParameterConstants.HEARTBEAT_SYNC_ON_STARTUP, false)
-                    || isBlank(node.getDatabaseType())
-                    || !Strings.CS.equals(node.getSyncUrl(), parameterService.getSyncUrl())) {
-                heartbeat(false);
-            }
+            updateNodeHeartbeat();
             if (parameterService.is(ParameterConstants.AUTO_SYNC_CONFIG_AT_STARTUP, true)) {
                 pullService.pullConfigData(false);
             }
@@ -1303,6 +1299,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             lastException = new SymmetricException(errorMessage);
         }
         return configurationValid;
+    }
+
+    private void updateNodeHeartbeat() {
+        boolean isBroadcastOfNodeHeartbeatRequired = parameterService.is(ParameterConstants.HEARTBEAT_SYNC_ON_STARTUP, false);
+        dataService.updateNodeHostForCurrentNode(isBroadcastOfNodeHeartbeatRequired);
     }
 
     @Override

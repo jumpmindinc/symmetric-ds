@@ -3612,6 +3612,29 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     @Override
+    public void updateNodeHostForCurrentNode(boolean syncHeartbeatToOtherNodes) {
+        if (syncHeartbeatToOtherNodes) {
+            heartbeat(false);
+        } else {
+            updateNodeHostForCurrentNodeBypassTrigger();
+        }
+    }
+
+    private void updateNodeHostForCurrentNodeBypassTrigger() {
+        String nodeId = engine.getNodeService().findIdentityNodeId();
+        ISqlTransaction transaction = null;
+        try {
+            transaction = sqlTemplate.startSqlTransaction();
+            symmetricDialect.disableSyncTriggers(transaction, nodeId);
+            engine.getNodeService().updateNodeHostForCurrentNode(transaction);
+            symmetricDialect.enableSyncTriggers(transaction);
+            transaction.commit();
+        } finally {
+            close(transaction);
+        }
+    }
+
+    @Override
     public List<Number> listDataIds(long batchId, String nodeId) {
         return sqlTemplateDirty.query(getSql("selectEventDataIdsSql", getDataOrderBy()),
                 new NumberMapper(), batchId, nodeId);

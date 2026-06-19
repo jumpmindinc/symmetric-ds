@@ -216,7 +216,19 @@ public class NodeService extends AbstractService implements INodeService {
 
     @Override
     public void updateNodeHost(NodeHost nodeHost) {
-        if (sqlTemplate.update(getSql("updateNodeHostSql"),
+        ISqlTransaction transaction = null;
+        try {
+            transaction = sqlTemplate.startSqlTransaction();
+            updateNodeHost(transaction, nodeHost);
+            transaction.commit();
+        } finally {
+            close(transaction);
+        }
+    }
+
+    @Override
+    public void updateNodeHost(ISqlTransaction transaction, NodeHost nodeHost) {
+        if (transaction.prepareAndExecute(getSql("updateNodeHostSql"),
                 nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getOsUser(),
                 nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
                 nodeHost.getAvailableProcessors(), nodeHost.getFreeMemoryBytes(),
@@ -224,7 +236,7 @@ public class NodeService extends AbstractService implements INodeService {
                 nodeHost.getJavaVendor(), nodeHost.getSecurityMode(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
                 nodeHost.getTimezoneOffset(), nodeHost.getHeartbeatTime(), nodeHost.getLastRestartTime(),
                 nodeHost.getNodeId(), nodeHost.getHostName()) <= 0) {
-            sqlTemplate.update(getSql("insertNodeHostSql"),
+            transaction.prepareAndExecute(getSql("insertNodeHostSql"),
                     nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getOsUser(),
                     nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
                     nodeHost.getAvailableProcessors(), nodeHost.getFreeMemoryBytes(),
@@ -242,6 +254,15 @@ public class NodeService extends AbstractService implements INodeService {
         }
         nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId());
         updateNodeHost(nodeHostForCurrentNode);
+    }
+
+    @Override
+    public void updateNodeHostForCurrentNode(ISqlTransaction transaction) {
+        if (nodeHostForCurrentNode == null) {
+            nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
+        }
+        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId());
+        updateNodeHost(transaction, nodeHostForCurrentNode);
     }
 
     @Override

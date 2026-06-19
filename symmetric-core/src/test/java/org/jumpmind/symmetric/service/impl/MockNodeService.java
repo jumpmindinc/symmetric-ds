@@ -34,6 +34,7 @@ import org.jumpmind.symmetric.model.NetworkedNode;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
 import org.jumpmind.symmetric.model.NodeHost;
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.model.NodeStatus;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
@@ -330,6 +331,12 @@ public class MockNodeService implements INodeService {
     }
 
     public void updateNodeHost(NodeHost nodeHost) {
+    }
+
+    public void updateNodeHost(ISqlTransaction transaction, NodeHost nodeHost) {
+    }
+
+    public void updateNodeHostForCurrentNode(ISqlTransaction transaction) {
     }
 
     public Map<String, Date> findLastHeartbeats() {

@@ -158,6 +158,8 @@ public interface IDataService {
      */
     public void heartbeat(boolean force);
 
+    public void updateNodeHostForCurrentNode(boolean syncHeartbeatToOtherNodes);
+
     public void insertHeartbeatEvent(Node node, boolean isReload);
 
     public long insertData(Data data);
