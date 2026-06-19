@@ -3616,11 +3616,12 @@ public class DataService extends AbstractService implements IDataService {
         if (syncHeartbeatToOtherNodes) {
             heartbeat(false);
         } else {
-            // Record server heartbeat on start up (to facilitate cluster peer discovery), but do not sync to other nodes.
             updateNodeHostForCurrentNodeBypassTrigger();
         }
     }
 
+    /** Record server heartbeat on start up (to facilitate cluster peer discovery), but do not sync to other nodes.
+    */
     private void updateNodeHostForCurrentNodeBypassTrigger() {
         String nodeId = engine.getNodeService().findIdentityNodeId();
         ISqlTransaction transaction = null;
@@ -3630,6 +3631,12 @@ public class DataService extends AbstractService implements IDataService {
             engine.getNodeService().updateNodeHostForCurrentNode(transaction);
             symmetricDialect.enableSyncTriggers(transaction);
             transaction.commit();
+        } catch (Exception ex) {
+            log.warn("Failed to update node host heartbeat for current node, but will try again next time.", ex);
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw ex;
         } finally {
             close(transaction);
         }
