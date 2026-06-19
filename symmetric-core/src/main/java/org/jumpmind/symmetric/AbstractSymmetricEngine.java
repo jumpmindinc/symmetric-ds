@@ -1301,6 +1301,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return configurationValid;
     }
 
+    /** Record server heartbeat on start up (to facilitate cluster peer discovery), but sync Node heartbeat only if parameter is set */
     private void updateNodeHeartbeat() {
         boolean isBroadcastOfNodeHeartbeatRequired = parameterService.is(ParameterConstants.HEARTBEAT_SYNC_ON_STARTUP, false);
         dataService.updateNodeHostForCurrentNode(isBroadcastOfNodeHeartbeatRequired);

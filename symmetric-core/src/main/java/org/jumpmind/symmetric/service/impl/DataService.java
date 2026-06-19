@@ -3616,6 +3616,7 @@ public class DataService extends AbstractService implements IDataService {
         if (syncHeartbeatToOtherNodes) {
             heartbeat(false);
         } else {
+            // Record server heartbeat on start up (to facilitate cluster peer discovery), but do not sync to other nodes.
             updateNodeHostForCurrentNodeBypassTrigger();
         }
     }
