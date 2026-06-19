@@ -59,4 +59,14 @@ public class SymmetricEngineStarter implements Runnable {
     public ISymmetricEngine getEngine() {
         return engine;
     }
+
+    public boolean isRegistrationNode() {
+        if( engine == null ) {
+             return false;
+        }
+        ParameterService parameterService = engine.getParameterService();
+        String registrationUrl = parameterService.getProperty(ParameterConstants.REGISTRATION_URL, "");
+        String syncUrl = parameterService.getProperty(ParameterConstants.SYNC_URL, "");
+        return (StringUtils.isBlank(registrationUrl) || registrationUrl.equals(syncUrl) );      
+    }
 }
