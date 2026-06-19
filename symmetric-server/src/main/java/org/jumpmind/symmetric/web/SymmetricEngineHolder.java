@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
@@ -186,17 +187,19 @@ public class SymmetricEngineHolder {
         launchEngineStartersUsingPool(nonRegistrationEngines);
     }
 
-    private void launchEngineStartersUsingPool(Set<SymmetricEngineStarter> enginesToStart) {
+    private ExecutorService getExecutorServiceForThreadPool() {
         int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT, "5"));
-        ExecutorService executor = createStarterExecutor(poolSize);
-        for (SymmetricEngineStarter starter : enginesToStart) {
-            executor.execute(starter);
-        }
-        executor.shutdown();
+        CustomizableThreadFactory launchThreadPoolFactory = new CustomizableThreadFactory("symmetric-engine-startup");
+        ExecutorService executor = Executors.newFixedThreadPool(poolSize, launchThreadPoolFactory);
+        return executor;
     }
 
-    protected ExecutorService createStarterExecutor(int poolSize) {
-        return Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-startup"));
+    private void launchEngineStartersUsingPool(Set<SymmetricEngineStarter> enginesToStart) {
+        ExecutorService threadRunner = getExecutorServiceForThreadPool();
+        for (SymmetricEngineStarter starter : enginesToStart) {
+            threadRunner.execute(starter);
+        }
+        threadRunner.shutdown();
     }
 
     public synchronized void restart(String engineName) {

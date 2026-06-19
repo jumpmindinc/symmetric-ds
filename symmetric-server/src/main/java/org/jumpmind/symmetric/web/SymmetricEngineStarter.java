@@ -20,7 +20,9 @@
  */
 package org.jumpmind.symmetric.web;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.common.ParameterConstants;
 
 public class SymmetricEngineStarter implements Runnable {
@@ -61,12 +63,12 @@ public class SymmetricEngineStarter implements Runnable {
     }
 
     public boolean isRegistrationNode() {
-        if( engine == null ) {
-             return false;
+        if (engine == null) {
+            return false;
         }
-        ParameterService parameterService = engine.getParameterService();
-        String registrationUrl = parameterService.getProperty(ParameterConstants.REGISTRATION_URL, "");
-        String syncUrl = parameterService.getProperty(ParameterConstants.SYNC_URL, "");
-        return (StringUtils.isBlank(registrationUrl) || registrationUrl.equals(syncUrl) );      
+        IParameterService parameterService = engine.getParameterService();
+        String registrationUrl = parameterService.getString(ParameterConstants.REGISTRATION_URL, "");
+        String syncUrl = parameterService.getString(ParameterConstants.SYNC_URL, "");
+        return (StringUtils.isBlank(registrationUrl) || registrationUrl.equals(syncUrl));
     }
 }
