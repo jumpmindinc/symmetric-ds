@@ -3620,8 +3620,9 @@ public class DataService extends AbstractService implements IDataService {
         }
     }
 
-    /** Record server heartbeat on start up (to facilitate cluster peer discovery), but do not sync to other nodes.
-    */
+    /**
+     * Record server heartbeat on start up (to facilitate cluster peer discovery), but do not sync to other nodes.
+     */
     private void updateNodeHostForCurrentNodeBypassTrigger() {
         String nodeId = engine.getNodeService().findIdentityNodeId();
         ISqlTransaction transaction = null;
