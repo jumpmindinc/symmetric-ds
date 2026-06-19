@@ -41,6 +41,7 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -210,22 +211,50 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void addPeer_null_ignored() {
-        manager.addPeer(null);
+        manager.addPeer(null, null);
         verify(mockCoordinator, never()).addPeer(any());
     }
 
     @Test
     public void addPeer_ownServerId_ignored() {
         manager.registerEngine(mockEngine);
-        manager.addPeer("server1");
+        manager.addPeer("server1", new Date());
         verify(mockCoordinator, never()).addPeer(any());
     }
 
     @Test
     public void addPeer_newPeer_delegatedToCoordinator() {
         manager.registerEngine(mockEngine);
-        manager.addPeer("server2");
+        manager.addPeer("server2", new Date());
         verify(mockCoordinator).addPeer("server2");
+    }
+
+    @Test
+    public void addPeer_recentHeartbeat_seedsOnline() {
+        manager.registerEngine(mockEngine);
+        Date recentHeartbeat = new Date(System.currentTimeMillis() - 1000L);
+        manager.addPeer("server2", recentHeartbeat);
+        assertEquals(Boolean.TRUE, peerStateMap.get("server2"));
+    }
+
+    @Test
+    public void addPeer_staleHeartbeat_seedsOffline() {
+        manager.registerEngine(mockEngine);
+        Date staleHeartbeat = new Date(System.currentTimeMillis() - (THRESHOLD_MS + 10_000L));
+        manager.addPeer("server2", staleHeartbeat);
+        assertEquals(Boolean.FALSE, peerStateMap.get("server2"));
+    }
+
+    @Test
+    public void addPeer_jcsMessageNewerThanHeartbeat_skipsStateSeed() {
+        manager.registerEngine(mockEngine);
+        long recentTimestamp = System.currentTimeMillis() - 500L;
+        ClusterPeerStatusMessage jcsMsg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server2", "inst2", "1.0");
+        when(mockCoordinator.getPeerStatusMessage("server2")).thenReturn(jcsMsg);
+        Date olderHeartbeat = new Date(recentTimestamp - 5000L);
+        manager.addPeer("server2", olderHeartbeat);
+        assertFalse(peerStateMap.containsKey("server2"));
     }
 
     @Test

@@ -92,6 +92,10 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public void sendMessageToPeers(ClusterPeerSecureMessage message) {
+        if (knownPeers.isEmpty()) {
+            log.debug("Skipping cluster-wide message — no peers in cluster. serverId={}", serverId);
+            return;
+        }
         CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
         if (cache == null) {
             log.debug("Skipping send to cluster peers because JCS is not initialized. serverId={}", serverId);
@@ -109,6 +113,10 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public void sendEngineStateMessage(ClusterEngineStateMessage message) {
+        if (knownPeers.isEmpty()) {
+            log.debug("Skipping engine state message — no peers in cluster. serverId={}", serverId);
+            return;
+        }
         CacheAccess<String, ClusterEngineStateMessage> cache = engineStateCache;
         if (cache == null) {
             log.debug("Skipping engine state message — JCS not initialized. serverId={}", serverId);

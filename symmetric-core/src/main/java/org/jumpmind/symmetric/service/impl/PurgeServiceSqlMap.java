@@ -116,6 +116,8 @@ public class PurgeServiceSqlMap extends AbstractSqlMap {
         putSql("deleteIncomingBatchByNodeSql" ,
 "delete from $(incoming_batch) where node_id = ?   " );
         
+        putSql("purgeNodeHostSql", "delete from $(node_host) where heartbeat_time < ?");
+
         putSql("purgeNodeHostChannelStatsSql", "delete from $(node_host_channel_stats) where start_time < ?");
         
         putSql("purgeNodeHostStatsSql", "delete from $(node_host_stats) where start_time < ?");

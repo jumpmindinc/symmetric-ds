@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -186,7 +187,27 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
+    void sendMessageToPeers_noPeers_doesNotSendToCache() throws Exception {
+        CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
+        setPeerHeartbeatCache(mockCache);
+        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        coordinator.sendMessageToPeers(msg);
+        verify(mockCache, never()).put(anyString(), any());
+    }
+
+    @Test
+    void sendEngineStateMessage_noPeers_doesNotSendToCache() throws Exception {
+        CacheAccess<String, ClusterEngineStateMessage> mockCache = mock(CacheAccess.class);
+        setEngineStateCache(mockCache);
+        ClusterEngineStateMessage msg = new ClusterEngineStateMessage("ENGINE_ONLINE", "engine1", "server1", "inst1", "1.0");
+        coordinator.sendEngineStateMessage(msg);
+        verify(mockCache, never()).put(anyString(), any());
+    }
+
+    @Test
     void sendMessageToPeers_cachePutThrows_doesNotThrow() throws Exception {
+        coordinator.addPeer("server1");
         CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
         doThrow(new RuntimeException("JCS failure")).when(mockCache).put(anyString(), any());
         setPeerHeartbeatCache(mockCache);
@@ -277,6 +298,12 @@ class JcsTcpCacheCoordinatorTest {
 
     private void setPeerHeartbeatCache(CacheAccess<String, ClusterPeerSecureMessage> cache) throws Exception {
         Field f = JcsTcpCacheCoordinator.class.getDeclaredField("peerHeartbeatCache");
+        f.setAccessible(true);
+        f.set(coordinator, cache);
+    }
+
+    private void setEngineStateCache(CacheAccess<String, ClusterEngineStateMessage> cache) throws Exception {
+        Field f = JcsTcpCacheCoordinator.class.getDeclaredField("engineStateCache");
         f.setAccessible(true);
         f.set(coordinator, cache);
     }

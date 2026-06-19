@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -83,11 +84,24 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     @Override
-    public synchronized void addPeer(String serverId) {
+    public synchronized void addPeer(String serverId, Date heartbeatTime) {
         if (serverId == null || isOwnServerId(serverId)) {
             return;
         }
         coordinator.addPeer(serverId);
+        ClusterPeerStatusMessage existingMsg = coordinator.getPeerStatusMessage(serverId);
+        if (existingMsg != null && (heartbeatTime == null || existingMsg.getTimestamp() >= heartbeatTime.getTime())) {
+            log.debug("Skipping peer state seed for {} — JCS message is more recent than database heartbeat", serverId);
+            return;
+        }
+        long staleThresholdMs = getStaleMs(getAnyEngine());
+        if (heartbeatTime != null && System.currentTimeMillis() - heartbeatTime.getTime() <= staleThresholdMs) {
+            peerStateMap.put(serverId, Boolean.TRUE);
+            log.debug("Seeded peer {} as online from database (heartbeat: {})", serverId, heartbeatTime);
+        } else {
+            recordPeerOffline(serverId);
+            log.debug("Seeded peer {} as stale from database (heartbeat: {})", serverId, heartbeatTime);
+        }
     }
 
     @Override

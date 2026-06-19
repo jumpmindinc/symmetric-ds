@@ -320,6 +320,7 @@ final public class ParameterConstants {
     public static final String PURGE_STRANDED_DATA_RECAPTURE_ENABLED = "job.purge.recapture.stranded.data";
     public static final String PURGE_STRANDED_DATA_TIME_LIMIT_MS = "job.purge.stranded.max.time.ms";
     public static final String PURGE_MONITOR_EVENT_RETENTION_MINUTES = "purge.monitor.event.retention.minutes";
+    public static final String PURGE_NODE_HOST_RETENTION_MINUTES = "purge.node.host.retention.minutes";
     public static final String PURGE_MAX_NUMBER_OF_DATA_IDS = "job.purge.max.num.data.to.delete.in.tx";
     public static final String PURGE_MAX_NUMBER_OF_BATCH_IDS = "job.purge.max.num.batches.to.delete.in.tx";
     public static final String PURGE_MAX_NUMBER_OF_EVENT_BATCH_IDS = "job.purge.max.num.data.event.batches.to.delete.in.tx";

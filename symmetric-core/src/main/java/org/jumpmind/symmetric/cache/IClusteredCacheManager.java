@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import java.util.Date;
 import java.util.Set;
 
 import org.jumpmind.security.ISecurityService;
@@ -38,10 +39,10 @@ public interface IClusteredCacheManager {
     void unregisterEngine(ISymmetricEngine engine);
 
     /**
-     * Add a remote server hostname to the JCS lateral peer list. Safe to call before {@link #registerEngine}; peers accumulate and are applied when JCS
-     * initializes.
+     * Add a remote server hostname to the JCS lateral peer list and seed its initial online/stale state from the provided heartbeat timestamp. Safe to call
+     * before {@link #registerEngine}; peers accumulate and are applied when JCS initializes.
      */
-    void addPeer(String serverId);
+    void addPeer(String serverId, Date heartbeatTime);
 
     Set<String> getActiveServerIds();
 

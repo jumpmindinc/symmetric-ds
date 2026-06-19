@@ -1690,7 +1690,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         for (NodeHost host : nodeService.findNodeHosts(nodeId)) {
             if (host.getHeartbeatTime() != null && host.getHeartbeatTime().getTime() > cutoff
                     && !myServerId.equals(host.getHostName())) {
-                clusteredCacheManager.addPeer(host.getHostName());
+                clusteredCacheManager.addPeer(host.getHostName(), host.getHeartbeatTime());
             }
         }
     }
