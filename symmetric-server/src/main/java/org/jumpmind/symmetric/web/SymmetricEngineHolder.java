@@ -75,8 +75,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
+/**
+ * Starts and stops SymmetricDS nodes (engines) based on properties files found in a directory. Engines are started in parallel using a thread pool with
+ * registration engines starting first.
+ */
 public class SymmetricEngineHolder {
     private final Logger log = LoggerFactory.getLogger(getClass());
+    final String PARALLEL_ENINES_START_POOL_SIZE_DEFAULT = "5";
     private static Map<String, ServerSymmetricEngine> staticEngines = Collections.synchronizedMap(new HashMap<String, ServerSymmetricEngine>());
     private static Set<SymmetricEngineStarter> staticEnginesStarting = Collections.synchronizedSet(new HashSet<SymmetricEngineStarter>());
     private static Set<String> staticEnginesStartingNames = Collections.synchronizedSortedSet(new TreeSet<String>());
@@ -108,7 +113,7 @@ public class SymmetricEngineHolder {
                 } else {
                     enginesStarting.addAll(discoverSingleServerEngine());
                 }
-                launchEngineStarters();
+                startEnginesInParallelUsingStarters();
             }
         } finally {
             holderHasBeenStarted = true;
@@ -178,13 +183,13 @@ public class SymmetricEngineHolder {
     }
 
     /**
-     * Launches engine starters with Registration nodes going first to help ensure they are available.
+     * Launches engine starters assiciated with Registration nodes going first to help ensure they are available.
      */
-    private void launchEngineStarters() {
+    private void startEnginesInParallelUsingStarters() {
         Set<SymmetricEngineStarter> registrationEngines = filterEngineStartersByRegistrationType(true, enginesStarting);
         Set<SymmetricEngineStarter> nonRegistrationEngines = filterEngineStartersByRegistrationType(false, enginesStarting);
-        launchEngineStartersUsingPool(registrationEngines);
-        launchEngineStartersUsingPool(nonRegistrationEngines);
+        startEnginesInParallelUsingThreadPool(registrationEngines);
+        startEnginesInParallelUsingThreadPool(nonRegistrationEngines);
     }
 
     private ExecutorService getExecutorServiceForThreadPool() {
@@ -194,7 +199,7 @@ public class SymmetricEngineHolder {
         return executor;
     }
 
-    private void launchEngineStartersUsingPool(Set<SymmetricEngineStarter> enginesToStart) {
+    private void startEnginesInParallelUsingThreadPool(Set<SymmetricEngineStarter> enginesToStart) {
         ExecutorService threadRunner = getExecutorServiceForThreadPool();
         for (SymmetricEngineStarter starter : enginesToStart) {
             threadRunner.execute(starter);
@@ -217,7 +222,8 @@ public class SymmetricEngineHolder {
             }
             enginesFailed.remove(engineName);
             if (restartExecutor == null) {
-                int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT, "5"));
+                int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT,
+                        PARALLEL_ENINES_START_POOL_SIZE_DEFAULT));
                 restartExecutor = Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-restart"));
             }
             SymmetricEngineStarter starter = new SymmetricEngineStarter(info.getPropertyFileName(), this);
