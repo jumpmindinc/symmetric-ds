@@ -2190,20 +2190,20 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     protected void checkSendDeferredForeignKeys(long loadId, Node targetNode) {
         boolean deferConstraintsEnabled = parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false);
         if (!deferConstraintsEnabled) {
-            if(log.isDebugEnabled()) {                
+            if (log.isDebugEnabled()) {
                 log.debug("Nothing to do. Deferred constraints do not apply to load {} because parameter {} is not enabled. Table={}", request.getLoadId(),
-                    ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, request.getTableName());
+                        ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, request.getTableName());
             }
             return;
         }
         TableReloadRequest load = dataService.getTableReloadRequest(request.getLoadId());
-        boolean isLoadDeferringConstraints = load == null ? true : (load.isCreateTable() && deferConstraintsEnabled);        
-        if (isLoadDeferringConstraints ){
+        boolean isLoadDeferringConstraints = load == null ? true : (load.isCreateTable() && deferConstraintsEnabled);
+        if (isLoadDeferringConstraints) {
             long incompleteExtractRequestsCount = sqlTemplateDirty.queryForLong(getSql("countIncompleteExtractRequestsByLoadId"), loadId, engine.getNodeId());
-            if(incompleteExtractRequestsCount > 0) {
-                    log.info("Skipped sending deferred constraints for load {} because {} export thread(s) are not done. Table={}",
-                            request.getLoadId(), incompleteExtractRequestsCount, request.getTableName());
-                    return;
+            if (incompleteExtractRequestsCount > 0) {
+                log.info("Skipped sending deferred constraints for load {} because {} export thread(s) are not done. Table={}",
+                        request.getLoadId(), incompleteExtractRequestsCount, request.getTableName());
+                return;
             }
         }
         for (ExtractRequest request : getTablesForExtractByLoadId(loadId)) {
@@ -2215,15 +2215,14 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
 
     private void sendDeferredForeignKeysForRequest(ExtractRequest request, long loadId, Node targetNode) {
         Trigger trigger = triggerRouterService.getTriggerById(request.getTriggerId());
-
         if (trigger == null) {
             log.warn("Unable to find trigger_id='{}' ! Router='{}', Load={}, Table={}",
                     request.getTriggerId(), request.getRouterId(), request.getLoadId(), request.getTableName());
             return;
         }
         if (configurationService.getChannel(trigger.getReloadChannelId()).isFileSyncFlag()) {
-            log.debug("Ignoring deferred constraints for load {} because channel {} is file sync. Table={}", 
-                loadId, trigger.getReloadChannelId(), request.getTableName());
+            log.debug("Ignoring deferred constraints for load {} because channel {} is file sync. Table={}",
+                    loadId, trigger.getReloadChannelId(), request.getTableName());
             return;
         }
         TriggerHistory history = findMatchingHistory(trigger, request.getTableName());
