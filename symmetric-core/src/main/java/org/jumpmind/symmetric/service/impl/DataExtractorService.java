@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.service.impl;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.jumpmind.symmetric.common.Constants.LOG_PROCESS_SUMMARY_THRESHOLD;
 
+import org.jumpmind.db.platform.IDatabasePlatform;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -59,7 +60,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipException;
-
+import org.jumpmind.db.model.Relation;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
@@ -251,7 +252,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         && helper.shouldSendTable(tableName)) {
                     TriggerHistory triggerHistory = triggerRouterService.getNewestTriggerHistoryForTrigger(trigger.getTriggerId(), null, null, tableName);
                     if (triggerHistory == null) {
-                        Table table = platform.getTableFromCache(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(), tableName, false);
+                        Table table = (Table) platform.getRelationFromCache(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(), tableName, false);
                         if (table == null) {
                             throw new IllegalStateException("Could not find a required table: " + tableName);
                         }
@@ -316,10 +317,11 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
 
     private String buildInitialLoadSqlForConfigurationTable(TriggerHistory triggerHistory, String tableName) {
         String initialLoadSql = Constants.ALWAYS_TRUE_CONDITION;
+        IDatabasePlatform platform = symmetricDialect.getPlatform();
         if (!tableName.endsWith(TableConstants.SYM_CONSOLE_ROLE)) {
             initialLoadSql += " order by ";
             String quote = platform.getDdlBuilder().getDatabaseInfo().getDelimiterToken();
-            Table table = symmetricDialect.getPlatform().getTableFromCache(triggerHistory.getSourceCatalogName(),
+            Relation table = platform.getRelationFromCache(triggerHistory.getSourceCatalogName(),
                     triggerHistory.getSourceSchemaName(), triggerHistory.getSourceTableName(), false);
             Column[] pkColumns = table.getPrimaryKeyColumns();
             for (int j = 0; j < pkColumns.length; j++) {
@@ -372,35 +374,34 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         batches.filterSuspendedBatches(suspendIgnoreChannelsList);
         duration = System.currentTimeMillis() - ts;
         logQueryDuration("Filter suspended batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
-        // Remove non-load batches so that an initial load finishes before
-        // any other batches are loaded.
-        if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true) && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
+        // Defer non-load batches because an initial load has higher priority in maintaining data integrity.
+        if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true)
+                && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
             if (batches.containsLoadBatches()) {
                 if (!(parameterService.is(ParameterConstants.INITIAL_LOAD_UNBLOCK_CHANNELS_ON_ERROR, true) && batches.containsBatchesInError())) {
                     batches.removeNonLoadBatches();
-                    log.info("Pausing non-load batches from queue {} for target node {} because a load is active", queue, targetNode);
+                    log.info("Deferring non-load batches from queue {} for target node {} because a load is active", queue, targetNode);
                 }
             } else {
                 NodeSecurity nodeSecurity = nodeService.findNodeSecurity(targetNode.getNodeId(), true);
                 if (nodeSecurity != null) {
                     ts = System.currentTimeMillis();
                     long loadId = 0;
-                    List<TableReloadStatus> l = dataService.getActiveOutgoingTableReloadStatusByTargetNodeId(targetNode.getNodeId());
-                    for (TableReloadStatus status : l) {
-                        loadId = status.getLoadId();
-                        break;
+                    List<TableReloadStatus> targetNodeLoadStatuses = dataService.getActiveOutgoingTableReloadStatusByTargetNodeId(targetNode.getNodeId());
+                    if (!targetNodeLoadStatuses.isEmpty()) {
+                        loadId = targetNodeLoadStatuses.get(0).getLoadId();
                     }
                     duration = System.currentTimeMillis() - ts;
                     logQueryDuration("Get active reload status took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
                     if (loadId != 0) {
                         ts = System.currentTimeMillis();
-                        TableReloadStatus status = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(loadId, engine.getNodeId());
+                        TableReloadStatus loadStatus = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(loadId, engine.getNodeId());
                         duration = System.currentTimeMillis() - ts;
                         logQueryDuration("Get table reload status by load and source node took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
-                        if (status != null && status.getDataBatchLoaded() < status.getDataBatchCount()) {
+                        if (loadStatus != null && loadStatus.getDataBatchLoaded() < loadStatus.getDataBatchCount()) {
                             batches.removeNonLoadBatches();
-                            log.info("Pausing non-load batches from queue {} for target node {} because load ID {} is active", queue, targetNode,
-                                    status.getLoadId());
+                            log.info("Deferring non-load batches from queue {} for target node {} because load ID {} is active", queue, targetNode,
+                                    loadStatus.getLoadId());
                         }
                     }
                 }
