@@ -830,6 +830,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             } else {
                 log.info(ParameterConstants.AUTO_SYNC_TRIGGERS_AT_STARTUP + " is turned off");
             }
+            refreshClusterPeers(node.getNodeId());
             updateNodeHeartbeat();
             if (parameterService.is(ParameterConstants.AUTO_SYNC_CONFIG_AT_STARTUP, true)) {
                 pullService.pullConfigData(false);

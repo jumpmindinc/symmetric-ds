@@ -87,6 +87,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     public synchronized void addPeer(String serverId) {
         if (knownPeers.add(serverId) && jcsCacheManager != null) {
             reinitJcs();
+            log.debug("Added new peer to cluster. serverId={}", serverId);
         }
     }
 
@@ -103,7 +104,8 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         }
         try {
             cache.put(message.getServerId(), message);
-            log.debug("Sent cluster-wide message. eventType={}, serverId={}", message.getEventType(), message.getServerId());
+            log.debug("Sent cluster-wide message. eventType={}, serverId={}, knownPeers.size={}", 
+                message.getEventType(), message.getServerId(), knownPeers.size());
         } catch (Exception ex) {
             String msg = String.format("Failed to send cluster-wide message. eventType=%s, serverId=%s",
                     message.getEventType(), message.getServerId());
@@ -113,10 +115,6 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public void sendEngineStateMessage(ClusterEngineStateMessage message) {
-        if (knownPeers.isEmpty()) {
-            log.debug("Skipping engine state message — no peers in cluster. serverId={}", serverId);
-            return;
-        }
         CacheAccess<String, ClusterEngineStateMessage> cache = engineStateCache;
         if (cache == null) {
             log.debug("Skipping engine state message — JCS not initialized. serverId={}", serverId);
