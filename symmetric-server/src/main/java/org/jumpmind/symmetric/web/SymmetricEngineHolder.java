@@ -211,16 +211,7 @@ public class SymmetricEngineHolder {
         FailedEngineInfo info = enginesFailed.get(engineName);
         if (info != null) {
             ISymmetricEngine engine = engines.get(engineName);
-            if (engine != null) {
-                try {
-                    engine.destroy();
-                } catch (Exception e) {
-                    log.warn("Destroy of engine failed", e);
-                }
-                engines.remove(engineName);
-                ApplicationHealthTracker.getTracker().stopTrackingEngine(engineName);
-            }
-            enginesFailed.remove(engineName);
+            destroyAndStopTrackingEngine(engine);            
             if (restartExecutor == null) {
                 int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT,
                         PARALLEL_ENINES_START_POOL_SIZE_DEFAULT));
@@ -232,10 +223,26 @@ public class SymmetricEngineHolder {
         }
     }
 
+    private void destroyAndStopTrackingEngine(ISymmetricEngine engine) {
+        String engineName = engine.getEngineName();
+        if (engine == null) 
+        {
+            return;
+        }
+        try {
+            ApplicationHealthTracker.getTracker().stopTrackingEngine(engineName);
+            engines.remove(engineName);
+            enginesFailed.remove(engineName);
+            enginesStarting.remove(engineName);
+            engine.destroy();
+        } catch (Exception e) {
+            log.warn("Problem while destroying engine " + engineName, e);
+        }        
+    }
+
     public synchronized void stop() {
         for (ServerSymmetricEngine engine : engines.values()) {
-            engine.destroy();
-            ApplicationHealthTracker.getTracker().stopTrackingEngine(engine.getEngineName());
+            destroyAndStopTrackingEngine(engine);
         }
         engines.clear();
         enginesFailed.clear();
