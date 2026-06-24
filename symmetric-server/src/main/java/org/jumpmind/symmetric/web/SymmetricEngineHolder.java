@@ -81,7 +81,7 @@ import org.springframework.context.ApplicationContext;
  */
 public class SymmetricEngineHolder {
     private final Logger log = LoggerFactory.getLogger(getClass());
-    final String PARALLEL_ENINES_START_POOL_SIZE_DEFAULT = "5";
+    private static final String PARALLEL_ENGINES_START_POOL_SIZE_DEFAULT = "5";
     private static Map<String, ServerSymmetricEngine> staticEngines = Collections.synchronizedMap(new HashMap<String, ServerSymmetricEngine>());
     private static Set<SymmetricEngineStarter> staticEnginesStarting = Collections.synchronizedSet(new HashSet<SymmetricEngineStarter>());
     private static Set<String> staticEnginesStartingNames = Collections.synchronizedSortedSet(new TreeSet<String>());
@@ -211,7 +211,7 @@ public class SymmetricEngineHolder {
         FailedEngineInfo info = enginesFailed.get(engineName);
         if (info != null) {
             ISymmetricEngine engine = engines.get(engineName);
-            destroyAndStopTrackingEngine(engine);            
+            destroyAndStopTrackingEngine(engine);
             if (restartExecutor == null) {
                 int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT,
                         PARALLEL_ENINES_START_POOL_SIZE_DEFAULT));
@@ -225,8 +225,7 @@ public class SymmetricEngineHolder {
 
     private void destroyAndStopTrackingEngine(ISymmetricEngine engine) {
         String engineName = engine.getEngineName();
-        if (engine == null) 
-        {
+        if (engine == null) {
             return;
         }
         try {
@@ -237,7 +236,7 @@ public class SymmetricEngineHolder {
             engine.destroy();
         } catch (Exception e) {
             log.warn("Problem while destroying engine " + engineName, e);
-        }        
+        }
     }
 
     public synchronized void stop() {
