@@ -333,11 +333,7 @@ subprojects { subproject ->
         hsqldbVersion = '2.7.0'
         sqliteVersion = '3.45.3.0'
         // Also update mssql-jdbc_auth*.dll (in symmetric-pro:/src/izpack/x64 and x86) and install.xml
-<<<<<<< HEAD
-        mssqlVersion = '12.8.2.jre8'
-=======
         mssqlVersion = '13.4.0.jre11'
->>>>>>> 7af026048 (SYM-7581: Updating Drivers for MSSQL (#881))
         jakartaMailVersion = '2.0.4'
         jdomVersion = '2.0.6.1'
         jaxbVersion = '4.0.5'
