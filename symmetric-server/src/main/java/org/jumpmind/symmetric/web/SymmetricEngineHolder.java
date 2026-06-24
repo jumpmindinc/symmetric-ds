@@ -89,7 +89,7 @@ public class SymmetricEngineHolder {
     private boolean staticEnginesMode = false;
     private boolean multiServerMode = false;
     private boolean autoStart = true;
-    private boolean autoCreate = true;
+    private boolean autoDiscoverEngines = true;
     private ApplicationContext springContext;
     private String singleServerPropertiesFile;
     private String deploymentType = Constants.DEPLOYMENT_TYPE_SERVER;
@@ -102,29 +102,41 @@ public class SymmetricEngineHolder {
             if (staticEnginesMode) {
                 switchToStaticEnginesMode();
             }
-            if (autoCreate) {
-                log.info("Reading property files -> load SymmetricEngineStarters into enginesStarting. Current directory is {}", System.getProperty(
-                        "user.dir"));
-                if (isMultiServerMode()) {
-                    String enginesDirName = PropertiesUtil.getEnginesDir();
-                    loadMultiServerEngines(enginesDirName);
-                } else {
-                    String engineFileName = singleServerPropertiesFile;
-                    loadSingleServerEngine(engineFileName);
-                }
-                log.info("Finding registration engine to start first");
-                SymmetricEngineStarter registrationStarter = findRegistrationStarter(enginesStarting);
-                if (registrationStarter == null) {
-                    log.info("Didn't find a registration engine to start. Starting all engines.");
-                } else {
-                    startRegEngineFirst(registrationStarter);
-                    log.info("Registration engine was started. Now starting the remaining non-registration engines");
-                }
-                startNonRegEngines(enginesStarting);
+            if (autoDiscoverEngines) {
+                discoverAndStartEngines();
             }
         } finally {
             holderHasBeenStarted = true;
         }
+    }
+
+    private void discoverAndStartEngines() {
+        discoverEngines();
+        startAllEngines();
+    }
+
+    private void discoverEngines() {
+        log.info("Reading property files -> load SymmetricEngineStarters into enginesStarting. Current directory is {}", System.getProperty(
+                "user.dir"));
+        if (isMultiServerMode()) {
+            String enginesDirName = PropertiesUtil.getEnginesDir();
+            loadMultiServerEngines(enginesDirName);
+        } else {
+            String engineFileName = singleServerPropertiesFile;
+            loadSingleServerEngine(engineFileName);
+        }
+    }
+
+    private void startAllEngines() {
+        log.info("Finding registration engines to start first");
+        Set<SymmetricEngineStarter> registrationStarters = findRegistrationStarters(enginesStarting);
+        if (registrationStarters.isEmpty()) {
+            log.info("Didn't find registration engines to start. Starting all other engines.");
+        } else {
+            startRegEnginesFirst(registrationStarters);
+            log.info("Registration engines were started. Now starting the remaining non-registration engines");
+        }
+        startNonRegEngines(new HashSet<>(enginesStarting));
     }
 
     private void switchToStaticEnginesMode() {
@@ -180,12 +192,12 @@ public class SymmetricEngineHolder {
         }
     }
 
-    private ExecutorService regEngineExecutor() {
+    private ExecutorService getRegEngineExecutor() {
         ExecutorService regExecutor = Executors.newSingleThreadExecutor(new CustomizableThreadFactory("symmetric-engine-startup"));
         return regExecutor;
     }
 
-    private ExecutorService nonRegEngineExecutor() {
+    private ExecutorService getNonRegEngineExecutor() {
         int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT,
                 DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT));
         ExecutorService nonRegExecutor = Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-startup"));
@@ -199,7 +211,8 @@ public class SymmetricEngineHolder {
         executor.shutdown();
     }
 
-    protected SymmetricEngineStarter findRegistrationStarter(Set<SymmetricEngineStarter> starters) {
+    protected Set<SymmetricEngineStarter> findRegistrationStarters(Set<SymmetricEngineStarter> starters) {
+        Set<SymmetricEngineStarter> registrationStarters = new HashSet<>();
         for (SymmetricEngineStarter starter : starters) {
             Properties props = new Properties();
             try (InputStream is = new FileInputStream(starter.getPropertiesFile())) {
@@ -211,30 +224,28 @@ public class SymmetricEngineHolder {
             String registrationUrl = props.getProperty(ParameterConstants.REGISTRATION_URL, "");
             String syncUrl = props.getProperty(ParameterConstants.SYNC_URL, "");
             if (StringUtils.isBlank(registrationUrl) || registrationUrl.equals(syncUrl)) {
-                return starter;
+                registrationStarters.add(starter);
             }
         }
-        return null;
+        return registrationStarters;
     }
 
-    private void startRegEngineFirst(SymmetricEngineStarter registrationStarter) {
-        log.info("Starting registration engine first from {}", registrationStarter.getPropertiesFile());
-        Set<SymmetricEngineStarter> regEngineStarter = Collections.synchronizedSet(new HashSet<SymmetricEngineStarter>());
-        regEngineStarter.add(registrationStarter);
-        try (ExecutorService regExecutor = regEngineExecutor()) {
-            executeEngineStarters(regExecutor, regEngineStarter);
+    private void startRegEnginesFirst(Set<SymmetricEngineStarter> registrationStarters) {
+        log.info("Starting registration engines first");
+        try (ExecutorService regExecutor = getRegEngineExecutor()) {
+            executeEngineStarters(regExecutor, registrationStarters);
             try {
                 regExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
             } catch (InterruptedException e) {
-                log.warn("Interrupted while waiting for registration engine to start", e);
+                log.warn("Interrupted while waiting for registration engines to start", e);
                 Thread.currentThread().interrupt();
             }
         }
-        enginesStarting.remove(registrationStarter); // so only nonReg engines left for execution
+        enginesStarting.removeAll(registrationStarters); // backup removal if failure of removal inside run() method of SymmetricEngineStarter
     }
 
     private void startNonRegEngines(Set<SymmetricEngineStarter> nonRegEngineStarters) {
-        ExecutorService nonRegExecutor = nonRegEngineExecutor();
+        ExecutorService nonRegExecutor = getNonRegEngineExecutor();
         executeEngineStarters(nonRegExecutor, nonRegEngineStarters);
     }
 
@@ -623,11 +634,11 @@ public class SymmetricEngineHolder {
     }
 
     public void setAutoCreate(boolean autoCreate) {
-        this.autoCreate = autoCreate;
+        this.autoDiscoverEngines = autoCreate;
     }
 
     public boolean isAutoCreate() {
-        return autoCreate;
+        return autoDiscoverEngines;
     }
 
     public void setStaticEnginesMode(boolean staticEnginesMode) {

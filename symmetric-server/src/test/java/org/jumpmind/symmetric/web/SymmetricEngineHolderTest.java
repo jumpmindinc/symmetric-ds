@@ -23,8 +23,6 @@ package org.jumpmind.symmetric.web;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -73,9 +71,9 @@ class SymmetricEngineHolderTest {
             File clientFile = createPropertiesFile("store", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/store");
             starters.add(new SymmetricEngineStarter(clientFile.getAbsolutePath(), holder));
             starters.add(new SymmetricEngineStarter(regFile.getAbsolutePath(), holder));
-            SymmetricEngineStarter result = holder.findRegistrationStarter(starters);
-            assertNotNull(result);
-            assertTrue(result.getPropertiesFile().contains("corp"));
+            Set<SymmetricEngineStarter> result = holder.findRegistrationStarters(starters);
+            assertEquals(1, result.size());
+            assertTrue(result.iterator().next().getPropertiesFile().contains("corp"));
         }
 
         @Test
@@ -86,21 +84,21 @@ class SymmetricEngineHolderTest {
             File clientFile = createPropertiesFile("store", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/store");
             starters.add(new SymmetricEngineStarter(clientFile.getAbsolutePath(), holder));
             starters.add(new SymmetricEngineStarter(regFile.getAbsolutePath(), holder));
-            SymmetricEngineStarter result = holder.findRegistrationStarter(starters);
-            assertNotNull(result);
-            assertTrue(result.getPropertiesFile().contains("corp"));
+            Set<SymmetricEngineStarter> result = holder.findRegistrationStarters(starters);
+            assertEquals(1, result.size());
+            assertTrue(result.iterator().next().getPropertiesFile().contains("corp"));
         }
 
         @Test
-        void testReturnsNullWhenNoRegistrationNode() throws IOException {
+        void testReturnsEmptyWhenNoRegistrationNode() throws IOException {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             Set<SymmetricEngineStarter> starters = new LinkedHashSet<>();
             File client1 = createPropertiesFile("store1", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/store1");
             File client2 = createPropertiesFile("store2", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/store2");
             starters.add(new SymmetricEngineStarter(client1.getAbsolutePath(), holder));
             starters.add(new SymmetricEngineStarter(client2.getAbsolutePath(), holder));
-            SymmetricEngineStarter result = holder.findRegistrationStarter(starters);
-            assertNull(result);
+            Set<SymmetricEngineStarter> result = holder.findRegistrationStarters(starters);
+            assertTrue(result.isEmpty());
         }
     }
 
