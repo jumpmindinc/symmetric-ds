@@ -5,59 +5,51 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 class ExceptionUtilsTest {
+    @Test
+    void getRootMessageReturnsMessageWhenNoCause() {
+        Throwable ex = new RuntimeException("boom");
+        assertEquals("boom", ExceptionUtils.getRootMessage(ex));
+    }
 
-	@Test
-	void getRootMessageReturnsMessageWhenNoCause() {
-	    Throwable ex = new RuntimeException("boom");
+    @Test
+    void getRootMessageReturnsDeepestCauseMessage() {
+        Throwable ex = new RuntimeException("outer", new IllegalStateException("inner"));
+        assertEquals("inner", ExceptionUtils.getRootMessage(ex));
+    }
 
-	    assertEquals("boom", ExceptionUtils.getRootMessage(ex));
-	}
+    @Test
+    void unwrapMessagesJoinsTheChain() {
+        Throwable ex = new RuntimeException("outer", new IllegalStateException("inner"));
+        String result = ExceptionUtils.unwrapMessages(ex);
+        assertEquals("RuntimeException: outer\nIllegalStateException: inner", result);
+    }
 
-	@Test
-	void getRootMessageReturnsDeepestCauseMessage() {
-	    Throwable ex = new RuntimeException("outer", new IllegalStateException("inner"));
+    @Test
+    void unwrapMessagesOmitsBlankMessage() {
+        Throwable ex = new RuntimeException(); // no message -> getMessage() is null
+        assertEquals("RuntimeException", ExceptionUtils.unwrapMessages(ex));
+    }
 
-	    assertEquals("inner", ExceptionUtils.getRootMessage(ex));
-	}
-	@Test
-	void unwrapMessagesJoinsTheChain() {
-	    Throwable ex = new RuntimeException("outer", new IllegalStateException("inner"));
+    @Test
+    void isReturnsTrueWhenTopLevelMatches() {
+        Throwable ex = new IllegalStateException("x");
+        assertTrue(ExceptionUtils.is(ex, IllegalStateException.class));
+    }
 
-	    String result = ExceptionUtils.unwrapMessages(ex);
+    @Test
+    void isReturnsTrueWhenRootCauseMatches() {
+        Throwable ex = new RuntimeException("outer", new IllegalArgumentException("inner"));
+        assertTrue(ExceptionUtils.is(ex, IllegalArgumentException.class)); // matches the ROOT
+    }
 
-	    assertEquals("RuntimeException: outer\nIllegalStateException: inner", result);
-	}
+    @Test
+    void isReturnsFalseWhenNoMatch() {
+        Throwable ex = new RuntimeException("x");
+        assertFalse(ExceptionUtils.is(ex, IllegalStateException.class));
+    }
 
-	@Test
-	void unwrapMessagesOmitsBlankMessage() {
-	    Throwable ex = new RuntimeException();   // no message -> getMessage() is null
-
-	    assertEquals("RuntimeException", ExceptionUtils.unwrapMessages(ex));
-	}
-	@Test
-	void isReturnsTrueWhenTopLevelMatches() {
-	    Throwable ex = new IllegalStateException("x");
-
-	    assertTrue(ExceptionUtils.is(ex, IllegalStateException.class));
-	}
-
-	@Test
-	void isReturnsTrueWhenRootCauseMatches() {
-	    Throwable ex = new RuntimeException("outer", new IllegalArgumentException("inner"));
-
-	    assertTrue(ExceptionUtils.is(ex, IllegalArgumentException.class));   // matches the ROOT
-	}
-
-	@Test
-	void isReturnsFalseWhenNoMatch() {
-	    Throwable ex = new RuntimeException("x");
-
-	    assertFalse(ExceptionUtils.is(ex, IllegalStateException.class));
-	}
-
-	@Test
-	void isReturnsFalseForNullException() {
-	    assertFalse(ExceptionUtils.is(null, RuntimeException.class));
-	}
-
+    @Test
+    void isReturnsFalseForNullException() {
+        assertFalse(ExceptionUtils.is(null, RuntimeException.class));
+    }
 }
