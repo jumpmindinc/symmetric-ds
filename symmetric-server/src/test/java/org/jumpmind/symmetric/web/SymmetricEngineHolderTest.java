@@ -36,6 +36,7 @@ import java.util.Set;
 import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.SystemConstants;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -292,6 +293,68 @@ class SymmetricEngineHolderTest {
             holder.start();
             assertFalse(holder.areEnginesStarting());
             assertTrue(holder.areEnginesInError());
+        }
+    }
+
+    @Nested
+    class DiscoverEngines {
+        @Test
+        void multiServerModeLoadsPropertiesFileAsStarter() throws IOException {
+            // start() -> discoverEngines() multi-server branch -> loadMultiServerEngines happy path
+            // (validateEngineFiles + the add loop). Creation fails fast without a database.
+            createPropertiesFile("corp", "", "http://localhost:31415/sync/corp");
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            holder.setMultiServerMode(true);
+            String previousEnginesDir = System.setProperty(SystemConstants.SYSPROP_ENGINES_DIR, tempDir.getAbsolutePath());
+            try {
+                holder.start();
+                assertFalse(holder.areEnginesStarting());
+            } finally {
+                restoreEnginesDir(previousEnginesDir);
+            }
+        }
+
+        @Test
+        void multiServerModeWithNoPropertiesFilesLogsNoneFound() {
+            // loadMultiServerEngines: directory exists but is empty -> size-unchanged "none found" branch.
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            holder.setMultiServerMode(true);
+            String previousEnginesDir = System.setProperty(SystemConstants.SYSPROP_ENGINES_DIR, tempDir.getAbsolutePath());
+            try {
+                holder.start();
+                assertFalse(holder.areEnginesStarting());
+            } finally {
+                restoreEnginesDir(previousEnginesDir);
+            }
+        }
+
+        @Test
+        void singleServerModeLoadsConfiguredPropertiesFile() throws IOException {
+            // start() -> discoverEngines() single-server branch -> loadSingleServerEngine isNotBlank path.
+            File props = createPropertiesFile("single", "", "http://localhost:31415/sync/single");
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            holder.setMultiServerMode(false);
+            holder.setSingleServerPropertiesFile(props.getAbsolutePath());
+            holder.start();
+            assertFalse(holder.areEnginesStarting());
+        }
+
+        @Test
+        void staticEnginesModeSwitchesToStaticState() {
+            // start() static branch -> switchToStaticEnginesMode().
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            holder.setStaticEnginesMode(true);
+            holder.setAutoCreate(false);
+            holder.start();
+            assertFalse(holder.areEnginesStarting());
+        }
+
+        private void restoreEnginesDir(String previousValue) {
+            if (previousValue == null) {
+                System.clearProperty(SystemConstants.SYSPROP_ENGINES_DIR);
+            } else {
+                System.setProperty(SystemConstants.SYSPROP_ENGINES_DIR, previousValue);
+            }
         }
     }
 }
