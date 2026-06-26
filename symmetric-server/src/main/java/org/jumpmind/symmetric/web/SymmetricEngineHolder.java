@@ -186,7 +186,7 @@ public class SymmetricEngineHolder {
             startEnginesAndWait(registrationEngineStarters);
             log.info("All registration engines have been started (before non-registration engines).");
         }
-        log.info("All engines now starting up.");
+        log.debug("All engines now starting up.");
         startEngines(nonRegistrationEngineStarters);
     }
 
@@ -201,6 +201,8 @@ public class SymmetricEngineHolder {
         // try-with-resources: close() blocks until these engines finish before returning
         try (ExecutorService executor = getEngineStarterExecutor()) {
             executeEngineStarters(executor, starters);
+        } catch (Exception e) {
+            log.error("Error while waiting for registration engines to start: {}", starters, e);
         }
     }
 
