@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -110,6 +111,15 @@ public class SymmetricEngineHolder {
         }
     }
 
+    private void switchToStaticEnginesMode() {
+        // Switch engine holder class instance variables to static for multi-holder deployments.
+        log.debug("In static engine mode");
+        engines = staticEngines;
+        enginesStarting = staticEnginesStarting;
+        enginesStartingNames = staticEnginesStartingNames;
+        enginesFailed = staticEnginesFailed;
+    }
+
     private void discoverEngines() {
         if (log.isDebugEnabled()) {
             log.debug("Reading property files -> load SymmetricEngineStarters into enginesStarting. Current directory is {}", System.getProperty(
@@ -124,54 +134,30 @@ public class SymmetricEngineHolder {
         }
     }
 
-    private void startAllEngines() {
-        log.debug("Finding registration engines to start first");
-        Set<SymmetricEngineStarter> registrationStarters = findRegistrationStarters(enginesStarting);
-        if (registrationStarters.isEmpty()) {
-            log.debug("Didn't find registration engines to start. Starting all other engines.");
-        } else {
-            log.debug("Starting registration engines first");
-            startRegistrationEngines(registrationStarters);
-            log.info("Registration engines were started. Now starting the remaining non-registration engines");
-        }
-        startNonRegistrationEngines(new HashSet<>(enginesStarting));
-    }
-
-    private void switchToStaticEnginesMode() {
-        // Switch engine holder class instance variables to static for multi-holder deployments.
-        log.debug("In static engine mode");
-        engines = staticEngines;
-        enginesStarting = staticEnginesStarting;
-        enginesStartingNames = staticEnginesStartingNames;
-        enginesFailed = staticEnginesFailed;
-    }
-
     private void loadMultiServerEngines(String enginesDirName) {
         log.debug("Starting in multi-server mode with engines directory at {}", enginesDirName);
         File enginesDir = new File(enginesDirName);
-        File[] files = null;
-        files = enginesDir.listFiles();
-        if (files == null) {
+        File[] engineFiles = enginesDir.listFiles();
+        if (engineFiles == null) {
             String firstAttempt = enginesDir.getAbsolutePath();
             enginesDir = new File(".");
             log.warn("Unable to retrieve engine properties files from {}.  Trying current working directory {}",
                     firstAttempt, enginesDir.getAbsolutePath());
-            files = enginesDir.listFiles();
+            engineFiles = enginesDir.listFiles();
         }
-        if (files != null) {
-            validateEngineFiles(files);
-            boolean found = false;
-            for (File file : files) {
-                if (file.getName().endsWith(".properties")) {
-                    enginesStarting.add(new SymmetricEngineStarter(file.getAbsolutePath(), this));
-                    found = true;
-                }
+        if (engineFiles == null) {
+            log.error("Still unable to retrieve engine properties files after checking default location and current working directory.  No engines to start.");
+            return;
+        }
+        validateEngineFiles(engineFiles);
+        int startingEngineCount = enginesStarting.size();
+        for (File file : engineFiles) {
+            if (file.getName().endsWith(".properties")) {
+                enginesStarting.add(new SymmetricEngineStarter(file.getAbsolutePath(), this));
             }
-            if (!found) {
-                log.info("No engine *.properties files found");
-            }
-        } else {
-            log.error("Unable to retrieve engine properties files from default location or from current working directory.  No engines to start.");
+        }
+        if (enginesStarting.size() == startingEngineCount) {
+            log.info("No engine *.properties files found");
         }
     }
 
@@ -190,6 +176,38 @@ public class SymmetricEngineHolder {
         }
     }
 
+    private void startAllEngines() {
+        Set<SymmetricEngineStarter> registrationEngineStarters = filterEngineStartersByRegistrationType(true, enginesStarting);
+        Set<SymmetricEngineStarter> nonRegistrationEngineStarters = filterEngineStartersByRegistrationType(false, enginesStarting);
+        if (registrationEngineStarters.isEmpty()) {
+            log.debug("No registration engines found. Starting all other engines.");
+        } else {
+            log.debug("Starting registration engines first");
+            startEnginesAndWait(registrationEngineStarters);
+            log.info("All registration engines have been started (before non-registration engines).");
+        }
+        log.info("All engines now starting up.");
+        startEngines(nonRegistrationEngineStarters);
+    }
+
+    protected Set<SymmetricEngineStarter> filterEngineStartersByRegistrationType(boolean isRegistrationEngineStarter,
+            Set<SymmetricEngineStarter> source) {
+        return source.stream()
+                .filter(starter -> starter.isRegistrationEngineStarter() == isRegistrationEngineStarter)
+                .collect(Collectors.toSet());
+    }
+
+    private void startEnginesAndWait(Set<SymmetricEngineStarter> starters) {
+        // try-with-resources: close() blocks until these engines finish before returning
+        try (ExecutorService executor = getEngineStarterExecutor()) {
+            executeEngineStarters(executor, starters);
+        }
+    }
+
+    private void startEngines(Set<SymmetricEngineStarter> starters) {
+        executeEngineStarters(getEngineStarterExecutor(), starters);
+    }
+
     private ExecutorService getEngineStarterExecutor() {
         int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT,
                 DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT));
@@ -202,37 +220,6 @@ public class SymmetricEngineHolder {
             executor.execute(starter);
         }
         executor.shutdown();
-    }
-
-    protected Set<SymmetricEngineStarter> findRegistrationStarters(Set<SymmetricEngineStarter> starters) {
-        Set<SymmetricEngineStarter> registrationStarters = new HashSet<>();
-        for (SymmetricEngineStarter starter : starters) {
-            Properties props = new Properties();
-            try (InputStream is = new FileInputStream(starter.getPropertiesFile())) {
-                props.load(is);
-            } catch (IOException e) {
-                log.warn("Unable to read properties file to determine registration node: {}", starter.getPropertiesFile());
-                continue;
-            }
-            String registrationUrl = props.getProperty(ParameterConstants.REGISTRATION_URL, "");
-            String syncUrl = props.getProperty(ParameterConstants.SYNC_URL, "");
-            if (StringUtils.isBlank(registrationUrl) || registrationUrl.equals(syncUrl)) {
-                registrationStarters.add(starter);
-            }
-        }
-        return registrationStarters;
-    }
-
-    private void startRegistrationEngines(Set<SymmetricEngineStarter> registrationStarters) {
-        // try-with-resources: close() blocks until registration engines finish, so they start before any non-registration engine
-        try (ExecutorService engineStarterExecutor = getEngineStarterExecutor()) {
-            executeEngineStarters(engineStarterExecutor, registrationStarters);
-        }
-    }
-
-    private void startNonRegistrationEngines(Set<SymmetricEngineStarter> nonRegistrationStarters) {
-        ExecutorService engineStarterExecutor = getEngineStarterExecutor();
-        executeEngineStarters(engineStarterExecutor, nonRegistrationStarters);
     }
 
     public synchronized void restart(String engineName) {
@@ -615,16 +602,16 @@ public class SymmetricEngineHolder {
         this.multiServerMode = multiServerMode;
     }
 
-    public boolean isMultiServerMode() {
-        return multiServerMode;
-    }
-
     public void setAutoCreate(boolean autoCreate) {
         this.autoDiscoverEngines = autoCreate;
     }
 
     public boolean isAutoCreate() {
         return autoDiscoverEngines;
+    }
+
+    public boolean isMultiServerMode() {
+        return multiServerMode;
     }
 
     public void setStaticEnginesMode(boolean staticEnginesMode) {

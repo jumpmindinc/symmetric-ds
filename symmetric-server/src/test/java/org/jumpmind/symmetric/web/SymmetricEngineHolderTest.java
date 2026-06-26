@@ -46,23 +46,23 @@ class SymmetricEngineHolderTest {
     @TempDir
     File tempDir;
 
-    @Nested
-    class FindRegistrationStarter {
-        private File createPropertiesFile(String name, String registrationUrl, String syncUrl) throws IOException {
-            File file = new File(tempDir, name + ".properties");
-            Properties props = new Properties();
-            if (registrationUrl != null) {
-                props.setProperty(ParameterConstants.REGISTRATION_URL, registrationUrl);
-            }
-            if (syncUrl != null) {
-                props.setProperty(ParameterConstants.SYNC_URL, syncUrl);
-            }
-            try (FileOutputStream out = new FileOutputStream(file)) {
-                props.store(out, null);
-            }
-            return file;
+    private File createPropertiesFile(String name, String registrationUrl, String syncUrl) throws IOException {
+        File file = new File(tempDir, name + ".properties");
+        Properties props = new Properties();
+        if (registrationUrl != null) {
+            props.setProperty(ParameterConstants.REGISTRATION_URL, registrationUrl);
         }
+        if (syncUrl != null) {
+            props.setProperty(ParameterConstants.SYNC_URL, syncUrl);
+        }
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            props.store(out, null);
+        }
+        return file;
+    }
 
+    @Nested
+    class FilterEngineStartersByRegistrationType {
         @Test
         void testFindsRegistrationNodeWithBlankUrl() throws IOException {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
@@ -71,7 +71,7 @@ class SymmetricEngineHolderTest {
             File clientFile = createPropertiesFile("store", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/store");
             starters.add(new SymmetricEngineStarter(clientFile.getAbsolutePath(), holder));
             starters.add(new SymmetricEngineStarter(regFile.getAbsolutePath(), holder));
-            Set<SymmetricEngineStarter> result = holder.findRegistrationStarters(starters);
+            Set<SymmetricEngineStarter> result = holder.filterEngineStartersByRegistrationType(true, starters);
             assertEquals(1, result.size());
             assertTrue(result.iterator().next().getPropertiesFile().contains("corp"));
         }
@@ -84,7 +84,7 @@ class SymmetricEngineHolderTest {
             File clientFile = createPropertiesFile("store", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/store");
             starters.add(new SymmetricEngineStarter(clientFile.getAbsolutePath(), holder));
             starters.add(new SymmetricEngineStarter(regFile.getAbsolutePath(), holder));
-            Set<SymmetricEngineStarter> result = holder.findRegistrationStarters(starters);
+            Set<SymmetricEngineStarter> result = holder.filterEngineStartersByRegistrationType(true, starters);
             assertEquals(1, result.size());
             assertTrue(result.iterator().next().getPropertiesFile().contains("corp"));
         }
@@ -97,8 +97,21 @@ class SymmetricEngineHolderTest {
             File client2 = createPropertiesFile("store2", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/store2");
             starters.add(new SymmetricEngineStarter(client1.getAbsolutePath(), holder));
             starters.add(new SymmetricEngineStarter(client2.getAbsolutePath(), holder));
-            Set<SymmetricEngineStarter> result = holder.findRegistrationStarters(starters);
+            Set<SymmetricEngineStarter> result = holder.filterEngineStartersByRegistrationType(true, starters);
             assertTrue(result.isEmpty());
+        }
+
+        @Test
+        void nonRegistrationFilterReturnsOnlyClientEngines() throws IOException {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            Set<SymmetricEngineStarter> starters = new LinkedHashSet<>();
+            File regFile = createPropertiesFile("corp", "", "http://localhost:31415/sync/corp");
+            File clientFile = createPropertiesFile("store", "http://localhost:31415/sync/corp", "http://localhost:31415/sync/store");
+            starters.add(new SymmetricEngineStarter(regFile.getAbsolutePath(), holder));
+            starters.add(new SymmetricEngineStarter(clientFile.getAbsolutePath(), holder));
+            Set<SymmetricEngineStarter> result = holder.filterEngineStartersByRegistrationType(false, starters);
+            assertEquals(1, result.size());
+            assertTrue(result.iterator().next().getPropertiesFile().contains("store"));
         }
     }
 
@@ -248,6 +261,37 @@ class SymmetricEngineHolderTest {
             holder.start();
             holder.getEnginesStarting().add(new SymmetricEngineStarter("fake.properties", holder));
             assertTrue(holder.areEnginesStarting());
+        }
+    }
+
+    @Nested
+    class IsRegistrationEngineStarter {
+        @Test
+        void returnsFalseWhenPropertiesFileCannotBeRead() {
+            // Unreadable/missing file must fail safe to non-registration rather than throw.
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            File missing = new File(tempDir, "does-not-exist.properties");
+            SymmetricEngineStarter starter = new SymmetricEngineStarter(missing.getAbsolutePath(), holder);
+            assertFalse(starter.isRegistrationEngineStarter());
+        }
+    }
+
+    @Nested
+    class StartAllEngines {
+        @Test
+        void routesRegistrationEngineThroughBlockingStart() throws IOException {
+            // A registration engine (blank registration.url) drives startAllEngines down its
+            // "registration engines first" branch and through startEnginesAndWait. The properties
+            // file is intentionally incomplete, so engine creation fails fast and no database is
+            // required -- we only need to prove the registration path executed and the engine was
+            // picked up and processed.
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            holder.setAutoCreate(false);
+            File regFile = createPropertiesFile("corp", "", "http://localhost:31415/sync/corp");
+            holder.getEnginesStarting().add(new SymmetricEngineStarter(regFile.getAbsolutePath(), holder));
+            holder.start();
+            assertFalse(holder.areEnginesStarting());
+            assertTrue(holder.areEnginesInError());
         }
     }
 }
