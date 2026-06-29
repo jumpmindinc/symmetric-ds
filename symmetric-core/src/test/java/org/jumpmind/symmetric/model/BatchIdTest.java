@@ -63,12 +63,12 @@ class BatchIdTest {
     @Test
     void equalsFalseForNull() {
         BatchId b = new BatchId(1, "b");
-        assertNotEquals(b, null);
+        assertNotEquals(null, b);
     }
 
     @Test
     void equalsFalseForDifferentType() {
-        assertNotEquals(new BatchId(1, "a"), "not a BatchId");
+        assertNotEquals("not a BatchId", new BatchId(1, "a"));
     }
 
     @Test
@@ -89,7 +89,6 @@ class BatchIdTest {
     void equalsTrueWhenBothNodeIdsNull() {
         BatchId b = new BatchId(1, null);
         BatchId a = new BatchId(1, null);
-        assertTrue(b.equals(a));
         assertEquals(b, a);
     }
 
