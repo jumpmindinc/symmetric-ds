@@ -401,6 +401,8 @@ public class DatabaseXmlUtil {
             column.setUnique(FormatUtils.toBoolean(attrValue));
         } else if (attrName.equalsIgnoreCase("generated")) {
             column.setGenerated(FormatUtils.toBoolean(attrValue));
+        } else if (attrName.equalsIgnoreCase("persisted")) {
+            column.setPersisted(FormatUtils.toBoolean(attrValue));
         } else if (attrName.equalsIgnoreCase("expressionAsDefault")) {
             column.setExpressionAsDefaultValue(FormatUtils.toBoolean(attrValue));
         }
@@ -921,6 +923,9 @@ public class DatabaseXmlUtil {
         }
         if (column.isGenerated()) {
             output.write(" generated=\"" + column.isGenerated() + "\"");
+        }
+        if (column.isPersisted()) {
+            output.write(" persisted=\"true\"");
         }
         if (column.isExpressionAsDefaultValue()) {
             output.write(" expressionAsDefault=\"" + column.isExpressionAsDefaultValue() + "\"");

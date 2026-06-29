@@ -86,6 +86,8 @@ public class Column implements Cloneable, Serializable {
     private boolean unique;
     /** Whether the column is a generated/computed/virtual column. */
     private boolean generated;
+    /** Whether the generated column's value is physically stored (e.g. SQL Server PERSISTED). */
+    private boolean persisted;
     /** Whether the column has an expression for a default value. */
     private boolean expressionAsDefaultValue;
     /**
@@ -295,6 +297,25 @@ public class Column implements Cloneable, Serializable {
      */
     public void setGenerated(boolean generated) {
         this.generated = generated;
+    }
+
+    /**
+     * Determines whether this generated column's value is physically stored on disk (e.g. SQL Server PERSISTED computed column).
+     *
+     * @return <code>true</code> if this generated column is persisted/retained
+     */
+    public boolean isPersisted() {
+        return persisted;
+    }
+
+    /**
+     * Specifies whether this generated column's value is physically stored on disk.
+     *
+     * @param persisted
+     *            <code>true</code> if this generated column is persisted/retained
+     */
+    public void setPersisted(boolean persisted) {
+        this.persisted = persisted;
     }
 
     /**

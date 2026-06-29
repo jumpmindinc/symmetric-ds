@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 
+import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.NonUniqueIndex;
@@ -141,5 +142,41 @@ public class ModelComparatorTest {
         assertEquals(2, changeList.size());
         assertTrue(changeList.stream().anyMatch(c -> c instanceof RemoveIndexChange && ((RemoveIndexChange) c).getIndex().equals(nonUniqueIndexLowercase)));
         assertTrue(changeList.stream().anyMatch(c -> c instanceof RemoveIndexChange && ((RemoveIndexChange) c).getIndex().equals(uniqueIndexLowercase)));
+    }
+
+    @Test
+    void detectIndexChanges_suppressesAddIndexChange_forPersistedGeneratedColumn_whenPlatformLacksPersistedSupport() {
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setIndicesSupported(true);
+        ModelComparator comparator = new ModelComparator(null, dbInfo, false);
+        Column col = new Column("total");
+        col.setGenerated(true);
+        col.setPersisted(true);
+        Table source = new Table("t");
+        Table target = new Table("t", col);
+        NonUniqueIndex index = new NonUniqueIndex("idx_total");
+        index.addColumn(new IndexColumn("total"));
+        target.addIndex(index);
+        comparator.detectIndexChanges(null, source, null, target, changeList);
+        assertEquals(0, changeList.size());
+    }
+
+    @Test
+    void detectIndexChanges_addsIndexChange_forPersistedGeneratedColumn_whenPlatformSupportsPersisted() {
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setIndicesSupported(true);
+        dbInfo.setPersistedGeneratedColumnsSupported(true);
+        ModelComparator comparator = new ModelComparator(null, dbInfo, false);
+        Column col = new Column("total");
+        col.setGenerated(true);
+        col.setPersisted(true);
+        Table source = new Table("t");
+        Table target = new Table("t", col);
+        NonUniqueIndex index = new NonUniqueIndex("idx_total");
+        index.addColumn(new IndexColumn("total"));
+        target.addIndex(index);
+        comparator.detectIndexChanges(null, source, null, target, changeList);
+        assertEquals(1, changeList.size());
+        assertTrue(changeList.get(0) instanceof AddIndexChange);
     }
 }

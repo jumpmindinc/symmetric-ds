@@ -353,6 +353,16 @@ public class Table extends Relation {
         return false;
     }
 
+    public boolean doesIndexContainPersistedGeneratedColumn(IIndex index) {
+        for (int i = 0; i < index.getColumnCount(); i++) {
+            Column column = getColumnWithName(index.getColumn(i).getName());
+            if (column != null && column.isGenerated() && column.isPersisted()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void sortForeignKeys(final boolean caseSensitive) {
         if (!foreignKeys.isEmpty()) {
             final Collator collator = Collator.getInstance();

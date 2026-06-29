@@ -244,6 +244,9 @@ public class ModelComparator {
             IIndex targetIndex = targetTable.getIndex(indexIdx);
             IIndex sourceIndex = findCorrespondingIndex(sourceTable, targetIndex);
             if (sourceIndex == null) {
+                if (!platformInfo.isPersistedGeneratedColumnsSupported() && targetTable.doesIndexContainPersistedGeneratedColumn(targetIndex)) {
+                    continue;
+                }
                 log.info("Index {} needs to be created for table {}", targetIndex.getName(), sourceTable.getName());
                 // we have to use the target table here because the index might
                 // reference a new column

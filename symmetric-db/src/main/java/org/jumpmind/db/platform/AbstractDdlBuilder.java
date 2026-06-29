@@ -2314,7 +2314,7 @@ public abstract class AbstractDdlBuilder implements IDdlBuilder {
         if (databaseInfo.isIndicesSupported()) {
             if (index.getName() == null) {
                 log.warn("Cannot write unnamed index " + index);
-            } else {
+            } else if (!table.doesIndexContainPersistedGeneratedColumn(index) || databaseInfo.isPersistedGeneratedColumnsSupported()) {
                 writeExternalIndexCreate(table, index, ddl);
                 printEndOfStatement(ddl);
             }

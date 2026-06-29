@@ -272,4 +272,49 @@ class TableTest {
         t.setSchema("newschema");
         assertEquals("oldschema", t.getOldSchema());
     }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsFalse_forRegularColumn() {
+        Table t = new Table("t", new Column("a"));
+        assertFalse(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("a")));
+    }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsFalse_forVirtualGeneratedColumn() {
+        Table t = new Table("t", generatedColumn("a", false));
+        assertFalse(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("a")));
+    }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsTrue_forPersistedGeneratedColumn() {
+        Table t = new Table("t", generatedColumn("a", true));
+        assertTrue(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("a")));
+    }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsTrue_whenMixedColumns() {
+        Table t = new Table("t", new Column("a"), generatedColumn("b", true));
+        assertTrue(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("a", "b")));
+    }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsFalse_whenColumnNotInTable() {
+        Table t = new Table("t", new Column("a"));
+        assertFalse(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("unknown")));
+    }
+
+    private static IIndex indexOnColumns(String... columnNames) {
+        NonUniqueIndex index = new NonUniqueIndex();
+        for (String name : columnNames) {
+            index.addColumn(new IndexColumn(name));
+        }
+        return index;
+    }
+
+    private static Column generatedColumn(String name, boolean persisted) {
+        Column col = new Column(name);
+        col.setGenerated(true);
+        col.setPersisted(persisted);
+        return col;
+    }
 }
