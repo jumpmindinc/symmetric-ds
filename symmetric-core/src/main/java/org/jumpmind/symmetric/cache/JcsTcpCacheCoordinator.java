@@ -20,6 +20,8 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -115,6 +117,10 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public void sendEngineStateMessage(ClusterEngineStateMessage message) {
+        if (knownPeers.isEmpty()) {
+            log.debug("Skipping engine state message — no peers in cluster. serverId={}", serverId);
+            return;
+        }
         CacheAccess<String, ClusterEngineStateMessage> cache = engineStateCache;
         if (cache == null) {
             log.debug("Skipping engine state message — JCS not initialized. serverId={}", serverId);

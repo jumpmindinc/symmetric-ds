@@ -89,6 +89,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             return;
         }
         coordinator.addPeer(serverId);
+        if (isClusterPeerListenerStarted) {
+            broadcastStateAndEngines();
+        }
         ClusterPeerStatusMessage existingMsg = coordinator.getPeerStatusMessage(serverId);
         if (existingMsg != null && (heartbeatTime == null || existingMsg.getTimestamp() >= heartbeatTime.getTime())) {
             log.debug("Skipping peer state seed for {} — JCS message is more recent than database heartbeat", serverId);
@@ -239,7 +242,12 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         isClusterPeerListenerStarted = false;
     }
 
-    private void rebroadcastEngineStates() {
+    private void broadcastStateAndEngines() {
+        sendMessageToPeers(lastBroadcastEventType);
+        broadcastLastKnownEngineStates();
+    }
+
+    private void broadcastLastKnownEngineStates() {
         new java.util.HashMap<>(lastEngineStates).forEach((name, state) -> coordinator.sendEngineStateMessage(new ClusterEngineStateMessage(
                 state, name, myServerId, myInstanceId, Version.version())));
     }
@@ -272,8 +280,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     currentHeartbeatMs = sleepHeartbeatMs;
                     staleThresholdMs = getStaleMs(engine);
                 }
-                sendMessageToPeers(lastBroadcastEventType);
-                rebroadcastEngineStates();
+                broadcastStateAndEngines();
                 activeMembers = checkAllClusterPeers(staleThresholdMs);
                 long durationMs = System.currentTimeMillis() - startTime;
                 long adjustedSleepMs = Math.max(0, sleepHeartbeatMs - durationMs);

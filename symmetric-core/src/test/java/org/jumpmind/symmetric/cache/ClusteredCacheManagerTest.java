@@ -698,6 +698,41 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
+    public void addPeer_listenerStarted_rebroadcastsPeerState() throws Exception {
+        setListenerStarted(true);
+        setMyServerId("myServer");
+        setMyInstanceId("myInstance");
+        manager.registerEngine(mockEngine);
+        manager.addPeer("server2", null);
+        verify(mockCoordinator, atLeastOnce()).sendMessageToPeers(any(ClusterPeerStatusMessage.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void addPeer_listenerStarted_withEngineState_rebroadcastsEngineStates() throws Exception {
+        setListenerStarted(true);
+        setMyServerId("myServer");
+        setMyInstanceId("myInstance");
+        Field f = ClusteredCacheManager.class.getDeclaredField("lastEngineStates");
+        f.setAccessible(true);
+        ((Map<String, String>) f.get(manager)).put("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
+        clearInvocations(mockCoordinator);
+        manager.registerEngine(mockEngine);
+        manager.addPeer("server2", null);
+        verify(mockCoordinator, atLeastOnce()).sendEngineStateMessage(any(ClusterEngineStateMessage.class));
+    }
+
+    @Test
+    public void addPeer_listenerNotStarted_doesNotRebroadcast() throws Exception {
+        setMyServerId("myServer");
+        setMyInstanceId("myInstance");
+        manager.registerEngine(mockEngine);
+        manager.addPeer("server2", null);
+        verify(mockCoordinator, never()).sendMessageToPeers(any());
+        verify(mockCoordinator, never()).sendEngineStateMessage(any());
+    }
+
+    @Test
     public void broadcastPeerState_listenerStarted_sendsMessageToPeers() throws Exception {
         setListenerStarted(true);
         manager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT);
