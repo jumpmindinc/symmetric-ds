@@ -27,7 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class RandomTimeSlotTest {
-
     @Test
     void testGetRandomValueSeededByExternalId_alwaysWithinBounds() {
         // nextInt(maxValue) is in [0, maxValue), and 0 is remapped to 1,

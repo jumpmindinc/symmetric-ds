@@ -29,7 +29,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class SortedPropertiesTest {
-
     /** Drain keys() into a list so order can be asserted. */
     private static List<String> keysOf(SortedProperties props) {
         List<String> keys = new ArrayList<>();

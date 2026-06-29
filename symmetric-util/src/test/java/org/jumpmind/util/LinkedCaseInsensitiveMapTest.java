@@ -34,7 +34,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class LinkedCaseInsensitiveMapTest {
-
     @Test
     void testGet_resolvesAnyCasing() {
         LinkedCaseInsensitiveMap<String> map = new LinkedCaseInsensitiveMap<>();

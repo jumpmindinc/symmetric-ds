@@ -27,7 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class VersionUtilTest {
-
     @Test
     void testParseVersion_fullMajorMinorPatch() {
         assertArrayEquals(new int[] { 3, 18, 5 }, VersionUtil.parseVersion("3.18.5"));
