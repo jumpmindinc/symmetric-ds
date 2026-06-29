@@ -26,20 +26,20 @@ import org.junit.jupiter.api.Test;
 
 class BatchIdTest {
     @Test
-    void toStringFormatsAsNodeDashBatch() {
+    void TestToString_toStringFormatsAsNodeDashBatch() {
         BatchId b = new BatchId(123, "node1");
         assertEquals("node1-123", b.toString());
     }
 
     @Test
-    void constructorSetsFields() {
+    void TestGetters_constructorSetsFields() {
         BatchId b = new BatchId(123, "node1");
         assertEquals(123, b.getBatchId());
         assertEquals("node1", b.getNodeId());
     }
 
     @Test
-    void settersUpdateFields() {
+    void TestGetters_settersUpdateFields() {
         BatchId b = new BatchId();
         b.setBatchId(7);
         b.setNodeId("node2");
@@ -48,59 +48,59 @@ class BatchIdTest {
     }
 
     @Test
-    void equalsTrueForSameInstance() {
+    void TestEquals_equalsTrueForSameInstance() {
         BatchId b = new BatchId(1, "b");
         assertEquals(b, b);
     }
 
     @Test
-    void equalsTrueForSameValues() {
+    void TestEquals_equalsTrueForSameValues() {
         BatchId b = new BatchId(1, "b");
         BatchId a = new BatchId(1, "b");
         assertEquals(a, b);
     }
 
     @Test
-    void equalsFalseForNull() {
+    void TestEquals_equalsFalseForNull() {
         BatchId b = new BatchId(1, "b");
         assertNotEquals(null, b);
     }
 
     @Test
-    void equalsFalseForDifferentType() {
+    void TestEquals_equalsFalseForDifferentType() {
         assertNotEquals("not a BatchId", new BatchId(1, "a"));
     }
 
     @Test
-    void equalsFalseForDifferentBatchId() {
+    void TestEquals_equalsFalseForDifferentBatchId() {
         BatchId b = new BatchId(1, "b");
         BatchId a = new BatchId(2, "b");
         assertNotEquals(b, a);
     }
 
     @Test
-    void equalsFalseForDifferentNodeId() {
+    void TestEquals_equalsFalseForDifferentNodeId() {
         BatchId b = new BatchId(1, "b");
         BatchId a = new BatchId(1, "a");
         assertNotEquals(b, a);
     }
 
     @Test
-    void equalsTrueWhenBothNodeIdsNull() {
+    void TestEquals_equalsTrueWhenBothNodeIdsNull() {
         BatchId b = new BatchId(1, null);
         BatchId a = new BatchId(1, null);
-        assertEquals(b, a);
+        assertEquals(a, b);
     }
 
     @Test
-    void equalsFalseWhenThisNodeIdsNull() {
+    void TestEquals_equalsFalseWhenThisNodeIdsNull() {
         BatchId b = new BatchId(1, null);
         BatchId a = new BatchId(1, "a");
         assertNotEquals(b, a);
     }
 
     @Test
-    void equalObjectsHaveEqualHashCodes() {
+    void TestHashCode_equalObjectsHaveEqualHashCodes() {
         BatchId b = new BatchId(1, "b");
         BatchId a = new BatchId(1, "b");
         assertEquals(a.hashCode(), b.hashCode());

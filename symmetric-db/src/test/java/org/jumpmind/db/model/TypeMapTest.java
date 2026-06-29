@@ -28,103 +28,103 @@ import java.sql.Types;
 
 class TypeMapTest {
     @Test
-    void getJdbcTypeCodeLooksUpByName() {
+    void TestGetJdbcTypeCode_LooksUpByName() {
         assertEquals(Types.VARCHAR, TypeMap.getJdbcTypeCode("VARCHAR"));
     }
 
     @Test
-    void getJdbcTypeCodeIsCaseInsensitive() {
+    void TestGetJdbcTypeCode_IsCaseInsensitive() {
         assertEquals(Types.VARCHAR, TypeMap.getJdbcTypeCode("varchar"));
     }
 
     @Test
-    void getJdbcTypeCodeReturnsNullForUnknown() {
+    void TestGetJdbcTypeCode_ReturnsNullForUnknown() {
         assertNull(TypeMap.getJdbcTypeCode("NOT_A_REAL_TYPE"));
     }
 
     @Test
-    void getJdbcTypeNameLookUpByCode() {
+    void TestGetJdbcTypeName_LookUpByCode() {
         assertEquals("VARCHAR", TypeMap.getJdbcTypeName(Types.VARCHAR));
     }
 
     @Test
-    void getJdbcTypeNameFallsBackToCodeStringForUnknown() {
+    void TestGetJdbcTypeName_FallsBackToCodeStringForUnknown() {
         assertEquals("999", TypeMap.getJdbcTypeName(999));
     }
 
     @Test
-    void isNumericTypeTrueForInteger() {
+    void TestIsNumericType_TrueForInteger() {
         assertTrue(TypeMap.isNumericType(Types.INTEGER));
     }
 
     @Test
-    void isNumericTypeFalseForVarChar() {
+    void TestIsNumericType_FalseForVarChar() {
         assertFalse(TypeMap.isNumericType(Types.VARCHAR));
     }
 
     @Test
-    void isTextTypeTrueForVarChar() {
+    void TestIsTextType_TrueForVarChar() {
         assertTrue(TypeMap.isTextType(Types.VARCHAR));
     }
 
     @Test
-    void isTextTypeFalseForInteger() {
+    void TestIsTextType_FalseForInteger() {
         assertFalse(TypeMap.isTextType(Types.INTEGER));
     }
 
     @Test
-    void isSpecialTypeTrueForArray() {
+    void TestIsSpecialType_TrueForArray() {
         assertTrue(TypeMap.isSpecialType(Types.ARRAY));
     }
 
     @Test
-    void isSpecialTypeFalseForBlob() {
+    void TestIsSpecialType_FalseForBlob() {
         assertFalse(TypeMap.isSpecialType(Types.BLOB));
     }
 
     @Test
-    void isBinaryTypeTrueForBlob() {
+    void TestIsBinaryType_TrueForBlob() {
         assertTrue(TypeMap.isBinaryType(Types.BLOB));
     }
 
     @Test
-    void isBinaryTypeFalseForArray() {
+    void TestIsBinaryType_FalseForArray() {
         assertFalse(TypeMap.isBinaryType(Types.ARRAY));
     }
 
     @Test
-    void isDateTimeTypeTrueForDate() {
+    void TestIsDateTimeType_TrueForDate() {
         assertTrue(TypeMap.isDateTimeType(Types.DATE));
     }
 
     @Test
-    void isDateTimeTypeFalseForDecimal() {
+    void TestIsDateTimeType_FalseForDecimal() {
         assertFalse(TypeMap.isDateTimeType(Types.DECIMAL));
     }
 
     @Test
-    void getJdbcTypeDescriptionsJoinsNamesWithCommaSpace() {
+    void TestGetJdbcTypeDescriptions_JoinsNamesWithCommaSpace() {
         int[] array = { Types.VARCHAR, Types.INTEGER };
         String result = TypeMap.getJdbcTypeDescriptions(array);
         assertEquals("VARCHAR, INTEGER", result);
     }
 
     @Test
-    void getJdbcTypeDescriptionsSingleTypeHasNoComma() {
+    void TestGetJdbcTypeDescriptions_SingleTypeHasNoComma() {
         int[] array = { Types.VARCHAR };
         String result = TypeMap.getJdbcTypeDescriptions(array);
         assertEquals("VARCHAR", result);
     }
 
     @Test
-    void getJdbcTypeDescriptionsEmptyArrayReturnsEmptyString() {
+    void TestGetJdbcTypeDescriptions_EmptyArrayReturnsEmptyString() {
         int[] array = {};
         String result = TypeMap.getJdbcTypeDescriptions(array);
         assertEquals("", result);
     }
 
     @Test
-    void getJdbcTypeDescriptionsUsesCodeStringForUnknownTypes() {
+    void TestGetJdbcTypeDescriptions_UsesCodeStringForUnknownTypes() {
         int[] array = { 999, 9999 };
         String result = TypeMap.getJdbcTypeDescriptions(array);
         assertEquals("999, 9999", result);

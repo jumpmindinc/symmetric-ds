@@ -73,37 +73,37 @@ class BandwidthServiceTest {
     }
 
     @Test
-    void isPullEnabled_returnsTrueWhenMatchingPullLinkExists() {
+    void TestIsPullEnabled_returnsTrueWhenMatchingPullLinkExists() {
         stubLinks(link("store", "corp", NodeGroupLinkAction.W));
         assertTrue(bandwidthService.isPullEnabled(local, remote));
     }
 
     @Test
-    void isPullEnabled_returnsFalseWhenActionIsNotPull() {
+    void TestIsPullEnabled_returnsFalseWhenActionIsNotPull() {
         stubLinks(link("store", "corp", NodeGroupLinkAction.P));
         assertFalse(bandwidthService.isPullEnabled(local, remote));
     }
 
     @Test
-    void isPullEnabled_returnsFalseWhenGroupsDoNotMatch() {
+    void TestIsPullEnabled_returnsFalseWhenGroupsDoNotMatch() {
         stubLinks(link("corp", "store", NodeGroupLinkAction.W));
         assertFalse(bandwidthService.isPullEnabled(local, remote));
     }
 
     @Test
-    void isPullEnabled_returnsFalseWhenNoLinks() {
+    void TestIsPullEnabled_returnsFalseWhenNoLinks() {
         when(configurationService.getNodeGroupLinks(false)).thenReturn(Collections.emptyList());
         assertFalse(bandwidthService.isPullEnabled(local, remote));
     }
 
     @Test
-    void isPushEnabled_returnsTrueWhenMatchingPushLinkExists() {
+    void TestIsPushEnabled_returnsTrueWhenMatchingPushLinkExists() {
         stubLinks(link("corp", "store", NodeGroupLinkAction.P));
         assertTrue(bandwidthService.isPushEnabled(local, remote));
     }
 
     @Test
-    void isPushEnabled_returnsFalseWhenActionIsRoutesOnly() {
+    void TestIsPushEnabled_returnsFalseWhenActionIsRoutesOnly() {
         stubLinks(link("corp", "store", NodeGroupLinkAction.R));
         assertFalse(bandwidthService.isPushEnabled(local, remote));
     }
@@ -119,14 +119,14 @@ class BandwidthServiceTest {
     }
 
     @Test
-    void diagnoseDownload_returnsEmptyListWhenNoPayloadsConfigured() {
+    void TestDiagnoseDownload_returnsEmptyListWhenNoPayloadsConfigured() {
         stubDownloadPayloads("");
         List<BandwidthService.BandwidthResults> results = bandwidthService.diagnoseDownloadBandwidth(local, remote);
         assertTrue(results.isEmpty());
     }
 
     @Test
-    void diagnoseDownload_recordsKbpsForEachPayloadWhenPullEnabled() {
+    void TestDiagnoseDownload_recordsKbpsForEachPayloadWhenPullEnabled() {
         stubDownloadPayloads("1000,2000");
         stubLinks(link("store", "corp", NodeGroupLinkAction.W));
         doReturn(512d).when(bandwidthService).getDownloadKbpsFor(remote, local, 1000L, 5000);
@@ -140,7 +140,7 @@ class BandwidthServiceTest {
     }
 
     @Test
-    void diagnoseDownload_marksFailureWhenPullDisabled() {
+    void TestDiagnoseDownload_marksFailureWhenPullDisabled() {
         stubDownloadPayloads("1000");
         when(configurationService.getNodeGroupLinks(false)).thenReturn(Collections.emptyList());
         List<BandwidthService.BandwidthResults> results = bandwidthService.diagnoseDownloadBandwidth(local, remote);
@@ -150,7 +150,7 @@ class BandwidthServiceTest {
     }
 
     @Test
-    void capturesExceptionWhenSpeedTestThrows() {
+    void TestDiagnoseDownload_capturesExceptionWhenSpeedTestThrows() {
         stubDownloadPayloads("1000");
         stubLinks(link("store", "corp", NodeGroupLinkAction.W));
         doThrow(new RuntimeException("boom")).when(bandwidthService).getDownloadKbpsFor(remote, local, 1000L, 5000);
@@ -161,7 +161,7 @@ class BandwidthServiceTest {
     }
 
     @Test
-    void diagnoseUpload_recordsKbpsWhenPushEnabled() throws Exception {
+    void TestDiagnoseUpload_recordsKbpsWhenPushEnabled() throws Exception {
         stubUploadPayloads("1500");
         stubLinks(link("corp", "store", NodeGroupLinkAction.P));
         doReturn(768d).when(bandwidthService).getUploadKbpsFor(remote, local, 1500L, 5000);
@@ -172,7 +172,7 @@ class BandwidthServiceTest {
     }
 
     @Test
-    void diagnoseUpload_marksFailureWhenPushDisabled() {
+    void TestDiagnoseUpload_marksFailureWhenPushDisabled() {
         stubUploadPayloads("1500");
         when(configurationService.getNodeGroupLinks(false)).thenReturn(Collections.emptyList());
         List<BandwidthService.BandwidthResults> results = bandwidthService.diagnoseUploadBandwidth(local, remote);
@@ -181,7 +181,7 @@ class BandwidthServiceTest {
     }
 
     @Test
-    void diagnoseUpload_capturesIOExceptionFromSpeedTest() throws Exception {
+    void TestDiagnoseUpload_capturesIOExceptionFromSpeedTest() throws Exception {
         stubUploadPayloads("1500");
         stubLinks(link("corp", "store", NodeGroupLinkAction.P));
         doThrow(new IOException("network down")).when(bandwidthService).getUploadKbpsFor(remote, local, 1500L, 5000);

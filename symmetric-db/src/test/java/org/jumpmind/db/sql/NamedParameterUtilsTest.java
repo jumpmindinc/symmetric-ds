@@ -32,7 +32,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class NamedParameterUtilsTest {
     @Test
-    void parsesDistinctNamedParameters() {
+    void TestParseSqlStatement_parsesDistinctNamedParameters() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo and b = :bar");
         assertEquals(2, parsed.getNamedParameterCount());
         assertEquals(0, parsed.getUnnamedParameterCount());
@@ -41,7 +41,7 @@ class NamedParameterUtilsTest {
     }
 
     @Test
-    void countsRepeatedParameterOnceButTotalCountsEach() {
+    void TestParseSqlStatement_countsRepeatedParameterOnceButTotalCountsEach() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo and b = :foo");
         assertEquals(1, parsed.getNamedParameterCount());
         assertEquals(2, parsed.getTotalParameterCount());
@@ -49,7 +49,7 @@ class NamedParameterUtilsTest {
     }
 
     @Test
-    void expandsCollectionIntoCommaSeparatedPlaceholders() {
+    void TestSubstituteNamedParameters_expandsCollectionIntoCommaSeparatedPlaceholders() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where id in (:ids)");
         Map<String, Object> params = Map.of("ids", List.of(1, 2, 3));
         String sql = NamedParameterUtils.substituteNamedParameters(parsed, params);
@@ -57,14 +57,14 @@ class NamedParameterUtilsTest {
     }
 
     @Test
-    void throwsWhenMixingNamedAndUnnamedParameters() {
+    void TestBuildValueArray_throwsWhenMixingNamedAndUnnamedParameters() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo and b = ?");
         Map<String, Object> params = Map.of("foo", 1);
         assertThrows(IllegalStateException.class, () -> NamedParameterUtils.buildValueArray(parsed, params));
     }
 
     @Test
-    void substitutesNamedParameterWithPlaceholder() {
+    void TestSubstituteNamedParameters_substitutesNamedParameterWithPlaceholder() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo and b = :bar");
         Map<String, Object> params = Map.of("foo", 1, "bar", 2);
         String sql = NamedParameterUtils.substituteNamedParameters(parsed, params);
@@ -72,7 +72,7 @@ class NamedParameterUtilsTest {
     }
 
     @Test
-    void expandsCollectionOfArraysIntoGroupedPlaceholders() {
+    void TestSubstituteNamedParameters_expandsCollectionOfArraysIntoGroupedPlaceholders() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where (a, b) in (:tuples)");
         Map<String, Object> params = Map.of("tuples", List.of(new Object[] { 1, 2 }, new Object[] { 3, 4 }));
         String sql = NamedParameterUtils.substituteNamedParameters(parsed, params);
@@ -80,7 +80,7 @@ class NamedParameterUtilsTest {
     }
 
     @Test
-    void throwsWhenParameterMissingFromMap() {
+    void TestSubstituteNamedParameters_throwsWhenParameterMissingFromMap() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo");
         Map<String, Object> params = Map.of("bar", 1);
         assertThrows(InvalidSqlException.class, () -> NamedParameterUtils.substituteNamedParameters(parsed, params));
@@ -97,14 +97,14 @@ class NamedParameterUtilsTest {
 
     @ParameterizedTest(name = "parses single parameter ignoring {0}")
     @MethodSource("sqlWithSingleFooParameter")
-    void parsesSingleNamedParameterInVariousContexts(String description, String sql) {
+    void TestParseSqlStatement_parsesSingleNamedParameterInVariousContexts(String description, String sql) {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement(sql);
         assertEquals(1, parsed.getNamedParameterCount());
         assertEquals(List.of("foo"), parsed.getParameterNames());
     }
 
     @Test
-    void buildsValueArrayInParameterOrder() {
+    void TestBuildValueArray_buildsValueArrayInParameterOrder() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo and b = :bar");
         Map<String, Object> params = Map.of("foo", 1, "bar", 2);
         Object[] values = NamedParameterUtils.buildValueArray(parsed, params);
@@ -112,7 +112,7 @@ class NamedParameterUtilsTest {
     }
 
     @Test
-    void repeatsValueForRepeatedParameter() {
+    void TestBuildValueArray_repeatsValueForRepeatedParameter() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo and b = :foo");
         Map<String, Object> params = Map.of("foo", 1);
         Object[] values = NamedParameterUtils.buildValueArray(parsed, params);
@@ -120,7 +120,7 @@ class NamedParameterUtilsTest {
     }
 
     @Test
-    void flattensCollectionValueIntoArray() {
+    void TestBuildValueArray_flattensCollectionValueIntoArray() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where id in (:ids)");
         Map<String, Object> params = Map.of("ids", List.of(1, 2, 3));
         Object[] values = NamedParameterUtils.buildValueArray(parsed, params);

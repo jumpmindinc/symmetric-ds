@@ -28,20 +28,20 @@ import java.sql.SQLException;
 
 class SqlExceptionTest {
     @Test
-    void getRootCauseReturnsItselfWithNoCause() {
+    void TestGetRootCause_returnsItselfWithNoCause() {
         SqlException ex = new SqlException("boom");
         assertSame(ex, ex.getRootCause());
     }
 
     @Test
-    void getRootCauseReturnsSingleCause() {
+    void TestGetRootCause_returnsSingleCause() {
         Throwable inner = new RuntimeException("inner");
         SqlException ex = new SqlException("outer", inner);
         assertSame(inner, ex.getRootCause());
     }
 
     @Test
-    void getRootCauseReturnsDeepestInChain() {
+    void TestGetRootCause_returnsDeepestInChain() {
         Throwable inner = new RuntimeException("inner");
         Throwable middle = new RuntimeException("middle", inner);
         SqlException ex = new SqlException("outer", middle);
@@ -49,47 +49,47 @@ class SqlExceptionTest {
     }
 
     @Test
-    void getRootMessageReturnsDeepestMessage() {
+    void TestGetRootMessage_returnsDeepestMessage() {
         Throwable inner = new RuntimeException("boom");
         SqlException ex = new SqlException("outer", inner);
         assertEquals("boom", ex.getRootMessage());
     }
 
     @Test
-    void getRootMessageReturnsOwnMessageWhenNoCause() {
+    void TestGetRootMessage_returnsOwnMessageWhenNoCause() {
         SqlException ex = new SqlException("boom");
         assertEquals("boom", ex.getRootMessage());
     }
 
     @Test
-    void getErrorCodeReturnsCodeWhenRootIsSqlException() {
+    void TestGetErrorCode_returnsCodeWhenRootIsSqlException() {
         SQLException inner = new SQLException("db error", "08001", 1234);
         SqlException outer = new SqlException("outer", inner);
         assertEquals(1234, outer.getErrorCode());
     }
 
     @Test
-    void getErrorCodeReturnsMinusOneWhenRootIsNotSqlException() {
+    void TestGetErrorCode_returnsMinusOneWhenRootIsNotSqlException() {
         Throwable notSql = new RuntimeException("not sql exception");
         SqlException outer = new SqlException("outer", notSql);
         assertEquals(outer.getErrorCode(), -1);
     }
 
     @Test
-    void getErrorCodeReturnsMinusOneWhenNoCause() {
+    void TestGetErrorCode_returnsMinusOneWhenNoCause() {
         SqlException outer = new SqlException("outer");
         assertEquals(outer.getErrorCode(), -1);
     }
 
     @Test
-    void getSQLStateReturnsStateWhenRootIsSqlException() {
+    void TestGetSQLState_returnsStateWhenRootIsSqlException() {
         SQLException inner = new SQLException("db error", "08001", 1234);
         SqlException outer = new SqlException("outer", inner);
         assertEquals("08001", outer.getSQLState());
     }
 
     @Test
-    void getSQLStateReturnsNullWhenRootIsNotSqlException() {
+    void TestGetSQLState_returnsNullWhenRootIsNotSqlException() {
         Throwable notSql = new RuntimeException("not sql exception");
         SqlException outer = new SqlException("outer", notSql);
         assertEquals(null, outer.getSQLState());
