@@ -20,13 +20,13 @@
  */
 package org.jumpmind.db.model;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -249,7 +249,7 @@ class TableTest {
     @Test
     void testEquals_null() {
         Table t = new Table("orders");
-        assertNotEquals(t, null);
+        assertNotEquals(null, t);
     }
 
     @Test
@@ -271,5 +271,50 @@ class TableTest {
         Table t = new Table("mydb", "oldschema", "orders");
         t.setSchema("newschema");
         assertEquals("oldschema", t.getOldSchema());
+    }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsFalse_forRegularColumn() {
+        Table t = new Table("t", new Column("a"));
+        assertFalse(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("a")));
+    }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsFalse_forVirtualGeneratedColumn() {
+        Table t = new Table("t", generatedColumn("a", false));
+        assertFalse(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("a")));
+    }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsTrue_forPersistedGeneratedColumn() {
+        Table t = new Table("t", generatedColumn("a", true));
+        assertTrue(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("a")));
+    }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsTrue_whenMixedColumns() {
+        Table t = new Table("t", new Column("a"), generatedColumn("b", true));
+        assertTrue(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("a", "b")));
+    }
+
+    @Test
+    void doesIndexContainPersistedGeneratedColumn_returnsFalse_whenColumnNotInTable() {
+        Table t = new Table("t", new Column("a"));
+        assertFalse(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("unknown")));
+    }
+
+    private static IIndex indexOnColumns(String... columnNames) {
+        NonUniqueIndex index = new NonUniqueIndex();
+        for (String name : columnNames) {
+            index.addColumn(new IndexColumn(name));
+        }
+        return index;
+    }
+
+    private static Column generatedColumn(String name, boolean persisted) {
+        Column col = new Column(name);
+        col.setGenerated(true);
+        col.setPersisted(persisted);
+        return col;
     }
 }
