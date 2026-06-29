@@ -106,8 +106,8 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         }
         try {
             cache.put(message.getServerId(), message);
-            log.debug("Sent cluster-wide message. eventType={}, serverId={}, knownPeers.size={}", 
-                message.getEventType(), message.getServerId(), knownPeers.size());
+            log.debug("Sent cluster-wide message. eventType={}, serverId={}, knownPeers.size={}",
+                    message.getEventType(), message.getServerId(), knownPeers.size());
         } catch (Exception ex) {
             String msg = String.format("Failed to send cluster-wide message. eventType=%s, serverId=%s",
                     message.getEventType(), message.getServerId());
