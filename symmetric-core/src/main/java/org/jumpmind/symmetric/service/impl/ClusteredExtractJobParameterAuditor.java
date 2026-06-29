@@ -38,7 +38,7 @@ public class ClusteredExtractJobParameterAuditor implements IParameterAuditor {
         }
     }
 
-    public Optional<String> validate(TypedProperties parameters, ParameterService parameterService) {
+    public Optional<String> getViolation(TypedProperties parameters, ParameterService parameterService) {
         if (this.parametersOverriden) {
             return Optional.of(String.format("Engine %s is configured with conflicting parameters. The initial load extract job "
                     + "cannot be used when cluster locking is enabled but staging is not clustered. "

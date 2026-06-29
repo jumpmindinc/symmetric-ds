@@ -27,5 +27,5 @@ import org.jumpmind.properties.TypedProperties;
 public interface IParameterAuditor {
     public void audit(TypedProperties parameters, ParameterService parameterService);
 
-    public Optional<String> validate(TypedProperties parameters, ParameterService parameterService);
+    public Optional<String> getViolation(TypedProperties parameters, ParameterService parameterService);
 }

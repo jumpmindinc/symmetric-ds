@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -272,7 +271,7 @@ public class ParameterService extends AbstractParameterService implements IParam
         p.putAll(rereadDatabaseParameters(p));
         rereadOfflineNodeParameters();
         return auditors.stream()
-                .<Optional<String>> map(a -> a.validate(p, this))
+                .<Optional<String>> map(a -> a.getViolation(p, this))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
