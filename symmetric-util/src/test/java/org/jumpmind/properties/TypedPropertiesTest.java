@@ -1,4 +1,4 @@
-package org.jumpmind.util.properties;
+package org.jumpmind.properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
