@@ -4,6 +4,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -12,11 +14,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -25,6 +29,7 @@ import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.config.TriggerFailureListener;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
@@ -530,6 +535,49 @@ public class TriggerRouterServiceTest {
     }
 
     @Test
+    void testFindMatchingTriggerInfo_nullListReturnsNull() throws Exception {
+        TriggerRouterService spy = spy(buildService());
+        TriggerRelationSupportingInfo result = invokeFindMatchingTriggerInfo(spy, null,
+                new Table("cat", "schem", TableConstants.getTableName("sym", TableConstants.SYM_NODE_HOST)));
+        assertNull(result);
+    }
+
+    @Test
+    void testFindMatchingTriggerInfo_emptyListReturnsNull() throws Exception {
+        TriggerRouterService spy = spy(buildService());
+        stubGetFullyQualifiedName(spy);
+        TriggerRelationSupportingInfo result = invokeFindMatchingTriggerInfo(spy, new ArrayList<>(),
+                new Table("cat", "schem", TableConstants.getTableName("sym", TableConstants.SYM_NODE_HOST)));
+        assertNull(result);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "sym_node_host, sym_node_host",
+            "SYM_NODE_HOST, sym_node_host",
+            "sym_node_host, SYM_NODE_HOST"
+    })
+    void testFindMatchingTriggerInfo_matchesTableNameCaseInsensitively(String supportingInfoName, String inputName) throws Exception {
+        TriggerRouterService spy = spy(buildService());
+        stubGetFullyQualifiedName(spy);
+        TriggerRelationSupportingInfo info = mock(TriggerRelationSupportingInfo.class);
+        when(info.getRelation()).thenReturn(new Table("cat", "schem", supportingInfoName));
+        TriggerRelationSupportingInfo result = invokeFindMatchingTriggerInfo(spy, List.of(info), new Table("cat", "schem", inputName));
+        assertEquals(info, result);
+    }
+
+    @Test
+    void testFindMatchingTriggerInfo_noMatchReturnsNull() throws Exception {
+        TriggerRouterService spy = spy(buildService());
+        stubGetFullyQualifiedName(spy);
+        TriggerRelationSupportingInfo info = mock(TriggerRelationSupportingInfo.class);
+        when(info.getRelation()).thenReturn(new Table("cat", "schem", TableConstants.getTableName("sym", TableConstants.SYM_DATA)));
+        TriggerRelationSupportingInfo result = invokeFindMatchingTriggerInfo(spy, List.of(info),
+                new Table("cat", "schem", TableConstants.getTableName("sym", TableConstants.SYM_NODE_HOST)));
+        assertNull(result);
+    }
+
+    @Test
     void testFindTriggerHistories() throws Exception {
         when(engine.getCacheManager()).thenReturn(cacheManager);
         when(engine.getClusterService()).thenReturn(clusterService);
@@ -578,5 +626,37 @@ public class TriggerRouterServiceTest {
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
         actualList = spyTriggerRouterService.findTriggerHistories("", "schem", "table");
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
+    }
+
+    private TriggerRouterService buildService() throws Exception {
+        when(engine.getCacheManager()).thenReturn(cacheManager);
+        when(engine.getClusterService()).thenReturn(clusterService);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        when(engine.getStatisticManager()).thenReturn(statisticManager);
+        when(engine.getGroupletService()).thenReturn(groupletService);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        when(engine.getSequenceService()).thenReturn(sequenceService);
+        when(engine.getExtensionService()).thenReturn(extensionService);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
+        when(parameterService.getTablePrefix()).thenReturn(tablePrefix);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(symmetricDialect.getPlatform().getSqlTemplate()).thenReturn(sqlTemplate);
+        when(symmetricDialect.getPlatform().getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        return new TriggerRouterService(engine);
+    }
+
+    private TriggerRelationSupportingInfo invokeFindMatchingTriggerInfo(TriggerRouterService spy,
+            List<TriggerRelationSupportingInfo> list, Relation relation) throws Exception {
+        Method method = TriggerRouterService.class.getDeclaredMethod("findMatchingTriggerInfo", List.class, Relation.class);
+        method.setAccessible(true);
+        return (TriggerRelationSupportingInfo) method.invoke(spy, list, relation);
+    }
+
+    private void stubGetFullyQualifiedName(TriggerRouterService spy) {
+        doAnswer(invocation -> {
+            Relation r = invocation.getArgument(0);
+            return r.getCatalog() + "." + r.getSchema() + "." + r.getName();
+        }).when(spy).getFullyQualifiedName(ArgumentMatchers.any(Relation.class));
     }
 }
