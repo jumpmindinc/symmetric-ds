@@ -628,7 +628,7 @@ public class TriggerRouterServiceTest {
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
     }
 
-    private TriggerRouterService buildService() throws Exception {
+    private TriggerRouterService buildService() {
         when(engine.getCacheManager()).thenReturn(cacheManager);
         when(engine.getClusterService()).thenReturn(clusterService);
         when(engine.getConfigurationService()).thenReturn(configurationService);
