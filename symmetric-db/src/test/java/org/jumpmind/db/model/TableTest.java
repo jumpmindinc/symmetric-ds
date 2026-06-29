@@ -249,7 +249,7 @@ class TableTest {
     @Test
     void testEquals_null() {
         Table t = new Table("orders");
-        assertNotEquals(t, null);
+        assertNotEquals(null, t);
     }
 
     @Test

@@ -79,6 +79,8 @@ import org.jumpmind.db.model.UniqueIndex;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.exception.IoException;
 import org.jumpmind.util.FormatUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
@@ -87,6 +89,7 @@ import org.xmlpull.v1.XmlPullParserFactory;
  * This class provides functions to read and write database models from/to XML.
  */
 public class DatabaseXmlUtil {
+    private static final Logger log = LoggerFactory.getLogger(DatabaseXmlUtil.class);
     public static final String DTD_PREFIX = "http://db.apache.org/torque/dtd/database";
     private static final String ATTR_DESCRIPTION = "description";
     private static final String ATTR_DEFAULT = "default";
@@ -370,6 +373,10 @@ public class DatabaseXmlUtil {
         Column column = new Column();
         for (int i = 0; i < parser.getAttributeCount(); i++) {
             applyColumnAttribute(column, parser.getAttributeName(i), parser.getAttributeValue(i));
+        }
+        if (column.isPersisted() && !column.isGenerated()) {
+            log.warn("Database XML defines column {} as persisted but not generated. Persisted and generated should go together.",
+                    column.getName());
         }
         return column;
     }
