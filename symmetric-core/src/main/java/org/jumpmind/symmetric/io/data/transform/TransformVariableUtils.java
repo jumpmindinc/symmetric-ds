@@ -78,17 +78,17 @@ public class TransformVariableUtils {
             return context.getData().getAttribute(CsvData.ATTRIBUTE_SOURCE_NODE_ID);
         } else if (OPTION_OLD_VALUE.equalsIgnoreCase(varName)) {
             return oldValue;
-        } else if (OPTION_NULL.equals(varName)) {
+        } else if (OPTION_NULL.equalsIgnoreCase(varName)) {
             return null;
-        } else if (Strings.CS.equalsAny(varName, OPTION_SOURCE_TABLE_NAME, OPTION_SOURCE_CATALOG_NAME, OPTION_SOURCE_SCHEMA_NAME)) {
+        } else if (Strings.CI.equalsAny(varName, OPTION_SOURCE_TABLE_NAME, OPTION_SOURCE_CATALOG_NAME, OPTION_SOURCE_SCHEMA_NAME)) {
             return resolveSourceNameVariable(varName, context);
-        } else if (OPTION_SOURCE_DML_TYPE.equals(varName)) {
+        } else if (OPTION_SOURCE_DML_TYPE.equalsIgnoreCase(varName)) {
             return data.getSourceDmlType().toString();
-        } else if (OPTION_BATCH_ID.equals(varName)) {
+        } else if (OPTION_BATCH_ID.equalsIgnoreCase(varName)) {
             return String.valueOf(context.getBatch().getBatchId());
-        } else if (OPTION_BATCH_START_TIME.equals(varName)) {
+        } else if (OPTION_BATCH_START_TIME.equalsIgnoreCase(varName)) {
             return DateFormatUtils.format(context.getBatch().getStartTime(), TS_PATTERN);
-        } else if (OPTION_DELETE_INDICATOR_FLAG.equals(varName)) {
+        } else if (OPTION_DELETE_INDICATOR_FLAG.equalsIgnoreCase(varName)) {
             return data.getSourceDmlType().equals(DataEventType.DELETE) ? "Y" : "N";
         }
         return null;
