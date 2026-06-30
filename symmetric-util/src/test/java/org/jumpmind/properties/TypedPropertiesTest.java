@@ -5,7 +5,6 @@ import static org.junit.Assert.assertNull;
 
 import java.util.Properties;
 
-import org.jumpmind.properties.TypedProperties;
 import org.junit.jupiter.api.Test;
 
 class TypedPropertiesTest {
