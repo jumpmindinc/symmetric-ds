@@ -23,7 +23,8 @@ package org.jumpmind.symmetric.service.impl;
 import org.jumpmind.properties.TypedProperties;
 
 public interface IParameterAuditor {
-	public record AuditedProperties(TypedProperties parameters, String violationMessage, boolean isModified) {}
-	
-	public AuditedProperties audit(TypedProperties parameters);
+    public record AuditedProperties(TypedProperties parameters, String violationMessage, boolean isModified) {
+    }
+
+    public AuditedProperties audit(TypedProperties parameters);
 }

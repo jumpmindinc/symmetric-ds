@@ -24,24 +24,22 @@ import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.ParameterConstants;
 
 public class ClusteredExtractJobParameterAuditor implements IParameterAuditor {
-    
-    
     public AuditedProperties audit(TypedProperties parameters) {
-    	TypedProperties modifiedParameters = parameters;
-    	String violationMessage = ""; 
-    	boolean isModified = false;
-		  if (parameters.is(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)
-		          && parameters.is(ParameterConstants.CLUSTER_STAGING_ENABLED, true)
-		          && parameters.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true)) {
-		      modifiedParameters = parameters.copy();
-		      modifiedParameters.setProperty(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, "false");
-		      violationMessage = String.format("The initial load extract job "
-		            + "cannot be used when cluster locking is enabled but staging is not clustered. "
-		            + "One of these parameters needs to be changed: %s=true, %s=true, %s=false",
-		            ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB,
-		            ParameterConstants.CLUSTER_LOCKING_ENABLED, ParameterConstants.CLUSTER_STAGING_ENABLED);
-		      isModified = true;
-		  }
-		  return new AuditedProperties(modifiedParameters, violationMessage, isModified);
-  }
+        TypedProperties modifiedParameters = parameters;
+        String violationMessage = "";
+        boolean isModified = false;
+        if (parameters.is(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)
+                && parameters.is(ParameterConstants.CLUSTER_STAGING_ENABLED, true)
+                && parameters.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true)) {
+            modifiedParameters = parameters.copy();
+            modifiedParameters.setProperty(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, "false");
+            violationMessage = String.format("The initial load extract job "
+                    + "cannot be used when cluster locking is enabled but staging is not clustered. "
+                    + "One of these parameters needs to be changed: %s=true, %s=true, %s=false",
+                    ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB,
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED, ParameterConstants.CLUSTER_STAGING_ENABLED);
+            isModified = true;
+        }
+        return new AuditedProperties(modifiedParameters, violationMessage, isModified);
+    }
 }

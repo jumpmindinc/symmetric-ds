@@ -186,20 +186,20 @@ public class ParameterService extends AbstractParameterService implements IParam
     public boolean isRemoteNodeRegistrationServer(Node remoteNode) {
         return getRegistrationUrl().equalsIgnoreCase(remoteNode.getSyncUrl());
     }
-    
+
     @Override
     protected TypedProperties rereadApplicationParameters() {
         TypedProperties currentProperties = this.factory.reload();
         currentProperties.putAll(rereadDatabaseParameters(currentProperties));
         rereadOfflineNodeParameters();
         for (IParameterAuditor auditor : auditors) {
-        	AuditedProperties result = auditor.audit(currentProperties);
-        	if(result.isModified()) {
-        		currentProperties = result.parameters();
-        		String violationMessage = "Engine " + engineName + " is configured with conflicting parameters. "; 
-        		violationMessage += result.violationMessage();
-        		log.error(violationMessage);
-        	}
+            AuditedProperties result = auditor.audit(currentProperties);
+            if (result.isModified()) {
+                currentProperties = result.parameters();
+                String violationMessage = "Engine " + engineName + " is configured with conflicting parameters. ";
+                violationMessage += result.violationMessage();
+                log.error(violationMessage);
+            }
         }
         return currentProperties;
     }
