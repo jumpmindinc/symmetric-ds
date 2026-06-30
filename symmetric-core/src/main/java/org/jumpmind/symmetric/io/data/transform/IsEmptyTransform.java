@@ -29,9 +29,9 @@ import org.jumpmind.symmetric.io.data.DataContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IsBlankTransform implements ISingleNewAndOldValueColumnTransform, IBuiltInExtensionPoint {
+public class IsEmptyTransform implements ISingleNewAndOldValueColumnTransform, IBuiltInExtensionPoint {
     protected final Logger log = LoggerFactory.getLogger(getClass());
-    public static final String NAME = "isBlank";
+    public static final String NAME = "isEmpty";
 
     public String getName() {
         return NAME;
@@ -50,11 +50,9 @@ public class IsBlankTransform implements ISingleNewAndOldValueColumnTransform, I
             TransformedData data, Map<String, String> sourceValues, String newValue, String oldValue)
             throws IgnoreColumnException, IgnoreRowException {
         NewAndOldValue result = new NewAndOldValue(newValue, oldValue);
-        if (StringUtils.isBlank(newValue)) {
+        if (StringUtils.isEmpty(newValue)) {
             String expression = column.getTransformExpression();
-            if (StringUtils.isEmpty(expression)) {
-                expression = null;
-            }
+            expression = StringUtils.isEmpty(expression) ? null : TransformVariableUtils.resolveExpression(expression, context, data, oldValue);
             result = new NewAndOldValue(expression, oldValue);
         }
         return result;

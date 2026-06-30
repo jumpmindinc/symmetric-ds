@@ -46,11 +46,7 @@ public class IsNullTransform implements ISingleNewAndOldValueColumnTransform, IB
         String value = data.getSourceDmlType() == DataEventType.DELETE ? oldValue : newValue;
         if (value == null) {
             String expression = column.getTransformExpression();
-            if (StringUtils.isNotEmpty(expression)) {
-                value = expression;
-            } else {
-                value = "";
-            }
+            value = StringUtils.isNotEmpty(expression) ? TransformVariableUtils.resolveExpression(expression, context, data, oldValue) : "";
         }
         return new NewAndOldValue(column, data, value);
     }
