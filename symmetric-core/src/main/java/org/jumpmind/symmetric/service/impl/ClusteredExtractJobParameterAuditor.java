@@ -20,32 +20,28 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
-import java.util.Optional;
-
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.common.ParameterConstants;
 
 public class ClusteredExtractJobParameterAuditor implements IParameterAuditor {
-    private boolean parametersOverriden = false;
-
-    @Override
-    public void audit(TypedProperties parameters, ParameterService parameterService) {
-        if (parameters.is(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)
-                && parameters.is(ParameterConstants.CLUSTER_STAGING_ENABLED, true)
-                && parameters.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true)) {
-            parameters.setProperty(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, "false");
-            this.parametersOverriden = true;
-        }
-    }
-
-    public Optional<String> getViolation(TypedProperties parameters, ParameterService parameterService) {
-        if (this.parametersOverriden) {
-            return Optional.of(String.format("Engine %s is configured with conflicting parameters. The initial load extract job "
-                    + "cannot be used when cluster locking is enabled but staging is not clustered. "
-                    + "One of these parameters needs to be changed: %s=true, %s=true, %s=false",
-                    parameterService.getEngineName(), ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB,
-                    ParameterConstants.CLUSTER_LOCKING_ENABLED, ParameterConstants.CLUSTER_STAGING_ENABLED));
-        }
-        return Optional.empty();
-    }
+    
+    
+    public AuditedProperties audit(TypedProperties parameters) {
+    	TypedProperties modifiedParameters = parameters;
+    	String violationMessage = ""; 
+    	boolean isModified = false;
+		  if (parameters.is(ParameterConstants.CLUSTER_LOCKING_ENABLED, false)
+		          && parameters.is(ParameterConstants.CLUSTER_STAGING_ENABLED, true)
+		          && parameters.is(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, true)) {
+		      modifiedParameters = parameters.copy();
+		      modifiedParameters.setProperty(ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB, "false");
+		      violationMessage = String.format("The initial load extract job "
+		            + "cannot be used when cluster locking is enabled but staging is not clustered. "
+		            + "One of these parameters needs to be changed: %s=true, %s=true, %s=false",
+		            ParameterConstants.INITIAL_LOAD_USE_EXTRACT_JOB,
+		            ParameterConstants.CLUSTER_LOCKING_ENABLED, ParameterConstants.CLUSTER_STAGING_ENABLED);
+		      isModified = true;
+		  }
+		  return new AuditedProperties(modifiedParameters, violationMessage, isModified);
+  }
 }

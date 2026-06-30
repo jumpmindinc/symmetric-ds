@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.service.impl;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
@@ -40,6 +39,7 @@ import org.jumpmind.symmetric.config.IParameterSaveFilter;
 import org.jumpmind.symmetric.model.DatabaseParameter;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.service.impl.IParameterAuditor.AuditedProperties;
 
 /**
  * @see IParameterService
@@ -186,16 +186,22 @@ public class ParameterService extends AbstractParameterService implements IParam
     public boolean isRemoteNodeRegistrationServer(Node remoteNode) {
         return getRegistrationUrl().equalsIgnoreCase(remoteNode.getSyncUrl());
     }
-
+    
     @Override
     protected TypedProperties rereadApplicationParameters() {
-        TypedProperties p = this.factory.reload();
-        p.putAll(rereadDatabaseParameters(p));
+        TypedProperties currentProperties = this.factory.reload();
+        currentProperties.putAll(rereadDatabaseParameters(currentProperties));
         rereadOfflineNodeParameters();
         for (IParameterAuditor auditor : auditors) {
-            auditor.audit(p, this);
+        	AuditedProperties result = auditor.audit(currentProperties);
+        	if(result.isModified()) {
+        		currentProperties = result.parameters();
+        		String violationMessage = "Engine " + engineName + " is configured with conflicting parameters. "; 
+        		violationMessage += result.violationMessage();
+        		log.error(violationMessage);
+        	}
         }
-        return p;
+        return currentProperties;
     }
 
     protected synchronized void rereadOfflineNodeParameters() {
@@ -264,16 +270,5 @@ public class ParameterService extends AbstractParameterService implements IParam
         }
         log.debug("Combined hash of {} parameters={}", parameterNames.length, combinedHash);
         return combinedHash;
-    }
-
-    public List<String> getParameterViolations() {
-        TypedProperties p = this.factory.reload();
-        p.putAll(rereadDatabaseParameters(p));
-        rereadOfflineNodeParameters();
-        return auditors.stream()
-                .<Optional<String>> map(a -> a.getViolation(p, this))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .toList();
     }
 }

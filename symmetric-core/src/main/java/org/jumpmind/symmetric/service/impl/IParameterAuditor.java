@@ -20,12 +20,10 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
-import java.util.Optional;
-
 import org.jumpmind.properties.TypedProperties;
 
 public interface IParameterAuditor {
-    public void audit(TypedProperties parameters, ParameterService parameterService);
-
-    public Optional<String> getViolation(TypedProperties parameters, ParameterService parameterService);
+	public record AuditedProperties(TypedProperties parameters, String violationMessage, boolean isModified) {}
+	
+	public AuditedProperties audit(TypedProperties parameters);
 }
