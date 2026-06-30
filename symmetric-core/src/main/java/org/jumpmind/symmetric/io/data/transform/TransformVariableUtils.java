@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.io.data.transform;
 
 import java.util.TimeZone;
 
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.io.data.CsvData;
@@ -63,35 +64,31 @@ public class TransformVariableUtils {
     }
 
     public static String resolveVariable(String varName, DataContext context, TransformedData data, String oldValue) {
-        if (varName == null) {
-            return null;
-        }
-        if (varName.equalsIgnoreCase(OPTION_TIMESTAMP)) {
+        if (OPTION_TIMESTAMP.equalsIgnoreCase(varName)) {
             return DateFormatUtils.format(System.currentTimeMillis(), TS_PATTERN);
-        } else if (varName.equalsIgnoreCase(OPTION_TIMESTAMP_UTC)) {
+        } else if (OPTION_TIMESTAMP_UTC.equalsIgnoreCase(varName)) {
             return DateFormatUtils.format(System.currentTimeMillis(), TS_PATTERN, TimeZone.getTimeZone("GMT"));
-        } else if (varName.equalsIgnoreCase(OPTION_DATE)) {
+        } else if (OPTION_DATE.equalsIgnoreCase(varName)) {
             return DateFormatUtils.format(System.currentTimeMillis(), DATE_PATTERN);
-        } else if (varName.equalsIgnoreCase(OPTION_SOURCE_NODE_ID)) {
+        } else if (OPTION_SOURCE_NODE_ID.equalsIgnoreCase(varName)) {
             return context.getBatch().getSourceNodeId();
-        } else if (varName.equalsIgnoreCase(OPTION_TARGET_NODE_ID)) {
+        } else if (OPTION_TARGET_NODE_ID.equalsIgnoreCase(varName)) {
             return context.getBatch().getTargetNodeId();
-        } else if (varName.equalsIgnoreCase(OPTION_SOURCE_NODE_ID_FROM_DATA)) {
+        } else if (OPTION_SOURCE_NODE_ID_FROM_DATA.equalsIgnoreCase(varName)) {
             return context.getData().getAttribute(CsvData.ATTRIBUTE_SOURCE_NODE_ID);
-        } else if (varName.equalsIgnoreCase(OPTION_OLD_VALUE)) {
+        } else if (OPTION_OLD_VALUE.equalsIgnoreCase(varName)) {
             return oldValue;
-        } else if (varName.equals(OPTION_NULL)) {
+        } else if (OPTION_NULL.equals(varName)) {
             return null;
-        } else if (varName.equals(OPTION_SOURCE_TABLE_NAME) || varName.equals(OPTION_SOURCE_CATALOG_NAME)
-                || varName.equals(OPTION_SOURCE_SCHEMA_NAME)) {
+        } else if (Strings.CS.equalsAny(varName, OPTION_SOURCE_TABLE_NAME, OPTION_SOURCE_CATALOG_NAME, OPTION_SOURCE_SCHEMA_NAME)) {
             return resolveSourceNameVariable(varName, context);
-        } else if (varName.equals(OPTION_SOURCE_DML_TYPE)) {
+        } else if (OPTION_SOURCE_DML_TYPE.equals(varName)) {
             return data.getSourceDmlType().toString();
-        } else if (varName.equals(OPTION_BATCH_ID)) {
+        } else if (OPTION_BATCH_ID.equals(varName)) {
             return String.valueOf(context.getBatch().getBatchId());
-        } else if (varName.equals(OPTION_BATCH_START_TIME)) {
+        } else if (OPTION_BATCH_START_TIME.equals(varName)) {
             return DateFormatUtils.format(context.getBatch().getStartTime(), TS_PATTERN);
-        } else if (varName.equals(OPTION_DELETE_INDICATOR_FLAG)) {
+        } else if (OPTION_DELETE_INDICATOR_FLAG.equals(varName)) {
             return data.getSourceDmlType().equals(DataEventType.DELETE) ? "Y" : "N";
         }
         return null;
