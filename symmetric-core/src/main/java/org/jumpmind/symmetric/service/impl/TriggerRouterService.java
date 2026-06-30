@@ -2172,7 +2172,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             return null;
         }
         for (TriggerRelationSupportingInfo t : list) {
-            if (getFullyQualifiedName(t.getRelation()).equals(getFullyQualifiedName(relation))) {
+            if (getFullyQualifiedName(t.getRelation()).equalsIgnoreCase(getFullyQualifiedName(relation))) {
                 return t;
             }
         }
