@@ -1,11 +1,10 @@
-package org.jumpmind.util.properties;
+package org.jumpmind.properties;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.util.Properties;
 
-import org.jumpmind.properties.TypedProperties;
 import org.junit.jupiter.api.Test;
 
 class TypedPropertiesTest {
