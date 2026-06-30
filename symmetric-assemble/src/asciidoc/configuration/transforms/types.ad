@@ -589,15 +589,18 @@ would convert a row with columns named "user1" and "user2" containing values "re
 
 This transformation checks to see if a string is null or zero length. If it is empty the replacement 
 value will be used.  If no value is provided null will be used as a default replacement for empty values.
+The same variables as the <<Variable Transform>> are available using `$(variable_name)` syntax.
 
 ===== isBlank Transform
 
 This transformation checks to see if a string is null or zero length after trimming white spaces. If it is blank the replacement 
 value will be used.  If no value is provided null will be used as a default replacement for blank values.
+The same variables as the <<Variable Transform>> are available using `$(variable_name)` syntax.
 
 ===== Null Value Transform
 
 This transformation checks to see if the source value is null and if so replaces it with the provided value.
+The same variables as the <<Variable Transform>> are available using `$(variable_name)` syntax.
 
 ===== Deleted Columns Transform
 
