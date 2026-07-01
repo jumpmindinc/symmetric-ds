@@ -597,9 +597,9 @@ public class TriggerRouterServiceTest {
     }
 
     /**
-     * Builds a spy of the service with the minimal mock wiring needed to exercise getTriggerToTableSupportingInfo without
-     * touching the database. getTablesForTrigger and getTriggerName are stubbed per-test so that only this method's own
-     * logic -- the primary key decision and the supporting-info assembly -- is exercised.
+     * Builds a spy of the service with the minimal mock wiring needed to exercise getTriggerToTableSupportingInfo without touching the database.
+     * getTablesForTrigger and getTriggerName are stubbed per-test so that only this method's own logic -- the primary key decision and the supporting-info
+     * assembly -- is exercised.
      */
     private TriggerRouterService createSpyService() {
         when(engine.getCacheManager()).thenReturn(cacheManager);
