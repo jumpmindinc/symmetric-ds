@@ -143,14 +143,22 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return false;
     }
 
-    public synchronized void startClusterPeerListener(ISecurityService securityService) {
+    @Override
+    public boolean isClusterPeerListenerStarted() {
+        return isClusterPeerListenerStarted;
+    }
+
+    public synchronized void startClusterPeerListener(ISecurityService securityService, boolean isJcsEnabled) {
         ClusterPeerSecureMessage.setSecurityService(securityService);
         myInstanceId = ClusterService.initInstanceId(null);
         myServerId = StringUtils.defaultIfBlank(
                 System.getProperty(SystemConstants.SYSPROP_CLUSTER_SERVER_ID), AppUtils.getHostName());
         int port = Integer.parseInt(System.getProperty(
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
-        ensurePeerListenerStarted(myServerId, myInstanceId, port);
+        log.debug("Starting cluster peer listener: serverId={}, instanceId={}, port={}, jcsEnabled={}", myServerId, myInstanceId, port, isJcsEnabled);
+        if (isJcsEnabled) {
+            ensurePeerListenerStarted(myServerId, myInstanceId, port);
+        }
     }
 
     private synchronized void ensurePeerListenerStarted(String serverId, String instanceId, int port) {
@@ -194,8 +202,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     public void broadcastEngineState(String engineName, String engineState) {
+        lastEngineStates.put(engineName, engineState);
         if (isClusterPeerListenerStarted) {
-            lastEngineStates.put(engineName, engineState);
             ClusterEngineStateMessage msg = new ClusterEngineStateMessage(
                     engineState, engineName, myServerId, myInstanceId, Version.version());
             coordinator.sendEngineStateMessage(msg);
@@ -216,7 +224,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     public synchronized void startClusterHeartbeat() {
-        if (running) {
+        if (running || !isClusterPeerListenerStarted) {
             return;
         }
         running = true;
@@ -354,7 +362,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             return false;
         }
         if (!messageFromPeer.isHeaderChecksumValid()) {
-            log.warn("Rejecting message from cluster peer={} — checksum invalid, message may be corrupt or from an unauthorized host", peerId);
+            log.warn("Rejecting message from cluster peer={} — checksum invalid, message may be corrupt or from an unauthorized host. myInstanceId={}",
+                    peerId, myInstanceId);
             return false;
         }
         String eventType = messageFromPeer.getEventType();
@@ -428,9 +437,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             String myInstanceId = engine.getClusterService().getInstanceId();
             if (peerInstanceId != null) {
                 if (myInstanceId.equals(peerInstanceId)) {
-                    log.info("Detected another host is already running for the same instance of SymmetricDS.");
+                    log.debug("Cluster peer shares same instanceId={}. Peer={}", myInstanceId, msg.getServerId());
                 } else {
-                    log.warn("Detected another host is already running with a different instance of SymmetricDS.");
+                    log.warn("Rejecting cluster peer={} — instanceId mismatch indicates different cluster or environment. peerInstanceId={}, myInstanceId={}",
+                            msg.getServerId(), peerInstanceId, myInstanceId);
                 }
             }
             if (!engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {

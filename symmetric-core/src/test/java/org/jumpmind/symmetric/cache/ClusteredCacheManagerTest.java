@@ -337,6 +337,7 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void startClusterHeartbeat_createsDaemonThreadWithCorrectName() throws Exception {
+        manager.startClusterPeerListener(mockSecurityService, true);
         manager.startClusterHeartbeat();
         Field f = ClusteredCacheManager.class.getDeclaredField("heartbeatThread");
         f.setAccessible(true);
@@ -621,21 +622,21 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void startClusterPeerListener_whenNotStarted_callsCoordinatorStart() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService);
+        manager.startClusterPeerListener(mockSecurityService, true);
         verify(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
     public void startClusterPeerListener_whenAlreadyStarted_doesNotCallCoordinatorStartAgain() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService);
-        manager.startClusterPeerListener(mockSecurityService);
+        manager.startClusterPeerListener(mockSecurityService, true);
+        manager.startClusterPeerListener(mockSecurityService, true);
         verify(mockCoordinator, times(1)).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
     public void ensurePeerListenerStarted_coordinatorThrows_wrapsInRuntimeException() {
         doThrow(new RuntimeException("bind failed")).when(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
-        Assertions.assertThrows(RuntimeException.class, () -> manager.startClusterPeerListener(mockSecurityService));
+        Assertions.assertThrows(RuntimeException.class, () -> manager.startClusterPeerListener(mockSecurityService, true));
     }
 
     @Test
@@ -818,6 +819,7 @@ public class ClusteredCacheManagerTest {
     public void monitorClusterPeers_withEngine_readsHeartbeatFromParameterService() throws Exception {
         when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS), anyLong())).thenReturn(100L);
         manager.registerEngine(mockEngine);
+        manager.startClusterPeerListener(mockSecurityService, true);
         manager.startClusterHeartbeat();
         Thread.sleep(50);
         stopHeartbeatThread();

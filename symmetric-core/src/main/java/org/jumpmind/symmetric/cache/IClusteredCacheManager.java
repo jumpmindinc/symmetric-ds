@@ -50,7 +50,9 @@ public interface IClusteredCacheManager {
 
     boolean isPeerOfflineLongEnough(String serverId, long staleThresholdMs);
 
-    void startClusterPeerListener(ISecurityService securityService);
+    boolean isClusterPeerListenerStarted();
+
+    void startClusterPeerListener(ISecurityService securityService, boolean isJcsEnabled);
 
     void startClusterHeartbeat();
 

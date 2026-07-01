@@ -20,8 +20,6 @@
  */
 package org.jumpmind.symmetric;
 
-import static org.apache.commons.lang3.StringUtils.isBlank;
-
 import java.io.File;
 import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
@@ -154,7 +152,9 @@ import org.jumpmind.symmetric.service.impl.StatisticService;
 import org.jumpmind.symmetric.service.impl.TransformService;
 import org.jumpmind.symmetric.service.impl.TriggerRouterService;
 import org.jumpmind.symmetric.service.impl.UpdateService;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
+
 import org.jumpmind.symmetric.transport.ConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
@@ -754,10 +754,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (!starting && !started) {
             try {
                 starting = true;
-                initClusterPeerCoordinator();
+                initClusterPeerCoordinator(System.getProperty(ServerConstants.CLUSTER_INSTANCE_UUID));
                 symmetricDialect.verifyDatabaseIsCompatible();
                 checkForProOnlyDatabase();
                 setup();
+                initClusterPeerCoordinator(clusterService.getInstanceId());
                 if (isConfigured()) {
                     Node node = nodeService.findIdentity();
                     startNodeAndJobs(node, startJobs);
@@ -781,8 +782,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return started;
     }
 
-    private void initClusterPeerCoordinator() {
-        clusteredCacheManager.startClusterPeerListener(securityService);
+    private void initClusterPeerCoordinator(String clusterUuid) {
+        if (clusteredCacheManager.isClusterPeerListenerStarted() || StringUtils.isBlank(clusterUuid)) {
+            return;
+        }
+        clusteredCacheManager.startClusterPeerListener(securityService, parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED));
         clusteredCacheManager.startClusterHeartbeat();
         clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);
         clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);

@@ -150,12 +150,26 @@ public class ClusterService extends AbstractService implements IClusterService {
                 IClusterInstanceGenerator generator = null;
                 if (StringUtils.isNotBlank(configuredId)) {
                     generator = new ConfiguredClusterInstanceGenerator(configuredId);
-                } else if (extensionService != null) {
-                    generator = extensionService.getExtensionPoint(IClusterInstanceGenerator.class);
+                } else {
+                    String persistedId = findMostRecentPersistedInstanceId();
+                    if (StringUtils.isNotBlank(persistedId)) {
+                        generator = new LegacyPersistedClusterInstanceGenerator(persistedId);
+                    } else if (extensionService != null) {
+                        generator = extensionService.getExtensionPoint(IClusterInstanceGenerator.class);
+                    }
                 }
                 initInstanceId(generator);
             }
         }
+    }
+
+    private String findMostRecentPersistedInstanceId() {
+        String nodeId = nodeService.findIdentityNodeId();
+        if (nodeId == null) {
+            return null;
+        }
+        List<NodeHost> hosts = nodeService.findNodeHosts(nodeId);
+        return hosts.isEmpty() ? null : hosts.get(0).getInstanceId();
     }
 
     public static String initInstanceId(IClusterInstanceGenerator generator) {
@@ -721,6 +735,26 @@ public class ClusterService extends AbstractService implements IClusterService {
             return true;
         }
         return false;
+    }
+
+    // Restores a node's instance ID from its last known sym_node_host row when no explicit cluster.instance.uuid is configured.
+    // Prevents a replacement container from generating a new UUID on first startup when the node has prior cluster history.
+    private static class LegacyPersistedClusterInstanceGenerator implements IClusterInstanceGenerator {
+        private final String persistedId;
+
+        LegacyPersistedClusterInstanceGenerator(String persistedId) {
+            this.persistedId = persistedId;
+        }
+
+        @Override
+        public String generateInstanceId() {
+            return persistedId;
+        }
+
+        @Override
+        public boolean isValid(String instanceId) {
+            return persistedId.equals(instanceId);
+        }
     }
 
     private static class ConfiguredClusterInstanceGenerator implements IClusterInstanceGenerator {
