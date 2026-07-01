@@ -627,7 +627,7 @@ public class TriggerRouterServiceTest {
     }
 
     @Test
-    void testGetTriggerToTableSupportingInfo_noPrimaryKey_synthesizesPrimaryKeys() throws Exception {
+    void testGetTriggerToTableSupportingInfo_noPrimaryKey_synthesizesPrimaryKeys() {
         TriggerRouterService service = createSpyService();
         Trigger trigger = newTrigger("test_table", "test_table");
         List<Trigger> triggers = new ArrayList<Trigger>();
@@ -661,7 +661,7 @@ public class TriggerRouterServiceTest {
     }
 
     @Test
-    void testGetTriggerToTableSupportingInfo_withPrimaryKey_doesNotSynthesizePrimaryKeys() throws Exception {
+    void testGetTriggerToTableSupportingInfo_withPrimaryKey_doesNotSynthesizePrimaryKeys() {
         TriggerRouterService service = createSpyService();
         Trigger trigger = newTrigger("test_table", "test_table");
         List<Trigger> triggers = new ArrayList<Trigger>();
@@ -685,7 +685,7 @@ public class TriggerRouterServiceTest {
     }
 
     @Test
-    void testGetTriggerToTableSupportingInfo_buildsSupportingInfoForEachTrigger() throws Exception {
+    void testGetTriggerToTableSupportingInfo_buildsSupportingInfoForEachTrigger() {
         TriggerRouterService service = createSpyService();
         Trigger trigger = newTrigger("test_table", "test_table");
         List<Trigger> triggers = new ArrayList<Trigger>();
@@ -725,7 +725,7 @@ public class TriggerRouterServiceTest {
     }
 
     @Test
-    void testGetTriggerToTableSupportingInfo_excludedUniqueIndexColumn_filtersColumnsBeforeSynthesizingPk() throws Exception {
+    void testGetTriggerToTableSupportingInfo_excludedUniqueIndexColumn_filtersColumnsBeforeSynthesizingPk() {
         TriggerRouterService service = createSpyService();
         Trigger trigger = newTrigger("test_table", "test_table");
         trigger.setExcludedColumnNames("status");
@@ -752,7 +752,7 @@ public class TriggerRouterServiceTest {
     }
 
     @Test
-    void testGetTriggerToTableSupportingInfo_excludedUniqueIndexColumn_producesNonBlankPrimaryKey() throws Exception {
+    void testGetTriggerToTableSupportingInfo_excludedUniqueIndexColumn_producesNonBlankPrimaryKey() {
         TriggerRouterService service = createSpyService();
         Trigger trigger = newTrigger("test_table", "test_table");
         trigger.setExcludedColumnNames("status");
