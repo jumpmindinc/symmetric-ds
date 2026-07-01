@@ -131,13 +131,13 @@ public class ColumnMatchExpressionTest {
         assertTrue(expressions.get(1).run(null, "testNotEquals"));
         assertTrue(expressions.get(1).run("test", "testNotEquals"));
         assertTrue(expressions.get(2).hasContains());
-        assertFalse(expressions.get(2).run("test,test,test", "testContains"));
+        assertFalse(expressions.get(2).run("testContains", "test,test,test"));
         assertFalse(expressions.get(2).run(null, null));
-        assertTrue(expressions.get(2).run("test,testContains,test", "testContains"));
+        assertTrue(expressions.get(2).run("testContains", "test,testContains,test"));
         assertTrue(expressions.get(3).hasNotContains());
-        assertFalse(expressions.get(3).run("test,testNotContains", "testNotContains"));
+        assertFalse(expressions.get(3).run("testNotContains", "test,testNotContains"));
         assertFalse(expressions.get(3).run(null, null));
-        assertTrue(expressions.get(3).run("test,test", "testNotContains"));
+        assertTrue(expressions.get(3).run("testNotContains", "test,test"));
         assertTrue(expressions.get(4).isHasHas());
         assertFalse(expressions.get(4).run("test", "testHas"));
         assertTrue(expressions.get(4).run(null, null));

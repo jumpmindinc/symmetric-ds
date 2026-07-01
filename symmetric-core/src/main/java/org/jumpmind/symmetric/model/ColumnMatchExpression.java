@@ -151,10 +151,10 @@ public class ColumnMatchExpression {
                 (columnValue != null && !columnValue.equals(compareValue)))) {
             result = true;
         } else if (hasContains && columnValue != null && compareValue != null &&
-                ArrayUtils.contains(columnValue.split(","), compareValue)) {
+                ArrayUtils.contains(compareValue.split(","), columnValue)) {
             result = true;
         } else if (hasNotContains && columnValue != null && compareValue != null &&
-                !ArrayUtils.contains(columnValue.split(","), compareValue)) {
+                !ArrayUtils.contains(compareValue.split(","), columnValue)) {
             result = true;
         } else if (hasHas && ((columnValue == null && compareValue == null) ||
                 (columnValue != null && columnValue.contains(compareValue)))) {
