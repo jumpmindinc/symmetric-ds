@@ -67,4 +67,11 @@ public interface IClusteredCacheManager {
     void broadcastEngineState(String engineName, String engineState);
 
     boolean isAnyPeerWithEngineInState(String engineName, String engineState);
+
+    /**
+     * Re-broadcasts this node's last known peer status and engine states. Callers that add one or more peers outside the regular heartbeat cycle (e.g. a
+     * DB-driven scan) should call this once afterward — only if {@link #addPeer} returned {@code true} for at least one of them — so those peers learn our
+     * current state without waiting for the next heartbeat tick. No-op if the cluster peer listener has not started.
+     */
+    void rebroadcastCurrentState();
 }

@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.cache;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -183,6 +184,15 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     public boolean detectIfPeerIsStale(String peerId, long staleThresholdMs) {
         ClusterPeerStatusMessage peerStatusMessage = getPeerStatusMessage(peerId);
         return peerStatusMessage == null || peerStatusMessage.isStale(System.currentTimeMillis(), staleThresholdMs);
+    }
+
+    @Override
+    public Set<String> getObservedPeerIds() {
+        CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
+        if (cache == null) {
+            return Collections.emptySet();
+        }
+        return cache.getCacheControl().getKeySet(true);
     }
 
     private synchronized void reinitJcs() {

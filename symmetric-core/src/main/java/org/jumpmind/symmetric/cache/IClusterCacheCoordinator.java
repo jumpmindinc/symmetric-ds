@@ -63,4 +63,10 @@ public interface IClusterCacheCoordinator {
      * Checks for last peer message stored in cache and determines if message timestamp is not stale. Returns false if peer is considered stale.
      */
     boolean detectIfPeerIsStale(String peerId, long staleThresholdMs);
+
+    /**
+     * Returns server IDs observed in the local peer-status cache region, including peers who have already pushed lateral cache messages to us (e.g. because
+     * they have us in their own TcpServers list) but that we have not yet added as a known peer ourselves.
+     */
+    Set<String> getObservedPeerIds();
 }

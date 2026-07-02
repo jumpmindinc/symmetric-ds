@@ -36,8 +36,10 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.commons.jcs3.access.CacheAccess;
+import org.apache.commons.jcs3.engine.control.CompositeCache;
 import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -184,6 +186,22 @@ class JcsTcpCacheCoordinatorTest {
         when(mockCache.get("peer1")).thenReturn(null);
         setPeerHeartbeatCache(mockCache);
         assertNull(coordinator.getPeerStatusMessage("peer1"));
+    }
+
+    @Test
+    void getObservedPeerIds_notStarted_returnsEmptySet() {
+        assertTrue(coordinator.getObservedPeerIds().isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void getObservedPeerIds_cacheHasKeys_returnsLocalKeySet() throws Exception {
+        CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
+        CompositeCache<String, ClusterPeerSecureMessage> mockCacheControl = mock(CompositeCache.class);
+        when(mockCache.getCacheControl()).thenReturn(mockCacheControl);
+        when(mockCacheControl.getKeySet(true)).thenReturn(Set.of("peer1", "peer2"));
+        setPeerHeartbeatCache(mockCache);
+        assertEquals(Set.of("peer1", "peer2"), coordinator.getObservedPeerIds());
     }
 
     @Test

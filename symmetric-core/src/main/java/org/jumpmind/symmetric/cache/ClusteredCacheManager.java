@@ -58,6 +58,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private Thread heartbeatThread;
     private volatile boolean running;
     private volatile long currentHeartbeatMs = DEFAULT_HEARTBEAT_MS;
+    private volatile long lastHeartbeatSummaryLogMs;
     private volatile boolean isClusterPeerListenerStarted;
     private volatile String lastBroadcastEventType = ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT;
     private final Map<String, String> lastEngineStates = new ConcurrentHashMap<>();
@@ -93,11 +94,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     "Recorded cluster peer, but skipping initial broadcast of current state seed because it is not new. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                     serverId, historicalHeartbeat, myClusterPartitionId);
             return isNewPeer;
-        } else if (isClusterPeerListenerStarted) {
-            log.info(
-                    "Live add of new cluster peer. Broadcasting current state seed to populate peer cache. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
-                    serverId, historicalHeartbeat, myClusterPartitionId);
-            broadcastStateAndEngines();
         }
         long staleThresholdMs = getStaleMs(getAnyEngine());
         if (!coordinator.detectIfPeerIsStale(serverId, staleThresholdMs)
@@ -217,6 +213,12 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
     }
 
+    public void rebroadcastCurrentState() {
+        if (isClusterPeerListenerStarted) {
+            broadcastStateAndEngines();
+        }
+    }
+
     public boolean isAnyPeerWithEngineInState(String engineName, String engineState) {
         long staleThresholdMs = 3 * DEFAULT_HEARTBEAT_MS;
         long now = System.currentTimeMillis();
@@ -281,6 +283,17 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         heartbeatThread.start();
     }
 
+    /**
+     * Promotes any server ID already observed in the local peer-status cache region to a known peer. A peer that has us in its own TcpServers list starts
+     * pushing lateral cache messages to us as soon as it connects, landing them in our local cache well before any DB-driven scan (engine startup or the
+     * Heartbeat job) would otherwise discover it.
+     */
+    private void discoverPeersFromLocalCache() {
+        for (String peerId : coordinator.getObservedPeerIds()) {
+            addPeer(peerId, null);
+        }
+    }
+
     private void monitorClusterPeers(long sleepHeartbeatMs) {
         log.debug("Started cluster peer heartbeat thread = {}", CLUSTER_HEARTBEAT_THREAD_NAME);
         while (running) {
@@ -295,12 +308,21 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     currentHeartbeatMs = sleepHeartbeatMs;
                     staleThresholdMs = getStaleMs(engine);
                 }
+                discoverPeersFromLocalCache();
                 broadcastStateAndEngines();
-                activeMembers = checkAllClusterPeers(staleThresholdMs);
-                long durationMs = System.currentTimeMillis() - startTime;
+                activeMembers = countActivePeers(staleThresholdMs);
+                long now = System.currentTimeMillis();
+                long durationMs = now - startTime;
                 long adjustedSleepMs = Math.max(0, sleepHeartbeatMs - durationMs);
-                log.debug("Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
-                        activeMembers, coordinator.getPeerIds().size(), myServerId, staleThresholdMs, durationMs, adjustedSleepMs);
+                if (staleThresholdMs > 0 && now - lastHeartbeatSummaryLogMs >= staleThresholdMs) {
+                    lastHeartbeatSummaryLogMs = now;
+                    log.info("Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
+                            activeMembers, coordinator.getPeerIds().size(), myServerId, staleThresholdMs, durationMs, adjustedSleepMs);
+                } else {
+                    log.debug(
+                            "Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
+                            activeMembers, coordinator.getPeerIds().size(), myServerId, staleThresholdMs, durationMs, adjustedSleepMs);
+                }
                 Thread.sleep(adjustedSleepMs);
             } catch (InterruptedException ex) {
                 if (log.isDebugEnabled()) {
@@ -332,7 +354,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_STALE_MS, defaultMs);
     }
 
-    private int checkAllClusterPeers(long staleThresholdMs) {
+    private int countActivePeers(long staleThresholdMs) {
         long now = System.currentTimeMillis();
         int activeMembers = 0;
         for (String peerId : coordinator.getPeerIds()) {

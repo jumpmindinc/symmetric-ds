@@ -1690,11 +1690,18 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         long oneDayMs = 24L * 60 * 60 * 1000;
         long cutoff = System.currentTimeMillis() - oneDayMs;
         String myServerId = clusterService.getServerId();
+        int newPeerCount = 0;
         for (NodeHost host : nodeService.findNodeHosts(nodeId)) {
             if (host.getHeartbeatTime() != null && host.getHeartbeatTime().getTime() > cutoff
                     && !myServerId.equals(host.getHostName())) {
-                clusteredCacheManager.addPeer(host.getHostName(), host.getHeartbeatTime());
+                if (clusteredCacheManager.addPeer(host.getHostName(), host.getHeartbeatTime())) {
+                    newPeerCount++;
+                }
             }
+        }
+        log.debug("Refreshed cluster peers for nodeId={}. New peers discovered={}", nodeId, newPeerCount);
+        if (newPeerCount > 0) {
+            clusteredCacheManager.rebroadcastCurrentState();
         }
     }
 
