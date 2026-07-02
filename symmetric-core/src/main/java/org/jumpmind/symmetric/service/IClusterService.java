@@ -68,6 +68,8 @@ public interface IClusterService {
 
     public String getInstanceId();
 
+    public String getClusterPartitionId();
+
     public void clearLocksForServer(String serverId);
 
     public boolean isStaleServer(String lockingServerId);

@@ -29,10 +29,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -55,6 +59,7 @@ import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 
 /**
@@ -198,6 +203,70 @@ class ClusterServiceTest {
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
         clusterService.init();
         verify(sqlTemplate).query(anyString(), any(ISqlRowMapper.class));
+    }
+
+    @Test
+    void testGenerateClusterPartitionId_lockingDisabled_doesNotTouchContext() {
+        clusterService.generateClusterPartitionId();
+        assertNull(clusterService.getClusterPartitionId());
+        verify(sqlTemplate, never()).queryForString(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void testGenerateClusterPartitionId_lockingEnabled_noExistingContextValue_generatesAndSaves() {
+        when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
+        when(sqlTemplate.queryForString(anyString(), any(Object[].class))).thenReturn(null);
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(0).thenReturn(1);
+        clusterService.generateClusterPartitionId();
+        assertNotNull(clusterService.getClusterPartitionId());
+        verify(sqlTemplate, times(2)).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void testGenerateClusterPartitionId_lockingEnabled_existingContextValue_reusesIt() {
+        when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
+        when(sqlTemplate.queryForString(anyString(), any(Object[].class))).thenReturn("existing-cluster-partition-id");
+        clusterService.generateClusterPartitionId();
+        assertEquals("existing-cluster-partition-id", clusterService.getClusterPartitionId());
+        verify(sqlTemplate, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void testGenerateClusterPartitionId_configuredProperty_takesPriorityOverContext() {
+        when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
+        when(parameterService.getString(ServerConstants.CLUSTER_PARTITION_ID)).thenReturn("configured-partition-id");
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        clusterService.generateClusterPartitionId();
+        assertEquals("configured-partition-id", clusterService.getClusterPartitionId());
+        verify(sqlTemplate, never()).queryForString(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void testGenerateClusterPartitionId_calledTwice_onlyResolvesOnce() {
+        when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
+        when(sqlTemplate.queryForString(anyString(), any(Object[].class))).thenReturn("existing-cluster-partition-id");
+        clusterService.generateClusterPartitionId();
+        clusterService.generateClusterPartitionId();
+        verify(sqlTemplate, times(1)).queryForString(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void testWriteAndReadClusterPartitionId_roundTripsThroughFile(@TempDir File tempDir) throws Exception {
+        File clusterPartitionIdFile = new File(tempDir, "cluster-partition.uuid");
+        Method write = ClusterService.class.getDeclaredMethod("writeClusterPartitionId", File.class, String.class);
+        write.setAccessible(true);
+        write.invoke(clusterService, clusterPartitionIdFile, "file-cluster-partition-id");
+        Method read = ClusterService.class.getDeclaredMethod("readClusterPartitionId", File.class);
+        read.setAccessible(true);
+        assertEquals("file-cluster-partition-id", read.invoke(clusterService, clusterPartitionIdFile));
+    }
+
+    @Test
+    void testReadClusterPartitionId_missingFile_returnsNull(@TempDir File tempDir) throws Exception {
+        File clusterPartitionIdFile = new File(tempDir, "does-not-exist.uuid");
+        Method read = ClusterService.class.getDeclaredMethod("readClusterPartitionId", File.class);
+        read.setAccessible(true);
+        assertNull(read.invoke(clusterService, clusterPartitionIdFile));
     }
 
     @Test

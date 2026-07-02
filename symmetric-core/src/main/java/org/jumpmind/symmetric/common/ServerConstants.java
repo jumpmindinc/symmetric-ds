@@ -34,7 +34,7 @@ public class ServerConstants {
     public static final String HTTP_ENABLE = "http.enable";
     public static final String HTTP_PORT = "http.port";
     public static final String CLUSTER_SERVER_ID = "cluster.server.id";
-    public static final String CLUSTER_INSTANCE_UUID = "cluster.instance.uuid";
+    public static final String CLUSTER_PARTITION_ID = "cluster.partition.id";
     public static final String CLUSTER_JCS_PORT = "cluster.jcs.port";
     public static final int INSTANCE_UUID_MARKER_AUTO = 0xaaaa; // Marked is inserted at the byte 4: xxxxxxxx-MMMM-xxxx-xxxx-xxxxxxxxxxxx
     public static final int INSTANCE_UUID_MARKER_HARDWARE = 0xbbbb;

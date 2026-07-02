@@ -28,16 +28,16 @@ public class ClusterPeerStatusMessage extends ClusterPeerSecureMessage {
     public static final String EVENT_PEER_INITIALIZING = "PEER_INITIALIZING";
     public static final String EVENT_PEER_UPGRADING_DB = "PEER_UPGRADING_DB";
     private transient String cachedEventType;
-    private transient String cachedInstanceId;
+    private transient String cachedClusterPartitionId;
 
-    public ClusterPeerStatusMessage(String eventType, String serverId, String instanceId, String version) {
-        this(eventType, serverId, instanceId, version, System.currentTimeMillis());
+    public ClusterPeerStatusMessage(String eventType, String serverId, String clusterPartitionId, String version) {
+        this(eventType, serverId, clusterPartitionId, version, System.currentTimeMillis());
     }
 
-    private ClusterPeerStatusMessage(String eventType, String serverId, String instanceId, String version, long timestamp) {
-        super(serverId, version, timestamp, eventType + "|" + instanceId);
+    private ClusterPeerStatusMessage(String eventType, String serverId, String clusterPartitionId, String version, long timestamp) {
+        super(serverId, version, timestamp, eventType + "|" + clusterPartitionId);
         this.cachedEventType = eventType;
-        this.cachedInstanceId = instanceId;
+        this.cachedClusterPartitionId = clusterPartitionId;
         markDecrypted();
     }
 
@@ -45,7 +45,7 @@ public class ClusterPeerStatusMessage extends ClusterPeerSecureMessage {
     protected void parsePayload(String plainPayload) {
         String[] parts = plainPayload.split("\\|", 2);
         cachedEventType = parts[0];
-        cachedInstanceId = parts[1];
+        cachedClusterPartitionId = parts[1];
     }
 
     @Override
@@ -54,8 +54,8 @@ public class ClusterPeerStatusMessage extends ClusterPeerSecureMessage {
         return cachedEventType;
     }
 
-    public String getInstanceId() {
+    public String getClusterPartitionId() {
         ensureDecrypted();
-        return cachedInstanceId;
+        return cachedClusterPartitionId;
     }
 }

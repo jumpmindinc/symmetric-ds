@@ -35,7 +35,7 @@ public interface IClusterCacheCoordinator {
 
     void start(ISymmetricEngine engine);
 
-    void start(String serverId, String instanceId, int port);
+    void start(String serverId, String clusterPartitionId, int port);
 
     void stop();
 

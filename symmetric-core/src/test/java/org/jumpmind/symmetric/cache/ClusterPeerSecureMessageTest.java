@@ -86,7 +86,7 @@ class ClusterPeerSecureMessageTest {
     void ensureDecrypted_deserializedMessage_lazyDecryptsPayload() throws Exception {
         ClusterPeerStatusMessage deserialized = serializeRoundTrip(heartbeat());
         assertEquals(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, deserialized.getEventType());
-        assertEquals("inst1", deserialized.getInstanceId());
+        assertEquals("inst1", deserialized.getClusterPartitionId());
     }
 
     @Test

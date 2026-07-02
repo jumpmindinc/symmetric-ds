@@ -88,7 +88,7 @@ public class ClusteredCacheManagerTest {
         coordinatorField.set(manager, mockCoordinator);
         mockClusterService = mock(IClusterService.class);
         when(mockClusterService.getServerId()).thenReturn("server1");
-        when(mockClusterService.getInstanceId()).thenReturn("instance1");
+        when(mockClusterService.getClusterPartitionId()).thenReturn("instance1");
         mockParameterService = mock(IParameterService.class);
         when(mockParameterService.getEngineName()).thenReturn("engine1");
         when(mockParameterService.getLong(anyString(), anyLong())).thenReturn(3000L);
@@ -154,8 +154,8 @@ public class ClusteredCacheManagerTest {
         f.set(manager, value);
     }
 
-    private void setMyInstanceId(String value) throws Exception {
-        Field f = ClusteredCacheManager.class.getDeclaredField("myInstanceId");
+    private void setMyClusterPartitionId(String value) throws Exception {
+        Field f = ClusteredCacheManager.class.getDeclaredField("myClusterPartitionId");
         f.setAccessible(true);
         f.set(manager, value);
     }
@@ -337,7 +337,7 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void startClusterHeartbeat_createsDaemonThreadWithCorrectName() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService, true);
+        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
         manager.startClusterHeartbeat();
         Field f = ClusteredCacheManager.class.getDeclaredField("heartbeatThread");
         f.setAccessible(true);
@@ -622,21 +622,21 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void startClusterPeerListener_whenNotStarted_callsCoordinatorStart() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService, true);
+        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
         verify(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
     public void startClusterPeerListener_whenAlreadyStarted_doesNotCallCoordinatorStartAgain() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService, true);
-        manager.startClusterPeerListener(mockSecurityService, true);
+        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
+        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
         verify(mockCoordinator, times(1)).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
     public void ensurePeerListenerStarted_coordinatorThrows_wrapsInRuntimeException() {
         doThrow(new RuntimeException("bind failed")).when(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
-        Assertions.assertThrows(RuntimeException.class, () -> manager.startClusterPeerListener(mockSecurityService, true));
+        Assertions.assertThrows(RuntimeException.class, () -> manager.startClusterPeerListener(mockSecurityService, "cluster1", true));
     }
 
     @Test
@@ -702,7 +702,7 @@ public class ClusteredCacheManagerTest {
     public void addPeer_listenerStarted_rebroadcastsPeerState() throws Exception {
         setListenerStarted(true);
         setMyServerId("myServer");
-        setMyInstanceId("myInstance");
+        setMyClusterPartitionId("myInstance");
         manager.registerEngine(mockEngine);
         manager.addPeer("server2", null);
         verify(mockCoordinator, atLeastOnce()).sendMessageToPeers(any(ClusterPeerStatusMessage.class));
@@ -713,7 +713,7 @@ public class ClusteredCacheManagerTest {
     public void addPeer_listenerStarted_withEngineState_rebroadcastsEngineStates() throws Exception {
         setListenerStarted(true);
         setMyServerId("myServer");
-        setMyInstanceId("myInstance");
+        setMyClusterPartitionId("myInstance");
         Field f = ClusteredCacheManager.class.getDeclaredField("lastEngineStates");
         f.setAccessible(true);
         ((Map<String, String>) f.get(manager)).put("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
@@ -726,7 +726,7 @@ public class ClusteredCacheManagerTest {
     @Test
     public void addPeer_listenerNotStarted_doesNotRebroadcast() throws Exception {
         setMyServerId("myServer");
-        setMyInstanceId("myInstance");
+        setMyClusterPartitionId("myInstance");
         manager.registerEngine(mockEngine);
         manager.addPeer("server2", null);
         verify(mockCoordinator, never()).sendMessageToPeers(any());
@@ -750,7 +750,7 @@ public class ClusteredCacheManagerTest {
     public void broadcastEngineState_listenerStarted_sendsEngineStateMessage() throws Exception {
         setListenerStarted(true);
         setMyServerId("server1");
-        setMyInstanceId("instance1");
+        setMyClusterPartitionId("instance1");
         manager.broadcastEngineState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
         verify(mockCoordinator).sendEngineStateMessage(any(ClusterEngineStateMessage.class));
     }
@@ -758,7 +758,7 @@ public class ClusteredCacheManagerTest {
     @Test
     public void broadcastEngineState_listenerNotStarted_doesNotSend() throws Exception {
         setMyServerId("server1");
-        setMyInstanceId("instance1");
+        setMyClusterPartitionId("instance1");
         manager.broadcastEngineState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
         verify(mockCoordinator, never()).sendEngineStateMessage(any());
     }
@@ -768,7 +768,7 @@ public class ClusteredCacheManagerTest {
     public void broadcastEngineState_listenerStarted_updatesLastEngineStates() throws Exception {
         setListenerStarted(true);
         setMyServerId("server1");
-        setMyInstanceId("instance1");
+        setMyClusterPartitionId("instance1");
         manager.broadcastEngineState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
         Field f = ClusteredCacheManager.class.getDeclaredField("lastEngineStates");
         f.setAccessible(true);
@@ -819,7 +819,7 @@ public class ClusteredCacheManagerTest {
     public void monitorClusterPeers_withEngine_readsHeartbeatFromParameterService() throws Exception {
         when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS), anyLong())).thenReturn(100L);
         manager.registerEngine(mockEngine);
-        manager.startClusterPeerListener(mockSecurityService, true);
+        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
         manager.startClusterHeartbeat();
         Thread.sleep(50);
         stopHeartbeatThread();

@@ -60,8 +60,8 @@ class ClusterPeerStatusMessageTest {
     }
 
     @Test
-    void getInstanceId_returnsConstructedInstance() {
-        assertEquals("inst1", heartbeat().getInstanceId());
+    void getClusterPartitionId_returnsConstructedClusterPartitionId() {
+        assertEquals("inst1", heartbeat().getClusterPartitionId());
     }
 
     @Test

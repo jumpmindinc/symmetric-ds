@@ -279,7 +279,7 @@ class JcsTcpCacheCoordinatorTest {
         when(engine.getClusterService()).thenReturn(clusterService);
         when(engine.getParameterService()).thenReturn(parameterService);
         when(clusterService.getServerId()).thenReturn("server1");
-        when(clusterService.getInstanceId()).thenReturn("inst1");
+        when(clusterService.getClusterPartitionId()).thenReturn("inst1");
         when(parameterService.getInt(ServerConstants.CLUSTER_JCS_PORT, 1101)).thenReturn(port);
         return engine;
     }

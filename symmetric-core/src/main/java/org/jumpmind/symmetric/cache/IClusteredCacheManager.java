@@ -52,7 +52,7 @@ public interface IClusteredCacheManager {
 
     boolean isClusterPeerListenerStarted();
 
-    void startClusterPeerListener(ISecurityService securityService, boolean isJcsEnabled);
+    void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, boolean isJcsEnabled);
 
     void startClusterHeartbeat();
 

@@ -81,6 +81,7 @@ import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.service.IClusterInstanceGenerator;
 import org.jumpmind.symmetric.service.IClusterService;
+import org.jumpmind.symmetric.service.IContextService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
@@ -101,8 +102,10 @@ public class ClusterService extends AbstractService implements IClusterService {
     protected static final Logger log = LoggerFactory.getLogger(ClusterService.class);
     protected String serverId = null;
     protected static String instanceId = null;
+    protected String clusterPartitionId = null;
     protected INodeService nodeService;
     protected IExtensionService extensionService;
+    protected IContextService contextService;
     protected Map<String, Lock> lockCache = new ConcurrentHashMap<String, Lock>();
 
     public ClusterService(IParameterService parameterService, ISymmetricDialect dialect, INodeService nodeService,
@@ -110,6 +113,7 @@ public class ClusterService extends AbstractService implements IClusterService {
         super(parameterService, dialect);
         this.nodeService = nodeService;
         this.extensionService = extensionService;
+        this.contextService = new ContextService(parameterService, dialect);
         setSqlMap(new ClusterServiceSqlMap(symmetricDialect.getPlatform(), createSqlReplacementTokens()));
         initCache();
     }
@@ -121,6 +125,7 @@ public class ClusterService extends AbstractService implements IClusterService {
                     ParameterConstants.CLUSTER_LOCKING_ENABLED);
         }
         initInstanceId();
+        generateClusterPartitionId();
         if (isUpgradedInstanceId) {
             String nodeHostTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST);
             String nodeId = nodeService.findIdentityNodeId();
@@ -146,30 +151,96 @@ public class ClusterService extends AbstractService implements IClusterService {
     protected void initInstanceId() {
         if (instanceId == null) {
             synchronized (ClusterService.class) {
-                String configuredId = StringUtils.left(parameterService.getString(ServerConstants.CLUSTER_INSTANCE_UUID), 60);
-                IClusterInstanceGenerator generator = null;
-                if (StringUtils.isNotBlank(configuredId)) {
-                    generator = new ConfiguredClusterInstanceGenerator(configuredId);
-                } else {
-                    String persistedId = findMostRecentPersistedInstanceId();
-                    if (StringUtils.isNotBlank(persistedId)) {
-                        generator = new LegacyPersistedClusterInstanceGenerator(persistedId);
-                    } else if (extensionService != null) {
-                        generator = extensionService.getExtensionPoint(IClusterInstanceGenerator.class);
-                    }
-                }
+                IClusterInstanceGenerator generator = extensionService != null
+                        ? extensionService.getExtensionPoint(IClusterInstanceGenerator.class)
+                        : null;
                 initInstanceId(generator);
             }
         }
     }
 
-    private String findMostRecentPersistedInstanceId() {
-        String nodeId = nodeService.findIdentityNodeId();
-        if (nodeId == null) {
-            return null;
+    /**
+     * Generates (or restores) the cluster partition ID: a shared identity used only to let JCS lateral cache peers recognize each other as belonging to the
+     * same partition (environment/cluster). Unlike the instance ID (per-installation identity, cached in the instance.uuid file), the cluster partition ID can
+     * be pinned via the {@code cluster.partition.id} property, and otherwise is persisted in SYM_CONTEXT so that every node pointed at the same database
+     * converges on the same value automatically, with no configuration required. It is also cached in a local cluster-partition.uuid file, mirroring
+     * instance.uuid, so that restarts do not need to round-trip to the database to retrieve it.
+     */
+    protected void generateClusterPartitionId() {
+        if (clusterPartitionId == null && parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+            clusterPartitionId = loadOrCreateClusterPartitionId();
         }
-        List<NodeHost> hosts = nodeService.findNodeHosts(nodeId);
-        return hosts.isEmpty() ? null : hosts.get(0).getInstanceId();
+    }
+
+    private String loadOrCreateClusterPartitionId() {
+        File clusterPartitionIdFile = getClusterPartitionIdFile();
+        String configuredId = StringUtils.left(parameterService.getString(ServerConstants.CLUSTER_PARTITION_ID), 60);
+        if (StringUtils.isNotBlank(configuredId)) {
+            saveClusterPartitionIdToContext(configuredId);
+            writeClusterPartitionId(clusterPartitionIdFile, configuredId);
+            return configuredId;
+        }
+        String id = readClusterPartitionId(clusterPartitionIdFile);
+        if (StringUtils.isNotBlank(id)) {
+            saveClusterPartitionIdToContext(id);
+            return id;
+        }
+        id = contextService.getString(ServerConstants.CLUSTER_PARTITION_ID);
+        if (StringUtils.isBlank(id)) {
+            id = UUID.randomUUID().toString();
+            try {
+                contextService.save(ServerConstants.CLUSTER_PARTITION_ID, id);
+            } catch (UniqueKeyException ex) {
+                id = contextService.getString(ServerConstants.CLUSTER_PARTITION_ID);
+            }
+        }
+        writeClusterPartitionId(clusterPartitionIdFile, id);
+        return id;
+    }
+
+    private File getClusterPartitionIdFile() {
+        return "true".equals(System.getProperty(SystemConstants.SYSPROP_LAUNCHER))
+                ? new File(AppUtils.getSymHome() + "/conf/cluster-partition.uuid")
+                : null;
+    }
+
+    private String readClusterPartitionId(File clusterPartitionIdFile) {
+        if (clusterPartitionIdFile != null) {
+            try {
+                return IOUtils.toString(new FileInputStream(clusterPartitionIdFile), Charset.defaultCharset()).trim();
+            } catch (Exception ex) {
+                log.debug("Failed to load cluster partition id from file '" + clusterPartitionIdFile + "'", ex);
+                return null;
+            }
+        }
+        URL clusterPartitionIdURL = ClusterService.class.getClassLoader().getResource("/cluster-partition.uuid");
+        if (clusterPartitionIdURL != null) {
+            try {
+                return IOUtils.toString(clusterPartitionIdURL.openStream(), Charset.defaultCharset()).trim();
+            } catch (Exception ex) {
+                log.debug("Failed to load cluster partition id from classpath '" + clusterPartitionIdURL + "'", ex);
+            }
+        }
+        return null;
+    }
+
+    private void writeClusterPartitionId(File clusterPartitionIdFile, String id) {
+        if (clusterPartitionIdFile != null) {
+            try {
+                clusterPartitionIdFile.getParentFile().mkdirs();
+                IOUtils.write(id, new FileOutputStream(clusterPartitionIdFile), Charset.defaultCharset());
+            } catch (Exception ex) {
+                log.debug("Failed to save cluster partition id to file '" + clusterPartitionIdFile + "'", ex);
+            }
+        }
+    }
+
+    private void saveClusterPartitionIdToContext(String id) {
+        try {
+            contextService.save(ServerConstants.CLUSTER_PARTITION_ID, id);
+        } catch (Exception ex) {
+            log.debug("Failed to sync cluster partition id into SYM_CONTEXT", ex);
+        }
     }
 
     public static String initInstanceId(IClusterInstanceGenerator generator) {
@@ -242,6 +313,11 @@ public class ClusterService extends AbstractService implements IClusterService {
     @Override
     public String getInstanceId() {
         return instanceId;
+    }
+
+    @Override
+    public String getClusterPartitionId() {
+        return clusterPartitionId;
     }
 
     @Override
@@ -735,43 +811,5 @@ public class ClusterService extends AbstractService implements IClusterService {
             return true;
         }
         return false;
-    }
-
-    // Restores a node's instance ID from its last known sym_node_host row when no explicit cluster.instance.uuid is configured.
-    // Prevents a replacement container from generating a new UUID on first startup when the node has prior cluster history.
-    private static class LegacyPersistedClusterInstanceGenerator implements IClusterInstanceGenerator {
-        private final String persistedId;
-
-        LegacyPersistedClusterInstanceGenerator(String persistedId) {
-            this.persistedId = persistedId;
-        }
-
-        @Override
-        public String generateInstanceId() {
-            return persistedId;
-        }
-
-        @Override
-        public boolean isValid(String instanceId) {
-            return persistedId.equals(instanceId);
-        }
-    }
-
-    private static class ConfiguredClusterInstanceGenerator implements IClusterInstanceGenerator {
-        private final String configuredId;
-
-        ConfiguredClusterInstanceGenerator(String configuredId) {
-            this.configuredId = configuredId;
-        }
-
-        @Override
-        public String generateInstanceId() {
-            return applyUuidMarkerToId(configuredId, ServerConstants.INSTANCE_UUID_MARKER_CONFIGURED);
-        }
-
-        @Override
-        public boolean isValid(String instanceId) {
-            return generateInstanceId().equals(instanceId);
-        }
     }
 }

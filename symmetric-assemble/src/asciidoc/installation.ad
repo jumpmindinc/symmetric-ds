@@ -368,7 +368,7 @@ Use the following steps to setup a cluster:
 
 1. Set the `cluster.lock.enabled` property to `true`
 2. Optionally, set the `cluster.server.id` property to a unique name, otherwise the hostname will be used
-3. In containerized deployments, set `cluster.instance.uuid` (or `SYM_CLUSTER_INSTANCE_UUID`) to a stable UUID shared by all nodes in this environment so lock ownership survives pod replacement
+3. If nodes in this cluster point at different databases (e.g. read replicas), set `cluster.partition.id` (or `SYM_CLUSTER_PARTITION_ID`) to the same value on every node — otherwise leave it blank and SymmetricDS will auto-generate and share it via the database
 4. Set the `sync.url` property to the URL of the load balancer
 5. Set the `initial.load.use.extract.job.enabled` property to `false` if using local staging
 6. Ensure all nodes share the same encryption secret key — either copy the `security/keystore` file to each installation, or set `cluster.keystore.seed` to the same Base64-encoded 256-bit AES key on every node (see below)
@@ -397,13 +397,14 @@ If a peer heartbeat is received while `cluster.lock.enabled=false`, the receivin
 Peer discovery is driven by `SYM_NODE_HOST` entries, which are scoped to each endpoint's own database, so clusters for different environments are naturally isolated even on the same subnet or orchestrator.
 Assigning a distinct `cluster.jcs.port` per environment adds a second layer of network-level isolation.
 
-The `cluster.instance.uuid` property (also settable via `SYM_CLUSTER_INSTANCE_UUID` or `conf/instance.uuid`) is a cluster-scoped identity token shared by all nodes in the same environment.
-Nodes that present a different instance UUID are detected and logged as belonging to a different cluster.
-If not configured, SymmetricDS automatically recovers the token from the most recent `sym_node_host` row for this node, so a replacement container inherits the prior identity without any configuration.
-For new environments or after clearing database history, set it explicitly to a stable UUID.
+The `cluster.partition.id` property (also settable via `SYM_CLUSTER_PARTITION_ID`) is a cluster-scoped identity token shared by all nodes in the same environment; it is distinct from each node's own instance identity (`conf/instance.uuid`).
+Nodes that present a different cluster partition ID are detected and logged as belonging to a different cluster.
+If not configured, SymmetricDS auto-generates one on first startup and persists it in the `SYM_CONTEXT` table, so every node sharing that database converges on the same value automatically.
+It is also cached in `conf/cluster-partition.uuid` so restarts do not need to round-trip to the database to retrieve it.
+Set the property explicitly only when nodes in the same cluster point at different databases (e.g. read replicas), since auto-generation only converges nodes that share a database.
 
 WARNING: JCS peer messages are AES-encrypted using the shared `sym.secret` key and include a SHA-256 header checksum.
-Nodes with a mismatched `cluster.instance.uuid` are detected and logged as unauthorized.
+Nodes with a mismatched `cluster.partition.id` are detected and logged as unauthorized.
 Despite this, `cluster.jcs.port` must not be exposed to untrusted networks — deploy cluster nodes on a private, firewalled subnet.
 
 The load balancer should be configured to use sticky sessions if the cluster will receive push synchronization.

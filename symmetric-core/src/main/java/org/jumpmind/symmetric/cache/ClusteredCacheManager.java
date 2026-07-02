@@ -34,7 +34,6 @@ import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
-import org.jumpmind.symmetric.service.impl.ClusterService;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +62,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private volatile String lastBroadcastEventType = ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT;
     private final Map<String, String> lastEngineStates = new ConcurrentHashMap<>();
     private String myServerId;
-    private String myInstanceId;
+    private String myClusterPartitionId;
     Runnable exitAction = () -> System.exit(1);
 
     private ClusteredCacheManager() {
@@ -148,25 +147,26 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return isClusterPeerListenerStarted;
     }
 
-    public synchronized void startClusterPeerListener(ISecurityService securityService, boolean isJcsEnabled) {
+    public synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, boolean isJcsEnabled) {
         ClusterPeerSecureMessage.setSecurityService(securityService);
-        myInstanceId = ClusterService.initInstanceId(null);
+        myClusterPartitionId = clusterPartitionId;
         myServerId = StringUtils.defaultIfBlank(
                 System.getProperty(SystemConstants.SYSPROP_CLUSTER_SERVER_ID), AppUtils.getHostName());
         int port = Integer.parseInt(System.getProperty(
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
-        log.debug("Starting cluster peer listener: serverId={}, instanceId={}, port={}, jcsEnabled={}", myServerId, myInstanceId, port, isJcsEnabled);
+        log.debug("Starting cluster peer listener: serverId={}, clusterPartitionId={}, port={}, jcsEnabled={}", myServerId, myClusterPartitionId, port,
+                isJcsEnabled);
         if (isJcsEnabled) {
-            ensurePeerListenerStarted(myServerId, myInstanceId, port);
+            ensurePeerListenerStarted(myServerId, myClusterPartitionId, port);
         }
     }
 
-    private synchronized void ensurePeerListenerStarted(String serverId, String instanceId, int port) {
+    private synchronized void ensurePeerListenerStarted(String serverId, String clusterPartitionId, int port) {
         if (isClusterPeerListenerStarted) {
             return;
         }
         try {
-            coordinator.start(serverId, instanceId, port);
+            coordinator.start(serverId, clusterPartitionId, port);
             isClusterPeerListenerStarted = true;
         } catch (Exception e) {
             log.error("Failed to start cluster peer listener: {}", e.getMessage());
@@ -205,7 +205,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         lastEngineStates.put(engineName, engineState);
         if (isClusterPeerListenerStarted) {
             ClusterEngineStateMessage msg = new ClusterEngineStateMessage(
-                    engineState, engineName, myServerId, myInstanceId, Version.version());
+                    engineState, engineName, myServerId, myClusterPartitionId, Version.version());
             coordinator.sendEngineStateMessage(msg);
         }
     }
@@ -257,12 +257,12 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private void broadcastLastKnownEngineStates() {
         new java.util.HashMap<>(lastEngineStates).forEach((name, state) -> coordinator.sendEngineStateMessage(new ClusterEngineStateMessage(
-                state, name, myServerId, myInstanceId, Version.version())));
+                state, name, myServerId, myClusterPartitionId, Version.version())));
     }
 
     private void sendMessageToPeers(String eventType) {
         lastBroadcastEventType = eventType;
-        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(eventType, myServerId, myInstanceId, Version.version());
+        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(eventType, myServerId, myClusterPartitionId, Version.version());
         coordinator.sendMessageToPeers(msg);
     }
 
@@ -362,8 +362,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             return false;
         }
         if (!messageFromPeer.isHeaderChecksumValid()) {
-            log.warn("Rejecting message from cluster peer={} — checksum invalid, message may be corrupt or from an unauthorized host. myInstanceId={}",
-                    peerId, myInstanceId);
+            log.warn("Rejecting message from cluster peer={} — checksum invalid, message may be corrupt or from an unauthorized host. myClusterPartitionId={}",
+                    peerId, myClusterPartitionId);
             return false;
         }
         String eventType = messageFromPeer.getEventType();
@@ -431,16 +431,17 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     protected void onPeerJoined(ClusterPeerSecureMessage msg) {
-        String peerInstanceId = msg instanceof ClusterPeerStatusMessage ? ((ClusterPeerStatusMessage) msg).getInstanceId() : null;
+        String peerClusterPartitionId = msg instanceof ClusterPeerStatusMessage ? ((ClusterPeerStatusMessage) msg).getClusterPartitionId() : null;
         for (ISymmetricEngine engine : registeredEngines.values()) {
             MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
-            String myInstanceId = engine.getClusterService().getInstanceId();
-            if (peerInstanceId != null) {
-                if (myInstanceId.equals(peerInstanceId)) {
-                    log.debug("Cluster peer shares same instanceId={}. Peer={}", myInstanceId, msg.getServerId());
+            String myClusterPartitionId = engine.getClusterService().getClusterPartitionId();
+            if (peerClusterPartitionId != null) {
+                if (peerClusterPartitionId.equals(myClusterPartitionId)) {
+                    log.debug("Cluster peer shares same clusterPartitionId={}. Peer={}", myClusterPartitionId, msg.getServerId());
                 } else {
-                    log.warn("Rejecting cluster peer={} — instanceId mismatch indicates different cluster or environment. peerInstanceId={}, myInstanceId={}",
-                            msg.getServerId(), peerInstanceId, myInstanceId);
+                    log.warn("Rejecting cluster peer={} — clusterPartitionId mismatch indicates different cluster or environment. "
+                            + "peerClusterPartitionId={}, myClusterPartitionId={}",
+                            msg.getServerId(), peerClusterPartitionId, myClusterPartitionId);
                 }
             }
             if (!engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {

@@ -48,19 +48,19 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private volatile CacheAccess<String, ClusterEngineStateMessage> engineStateCache;
     private int port;
     private String serverId;
-    private String instanceId;
+    private String clusterPartitionId;
 
     @Override
     public void start(ISymmetricEngine engine) {
         start(engine.getClusterService().getServerId(),
-                engine.getClusterService().getInstanceId(),
+                engine.getClusterService().getClusterPartitionId(),
                 engine.getParameterService().getInt(ServerConstants.CLUSTER_JCS_PORT, DEFAULT_PORT));
     }
 
     @Override
-    public synchronized void start(String serverId, String instanceId, int port) {
+    public synchronized void start(String serverId, String clusterPartitionId, int port) {
         this.serverId = serverId;
-        this.instanceId = instanceId;
+        this.clusterPartitionId = clusterPartitionId;
         this.port = port;
         String peerList = buildPeerList();
         try {
@@ -68,7 +68,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             jcsCacheManager.configure(buildJcsProperties(peerList));
             peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_PEER_REGION));
             engineStateCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_ENGINE_REGION));
-            log.info("Started JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]", port, serverId, instanceId, peerList);
+            log.info("Started JCS cluster cache. Port={}, ServerId={}, ClusterPartitionId={}, Peers=[{}]", port, serverId, clusterPartitionId, peerList);
         } catch (Exception e) {
             log.error("Failed to initialize JCS cluster cache on port {}: {}", port, e.getMessage());
             throw new RuntimeException("Failed to initialize JCS cluster cache on port " + port, e);
@@ -178,7 +178,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             jcsCacheManager.configure(buildJcsProperties(peerList));
             peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_PEER_REGION));
             engineStateCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_ENGINE_REGION));
-            log.info("Reinitialized JCS cluster cache. Port={}, ServerId={}, InstanceId={}, Peers=[{}]", port, serverId, instanceId, peerList);
+            log.info("Reinitialized JCS cluster cache. Port={}, ServerId={}, ClusterPartitionId={}, Peers=[{}]", port, serverId, clusterPartitionId, peerList);
         } catch (Exception e) {
             log.error("Failed to reinitialize JCS cluster cache: {}", e.getMessage());
         }
