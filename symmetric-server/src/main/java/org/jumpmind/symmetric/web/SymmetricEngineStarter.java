@@ -20,10 +20,19 @@
  */
 package org.jumpmind.symmetric.web;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SymmetricEngineStarter implements Runnable {
+    private final Logger log = LoggerFactory.getLogger(getClass());
     private SymmetricEngineHolder holder;
     private String propertiesFile;
     private ISymmetricEngine engine;
@@ -58,5 +67,18 @@ public class SymmetricEngineStarter implements Runnable {
 
     public ISymmetricEngine getEngine() {
         return engine;
+    }
+
+    public boolean isRegistrationEngineStarter() {
+        Properties props = new Properties();
+        try (InputStream is = new FileInputStream(getPropertiesFile())) {
+            props.load(is);
+        } catch (IOException e) {
+            log.warn("Unable to read properties file to determine if registration engine starter: {}", getPropertiesFile());
+            return false;
+        }
+        String registrationUrl = props.getProperty(ParameterConstants.REGISTRATION_URL, "");
+        String syncUrl = props.getProperty(ParameterConstants.SYNC_URL, "");
+        return (StringUtils.isBlank(registrationUrl) || registrationUrl.equals(syncUrl));
     }
 }
