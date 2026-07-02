@@ -58,6 +58,8 @@ import org.junit.jupiter.api.Test;
 
 public class ClusteredCacheManagerTest {
     private static final long THRESHOLD_MS = 9000L;
+    private static final String MY_CLUSTER_PARTITION_ID = "instance1";
+    private static final String TEST_CLUSTER_PARTITION_ID = "cluster1";
     private ClusteredCacheManager manager;
     private IClusterCacheCoordinator mockCoordinator;
     private ISymmetricEngine mockEngine;
@@ -88,7 +90,7 @@ public class ClusteredCacheManagerTest {
         coordinatorField.set(manager, mockCoordinator);
         mockClusterService = mock(IClusterService.class);
         when(mockClusterService.getServerId()).thenReturn("server1");
-        when(mockClusterService.getClusterPartitionId()).thenReturn("instance1");
+        when(mockClusterService.getClusterPartitionId()).thenReturn(MY_CLUSTER_PARTITION_ID);
         mockParameterService = mock(IParameterService.class);
         when(mockParameterService.getEngineName()).thenReturn("engine1");
         when(mockParameterService.getLong(anyString(), anyLong())).thenReturn(3000L);
@@ -337,7 +339,7 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void startClusterHeartbeat_createsDaemonThreadWithCorrectName() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
         manager.startClusterHeartbeat();
         Field f = ClusteredCacheManager.class.getDeclaredField("heartbeatThread");
         f.setAccessible(true);
@@ -497,7 +499,7 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         suppressExit();
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", "instance1", "1.0");
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", MY_CLUSTER_PARTITION_ID, "1.0");
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);
@@ -622,21 +624,21 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void startClusterPeerListener_whenNotStarted_callsCoordinatorStart() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
         verify(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
     public void startClusterPeerListener_whenAlreadyStarted_doesNotCallCoordinatorStartAgain() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
-        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
         verify(mockCoordinator, times(1)).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
     }
 
     @Test
     public void ensurePeerListenerStarted_coordinatorThrows_wrapsInRuntimeException() {
         doThrow(new RuntimeException("bind failed")).when(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
-        Assertions.assertThrows(RuntimeException.class, () -> manager.startClusterPeerListener(mockSecurityService, "cluster1", true));
+        Assertions.assertThrows(RuntimeException.class, () -> manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true));
     }
 
     @Test
@@ -750,7 +752,7 @@ public class ClusteredCacheManagerTest {
     public void broadcastEngineState_listenerStarted_sendsEngineStateMessage() throws Exception {
         setListenerStarted(true);
         setMyServerId("server1");
-        setMyClusterPartitionId("instance1");
+        setMyClusterPartitionId(MY_CLUSTER_PARTITION_ID);
         manager.broadcastEngineState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
         verify(mockCoordinator).sendEngineStateMessage(any(ClusterEngineStateMessage.class));
     }
@@ -758,7 +760,7 @@ public class ClusteredCacheManagerTest {
     @Test
     public void broadcastEngineState_listenerNotStarted_doesNotSend() throws Exception {
         setMyServerId("server1");
-        setMyClusterPartitionId("instance1");
+        setMyClusterPartitionId(MY_CLUSTER_PARTITION_ID);
         manager.broadcastEngineState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
         verify(mockCoordinator, never()).sendEngineStateMessage(any());
     }
@@ -768,7 +770,7 @@ public class ClusteredCacheManagerTest {
     public void broadcastEngineState_listenerStarted_updatesLastEngineStates() throws Exception {
         setListenerStarted(true);
         setMyServerId("server1");
-        setMyClusterPartitionId("instance1");
+        setMyClusterPartitionId(MY_CLUSTER_PARTITION_ID);
         manager.broadcastEngineState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
         Field f = ClusteredCacheManager.class.getDeclaredField("lastEngineStates");
         f.setAccessible(true);
@@ -819,7 +821,7 @@ public class ClusteredCacheManagerTest {
     public void monitorClusterPeers_withEngine_readsHeartbeatFromParameterService() throws Exception {
         when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS), anyLong())).thenReturn(100L);
         manager.registerEngine(mockEngine);
-        manager.startClusterPeerListener(mockSecurityService, "cluster1", true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
         manager.startClusterHeartbeat();
         Thread.sleep(50);
         stopHeartbeatThread();

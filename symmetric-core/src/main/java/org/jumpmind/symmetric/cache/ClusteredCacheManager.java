@@ -362,46 +362,57 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             return false;
         }
         if (!messageFromPeer.isHeaderChecksumValid()) {
-            log.warn("Rejecting message from cluster peer={} — checksum invalid, message may be corrupt or from an unauthorized host. myClusterPartitionId={}",
+            log.debug("Rejecting message from cluster peer={} — checksum invalid, message may be corrupt or from an unauthorized host. myClusterPartitionId={}",
                     peerId, myClusterPartitionId);
             return false;
         }
         String eventType = messageFromPeer.getEventType();
+        String lastHeartbeatInfo = messageFromPeer.getTimestampAsString();
         if (ClusterPeerStatusMessage.EVENT_PEER_LEAVING.equals(eventType)) {
             log.info("Cluster peer sent message about leaving the cluster. Peer={}, Last heartbeat={}, EventType={}",
-                    peerId, messageFromPeer.getTimestampAsDate(), eventType);
+                    peerId, lastHeartbeatInfo, eventType);
             return false;
         }
         if (messageFromPeer.isStale(now, staleThresholdMs)) {
             log.warn("Last message from cluster peer is stale! Considering peer inactive. Peer={}, Last heartbeat={}, EventType={}",
-                    peerId, messageFromPeer.getTimestampAsDate(), eventType);
+                    peerId, lastHeartbeatInfo, eventType);
             return false;
         }
         if (ClusterPeerStatusMessage.EVENT_PEER_JOINING.equals(eventType)
                 || ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING.equals(eventType)) {
             log.info("Cluster peer is starting up. Peer={}, Last heartbeat={}, EventType={}",
-                    peerId, messageFromPeer.getTimestampAsDate(), eventType);
-        } else if (ClusterPeerStatusMessage.EVENT_PEER_UPGRADING_DB.equals(eventType)) {
+                    peerId, lastHeartbeatInfo, eventType);
+            return true;
+        }
+        if (ClusterPeerStatusMessage.EVENT_PEER_UPGRADING_DB.equals(eventType)) {
             log.info("Cluster peer is upgrading database. Peer={}, Last heartbeat={}, EventType={}",
-                    peerId, messageFromPeer.getTimestampAsDate(), eventType);
-        } else {
-            long ageMs = now - messageFromPeer.getTimestamp();
-            long heartbeatMs = currentHeartbeatMs;
-            if (heartbeatMs > 0) {
-                long ageIntervals = ageMs / heartbeatMs;
-                if (ageIntervals > 0 && ageIntervals % 20 == 0) {
-                    log.warn("Cluster peer heartbeat delayed by {} heartbeat interval(s) ({} ms). Peer={}, Last heartbeat={}",
-                            ageIntervals, ageMs, peerId, messageFromPeer.getTimestampAsDate());
-                } else {
-                    log.debug("Cluster peer heartbeat. Peer={}, Last heartbeat={}, EventType={}, now={}, staleThresholdMs={}",
-                            peerId, messageFromPeer.getTimestampAsDate(), eventType, now, staleThresholdMs);
-                }
-            } else {
-                log.debug("Cluster peer heartbeat. Peer={}, Last heartbeat={}, EventType={}, now={}, staleThresholdMs={}",
-                        peerId, messageFromPeer.getTimestampAsDate(), eventType, now, staleThresholdMs);
-            }
+                    peerId, lastHeartbeatInfo, eventType);
+            return true;
+        }
+        if (log.isDebugEnabled()) {
+            logDebugPeerHeartbeat(peerId, messageFromPeer, now, staleThresholdMs);
         }
         return true;
+    }
+
+    private void logDebugPeerHeartbeat(String peerId, ClusterPeerSecureMessage messageFromPeer, long now, long staleThresholdMs) {
+        String eventType = messageFromPeer.getEventType();
+        String lastHeartbeatInfo = messageFromPeer.getTimestampAsString();
+        long ageMs = messageFromPeer.getAgeMs(now);
+        long heartbeatMs = currentHeartbeatMs;
+        if (heartbeatMs > 0) {
+            long ageIntervals = ageMs / heartbeatMs;
+            if (ageIntervals > 0 && ageIntervals % 20 == 0) {
+                log.debug("Cluster peer heartbeat appears to be delayed. Heartbeat.age={} ms, Peer={}, Heartbeat={}",
+                        ageMs, peerId, lastHeartbeatInfo);
+            } else {
+                log.debug("Cluster peer heartbeat. Peer={}, Last heartbeat={}, EventType={}, now={}, staleThresholdMs={}",
+                        peerId, lastHeartbeatInfo, eventType, now, staleThresholdMs);
+            }
+        } else {
+            log.debug("Cluster peer heartbeat. Peer={}, Last heartbeat={}, EventType={}, now={}, staleThresholdMs={}",
+                    peerId, lastHeartbeatInfo, eventType, now, staleThresholdMs);
+        }
     }
 
     private boolean dispatchMessage(String peerId, ClusterPeerSecureMessage message, long now, long staleThresholdMs) {
@@ -431,18 +442,12 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     protected void onPeerJoined(ClusterPeerSecureMessage msg) {
-        String peerClusterPartitionId = msg instanceof ClusterPeerStatusMessage ? ((ClusterPeerStatusMessage) msg).getClusterPartitionId() : null;
+        log.debug("Processing peer joined notification. Peer={}, version={}", msg.getServerId(), msg.getVersion());
         for (ISymmetricEngine engine : registeredEngines.values()) {
             MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
-            String myClusterPartitionId = engine.getClusterService().getClusterPartitionId();
-            if (peerClusterPartitionId != null) {
-                if (peerClusterPartitionId.equals(myClusterPartitionId)) {
-                    log.debug("Cluster peer shares same clusterPartitionId={}. Peer={}", myClusterPartitionId, msg.getServerId());
-                } else {
-                    log.warn("Rejecting cluster peer={} — clusterPartitionId mismatch indicates different cluster or environment. "
-                            + "peerClusterPartitionId={}, myClusterPartitionId={}",
-                            msg.getServerId(), peerClusterPartitionId, myClusterPartitionId);
-                }
+            if (!authenticateAndJoinClusterPartition(engine, msg)) {
+                log.error("Aborting peer joined processing for peer={} because cluster partition authentication failed", msg.getServerId());
+                return;
             }
             if (!engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
                 log.error("Detected another cluster peer {} but cluster.lock.enabled=false. "
@@ -455,6 +460,49 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         peerOfflineTimestampMs.remove(msg.getServerId());
         log.info("Cluster peer joined: serverId={} version={}", msg.getServerId(), msg.getVersion());
+    }
+
+    /**
+     * Verifies that a peer claiming to share this engine's cluster partition ID also shares the same cluster keystore. The keystore check only runs once the
+     * peer's version is confirmed to be no newer than this engine's own version, since a newer peer's message format is not guaranteed to be interpretable. A
+     * partition ID match with a keystore mismatch means two independently-seeded clusters were pointed at the same database with colliding identities; peer
+     * messages would be mutually undecryptable in that case, so the JVM is stopped rather than left silently unable to communicate.
+     *
+     * @return false if this engine detected the mismatch and initiated shutdown; true to continue processing other engines
+     */
+    protected boolean authenticateAndJoinClusterPartition(ISymmetricEngine engine, ClusterPeerSecureMessage msg) {
+        String peerClusterPartitionId = msg.getClusterPartitionId();
+        String myClusterPartitionId = engine.getClusterService().getClusterPartitionId();
+        log.debug("Authenticating cluster peer={} for engine={}. peerClusterPartitionId={}, myClusterPartitionId={}",
+                msg.getServerId(), engine.getEngineName(), peerClusterPartitionId, myClusterPartitionId);
+        if (peerClusterPartitionId == null) {
+            log.debug("Peer={} sent no clusterPartitionId — skipping keystore authentication", msg.getServerId());
+            return true;
+        }
+        if (!peerClusterPartitionId.equals(myClusterPartitionId)) {
+            log.warn("Rejecting cluster peer={} — clusterPartitionId mismatch indicates different cluster or environment. "
+                    + "peerClusterPartitionId={}, myClusterPartitionId={}",
+                    msg.getServerId(), peerClusterPartitionId, myClusterPartitionId);
+            return true;
+        }
+        log.debug("Cluster peer shares same clusterPartitionId={}. Peer={}", myClusterPartitionId, msg.getServerId());
+        if (Version.isOlderThanVersion(Version.version(), msg.getVersion())) {
+            log.debug("Skipping cluster keystore authentication for peer={} — peer version {} is newer than this version {}",
+                    msg.getServerId(), msg.getVersion(), Version.version());
+            return true;
+        }
+        if (!engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+            log.debug("Skipping cluster keystore authentication for peer={} — cluster.lock.enabled=false", msg.getServerId());
+            return true;
+        }
+        if (!msg.isKeystoreFingerprintValid()) {
+            log.error("Cluster keystore is not identical across all cluster peers - see User guide for details. Peer={}", msg.getServerId());
+            stopRegisteredEngines();
+            exitAction.run();
+            return false;
+        }
+        log.debug("Cluster keystore authentication succeeded for peer={}", msg.getServerId());
+        return true;
     }
 
     private void stopRegisteredEngines() {

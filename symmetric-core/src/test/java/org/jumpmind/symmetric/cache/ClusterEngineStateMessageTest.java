@@ -98,8 +98,8 @@ class ClusterEngineStateMessageTest {
     }
 
     @Test
-    void getTimestampAsDate_returnsIsoString() {
-        String ts = msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng").getTimestampAsDate();
+    void getTimestampAsString_returnsIsoString() {
+        String ts = msg(ClusterEngineStateMessage.ENGINE_ONLINE, "eng").getTimestampAsString();
         assertNotNull(ts);
         assertTrue(ts.contains("T"));
     }

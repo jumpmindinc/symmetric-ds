@@ -84,8 +84,8 @@ class ClusterPeerStatusMessageTest {
     }
 
     @Test
-    void getTimestampAsDateReturnsNonEmptyString() {
-        String date = heartbeat().getTimestampAsDate();
+    void getTimestampAsStringReturnsNonEmptyString() {
+        String date = heartbeat().getTimestampAsString();
         assertNotNull(date);
         assertFalse(date.isEmpty());
     }

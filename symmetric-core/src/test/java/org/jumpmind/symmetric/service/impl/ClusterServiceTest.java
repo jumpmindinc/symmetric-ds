@@ -66,6 +66,7 @@ import org.mockito.ArgumentCaptor;
  * Tests for ClusterService.
  */
 class ClusterServiceTest {
+    private static final String EXISTING_CLUSTER_PARTITION_ID = "existing-cluster-partition-id";
     private IParameterService parameterService;
     private ISymmetricDialect dialect;
     private INodeService nodeService;
@@ -225,9 +226,9 @@ class ClusterServiceTest {
     @Test
     void testGenerateClusterPartitionId_lockingEnabled_existingContextValue_reusesIt() {
         when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
-        when(sqlTemplate.queryForString(anyString(), any(Object[].class))).thenReturn("existing-cluster-partition-id");
+        when(sqlTemplate.queryForString(anyString(), any(Object[].class))).thenReturn(EXISTING_CLUSTER_PARTITION_ID);
         clusterService.generateClusterPartitionId();
-        assertEquals("existing-cluster-partition-id", clusterService.getClusterPartitionId());
+        assertEquals(EXISTING_CLUSTER_PARTITION_ID, clusterService.getClusterPartitionId());
         verify(sqlTemplate, never()).update(anyString(), any(Object[].class));
     }
 
@@ -244,7 +245,7 @@ class ClusterServiceTest {
     @Test
     void testGenerateClusterPartitionId_calledTwice_onlyResolvesOnce() {
         when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
-        when(sqlTemplate.queryForString(anyString(), any(Object[].class))).thenReturn("existing-cluster-partition-id");
+        when(sqlTemplate.queryForString(anyString(), any(Object[].class))).thenReturn(EXISTING_CLUSTER_PARTITION_ID);
         clusterService.generateClusterPartitionId();
         clusterService.generateClusterPartitionId();
         verify(sqlTemplate, times(1)).queryForString(anyString(), any(Object[].class));

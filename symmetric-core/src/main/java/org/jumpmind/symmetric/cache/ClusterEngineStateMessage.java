@@ -34,13 +34,13 @@ public class ClusterEngineStateMessage extends ClusterPeerSecureMessage {
     private transient String cachedEngineName;
 
     public ClusterEngineStateMessage(String engineState, String engineName,
-            String serverId, String instanceId, String version) {
-        this(engineState, engineName, serverId, instanceId, version, System.currentTimeMillis());
+            String serverId, String clusterPartitionId, String version) {
+        this(engineState, engineName, serverId, clusterPartitionId, version, System.currentTimeMillis());
     }
 
     private ClusterEngineStateMessage(String engineState, String engineName,
-            String serverId, String instanceId, String version, long timestamp) {
-        super(serverId, version, timestamp, engineState + "|" + engineName);
+            String serverId, String clusterPartitionId, String version, long timestamp) {
+        super(serverId, clusterPartitionId, version, timestamp, engineState + "|" + engineName);
         this.cachedEngineState = engineState;
         this.cachedEngineName = engineName;
         markDecrypted();

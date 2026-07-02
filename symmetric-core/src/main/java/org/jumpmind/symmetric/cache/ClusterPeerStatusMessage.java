@@ -28,34 +28,25 @@ public class ClusterPeerStatusMessage extends ClusterPeerSecureMessage {
     public static final String EVENT_PEER_INITIALIZING = "PEER_INITIALIZING";
     public static final String EVENT_PEER_UPGRADING_DB = "PEER_UPGRADING_DB";
     private transient String cachedEventType;
-    private transient String cachedClusterPartitionId;
 
     public ClusterPeerStatusMessage(String eventType, String serverId, String clusterPartitionId, String version) {
         this(eventType, serverId, clusterPartitionId, version, System.currentTimeMillis());
     }
 
     private ClusterPeerStatusMessage(String eventType, String serverId, String clusterPartitionId, String version, long timestamp) {
-        super(serverId, version, timestamp, eventType + "|" + clusterPartitionId);
+        super(serverId, clusterPartitionId, version, timestamp, eventType);
         this.cachedEventType = eventType;
-        this.cachedClusterPartitionId = clusterPartitionId;
         markDecrypted();
     }
 
     @Override
     protected void parsePayload(String plainPayload) {
-        String[] parts = plainPayload.split("\\|", 2);
-        cachedEventType = parts[0];
-        cachedClusterPartitionId = parts[1];
+        cachedEventType = plainPayload;
     }
 
     @Override
     public String getEventType() {
         ensureDecrypted();
         return cachedEventType;
-    }
-
-    public String getClusterPartitionId() {
-        ensureDecrypted();
-        return cachedClusterPartitionId;
     }
 }
