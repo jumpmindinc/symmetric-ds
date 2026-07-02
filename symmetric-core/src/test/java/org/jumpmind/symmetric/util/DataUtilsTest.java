@@ -48,7 +48,6 @@ class DataUtilsTest {
 
     @Test
     void testColumnNamesMatchValues_passesWhenEqual() {
-        Data data = mock(Data.class);
         DataMetaData dmd = mock(DataMetaData.class);
         String[] columnNames = new String[] { "a", "b" };
         Object[] values = new Object[] { "1", "2" };
@@ -57,7 +56,7 @@ class DataUtilsTest {
     }
 
     @Test
-    void getDataAsString_mapsColumnsToValues() {
+    void testGetDataAsString_mapsColumnsToValues() {
         TriggerHistory hist = mock(TriggerHistory.class);
         when(hist.getParsedColumnNames()).thenReturn(new String[] { "id", "name" });
         DataMetaData dmd = mock(DataMetaData.class);
@@ -69,7 +68,7 @@ class DataUtilsTest {
     }
 
     @Test
-    void getNullData_putsNullForEachColumn() {
+    void testGetNullData_putsNullForEachColumn() {
         TriggerHistory hist = mock(TriggerHistory.class);
         when(hist.getParsedColumnNames()).thenReturn(new String[] { "id", "name" });
         DataMetaData dmd = mock(DataMetaData.class);
@@ -82,7 +81,7 @@ class DataUtilsTest {
     }
 
     @Test
-    void getNullData_appliesPrefix() {
+    void testGetNullData_appliesPrefix() {
         TriggerHistory hist = mock(TriggerHistory.class);
         when(hist.getParsedColumnNames()).thenReturn(new String[] { "id", "name" });
         DataMetaData dmd = mock(DataMetaData.class);
@@ -94,7 +93,7 @@ class DataUtilsTest {
     }
 
     @Test
-    void getPkDataAsString_mapsPkColumnsToValues() {
+    void testGetPkDataAsString_mapsPkColumnsToValues() {
         TriggerHistory hist = mock(TriggerHistory.class);
         when(hist.getParsedPkColumnNames()).thenReturn(new String[] { "id" });
         Data data = mock(Data.class);
@@ -107,7 +106,7 @@ class DataUtilsTest {
     }
 
     @Test
-    void getPkDataAsString_emptyWhenPkDataNull() {
+    void testGetPkDataAsString_emptyWhenPkDataNull() {
         TriggerHistory hist = mock(TriggerHistory.class);
         when(hist.getParsedPkColumnNames()).thenReturn(new String[] { "id" });
         Data data = mock(Data.class);
@@ -119,7 +118,7 @@ class DataUtilsTest {
     }
 
     @Test
-    void getDataMap_insertMapsNewDataAndNullOldData() {
+    void testGetDataMap_insertMapsNewDataAndNullOldData() {
         Data data = mock(Data.class);
         when(data.getDataEventType()).thenReturn(DataEventType.INSERT);
         when(data.toParsedRowData()).thenReturn(new String[] { "1", "alice" });
@@ -135,7 +134,7 @@ class DataUtilsTest {
     }
 
     @Test
-    void getDataMap_updateMapsNewAndOldData() {
+    void testGetDataMap_updateMapsNewAndOldData() {
         Data data = mock(Data.class);
         when(data.getDataEventType()).thenReturn(DataEventType.UPDATE);
         when(data.toParsedRowData()).thenReturn(new String[] { "1", "alice" });
@@ -154,7 +153,7 @@ class DataUtilsTest {
     }
 
     @Test
-    void getDataMap_deleteMapsOldData() {
+    void testGetDataMap_deleteMapsOldData() {
         Data data = mock(Data.class);
         when(data.getDataEventType()).thenReturn(DataEventType.DELETE);
         when(data.toParsedOldData()).thenReturn(new String[] { "1", "alice" });
