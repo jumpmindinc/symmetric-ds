@@ -207,10 +207,12 @@ class ClusterServiceTest {
     }
 
     @Test
-    void testGenerateClusterPartitionId_lockingDisabled_doesNotTouchContext() {
+    void testGenerateClusterPartitionId_lockingDisabled_stillGeneratesAndSavesToContext() {
+        when(sqlTemplate.queryForString(anyString(), any(Object[].class))).thenReturn(null);
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(0).thenReturn(1);
         clusterService.generateClusterPartitionId();
-        assertNull(clusterService.getClusterPartitionId());
-        verify(sqlTemplate, never()).queryForString(anyString(), any(Object[].class));
+        assertNotNull(clusterService.getClusterPartitionId());
+        verify(sqlTemplate, times(2)).update(anyString(), any(Object[].class));
     }
 
     @Test

@@ -161,13 +161,15 @@ public class ClusterService extends AbstractService implements IClusterService {
 
     /**
      * Generates (or restores) the cluster partition ID: a shared identity used only to let JCS lateral cache peers recognize each other as belonging to the
-     * same partition (environment/cluster). Unlike the instance ID (per-installation identity, cached in the instance.uuid file), the cluster partition ID can
-     * be pinned via the {@code cluster.partition.id} property, and otherwise is persisted in SYM_CONTEXT so that every node pointed at the same database
-     * converges on the same value automatically, with no configuration required. It is also cached in a local cluster-partition.uuid file, mirroring
-     * instance.uuid, so that restarts do not need to round-trip to the database to retrieve it.
+     * same partition (environment/cluster). This always resolves, regardless of whether {@code cluster.lock.enabled} is turned on, so every node has a stable
+     * partition identity available for JCS peer diagnostics/authentication even when SQL-based cluster locking is not in use. Unlike the instance ID
+     * (per-installation identity, cached in the instance.uuid file), the cluster partition ID can be pinned via the {@code cluster.partition.id} property, and
+     * otherwise is persisted in SYM_CONTEXT so that every node pointed at the same database converges on the same value automatically, with no configuration
+     * required. It is also cached in a local cluster-partition.uuid file, mirroring instance.uuid, so that restarts do not need to round-trip to the database
+     * to retrieve it.
      */
     protected void generateClusterPartitionId() {
-        if (clusterPartitionId == null && parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+        if (clusterPartitionId == null) {
             clusterPartitionId = loadOrCreateClusterPartitionId();
         }
     }
@@ -230,7 +232,7 @@ public class ClusterService extends AbstractService implements IClusterService {
                 clusterPartitionIdFile.getParentFile().mkdirs();
                 IOUtils.write(id, new FileOutputStream(clusterPartitionIdFile), Charset.defaultCharset());
             } catch (Exception ex) {
-                log.debug("Failed to save cluster partition id to file '" + clusterPartitionIdFile + "'", ex);
+                log.warn("Failed to save cluster partition id to file '" + clusterPartitionIdFile + "'", ex);
             }
         }
     }
@@ -239,7 +241,7 @@ public class ClusterService extends AbstractService implements IClusterService {
         try {
             contextService.save(ServerConstants.CLUSTER_PARTITION_ID, id);
         } catch (Exception ex) {
-            log.debug("Failed to sync cluster partition id into SYM_CONTEXT", ex);
+            log.warn("Failed to sync cluster partition id into SYM_CONTEXT", ex);
         }
     }
 
