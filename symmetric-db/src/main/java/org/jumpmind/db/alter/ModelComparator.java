@@ -232,11 +232,12 @@ public class ModelComparator {
         if (!platformInfo.isIndicesSupported()) {
             return;
         }
+        String sourceTableName = sourceTable.getName();
         for (int indexIdx = 0; indexIdx < sourceTable.getIndexCount(); indexIdx++) {
             IIndex sourceIndex = sourceTable.getIndex(indexIdx);
             IIndex targetIndex = findCorrespondingIndex(targetTable, sourceIndex);
             if (targetIndex == null) {
-                log.info("Index {} needs to be removed from table {}", sourceIndex.getName(), sourceTable.getName());
+                log.info("Index {} needs to be removed from table {}", sourceIndex.getName(), sourceTableName);
                 changes.add(new RemoveIndexChange(sourceTable, sourceIndex));
             }
         }
@@ -244,7 +245,13 @@ public class ModelComparator {
             IIndex targetIndex = targetTable.getIndex(indexIdx);
             IIndex sourceIndex = findCorrespondingIndex(sourceTable, targetIndex);
             if (sourceIndex == null) {
-                log.info("Index {} needs to be created for table {}", targetIndex.getName(), sourceTable.getName());
+                String targetIndexName = targetIndex.getName();
+                if (!platformInfo.isPersistedGeneratedColumnsSupported() && targetTable.doesIndexContainPersistedGeneratedColumn(targetIndex)) {
+                    log.debug("Skipping index {} for table {} because it contains a persisted generated column that the target platform doesn't support",
+                            targetIndexName, sourceTableName);
+                    continue;
+                }
+                log.info("Index {} needs to be created for table {}", targetIndexName, sourceTableName);
                 // we have to use the target table here because the index might
                 // reference a new column
                 changes.add(new AddIndexChange(targetTable, targetIndex));

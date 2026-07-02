@@ -20,13 +20,16 @@
  */
 package org.jumpmind.db.io;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.sql.Types;
 
+import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Table;
 import org.junit.jupiter.api.Test;
@@ -69,6 +72,39 @@ public class DatabaseXmlUtilTest {
         String xml = DatabaseXmlUtil.toXml(database);
         // System.out.println("testWriteXml_ForTableWithoutLogging xml=" + xml);
         assertTrue(xml.contains(" logging=\"false\""));
+    }
+
+    @Test
+    void testWriteAndReadXml_PersistedGeneratedColumn() {
+        Column col = new Column("computed_col");
+        col.setMappedTypeCode(Types.INTEGER);
+        col.setGenerated(true);
+        col.setPersisted(true);
+        col.setDefaultValue("a + b");
+        Table table = new Table("test_table", col);
+        Database database = new Database();
+        database.addTable(table);
+        String xml = DatabaseXmlUtil.toXml(database);
+        assertTrue(xml.contains("generated=\"true\""));
+        assertTrue(xml.contains("persisted=\"true\""));
+        Database read = DatabaseXmlUtil.read(new StringReader(xml), false);
+        Column readCol = read.getTable(0).findColumn("computed_col");
+        assertTrue(readCol.isGenerated());
+        assertTrue(readCol.isPersisted());
+    }
+
+    @Test
+    void testWriteXml_NonPersistedGeneratedColumn_NoPersistAttr() {
+        Column col = new Column("virtual_col");
+        col.setMappedTypeCode(Types.INTEGER);
+        col.setGenerated(true);
+        col.setPersisted(false);
+        col.setDefaultValue("a + b");
+        Table table = new Table("test_table", col);
+        Database database = new Database();
+        database.addTable(table);
+        String xml = DatabaseXmlUtil.toXml(database);
+        assertFalse(xml.contains("persisted="));
     }
 
     @ParameterizedTest
