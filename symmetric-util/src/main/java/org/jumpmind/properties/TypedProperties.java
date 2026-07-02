@@ -222,6 +222,9 @@ public class TypedProperties extends Properties {
         }
     }
 
+    /**
+     * Deep copy of parameters and values into new collection of properties
+     */
     public TypedProperties copy() {
         return new TypedProperties(this);
     }

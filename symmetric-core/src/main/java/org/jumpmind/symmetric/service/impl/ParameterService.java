@@ -39,7 +39,7 @@ import org.jumpmind.symmetric.config.IParameterSaveFilter;
 import org.jumpmind.symmetric.model.DatabaseParameter;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IParameterService;
-import org.jumpmind.symmetric.util.TypedPropertiesFactory;
+import org.jumpmind.symmetric.service.impl.IParameterAuditor.AuditedProperties;
 
 /**
  * @see IParameterService
@@ -51,12 +51,14 @@ public class ParameterService extends AbstractParameterService implements IParam
     private ISqlTemplate sqlTemplate;
     private Date lastUpdateTime;
     private List<DatabaseParameter> offlineParameters;
+    private List<IParameterAuditor> auditors;
 
     public ParameterService(IDatabasePlatform platform, ITypedPropertiesFactory factory, String tablePrefix) {
         this.tablePrefix = SqlUtils.sanitizeTablePrefix(tablePrefix);
         this.factory = factory;
         this.sql = new ParameterServiceSqlMap(platform, tablePrefix);
         this.sqlTemplate = platform.getSqlTemplate();
+        this.auditors = List.of(new ClusteredExtractJobParameterAuditor());
     }
 
     @Override
@@ -187,12 +189,19 @@ public class ParameterService extends AbstractParameterService implements IParam
 
     @Override
     protected TypedProperties rereadApplicationParameters() {
-        TypedProperties p = this.factory.reload();
-        p.putAll(systemProperties);
-        p.putAll(rereadDatabaseParameters(p));
-        TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(p, true);
+        TypedProperties currentProperties = this.factory.reload();
+        currentProperties.putAll(rereadDatabaseParameters(currentProperties));
         rereadOfflineNodeParameters();
-        return p;
+        for (IParameterAuditor auditor : auditors) {
+            AuditedProperties result = auditor.audit(currentProperties);
+            if (result.isModified()) {
+                currentProperties = result.parameters();
+                String violationMessage = "Engine " + engineName + " is configured with conflicting parameters. ";
+                violationMessage += result.violationMessage();
+                log.error(violationMessage);
+            }
+        }
+        return currentProperties;
     }
 
     protected synchronized void rereadOfflineNodeParameters() {
