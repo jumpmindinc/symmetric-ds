@@ -83,27 +83,34 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     @Override
-    public synchronized void addPeer(String serverId, Date heartbeatTime) {
+    public synchronized boolean addPeer(String serverId, Date historicalHeartbeat) {
         if (serverId == null || isOwnServerId(serverId)) {
-            return;
+            return false;
         }
-        coordinator.addPeer(serverId);
-        if (isClusterPeerListenerStarted) {
+        boolean isNewPeer = coordinator.addPeer(serverId);
+        if (!isNewPeer) {
+            log.debug(
+                    "Recorded cluster peer, but skipping initial broadcast of current state seed because it is not new. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
+                    serverId, historicalHeartbeat, myClusterPartitionId);
+            return isNewPeer;
+        } else if (isClusterPeerListenerStarted) {
+            log.info(
+                    "Live add of new cluster peer. Broadcasting current state seed to populate peer cache. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
+                    serverId, historicalHeartbeat, myClusterPartitionId);
             broadcastStateAndEngines();
         }
-        ClusterPeerStatusMessage existingMsg = coordinator.getPeerStatusMessage(serverId);
-        if (existingMsg != null && (heartbeatTime == null || existingMsg.getTimestamp() >= heartbeatTime.getTime())) {
-            log.debug("Skipping peer state seed for {} — JCS message is more recent than database heartbeat", serverId);
-            return;
-        }
         long staleThresholdMs = getStaleMs(getAnyEngine());
-        if (heartbeatTime != null && System.currentTimeMillis() - heartbeatTime.getTime() <= staleThresholdMs) {
+        if (!coordinator.detectIfPeerIsStale(serverId, staleThresholdMs)
+                || (historicalHeartbeat != null && System.currentTimeMillis() - historicalHeartbeat.getTime() <= staleThresholdMs)) {
             peerStateMap.put(serverId, Boolean.TRUE);
-            log.debug("Seeded peer {} as online from database (heartbeat: {})", serverId, heartbeatTime);
+            log.debug("Added cluster peer. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
+                    serverId, historicalHeartbeat, myClusterPartitionId);
         } else {
             recordPeerOffline(serverId);
-            log.debug("Seeded peer {} as stale from database (heartbeat: {})", serverId, heartbeatTime);
+            log.debug("Added cluster peer as stale. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
+                    serverId, historicalHeartbeat, myClusterPartitionId);
         }
+        return isNewPeer;
     }
 
     @Override

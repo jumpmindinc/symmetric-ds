@@ -40,9 +40,9 @@ public interface IClusteredCacheManager {
 
     /**
      * Add a remote server hostname to the JCS lateral peer list and seed its initial online/stale state from the provided heartbeat timestamp. Safe to call
-     * before {@link #registerEngine}; peers accumulate and are applied when JCS initializes.
+     * before {@link #registerEngine}; peers accumulate and are applied when JCS initializes. Return true if the peer was not already known to the cluster.
      */
-    void addPeer(String serverId, Date heartbeatTime);
+    boolean addPeer(String serverId, Date heartbeatTime);
 
     Set<String> getActiveServerIds();
 

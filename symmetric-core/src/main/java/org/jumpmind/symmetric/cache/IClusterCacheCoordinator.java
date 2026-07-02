@@ -43,7 +43,8 @@ public interface IClusterCacheCoordinator {
 
     ClusterEngineStateMessage getEngineStateMessage(String serverId, String engineName);
 
-    void addPeer(String serverId);
+    /** Adds a new peer to the cluster. Returns true if the peer was not already known. */
+    boolean addPeer(String serverId);
 
     void sendMessageToPeers(ClusterPeerSecureMessage message);
 
@@ -57,4 +58,9 @@ public interface IClusterCacheCoordinator {
     ClusterPeerSecureMessage getMessage(String region, String key);
 
     Set<String> getPeerIds();
+
+    /**
+     * Checks for last peer message stored in cache and determines if message timestamp is not stale. Returns false if peer is considered stale.
+     */
+    boolean detectIfPeerIsStale(String peerId, long staleThresholdMs);
 }

@@ -86,10 +86,19 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     @Override
-    public synchronized void addPeer(String serverId) {
-        if (knownPeers.add(serverId) && jcsCacheManager != null) {
-            reinitJcs();
-            log.debug("Added new peer to cluster. serverId={}", serverId);
+    public synchronized boolean addPeer(String serverId) {
+        if (knownPeers.add(serverId)) {
+            log.info("Added new peer to cluster. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+            if (jcsCacheManager == null) {
+                log.debug("Skipping JCS re-initialization because it was not initialized yet. Peer.serverId={}, ClusterPartitionId={}", serverId,
+                        clusterPartitionId);
+            } else {
+                reinitJcs();
+            }
+            return true;
+        } else {
+            log.debug("Peer already known to cluster. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+            return false;
         }
     }
 
@@ -170,10 +179,18 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         return knownPeers;
     }
 
+    @Override
+    public boolean detectIfPeerIsStale(String peerId, long staleThresholdMs) {
+        ClusterPeerStatusMessage peerStatusMessage = getPeerStatusMessage(peerId);
+        return peerStatusMessage == null || peerStatusMessage.isStale(System.currentTimeMillis(), staleThresholdMs);
+    }
+
     private synchronized void reinitJcs() {
         String peerList = buildPeerList();
         try {
-            jcsCacheManager.shutDown();
+            if (jcsCacheManager != null) {
+                jcsCacheManager.shutDown();
+            }
             jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
             jcsCacheManager.configure(buildJcsProperties(peerList));
             peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_PEER_REGION));
