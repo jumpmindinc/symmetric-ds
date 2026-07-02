@@ -686,16 +686,16 @@ public class SymmetricEngineHolder {
         this.multiServerMode = multiServerMode;
     }
 
-    public boolean isMultiServerMode() {
-        return multiServerMode;
-    }
-
     public void setAutoCreate(boolean autoCreate) {
         this.autoDiscoverEngines = autoCreate;
     }
 
     public boolean isAutoCreate() {
         return autoDiscoverEngines;
+    }
+
+    public boolean isMultiServerMode() {
+        return multiServerMode;
     }
 
     public void setStaticEnginesMode(boolean staticEnginesMode) {

@@ -94,6 +94,8 @@ public class DatabaseInfo {
     private boolean nonPKIdentityColumnsSupported = true;
     /** Whether generated/computed/virtual columns are supported. */
     private boolean generatedColumnsSupported = false;
+    /** Whether generated columns that physically store their value (e.g. SQL Server PERSISTED) are supported. */
+    private boolean persistedGeneratedColumnsSupported = false;
     /** Whether expressions can be used as default values */
     private boolean expressionsAsDefaultValuesSupported = false;
     /** Whether functional indices are supported */
@@ -508,6 +510,25 @@ public class DatabaseInfo {
      */
     public void setGeneratedColumnsSupported(boolean generatedColumnsSupported) {
         this.generatedColumnsSupported = generatedColumnsSupported;
+    }
+
+    /**
+     * Determines whether the platform supports persisted/retained generated columns whose value is physically stored on disk.
+     *
+     * @return <code>true</code> if persisted generated columns are supported
+     */
+    public boolean isPersistedGeneratedColumnsSupported() {
+        return persistedGeneratedColumnsSupported;
+    }
+
+    /**
+     * Specifies whether the platform supports persisted/retained generated columns.
+     *
+     * @param persistedGeneratedColumnsSupported
+     *            <code>true</code> if persisted generated columns are supported
+     */
+    public void setPersistedGeneratedColumnsSupported(boolean persistedGeneratedColumnsSupported) {
+        this.persistedGeneratedColumnsSupported = persistedGeneratedColumnsSupported;
     }
 
     /**

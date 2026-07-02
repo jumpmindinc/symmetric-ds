@@ -36,6 +36,7 @@ public class SymmetricEngineStarter implements Runnable {
     private SymmetricEngineHolder holder;
     private String propertiesFile;
     private ISymmetricEngine engine;
+    private final Logger log = LoggerFactory.getLogger(getClass());
 
     public SymmetricEngineStarter(String propertiesFile, SymmetricEngineHolder holder) {
         this.propertiesFile = propertiesFile;
