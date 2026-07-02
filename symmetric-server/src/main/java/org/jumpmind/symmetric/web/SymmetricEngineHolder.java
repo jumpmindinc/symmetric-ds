@@ -58,6 +58,7 @@ import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.ext.IDatabaseInstallStatementListener;
@@ -135,7 +136,11 @@ public class SymmetricEngineHolder {
             if (autoCreate) {
                 log.info("Current directory is {}", System.getProperty("user.dir"));
                 TypedProperties envProps = new TypedProperties();
-                TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(envProps, true);
+                TypedProperties symEnvVars = new TypedProperties();
+                symEnvVars.collectFrom(TypedPropertiesFactory.getEnvironmentVariables(), ServerConstants.SYM_ENV_PREFIX, true);
+                if (!symEnvVars.isEmpty()) {
+                    TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(envProps, true);
+                }
                 if (isMultiServerMode()) {
                     String enginesDirname = PropertiesUtil.getEnginesDir();
                     log.info("Starting in multi-server mode with engines directory at {}", enginesDirname);
