@@ -41,8 +41,10 @@ import org.slf4j.MDC;
 
 /**
  * JVM-level singleton that coordinates cluster peer communication and state tracking. Multiple SymmetricDS engines co-hosted on the same JVM share one instance
- * and one heartbeat thread. Transport is delegated to an IClusterCacheCoordinator. When a remote peer is detected as crashed, locks are cleared across all
- * registered engines.
+ * and one heartbeat thread. Transport is delegated to an IClusterCacheCoordinator, resolved the same way as other pluggable services (see
+ * {@link AppUtils#newInstance(Class, Class)}) so a different implementation can be substituted via {@code symmetric-impl.properties} without changing this
+ * class; it defaults to JcsTcpCacheCoordinator when no override is present. When a remote peer is detected as crashed, locks are cleared across all registered
+ * engines.
  */
 public class ClusteredCacheManager implements IClusteredCacheManager {
     public static final long UPGRADE_WAIT_MS = 60_000L;
@@ -50,7 +52,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final ClusteredCacheManager GLOBAL_INSTANCE = new ClusteredCacheManager();
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
-    private final IClusterCacheCoordinator coordinator = new JcsTcpCacheCoordinator();
+    private final IClusterCacheCoordinator coordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerStateMap = new ConcurrentHashMap<>();
     private final Map<String, Long> peerOfflineTimestampMs = new ConcurrentHashMap<>();
@@ -90,10 +92,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         boolean isNewPeer = coordinator.addPeer(serverId);
         if (!isNewPeer) {
-            log.debug(
-                    "Recorded cluster peer, but skipping initial broadcast of current state seed because it is not new. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
+            log.debug("Recorded cluster peer, but it is not new. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                     serverId, historicalHeartbeat, myClusterPartitionId);
-            return isNewPeer;
+            return false;
         }
         long staleThresholdMs = getStaleMs(getAnyEngine());
         if (!coordinator.detectIfPeerIsStale(serverId, staleThresholdMs)

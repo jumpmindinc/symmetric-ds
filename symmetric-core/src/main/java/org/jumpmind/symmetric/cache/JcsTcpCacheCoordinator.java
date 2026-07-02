@@ -20,9 +20,7 @@
  */
 package org.jumpmind.symmetric.cache;
 
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,8 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * IClusterCacheCoordinator implementation that uses Apache JCS lateral TCP cache for peer-to-peer communication. Each known peer requires an explicit server
- * address; adding a new peer triggers a full reinit of the JCS CompositeCacheManager to update the TcpServers list.
+ * IClusterCacheCoordinator implementation that uses Apache JCS lateral TCP cache for peer-to-peer communication. Peers find each other through JCS's built-in
+ * UDP multicast discovery, so the JCS CompositeCacheManager is configured once in {@link #start(String, String, int)} and is never torn down or reconfigured as
+ * peers come and go. Reconfiguring it on every new peer previously caused JCS to silently keep returning its already-shutdown TCP listener for the port (JCS
+ * caches listeners in a static, port-keyed registry that a shutdown never clears), leaving the node unreachable for the rest of its life.
  */
 public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
@@ -63,13 +63,12 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         this.serverId = serverId;
         this.clusterPartitionId = clusterPartitionId;
         this.port = port;
-        String peerList = buildPeerList();
         try {
             jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
-            jcsCacheManager.configure(buildJcsProperties(peerList));
+            jcsCacheManager.configure(buildJcsProperties());
             peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_PEER_REGION));
             engineStateCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_ENGINE_REGION));
-            log.info("Started JCS cluster cache. Port={}, ServerId={}, ClusterPartitionId={}, Peers=[{}]", port, serverId, clusterPartitionId, peerList);
+            log.info("Started JCS cluster cache. Port={}, ServerId={}, ClusterPartitionId={}", port, serverId, clusterPartitionId);
         } catch (Exception e) {
             log.error("Failed to initialize JCS cluster cache on port {}: {}", port, e.getMessage());
             throw new RuntimeException("Failed to initialize JCS cluster cache on port " + port, e);
@@ -89,13 +88,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     @Override
     public synchronized boolean addPeer(String serverId) {
         if (knownPeers.add(serverId)) {
-            log.info("Added new peer to cluster. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
-            if (jcsCacheManager == null) {
-                log.debug("Skipping JCS re-initialization because it was not initialized yet. Peer.serverId={}, ClusterPartitionId={}", serverId,
-                        clusterPartitionId);
-            } else {
-                reinitJcs();
-            }
+            log.info("Added new peer to cluster. serverId={}, ClusterPartitionId={}, knownPeers.size={}", serverId, clusterPartitionId, knownPeers.size());
             return true;
         } else {
             log.debug("Peer already known to cluster. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
@@ -195,23 +188,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         return cache.getCacheControl().getKeySet(true);
     }
 
-    private synchronized void reinitJcs() {
-        String peerList = buildPeerList();
-        try {
-            if (jcsCacheManager != null) {
-                jcsCacheManager.shutDown();
-            }
-            jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
-            jcsCacheManager.configure(buildJcsProperties(peerList));
-            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_PEER_REGION));
-            engineStateCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_ENGINE_REGION));
-            log.info("Reinitialized JCS cluster cache. Port={}, ServerId={}, ClusterPartitionId={}, Peers=[{}]", port, serverId, clusterPartitionId, peerList);
-        } catch (Exception e) {
-            log.error("Failed to reinitialize JCS cluster cache: {}", e.getMessage());
-        }
-    }
-
-    private Properties buildJcsProperties(String peerList) {
+    private Properties buildJcsProperties() {
         Properties props = new Properties();
         props.setProperty("jcs.default", "");
         props.setProperty("jcs.region." + JCS_PEER_REGION, "LATERAL_TCP");
@@ -221,20 +198,9 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes",
                 "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes");
         props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort", String.valueOf(port));
-        props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpServers", peerList);
+        props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes.UdpDiscoveryEnabled", "true");
         props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes.AllowGet", "false");
         props.setProperty("jcs.auxiliary.LATERAL_TCP.attributes.Receive", "true");
         return props;
-    }
-
-    private String buildPeerList() {
-        StringBuilder result = new StringBuilder();
-        for (String peerId : knownPeers) {
-            if (result.length() > 0) {
-                result.append(",");
-            }
-            result.append(peerId).append(":").append(port);
-        }
-        return result.toString();
     }
 }

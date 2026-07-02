@@ -300,8 +300,15 @@ public class ClusterService extends AbstractService implements IClusterService {
 
     protected void checkSymDbOwnership() {
         List<NodeHost> nodeHosts = nodeService.findNodeHosts(nodeService.findIdentityNodeId());
+        long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS);
         for (NodeHost nodeHost : nodeHosts) {
             if (nodeHost.getInstanceId() != null && !Strings.CS.equals(instanceId, nodeHost.getInstanceId())) {
+                if (isOwnerStale(nodeHost, staleThresholdMs)) {
+                    log.warn("Reclaiming ownership of node '{}' from instance id '{}' because its last heartbeat ({}) is older than "
+                            + "cluster.db.ownership.stale.ms={}, indicating that instance has crashed or been replaced.",
+                            nodeService.findIdentityNodeId(), nodeHost.getInstanceId(), nodeHost.getHeartbeatTime(), staleThresholdMs);
+                    continue;
+                }
                 String msg = String.format("*** Node '%s' failed to claim exclusive ownership of the SymmetricDS database. *** "
                         + "This is instance id '%s' but instance id '%s' is already present in sym_node_host.  This is caused when 2 copies of SymmetricDS "
                         + "are pointed at the same database, but not clustered.  If you are configuring a cluster, set cluster.lock.enabled=true and restart.  "
@@ -310,6 +317,15 @@ public class ClusterService extends AbstractService implements IClusterService {
                 throw new SymmetricException(msg);
             }
         }
+    }
+
+    /**
+     * A prior owner is presumed crashed rather than merely slow once its sym_node_host row hasn't been refreshed for longer than the heartbeat job could
+     * plausibly take, since heartbeat_time is only ever written by that job (see job.heartbeat.period.time.ms).
+     */
+    private boolean isOwnerStale(NodeHost nodeHost, long staleThresholdMs) {
+        return nodeHost.getHeartbeatTime() == null
+                || System.currentTimeMillis() - nodeHost.getHeartbeatTime().getTime() > staleThresholdMs;
     }
 
     @Override

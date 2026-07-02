@@ -628,3 +628,45 @@ There are two common ways to downgrade an existing SymmetricDS instance dependin
  `UPDATE sym_node SET schema_version='your_prior_symmetric_version' WHERE node_id='your_cluster_nodes';`
 * Run the SymmetricDS installer *for an older version* - matching the old installation.
 * Start the SymmetricDS engine and monitor logs for errors.
+
+=== Environment Variables
+
+Any SymmetricDS parameter can be set with an environment variable by using the prefix "SYM_" followed by the parameter name in uppercase with periods replaced with underscores. For example, `start.pull.job` would become `SYM_START_PULL_JOB`. Environmental variables override properties found in `conf/symmetric.properties` and an engine's properties file across all engines. See <<Node Properties File>> for more details on the naming convention and precedence.
+
+The following environment variables control whether a given SymmetricDS job is allowed to be started on current server/container. Disabling jobs can be useful for running multiple SymmetricDS servers/containers in a clustered fashion. The default value is `true` for most jobs as shown in the table below.
+
+.Job Startup Environment Variables
+[cols="3,3,1"]
+|===
+|Environment Variable|Property Key|Default
+
+|SYM_START_PULL_JOB|start.pull.job|true
+|SYM_START_PUSH_JOB|start.push.job|true
+|SYM_START_ROUTING_JOB|start.routing.job|true
+|SYM_START_PURGE_OUTGOING_JOB|start.purge.outgoing.job|true
+|SYM_START_PURGE_INCOMING_JOB|start.purge.incoming.job|true
+|SYM_START_PURGE_METRIC_STATS_JOB|start.purge.metric.stats.job|true
+|SYM_START_REFRESH_BACKLOG_REPORT_JOB|start.refresh.backlog.report.job|true
+|SYM_START_HEARTBEAT_JOB|start.heartbeat.job|true
+|SYM_START_SYNCTRIGGERS_JOB|start.synctriggers.job|true
+|SYM_START_SYNC_CONFIG_JOB|start.sync.config.job|true
+|SYM_START_STAT_FLUSH_JOB|start.stat.flush.job|true
+|SYM_START_WATCHDOG_JOB|start.watchdog.job|true
+|SYM_START_STAGE_MANAGEMENT_JOB|start.stage.management.job|true
+|SYM_START_INITIAL_LOAD_EXTRACT_JOB|start.initial.load.extract.job|true
+|SYM_START_REFRESH_CACHE_JOB|start.refresh.cache.job|false
+|SYM_START_OFFLINE_PULL_JOB|start.offline.pull.job|false
+|SYM_START_OFFLINE_PUSH_JOB|start.offline.push.job|false
+|SYM_START_FILE_SYNC_TRACKER_JOB|start.file.sync.tracker.job|false
+|SYM_START_FILE_SYNC_PUSH_JOB|start.file.sync.push.job|false
+|SYM_START_FILE_SYNC_PULL_JOB|start.file.sync.pull.job|false
+|SYM_START_LOG_MINER_JOB|start.log.miner.job|false
+|SYM_START_INITIAL_LOAD_QUEUE_JOB|start.initial.load.queue.job|false
+
+ifdef::pro[]
+|SYM_START_MONITOR_JOB|start.monitor.job|true
+|SYM_START_DATA_REFRESH_JOB|start.data.refresh.job|false
+|SYM_START_COMPARE_JOB|start.compare.job|true
+|SYM_START_REFRESH_ANALYTICS_JOB|start.refresh.analytics.job|true
+endif::pro[]
+|===

@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -44,6 +45,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -52,6 +54,7 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Lock;
+import org.jumpmind.symmetric.model.NodeHost;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
@@ -93,6 +96,12 @@ class ClusterServiceTest {
         when(nodeService.findIdentityNodeId()).thenReturn("test-node");
         when(nodeService.findNodeHosts(anyString())).thenReturn(new ArrayList<>());
         clusterService = new ClusterService(parameterService, dialect, nodeService, extensionService);
+        ClusterService.instanceId = "my-instance-id";
+    }
+
+    @AfterEach
+    void resetInstanceId() {
+        ClusterService.instanceId = null;
     }
 
     @Test
@@ -204,6 +213,49 @@ class ClusterServiceTest {
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
         clusterService.init();
         verify(sqlTemplate).query(anyString(), any(ISqlRowMapper.class));
+    }
+
+    @Test
+    void testCheckSymDbOwnership_noNodeHosts_doesNotThrow() {
+        clusterService.checkSymDbOwnership();
+    }
+
+    @Test
+    void testCheckSymDbOwnership_matchingInstanceId_doesNotThrow() {
+        NodeHost nodeHost = new NodeHost();
+        nodeHost.setInstanceId(ClusterService.instanceId);
+        when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(nodeHost));
+        clusterService.checkSymDbOwnership();
+    }
+
+    @Test
+    void testCheckSymDbOwnership_differentInstanceId_recentHeartbeat_throws() {
+        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
+        NodeHost nodeHost = new NodeHost();
+        nodeHost.setInstanceId("other-instance-id");
+        nodeHost.setHeartbeatTime(new Date());
+        when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(nodeHost));
+        assertThrows(SymmetricException.class, () -> clusterService.checkSymDbOwnership());
+    }
+
+    @Test
+    void testCheckSymDbOwnership_differentInstanceId_staleHeartbeat_doesNotThrow() {
+        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
+        NodeHost nodeHost = new NodeHost();
+        nodeHost.setInstanceId("other-instance-id");
+        nodeHost.setHeartbeatTime(new Date(System.currentTimeMillis() - 3_000_000L));
+        when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(nodeHost));
+        clusterService.checkSymDbOwnership();
+    }
+
+    @Test
+    void testCheckSymDbOwnership_differentInstanceId_nullHeartbeat_treatedAsStale_doesNotThrow() {
+        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
+        NodeHost nodeHost = new NodeHost();
+        nodeHost.setInstanceId("other-instance-id");
+        nodeHost.setHeartbeatTime(null);
+        when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(nodeHost));
+        clusterService.checkSymDbOwnership();
     }
 
     @Test

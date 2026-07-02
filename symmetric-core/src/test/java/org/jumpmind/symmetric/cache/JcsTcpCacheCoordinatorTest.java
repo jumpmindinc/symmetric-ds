@@ -109,30 +109,6 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    void buildPeerList_noPeers_returnsEmptyString() throws Exception {
-        setPort(1101);
-        assertEquals("", invokeBuildPeerList());
-    }
-
-    @Test
-    void buildPeerList_onePeer_returnsHostColonPort() throws Exception {
-        setPort(1101);
-        coordinator.addPeer("host1");
-        assertEquals("host1:1101", invokeBuildPeerList());
-    }
-
-    @Test
-    void buildPeerList_multiplePeers_returnsCommaSeparated() throws Exception {
-        setPort(2200);
-        coordinator.addPeer("host1");
-        coordinator.addPeer("host2");
-        String result = invokeBuildPeerList();
-        assertTrue(result.contains("host1:2200"));
-        assertTrue(result.contains("host2:2200"));
-        assertTrue(result.contains(","));
-    }
-
-    @Test
     void getMessage_knownRegion_notStarted_returnsNull() {
         assertNull(coordinator.getMessage("SYM_CLUSTER_PEERS", "server1"));
     }
@@ -151,22 +127,24 @@ class JcsTcpCacheCoordinatorTest {
     @Test
     void buildJcsProperties_containsRequiredKeys() throws Exception {
         setPort(1101);
-        Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildJcsProperties", String.class);
-        m.setAccessible(true);
-        Properties props = (Properties) m.invoke(coordinator, "host1:1101");
+        Properties props = invokeBuildJcsProperties();
         assertTrue(props.containsKey("jcs.region.SYM_CLUSTER_PEERS"));
         assertTrue(props.containsKey("jcs.auxiliary.LATERAL_TCP"));
         assertTrue(props.containsKey("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort"));
         assertEquals("1101", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort"));
-        assertEquals("host1:1101", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpServers"));
+    }
+
+    @Test
+    void buildJcsProperties_udpDiscoveryIsEnabled() throws Exception {
+        setPort(1101);
+        Properties props = invokeBuildJcsProperties();
+        assertEquals("true", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.UdpDiscoveryEnabled"));
     }
 
     @Test
     void buildJcsProperties_allowGetIsFalse() throws Exception {
         setPort(1101);
-        Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildJcsProperties", String.class);
-        m.setAccessible(true);
-        Properties props = (Properties) m.invoke(coordinator, "");
+        Properties props = invokeBuildJcsProperties();
         assertEquals("false", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.AllowGet"));
     }
 
@@ -236,12 +214,13 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    void reinitJcs_shutdownThrows_doesNotThrow() throws Exception {
+    void addPeer_doesNotShutDownExistingManager() throws Exception {
         CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
-        doThrow(new RuntimeException("shutdown failed")).when(mockManager).shutDown();
         setJcsCacheManager(mockManager);
         coordinator.addPeer("server1");
         assertTrue(coordinator.getPeerIds().contains("server1"));
+        verify(mockManager, never()).shutDown();
+        verify(mockManager, never()).configure(any(Properties.class));
     }
 
     @Test
@@ -277,16 +256,14 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    void reinitJcs_regularPath_shutsDownAndReinitsManager() {
+    void addPeer_afterStart_doesNotReconfigureManager() {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
-            CompositeCacheManager firstManager = mock(CompositeCacheManager.class);
-            CompositeCacheManager secondManager = mock(CompositeCacheManager.class);
-            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance())
-                    .thenReturn(firstManager, secondManager);
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
             coordinator.start(buildMockEngine(1101));
             coordinator.addPeer("newPeer");
-            verify(firstManager).shutDown();
-            verify(secondManager).configure(any(Properties.class));
+            verify(mockManager, never()).shutDown();
+            verify(mockManager).configure(any(Properties.class));
         }
     }
 
@@ -302,10 +279,10 @@ class JcsTcpCacheCoordinatorTest {
         return engine;
     }
 
-    private String invokeBuildPeerList() throws Exception {
-        Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildPeerList");
+    private Properties invokeBuildJcsProperties() throws Exception {
+        Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildJcsProperties");
         m.setAccessible(true);
-        return (String) m.invoke(coordinator);
+        return (Properties) m.invoke(coordinator);
     }
 
     private void setPort(int port) throws Exception {
