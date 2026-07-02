@@ -99,7 +99,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testAuroraPostgresFallenBackToGenericPostgresPlatform() throws Exception {
+    void testAuroraPostgresFallenBackToGenericPostgresPlatform() throws Exception {
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         DatabaseVersion dbVersion = new DatabaseVersion();
         dbVersion.setName(DatabaseNamesConstants.POSTGRESQL_AURORA);
@@ -112,7 +112,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testDedicatedAuroraPostgresPlatform() throws Exception {
+    void testDedicatedAuroraPostgresPlatform() throws Exception {
         AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
         when(platform.isDedicatedPlatform()).thenReturn(true);
         when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL_AURORA);
