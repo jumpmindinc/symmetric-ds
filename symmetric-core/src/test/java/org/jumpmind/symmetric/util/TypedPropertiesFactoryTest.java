@@ -7,10 +7,35 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.jumpmind.properties.TypedProperties;
+import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class TypedPropertiesFactoryTest {
+    @AfterEach
+    void clearSystemProperties() {
+        System.clearProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
+    }
+
+    @Test
+    void testImportJvmEnvVars_setsSystemPropertyWhenEnvVarPresent() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of("SYM_CLUSTER_KEYSTORE_SEED", "seed-value"));
+        assertEquals("seed-value", System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED));
+    }
+
+    @Test
+    void testImportJvmEnvVars_leavesSystemPropertyUnsetWhenEnvVarAbsent() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of());
+        assertNull(System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED));
+    }
+
+    @Test
+    void testImportJvmEnvVars_leavesSystemPropertyUnsetWhenEnvVarBlank() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of("SYM_CLUSTER_KEYSTORE_SEED", " "));
+        assertNull(System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED));
+    }
+
     @Test
     void testMergeAndOverrideWithJvmAndEnvironmentVariablesAddVariable() {
         TypedProperties fileProps = new TypedProperties();

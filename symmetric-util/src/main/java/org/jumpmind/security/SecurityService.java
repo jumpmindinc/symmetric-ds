@@ -438,8 +438,21 @@ public class SecurityService implements ISecurityService {
 
     protected SecretKey createSecretKeyFromSeed(String base64Seed) {
         byte[] keyBytes = Base64.decodeBase64(base64Seed);
-        log.info("Using configured secret key");
+        if (!isValidAesKeyLength(keyBytes)) {
+            log.error("Invalid value for system property {}: expected a Base64-encoded 16, 24, or 32-byte AES key, but decoded to {} bytes",
+                    SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED, keyBytes.length);
+            System.exit(1);
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Using configured secret key. Length={} bytes", keyBytes.length);
+        } else {
+            log.info("Using configured secret key");
+        }
         return new SecretKeySpec(keyBytes, "AES");
+    }
+
+    protected boolean isValidAesKeyLength(byte[] keyBytes) {
+        return keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32;
     }
 
     @Override

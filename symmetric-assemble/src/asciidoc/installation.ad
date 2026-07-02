@@ -371,7 +371,7 @@ Use the following steps to setup a cluster:
 3. If nodes in this cluster point at different databases (e.g. read replicas), set `cluster.partition.id` (or `SYM_CLUSTER_PARTITION_ID`) to the same value on every node — otherwise leave it blank and SymmetricDS will auto-generate and share it via the database
 4. Set the `sync.url` property to the URL of the load balancer
 5. Set the `initial.load.use.extract.job.enabled` property to `false` if using local staging
-6. Ensure all nodes share the same encryption secret key — either copy the `security/keystore` file to each installation, or set `cluster.keystore.seed` to the same Base64-encoded 256-bit AES key on every node (see below)
+6. Ensure all nodes share the same encryption secret key — see <<Sharing the Encryption Secret Key>> below for the two supported approaches
 7. Copy the engine properties and `conf/sym_service.conf` files to each installation
 8. Configure the load balancer for sticky sessions
 9. If the load balancer requires cookies, then client nodes need to set the `server.http.cookies.enabled` property to `true` in `conf/symmetric-server.properties`
@@ -419,11 +419,15 @@ To use shared staging in a cluster, set the `staging.dir` property to the direct
 `cluster.staging.enabled` property so files are locked during use.  With shared staging, the initial load extracts in the background on one node,
 but batches can be served from any of the nodes in the cluster, which can improve performance.
 
-When deploying in containers (Docker, Kubernetes), all nodes in the cluster must share the same encryption secret key so that encrypted values written to the database by one node can be decrypted by another.
-Set the `cluster.keystore.seed` property (or the `SYM_CLUSTER_KEYSTORE_SEED` environment variable) to the same Base64-encoded 256-bit AES key on every container.
-On first startup, SymmetricDS writes this value into the `sym.secret` entry of the node's keystore; on subsequent restarts the keystore is the source of truth and the property is ignored.
-This allows each container to maintain its own SSL certificate while sharing a common encryption key.
-Generate a suitable key with: `openssl rand -base64 32`
+==== Sharing the Encryption Secret Key
+
+All nodes in a cluster must share the same encryption secret key (the `sym.secret` entry in each node's keystore), so that encrypted values written to the database by one node — such as node passwords — can be decrypted by another.  There are two ways to achieve this:
+
+*Option 1: Copy the keystore and its JVM configuration.*  Copy the `security/keystore` file from the first installation to every other node.  If the keystore password was customized during setup (see <<Changing Keystore Password>>), also copy `bin/setenv` (or `bin/setenv.bat`) and `conf/sym_service.conf`, since both independently hardcode the keystore file location and an obfuscated copy of its password as JVM arguments — copying only the keystore file will fail to decrypt if these are out of sync.  This approach works well for traditional VM or bare-metal installations where the filesystem is provisioned once and persists across restarts.
+
+*Option 2: Use an identical seed environment variable.*  Set the `cluster.keystore.seed` property (or the `SYM_CLUSTER_KEYSTORE_SEED` environment variable) to the same Base64-encoded 16, 24, or 32-byte AES key on every node — generate one with `openssl rand -base64 32` for a 256-bit key.  Each node independently derives the same secret key and writes it into its own local keystore on first startup; on subsequent restarts, each node's own keystore is the source of truth and the seed is ignored, so it only needs to be consistent across nodes the first time each one starts (or after a node's keystore is lost or reset).  This avoids copying or persisting any keystore file at all, which makes it the better fit for containers (Docker, Kubernetes) — each container can still keep its own independent SSL certificate while sharing only the encryption key.  An invalid seed (one that does not decode to a valid AES key length) causes SymmetricDS to log an error and exit immediately rather than start with a broken key.
+
+IMPORTANT: Supply `SYM_CLUSTER_KEYSTORE_SEED` only as a run-time environment variable (e.g. `docker run -e`, or a Kubernetes `Secret` mounted as an environment variable). Never bake it into a Dockerfile `ENV`/`ARG` or commit it into a properties file that ships inside an image — either would permanently expose the secret in the image's layer history.
 
 When deploying nodes in a cluster to an application server like Tomcat or JBoss, the application server does NOT need any clustering of sessions configured.
  

@@ -87,4 +87,22 @@ class SecurityServiceTest {
         assertEquals("AES", key.getAlgorithm());
         assertArrayEquals(keyBytes, key.getEncoded());
     }
+
+    @Test
+    void testIsValidAesKeyLength_acceptsValidAesSizes() {
+        TestSecurityService securityService = new TestSecurityService();
+        assertEquals(true, securityService.isValidAesKeyLength(new byte[16]));
+        assertEquals(true, securityService.isValidAesKeyLength(new byte[24]));
+        assertEquals(true, securityService.isValidAesKeyLength(new byte[32]));
+    }
+
+    @Test
+    void testIsValidAesKeyLength_rejectsInvalidSizes() {
+        TestSecurityService securityService = new TestSecurityService();
+        assertEquals(false, securityService.isValidAesKeyLength(new byte[0]));
+        assertEquals(false, securityService.isValidAesKeyLength(new byte[8]));
+        assertEquals(false, securityService.isValidAesKeyLength(new byte[15]));
+        assertEquals(false, securityService.isValidAesKeyLength(new byte[20]));
+        assertEquals(false, securityService.isValidAesKeyLength(new byte[33]));
+    }
 }
