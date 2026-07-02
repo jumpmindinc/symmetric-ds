@@ -111,7 +111,7 @@ As a second layer of defence, assigning a distinct `cluster.jcs.port` per enviro
 
 The peer communication port is configured via the `cluster.jcs.port` property (default 1101, must be the same across all cluster members within an environment).
 Each cluster's shared identity is the cluster partition ID: auto-generated and persisted to `SYM_CONTEXT` on first startup so every node sharing that database converges automatically, or pinned explicitly via `cluster.partition.id` (or the `SYM_CLUSTER_PARTITION_ID` environment variable) when nodes in the same cluster point at different databases.
-All endpoints must be reachable on the JCS port; peer messages are AES-encrypted with a SHA-256 header checksum, but the port should still be protected by network-level firewall rules and not exposed to untrusted networks.
+All endpoints must be reachable on the JCS port; peer messages are AES-encrypted with a SHA-512 header checksum, but the port should still be protected by network-level firewall rules and not exposed to untrusted networks.
 --
 
 === Container Mode

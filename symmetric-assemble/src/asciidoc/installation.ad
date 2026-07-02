@@ -403,7 +403,7 @@ If not configured, SymmetricDS auto-generates one on first startup and persists 
 It is also cached in `conf/cluster-partition.uuid` so restarts do not need to round-trip to the database to retrieve it.
 Set the property explicitly only when nodes in the same cluster point at different databases (e.g. read replicas), since auto-generation only converges nodes that share a database.
 
-WARNING: JCS peer messages are AES-encrypted using the shared `sym.secret` key and include a SHA-256 header checksum.
+JCS peer messages are AES-encrypted using the shared `sym.secret` key and include a SHA-512 header checksum.
 Nodes with a mismatched `cluster.partition.id` are detected and logged as unauthorized.
 Despite this, `cluster.jcs.port` must not be exposed to untrusted networks — deploy cluster nodes on a private, firewalled subnet.
 
