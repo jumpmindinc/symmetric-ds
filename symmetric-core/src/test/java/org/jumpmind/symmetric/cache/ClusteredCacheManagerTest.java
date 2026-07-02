@@ -34,6 +34,7 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,6 +61,23 @@ public class ClusteredCacheManagerTest {
     private static final long THRESHOLD_MS = 9000L;
     private static final String MY_CLUSTER_PARTITION_ID = "instance1";
     private static final String TEST_CLUSTER_PARTITION_ID = "cluster1";
+    private static final String PEER_1 = "peer1";
+    private static final String PEER_1_CLUSTER_PARTITION_ID = "inst-peer1";
+    private static final String PEER_2 = "peer2";
+    private static final String PEER_2_CLUSTER_PARTITION_ID = "inst2";
+    private static final String ENGINE_1 = "engine1";
+    private static final String ENGINE_2 = "engine2";
+    private static final String UNKNOWN_ENGINE = "unknownEngine";
+    private static final String SERVER_1 = "server1";
+    private static final String SERVER_2 = "server2";
+    private static final String SERVER_3 = "server3";
+    private static final String SERVER_99 = "server99";
+    private static final String CRASHED_SERVER = "crashed-server";
+    private static final String LEAVING_SERVER = "leaving-server";
+    private static final String OTHER_CLUSTER_PARTITION_ID = "other-instance";
+    private static final String MANAGER_SERVER_ID = "myServer";
+    private static final String MANAGER_CLUSTER_PARTITION_ID = "myInstance";
+    private static final String TEST_VERSION = "1.0";
     private ClusteredCacheManager manager;
     private IClusterCacheCoordinator mockCoordinator;
     private ISymmetricEngine mockEngine;
@@ -89,15 +107,15 @@ public class ClusteredCacheManagerTest {
         coordinatorField.setAccessible(true);
         coordinatorField.set(manager, mockCoordinator);
         mockClusterService = mock(IClusterService.class);
-        when(mockClusterService.getServerId()).thenReturn("server1");
+        when(mockClusterService.getServerId()).thenReturn(SERVER_1);
         when(mockClusterService.getClusterPartitionId()).thenReturn(MY_CLUSTER_PARTITION_ID);
         mockParameterService = mock(IParameterService.class);
-        when(mockParameterService.getEngineName()).thenReturn("engine1");
+        when(mockParameterService.getEngineName()).thenReturn(ENGINE_1);
         when(mockParameterService.getLong(anyString(), anyLong())).thenReturn(3000L);
         when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_STALE_MS), anyLong())).thenReturn(9000L);
         mockNodeCommService = mock(INodeCommunicationService.class);
         mockEngine = mock(ISymmetricEngine.class);
-        when(mockEngine.getEngineName()).thenReturn("engine1");
+        when(mockEngine.getEngineName()).thenReturn(ENGINE_1);
         when(mockEngine.getClusterService()).thenReturn(mockClusterService);
         when(mockEngine.getParameterService()).thenReturn(mockParameterService);
         when(mockEngine.getNodeCommunicationService()).thenReturn(mockNodeCommService);
@@ -129,7 +147,7 @@ public class ClusteredCacheManagerTest {
     }
 
     private ClusterPeerStatusMessage msg(String eventType, String peerId) {
-        return new ClusterPeerStatusMessage(eventType, peerId, "inst-" + peerId, "1.0");
+        return new ClusterPeerStatusMessage(eventType, peerId, "inst-" + peerId, TEST_VERSION);
     }
 
     private void setRunning(boolean value) throws Exception {
@@ -175,7 +193,7 @@ public class ClusteredCacheManagerTest {
     @Test
     public void registerEngine_secondEngine_doesNotRestartCoordinator() throws Exception {
         ISymmetricEngine engine2 = mock(ISymmetricEngine.class);
-        when(engine2.getEngineName()).thenReturn("engine2");
+        when(engine2.getEngineName()).thenReturn(ENGINE_2);
         when(engine2.getClusterService()).thenReturn(mockClusterService);
         when(engine2.getParameterService()).thenReturn(mockParameterService);
         when(engine2.getSecurityService()).thenReturn(mockSecurityService);
@@ -201,7 +219,7 @@ public class ClusteredCacheManagerTest {
     @Test
     public void unregisterEngine_notLastEngine_doesNotStop() throws Exception {
         ISymmetricEngine engine2 = mock(ISymmetricEngine.class);
-        when(engine2.getEngineName()).thenReturn("engine2");
+        when(engine2.getEngineName()).thenReturn(ENGINE_2);
         when(engine2.getClusterService()).thenReturn(mockClusterService);
         when(engine2.getParameterService()).thenReturn(mockParameterService);
         when(engine2.getSecurityService()).thenReturn(mockSecurityService);
@@ -220,31 +238,31 @@ public class ClusteredCacheManagerTest {
     @Test
     public void addPeer_ownServerId_ignored() {
         manager.registerEngine(mockEngine);
-        manager.addPeer("server1", new Date());
+        manager.addPeer(SERVER_1, new Date());
         verify(mockCoordinator, never()).addPeer(any());
     }
 
     @Test
     public void addPeer_newPeer_delegatedToCoordinator() {
         manager.registerEngine(mockEngine);
-        manager.addPeer("server2", new Date());
-        verify(mockCoordinator).addPeer("server2");
+        manager.addPeer(SERVER_2, new Date());
+        verify(mockCoordinator).addPeer(SERVER_2);
     }
 
     @Test
     public void addPeer_recentHeartbeat_seedsOnline() {
         manager.registerEngine(mockEngine);
         Date recentHeartbeat = new Date(System.currentTimeMillis() - 1000L);
-        manager.addPeer("server2", recentHeartbeat);
-        assertEquals(Boolean.TRUE, peerStateMap.get("server2"));
+        manager.addPeer(SERVER_2, recentHeartbeat);
+        assertEquals(Boolean.TRUE, peerStateMap.get(SERVER_2));
     }
 
     @Test
     public void addPeer_staleHeartbeat_seedsOffline() {
         manager.registerEngine(mockEngine);
         Date staleHeartbeat = new Date(System.currentTimeMillis() - (THRESHOLD_MS + 10_000L));
-        manager.addPeer("server2", staleHeartbeat);
-        assertEquals(Boolean.FALSE, peerStateMap.get("server2"));
+        manager.addPeer(SERVER_2, staleHeartbeat);
+        assertEquals(Boolean.FALSE, peerStateMap.get(SERVER_2));
     }
 
     @Test
@@ -252,11 +270,11 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         long recentTimestamp = System.currentTimeMillis() - 500L;
         ClusterPeerStatusMessage jcsMsg = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server2", "inst2", "1.0");
-        when(mockCoordinator.getPeerStatusMessage("server2")).thenReturn(jcsMsg);
+                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, SERVER_2, PEER_2_CLUSTER_PARTITION_ID, TEST_VERSION);
+        when(mockCoordinator.getPeerStatusMessage(SERVER_2)).thenReturn(jcsMsg);
         Date olderHeartbeat = new Date(recentTimestamp - 5000L);
-        manager.addPeer("server2", olderHeartbeat);
-        assertFalse(peerStateMap.containsKey("server2"));
+        manager.addPeer(SERVER_2, olderHeartbeat);
+        assertFalse(peerStateMap.containsKey(SERVER_2));
     }
 
     @Test
@@ -266,14 +284,14 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void getActiveServerIds_returnsOnlyAliveServers() throws Exception {
-        peerStateMap.put("server1", true);
-        peerStateMap.put("server2", false);
-        peerStateMap.put("server3", true);
+        peerStateMap.put(SERVER_1, true);
+        peerStateMap.put(SERVER_2, false);
+        peerStateMap.put(SERVER_3, true);
         Set<String> active = manager.getActiveServerIds();
         assertEquals(2, active.size());
-        assertTrue(active.contains("server1"));
-        assertTrue(active.contains("server3"));
-        assertFalse(active.contains("server2"));
+        assertTrue(active.contains(SERVER_1));
+        assertTrue(active.contains(SERVER_3));
+        assertFalse(active.contains(SERVER_2));
     }
 
     @Test
@@ -281,7 +299,7 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("isOwnServerId", String.class);
         m.setAccessible(true);
-        assertTrue((boolean) m.invoke(manager, "server1"));
+        assertTrue((boolean) m.invoke(manager, SERVER_1));
     }
 
     @Test
@@ -289,14 +307,14 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("isOwnServerId", String.class);
         m.setAccessible(true);
-        assertFalse((boolean) m.invoke(manager, "server99"));
+        assertFalse((boolean) m.invoke(manager, SERVER_99));
     }
 
     @Test
     public void isOwnServerId_noEngines_returnsFalse() throws Exception {
         Method m = ClusteredCacheManager.class.getDeclaredMethod("isOwnServerId", String.class);
         m.setAccessible(true);
-        assertFalse((boolean) m.invoke(manager, "server1"));
+        assertFalse((boolean) m.invoke(manager, SERVER_1));
     }
 
     @Test
@@ -376,10 +394,10 @@ public class ClusteredCacheManagerTest {
     @Test
     public void checkAllClusterPeers_alivePeer_returnsOne() throws Exception {
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
-        ClusterPeerStatusMessage heartbeat = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        peers.add(PEER_1);
+        ClusterPeerStatusMessage heartbeat = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
-        when(mockCoordinator.getPeerStatusMessage("peer1")).thenReturn(heartbeat);
+        when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(heartbeat);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("checkAllClusterPeers", long.class);
         m.setAccessible(true);
         assertEquals(1, m.invoke(manager, THRESHOLD_MS));
@@ -388,98 +406,148 @@ public class ClusteredCacheManagerTest {
     @Test
     public void checkAllClusterPeers_nullMessage_returnsZero() throws Exception {
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
+        peers.add(PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
-        when(mockCoordinator.getPeerStatusMessage("peer1")).thenReturn(null);
+        when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(null);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("checkAllClusterPeers", long.class);
         m.setAccessible(true);
         assertEquals(0, m.invoke(manager, THRESHOLD_MS));
     }
 
     @Test
+    public void checkAllClusterPeers_multiplePeers_countsOnlyActiveOnes() throws Exception {
+        Set<String> peers = new HashSet<>();
+        peers.add(PEER_1);
+        peers.add(PEER_2);
+        when(mockCoordinator.getPeerIds()).thenReturn(peers);
+        when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        when(mockCoordinator.getPeerStatusMessage(PEER_2)).thenReturn(null);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("checkAllClusterPeers", long.class);
+        m.setAccessible(true);
+        assertEquals(1, m.invoke(manager, THRESHOLD_MS));
+    }
+
+    @Test
+    public void checkAllClusterPeers_withRegisteredEngine_detectsEngineCrash() throws Exception {
+        manager.registerEngine(mockEngine);
+        Set<String> peers = new HashSet<>();
+        peers.add(PEER_1);
+        when(mockCoordinator.getPeerIds()).thenReturn(peers);
+        when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        ClusterEngineStateMessage onlineMsg = new ClusterEngineStateMessage(
+                ClusterEngineStateMessage.ENGINE_ONLINE, ENGINE_1, PEER_1, PEER_1_CLUSTER_PARTITION_ID, TEST_VERSION);
+        when(mockCoordinator.getEngineStateMessage(PEER_1, ENGINE_1)).thenReturn(onlineMsg);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("checkAllClusterPeers", long.class);
+        m.setAccessible(true);
+        m.invoke(manager, THRESHOLD_MS);
+        assertEquals(Boolean.TRUE, engineStateMap.get(IClusterCacheCoordinator.generateEngineClusterPeerKey(PEER_1, ENGINE_1)));
+        when(mockCoordinator.getEngineStateMessage(PEER_1, ENGINE_1)).thenReturn(null);
+        m.invoke(manager, THRESHOLD_MS);
+        verify(mockClusterService).clearLocksForServer(PEER_1);
+        verify(mockNodeCommService).clearLocksForServer(PEER_1);
+    }
+
+    @Test
     public void isPeerAlive_nullMessage_returnsFalse() throws Exception {
-        assertFalse(callIsPeerAlive("peer1", null));
+        assertFalse(callIsPeerAlive(PEER_1, null));
     }
 
     @Test
     public void isPeerAlive_peerLeaving_returnsFalse() throws Exception {
-        assertFalse(callIsPeerAlive("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, "peer1")));
+        assertFalse(callIsPeerAlive(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, PEER_1)));
     }
 
     @Test
     public void isPeerAlive_staleHeartbeat_returnsFalse() throws Exception {
-        ClusterPeerStatusMessage stale = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        ClusterPeerStatusMessage stale = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         long farFuture = System.currentTimeMillis() + THRESHOLD_MS + 1000L;
-        assertFalse((boolean) isPeerAlive.invoke(manager, "peer1", stale, farFuture, THRESHOLD_MS));
+        assertFalse((boolean) isPeerAlive.invoke(manager, PEER_1, stale, farFuture, THRESHOLD_MS));
     }
 
     @Test
     public void isPeerAlive_freshHeartbeat_returnsTrue() throws Exception {
-        assertTrue(callIsPeerAlive("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1")));
+        assertTrue(callIsPeerAlive(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1)));
     }
 
     @Test
     public void isPeerAlive_peerJoining_returnsTrue() throws Exception {
-        assertTrue(callIsPeerAlive("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, "peer1")));
+        assertTrue(callIsPeerAlive(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, PEER_1)));
+    }
+
+    @Test
+    public void isPeerAlive_peerInitializing_returnsTrue() throws Exception {
+        assertTrue(callIsPeerAlive(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING, PEER_1)));
+    }
+
+    @Test
+    public void isPeerAlive_peerUpgradingDb_returnsTrue() throws Exception {
+        assertTrue(callIsPeerAlive(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_UPGRADING_DB, PEER_1)));
+    }
+
+    @Test
+    public void isPeerAlive_invalidChecksum_returnsFalse() throws Exception {
+        ClusterPeerStatusMessage tampered = spy(msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        when(tampered.isHeaderChecksumValid()).thenReturn(false);
+        assertFalse(callIsPeerAlive(PEER_1, tampered));
     }
 
     @Test
     public void detectPeerState_firstHeartbeat_peerMarkedAlive() throws Exception {
-        boolean isActive = callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1"));
+        boolean isActive = callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
         assertTrue(isActive);
-        assertTrue(peerStateMap.get("peer1"));
+        assertTrue(peerStateMap.get(PEER_1));
     }
 
     @Test
     public void detectPeerState_consecutiveHeartbeats_staysAlive() throws Exception {
-        ClusterPeerStatusMessage hb = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
-        callDetectPeerState("peer1", hb);
-        assertTrue((boolean) callDetectPeerState("peer1", hb));
-        assertTrue(peerStateMap.get("peer1"));
+        ClusterPeerStatusMessage hb = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
+        callDetectPeerState(PEER_1, hb);
+        assertTrue((boolean) callDetectPeerState(PEER_1, hb));
+        assertTrue(peerStateMap.get(PEER_1));
     }
 
     @Test
     public void detectPeerState_peerJoining_peerMarkedAlive() throws Exception {
-        assertTrue(callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, "peer1")));
-        assertTrue(peerStateMap.get("peer1"));
+        assertTrue(callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, PEER_1)));
+        assertTrue(peerStateMap.get(PEER_1));
     }
 
     @Test
     public void detectPeerState_nullMessageAfterAlive_peerMarkedCrashed() throws Exception {
-        callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1"));
-        assertFalse(callDetectPeerState("peer1", null));
-        assertFalse(peerStateMap.get("peer1"));
+        callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        assertFalse(callDetectPeerState(PEER_1, null));
+        assertFalse(peerStateMap.get(PEER_1));
     }
 
     @Test
     public void detectPeerState_staleMessageAfterAlive_peerMarkedCrashed() throws Exception {
-        callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1"));
-        ClusterPeerStatusMessage stale = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        ClusterPeerStatusMessage stale = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         long farFuture = System.currentTimeMillis() + THRESHOLD_MS + 1000L;
-        assertFalse((boolean) detectPeerState.invoke(manager, "peer1", stale, farFuture, THRESHOLD_MS));
-        assertFalse(peerStateMap.get("peer1"));
+        assertFalse((boolean) detectPeerState.invoke(manager, PEER_1, stale, farFuture, THRESHOLD_MS));
+        assertFalse(peerStateMap.get(PEER_1));
     }
 
     @Test
     public void detectPeerState_peerLeavingAfterAlive_removedFromStateMap() throws Exception {
-        callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1"));
-        assertFalse(callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, "peer1")));
-        assertNull(peerStateMap.get("peer1"));
+        callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        assertFalse(callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, PEER_1)));
+        assertNull(peerStateMap.get(PEER_1));
     }
 
     @Test
     public void detectPeerState_nullMessageNeverAlive_noStateRecorded() throws Exception {
-        assertFalse(callDetectPeerState("peer1", null));
-        assertNull(peerStateMap.get("peer1"));
+        assertFalse(callDetectPeerState(PEER_1, null));
+        assertNull(peerStateMap.get(PEER_1));
     }
 
     @Test
     public void detectPeerState_crashedPeerRejoins_markedAliveAgain() throws Exception {
-        callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1"));
-        callDetectPeerState("peer1", null);
-        assertFalse(peerStateMap.get("peer1"));
-        assertTrue(callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, "peer1")));
-        assertTrue(peerStateMap.get("peer1"));
+        callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        callDetectPeerState(PEER_1, null);
+        assertFalse(peerStateMap.get(PEER_1));
+        assertTrue(callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, PEER_1)));
+        assertTrue(peerStateMap.get(PEER_1));
     }
 
     @Test
@@ -487,7 +555,7 @@ public class ClusteredCacheManagerTest {
         when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
         manager.registerEngine(mockEngine);
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", "other-instance", "1.0");
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);
@@ -499,7 +567,7 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         suppressExit();
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", MY_CLUSTER_PARTITION_ID, "1.0");
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, MY_CLUSTER_PARTITION_ID, TEST_VERSION);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);
@@ -512,7 +580,7 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         suppressExit();
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server2", "other-instance", "1.0");
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);
@@ -531,9 +599,9 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerCrashed", String.class);
         m.setAccessible(true);
-        m.invoke(manager, "crashed-server");
-        verify(mockClusterService).clearLocksForServer("crashed-server");
-        verify(mockNodeCommService).clearLocksForServer("crashed-server");
+        m.invoke(manager, CRASHED_SERVER);
+        verify(mockClusterService).clearLocksForServer(CRASHED_SERVER);
+        verify(mockNodeCommService).clearLocksForServer(CRASHED_SERVER);
     }
 
     @Test
@@ -541,19 +609,19 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerLeft", String.class);
         m.setAccessible(true);
-        m.invoke(manager, "leaving-server");
-        verify(mockClusterService).clearLocksForServer("leaving-server");
-        verify(mockNodeCommService).clearLocksForServer("leaving-server");
+        m.invoke(manager, LEAVING_SERVER);
+        verify(mockClusterService).clearLocksForServer(LEAVING_SERVER);
+        verify(mockNodeCommService).clearLocksForServer(LEAVING_SERVER);
     }
 
     @Test
     public void detectPeerState_peerLeavingAfterAlive_clearsLocks() throws Exception {
         when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
         manager.registerEngine(mockEngine);
-        callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1"));
-        callDetectPeerState("peer1", msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, "peer1"));
-        verify(mockClusterService).clearLocksForServer("peer1");
-        verify(mockNodeCommService).clearLocksForServer("peer1");
+        callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, PEER_1));
+        verify(mockClusterService).clearLocksForServer(PEER_1);
+        verify(mockNodeCommService).clearLocksForServer(PEER_1);
     }
 
     @Test
@@ -592,10 +660,10 @@ public class ClusteredCacheManagerTest {
         Field f = ClusteredCacheManager.class.getDeclaredField("currentHeartbeatMs");
         f.setAccessible(true);
         f.set(manager, heartbeatMs);
-        ClusterPeerStatusMessage msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        ClusterPeerStatusMessage msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         long now = msg.getTimestamp() + 20 * heartbeatMs;
         long staleThresholdMs = 200 * heartbeatMs;
-        assertTrue((boolean) isPeerAlive.invoke(manager, "peer1", msg, now, staleThresholdMs));
+        assertTrue((boolean) isPeerAlive.invoke(manager, PEER_1, msg, now, staleThresholdMs));
     }
 
     @Test
@@ -604,10 +672,10 @@ public class ClusteredCacheManagerTest {
         Field f = ClusteredCacheManager.class.getDeclaredField("currentHeartbeatMs");
         f.setAccessible(true);
         f.set(manager, heartbeatMs);
-        ClusterPeerStatusMessage msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        ClusterPeerStatusMessage msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         long now = msg.getTimestamp() + 21 * heartbeatMs;
         long staleThresholdMs = 200 * heartbeatMs;
-        assertTrue((boolean) isPeerAlive.invoke(manager, "peer1", msg, now, staleThresholdMs));
+        assertTrue((boolean) isPeerAlive.invoke(manager, PEER_1, msg, now, staleThresholdMs));
     }
 
     @Test
@@ -616,10 +684,10 @@ public class ClusteredCacheManagerTest {
         Field f = ClusteredCacheManager.class.getDeclaredField("currentHeartbeatMs");
         f.setAccessible(true);
         f.set(manager, heartbeatMs);
-        ClusterPeerStatusMessage msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        ClusterPeerStatusMessage msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         long now = msg.getTimestamp() + 40 * heartbeatMs;
         long staleThresholdMs = 200 * heartbeatMs;
-        assertTrue((boolean) isPeerAlive.invoke(manager, "peer1", msg, now, staleThresholdMs));
+        assertTrue((boolean) isPeerAlive.invoke(manager, PEER_1, msg, now, staleThresholdMs));
     }
 
     @Test
@@ -648,30 +716,30 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void isAnyPeerInState_peerWithMatchingState_returnsTrue() {
-        ClusterPeerStatusMessage joiningMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, "peer1");
+        ClusterPeerStatusMessage joiningMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, PEER_1);
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
+        peers.add(PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
-        when(mockCoordinator.getPeerStatusMessage("peer1")).thenReturn(joiningMsg);
+        when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(joiningMsg);
         assertTrue(manager.isAnyPeerInState(ClusterPeerStatusMessage.EVENT_PEER_JOINING));
     }
 
     @Test
     public void isAnyPeerInState_peerWithNullMessage_returnsFalse() {
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
+        peers.add(PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
-        when(mockCoordinator.getPeerStatusMessage("peer1")).thenReturn(null);
+        when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(null);
         assertFalse(manager.isAnyPeerInState(ClusterPeerStatusMessage.EVENT_PEER_JOINING));
     }
 
     @Test
     public void isAnyPeerInState_peerWithDifferentState_returnsFalse() {
-        ClusterPeerStatusMessage heartbeatMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        ClusterPeerStatusMessage heartbeatMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
+        peers.add(PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
-        when(mockCoordinator.getPeerStatusMessage("peer1")).thenReturn(heartbeatMsg);
+        when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(heartbeatMsg);
         assertFalse(manager.isAnyPeerInState(ClusterPeerStatusMessage.EVENT_PEER_JOINING));
     }
 
@@ -682,31 +750,31 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void isAnyPeerOnline_freshHeartbeat_returnsTrue() {
-        ClusterPeerStatusMessage heartbeatMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1");
+        ClusterPeerStatusMessage heartbeatMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
+        peers.add(PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
-        when(mockCoordinator.getPeerStatusMessage("peer1")).thenReturn(heartbeatMsg);
+        when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(heartbeatMsg);
         assertTrue(manager.isAnyPeerOnline());
     }
 
     @Test
     public void isAnyPeerOnline_peerLeaving_returnsFalse() {
-        ClusterPeerStatusMessage leavingMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, "peer1");
+        ClusterPeerStatusMessage leavingMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, PEER_1);
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
+        peers.add(PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
-        when(mockCoordinator.getPeerStatusMessage("peer1")).thenReturn(leavingMsg);
+        when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(leavingMsg);
         assertFalse(manager.isAnyPeerOnline());
     }
 
     @Test
     public void addPeer_listenerStarted_rebroadcastsPeerState() throws Exception {
         setListenerStarted(true);
-        setMyServerId("myServer");
-        setMyClusterPartitionId("myInstance");
+        setMyServerId(MANAGER_SERVER_ID);
+        setMyClusterPartitionId(MANAGER_CLUSTER_PARTITION_ID);
         manager.registerEngine(mockEngine);
-        manager.addPeer("server2", null);
+        manager.addPeer(SERVER_2, null);
         verify(mockCoordinator, atLeastOnce()).sendMessageToPeers(any(ClusterPeerStatusMessage.class));
     }
 
@@ -714,23 +782,23 @@ public class ClusteredCacheManagerTest {
     @SuppressWarnings("unchecked")
     public void addPeer_listenerStarted_withEngineState_rebroadcastsEngineStates() throws Exception {
         setListenerStarted(true);
-        setMyServerId("myServer");
-        setMyClusterPartitionId("myInstance");
+        setMyServerId(MANAGER_SERVER_ID);
+        setMyClusterPartitionId(MANAGER_CLUSTER_PARTITION_ID);
         Field f = ClusteredCacheManager.class.getDeclaredField("lastEngineStates");
         f.setAccessible(true);
-        ((Map<String, String>) f.get(manager)).put("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
+        ((Map<String, String>) f.get(manager)).put(ENGINE_1, ClusterEngineStateMessage.ENGINE_ONLINE);
         clearInvocations(mockCoordinator);
         manager.registerEngine(mockEngine);
-        manager.addPeer("server2", null);
+        manager.addPeer(SERVER_2, null);
         verify(mockCoordinator, atLeastOnce()).sendEngineStateMessage(any(ClusterEngineStateMessage.class));
     }
 
     @Test
     public void addPeer_listenerNotStarted_doesNotRebroadcast() throws Exception {
-        setMyServerId("myServer");
-        setMyClusterPartitionId("myInstance");
+        setMyServerId(MANAGER_SERVER_ID);
+        setMyClusterPartitionId(MANAGER_CLUSTER_PARTITION_ID);
         manager.registerEngine(mockEngine);
-        manager.addPeer("server2", null);
+        manager.addPeer(SERVER_2, null);
         verify(mockCoordinator, never()).sendMessageToPeers(any());
         verify(mockCoordinator, never()).sendEngineStateMessage(any());
     }
@@ -751,17 +819,17 @@ public class ClusteredCacheManagerTest {
     @Test
     public void broadcastEngineState_listenerStarted_sendsEngineStateMessage() throws Exception {
         setListenerStarted(true);
-        setMyServerId("server1");
+        setMyServerId(SERVER_1);
         setMyClusterPartitionId(MY_CLUSTER_PARTITION_ID);
-        manager.broadcastEngineState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
+        manager.broadcastEngineState(ENGINE_1, ClusterEngineStateMessage.ENGINE_ONLINE);
         verify(mockCoordinator).sendEngineStateMessage(any(ClusterEngineStateMessage.class));
     }
 
     @Test
     public void broadcastEngineState_listenerNotStarted_doesNotSend() throws Exception {
-        setMyServerId("server1");
+        setMyServerId(SERVER_1);
         setMyClusterPartitionId(MY_CLUSTER_PARTITION_ID);
-        manager.broadcastEngineState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
+        manager.broadcastEngineState(ENGINE_1, ClusterEngineStateMessage.ENGINE_ONLINE);
         verify(mockCoordinator, never()).sendEngineStateMessage(any());
     }
 
@@ -769,52 +837,52 @@ public class ClusteredCacheManagerTest {
     @SuppressWarnings("unchecked")
     public void broadcastEngineState_listenerStarted_updatesLastEngineStates() throws Exception {
         setListenerStarted(true);
-        setMyServerId("server1");
+        setMyServerId(SERVER_1);
         setMyClusterPartitionId(MY_CLUSTER_PARTITION_ID);
-        manager.broadcastEngineState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE);
+        manager.broadcastEngineState(ENGINE_1, ClusterEngineStateMessage.ENGINE_ONLINE);
         Field f = ClusteredCacheManager.class.getDeclaredField("lastEngineStates");
         f.setAccessible(true);
         Map<String, String> lastEngineStates = (Map<String, String>) f.get(manager);
-        assertEquals(ClusterEngineStateMessage.ENGINE_ONLINE, lastEngineStates.get("engine1"));
+        assertEquals(ClusterEngineStateMessage.ENGINE_ONLINE, lastEngineStates.get(ENGINE_1));
     }
 
     @Test
     public void isAnyPeerWithEngineInState_noPeers_returnsFalse() {
-        assertFalse(manager.isAnyPeerWithEngineInState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE));
+        assertFalse(manager.isAnyPeerWithEngineInState(ENGINE_1, ClusterEngineStateMessage.ENGINE_ONLINE));
     }
 
     @Test
     public void isAnyPeerWithEngineInState_matchingFreshState_returnsTrue() {
         ClusterEngineStateMessage onlineMsg = new ClusterEngineStateMessage(
-                ClusterEngineStateMessage.ENGINE_ONLINE, "engine1", "peer1", "inst-peer1", "1.0");
+                ClusterEngineStateMessage.ENGINE_ONLINE, ENGINE_1, PEER_1, PEER_1_CLUSTER_PARTITION_ID, TEST_VERSION);
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
+        peers.add(PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
-        when(mockCoordinator.getEngineStateMessage("peer1", "engine1")).thenReturn(onlineMsg);
-        assertTrue(manager.isAnyPeerWithEngineInState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE));
+        when(mockCoordinator.getEngineStateMessage(PEER_1, ENGINE_1)).thenReturn(onlineMsg);
+        assertTrue(manager.isAnyPeerWithEngineInState(ENGINE_1, ClusterEngineStateMessage.ENGINE_ONLINE));
     }
 
     @Test
     public void isAnyPeerWithEngineInState_priorStateIsStale_returnsFalse() {
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
+        peers.add(PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
         ClusterEngineStateMessage staleMsg = mock(ClusterEngineStateMessage.class);
         when(staleMsg.getEngineState()).thenReturn(ClusterEngineStateMessage.ENGINE_ONLINE);
         when(staleMsg.isStale(anyLong(), anyLong())).thenReturn(true);
-        when(mockCoordinator.getEngineStateMessage("peer1", "engine1")).thenReturn(staleMsg);
-        assertFalse(manager.isAnyPeerWithEngineInState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE));
+        when(mockCoordinator.getEngineStateMessage(PEER_1, ENGINE_1)).thenReturn(staleMsg);
+        assertFalse(manager.isAnyPeerWithEngineInState(ENGINE_1, ClusterEngineStateMessage.ENGINE_ONLINE));
     }
 
     @Test
     public void isAnyPeerWithEngineInState_differentState_returnsFalse() {
         ClusterEngineStateMessage startingMsg = new ClusterEngineStateMessage(
-                ClusterEngineStateMessage.ENGINE_STARTING, "engine1", "peer1", "inst-peer1", "1.0");
+                ClusterEngineStateMessage.ENGINE_STARTING, ENGINE_1, PEER_1, PEER_1_CLUSTER_PARTITION_ID, TEST_VERSION);
         Set<String> peers = new HashSet<>();
-        peers.add("peer1");
+        peers.add(PEER_1);
         when(mockCoordinator.getPeerIds()).thenReturn(peers);
-        when(mockCoordinator.getEngineStateMessage("peer1", "engine1")).thenReturn(startingMsg);
-        assertFalse(manager.isAnyPeerWithEngineInState("engine1", ClusterEngineStateMessage.ENGINE_ONLINE));
+        when(mockCoordinator.getEngineStateMessage(PEER_1, ENGINE_1)).thenReturn(startingMsg);
+        assertFalse(manager.isAnyPeerWithEngineInState(ENGINE_1, ClusterEngineStateMessage.ENGINE_ONLINE));
     }
 
     @Test
@@ -830,59 +898,59 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void detectEngineStateAndFireEvents_freshOnlineMsg_setsActiveInMap() throws Exception {
-        callDetectEngineState("peer1", "engine1",
-                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_ONLINE, "engine1", "peer1", "inst-peer1", "1.0"));
-        assertEquals(Boolean.TRUE, engineStateMap.get("peer1|engine1"));
+        callDetectEngineState(PEER_1, ENGINE_1,
+                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_ONLINE, ENGINE_1, PEER_1, PEER_1_CLUSTER_PARTITION_ID, TEST_VERSION));
+        assertEquals(Boolean.TRUE, engineStateMap.get(IClusterCacheCoordinator.generateEngineClusterPeerKey(PEER_1, ENGINE_1)));
     }
 
     @Test
     public void detectEngineStateAndFireEvents_nullMsg_neverActive_noChange() throws Exception {
         manager.registerEngine(mockEngine);
-        callDetectEngineState("peer1", "engine1", null);
+        callDetectEngineState(PEER_1, ENGINE_1, null);
         verify(mockClusterService, never()).clearLocksForServer(anyString());
     }
 
     @Test
     public void detectEngineStateAndFireEvents_staleMsgAfterActive_callsOnPeerEngineCrashed() throws Exception {
         manager.registerEngine(mockEngine);
-        callDetectEngineState("peer1", "engine1",
-                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_ONLINE, "engine1", "peer1", "inst-peer1", "1.0"));
+        callDetectEngineState(PEER_1, ENGINE_1,
+                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_ONLINE, ENGINE_1, PEER_1, PEER_1_CLUSTER_PARTITION_ID, TEST_VERSION));
         ClusterEngineStateMessage staleMsg = mock(ClusterEngineStateMessage.class);
         when(staleMsg.getEngineState()).thenReturn(ClusterEngineStateMessage.ENGINE_ONLINE);
         when(staleMsg.isStale(anyLong(), anyLong())).thenReturn(true);
-        callDetectEngineState("peer1", "engine1", staleMsg);
-        verify(mockClusterService).clearLocksForServer("peer1");
-        verify(mockNodeCommService).clearLocksForServer("peer1");
+        callDetectEngineState(PEER_1, ENGINE_1, staleMsg);
+        verify(mockClusterService).clearLocksForServer(PEER_1);
+        verify(mockNodeCommService).clearLocksForServer(PEER_1);
     }
 
     @Test
     public void detectEngineStateAndFireEvents_offlineStateAfterActive_callsOnPeerEngineCrashed() throws Exception {
         manager.registerEngine(mockEngine);
-        callDetectEngineState("peer1", "engine1",
-                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_ONLINE, "engine1", "peer1", "inst-peer1", "1.0"));
-        callDetectEngineState("peer1", "engine1",
-                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_OFFLINE, "engine1", "peer1", "inst-peer1", "1.0"));
-        verify(mockClusterService).clearLocksForServer("peer1");
-        verify(mockNodeCommService).clearLocksForServer("peer1");
+        callDetectEngineState(PEER_1, ENGINE_1,
+                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_ONLINE, ENGINE_1, PEER_1, PEER_1_CLUSTER_PARTITION_ID, TEST_VERSION));
+        callDetectEngineState(PEER_1, ENGINE_1,
+                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_OFFLINE, ENGINE_1, PEER_1, PEER_1_CLUSTER_PARTITION_ID, TEST_VERSION));
+        verify(mockClusterService).clearLocksForServer(PEER_1);
+        verify(mockNodeCommService).clearLocksForServer(PEER_1);
     }
 
     @Test
     public void detectEngineStateAndFireEvents_nullMsgAfterActive_callsOnPeerEngineCrashed() throws Exception {
         manager.registerEngine(mockEngine);
-        callDetectEngineState("peer1", "engine1",
-                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_ONLINE, "engine1", "peer1", "inst-peer1", "1.0"));
-        callDetectEngineState("peer1", "engine1", null);
-        verify(mockClusterService).clearLocksForServer("peer1");
-        verify(mockNodeCommService).clearLocksForServer("peer1");
+        callDetectEngineState(PEER_1, ENGINE_1,
+                new ClusterEngineStateMessage(ClusterEngineStateMessage.ENGINE_ONLINE, ENGINE_1, PEER_1, PEER_1_CLUSTER_PARTITION_ID, TEST_VERSION));
+        callDetectEngineState(PEER_1, ENGINE_1, null);
+        verify(mockClusterService).clearLocksForServer(PEER_1);
+        verify(mockNodeCommService).clearLocksForServer(PEER_1);
     }
 
     @Test
     public void detectEngineStateAndFireEvents_continuouslyActive_doesNotCallCrashed() throws Exception {
         manager.registerEngine(mockEngine);
         ClusterEngineStateMessage msg = new ClusterEngineStateMessage(
-                ClusterEngineStateMessage.ENGINE_ONLINE, "engine1", "peer1", "inst-peer1", "1.0");
-        callDetectEngineState("peer1", "engine1", msg);
-        callDetectEngineState("peer1", "engine1", msg);
+                ClusterEngineStateMessage.ENGINE_ONLINE, ENGINE_1, PEER_1, PEER_1_CLUSTER_PARTITION_ID, TEST_VERSION);
+        callDetectEngineState(PEER_1, ENGINE_1, msg);
+        callDetectEngineState(PEER_1, ENGINE_1, msg);
         verify(mockClusterService, never()).clearLocksForServer(anyString());
     }
 
@@ -891,16 +959,16 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerEngineCrashed", String.class, String.class);
         m.setAccessible(true);
-        m.invoke(manager, "peer1", "engine1");
-        verify(mockClusterService).clearLocksForServer("peer1");
-        verify(mockNodeCommService).clearLocksForServer("peer1");
+        m.invoke(manager, PEER_1, ENGINE_1);
+        verify(mockClusterService).clearLocksForServer(PEER_1);
+        verify(mockNodeCommService).clearLocksForServer(PEER_1);
     }
 
     @Test
     public void onPeerEngineCrashed_noRegisteredEngine_doesNotThrow() throws Exception {
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerEngineCrashed", String.class, String.class);
         m.setAccessible(true);
-        m.invoke(manager, "peer1", "unknownEngine");
+        m.invoke(manager, PEER_1, UNKNOWN_ENGINE);
         verify(mockClusterService, never()).clearLocksForServer(anyString());
     }
 }
