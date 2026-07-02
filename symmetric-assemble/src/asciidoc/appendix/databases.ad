@@ -21,6 +21,19 @@ by database.
 |Supports Bulk Loading
 |Supports Bulk Replace
 
+|Aurora PostgreSQL
+|Tested on 17.9
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+
 |BigQuery *
 |All
 |
@@ -453,6 +466,13 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 .Catalog and Schema Support by Database
 |===
 |Database |Version |Catalog Support |Catalog Default |Schema Support |Schema Default
+
+|Aurora PostgreSQL
+|
+|
+|
+|✔
+|select current_schema()    
 
 |BigQuery
 |

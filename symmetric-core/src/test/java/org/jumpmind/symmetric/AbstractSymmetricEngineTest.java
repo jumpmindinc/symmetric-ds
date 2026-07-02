@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Field;
 
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
+import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.junit.jupiter.api.BeforeEach;
@@ -94,6 +95,31 @@ class AbstractSymmetricEngineTest {
     @Test
     public void testNullDatabaseName() throws Exception {
         setPlatform(createGenericPlatformMock(null));
+        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
+    }
+
+    @Test
+    public void testAuroraPostgresFallenBackToGenericPostgresPlatform() throws Exception {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        DatabaseVersion dbVersion = new DatabaseVersion();
+        dbVersion.setName(DatabaseNamesConstants.POSTGRESQL_AURORA);
+        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL95);
+        setPlatform(platform);
+        SymmetricException ex = assertThrows(SymmetricException.class,
+                () -> engine.checkForProOnlyDatabase());
+        assertTrue(ex.getMessage().contains("Aurora"));
+    }
+
+    @Test
+    public void testDedicatedAuroraPostgresPlatform() throws Exception {
+        AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
+        when(platform.isDedicatedPlatform()).thenReturn(true);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL_AURORA);
+        DatabaseVersion dbVersion = new DatabaseVersion();
+        dbVersion.setName(DatabaseNamesConstants.POSTGRESQL_AURORA);
+        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
+        setPlatform(platform);
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
 

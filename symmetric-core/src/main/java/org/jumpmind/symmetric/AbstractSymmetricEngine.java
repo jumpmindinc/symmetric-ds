@@ -796,23 +796,28 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     protected void checkForProOnlyDatabase() {
+        DatabaseVersion dbVersion = platform.getDatabaseVersion();
+        String dbVersionName = dbVersion != null ? dbVersion.getName() : null;
+        if (DatabaseNamesConstants.POSTGRESQL_AURORA.equalsIgnoreCase(dbVersionName)
+                && !DatabaseNamesConstants.POSTGRESQL_AURORA.equalsIgnoreCase(platform.getName())) {
+            throw new SymmetricException(
+                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
+                            + "AWS Aurora PostgreSQL requires SymmetricDS Pro. "
+                            + "Contact the SymmetricDS sales team for more information.",
+                    dbVersionName);
+        }
         if (platform instanceof AbstractDatabasePlatform
                 && ((AbstractDatabasePlatform) platform).isDedicatedPlatform()) {
             return;
         }
-        DatabaseVersion dbVersion = platform.getDatabaseVersion();
-        if (dbVersion != null) {
-            String dbVersionName = dbVersion.getName();
-            if (dbVersionName != null) {
-                String nameLower = dbVersionName.toLowerCase();
-                if (nameLower.startsWith(DatabaseNamesConstants.ORACLE)
-                        || nameLower.contains("sql server")) {
-                    throw new SymmetricException(
-                            "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                                    + "Some DB platforms, including Oracle and Microsoft SQL Server, require SymmetricDS Pro. "
-                                    + "Contact the SymmetricDS sales team for more information.",
-                            dbVersionName);
-                }
+        if (dbVersionName != null) {
+            String nameLower = dbVersionName.toLowerCase();
+            if (nameLower.startsWith(DatabaseNamesConstants.ORACLE) || nameLower.contains("sql server")) {
+                throw new SymmetricException(
+                        "The detected database platform '%s' is not supported in SymmetricDS open source. "
+                                + "Some DB platforms, including Oracle and Microsoft SQL Server, require SymmetricDS Pro. "
+                                + "Contact the SymmetricDS sales team for more information.",
+                        dbVersionName);
             }
         }
     }
