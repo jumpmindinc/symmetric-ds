@@ -792,7 +792,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     private String waitForClusterPeerUpgradeDatabaseAndGetVersion() {
         long heartbeatMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS,
-                ClusteredCacheManager.DEFAULT_HEARTBEAT_MS);
+                ClusteredCacheManager.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
         try {
             log.debug("Waiting {} ms for cluster peer messages to arrive", heartbeatMs);
             Thread.sleep(heartbeatMs);

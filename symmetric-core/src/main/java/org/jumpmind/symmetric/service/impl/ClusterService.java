@@ -799,7 +799,7 @@ public class ClusterService extends AbstractService implements IClusterService {
             return !active.contains(lockingServerId);
         }
         long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_STALE_MS,
-                100L * ClusteredCacheManager.DEFAULT_HEARTBEAT_MS);
+                100L * ClusteredCacheManager.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
         return cacheManager.isPeerOfflineLongEnough(lockingServerId, staleThresholdMs);
     }
 
@@ -818,7 +818,7 @@ public class ClusterService extends AbstractService implements IClusterService {
             boolean isNew = ClusteredCacheManager.getInstance().recordPeerOffline(lockingServerId);
             if (isNew) {
                 long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_STALE_MS,
-                        100L * ClusteredCacheManager.DEFAULT_HEARTBEAT_MS);
+                        100L * ClusteredCacheManager.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
                 log.warn("Cluster lock owner '{}' was not detected via JCS peer heartbeat. Starting offline timer — "
                         + "lock will be eligible for breaking in {} ms if peer does not reconnect, lockTime={}",
                         lockingServerId, staleThresholdMs, lockTime);

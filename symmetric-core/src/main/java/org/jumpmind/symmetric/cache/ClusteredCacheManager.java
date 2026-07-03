@@ -48,18 +48,20 @@ import org.slf4j.MDC;
  */
 public class ClusteredCacheManager implements IClusteredCacheManager {
     public static final long UPGRADE_WAIT_MS = 60_000L;
-    public static final long DEFAULT_HEARTBEAT_MS = 3_000L;
+    public static final long CLUSTER_PEER_HEARTBEAT_DEFAULT_MS = 3_000L;
     private static final ClusteredCacheManager GLOBAL_INSTANCE = new ClusteredCacheManager();
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
+    private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
     private final IClusterCacheCoordinator coordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerStateMap = new ConcurrentHashMap<>();
     private final Map<String, Long> peerOfflineTimestampMs = new ConcurrentHashMap<>();
     private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
     private Thread heartbeatThread;
-    private volatile boolean running;
-    private volatile long currentHeartbeatMs = DEFAULT_HEARTBEAT_MS;
+    private volatile boolean isHeartbeatLoopRunning = false;
+    private volatile long currentHeartbeatMs = CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
+    private volatile long currentStaleThresholdMs = CLUSTER_PEER_HEARTBEAT_DEFAULT_MS * 30;
     private volatile long lastHeartbeatSummaryLogMs;
     private volatile boolean isClusterPeerListenerStarted;
     private volatile String lastBroadcastEventType = ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT;
@@ -96,9 +98,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     serverId, historicalHeartbeat, myClusterPartitionId);
             return false;
         }
-        long staleThresholdMs = getStaleMs(getAnyEngine());
-        if (!coordinator.detectIfPeerIsStale(serverId, staleThresholdMs)
-                || (historicalHeartbeat != null && System.currentTimeMillis() - historicalHeartbeat.getTime() <= staleThresholdMs)) {
+        boolean isHistoricalHeartbeatStale = (historicalHeartbeat != null && System.currentTimeMillis() - historicalHeartbeat
+                .getTime() <= this.currentStaleThresholdMs);
+        if (!coordinator.detectIfPeerIsStale(serverId, this.currentStaleThresholdMs) || !isHistoricalHeartbeatStale) {
             peerStateMap.put(serverId, Boolean.TRUE);
             log.debug("Added cluster peer. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                     serverId, historicalHeartbeat, myClusterPartitionId);
@@ -158,23 +160,25 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 System.getProperty(SystemConstants.SYSPROP_CLUSTER_SERVER_ID), AppUtils.getHostName());
         int port = Integer.parseInt(System.getProperty(
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
-        log.debug("Starting cluster peer listener: serverId={}, clusterPartitionId={}, port={}, jcsEnabled={}", myServerId, myClusterPartitionId, port,
-                isJcsEnabled);
         if (isJcsEnabled) {
             ensurePeerListenerStarted(myServerId, myClusterPartitionId, port);
         }
     }
 
     private synchronized void ensurePeerListenerStarted(String serverId, String clusterPartitionId, int port) {
+        String serverInfo = String.format("serverId=%s, clusterPartitionId=%s, port=%d", serverId, clusterPartitionId, port);
         if (isClusterPeerListenerStarted) {
+            log.debug("Skipping redundant JCS cluster peer listener start on {}", serverInfo);
             return;
         }
         try {
+            log.debug("Starting JCS cluster peer listener on {}", serverInfo);
             coordinator.start(serverId, clusterPartitionId, port);
             isClusterPeerListenerStarted = true;
-        } catch (Exception e) {
-            log.error("Failed to start cluster peer listener: {}", e.getMessage());
-            throw new RuntimeException("Failed to start cluster peer listener on port " + port, e);
+            log.info("Started JCS cluster peer listener on {}", serverInfo);
+        } catch (Exception ex) {
+            log.debug("Failed to start JCS cluster peer listener on " + serverInfo, ex);
+            throw new RuntimeException("Failed to start JCS cluster peer listener on " + serverInfo, ex);
         }
     }
 
@@ -189,7 +193,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     public boolean isAnyPeerOnline() {
-        long staleThresholdMs = 3 * DEFAULT_HEARTBEAT_MS;
+        long staleThresholdMs = 3 * CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
         long now = System.currentTimeMillis();
         for (String peerId : coordinator.getPeerIds()) {
             if (isPeerAlive(peerId, coordinator.getPeerStatusMessage(peerId), now, staleThresholdMs)) {
@@ -221,7 +225,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     public boolean isAnyPeerWithEngineInState(String engineName, String engineState) {
-        long staleThresholdMs = 3 * DEFAULT_HEARTBEAT_MS;
+        long staleThresholdMs = 3 * CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
         long now = System.currentTimeMillis();
         for (String peerId : coordinator.getPeerIds()) {
             ClusterEngineStateMessage msg = coordinator.getEngineStateMessage(peerId, engineName);
@@ -234,15 +238,20 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     public synchronized void startClusterHeartbeat() {
-        if (running || !isClusterPeerListenerStarted) {
+        if (this.isHeartbeatLoopRunning || !isClusterPeerListenerStarted) {
+            log.debug("Skipping start of cluster peer heartbeat thread because isHeartbeatLoopRunning={} or isClusterPeerListenerStarted={}",
+                    this.isHeartbeatLoopRunning, isClusterPeerListenerStarted);
             return;
         }
-        running = true;
-        startHeartbeatThread(null);
+        this.isHeartbeatLoopRunning = true;
+        heartbeatThread = new Thread(() -> runClusterHeartbeatLoop(), CLUSTER_HEARTBEAT_THREAD_NAME);
+        heartbeatThread.setDaemon(true);
+        log.debug("Starting cluster peer heartbeat thread = {}", CLUSTER_HEARTBEAT_THREAD_NAME);
+        heartbeatThread.start();
     }
 
     public synchronized void stopClusterCommunication() {
-        running = false;
+        this.isHeartbeatLoopRunning = false;
         if (heartbeatThread != null) {
             heartbeatThread.interrupt();
         }
@@ -276,12 +285,81 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         coordinator.sendMessageToPeers(msg);
     }
 
-    private void startHeartbeatThread(ISymmetricEngine originalEngine) {
-        long sleepBetweenHeartbeatsMs = getHeartbeatMs(originalEngine);
-        heartbeatThread = new Thread(() -> monitorClusterPeers(sleepBetweenHeartbeatsMs), CLUSTER_HEARTBEAT_THREAD_NAME);
-        heartbeatThread.setDaemon(true);
-        log.debug("Initializing cluster peer heartbeat thread = {}", CLUSTER_HEARTBEAT_THREAD_NAME);
-        heartbeatThread.start();
+    private void runClusterHeartbeatLoop() {
+        log.debug("Started cluster peer heartbeat thread={}", CLUSTER_HEARTBEAT_THREAD_NAME);
+        MDC.put(LoggingConstants.CONTEXT_ENGINE, CLUSTERED_CACHE_LOG_CONTEXT);
+        while (this.isHeartbeatLoopRunning) {
+            try {
+                executeClusterHeartbeatAndDiscoveryTick();
+            } catch (InterruptedException ex) {
+                log.info("Cluster peer heartbeat thread interrupted, shutting down. " + ex.getMessage());
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                log.error("Error in cluster peer heartbeat", e);
+            }
+        }
+        log.debug("Ended cluster peer heartbeat thread={}", CLUSTER_HEARTBEAT_THREAD_NAME);
+    }
+
+    private void executeClusterHeartbeatAndDiscoveryTick() throws InterruptedException {
+        long startTime = System.currentTimeMillis();
+        long staleThresholdMs = refreshStaleThreshold();
+        long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
+        discoverPeersFromLocalCache();
+        broadcastStateAndEngines();
+        if (this.isHeartbeatLoopRunning) {
+            sleepUntilNextHeartbeat(startTime, sleepBetweenHeartbeatsMs, staleThresholdMs);
+        } else {
+            log.debug("Cluster peer heartbeat loop is no longer active, skipping sleep.");
+        }
+    }
+
+    private void sleepUntilNextHeartbeat(long startTime, long sleepBetweenHeartbeatsMs, long staleThresholdMs) throws InterruptedException {
+        int activeMembers = countActivePeers(staleThresholdMs);
+        long now = System.currentTimeMillis();
+        long durationMs = now - startTime;
+        long adjustedSleepMs = Math.max(0, sleepBetweenHeartbeatsMs - durationMs);
+        if (staleThresholdMs > 0 && now - lastHeartbeatSummaryLogMs >= staleThresholdMs) {
+            lastHeartbeatSummaryLogMs = now;
+            log.info(
+                    "Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
+                    activeMembers, coordinator.getPeerIds().size(), myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+        } else {
+            log.debug(
+                    "Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
+                    activeMembers, coordinator.getPeerIds().size(), myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+        }
+        Thread.sleep(adjustedSleepMs);
+    }
+
+    private long refreshSleepBetweenHeartbeats() {
+        long sleepBetweenHeartbeatsMs = this.currentHeartbeatMs;
+        ISymmetricEngine engine = getAnyEngine();
+        if (engine != null) {
+            sleepBetweenHeartbeatsMs = engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS,
+                    sleepBetweenHeartbeatsMs);
+            if (this.currentHeartbeatMs != sleepBetweenHeartbeatsMs) {
+                log.info("Cluster heartbeat interval changed from {} ms to {} ms based on parameters for engine={}",
+                        this.currentHeartbeatMs, sleepBetweenHeartbeatsMs, engine.getEngineName());
+                this.currentHeartbeatMs = sleepBetweenHeartbeatsMs;
+            }
+        }
+        return sleepBetweenHeartbeatsMs;
+    }
+
+    private long refreshStaleThreshold() {
+        long staleThresholdMs = this.currentStaleThresholdMs;
+        ISymmetricEngine engine = getAnyEngine();
+        if (engine != null) {
+            staleThresholdMs = engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_STALE_MS, staleThresholdMs);
+            if (this.currentStaleThresholdMs != staleThresholdMs) {
+                log.info("Cluster stale threshold changed from {} ms to {} ms based on parameters for engine={}",
+                        this.currentStaleThresholdMs, staleThresholdMs, engine.getEngineName());
+                this.currentStaleThresholdMs = staleThresholdMs;
+            }
+        }
+        return staleThresholdMs;
     }
 
     /**
@@ -293,66 +371,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         for (String peerId : coordinator.getObservedPeerIds()) {
             addPeer(peerId, null);
         }
-    }
-
-    private void monitorClusterPeers(long sleepHeartbeatMs) {
-        log.debug("Started cluster peer heartbeat thread = {}", CLUSTER_HEARTBEAT_THREAD_NAME);
-        while (running) {
-            try {
-                long startTime = System.currentTimeMillis();
-                int activeMembers = 0;
-                long staleThresholdMs = 0;
-                ISymmetricEngine engine = getAnyEngine();
-                if (engine != null) {
-                    MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
-                    sleepHeartbeatMs = getHeartbeatMs(engine);
-                    currentHeartbeatMs = sleepHeartbeatMs;
-                    staleThresholdMs = getStaleMs(engine);
-                }
-                discoverPeersFromLocalCache();
-                broadcastStateAndEngines();
-                activeMembers = countActivePeers(staleThresholdMs);
-                long now = System.currentTimeMillis();
-                long durationMs = now - startTime;
-                long adjustedSleepMs = Math.max(0, sleepHeartbeatMs - durationMs);
-                if (staleThresholdMs > 0 && now - lastHeartbeatSummaryLogMs >= staleThresholdMs) {
-                    lastHeartbeatSummaryLogMs = now;
-                    log.info("Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
-                            activeMembers, coordinator.getPeerIds().size(), myServerId, staleThresholdMs, durationMs, adjustedSleepMs);
-                } else {
-                    log.debug(
-                            "Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
-                            activeMembers, coordinator.getPeerIds().size(), myServerId, staleThresholdMs, durationMs, adjustedSleepMs);
-                }
-                Thread.sleep(adjustedSleepMs);
-            } catch (InterruptedException ex) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Cluster peer heartbeat thread interrupted, shutting down.", ex);
-                } else {
-                    log.info("Cluster peer heartbeat thread interrupted, shutting down. " + ex.getMessage());
-                }
-                Thread.currentThread().interrupt();
-                break;
-            } catch (Exception e) {
-                log.error("Error in cluster peer heartbeat", e);
-            }
-        }
-    }
-
-    private long getHeartbeatMs(ISymmetricEngine engine) {
-        long defaultMs = DEFAULT_HEARTBEAT_MS;
-        if (engine == null) {
-            return defaultMs;
-        }
-        return engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS, defaultMs);
-    }
-
-    private long getStaleMs(ISymmetricEngine engine) {
-        long defaultMs = 100 * getHeartbeatMs(engine);
-        if (engine == null) {
-            return defaultMs;
-        }
-        return engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_STALE_MS, defaultMs);
     }
 
     private int countActivePeers(long staleThresholdMs) {

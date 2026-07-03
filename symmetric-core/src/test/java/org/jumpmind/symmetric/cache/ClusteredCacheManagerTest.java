@@ -693,7 +693,7 @@ public class ClusteredCacheManagerTest {
     public void getStaleMs_nullEngine_returns100xDefaultHeartbeat() throws Exception {
         Method m = ClusteredCacheManager.class.getDeclaredMethod("getStaleMs", ISymmetricEngine.class);
         m.setAccessible(true);
-        assertEquals(100 * ClusteredCacheManager.DEFAULT_HEARTBEAT_MS, m.invoke(manager, (Object) null));
+        assertEquals(100 * ClusteredCacheManager.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS, m.invoke(manager, (Object) null));
     }
 
     @Test
