@@ -68,6 +68,7 @@ import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.model.NodeHost;
 import org.jumpmind.symmetric.common.Constants;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -792,24 +793,24 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     private String waitForClusterPeerUpgradeDatabaseAndGetVersion() {
         long heartbeatMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS,
-                ClusteredCacheManager.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
+                ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
         try {
-            log.debug("Waiting {} ms for cluster peer messages to arrive", heartbeatMs);
+            log.debug("Waiting {} ms for cluster peer heartbeat messages to arrive", heartbeatMs);
             Thread.sleep(heartbeatMs);
         } catch (InterruptedException e) {
-            log.warn("Interrupted while waiting for cluster peer messages to arrive");
+            log.warn("Interrupted while waiting for cluster peer heartbeat messages to arrive");
             Thread.currentThread().interrupt();
         }
         String databaseVersion = getInstalledDatabaseVersion();
         while (clusteredCacheManager.isAnyPeerWithEngineInState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
             log.info("A cluster peer is upgrading the database. Pausing engine startup for {} ms.",
-                    ClusteredCacheManager.UPGRADE_WAIT_MS);
+                    ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS);
             try {
-                log.info("Waiting for cluster peer to finish database upgrade. Current databaseVersion={}", databaseVersion);
-                Thread.sleep(ClusteredCacheManager.UPGRADE_WAIT_MS);
+                log.info("Waiting for cluster peer to complete database upgrade. Current databaseVersion={}", databaseVersion);
+                Thread.sleep(ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS);
                 databaseVersion = getInstalledDatabaseVersion();
             } catch (InterruptedException e) {
-                log.warn("Interrupted while waiting for peer database upgrade to complete. Current databaseVersion={}", databaseVersion);
+                log.warn("Interrupted while waiting for cluster peer to complete database upgrade. Current databaseVersion={}", databaseVersion);
                 Thread.currentThread().interrupt();
             }
         }

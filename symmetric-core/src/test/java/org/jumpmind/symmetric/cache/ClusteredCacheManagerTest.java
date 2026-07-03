@@ -50,6 +50,7 @@ import java.util.Set;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.IParameterService;
@@ -112,7 +113,12 @@ public class ClusteredCacheManagerTest {
         mockParameterService = mock(IParameterService.class);
         when(mockParameterService.getEngineName()).thenReturn(ENGINE_1);
         when(mockParameterService.getLong(anyString(), anyLong())).thenReturn(3000L);
-        when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_STALE_MS), anyLong())).thenReturn(9000L);
+        when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_STALE_MS), anyLong())).thenReturn(ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS);
+        when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS), anyLong())).thenReturn(
+                ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
+        when(mockParameterService.getString(eq(ServerConstants.CLUSTER_PARTITION_ID), anyString())).thenReturn(TEST_CLUSTER_PARTITION_ID);
+        when(mockParameterService.getString(eq(ServerConstants.CLUSTER_SERVER_ID), anyString())).thenReturn(MANAGER_SERVER_ID);
+        when(mockParameterService.getString(eq(ServerConstants.CLUSTER_PARTITION_ID), anyString())).thenReturn(MANAGER_CLUSTER_PARTITION_ID);
         mockNodeCommService = mock(INodeCommunicationService.class);
         mockEngine = mock(ISymmetricEngine.class);
         when(mockEngine.getEngineName()).thenReturn(ENGINE_1);
@@ -693,12 +699,12 @@ public class ClusteredCacheManagerTest {
     public void getStaleMs_nullEngine_returns100xDefaultHeartbeat() throws Exception {
         Method m = ClusteredCacheManager.class.getDeclaredMethod("getStaleMs", ISymmetricEngine.class);
         m.setAccessible(true);
-        assertEquals(100 * ClusteredCacheManager.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS, m.invoke(manager, (Object) null));
+        assertEquals(100 * ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS, m.invoke(manager, (Object) null));
     }
 
     @Test
     public void getStaleMs_withEngine_returnsConfiguredValue() throws Exception {
-        when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_STALE_MS), anyLong())).thenReturn(120_000L);
+        when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_STALE_MS), anyLong())).thenReturn(ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("getStaleMs", ISymmetricEngine.class);
         m.setAccessible(true);
         assertEquals(120_000L, m.invoke(manager, mockEngine));

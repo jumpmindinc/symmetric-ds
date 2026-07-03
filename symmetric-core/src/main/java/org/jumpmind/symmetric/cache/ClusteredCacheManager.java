@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jumpmind.symmetric.common.ServerConstants;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.security.ISecurityService;
@@ -47,8 +48,6 @@ import org.slf4j.MDC;
  * engines.
  */
 public class ClusteredCacheManager implements IClusteredCacheManager {
-    public static final long UPGRADE_WAIT_MS = 60_000L;
-    public static final long CLUSTER_PEER_HEARTBEAT_DEFAULT_MS = 3_000L;
     private static final ClusteredCacheManager GLOBAL_INSTANCE = new ClusteredCacheManager();
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
@@ -60,8 +59,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
     private Thread heartbeatThread;
     private volatile boolean isHeartbeatLoopRunning = false;
-    private volatile long currentHeartbeatMs = CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
-    private volatile long currentStaleThresholdMs = CLUSTER_PEER_HEARTBEAT_DEFAULT_MS * 30;
+    private volatile long currentHeartbeatMs = ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
+    private volatile long currentStaleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
     private volatile long lastHeartbeatSummaryLogMs;
     private volatile boolean isClusterPeerListenerStarted;
     private volatile String lastBroadcastEventType = ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT;
@@ -100,7 +99,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         boolean isHistoricalHeartbeatStale = (historicalHeartbeat != null && System.currentTimeMillis() - historicalHeartbeat
                 .getTime() <= this.currentStaleThresholdMs);
-        if (!coordinator.detectIfPeerIsStale(serverId, this.currentStaleThresholdMs) || !isHistoricalHeartbeatStale) {
+        if (!isHistoricalHeartbeatStale || !coordinator.detectIfPeerIsStale(serverId, this.currentStaleThresholdMs)) {
             peerStateMap.put(serverId, Boolean.TRUE);
             log.debug("Added cluster peer. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                     serverId, historicalHeartbeat, myClusterPartitionId);
@@ -193,7 +192,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     public boolean isAnyPeerOnline() {
-        long staleThresholdMs = 3 * CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
+        long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         long now = System.currentTimeMillis();
         for (String peerId : coordinator.getPeerIds()) {
             if (isPeerAlive(peerId, coordinator.getPeerStatusMessage(peerId), now, staleThresholdMs)) {
@@ -225,7 +224,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     public boolean isAnyPeerWithEngineInState(String engineName, String engineState) {
-        long staleThresholdMs = 3 * CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
+        long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         long now = System.currentTimeMillis();
         for (String peerId : coordinator.getPeerIds()) {
             ClusterEngineStateMessage msg = coordinator.getEngineStateMessage(peerId, engineName);
