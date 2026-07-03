@@ -97,9 +97,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     serverId, historicalHeartbeat, myClusterPartitionId);
             return false;
         }
-        boolean isHistoricalHeartbeatStale = (historicalHeartbeat != null && System.currentTimeMillis() - historicalHeartbeat
-                .getTime() <= this.currentStaleThresholdMs);
-        if (!isHistoricalHeartbeatStale || !coordinator.detectIfPeerIsStale(serverId, this.currentStaleThresholdMs)) {
+        boolean isHeartbeatStale = historicalHeartbeat != null
+                ? (System.currentTimeMillis() - historicalHeartbeat.getTime() > this.currentStaleThresholdMs)
+                : coordinator.detectIfPeerIsStale(serverId, this.currentStaleThresholdMs);
+        if (!isHeartbeatStale) {
             peerStateMap.put(serverId, Boolean.TRUE);
             log.debug("Added cluster peer. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                     serverId, historicalHeartbeat, myClusterPartitionId);
