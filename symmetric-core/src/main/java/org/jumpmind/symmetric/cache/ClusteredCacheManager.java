@@ -313,7 +313,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private void sleepUntilNextHeartbeat(long startTime, long sleepBetweenHeartbeatsMs, long staleThresholdMs) throws InterruptedException {
-        int activeMembers = countActivePeers(staleThresholdMs);
+        // +1 because these counts only track remote peers; the current server is also an active member of the cluster.
+        int activeMembersIncludingSelf = countActivePeers(staleThresholdMs) + 1;
+        int knownPeersIncludingSelf = coordinator.getPeerIds().size() + 1;
         long now = System.currentTimeMillis();
         long durationMs = now - startTime;
         long adjustedSleepMs = Math.max(0, sleepBetweenHeartbeatsMs - durationMs);
@@ -321,11 +323,11 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             lastHeartbeatSummaryLogMs = now;
             log.info(
                     "Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
-                    activeMembers, coordinator.getPeerIds().size(), myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+                    activeMembersIncludingSelf, knownPeersIncludingSelf, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
         } else {
             log.debug(
                     "Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
-                    activeMembers, coordinator.getPeerIds().size(), myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+                    activeMembersIncludingSelf, knownPeersIncludingSelf, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
         }
         Thread.sleep(adjustedSleepMs);
     }
