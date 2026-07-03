@@ -47,6 +47,7 @@ import java.util.UUID;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager.PeerState;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.UniqueKeyException;
@@ -418,19 +419,16 @@ class ClusterServiceTest {
     @AfterEach
     @SuppressWarnings("unchecked")
     void clearActivePeers() throws Exception {
-        Field peerState = ClusteredCacheManager.class.getDeclaredField("peerStateMap");
-        peerState.setAccessible(true);
-        ((Map<String, Boolean>) peerState.get(ClusteredCacheManager.getInstance())).clear();
-        Field peerOffline = ClusteredCacheManager.class.getDeclaredField("peerOfflineTimestampMs");
-        peerOffline.setAccessible(true);
-        ((Map<String, Long>) peerOffline.get(ClusteredCacheManager.getInstance())).clear();
+        Field peerStatesField = ClusteredCacheManager.class.getDeclaredField("peerStates");
+        peerStatesField.setAccessible(true);
+        ((Map<String, PeerState>) peerStatesField.get(ClusteredCacheManager.getInstance())).clear();
     }
 
     @SuppressWarnings("unchecked")
     private void injectActivePeer(String peerId) throws Exception {
-        Field f = ClusteredCacheManager.class.getDeclaredField("peerStateMap");
+        Field f = ClusteredCacheManager.class.getDeclaredField("peerStates");
         f.setAccessible(true);
-        ((Map<String, Boolean>) f.get(ClusteredCacheManager.getInstance())).put(peerId, Boolean.TRUE);
+        ((Map<String, PeerState>) f.get(ClusteredCacheManager.getInstance())).put(peerId, new PeerState(true, System.currentTimeMillis()));
     }
 
     @Test

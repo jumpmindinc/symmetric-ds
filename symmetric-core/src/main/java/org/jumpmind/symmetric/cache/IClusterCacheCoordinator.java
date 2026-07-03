@@ -65,8 +65,9 @@ public interface IClusterCacheCoordinator {
     boolean detectIfPeerIsStale(String peerId, long staleThresholdMs);
 
     /**
-     * Returns server IDs observed in the local peer-status cache region, including peers who have already pushed lateral cache messages to us (e.g. because
-     * they have us in their own TcpServers list) but that we have not yet added as a known peer ourselves.
+     * Returns the peer status messages observed in the local peer-status cache region, including peers who have already pushed lateral cache messages to us
+     * (e.g. because they have us in their own TcpServers list) but that we have not yet added as a known peer ourselves. Returning the full message (rather
+     * than just the server ID) lets callers seed a peer's initial state from its real timestamp instead of re-reading the cache a second time.
      */
-    Set<String> getObservedPeerIds();
+    Set<ClusterPeerStatusMessage> getObservedPeers();
 }

@@ -303,6 +303,7 @@ final public class ParameterConstants {
     public static final String EXTERNAL_ID_IS_UNIQUE = "external.id.is.unique.enabled";
     public static final String CLUSTER_PEER_HEARTBEAT_MS = "cluster.peer.heartbeat.ms";
     public static final String CLUSTER_PEER_STALE_MS = "cluster.peer.stale.ms";
+    public static final String CLUSTER_PEER_OBSOLETE_MS = "cluster.peer.obsolete.ms";
     public static final String CLUSTER_LOCKING_ENABLED = "cluster.lock.enabled";
     public static final String CLUSTER_DB_OWNERSHIP_STALE_MS = "cluster.db.ownership.stale.ms";
     public static final String CLUSTER_STAGING_ENABLED = "cluster.staging.enabled";

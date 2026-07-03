@@ -28,6 +28,17 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 
 public interface IClusteredCacheManager {
     /**
+     * Tracks whether a cluster peer is currently believed alive and the last time it was confirmed alive. A peer's record is retained (not deleted) when it
+     * crashes or gracefully leaves, so lock-staleness checks can still recognize it later; {@code lastAliveMs} freezes at the last genuine confirmation of that
+     * peer (a fresh heartbeat, or the "leaving" message itself) rather than the time this side happened to notice.
+     */
+    record PeerState(boolean alive, long lastAliveMs) {
+        public boolean isOfflineLongerThan(long now, long staleThresholdMs) {
+            return !alive && now - lastAliveMs > staleThresholdMs;
+        }
+    }
+
+    /**
      * Subscribe a SymmetricDS engine to this manager. JCS is started when the first engine registers. Call {@link #addPeer} for each remote host before
      * registering to ensure JCS starts with a complete peer list.
      */

@@ -25,7 +25,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.jumpmind.symmetric.common.ServerConstants;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.security.ISecurityService;
@@ -54,8 +53,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
     private final IClusterCacheCoordinator coordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
-    private final Map<String, Boolean> peerStateMap = new ConcurrentHashMap<>();
-    private final Map<String, Long> peerOfflineTimestampMs = new ConcurrentHashMap<>();
+    private final Map<String, PeerState> peerStates = new ConcurrentHashMap<>();
     private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
     private Thread heartbeatThread;
     private volatile boolean isHeartbeatLoopRunning = false;
@@ -101,7 +99,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 ? (System.currentTimeMillis() - historicalHeartbeat.getTime() > this.currentStaleThresholdMs)
                 : coordinator.detectIfPeerIsStale(serverId, this.currentStaleThresholdMs);
         if (!isHeartbeatStale) {
-            peerStateMap.put(serverId, Boolean.TRUE);
+            peerStates.put(serverId, new PeerState(true, System.currentTimeMillis()));
             log.debug("Added cluster peer. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                     serverId, historicalHeartbeat, myClusterPartitionId);
         } else {
@@ -117,22 +115,20 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (serverId == null || isOwnServerId(serverId)) {
             return false;
         }
-        boolean isNew = peerOfflineTimestampMs.putIfAbsent(serverId, System.currentTimeMillis()) == null;
-        peerStateMap.putIfAbsent(serverId, Boolean.FALSE);
-        return isNew;
+        return peerStates.putIfAbsent(serverId, new PeerState(false, System.currentTimeMillis())) == null;
     }
 
     @Override
     public boolean isPeerOfflineLongEnough(String serverId, long staleThresholdMs) {
-        Long since = peerOfflineTimestampMs.get(serverId);
-        return since != null && System.currentTimeMillis() - since > staleThresholdMs;
+        PeerState state = peerStates.get(serverId);
+        return state != null && state.isOfflineLongerThan(System.currentTimeMillis(), staleThresholdMs);
     }
 
     @Override
     public Set<String> getActiveServerIds() {
         Set<String> active = new HashSet<>();
-        for (Map.Entry<String, Boolean> entry : peerStateMap.entrySet()) {
-            if (Boolean.TRUE.equals(entry.getValue())) {
+        for (Map.Entry<String, PeerState> entry : peerStates.entrySet()) {
+            if (entry.getValue().alive()) {
                 active.add(entry.getKey());
             }
         }
@@ -308,6 +304,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
         discoverPeersFromLocalCache();
         broadcastStateAndEngines();
+        purgeObsoletePeers(startTime, getObsoleteMs(getAnyEngine()));
         if (this.isHeartbeatLoopRunning) {
             sleepUntilNextHeartbeat(startTime, sleepBetweenHeartbeatsMs, staleThresholdMs);
         } else {
@@ -362,14 +359,31 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return staleThresholdMs;
     }
 
+    private long getObsoleteMs(ISymmetricEngine engine) {
+        long defaultMs = ServerConstants.CLUSTER_PEER_OBSOLETE_DEFAULT_MS;
+        if (engine == null) {
+            return defaultMs;
+        }
+        return engine.getParameterService().getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS, defaultMs);
+    }
+
+    /**
+     * Drops peer records that have been offline for so long they are no longer relevant to anything, including lock-staleness checks. Without this,
+     * {@link #peerStates} would grow without bound, since crashed and gracefully-left peers are both retained (not removed) so their staleness can still be
+     * confirmed later.
+     */
+    private void purgeObsoletePeers(long now, long obsoleteThresholdMs) {
+        peerStates.entrySet().removeIf(entry -> entry.getValue().isOfflineLongerThan(now, obsoleteThresholdMs));
+    }
+
     /**
      * Promotes any server ID already observed in the local peer-status cache region to a known peer. A peer that has us in its own TcpServers list starts
      * pushing lateral cache messages to us as soon as it connects, landing them in our local cache well before any DB-driven scan (engine startup or the
      * Heartbeat job) would otherwise discover it.
      */
     private void discoverPeersFromLocalCache() {
-        for (String peerId : coordinator.getObservedPeerIds()) {
-            addPeer(peerId, null);
+        for (ClusterPeerStatusMessage msg : coordinator.getObservedPeers()) {
+            addPeer(msg.getServerId(), msg.getTimestampAsDate());
         }
     }
 
@@ -471,18 +485,19 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private boolean detectPeerStateAndFireEvents(String peerId, ClusterPeerSecureMessage messageFromPeer, long now, long staleThresholdMs) {
         boolean peerIsActive = isPeerAlive(peerId, messageFromPeer, now, staleThresholdMs);
-        boolean wasAlive = Boolean.TRUE.equals(peerStateMap.get(peerId));
+        PeerState previous = peerStates.get(peerId);
+        boolean wasAlive = previous != null && previous.alive();
         if (peerIsActive) {
-            peerStateMap.put(peerId, true);
+            peerStates.put(peerId, new PeerState(true, now));
             if (!wasAlive) {
                 onPeerJoined(messageFromPeer);
             }
         } else if (wasAlive) {
             if (messageFromPeer == null || messageFromPeer.isStale(now, staleThresholdMs)) {
-                peerStateMap.put(peerId, false);
+                peerStates.put(peerId, new PeerState(false, previous.lastAliveMs()));
                 onPeerCrashed(peerId);
             } else {
-                peerStateMap.remove(peerId);
+                peerStates.put(peerId, new PeerState(false, now));
                 onPeerLeft(peerId);
             }
         }
@@ -506,7 +521,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 return;
             }
         }
-        peerOfflineTimestampMs.remove(msg.getServerId());
         log.info("Cluster peer joined: serverId={} version={}", msg.getServerId(), msg.getVersion());
     }
 
@@ -576,7 +590,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     protected void onPeerLeft(String serverId) {
-        peerOfflineTimestampMs.remove(serverId);
         log.info("Cluster peer {} left the cluster. Clearing its locks.", serverId);
         clearLocksForPeer(serverId);
     }

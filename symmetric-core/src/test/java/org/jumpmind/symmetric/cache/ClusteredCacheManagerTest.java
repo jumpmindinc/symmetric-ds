@@ -49,6 +49,7 @@ import java.util.Set;
 
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager.PeerState;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.service.IClusterService;
@@ -87,7 +88,7 @@ public class ClusteredCacheManagerTest {
     private ISecurityService mockSecurityService;
     private Method isPeerAlive;
     private Method detectPeerState;
-    private Map<String, Boolean> peerStateMap;
+    private Map<String, PeerState> peerStates;
     private Map<String, Boolean> engineStateMap;
     private Method detectEngineStateMethod;
 
@@ -103,7 +104,7 @@ public class ClusteredCacheManagerTest {
         manager = ctor.newInstance();
         mockCoordinator = mock(IClusterCacheCoordinator.class);
         when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>());
-        when(mockCoordinator.getObservedPeerIds()).thenReturn(new HashSet<>());
+        when(mockCoordinator.getObservedPeers()).thenReturn(new HashSet<>());
         Field coordinatorField = ClusteredCacheManager.class.getDeclaredField("coordinator");
         coordinatorField.setAccessible(true);
         coordinatorField.set(manager, mockCoordinator);
@@ -132,9 +133,9 @@ public class ClusteredCacheManagerTest {
         detectPeerState = ClusteredCacheManager.class.getDeclaredMethod(
                 "detectPeerStateAndFireEvents", String.class, ClusterPeerSecureMessage.class, long.class, long.class);
         detectPeerState.setAccessible(true);
-        Field peerStateMapField = ClusteredCacheManager.class.getDeclaredField("peerStateMap");
-        peerStateMapField.setAccessible(true);
-        peerStateMap = (Map<String, Boolean>) peerStateMapField.get(manager);
+        Field peerStatesField = ClusteredCacheManager.class.getDeclaredField("peerStates");
+        peerStatesField.setAccessible(true);
+        peerStates = (Map<String, PeerState>) peerStatesField.get(manager);
         detectEngineStateMethod = ClusteredCacheManager.class.getDeclaredMethod(
                 "detectEngineStateAndFireEvents", String.class, String.class,
                 ClusterEngineStateMessage.class, long.class, long.class);
@@ -157,13 +158,13 @@ public class ClusteredCacheManagerTest {
     }
 
     private void setRunning(boolean value) throws Exception {
-        Field f = ClusteredCacheManager.class.getDeclaredField("running");
+        Field f = ClusteredCacheManager.class.getDeclaredField("isHeartbeatLoopRunning");
         f.setAccessible(true);
         f.set(manager, value);
     }
 
     private boolean getRunning() throws Exception {
-        Field f = ClusteredCacheManager.class.getDeclaredField("running");
+        Field f = ClusteredCacheManager.class.getDeclaredField("isHeartbeatLoopRunning");
         f.setAccessible(true);
         return (boolean) f.get(manager);
     }
@@ -261,17 +262,20 @@ public class ClusteredCacheManagerTest {
         when(mockCoordinator.addPeer(SERVER_2)).thenReturn(true);
         Date recentHeartbeat = new Date(System.currentTimeMillis() - 1000L);
         manager.addPeer(SERVER_2, recentHeartbeat);
-        assertEquals(Boolean.TRUE, peerStateMap.get(SERVER_2));
+        assertTrue(peerStates.get(SERVER_2).alive());
     }
 
     @Test
-    public void addPeer_staleHeartbeat_seedsOffline() {
+    public void addPeer_staleHeartbeat_seedsOffline() throws Exception {
         manager.registerEngine(mockEngine);
         when(mockCoordinator.addPeer(SERVER_2)).thenReturn(true);
         when(mockCoordinator.detectIfPeerIsStale(eq(SERVER_2), anyLong())).thenReturn(true);
+        Field staleThresholdField = ClusteredCacheManager.class.getDeclaredField("currentStaleThresholdMs");
+        staleThresholdField.setAccessible(true);
+        staleThresholdField.set(manager, THRESHOLD_MS);
         Date staleHeartbeat = new Date(System.currentTimeMillis() - (THRESHOLD_MS + 10_000L));
         manager.addPeer(SERVER_2, staleHeartbeat);
-        assertEquals(Boolean.FALSE, peerStateMap.get(SERVER_2));
+        assertFalse(peerStates.get(SERVER_2).alive());
     }
 
     @Test
@@ -279,7 +283,7 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         when(mockCoordinator.addPeer(SERVER_2)).thenReturn(false);
         manager.addPeer(SERVER_2, new Date());
-        assertFalse(peerStateMap.containsKey(SERVER_2));
+        assertFalse(peerStates.containsKey(SERVER_2));
     }
 
     @Test
@@ -292,7 +296,8 @@ public class ClusteredCacheManagerTest {
     @Test
     public void discoverPeersFromLocalCache_newPeerObserved_addsPeer() throws Exception {
         manager.registerEngine(mockEngine);
-        when(mockCoordinator.getObservedPeerIds()).thenReturn(Set.of(SERVER_2));
+        ClusterPeerStatusMessage observedMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, SERVER_2);
+        when(mockCoordinator.getObservedPeers()).thenReturn(Set.of(observedMsg));
         invokeDiscoverPeersFromLocalCache();
         verify(mockCoordinator).addPeer(SERVER_2);
     }
@@ -300,7 +305,9 @@ public class ClusteredCacheManagerTest {
     @Test
     public void discoverPeersFromLocalCache_multipleObservedPeers_addsEachOne() throws Exception {
         manager.registerEngine(mockEngine);
-        when(mockCoordinator.getObservedPeerIds()).thenReturn(Set.of(PEER_1, PEER_2));
+        ClusterPeerStatusMessage peer1Msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
+        ClusterPeerStatusMessage peer2Msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_2);
+        when(mockCoordinator.getObservedPeers()).thenReturn(Set.of(peer1Msg, peer2Msg));
         invokeDiscoverPeersFromLocalCache();
         verify(mockCoordinator).addPeer(PEER_1);
         verify(mockCoordinator).addPeer(PEER_2);
@@ -309,7 +316,8 @@ public class ClusteredCacheManagerTest {
     @Test
     public void discoverPeersFromLocalCache_ownServerIdObserved_ignoredSafely() throws Exception {
         manager.registerEngine(mockEngine);
-        when(mockCoordinator.getObservedPeerIds()).thenReturn(Set.of(SERVER_1));
+        ClusterPeerStatusMessage observedMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, SERVER_1);
+        when(mockCoordinator.getObservedPeers()).thenReturn(Set.of(observedMsg));
         invokeDiscoverPeersFromLocalCache();
         verify(mockCoordinator, never()).addPeer(SERVER_1);
     }
@@ -327,14 +335,44 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void getActiveServerIds_returnsOnlyAliveServers() throws Exception {
-        peerStateMap.put(SERVER_1, true);
-        peerStateMap.put(SERVER_2, false);
-        peerStateMap.put(SERVER_3, true);
+        peerStates.put(SERVER_1, new PeerState(true, System.currentTimeMillis()));
+        peerStates.put(SERVER_2, new PeerState(false, System.currentTimeMillis()));
+        peerStates.put(SERVER_3, new PeerState(true, System.currentTimeMillis()));
         Set<String> active = manager.getActiveServerIds();
         assertEquals(2, active.size());
         assertTrue(active.contains(SERVER_1));
         assertTrue(active.contains(SERVER_3));
         assertFalse(active.contains(SERVER_2));
+    }
+
+    @Test
+    public void purgeObsoletePeers_longOfflinePeer_isRemoved() throws Exception {
+        long now = System.currentTimeMillis();
+        peerStates.put(SERVER_2, new PeerState(false, now - 100_000L));
+        invokePurgeObsoletePeers(now, 50_000L);
+        assertFalse(peerStates.containsKey(SERVER_2));
+    }
+
+    @Test
+    public void purgeObsoletePeers_recentlyOfflinePeer_isRetained() throws Exception {
+        long now = System.currentTimeMillis();
+        peerStates.put(SERVER_2, new PeerState(false, now - 10_000L));
+        invokePurgeObsoletePeers(now, 50_000L);
+        assertTrue(peerStates.containsKey(SERVER_2));
+    }
+
+    @Test
+    public void purgeObsoletePeers_alivePeer_isNeverRemovedRegardlessOfAge() throws Exception {
+        long now = System.currentTimeMillis();
+        peerStates.put(SERVER_2, new PeerState(true, now - 1_000_000L));
+        invokePurgeObsoletePeers(now, 50_000L);
+        assertTrue(peerStates.containsKey(SERVER_2));
+    }
+
+    private void invokePurgeObsoletePeers(long now, long obsoleteThresholdMs) throws Exception {
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("purgeObsoletePeers", long.class, long.class);
+        m.setAccessible(true);
+        m.invoke(manager, now, obsoleteThresholdMs);
     }
 
     @Test
@@ -422,18 +460,19 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
-    public void getHeartbeatMs_nullEngine_returnsDefault() throws Exception {
-        Method m = ClusteredCacheManager.class.getDeclaredMethod("getHeartbeatMs", ISymmetricEngine.class);
+    public void refreshSleepBetweenHeartbeats_noRegisteredEngine_returnsDefault() throws Exception {
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("refreshSleepBetweenHeartbeats");
         m.setAccessible(true);
-        assertEquals(3000L, m.invoke(manager, (Object) null));
+        assertEquals(ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS, m.invoke(manager));
     }
 
     @Test
-    public void getHeartbeatMs_withEngine_returnsFromParameterService() throws Exception {
+    public void refreshSleepBetweenHeartbeats_withRegisteredEngine_returnsFromParameterService() throws Exception {
+        manager.registerEngine(mockEngine);
         when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS), anyLong())).thenReturn(5000L);
-        Method m = ClusteredCacheManager.class.getDeclaredMethod("getHeartbeatMs", ISymmetricEngine.class);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("refreshSleepBetweenHeartbeats");
         m.setAccessible(true);
-        assertEquals(5000L, m.invoke(manager, mockEngine));
+        assertEquals(5000L, m.invoke(manager));
     }
 
     @Test
@@ -551,7 +590,7 @@ public class ClusteredCacheManagerTest {
     public void detectPeerState_firstHeartbeat_peerMarkedAlive() throws Exception {
         boolean isActive = callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
         assertTrue(isActive);
-        assertTrue(peerStateMap.get(PEER_1));
+        assertTrue(peerStates.get(PEER_1).alive());
     }
 
     @Test
@@ -559,51 +598,57 @@ public class ClusteredCacheManagerTest {
         ClusterPeerStatusMessage hb = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         callDetectPeerState(PEER_1, hb);
         assertTrue((boolean) callDetectPeerState(PEER_1, hb));
-        assertTrue(peerStateMap.get(PEER_1));
+        assertTrue(peerStates.get(PEER_1).alive());
     }
 
     @Test
     public void detectPeerState_peerJoining_peerMarkedAlive() throws Exception {
         assertTrue(callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, PEER_1)));
-        assertTrue(peerStateMap.get(PEER_1));
+        assertTrue(peerStates.get(PEER_1).alive());
     }
 
     @Test
     public void detectPeerState_nullMessageAfterAlive_peerMarkedCrashed() throws Exception {
         callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
         assertFalse(callDetectPeerState(PEER_1, null));
-        assertFalse(peerStateMap.get(PEER_1));
+        assertFalse(peerStates.get(PEER_1).alive());
     }
 
     @Test
     public void detectPeerState_staleMessageAfterAlive_peerMarkedCrashed() throws Exception {
-        callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        ClusterPeerStatusMessage initialHeartbeat = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
+        long firstNow = System.currentTimeMillis();
+        detectPeerState.invoke(manager, PEER_1, initialHeartbeat, firstNow, THRESHOLD_MS);
         ClusterPeerStatusMessage stale = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         long farFuture = System.currentTimeMillis() + THRESHOLD_MS + 1000L;
         assertFalse((boolean) detectPeerState.invoke(manager, PEER_1, stale, farFuture, THRESHOLD_MS));
-        assertFalse(peerStateMap.get(PEER_1));
+        assertFalse(peerStates.get(PEER_1).alive());
+        assertEquals(firstNow, peerStates.get(PEER_1).lastAliveMs());
     }
 
     @Test
-    public void detectPeerState_peerLeavingAfterAlive_removedFromStateMap() throws Exception {
+    public void detectPeerState_peerLeavingAfterAlive_markedOfflineButRetained() throws Exception {
         callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
+        long beforeLeave = System.currentTimeMillis();
         assertFalse(callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, PEER_1)));
-        assertNull(peerStateMap.get(PEER_1));
+        assertNotNull(peerStates.get(PEER_1));
+        assertFalse(peerStates.get(PEER_1).alive());
+        assertTrue(peerStates.get(PEER_1).lastAliveMs() >= beforeLeave);
     }
 
     @Test
     public void detectPeerState_nullMessageNeverAlive_noStateRecorded() throws Exception {
         assertFalse(callDetectPeerState(PEER_1, null));
-        assertNull(peerStateMap.get(PEER_1));
+        assertNull(peerStates.get(PEER_1));
     }
 
     @Test
     public void detectPeerState_crashedPeerRejoins_markedAliveAgain() throws Exception {
         callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
         callDetectPeerState(PEER_1, null);
-        assertFalse(peerStateMap.get(PEER_1));
+        assertFalse(peerStates.get(PEER_1).alive());
         assertTrue(callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_JOINING, PEER_1)));
-        assertTrue(peerStateMap.get(PEER_1));
+        assertTrue(peerStates.get(PEER_1).alive());
     }
 
     @Test
@@ -696,18 +741,19 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
-    public void getStaleMs_nullEngine_returns100xDefaultHeartbeat() throws Exception {
-        Method m = ClusteredCacheManager.class.getDeclaredMethod("getStaleMs", ISymmetricEngine.class);
+    public void refreshStaleThreshold_noRegisteredEngine_returnsDefault() throws Exception {
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("refreshStaleThreshold");
         m.setAccessible(true);
-        assertEquals(100 * ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS, m.invoke(manager, (Object) null));
+        assertEquals(ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS, m.invoke(manager));
     }
 
     @Test
-    public void getStaleMs_withEngine_returnsConfiguredValue() throws Exception {
-        when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_STALE_MS), anyLong())).thenReturn(ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS);
-        Method m = ClusteredCacheManager.class.getDeclaredMethod("getStaleMs", ISymmetricEngine.class);
+    public void refreshStaleThreshold_withRegisteredEngine_returnsConfiguredValue() throws Exception {
+        manager.registerEngine(mockEngine);
+        when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_STALE_MS), anyLong())).thenReturn(120_000L);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("refreshStaleThreshold");
         m.setAccessible(true);
-        assertEquals(120_000L, m.invoke(manager, mockEngine));
+        assertEquals(120_000L, m.invoke(manager));
     }
 
     @Test

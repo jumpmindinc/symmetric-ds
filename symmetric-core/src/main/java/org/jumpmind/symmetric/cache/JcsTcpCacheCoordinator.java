@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.cache;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -180,12 +181,19 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     @Override
-    public Set<String> getObservedPeerIds() {
+    public Set<ClusterPeerStatusMessage> getObservedPeers() {
         CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
         if (cache == null) {
             return Collections.emptySet();
         }
-        return cache.getCacheControl().getKeySet(true);
+        Set<ClusterPeerStatusMessage> result = new HashSet<>();
+        for (String key : cache.getCacheControl().getKeySet(true)) {
+            ClusterPeerSecureMessage msg = cache.get(key);
+            if (msg instanceof ClusterPeerStatusMessage) {
+                result.add((ClusterPeerStatusMessage) msg);
+            }
+        }
+        return result;
     }
 
     private Properties buildJcsProperties() {

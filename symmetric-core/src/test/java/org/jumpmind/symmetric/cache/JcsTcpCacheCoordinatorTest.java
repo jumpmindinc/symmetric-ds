@@ -167,19 +167,29 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    void getObservedPeerIds_notStarted_returnsEmptySet() {
-        assertTrue(coordinator.getObservedPeerIds().isEmpty());
+    void getObservedPeers_notStarted_returnsEmptySet() {
+        assertTrue(coordinator.getObservedPeers().isEmpty());
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void getObservedPeerIds_cacheHasKeys_returnsLocalKeySet() throws Exception {
+    void getObservedPeers_cacheHasKeys_returnsMessages() throws Exception {
         CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
         CompositeCache<String, ClusterPeerSecureMessage> mockCacheControl = mock(CompositeCache.class);
         when(mockCache.getCacheControl()).thenReturn(mockCacheControl);
         when(mockCacheControl.getKeySet(true)).thenReturn(Set.of("peer1", "peer2"));
+        ClusterPeerStatusMessage peer1Msg = new ClusterPeerStatusMessage(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1", "inst1", "1.0");
+        ClusterPeerStatusMessage peer2Msg = new ClusterPeerStatusMessage(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer2", "inst1", "1.0");
+        when(mockCache.get("peer1")).thenReturn(peer1Msg);
+        when(mockCache.get("peer2")).thenReturn(peer2Msg);
         setPeerHeartbeatCache(mockCache);
-        assertEquals(Set.of("peer1", "peer2"), coordinator.getObservedPeerIds());
+        Set<ClusterPeerStatusMessage> observed = coordinator.getObservedPeers();
+        assertEquals(2, observed.size());
+        Set<String> observedIds = new java.util.HashSet<>();
+        for (ClusterPeerStatusMessage msg : observed) {
+            observedIds.add(msg.getServerId());
+        }
+        assertEquals(Set.of("peer1", "peer2"), observedIds);
     }
 
     @Test
