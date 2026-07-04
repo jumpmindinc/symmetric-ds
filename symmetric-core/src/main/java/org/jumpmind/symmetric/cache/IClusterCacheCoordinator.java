@@ -29,13 +29,43 @@ import org.jumpmind.symmetric.ISymmetricEngine;
  * ClusteredCacheManager to remain agnostic of the underlying transport (JCS lateral TCP, UDP multicast, etc.).
  */
 public interface IClusterCacheCoordinator {
+    /** Identity and network settings needed to join the cluster. */
+    record InitialSettings(String serverId, String clusterPartitionId, int port) {
+    }
+
+    /** Sizing/expiration settings for a single cache region. A negative maxLifeSeconds means entries never expire by age. */
+    record RegionSettings(String regionName, int maxObjects, int maxLifeSeconds, boolean useMemoryShrinker, int shrinkerIntervalSeconds,
+            RemovalType removalType) {
+    }
+
+    /** Memory cache eviction policy for a region. Converts to the Apache Commons JCS MemoryCacheName class that implements it. */
+    enum RemovalType {
+        LRU, LFU, ARC;
+
+        /**
+         * Returns the fully-qualified JCS MemoryCacheName class implementing this eviction policy. Apache Commons JCS 3.2.1 ships only an LRU implementation
+         * (plus FIFO/MRU/soft-reference, which aren't exposed here) — LFU and ARC have no real implementation to map to.
+         */
+        String toMemoryCacheName() {
+            if (this != LRU) {
+                throw new UnsupportedOperationException(
+                        "Apache Commons JCS 3.2.1 does not provide a " + this + " memory cache implementation; only LRU is available");
+            }
+            return "org.apache.commons.jcs3.engine.memory.lru.LRUMemoryCache";
+        }
+    }
+
     static String generateEngineClusterPeerKey(String serverId, String engineName) {
         return serverId + "|" + engineName;
     }
 
     void start(ISymmetricEngine engine);
 
-    void start(String serverId, String clusterPartitionId, int port);
+    /**
+     * Starts the coordinator. The implementation's own mandatory regions (e.g. peer heartbeat, engine state) are always configured; regionSettings adds
+     * additional named regions on top of those. Region names must be unique, including against the mandatory region names, which are not caller-configurable.
+     */
+    void start(InitialSettings initialSettings, Set<RegionSettings> regionSettings);
 
     void stop();
 

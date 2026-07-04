@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
@@ -169,7 +170,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         try {
             log.debug("Starting JCS cluster peer listener on {}", serverInfo);
-            coordinator.start(serverId, clusterPartitionId, port);
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings(serverId, clusterPartitionId, port), Collections.emptySet());
             isClusterPeerListenerStarted = true;
             log.info("Started JCS cluster peer listener on {}", serverInfo);
         } catch (Exception ex) {

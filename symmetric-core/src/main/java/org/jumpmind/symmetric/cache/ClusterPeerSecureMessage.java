@@ -98,7 +98,7 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
 
     private static String computeChecksum(String serverId, long timestamp, long messageSalt) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            MessageDigest digest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
             byte[] input = (messageSalt + "|" + timestamp + "|" + serverId).getBytes(StandardCharsets.UTF_8);
             return Base64.getEncoder().encodeToString(digest.digest(input));
         } catch (NoSuchAlgorithmException e) {

@@ -194,7 +194,7 @@ public class ClusteredCacheManagerTest {
     @Test
     public void registerEngine_doesNotStartCoordinator() throws Exception {
         manager.registerEngine(mockEngine);
-        verify(mockCoordinator, never()).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
+        verify(mockCoordinator, never()).start(any(IClusterCacheCoordinator.InitialSettings.class), org.mockito.ArgumentMatchers.anySet());
     }
 
     @Test
@@ -206,7 +206,7 @@ public class ClusteredCacheManagerTest {
         when(engine2.getSecurityService()).thenReturn(mockSecurityService);
         manager.registerEngine(mockEngine);
         manager.registerEngine(engine2);
-        verify(mockCoordinator, never()).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
+        verify(mockCoordinator, never()).start(any(IClusterCacheCoordinator.InitialSettings.class), org.mockito.ArgumentMatchers.anySet());
     }
 
     @Test
@@ -795,19 +795,20 @@ public class ClusteredCacheManagerTest {
     @Test
     public void startClusterPeerListener_whenNotStarted_callsCoordinatorStart() throws Exception {
         manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
-        verify(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
+        verify(mockCoordinator).start(any(IClusterCacheCoordinator.InitialSettings.class), org.mockito.ArgumentMatchers.anySet());
     }
 
     @Test
     public void startClusterPeerListener_whenAlreadyStarted_doesNotCallCoordinatorStartAgain() throws Exception {
         manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
         manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
-        verify(mockCoordinator, times(1)).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
+        verify(mockCoordinator, times(1)).start(any(IClusterCacheCoordinator.InitialSettings.class), org.mockito.ArgumentMatchers.anySet());
     }
 
     @Test
     public void ensurePeerListenerStarted_coordinatorThrows_wrapsInRuntimeException() {
-        doThrow(new RuntimeException("bind failed")).when(mockCoordinator).start(anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt());
+        doThrow(new RuntimeException("bind failed")).when(mockCoordinator).start(any(IClusterCacheCoordinator.InitialSettings.class),
+                org.mockito.ArgumentMatchers.anySet());
         Assertions.assertThrows(RuntimeException.class, () -> manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true));
     }
 
