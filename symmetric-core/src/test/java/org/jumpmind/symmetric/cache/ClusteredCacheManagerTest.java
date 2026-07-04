@@ -673,14 +673,30 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void detectPeerState_staleMessageAfterAlive_peerMarkedCrashed() throws Exception {
+        ClusteredCacheManager spiedManager = spy(manager);
         ClusterPeerStatusMessage initialHeartbeat = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         long firstNow = System.currentTimeMillis();
-        detectPeerState.invoke(manager, PEER_1, initialHeartbeat, firstNow, THRESHOLD_MS);
+        detectPeerState.invoke(spiedManager, PEER_1, initialHeartbeat, firstNow, THRESHOLD_MS);
         ClusterPeerStatusMessage stale = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         long farFuture = System.currentTimeMillis() + THRESHOLD_MS + 1000L;
-        assertFalse((boolean) detectPeerState.invoke(manager, PEER_1, stale, farFuture, THRESHOLD_MS));
+        assertFalse((boolean) detectPeerState.invoke(spiedManager, PEER_1, stale, farFuture, THRESHOLD_MS));
         assertFalse(peerStates.get(PEER_1).alive());
-        assertEquals(firstNow, peerStates.get(PEER_1).lastAliveMs());
+        assertEquals(initialHeartbeat.getTimestamp(), peerStates.get(PEER_1).lastAliveMs());
+        verify(spiedManager).onPeerCrashed(PEER_1);
+        verify(spiedManager, never()).onPeerLeft(anyString());
+    }
+
+    @Test
+    public void detectPeerState_freshButExplicitlyLeavingAfterAlive_marksLeftNotCrashed() throws Exception {
+        ClusteredCacheManager spiedManager = spy(manager);
+        detectPeerState.invoke(spiedManager, PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1),
+                System.currentTimeMillis(), THRESHOLD_MS);
+        long now = System.currentTimeMillis();
+        assertFalse((boolean) detectPeerState.invoke(spiedManager, PEER_1,
+                msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, PEER_1), now, THRESHOLD_MS));
+        assertFalse(peerStates.get(PEER_1).alive());
+        verify(spiedManager, never()).onPeerCrashed(anyString());
+        verify(spiedManager).onPeerLeft(PEER_1);
     }
 
     @Test
@@ -788,7 +804,7 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void detectPeerState_peerLeavingAfterAlive_clearsLocks() throws Exception {
-        when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
+        when(mockClusterService.isClusteringEnabled()).thenReturn(true);
         manager.registerEngine(mockEngine);
         callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1));
         callDetectPeerState(PEER_1, msg(ClusterPeerStatusMessage.EVENT_PEER_LEAVING, PEER_1));

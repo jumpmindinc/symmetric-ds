@@ -455,8 +455,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             return false;
         }
         if (messageFromPeer.isStale(now, staleThresholdMs)) {
-            log.warn("Last message from cluster peer is stale! Considering peer inactive. Peer={}, Last heartbeat={}, EventType={}",
-                    peerId, lastHeartbeatInfo, eventType);
+            if (messageFromPeer.isStale(now, 2 * staleThresholdMs)) {
+                log.debug("Last message from cluster peer is very stale! Considering peer inactive. Peer={}, Last heartbeat={}, EventType={}",
+                        peerId, lastHeartbeatInfo, eventType);
+            } else {
+                log.warn("Last message from cluster peer is stale! Considering peer inactive. Peer={}, Last heartbeat={}, EventType={}",
+                        peerId, lastHeartbeatInfo, eventType);
+            }
             return false;
         }
         if (ClusterPeerStatusMessage.EVENT_PEER_JOINING.equals(eventType)
@@ -504,10 +509,14 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private boolean detectPeerStateAndFireEvents(String peerId, ClusterPeerSecureMessage messageFromPeer, long now, long staleThresholdMs) {
         boolean peerIsActive = isPeerAlive(peerId, messageFromPeer, now, staleThresholdMs);
+        long lastHeartbeatTime = messageFromPeer != null ? messageFromPeer.getTimestamp() : 0;
         PeerState previous = peerStates.get(peerId);
         boolean wasAlive = previous != null && previous.alive();
+        if (previous != null) {
+            lastHeartbeatTime = Math.max(previous.lastAliveMs(), lastHeartbeatTime);
+        }
         if (peerIsActive) {
-            peerStates.put(peerId, new PeerState(true, now));
+            peerStates.put(peerId, new PeerState(true, lastHeartbeatTime));
             if (!wasAlive) {
                 onPeerJoined(messageFromPeer);
             }
@@ -516,7 +525,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 peerStates.put(peerId, new PeerState(false, previous.lastAliveMs()));
                 onPeerCrashed(peerId);
             } else {
-                peerStates.put(peerId, new PeerState(false, now));
+                peerStates.put(peerId, new PeerState(false, lastHeartbeatTime));
                 onPeerLeft(peerId);
             }
         }
