@@ -36,6 +36,7 @@
     <logger name="org.atmosphere.util.IOUtils" level="ERROR" />
     <logger name="com.vaadin.event.EventRouter" level="ERROR" />
     <logger name="sun.net.www.protocol.http.HttpURLConnection" level="ERROR" />
+    <logger name="org.apache.commons.jcs3.auxiliary.lateral.LateralCache" level="OFF" />
 
     <!-- SQL for all statements
     <logger name="org.jumpmind.db.sql" level="DEBUG" />
