@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
     static final int JCS_TCP_PORT_DEFAULT = 1101;
-    private final Set<String> knownPeers = ConcurrentHashMap.newKeySet();
+    private final Set<String> knownPeers = ConcurrentHashMap.newKeySet(); // Used for actual network communication
     private volatile CompositeCacheManager jcsManager;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache;
     private volatile CacheAccess<String, ClusterEngineStateMessage> engineStateCache;
@@ -98,6 +98,18 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             return true;
         } else {
             log.debug("Peer already known to cluster. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+            return false;
+        }
+    }
+
+    @Override
+    public synchronized boolean removePeer(String serverId) {
+        if (knownPeers.remove(serverId)) {
+            log.info("Removed obsolete peer from cluster. serverId={}, ClusterPartitionId={}, knownPeers.size={}", serverId, clusterPartitionId,
+                    knownPeers.size());
+            return true;
+        } else {
+            log.debug("Peer not known to cluster, nothing to remove. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
             return false;
         }
     }

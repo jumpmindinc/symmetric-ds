@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.cache;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -89,6 +90,27 @@ class JcsTcpCacheCoordinatorTest {
         coordinator.addPeer("server2");
         coordinator.addPeer("server3");
         assertEquals(3, coordinator.getPeerIds().size());
+    }
+
+    @Test
+    void removePeer_knownPeer_removesFromPeerIds() {
+        coordinator.addPeer("server1");
+        assertTrue(coordinator.removePeer("server1"));
+        assertTrue(coordinator.getPeerIds().isEmpty());
+    }
+
+    @Test
+    void removePeer_unknownPeer_returnsFalse() {
+        assertFalse(coordinator.removePeer("server1"));
+    }
+
+    @Test
+    void removePeer_onlyRemovesSpecifiedPeer() {
+        coordinator.addPeer("server1");
+        coordinator.addPeer("server2");
+        coordinator.removePeer("server1");
+        assertEquals(1, coordinator.getPeerIds().size());
+        assertTrue(coordinator.getPeerIds().contains("server2"));
     }
 
     @Test

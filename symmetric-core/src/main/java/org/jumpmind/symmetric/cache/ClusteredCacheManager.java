@@ -54,7 +54,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
     private final IClusterCacheCoordinator coordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
-    private final Map<String, PeerState> peerStates = new ConcurrentHashMap<>();
+    private final Map<String, PeerState> peerStates = new ConcurrentHashMap<>(); // Tracks both historical (last 24 hours) and currently active peers.
     private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
     private Thread heartbeatThread;
     private volatile boolean isHeartbeatLoopRunning = false;
@@ -373,10 +373,16 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     /**
      * Drops peer records that have been offline for so long they are no longer relevant to anything, including lock-staleness checks. Without this,
      * {@link #peerStates} would grow without bound, since crashed and gracefully-left peers are both retained (not removed) so their staleness can still be
-     * confirmed later.
+     * confirmed later. Also removes the peer from the coordinator's known-peers set, which is responsible for actual network communication.
      */
     private void purgeObsoletePeers(long now, long obsoleteThresholdMs) {
-        peerStates.entrySet().removeIf(entry -> entry.getValue().isOfflineLongerThan(now, obsoleteThresholdMs));
+        peerStates.entrySet().removeIf(entry -> {
+            boolean isObsolete = entry.getValue().isOfflineLongerThan(now, obsoleteThresholdMs);
+            if (isObsolete) {
+                coordinator.removePeer(entry.getKey());
+            }
+            return isObsolete;
+        });
     }
 
     /**

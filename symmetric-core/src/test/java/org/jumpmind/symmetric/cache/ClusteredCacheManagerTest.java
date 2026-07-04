@@ -354,6 +354,14 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
+    public void purgeObsoletePeers_longOfflinePeer_removedFromCoordinator() throws Exception {
+        long now = System.currentTimeMillis();
+        peerStates.put(SERVER_2, new PeerState(false, now - 100_000L));
+        invokePurgeObsoletePeers(now, 50_000L);
+        verify(mockCoordinator).removePeer(SERVER_2);
+    }
+
+    @Test
     public void purgeObsoletePeers_recentlyOfflinePeer_isRetained() throws Exception {
         long now = System.currentTimeMillis();
         peerStates.put(SERVER_2, new PeerState(false, now - 10_000L));
@@ -362,11 +370,27 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
+    public void purgeObsoletePeers_recentlyOfflinePeer_doesNotRemoveFromCoordinator() throws Exception {
+        long now = System.currentTimeMillis();
+        peerStates.put(SERVER_2, new PeerState(false, now - 10_000L));
+        invokePurgeObsoletePeers(now, 50_000L);
+        verify(mockCoordinator, never()).removePeer(anyString());
+    }
+
+    @Test
     public void purgeObsoletePeers_alivePeer_isNeverRemovedRegardlessOfAge() throws Exception {
         long now = System.currentTimeMillis();
         peerStates.put(SERVER_2, new PeerState(true, now - 1_000_000L));
         invokePurgeObsoletePeers(now, 50_000L);
         assertTrue(peerStates.containsKey(SERVER_2));
+    }
+
+    @Test
+    public void purgeObsoletePeers_alivePeer_doesNotRemoveFromCoordinator() throws Exception {
+        long now = System.currentTimeMillis();
+        peerStates.put(SERVER_2, new PeerState(true, now - 1_000_000L));
+        invokePurgeObsoletePeers(now, 50_000L);
+        verify(mockCoordinator, never()).removePeer(anyString());
     }
 
     private void invokePurgeObsoletePeers(long now, long obsoleteThresholdMs) throws Exception {

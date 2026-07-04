@@ -76,6 +76,9 @@ public interface IClusterCacheCoordinator {
     /** Adds a new peer to the cluster. Returns true if the peer was not already known. */
     boolean addPeer(String serverId);
 
+    /** Removes a peer that is no longer relevant (e.g. purged as obsolete). Returns true if the peer was known and has been removed. */
+    boolean removePeer(String serverId);
+
     void sendMessageToPeers(ClusterPeerSecureMessage message);
 
     /** Returns the latest peer status message (heartbeat/join/leave) for the given peer server ID. */
