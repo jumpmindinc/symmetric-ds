@@ -34,7 +34,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -125,73 +124,6 @@ class JcsTcpCacheCoordinatorTest {
     void stop_calledTwice_doesNotThrow() {
         coordinator.stop();
         coordinator.stop();
-    }
-
-    @Test
-    void buildJcsCoreProperties_containsRequiredKeys() throws Exception {
-        Properties props = invokeBuildJcsCoreProperties(1101);
-        assertTrue(props.containsKey("jcs.auxiliary.LATERAL_TCP"));
-        assertTrue(props.containsKey("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort"));
-        assertEquals("1101", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort"));
-    }
-
-    @Test
-    void buildJcsCoreProperties_udpDiscoveryIsEnabled() throws Exception {
-        Properties props = invokeBuildJcsCoreProperties(1101);
-        assertEquals("true", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.UdpDiscoveryEnabled"));
-    }
-
-    @Test
-    void buildJcsCoreProperties_allowGetIsFalse() throws Exception {
-        Properties props = invokeBuildJcsCoreProperties(1101);
-        assertEquals("false", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.AllowGet"));
-    }
-
-    @Test
-    void buildRegionalProperties_configuresRegionAndSizing() throws Exception {
-        Properties props = invokeBuildRegionalProperties(Set.of(new IClusterCacheCoordinator.RegionSettings(
-                "MY_REGION", 500, 60, false, 30, IClusterCacheCoordinator.RemovalType.LRU)));
-        assertEquals("LATERAL_TCP", props.getProperty("jcs.region.MY_REGION"));
-        assertEquals("500", props.getProperty("jcs.region.MY_REGION.cacheattributes.MaxObjects"));
-        assertEquals("false", props.getProperty("jcs.region.MY_REGION.elementattributes.IsEternal"));
-        assertEquals("60", props.getProperty("jcs.region.MY_REGION.elementattributes.MaxLife"));
-    }
-
-    @Test
-    void buildRegionalProperties_negativeMaxLifeSeconds_marksElementsEternal() throws Exception {
-        Properties props = invokeBuildRegionalProperties(Set.of(new IClusterCacheCoordinator.RegionSettings(
-                "MY_REGION", 500, -1, false, 30, IClusterCacheCoordinator.RemovalType.LRU)));
-        assertEquals("true", props.getProperty("jcs.region.MY_REGION.elementattributes.IsEternal"));
-    }
-
-    @Test
-    void buildRegionalProperties_disablesDiskAndRemote_enablesLateral() throws Exception {
-        Properties props = invokeBuildRegionalProperties(Set.of(new IClusterCacheCoordinator.RegionSettings(
-                "MY_REGION", 500, 60, false, 30, IClusterCacheCoordinator.RemovalType.LRU)));
-        assertEquals("false", props.getProperty("jcs.region.MY_REGION.cacheattributes.UseDisk"));
-        assertEquals("false", props.getProperty("jcs.region.MY_REGION.cacheattributes.UseRemote"));
-        assertEquals("true", props.getProperty("jcs.region.MY_REGION.cacheattributes.UseLateral"));
-        assertEquals("false", props.getProperty("jcs.region.MY_REGION.elementattributes.IsRemote"));
-        assertEquals("false", props.getProperty("jcs.region.MY_REGION.elementattributes.IsSpool"));
-        assertEquals("true", props.getProperty("jcs.region.MY_REGION.elementattributes.IsLateral"));
-    }
-
-    @Test
-    void buildRegionalProperties_configuresShrinkerAndMemoryCacheName() throws Exception {
-        Properties props = invokeBuildRegionalProperties(Set.of(new IClusterCacheCoordinator.RegionSettings(
-                "MY_REGION", 500, 60, true, 45, IClusterCacheCoordinator.RemovalType.LRU)));
-        assertEquals("true", props.getProperty("jcs.region.MY_REGION.cacheattributes.UseMemoryShrinker"));
-        assertEquals("45", props.getProperty("jcs.region.MY_REGION.cacheattributes.ShrinkerIntervalSeconds"));
-        assertEquals("org.apache.commons.jcs3.engine.memory.lru.LRUMemoryCache",
-                props.getProperty("jcs.region.MY_REGION.cacheattributes.MemoryCacheName"));
-    }
-
-    @Test
-    void buildRegionalProperties_lfuRemovalType_throwsUnsupported() {
-        Set<IClusterCacheCoordinator.RegionSettings> regionSettings = Set.of(new IClusterCacheCoordinator.RegionSettings(
-                "MY_REGION", 500, 60, false, 30, IClusterCacheCoordinator.RemovalType.LFU));
-        Exception ex = assertThrows(Exception.class, () -> invokeBuildRegionalProperties(regionSettings));
-        assertTrue(ex.getCause() instanceof UnsupportedOperationException);
     }
 
     @Test
@@ -380,18 +312,6 @@ class JcsTcpCacheCoordinatorTest {
         when(clusterService.getClusterPartitionId()).thenReturn("inst1");
         when(parameterService.getInt(ServerConstants.CLUSTER_JCS_PORT, 1101)).thenReturn(port);
         return engine;
-    }
-
-    private Properties invokeBuildJcsCoreProperties(int port) throws Exception {
-        Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildJcsCoreProperties", IClusterCacheCoordinator.InitialSettings.class);
-        m.setAccessible(true);
-        return (Properties) m.invoke(coordinator, new IClusterCacheCoordinator.InitialSettings("server1", "inst1", port));
-    }
-
-    private Properties invokeBuildRegionalProperties(Set<IClusterCacheCoordinator.RegionSettings> regionSettings) throws Exception {
-        Method m = JcsTcpCacheCoordinator.class.getDeclaredMethod("buildRegionalProperties", Set.class);
-        m.setAccessible(true);
-        return (Properties) m.invoke(coordinator, regionSettings);
     }
 
     private void setPeerHeartbeatCache(CacheAccess<String, ClusterPeerSecureMessage> cache) throws Exception {

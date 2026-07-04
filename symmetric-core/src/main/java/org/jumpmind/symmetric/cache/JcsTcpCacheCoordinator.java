@@ -22,7 +22,6 @@ package org.jumpmind.symmetric.cache;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,17 +42,6 @@ import org.slf4j.LoggerFactory;
 public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
     static final int DEFAULT_PORT = 1101;
-    private static final String JCS_PEER_REGION = "SYM_CLUSTER_PEERS";
-    private static final String JCS_ENGINE_REGION = "SYM_CLUSTER_ENGINES";
-    private static final String JCS_REGION_SYNC_LATERAL_TCP = "LATERAL_TCP"; // Sync mode specific to this class
-    private static final int DEFAULT_MAX_OBJECTS = 1000;
-    private static final int DEFAULT_MAX_LIFE_SECONDS = -1;
-    private static final boolean DEFAULT_USE_MEMORY_SHRINKER = false;
-    private static final int DEFAULT_SHRINKER_INTERVAL_SECONDS = 30;
-    private static final RemovalType DEFAULT_REMOVAL_TYPE = RemovalType.LRU;
-    private static final String JCS_CONFIG_GLOBAL_PREFIX = "jcs.default";
-    private static final String JCS_CONFIG_REGION_PREFIX = "jcs.region";
-    private static final String JCS_CONFIG_AUX_PREFIX = "jcs.auxiliary";
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet();
     private volatile CompositeCacheManager jcsCacheManager;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache;
@@ -76,42 +64,17 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         this.serverId = initialSettings.serverId();
         this.clusterPartitionId = initialSettings.clusterPartitionId();
         this.port = initialSettings.port();
-        Set<RegionSettings> allRegionSettings = withMandatoryRegions(regionSettings);
+        Properties props = JcsPropertiesBuilder.build(initialSettings, regionSettings);
         try {
             jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
-            Properties props = buildJcsCoreProperties(initialSettings);
-            props.putAll(buildRegionalProperties(allRegionSettings));
             jcsCacheManager.configure(props);
-            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_PEER_REGION));
-            engineStateCache = new CacheAccess<>(jcsCacheManager.getCache(JCS_ENGINE_REGION));
+            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JcsPropertiesBuilder.PEER_REGION));
+            engineStateCache = new CacheAccess<>(jcsCacheManager.getCache(JcsPropertiesBuilder.ENGINE_REGION));
             log.info("Started JCS cluster cache. Port={}, ServerId={}, ClusterPartitionId={}", port, serverId, clusterPartitionId);
         } catch (Exception e) {
             log.error("Failed to initialize JCS cluster cache on port {}: {}", port, e.getMessage());
             throw new RuntimeException("Failed to initialize JCS cluster cache on port " + port, e);
         }
-    }
-
-    /**
-     * Merges the caller-supplied regions with the mandatory JCS_PEER_REGION/JCS_ENGINE_REGION, which are always configured with default settings. Rejects
-     * duplicate region names, including caller-supplied regions that reuse a mandatory region name, since those are not caller-configurable.
-     */
-    private Set<RegionSettings> withMandatoryRegions(Set<RegionSettings> regionSettings) {
-        Set<String> regionNames = new HashSet<>(Set.of(JCS_PEER_REGION, JCS_ENGINE_REGION));
-        for (RegionSettings settings : regionSettings) {
-            if (!regionNames.add(settings.regionName())) {
-                throw new IllegalArgumentException("Duplicate region name: " + settings.regionName());
-            }
-        }
-        Set<RegionSettings> allRegionSettings = new LinkedHashSet<>();
-        allRegionSettings.add(defaultRegionSettings(JCS_PEER_REGION));
-        allRegionSettings.add(defaultRegionSettings(JCS_ENGINE_REGION));
-        allRegionSettings.addAll(regionSettings);
-        return allRegionSettings;
-    }
-
-    private RegionSettings defaultRegionSettings(String regionName) {
-        return new RegionSettings(regionName, DEFAULT_MAX_OBJECTS, DEFAULT_MAX_LIFE_SECONDS, DEFAULT_USE_MEMORY_SHRINKER,
-                DEFAULT_SHRINKER_INTERVAL_SECONDS, DEFAULT_REMOVAL_TYPE);
     }
 
     @Override
@@ -201,7 +164,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public ClusterPeerSecureMessage getMessage(String region, String key) {
-        if (JCS_PEER_REGION.equals(region)) {
+        if (JcsPropertiesBuilder.PEER_REGION.equals(region)) {
             return getPeerStatusMessage(key);
         }
         return null;
@@ -232,54 +195,5 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             }
         }
         return result;
-    }
-
-    /**
-     * Prepares the core (non-region) configuration properties for Apache JCS's CompositeCacheManager: the lateral TCP auxiliary cache and its UDP discovery
-     * settings.
-     *
-     * JCS's own UDP discovery timers (UDPDiscoveryAttributes.sendDelaySec/maxIdleTimeSec) are not exposed through TCPLateralCacheAttributes and so cannot be
-     * set here; JCS 3.2.1 also never reads sendDelaySec (its passive broadcast runs on a hardcoded 15s interval) and always constructs UDPDiscoveryAttributes
-     * with its own defaults. This is not load-bearing for SymmetricDS: peer liveness is decided by our own heartbeat cadence and staleness threshold (see
-     * ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS, CLUSTER_DB_OWNERSHIP_STALE_MS, and detectIfPeerIsStale), which run independently of JCS's UDP discovery of
-     * lateral TCP peers.
-     */
-    private Properties buildJcsCoreProperties(InitialSettings initialSettings) {
-        Properties props = new Properties();
-        props.setProperty(JCS_CONFIG_GLOBAL_PREFIX, "");
-        String auxPrefix = JCS_CONFIG_AUX_PREFIX + ".LATERAL_TCP";
-        props.setProperty(auxPrefix, "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.LateralTCPCacheFactory");
-        props.setProperty(auxPrefix + ".attributes", "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes");
-        props.setProperty(auxPrefix + ".attributes.TcpListenerPort", String.valueOf(initialSettings.port()));
-        props.setProperty(auxPrefix + ".attributes.UdpDiscoveryEnabled", "true");
-        props.setProperty(auxPrefix + ".attributes.AllowGet", "false");
-        props.setProperty(auxPrefix + ".attributes.Receive", "true");
-        return props;
-    }
-
-    /**
-     * Prepares the per-region configuration properties, enriching each region with its lateral TCP mode and sizing/expiration/eviction settings. A negative
-     * maxLifeSeconds leaves the region's elements eternal (no age-based expiration), matching JCS's own default. Disk and remote auxiliaries are explicitly
-     * disabled at both the region and element level since only the LATERAL_TCP auxiliary is ever configured; lateral is explicitly enabled to match it.
-     */
-    private Properties buildRegionalProperties(Set<RegionSettings> regionSettings) {
-        Properties props = new Properties();
-        for (RegionSettings settings : regionSettings) {
-            String regionPrefix = JCS_CONFIG_REGION_PREFIX + "." + settings.regionName();
-            props.setProperty(regionPrefix, JCS_REGION_SYNC_LATERAL_TCP);
-            props.setProperty(regionPrefix + ".cacheattributes.MaxObjects", String.valueOf(settings.maxObjects()));
-            props.setProperty(regionPrefix + ".cacheattributes.UseLateral", "true");
-            props.setProperty(regionPrefix + ".cacheattributes.UseRemote", "false");
-            props.setProperty(regionPrefix + ".cacheattributes.UseDisk", "false");
-            props.setProperty(regionPrefix + ".cacheattributes.UseMemoryShrinker", String.valueOf(settings.useMemoryShrinker()));
-            props.setProperty(regionPrefix + ".cacheattributes.ShrinkerIntervalSeconds", String.valueOf(settings.shrinkerIntervalSeconds()));
-            props.setProperty(regionPrefix + ".cacheattributes.MemoryCacheName", settings.removalType().toMemoryCacheName());
-            props.setProperty(regionPrefix + ".elementattributes.IsEternal", String.valueOf(settings.maxLifeSeconds() < 0));
-            props.setProperty(regionPrefix + ".elementattributes.MaxLife", String.valueOf(settings.maxLifeSeconds()));
-            props.setProperty(regionPrefix + ".elementattributes.IsLateral", "true");
-            props.setProperty(regionPrefix + ".elementattributes.IsRemote", "false");
-            props.setProperty(regionPrefix + ".elementattributes.IsSpool", "false");
-        }
-        return props;
     }
 }
