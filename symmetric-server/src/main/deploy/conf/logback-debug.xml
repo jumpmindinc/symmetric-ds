@@ -12,7 +12,7 @@
             <maxFileSize>20MB</maxFileSize>
         </triggeringPolicy>
         <encoder>
-            <pattern>%d %p [%X{engineName}] [%c{0}] [%t] %m%n</pattern>
+            <pattern>%d %p [%X{engineName}] [%property{HOSTNAME}] [%c{0}] [%t] %m%n</pattern>
         </encoder>
     </appender>
 

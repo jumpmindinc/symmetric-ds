@@ -51,9 +51,9 @@ import ch.qos.logback.core.util.FileSize;
  */
 public class LogbackHelper {
     private static final Logger log = LoggerFactory.getLogger(LogbackHelper.class);
-    private static final String DEFAULT_LOG_PATTERN = "%d %p [%X{engineName}] [%c{0}] [%t] %m%n";
-    private static final String CONSOLE_LOG_PATTERN = "%d %p [%X{engineName}] [%c{0}] [%t] %m%ex%n";
-    private static final String VERBOSE_CONSOLE_LOG_PATTERN = "%d %-5p [%X{engineName}] [%c{0}] [%t] %m%ex%n";
+    private static final String DEFAULT_LOG_PATTERN = "%d %p [%X{engineName}] [%property{HOSTNAME}] [%c{0}] [%t] %m%n";
+    private static final String CONSOLE_LOG_PATTERN = "%d %p [%X{engineName}] [%property{HOSTNAME}] [%c{0}] [%t] %m%ex%n";
+    private static final String VERBOSE_CONSOLE_LOG_PATTERN = "%d %-5p [%X{engineName}] [%property{HOSTNAME}] [%c{0}] [%t] %m%ex%n";
     private static final String APPENDER_CONSOLE = "CONSOLE";
     private static final String APPENDER_CONSOLE_ERR = "CONSOLE_ERR";
     private static final String APPENDER_ROLLING = "ROLLING";
@@ -72,6 +72,7 @@ public class LogbackHelper {
             } catch (Exception e) {
                 log.error("Failed to configure Logback from {}: {}", logbackFile.getAbsolutePath(), e.getMessage());
             }
+            context.putProperty("HOSTNAME", AppUtils.getHostName());
             enforceProtectedLoggers();
         }
     }
