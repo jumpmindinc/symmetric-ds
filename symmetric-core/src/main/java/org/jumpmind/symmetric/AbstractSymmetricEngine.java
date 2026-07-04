@@ -1720,6 +1720,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 if (clusteredCacheManager.addPeer(host.getHostName(), host.getHeartbeatTime())) {
                     newPeerCount++;
                 }
+                if (StringUtils.isNotBlank(host.getIpAddress())) {
+                    clusteredCacheManager.announceDiscoveredPeer(host.getHostName(), host.getIpAddress());
+                }
             }
         }
         log.debug("Refreshed cluster peers for nodeId={}. New peers discovered={}", nodeId, newPeerCount);

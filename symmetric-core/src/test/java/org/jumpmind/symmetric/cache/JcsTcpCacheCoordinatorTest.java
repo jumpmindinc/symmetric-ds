@@ -31,6 +31,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +44,9 @@ import java.util.Set;
 import org.apache.commons.jcs3.access.CacheAccess;
 import org.apache.commons.jcs3.engine.control.CompositeCache;
 import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
+import org.apache.commons.jcs3.utils.discovery.DiscoveredService;
+import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryService;
+import org.apache.commons.jcs3.utils.discovery.behavior.IDiscoveryListener;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ServerConstants;
@@ -228,6 +232,113 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
+    void announceDiscoveredPeer_notStarted_returnsFalse() {
+        assertFalse(coordinator.announceDiscoveredPeer("server1", "10.0.0.5"));
+    }
+
+    @Test
+    void announceDiscoveredPeer_blankAddress_returnsFalse() {
+        assertFalse(coordinator.announceDiscoveredPeer("server1", null));
+        assertFalse(coordinator.announceDiscoveredPeer("server1", " "));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void announceDiscoveredPeer_newPeer_registersWithDiscoveryListeners() throws Exception {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
+            coordinator.start(buildMockEngine(1101));
+            UDPDiscoveryService mockDiscoveryService = mock(UDPDiscoveryService.class);
+            IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
+            when(mockDiscoveryService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
+            setDiscoveryService(mockDiscoveryService);
+            assertTrue(coordinator.announceDiscoveredPeer("server1", "10.0.0.5"));
+            ArgumentCaptor<DiscoveredService> captor = ArgumentCaptor.forClass(DiscoveredService.class);
+            verify(mockListener).addDiscoveredService(captor.capture());
+            assertEquals("10.0.0.5", captor.getValue().getServiceAddress());
+            assertEquals(1101, captor.getValue().getServicePort());
+            assertTrue(captor.getValue().getCacheNames().contains("SYM_CLUSTER_PEERS"));
+            assertTrue(captor.getValue().getCacheNames().contains("SYM_CLUSTER_ENGINES"));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void announceDiscoveredPeer_sameAddressAgain_returnsFalseAndDoesNotReannounce() throws Exception {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
+            coordinator.start(buildMockEngine(1101));
+            UDPDiscoveryService mockDiscoveryService = mock(UDPDiscoveryService.class);
+            IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
+            when(mockDiscoveryService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
+            setDiscoveryService(mockDiscoveryService);
+            assertTrue(coordinator.announceDiscoveredPeer("server1", "10.0.0.5"));
+            assertFalse(coordinator.announceDiscoveredPeer("server1", "10.0.0.5"));
+            verify(mockListener, times(1)).addDiscoveredService(any());
+            verify(mockListener, never()).removeDiscoveredService(any());
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void announceDiscoveredPeer_addressChanged_retractsOldAndAnnouncesNew() throws Exception {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
+            coordinator.start(buildMockEngine(1101));
+            UDPDiscoveryService mockDiscoveryService = mock(UDPDiscoveryService.class);
+            IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
+            when(mockDiscoveryService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
+            setDiscoveryService(mockDiscoveryService);
+            assertTrue(coordinator.announceDiscoveredPeer("server1", "10.0.0.5"));
+            assertTrue(coordinator.announceDiscoveredPeer("server1", "10.0.0.6"));
+            ArgumentCaptor<DiscoveredService> removeCaptor = ArgumentCaptor.forClass(DiscoveredService.class);
+            verify(mockListener).removeDiscoveredService(removeCaptor.capture());
+            assertEquals("10.0.0.5", removeCaptor.getValue().getServiceAddress());
+            ArgumentCaptor<DiscoveredService> addCaptor = ArgumentCaptor.forClass(DiscoveredService.class);
+            verify(mockListener, times(2)).addDiscoveredService(addCaptor.capture());
+            assertEquals("10.0.0.6", addCaptor.getValue().getServiceAddress());
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void removePeer_afterAnnounce_retractsDiscoveredService() throws Exception {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
+            coordinator.start(buildMockEngine(1101));
+            setPeerHeartbeatCache(mock(CacheAccess.class));
+            CacheAccess<String, ClusterEngineStateMessage> mockEngineCache = mock(CacheAccess.class);
+            CompositeCache<String, ClusterEngineStateMessage> mockEngineCacheControl = mock(CompositeCache.class);
+            when(mockEngineCache.getCacheControl()).thenReturn(mockEngineCacheControl);
+            when(mockEngineCacheControl.getKeySet(true)).thenReturn(Set.of());
+            setEngineStateCache(mockEngineCache);
+            UDPDiscoveryService mockDiscoveryService = mock(UDPDiscoveryService.class);
+            IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
+            when(mockDiscoveryService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
+            setDiscoveryService(mockDiscoveryService);
+            coordinator.addPeer("server2");
+            coordinator.announceDiscoveredPeer("server2", "10.0.0.7");
+            coordinator.removePeer("server2");
+            ArgumentCaptor<DiscoveredService> captor = ArgumentCaptor.forClass(DiscoveredService.class);
+            verify(mockListener).removeDiscoveredService(captor.capture());
+            assertEquals("10.0.0.7", captor.getValue().getServiceAddress());
+        }
+    }
+
+    @Test
+    void removePeer_neverAnnounced_doesNotInteractWithDiscoveryService() throws Exception {
+        UDPDiscoveryService mockDiscoveryService = mock(UDPDiscoveryService.class);
+        setDiscoveryService(mockDiscoveryService);
+        coordinator.addPeer("server1");
+        coordinator.removePeer("server1");
+        verify(mockDiscoveryService, never()).getCopyOfDiscoveryListeners();
+    }
+
+    @Test
     void getPeerStatusMessage_cacheHasStatusMessage_returnsIt() throws Exception {
         ClusterPeerStatusMessage expected = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "peer1", "inst1", "1.0");
@@ -384,5 +495,11 @@ class JcsTcpCacheCoordinatorTest {
         Field f = JcsTcpCacheCoordinator.class.getDeclaredField("jcsManager");
         f.setAccessible(true);
         f.set(coordinator, manager);
+    }
+
+    private void setDiscoveryService(UDPDiscoveryService service) throws Exception {
+        Field f = JcsTcpCacheCoordinator.class.getDeclaredField("discoveryService");
+        f.setAccessible(true);
+        f.set(coordinator, service);
     }
 }

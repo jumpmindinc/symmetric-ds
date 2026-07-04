@@ -287,6 +287,27 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
+    public void announceDiscoveredPeer_null_ignored() {
+        manager.announceDiscoveredPeer(null, "10.0.0.5");
+        verify(mockCoordinator, never()).announceDiscoveredPeer(any(), any());
+    }
+
+    @Test
+    public void announceDiscoveredPeer_ownServerId_ignored() {
+        manager.registerEngine(mockEngine);
+        manager.announceDiscoveredPeer(SERVER_1, "10.0.0.5");
+        verify(mockCoordinator, never()).announceDiscoveredPeer(any(), any());
+    }
+
+    @Test
+    public void announceDiscoveredPeer_newPeer_delegatedToCoordinator() {
+        manager.registerEngine(mockEngine);
+        when(mockCoordinator.announceDiscoveredPeer(SERVER_2, "10.0.0.5")).thenReturn(true);
+        assertTrue(manager.announceDiscoveredPeer(SERVER_2, "10.0.0.5"));
+        verify(mockCoordinator).announceDiscoveredPeer(SERVER_2, "10.0.0.5");
+    }
+
+    @Test
     public void discoverPeersIncomingHeartbeats_noObservedPeers_returnsZero() throws Exception {
         manager.registerEngine(mockEngine);
         assertEquals(0, invokeDiscoverPeersIncomingHeartbeats());

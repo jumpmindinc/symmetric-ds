@@ -20,32 +20,46 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.jcs3.access.CacheAccess;
+import org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes;
 import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
+import org.apache.commons.jcs3.utils.discovery.DiscoveredService;
+import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryManager;
+import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryService;
+import org.apache.commons.jcs3.utils.discovery.behavior.IDiscoveryListener;
+import org.apache.commons.jcs3.utils.serialization.StandardSerializer;
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * IClusterCacheCoordinator implementation that uses Apache JCS lateral TCP cache for peer-to-peer communication. Peers find each other through JCS's built-in
- * UDP multicast discovery, so the JCS CompositeCacheManager is configured once in {@link #start(InitialSettings, Set)} and is never torn down or reconfigured
- * as peers come and go. Reconfiguring it on every new peer previously caused JCS to silently keep returning its already-shutdown TCP listener for the port (JCS
- * caches listeners in a static, port-keyed registry that a shutdown never clears), leaving the node unreachable for the rest of its life.
+ * IClusterCacheCoordinator implementation that uses Apache JCS lateral TCP cache for peer-to-peer communication. Peers can find each other through JCS's
+ * built-in UDP multicast discovery, or through {@link #announceDiscoveredPeer(String, String)} feeding in addresses learned from SYM_NODE_HOST — needed because
+ * UDP multicast is unavailable on most cloud VPCs and managed Kubernetes networks. Either way, the JCS CompositeCacheManager is configured once in
+ * {@link #start(InitialSettings, Set)} and is never torn down or reconfigured as peers come and go. Reconfiguring it on every new peer previously caused JCS to
+ * silently keep returning its already-shutdown TCP listener for the port (JCS caches listeners in a static, port-keyed registry that a shutdown never clears),
+ * leaving the node unreachable for the rest of its life.
  */
 public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
     static final int JCS_TCP_PORT_DEFAULT = 1101;
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet(); // Used for actual network communication
+    private final Map<String, String> knownPeerAddresses = new ConcurrentHashMap<>(); // serverId -> last address announced for JCS discovery
     private volatile CompositeCacheManager jcsManager;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache;
     private volatile CacheAccess<String, ClusterEngineStateMessage> engineStateCache;
+    private Set<String> discoveryRegionNames = Collections.emptySet();
+    private UDPDiscoveryService discoveryService; // Resolved lazily; only accessed from methods synchronized on this
     private int port;
     private String serverId;
     private String clusterPartitionId;
@@ -65,6 +79,11 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         this.clusterPartitionId = initialSettings.clusterPartitionId();
         this.port = initialSettings.port();
         Properties jcsProperties = JcsPropertiesBuilder.build(initialSettings, regionSettings);
+        Set<String> regionNames = new HashSet<>(Set.of(JcsPropertiesBuilder.PEER_REGION, JcsPropertiesBuilder.ENGINE_REGION));
+        for (RegionSettings settings : regionSettings) {
+            regionNames.add(settings.regionName());
+        }
+        this.discoveryRegionNames = regionNames;
         try {
             jcsManager = CompositeCacheManager.getUnconfiguredInstance();
             jcsManager.configure(jcsProperties);
@@ -85,6 +104,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             jcsManager = null;
             peerHeartbeatCache = null;
             engineStateCache = null;
+            discoveryService = null;
             log.debug("JCS cluster cache shutdown complete. ServerId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
         } else {
             log.debug("JCS cluster cache was not running, so no shutdown was performed. ServerId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
@@ -104,6 +124,13 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public synchronized boolean removePeer(String serverId) {
+        String address = knownPeerAddresses.remove(serverId);
+        if (address != null) {
+            UDPDiscoveryService service = getDiscoveryService();
+            if (service != null) {
+                retractDiscoveredAddress(service, address);
+            }
+        }
         if (knownPeers.remove(serverId)) {
             purgePeerMessages(serverId);
             log.info("Removed obsolete peer from cluster. serverId={}, ClusterPartitionId={}, knownPeers.size={}", serverId, clusterPartitionId,
@@ -113,6 +140,77 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             log.debug("Peer not known to cluster, nothing to remove. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
             return false;
         }
+    }
+
+    /**
+     * Registers a peer's address so JCS's lateral cache can reach it directly, without depending on JCS's own UDP multicast discovery — which is unavailable on
+     * most cloud VPCs and managed Kubernetes networks. Reuses the same {@link IDiscoveryListener} extension point JCS's UDP layer calls when it receives a
+     * multicast announcement, so this never touches the CompositeCacheManager configuration and cannot hit the reconfigure landmine described in the class
+     * comment.
+     */
+    @Override
+    public synchronized boolean announceDiscoveredPeer(String serverId, String address) {
+        if (StringUtils.isBlank(address)) {
+            return false;
+        }
+        UDPDiscoveryService service = getDiscoveryService();
+        if (service == null) {
+            log.debug("Skipping peer discovery announcement because JCS discovery is unavailable. serverId={}, address={}", serverId, address);
+            return false;
+        }
+        String previousAddress = knownPeerAddresses.put(serverId, address);
+        if (address.equals(previousAddress)) {
+            return false;
+        }
+        if (previousAddress != null) {
+            retractDiscoveredAddress(service, previousAddress);
+        }
+        announceDiscoveredAddress(service, address);
+        log.info("Announced discovered peer for JCS lateral cache discovery. serverId={}, address={}, previousAddress={}, ClusterPartitionId={}",
+                serverId, address, previousAddress, clusterPartitionId);
+        return true;
+    }
+
+    /**
+     * Resolves the UDPDiscoveryService JCS already created while configuring the lateral TCP cache. UDPDiscoveryManager's service map is keyed only by
+     * discoveryAddress:discoveryPort:servicePort, and since buildJcsCoreProperties() never overrides the UDP discovery address/port, a fresh
+     * TCPLateralCacheAttributes' defaults are guaranteed to match what JCS is actually using — this call returns the existing instance rather than creating
+     * one. Resolved lazily (not from start()) so a coordinator that's started but never calls announceDiscoveredPeer never touches UDPDiscoveryManager.
+     */
+    private UDPDiscoveryService getDiscoveryService() {
+        if (discoveryService == null && jcsManager != null) {
+            try {
+                TCPLateralCacheAttributes discoveryDefaults = new TCPLateralCacheAttributes();
+                discoveryService = UDPDiscoveryManager.getInstance().getService(
+                        discoveryDefaults.getUdpDiscoveryAddr(), discoveryDefaults.getUdpDiscoveryPort(),
+                        null, port, 0, jcsManager, new StandardSerializer());
+            } catch (Exception e) {
+                log.warn("Unable to resolve JCS UDP discovery service; SYM_NODE_HOST-driven peer discovery is unavailable. ServerId={}", serverId, e);
+            }
+        }
+        return discoveryService;
+    }
+
+    private void announceDiscoveredAddress(UDPDiscoveryService service, String address) {
+        DiscoveredService discovered = buildDiscoveredService(address);
+        for (IDiscoveryListener listener : service.getCopyOfDiscoveryListeners()) {
+            listener.addDiscoveredService(discovered);
+        }
+    }
+
+    private void retractDiscoveredAddress(UDPDiscoveryService service, String address) {
+        DiscoveredService discovered = buildDiscoveredService(address);
+        for (IDiscoveryListener listener : service.getCopyOfDiscoveryListeners()) {
+            listener.removeDiscoveredService(discovered);
+        }
+    }
+
+    private DiscoveredService buildDiscoveredService(String address) {
+        DiscoveredService discovered = new DiscoveredService();
+        discovered.setServiceAddress(address);
+        discovered.setServicePort(port);
+        discovered.setCacheNames(new ArrayList<>(discoveryRegionNames));
+        return discovered;
     }
 
     /**

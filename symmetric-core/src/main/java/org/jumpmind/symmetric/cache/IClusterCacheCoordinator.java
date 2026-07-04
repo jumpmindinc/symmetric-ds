@@ -76,8 +76,18 @@ public interface IClusterCacheCoordinator {
     /** Adds a new peer to the cluster. Returns true if the peer was not already known. */
     boolean addPeer(String serverId);
 
-    /** Removes a peer that is no longer relevant (e.g. purged as obsolete). Returns true if the peer was known and has been removed. */
+    /**
+     * Removes a peer that is no longer relevant (e.g. purged as obsolete). Returns true if the peer was known and has been removed. Also retracts any discovery
+     * registration previously made via {@link #announceDiscoveredPeer(String, String)} for this peer.
+     */
     boolean removePeer(String serverId);
+
+    /**
+     * Registers a peer's network address for transport-level discovery, so the underlying transport can reach the peer without depending on its own
+     * broadcast/multicast discovery mechanism. Safe to call repeatedly as a peer's address changes (e.g. a restarted container with a new IP): the prior
+     * registration for this serverId is retracted before the new one is added. Returns true if this changed the registration (new peer or changed address).
+     */
+    boolean announceDiscoveredPeer(String serverId, String address);
 
     void sendMessageToPeers(ClusterPeerSecureMessage message);
 
