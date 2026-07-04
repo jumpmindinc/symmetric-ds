@@ -327,7 +327,7 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     private void setJcsCacheManager(CompositeCacheManager manager) throws Exception {
-        Field f = JcsTcpCacheCoordinator.class.getDeclaredField("jcsCacheManager");
+        Field f = JcsTcpCacheCoordinator.class.getDeclaredField("jcsManager");
         f.setAccessible(true);
         f.set(coordinator, manager);
     }

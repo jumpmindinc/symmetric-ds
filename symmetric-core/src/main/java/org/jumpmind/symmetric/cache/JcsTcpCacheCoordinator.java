@@ -43,7 +43,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
     static final int JCS_TCP_PORT_DEFAULT = 1101;
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet();
-    private volatile CompositeCacheManager jcsCacheManager;
+    private volatile CompositeCacheManager jcsManager;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache;
     private volatile CacheAccess<String, ClusterEngineStateMessage> engineStateCache;
     private int port;
@@ -64,12 +64,12 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         this.serverId = initialSettings.serverId();
         this.clusterPartitionId = initialSettings.clusterPartitionId();
         this.port = initialSettings.port();
-        Properties props = JcsPropertiesBuilder.build(initialSettings, regionSettings);
+        Properties jcsProperties = JcsPropertiesBuilder.build(initialSettings, regionSettings);
         try {
-            jcsCacheManager = CompositeCacheManager.getUnconfiguredInstance();
-            jcsCacheManager.configure(props);
-            peerHeartbeatCache = new CacheAccess<>(jcsCacheManager.getCache(JcsPropertiesBuilder.PEER_REGION));
-            engineStateCache = new CacheAccess<>(jcsCacheManager.getCache(JcsPropertiesBuilder.ENGINE_REGION));
+            jcsManager = CompositeCacheManager.getUnconfiguredInstance();
+            jcsManager.configure(jcsProperties);
+            peerHeartbeatCache = new CacheAccess<>(jcsManager.getCache(JcsPropertiesBuilder.PEER_REGION));
+            engineStateCache = new CacheAccess<>(jcsManager.getCache(JcsPropertiesBuilder.ENGINE_REGION));
             log.info("Started JCS cluster cache. Port={}, ServerId={}, ClusterPartitionId={}", port, serverId, clusterPartitionId);
         } catch (Exception e) {
             log.error("Failed to initialize JCS cluster cache on port {}: {}", port, e.getMessage());
@@ -79,11 +79,15 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public synchronized void stop() {
-        if (jcsCacheManager != null) {
-            jcsCacheManager.shutDown();
-            jcsCacheManager = null;
+        if (jcsManager != null) {
+            log.debug("Stopping JCS cluster cache. ServerId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+            jcsManager.shutDown();
+            jcsManager = null;
             peerHeartbeatCache = null;
             engineStateCache = null;
+            log.debug("JCS cluster cache shutdown complete. ServerId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+        } else {
+            log.debug("JCS cluster cache was not running, so no shutdown was performed. ServerId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
         }
     }
 
@@ -150,6 +154,9 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             return null;
         }
         ClusterPeerSecureMessage msg = cache.get(peerId);
+        if (msg != null) {
+            log.debug("Received cluster-wide message. eventType={}, peerId={}", msg.getEventType(), peerId);
+        }
         return msg instanceof ClusterPeerStatusMessage ? (ClusterPeerStatusMessage) msg : null;
     }
 
@@ -159,7 +166,11 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         if (cache == null) {
             return null;
         }
-        return cache.get(IClusterCacheCoordinator.generateEngineClusterPeerKey(peerId, engineName));
+        ClusterEngineStateMessage msg = cache.get(IClusterCacheCoordinator.generateEngineClusterPeerKey(peerId, engineName));
+        if (msg != null) {
+            log.debug("Received engine state message. engineState={}, engineName={}, peerId={}", msg.getEngineState(), engineName, peerId);
+        }
+        return msg;
     }
 
     @Override
@@ -185,15 +196,19 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     public Set<ClusterPeerStatusMessage> getObservedPeers() {
         CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
         if (cache == null) {
+            log.debug("Skipping getObservedPeers() because JCS is not initialized. serverId={}", serverId);
             return Collections.emptySet();
         }
         Set<ClusterPeerStatusMessage> result = new HashSet<>();
-        for (String key : cache.getCacheControl().getKeySet(true)) {
-            ClusterPeerSecureMessage msg = cache.get(key);
+        for (String peerId : cache.getCacheControl().getKeySet(true)) {
+            ClusterPeerSecureMessage msg = cache.get(peerId);
             if (msg instanceof ClusterPeerStatusMessage) {
+                log.debug("Using observed peer message to compile list of peers. eventType={}, peerId={}, timestamp={}",
+                        msg.getEventType(), peerId, msg.getTimestamp());
                 result.add((ClusterPeerStatusMessage) msg);
             }
         }
+        log.debug("Compiled list of observed peers. All known peers={}, Observed={}", knownPeers.size(), result.size());
         return result;
     }
 }
