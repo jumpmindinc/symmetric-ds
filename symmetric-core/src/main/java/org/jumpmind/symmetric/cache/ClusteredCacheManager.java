@@ -303,7 +303,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long startTime = System.currentTimeMillis();
         long staleThresholdMs = refreshStaleThreshold();
         long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
-        discoverPeersFromLocalCache();
+        discoverPeersIncomingHeartbeats();
         broadcastStateAndEngines();
         purgeObsoletePeers(startTime, getObsoleteMs(getAnyEngine()));
         if (this.isHeartbeatLoopRunning) {
@@ -371,9 +371,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Drops peer records that have been offline for so long they are no longer relevant to anything, including lock-staleness checks. Without this,
-     * {@link #peerStates} would grow without bound, since crashed and gracefully-left peers are both retained (not removed) so their staleness can still be
-     * confirmed later. Also removes the peer from the coordinator's known-peers set, which is responsible for actual network communication.
+     * Stops tracking a peer that has been offline for so long that even staleness check is irrelevant.
      */
     private void purgeObsoletePeers(long now, long obsoleteThresholdMs) {
         peerStates.entrySet().removeIf(entry -> {
@@ -386,14 +384,18 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Promotes any server ID already observed in the local peer-status cache region to a known peer. A peer that has us in its own TcpServers list starts
-     * pushing lateral cache messages to us as soon as it connects, landing them in our local cache well before any DB-driven scan (engine startup or the
-     * Heartbeat job) would otherwise discover it.
+     * Adds recently observed server ID (sent us a heartbeat message) to the set of known peers.
      */
-    private void discoverPeersFromLocalCache() {
+    private int discoverPeersIncomingHeartbeats() {
+        int newPeersCount = 0;
         for (ClusterPeerStatusMessage msg : coordinator.getObservedPeers()) {
-            addPeer(msg.getServerId(), msg.getTimestampAsDate());
+            if (addPeer(msg.getServerId(), msg.getTimestampAsDate())) {
+                newPeersCount++;
+            }
         }
+        log.debug("Discovered {} new peers from incoming heartbeat messages. serverId={}, ClusterPartitionId={}",
+                newPeersCount, myServerId, myClusterPartitionId);
+        return newPeersCount;
     }
 
     private int countActivePeers(long staleThresholdMs) {

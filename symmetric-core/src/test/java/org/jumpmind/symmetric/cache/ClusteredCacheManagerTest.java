@@ -287,45 +287,57 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
-    public void discoverPeersFromLocalCache_noObservedPeers_doesNothing() throws Exception {
+    public void discoverPeersIncomingHeartbeats_noObservedPeers_returnsZero() throws Exception {
         manager.registerEngine(mockEngine);
-        invokeDiscoverPeersFromLocalCache();
+        assertEquals(0, invokeDiscoverPeersIncomingHeartbeats());
         verify(mockCoordinator, never()).addPeer(anyString());
     }
 
     @Test
-    public void discoverPeersFromLocalCache_newPeerObserved_addsPeer() throws Exception {
+    public void discoverPeersIncomingHeartbeats_newPeerObserved_addsPeerAndReturnsOne() throws Exception {
         manager.registerEngine(mockEngine);
         ClusterPeerStatusMessage observedMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, SERVER_2);
         when(mockCoordinator.getObservedPeers()).thenReturn(Set.of(observedMsg));
-        invokeDiscoverPeersFromLocalCache();
+        when(mockCoordinator.addPeer(SERVER_2)).thenReturn(true);
+        assertEquals(1, invokeDiscoverPeersIncomingHeartbeats());
         verify(mockCoordinator).addPeer(SERVER_2);
     }
 
     @Test
-    public void discoverPeersFromLocalCache_multipleObservedPeers_addsEachOne() throws Exception {
+    public void discoverPeersIncomingHeartbeats_multipleObservedPeers_addsEachOneAndReturnsCount() throws Exception {
         manager.registerEngine(mockEngine);
         ClusterPeerStatusMessage peer1Msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
         ClusterPeerStatusMessage peer2Msg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_2);
         when(mockCoordinator.getObservedPeers()).thenReturn(Set.of(peer1Msg, peer2Msg));
-        invokeDiscoverPeersFromLocalCache();
+        when(mockCoordinator.addPeer(PEER_1)).thenReturn(true);
+        when(mockCoordinator.addPeer(PEER_2)).thenReturn(true);
+        assertEquals(2, invokeDiscoverPeersIncomingHeartbeats());
         verify(mockCoordinator).addPeer(PEER_1);
         verify(mockCoordinator).addPeer(PEER_2);
     }
 
     @Test
-    public void discoverPeersFromLocalCache_ownServerIdObserved_ignoredSafely() throws Exception {
+    public void discoverPeersIncomingHeartbeats_ownServerIdObserved_ignoredSafelyAndReturnsZero() throws Exception {
         manager.registerEngine(mockEngine);
         ClusterPeerStatusMessage observedMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, SERVER_1);
         when(mockCoordinator.getObservedPeers()).thenReturn(Set.of(observedMsg));
-        invokeDiscoverPeersFromLocalCache();
+        assertEquals(0, invokeDiscoverPeersIncomingHeartbeats());
         verify(mockCoordinator, never()).addPeer(SERVER_1);
     }
 
-    private void invokeDiscoverPeersFromLocalCache() throws Exception {
-        Method m = ClusteredCacheManager.class.getDeclaredMethod("discoverPeersFromLocalCache");
+    @Test
+    public void discoverPeersIncomingHeartbeats_notNewPeer_notCountedAsNew() throws Exception {
+        manager.registerEngine(mockEngine);
+        ClusterPeerStatusMessage observedMsg = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, SERVER_2);
+        when(mockCoordinator.getObservedPeers()).thenReturn(Set.of(observedMsg));
+        when(mockCoordinator.addPeer(SERVER_2)).thenReturn(false);
+        assertEquals(0, invokeDiscoverPeersIncomingHeartbeats());
+    }
+
+    private int invokeDiscoverPeersIncomingHeartbeats() throws Exception {
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("discoverPeersIncomingHeartbeats");
         m.setAccessible(true);
-        m.invoke(manager);
+        return (int) m.invoke(manager);
     }
 
     @Test

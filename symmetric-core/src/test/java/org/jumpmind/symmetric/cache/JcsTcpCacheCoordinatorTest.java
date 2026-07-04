@@ -105,6 +105,38 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
+    void removePeer_knownPeer_purgesHeartbeatMessage() throws Exception {
+        CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
+        setPeerHeartbeatCache(mockCache);
+        coordinator.addPeer("server1");
+        coordinator.removePeer("server1");
+        verify(mockCache).remove("server1");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void removePeer_knownPeer_purgesOnlyThatPeersEngineStateMessages() throws Exception {
+        CacheAccess<String, ClusterEngineStateMessage> mockCache = mock(CacheAccess.class);
+        CompositeCache<String, ClusterEngineStateMessage> mockCacheControl = mock(CompositeCache.class);
+        when(mockCache.getCacheControl()).thenReturn(mockCacheControl);
+        when(mockCacheControl.getKeySet(true)).thenReturn(Set.of("server1|engine1", "server1|engine2", "server2|engine1"));
+        setEngineStateCache(mockCache);
+        coordinator.addPeer("server1");
+        coordinator.removePeer("server1");
+        verify(mockCache).remove("server1|engine1");
+        verify(mockCache).remove("server1|engine2");
+        verify(mockCache, never()).remove("server2|engine1");
+    }
+
+    @Test
+    void removePeer_unknownPeer_doesNotPurgeHeartbeatMessage() throws Exception {
+        CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
+        setPeerHeartbeatCache(mockCache);
+        coordinator.removePeer("server1");
+        verify(mockCache, never()).remove(anyString());
+    }
+
+    @Test
     void removePeer_onlyRemovesSpecifiedPeer() {
         coordinator.addPeer("server1");
         coordinator.addPeer("server2");

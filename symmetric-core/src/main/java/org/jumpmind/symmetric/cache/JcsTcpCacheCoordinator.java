@@ -105,12 +105,33 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     @Override
     public synchronized boolean removePeer(String serverId) {
         if (knownPeers.remove(serverId)) {
+            purgePeerMessages(serverId);
             log.info("Removed obsolete peer from cluster. serverId={}, ClusterPartitionId={}, knownPeers.size={}", serverId, clusterPartitionId,
                     knownPeers.size());
             return true;
         } else {
             log.debug("Peer not known to cluster, nothing to remove. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
             return false;
+        }
+    }
+
+    /**
+     * Purges every cached message for a removed peer: its heartbeat/status message (keyed directly by serverId) and every engine-state message it ever sent
+     * (keyed by "serverId|engineName"), since those would otherwise sit in the JCS cache indefinitely (the mandatory regions never expire elements by age).
+     */
+    private void purgePeerMessages(String serverId) {
+        CacheAccess<String, ClusterPeerSecureMessage> heartbeatCache = peerHeartbeatCache;
+        if (heartbeatCache != null) {
+            heartbeatCache.remove(serverId);
+        }
+        CacheAccess<String, ClusterEngineStateMessage> engineCache = engineStateCache;
+        if (engineCache != null) {
+            String enginePeerPrefix = serverId + "|";
+            for (String key : engineCache.getCacheControl().getKeySet(true)) {
+                if (key.startsWith(enginePeerPrefix)) {
+                    engineCache.remove(key);
+                }
+            }
         }
     }
 
