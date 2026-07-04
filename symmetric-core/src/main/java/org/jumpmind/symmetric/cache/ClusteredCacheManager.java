@@ -531,8 +531,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 log.error("Aborting peer joined processing for peer={} because cluster partition authentication failed", msg.getServerId());
                 return;
             }
-            if (!engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
-                log.error("Detected another cluster peer {} but cluster.lock.enabled=false. "
+            if (!engine.getClusterService().isClusteringEnabled()) {
+                log.error("Detected another cluster peer {} but cluster locking is not actually enforced "
+                        + "(cluster.lock.enabled=false, and/or this edition does not support clustering). "
                         + "Multiple SymmetricDS instances cannot share a database without cluster locking! Shutting down.",
                         msg.getServerId());
                 stopRegisteredEngines();

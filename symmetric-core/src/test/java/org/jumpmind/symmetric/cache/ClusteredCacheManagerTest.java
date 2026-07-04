@@ -709,8 +709,8 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
-    public void onPeerJoined_differentInstanceWithLockingEnabled_doesNotShutdown() throws Exception {
-        when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
+    public void onPeerJoined_differentInstanceWithClusteringEnabled_doesNotShutdown() throws Exception {
+        when(mockClusterService.isClusteringEnabled()).thenReturn(true);
         manager.registerEngine(mockEngine);
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION);
@@ -733,8 +733,22 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
-    public void onPeerJoined_clusterLockingDisabled_triggersShutdown() throws Exception {
-        when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
+    public void onPeerJoined_clusteringNotEnabled_triggersShutdown() throws Exception {
+        when(mockClusterService.isClusteringEnabled()).thenReturn(false);
+        manager.registerEngine(mockEngine);
+        suppressExit();
+        ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
+        m.setAccessible(true);
+        m.invoke(manager, joinMsg);
+        verify(mockEngine).stop();
+    }
+
+    @Test
+    public void onPeerJoined_lockingParameterTrueButClusteringNotEnforced_triggersShutdown() throws Exception {
+        when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
+        when(mockClusterService.isClusteringEnabled()).thenReturn(false);
         manager.registerEngine(mockEngine);
         suppressExit();
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
