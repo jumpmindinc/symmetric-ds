@@ -27,6 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.IApplicationHealthTracker;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.jumpmind.util.AppUtils;
@@ -79,6 +80,8 @@ public class SymmetricContextListener implements ServletContextListener {
             injectServerPropertiesIntoSystem("/symmetric-server.properties");
         }
         engineHolder.start();
+        Runtime.getRuntime().addShutdownHook(new Thread(ClusteredCacheManager.getInstance()::stopClusterCommunication,
+                "symmetric-cluster-communication-shutdown"));
     }
 
     protected Class<?> loadRemoteStatusEndpoint() {
