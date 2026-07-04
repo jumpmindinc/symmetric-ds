@@ -314,21 +314,21 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private void sleepUntilNextHeartbeat(long startTime, long sleepBetweenHeartbeatsMs, long staleThresholdMs) throws InterruptedException {
-        // +1 because these counts only track remote peers; the current server is also an active member of the cluster.
-        int activeMembersIncludingSelf = countActivePeers(staleThresholdMs) + 1;
-        int knownPeersIncludingSelf = coordinator.getPeerIds().size() + 1;
+        // These counts only track remote peers; the current server is also an active member of the cluster, noted separately in the log message below.
+        int activeMembers = countActivePeers(staleThresholdMs);
+        int knownPeers = coordinator.getPeerIds().size();
         long now = System.currentTimeMillis();
         long durationMs = now - startTime;
         long adjustedSleepMs = Math.max(0, sleepBetweenHeartbeatsMs - durationMs);
         if (staleThresholdMs > 0 && now - lastHeartbeatSummaryLogMs >= staleThresholdMs) {
             lastHeartbeatSummaryLogMs = now;
             log.info(
-                    "Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
-                    activeMembersIncludingSelf, knownPeersIncludingSelf, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+                    "Cluster peer heartbeat completed: Active peers={} (plus myself), Known peers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, Tick duration={} ms, sleepMs={}",
+                    activeMembers, knownPeers, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
         } else {
             log.debug(
-                    "Cluster peer heartbeat completed: activeMembers={}, knownPeers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, durationMs={}, sleepMs={}",
-                    activeMembersIncludingSelf, knownPeersIncludingSelf, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+                    "Cluster peer heartbeat completed: Active peers={} (plus myself), Known peers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, Tick duration={} ms, sleepMs={}",
+                    activeMembers, knownPeers, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
         }
         Thread.sleep(adjustedSleepMs);
     }
