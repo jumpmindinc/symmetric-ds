@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
  */
 public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
-    static final int DEFAULT_PORT = 1101;
+    static final int JCS_TCP_PORT_DEFAULT = 1101;
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet();
     private volatile CompositeCacheManager jcsCacheManager;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache;
@@ -55,7 +55,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         InitialSettings initialSettings = new InitialSettings(
                 engine.getClusterService().getServerId(),
                 engine.getClusterService().getClusterPartitionId(),
-                engine.getParameterService().getInt(ServerConstants.CLUSTER_JCS_PORT, DEFAULT_PORT));
+                engine.getParameterService().getInt(ServerConstants.CLUSTER_JCS_PORT, JCS_TCP_PORT_DEFAULT));
         start(initialSettings, Collections.emptySet());
     }
 

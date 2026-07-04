@@ -27,12 +27,15 @@ import java.util.Set;
 
 import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.InitialSettings;
 import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.RegionSettings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Builds the Apache Commons JCS configuration properties for {@link JcsTcpCacheCoordinator}. Always configures the mandatory PEER_REGION/ENGINE_REGION regions
  * in addition to any caller-supplied regions, and rejects region names that collide with each other or with the mandatory names.
  */
 final class JcsPropertiesBuilder {
+    private static final Logger log = LoggerFactory.getLogger(JcsPropertiesBuilder.class);
     static final String PEER_REGION = "SYM_CLUSTER_PEERS";
     static final String ENGINE_REGION = "SYM_CLUSTER_ENGINES";
     private static final String JCS_REGION_SYNC_LATERAL_TCP = "LATERAL_TCP"; // Sync mode specific to this class
@@ -58,6 +61,7 @@ final class JcsPropertiesBuilder {
     static Properties build(InitialSettings initialSettings, Set<RegionSettings> regionSettings) {
         Properties props = buildJcsCoreProperties(initialSettings);
         props.putAll(buildRegionalProperties(withMandatoryRegions(regionSettings)));
+        log.debug("Built JCS properties: {}", props);
         return props;
     }
 
