@@ -114,6 +114,12 @@ Each cluster's shared identity is the cluster partition ID: auto-generated and p
 All endpoints must be reachable on the JCS port; peer messages are AES-encrypted with a SHA-512 header checksum, but the port should still be protected by network-level firewall rules and not exposed to untrusted networks.
 
 Each cluster member's peer identity — used for JCS peer discovery and for its row in `SYM_NODE_HOST` — is now resolved consistently from the single `cluster.server.id` parameter (defaulting to the container/OS hostname).  The internal `runtime.symmetric.cluster.server.id` system property used during early development of this feature has been decommissioned; set `cluster.server.id` to pin a stable, distinct identity per cluster member going forward.
+
+Custom extensions implementing the following core interfaces should note these changes:
+
+* `IClusteredCacheManager.startClusterPeerListener(...)` — now takes an additional `String serverId` parameter (the resolved `cluster.server.id`) instead of resolving it internally.
+* `IClusterService` — adds `purgeObsoleteNodeHosts()`, which clears any cluster locks still held by a `SYM_NODE_HOST` entry older than `cluster.peer.obsolete.ms` and then removes that entry. Called automatically at the start of the outgoing purge job.
+* `INodeService` — adds `deleteObsoleteNodeHosts(String nodeId, Date obsoleteBeforeTime)`, replacing the earlier, unreleased `deleteStaleNodeHosts`.
 --
 
 === Container Mode
