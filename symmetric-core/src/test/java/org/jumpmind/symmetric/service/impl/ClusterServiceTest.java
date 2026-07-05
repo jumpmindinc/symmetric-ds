@@ -103,6 +103,7 @@ class ClusterServiceTest {
     @AfterEach
     void resetInstanceId() {
         ClusterService.instanceId = null;
+        ClusterService.isUpgradedInstanceId = false;
     }
 
     @Test
@@ -217,6 +218,16 @@ class ClusterServiceTest {
     }
 
     @Test
+    void testInit_upgradedInstanceId_deletesOnlyStaleNodeHosts() {
+        ClusterService.isUpgradedInstanceId = true;
+        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
+        when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
+        clusterService.init();
+        verify(nodeService).deleteStaleNodeHosts(anyString(), any(Date.class));
+        verify(nodeService, never()).deleteNodeHost(anyString());
+    }
+
+    @Test
     void testCheckSymDbOwnership_noNodeHosts_doesNotThrow() {
         clusterService.checkSymDbOwnership();
     }
@@ -237,6 +248,18 @@ class ClusterServiceTest {
         nodeHost.setHeartbeatTime(new Date());
         when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(nodeHost));
         assertThrows(SymmetricException.class, () -> clusterService.checkSymDbOwnership());
+    }
+
+    @Test
+    void testCheckSymDbOwnership_differentInstanceId_recentHeartbeat_throwsWithHostnames() {
+        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
+        NodeHost nodeHost = new NodeHost();
+        nodeHost.setInstanceId("other-instance-id");
+        nodeHost.setHostName("other-host");
+        nodeHost.setHeartbeatTime(new Date());
+        when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(nodeHost));
+        SymmetricException ex = assertThrows(SymmetricException.class, () -> clusterService.checkSymDbOwnership());
+        assertTrue(ex.getMessage().contains("other-host"));
     }
 
     @Test

@@ -129,8 +129,11 @@ public class ClusterService extends AbstractService implements IClusterService {
         if (isUpgradedInstanceId) {
             String nodeHostTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST);
             String nodeId = nodeService.findIdentityNodeId();
-            log.info("Deleting the {} row(s) for node '{}' because the instance ID has changed", nodeHostTableName, nodeId);
-            nodeService.deleteNodeHost(nodeId); // This is cleanup mostly for an upgrade.
+            long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS);
+            Date staleBeforeTime = new Date(System.currentTimeMillis() - staleThresholdMs);
+            log.info("Deleting stale {} row(s) for node '{}' (heartbeat older than {}) because the instance ID has changed",
+                    nodeHostTableName, nodeId, staleBeforeTime);
+            nodeService.deleteStaleNodeHosts(nodeId, staleBeforeTime);
         }
         checkSymDbOwnership();
         for (Lock lock : lockCache.values()) {
@@ -304,16 +307,19 @@ public class ClusterService extends AbstractService implements IClusterService {
         for (NodeHost nodeHost : nodeHosts) {
             if (nodeHost.getInstanceId() != null && !Strings.CS.equals(instanceId, nodeHost.getInstanceId())) {
                 if (isOwnerStale(nodeHost, staleThresholdMs)) {
-                    log.warn("Reclaiming ownership of node '{}' from instance id '{}' because its last heartbeat ({}) is older than "
+                    log.warn("Reclaiming ownership of node '{}' from instance id '{}' on host '{}' because its last heartbeat ({}) is older than "
                             + "cluster.db.ownership.stale.ms={}, indicating that instance has crashed or been replaced.",
-                            nodeService.findIdentityNodeId(), nodeHost.getInstanceId(), nodeHost.getHeartbeatTime(), staleThresholdMs);
+                            nodeService.findIdentityNodeId(), nodeHost.getInstanceId(), nodeHost.getHostName(), nodeHost.getHeartbeatTime(),
+                            staleThresholdMs);
                     continue;
                 }
                 String msg = String.format("*** Node '%s' failed to claim exclusive ownership of the SymmetricDS database. *** "
-                        + "This is instance id '%s' but instance id '%s' is already present in sym_node_host.  This is caused when 2 copies of SymmetricDS "
-                        + "are pointed at the same database, but not clustered.  If you are configuring a cluster, set cluster.lock.enabled=true and restart.  "
-                        + "If you moved your installation or re-installed, run 'delete from sym_node_host where node_id = '%s' and restart SymmetricDS.",
-                        nodeService.findIdentityNodeId(), instanceId, nodeHost.getInstanceId(), nodeService.findIdentityNodeId());
+                        + "This is instance id '%s' on host '%s' but instance id '%s' on host '%s' is already present in sym_node_host.  This is caused "
+                        + "when 2 copies of SymmetricDS are pointed at the same database, but not clustered.  If you are configuring a cluster, set "
+                        + "cluster.lock.enabled=true and restart.  If you moved your installation or re-installed, run 'delete from sym_node_host where "
+                        + "node_id = '%s' and restart SymmetricDS.",
+                        nodeService.findIdentityNodeId(), instanceId, getServerId(), nodeHost.getInstanceId(), nodeHost.getHostName(),
+                        nodeService.findIdentityNodeId());
                 throw new SymmetricException(msg);
             }
         }
