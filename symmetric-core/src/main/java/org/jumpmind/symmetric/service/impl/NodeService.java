@@ -272,6 +272,31 @@ public class NodeService extends AbstractService implements INodeService {
     }
 
     @Override
+    public void updateNodeHostForCurrentNode(boolean bypassTrigger) {
+        if (!bypassTrigger) {
+            updateNodeHostForCurrentNode();
+            return;
+        }
+        String nodeId = findIdentityNodeId();
+        ISqlTransaction transaction = null;
+        try {
+            transaction = sqlTemplate.startSqlTransaction();
+            symmetricDialect.disableSyncTriggers(transaction, nodeId);
+            updateNodeHostForCurrentNode(transaction);
+            symmetricDialect.enableSyncTriggers(transaction);
+            transaction.commit();
+        } catch (Exception ex) {
+            log.warn("Failed to update node host heartbeat for current node, but will try again next time.", ex);
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw ex;
+        } finally {
+            close(transaction);
+        }
+    }
+
+    @Override
     public void deleteNode(String nodeId, boolean syncChange) {
         deleteNode(nodeId, null, syncChange);
     }

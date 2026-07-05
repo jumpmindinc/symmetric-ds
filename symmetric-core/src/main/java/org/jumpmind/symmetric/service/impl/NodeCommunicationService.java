@@ -73,6 +73,7 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
     private boolean initialized = false;
     private Map<CommunicationType, Set<String>> currentlyExecuting;
     private Map<CommunicationType, Map<String, NodeCommunication>> lockCache;
+    private volatile long lastHeartbeatTouchMs;
 
     public NodeCommunicationService(ISymmetricEngine engine) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
@@ -595,6 +596,9 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
                         nodeCommunication.getNodeId(), nodeCommunication.getQueue(),
                         nodeCommunication.getCommunicationType().name(), currentOwner) == 1;
             }
+            if (locked) {
+                touchNodeHostHeartbeat();
+            }
             return locked;
         } else {
             Date lockTimeVal = nodeCommunication.getLockTime();
@@ -617,6 +621,20 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
                 return true;
             }
             return false;
+        }
+    }
+
+    /**
+     * Keeps this node's SYM_NODE_HOST heartbeat fresh whenever it successfully acquires a node communication lock, so a node that's busy doing push/pull/ route
+     * work doesn't go heartbeat-stale and get mistaken for crashed if the heartbeat job is disabled. Throttled to cluster.lock.refresh.ms per service instance
+     * rather than per lock, since locks here are keyed by node+queue (potentially many distinct entries) rather than the small fixed set of actions
+     * ClusterService's own lock refresh is keyed by.
+     */
+    private void touchNodeHostHeartbeat() {
+        long now = System.currentTimeMillis();
+        if (now - lastHeartbeatTouchMs >= parameterService.getLong(ParameterConstants.CLUSTER_LOCK_REFRESH_MS)) {
+            lastHeartbeatTouchMs = now;
+            nodeService.updateNodeHostForCurrentNode(false);
         }
     }
 

@@ -162,6 +162,12 @@ public interface INodeService {
 
     public void updateNodeHostForCurrentNode(ISqlTransaction transaction);
 
+    /**
+     * Updates the current node's heartbeat. If bypassTrigger is true, sync triggers are disabled around the update so it is not captured and replicated to
+     * other nodes (used at startup, to record a heartbeat without waiting on the sync pipeline). If false, the update goes through normally.
+     */
+    public void updateNodeHostForCurrentNode(boolean bypassTrigger);
+
     public void insertNodeIdentity(String nodeId);
 
     public void insertNodeGroup(String groupId, String description);

@@ -148,6 +148,9 @@ public class MockNodeService implements INodeService {
     public void updateNodeHostForCurrentNode() {
     }
 
+    public void updateNodeHostForCurrentNode(boolean bypassTrigger) {
+    }
+
     public void insertNodeGroup(String groupId, String description) {
     }
 

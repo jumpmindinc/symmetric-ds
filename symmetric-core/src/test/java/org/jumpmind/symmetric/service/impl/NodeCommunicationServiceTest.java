@@ -26,6 +26,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Date;
@@ -33,6 +36,7 @@ import java.util.Date;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.NodeCommunication;
 import org.jumpmind.symmetric.model.NodeCommunication.CommunicationType;
@@ -50,6 +54,7 @@ class NodeCommunicationServiceTest {
     private IDatabasePlatform platform;
     private ISqlTemplate sqlTemplate;
     private IClusterService clusterService;
+    private INodeService nodeService;
     private NodeCommunicationService service;
 
     @BeforeEach
@@ -59,11 +64,12 @@ class NodeCommunicationServiceTest {
         platform = mock(IDatabasePlatform.class);
         sqlTemplate = mock(ISqlTemplate.class);
         clusterService = mock(IClusterService.class);
+        nodeService = mock(INodeService.class);
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getSymmetricDialect()).thenReturn(dialect);
         when(engine.getClusterService()).thenReturn(clusterService);
-        when(engine.getNodeService()).thenReturn(mock(INodeService.class));
+        when(engine.getNodeService()).thenReturn(nodeService);
         when(engine.getConfigurationService()).thenReturn(mock(IConfigurationService.class));
         when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
         when(dialect.getPlatform()).thenReturn(platform);
@@ -144,6 +150,42 @@ class NodeCommunicationServiceTest {
         when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
         NodeCommunication nc = nodeCommunication("stale-server", new Date());
         assertFalse(service.lock(nc, new Date()));
+    }
+
+    @Test
+    void testLock_clustered_normalSqlSucceeds_touchesNodeHostHeartbeat() {
+        when(clusterService.isClusteringEnabled()).thenReturn(true);
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        NodeCommunication nc = nodeCommunication("other-server", new Date());
+        service.lock(nc, new Date());
+        verify(nodeService, times(1)).updateNodeHostForCurrentNode(false);
+    }
+
+    @Test
+    void testLock_clustered_secondAcquisitionWithinThrottleWindow_doesNotTouchHeartbeatAgain() {
+        when(clusterService.isClusteringEnabled()).thenReturn(true);
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(parameterService.getLong(ParameterConstants.CLUSTER_LOCK_REFRESH_MS)).thenReturn(1200000L);
+        NodeCommunication nc = nodeCommunication("other-server", new Date());
+        service.lock(nc, new Date());
+        service.lock(nc, new Date());
+        verify(nodeService, times(1)).updateNodeHostForCurrentNode(false);
+    }
+
+    @Test
+    void testLock_clustered_sqlFails_ownerNotStale_doesNotTouchNodeHostHeartbeat() {
+        when(clusterService.isClusteringEnabled()).thenReturn(true);
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
+        NodeCommunication nc = nodeCommunication("other-server", new Date());
+        service.lock(nc, new Date());
+        verify(nodeService, never()).updateNodeHostForCurrentNode(any(Boolean.class));
+    }
+
+    @Test
+    void testLock_inMemory_succeeds_doesNotTouchNodeHostHeartbeat() {
+        NodeCommunication nc = nodeCommunication(null, null);
+        service.lock(nc, new Date());
+        verify(nodeService, never()).updateNodeHostForCurrentNode(any(Boolean.class));
     }
 
     private NodeCommunication nodeCommunication(String lockingServerId, Date lockTime) {
