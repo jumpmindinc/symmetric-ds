@@ -42,6 +42,7 @@ public class NodeHost implements Serializable {
     private String nodeId;
     private String hostName;
     private String instanceId;
+    private String clusterPartitionId;
     private String ipAddress;
     private String osUser;
     private String osName;
@@ -71,9 +72,10 @@ public class NodeHost implements Serializable {
         this.instanceId = instanceId;
     }
 
-    public void refresh(IDatabasePlatform platform, String instanceId, String serverId) {
+    public void refresh(IDatabasePlatform platform, String instanceId, String serverId, String clusterPartitionId) {
         this.instanceId = instanceId;
         this.hostName = serverId;
+        this.clusterPartitionId = clusterPartitionId;
         setIpAddress(AppUtils.getIpAddress());
         this.osUser = System.getProperty("user.name");
         this.osName = System.getProperty("os.name");
@@ -116,6 +118,14 @@ public class NodeHost implements Serializable {
 
     public void setInstanceId(String instanceId) {
         this.instanceId = instanceId;
+    }
+
+    public String getClusterPartitionId() {
+        return clusterPartitionId;
+    }
+
+    public void setClusterPartitionId(String clusterPartitionId) {
+        this.clusterPartitionId = clusterPartitionId;
     }
 
     public String getIpAddress() {

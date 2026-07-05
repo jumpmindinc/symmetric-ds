@@ -22,8 +22,6 @@ package org.jumpmind.symmetric.cache;
 
 import java.util.Set;
 
-import org.jumpmind.symmetric.ISymmetricEngine;
-
 /**
  * Transport abstraction for cluster peer communication. Implementations handle the mechanics of sending and receiving cluster peer messages, allowing
  * ClusteredCacheManager to remain agnostic of the underlying transport (JCS lateral TCP, UDP multicast, etc.).
@@ -58,8 +56,6 @@ public interface IClusterCacheCoordinator {
     static String generateEngineClusterPeerKey(String serverId, String engineName) {
         return serverId + "|" + engineName;
     }
-
-    void start(ISymmetricEngine engine);
 
     /**
      * Starts the coordinator. The implementation's own mandatory regions (e.g. peer heartbeat, engine state) are always configured; regionSettings adds

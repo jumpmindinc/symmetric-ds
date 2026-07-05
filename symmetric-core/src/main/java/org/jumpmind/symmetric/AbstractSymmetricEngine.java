@@ -62,6 +62,7 @@ import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.cache.CacheManager;
 import org.jumpmind.symmetric.cache.ClusterEngineStateMessage;
+import org.jumpmind.symmetric.cache.ClusterPartitionGenerator;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ClusterPeerStatusMessage;
 import org.jumpmind.symmetric.cache.ICacheManager;
@@ -754,10 +755,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (!starting && !started) {
             try {
                 starting = true;
+                initClusterPeerCoordinator();
                 symmetricDialect.verifyDatabaseIsCompatible();
                 checkForProOnlyDatabase();
                 setup();
-                initClusterPeerCoordinator(clusterService.getClusterPartitionId());
                 if (isConfigured()) {
                     Node node = nodeService.findIdentity();
                     startNodeAndJobs(node, startJobs);
@@ -781,11 +782,18 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return started;
     }
 
-    private void initClusterPeerCoordinator(String clusterPartitionId) {
-        if (clusteredCacheManager.isClusterPeerListenerStarted() || StringUtils.isBlank(clusterPartitionId)) {
+    /**
+     * Tier 1: brings up JCS peer announcement/discovery with no database dependency, so this node is visible to peers (and can detect/react to duplicates) even
+     * if later database-dependent startup steps (e.g. {@code ClusterService.checkSymDbOwnership()}) fail. The cluster partition ID and server ID are both
+     * resolved without touching {@code IParameterService}/the database — see {@link org.jumpmind.symmetric.cache.ClusterPartitionGenerator} and
+     * {@link org.jumpmind.symmetric.cache.ClusteredCacheManager#initialize}.
+     */
+    private void initClusterPeerCoordinator() {
+        if (clusteredCacheManager.isClusterPeerListenerStarted()) {
             return;
         }
-        clusteredCacheManager.startClusterPeerListener(securityService, clusterPartitionId, clusterService.getServerId(),
+        String clusterPartitionId = ClusterPartitionGenerator.resolve();
+        clusteredCacheManager.initialize(securityService, clusterPartitionId, null,
                 parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED));
         clusteredCacheManager.startClusterHeartbeat();
         clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);

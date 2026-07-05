@@ -56,6 +56,7 @@ import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.util.AppUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,7 +117,6 @@ public class ClusteredCacheManagerTest {
         coordinatorField.set(manager, mockCoordinator);
         mockClusterService = mock(IClusterService.class);
         when(mockClusterService.getServerId()).thenReturn(SERVER_1);
-        when(mockClusterService.getClusterPartitionId()).thenReturn(MY_CLUSTER_PARTITION_ID);
         mockParameterService = mock(IParameterService.class);
         when(mockParameterService.getEngineName()).thenReturn(ENGINE_1);
         when(mockParameterService.getLong(anyString(), anyLong())).thenReturn(3000L);
@@ -185,6 +185,12 @@ public class ClusteredCacheManagerTest {
         Field f = ClusteredCacheManager.class.getDeclaredField("myServerId");
         f.setAccessible(true);
         f.set(manager, value);
+    }
+
+    private String getMyServerId() throws Exception {
+        Field f = ClusteredCacheManager.class.getDeclaredField("myServerId");
+        f.setAccessible(true);
+        return (String) f.get(manager);
     }
 
     private void setMyClusterPartitionId(String value) throws Exception {
@@ -989,6 +995,36 @@ public class ClusteredCacheManagerTest {
         manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
         manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
         verify(mockCoordinator, times(1)).start(any(IClusterCacheCoordinator.InitialSettings.class), org.mockito.ArgumentMatchers.anySet());
+    }
+
+    @Test
+    public void initialize_withServerIdGiven_usesGivenServerIdDirectly() throws Exception {
+        manager.initialize(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
+        assertEquals(TEST_SERVER_ID, getMyServerId());
+    }
+
+    @Test
+    public void initialize_setsClusterPartitionId_exposedViaGetter() throws Exception {
+        manager.initialize(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
+        assertEquals(TEST_CLUSTER_PARTITION_ID, manager.getClusterPartitionId());
+    }
+
+    @Test
+    public void initialize_blankServerId_resolvesFromSystemProperty() throws Exception {
+        System.setProperty(ServerConstants.CLUSTER_SERVER_ID, "configured-server-id");
+        try {
+            manager.initialize(mockSecurityService, TEST_CLUSTER_PARTITION_ID, "", true);
+            assertEquals("configured-server-id", getMyServerId());
+        } finally {
+            System.clearProperty(ServerConstants.CLUSTER_SERVER_ID);
+        }
+    }
+
+    @Test
+    public void initialize_nullServerIdAndNoConfiguration_fallsBackToHostname() throws Exception {
+        System.clearProperty(ServerConstants.CLUSTER_SERVER_ID);
+        manager.initialize(mockSecurityService, TEST_CLUSTER_PARTITION_ID, null, true);
+        assertEquals(AppUtils.getHostName(), getMyServerId());
     }
 
     @Test

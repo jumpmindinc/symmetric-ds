@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -166,6 +167,36 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return isClusterPeerListenerStarted;
     }
 
+    /**
+     * Tier 1 entry point: brings up JCS peer announcement/discovery with no database dependency. {@code serverId} is resolved from system
+     * properties/environment (falling back to the local hostname) when blank, rather than through {@code IClusterService.getServerId()}, which touches
+     * {@code IParameterService} first and so isn't safe to call before the database is known to be reachable.
+     */
+    public synchronized void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
+        startClusterPeerListener(securityService, clusterPartitionId, StringUtils.isBlank(serverId) ? resolveServerId() : serverId, isJcsEnabled);
+    }
+
+    private static String resolveServerId() {
+        String id = System.getProperty(ServerConstants.CLUSTER_SERVER_ID);
+        if (StringUtils.isBlank(id)) {
+            id = System.getenv("SYM_CLUSTER_SERVER_ID");
+        }
+        if (StringUtils.isBlank(id)) {
+            id = System.getProperty("bind.address");
+        }
+        if (StringUtils.isBlank(id)) {
+            id = System.getProperty("jboss.bind.address");
+        }
+        if (StringUtils.isBlank(id)) {
+            try {
+                id = AppUtils.getHostName();
+            } catch (Exception ex) {
+                id = "unknown";
+            }
+        }
+        return StringUtils.left(id, 255);
+    }
+
     public synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
         ClusterPeerSecureMessage.setSecurityService(securityService);
         myClusterPartitionId = clusterPartitionId;
@@ -176,6 +207,11 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             myStartTimeMs = System.currentTimeMillis();
             ensurePeerListenerStarted(myServerId, myClusterPartitionId, port);
         }
+    }
+
+    @Override
+    public String getClusterPartitionId() {
+        return myClusterPartitionId;
     }
 
     private synchronized void ensurePeerListenerStarted(String serverId, String clusterPartitionId, int port) {
@@ -584,7 +620,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      */
     protected boolean authenticateAndJoinClusterPartition(ISymmetricEngine engine, ClusterPeerSecureMessage msg) {
         String peerClusterPartitionId = msg.getClusterPartitionId();
-        String myClusterPartitionId = engine.getClusterService().getClusterPartitionId();
         log.debug("Authenticating cluster peer={} for engine={}. peerClusterPartitionId={}, myClusterPartitionId={}",
                 msg.getServerId(), engine.getEngineName(), peerClusterPartitionId, myClusterPartitionId);
         if (peerClusterPartitionId == null) {

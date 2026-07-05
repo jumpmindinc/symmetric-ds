@@ -37,8 +37,6 @@ import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryService;
 import org.apache.commons.jcs3.utils.discovery.behavior.IDiscoveryListener;
 import org.apache.commons.jcs3.utils.serialization.StandardSerializer;
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.common.ServerConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,15 +61,6 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private int port;
     private String serverId;
     private String clusterPartitionId;
-
-    @Override
-    public void start(ISymmetricEngine engine) {
-        InitialSettings initialSettings = new InitialSettings(
-                engine.getClusterService().getServerId(),
-                engine.getClusterService().getClusterPartitionId(),
-                engine.getParameterService().getInt(ServerConstants.CLUSTER_JCS_PORT, JCS_TCP_PORT_DEFAULT));
-        start(initialSettings, Collections.emptySet());
-    }
 
     @Override
     public synchronized void start(InitialSettings initialSettings, Set<RegionSettings> regionSettings) {

@@ -48,10 +48,6 @@ import org.apache.commons.jcs3.utils.discovery.DiscoveredService;
 import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryService;
 import org.apache.commons.jcs3.utils.discovery.behavior.IDiscoveryListener;
 import org.jumpmind.security.ISecurityService;
-import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.common.ServerConstants;
-import org.jumpmind.symmetric.service.IClusterService;
-import org.jumpmind.symmetric.service.IParameterService;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.junit.jupiter.api.BeforeEach;
@@ -248,7 +244,7 @@ class JcsTcpCacheCoordinatorTest {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
-            coordinator.start(buildMockEngine(1101));
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of());
             UDPDiscoveryService mockDiscoveryService = mock(UDPDiscoveryService.class);
             IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
             when(mockDiscoveryService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
@@ -269,7 +265,7 @@ class JcsTcpCacheCoordinatorTest {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
-            coordinator.start(buildMockEngine(1101));
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of());
             UDPDiscoveryService mockDiscoveryService = mock(UDPDiscoveryService.class);
             IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
             when(mockDiscoveryService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
@@ -287,7 +283,7 @@ class JcsTcpCacheCoordinatorTest {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
-            coordinator.start(buildMockEngine(1101));
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of());
             UDPDiscoveryService mockDiscoveryService = mock(UDPDiscoveryService.class);
             IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
             when(mockDiscoveryService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
@@ -309,7 +305,7 @@ class JcsTcpCacheCoordinatorTest {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
-            coordinator.start(buildMockEngine(1101));
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of());
             setPeerHeartbeatCache(mock(CacheAccess.class));
             CacheAccess<String, ClusterEngineStateMessage> mockEngineCache = mock(CacheAccess.class);
             CompositeCache<String, ClusterEngineStateMessage> mockEngineCacheControl = mock(CompositeCache.class);
@@ -428,7 +424,7 @@ class JcsTcpCacheCoordinatorTest {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
-            coordinator.start(buildMockEngine(1101));
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of());
             verify(mockManager).configure(any(Properties.class));
         }
     }
@@ -439,7 +435,7 @@ class JcsTcpCacheCoordinatorTest {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             doThrow(new RuntimeException("configure failed")).when(mockManager).configure(any(Properties.class));
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
-            assertThrows(RuntimeException.class, () -> coordinator.start(buildMockEngine(1101)));
+            assertThrows(RuntimeException.class, () -> coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of()));
         }
     }
 
@@ -448,7 +444,7 @@ class JcsTcpCacheCoordinatorTest {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
-            coordinator.start(buildMockEngine(1101));
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of());
             coordinator.stop();
             verify(mockManager).shutDown();
             assertNull(coordinator.getPeerStatusMessage("server1"));
@@ -460,23 +456,11 @@ class JcsTcpCacheCoordinatorTest {
         try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
             CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
             mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
-            coordinator.start(buildMockEngine(1101));
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of());
             coordinator.addPeer("newPeer");
             verify(mockManager, never()).shutDown();
             verify(mockManager).configure(any(Properties.class));
         }
-    }
-
-    private ISymmetricEngine buildMockEngine(int port) {
-        ISymmetricEngine engine = mock(ISymmetricEngine.class);
-        IClusterService clusterService = mock(IClusterService.class);
-        IParameterService parameterService = mock(IParameterService.class);
-        when(engine.getClusterService()).thenReturn(clusterService);
-        when(engine.getParameterService()).thenReturn(parameterService);
-        when(clusterService.getServerId()).thenReturn("server1");
-        when(clusterService.getClusterPartitionId()).thenReturn("inst1");
-        when(parameterService.getInt(ServerConstants.CLUSTER_JCS_PORT, 1101)).thenReturn(port);
-        return engine;
     }
 
     private void setPeerHeartbeatCache(CacheAccess<String, ClusterPeerSecureMessage> cache) throws Exception {

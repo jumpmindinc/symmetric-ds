@@ -69,7 +69,16 @@ public interface IClusteredCacheManager {
 
     boolean isClusterPeerListenerStarted();
 
+    /**
+     * Tier 1 entry point: brings up JCS peer announcement/discovery with no database dependency. {@code serverId} is resolved from system
+     * properties/environment (falling back to the local hostname) when blank.
+     */
+    void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled);
+
     void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled);
+
+    /** The JCS cluster partition ID this node resolved and is currently announcing under. */
+    String getClusterPartitionId();
 
     void startClusterHeartbeat();
 

@@ -41,6 +41,7 @@ import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.db.sql.mapper.StringMapper;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
@@ -235,7 +236,7 @@ public class NodeService extends AbstractService implements INodeService {
     public void updateNodeHost(ISqlTransaction transaction, NodeHost nodeHost) {
         String hostName = StringUtils.left(nodeHost.getHostName(), 60);
         if (transaction.prepareAndExecute(getSql("updateNodeHostSql"),
-                nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getOsUser(),
+                nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getClusterPartitionId(), nodeHost.getOsUser(),
                 nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
                 nodeHost.getAvailableProcessors(), nodeHost.getFreeMemoryBytes(),
                 nodeHost.getTotalMemoryBytes(), nodeHost.getMaxMemoryBytes(), nodeHost.getJavaVersion(),
@@ -243,7 +244,7 @@ public class NodeService extends AbstractService implements INodeService {
                 nodeHost.getTimezoneOffset(), nodeHost.getHeartbeatTime(), nodeHost.getLastRestartTime(),
                 nodeHost.getNodeId(), hostName) <= 0) {
             transaction.prepareAndExecute(getSql("insertNodeHostSql"),
-                    nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getOsUser(),
+                    nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getClusterPartitionId(), nodeHost.getOsUser(),
                     nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
                     nodeHost.getAvailableProcessors(), nodeHost.getFreeMemoryBytes(),
                     nodeHost.getTotalMemoryBytes(), nodeHost.getMaxMemoryBytes(), nodeHost.getJavaVersion(),
@@ -258,7 +259,8 @@ public class NodeService extends AbstractService implements INodeService {
         if (nodeHostForCurrentNode == null) {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
         }
-        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId());
+        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId(),
+                ClusteredCacheManager.getInstance().getClusterPartitionId());
         updateNodeHost(nodeHostForCurrentNode);
     }
 
@@ -267,7 +269,8 @@ public class NodeService extends AbstractService implements INodeService {
         if (nodeHostForCurrentNode == null) {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
         }
-        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId());
+        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId(),
+                ClusteredCacheManager.getInstance().getClusterPartitionId());
         updateNodeHost(transaction, nodeHostForCurrentNode);
     }
 
