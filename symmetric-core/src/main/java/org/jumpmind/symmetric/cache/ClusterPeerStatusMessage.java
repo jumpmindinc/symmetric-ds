@@ -27,14 +27,26 @@ public class ClusterPeerStatusMessage extends ClusterPeerSecureMessage {
     public static final String EVENT_PEER_LEAVING = "PEER_LEAVING";
     public static final String EVENT_PEER_INITIALIZING = "PEER_INITIALIZING";
     public static final String EVENT_PEER_UPGRADING_DB = "PEER_UPGRADING_DB";
+    private final long startTimeMs;
     private transient String cachedEventType;
 
     public ClusterPeerStatusMessage(String eventType, String serverId, String clusterPartitionId, String version) {
-        this(eventType, serverId, clusterPartitionId, version, System.currentTimeMillis());
+        this(eventType, serverId, clusterPartitionId, version, System.currentTimeMillis(), 0L);
     }
 
-    private ClusterPeerStatusMessage(String eventType, String serverId, String clusterPartitionId, String version, long timestamp) {
+    /**
+     * @param startTimeMs
+     *            when the sending JVM's cluster peer listener started, constant for that JVM's entire run (unlike timestamp, which is the send time of this
+     *            specific message). Used to deterministically decide which of two unclustered peers sharing a database is the more recent duplicate. Callers
+     *            that don't track a real start time may pass 0.
+     */
+    public ClusterPeerStatusMessage(String eventType, String serverId, String clusterPartitionId, String version, long startTimeMs) {
+        this(eventType, serverId, clusterPartitionId, version, System.currentTimeMillis(), startTimeMs);
+    }
+
+    private ClusterPeerStatusMessage(String eventType, String serverId, String clusterPartitionId, String version, long timestamp, long startTimeMs) {
         super(serverId, clusterPartitionId, version, timestamp, eventType);
+        this.startTimeMs = startTimeMs;
         this.cachedEventType = eventType;
         markDecrypted();
     }
@@ -48,5 +60,9 @@ public class ClusterPeerStatusMessage extends ClusterPeerSecureMessage {
     public String getEventType() {
         ensureDecrypted();
         return cachedEventType;
+    }
+
+    public long getStartTimeMs() {
+        return startTimeMs;
     }
 }

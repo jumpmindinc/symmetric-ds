@@ -121,7 +121,7 @@ public class ClusterService extends AbstractService implements IClusterService {
     @Override
     public void init() {
         if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) && !isClusteringEnabled()) {
-            log.warn("Cluster lock is only available in SymmetricDS Pro.  Remove {} from engine properties.",
+            log.warn("Cluster lock is only available in SymmetricDS Pro.  Remove {} from engine properties or install SymmetricDS PRO license.",
                     ParameterConstants.CLUSTER_LOCKING_ENABLED);
         }
         initInstanceId();

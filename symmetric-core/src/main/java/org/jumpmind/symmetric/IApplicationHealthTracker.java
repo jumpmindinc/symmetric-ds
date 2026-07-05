@@ -36,4 +36,10 @@ public interface IApplicationHealthTracker {
     boolean isEngineReady(String engineName);
 
     boolean isReady();
+
+    /**
+     * Marks this JVM and all its tracked engines as not ready, for use immediately before process termination so health checks (e.g. a Kubernetes readiness
+     * probe) see the failure right away rather than waiting for the process to actually die.
+     */
+    void onShutdown();
 }

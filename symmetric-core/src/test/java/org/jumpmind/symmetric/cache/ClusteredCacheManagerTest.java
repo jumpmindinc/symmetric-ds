@@ -46,6 +46,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -80,6 +81,10 @@ public class ClusteredCacheManagerTest {
     private static final String MANAGER_SERVER_ID = "myServer";
     private static final String MANAGER_CLUSTER_PARTITION_ID = "myInstance";
     private static final String TEST_VERSION = "1.0";
+    private static final long OLDER_START_TIME_MS = 1000L;
+    private static final long NEWER_START_TIME_MS = 2000L;
+    private static final long RECENT_HEARTBEAT_OFFSET_MS = 1000L;
+    private static final long STALE_HEARTBEAT_EXTRA_OFFSET_MS = 10_000L;
     private ClusteredCacheManager manager;
     private IClusterCacheCoordinator mockCoordinator;
     private ISymmetricEngine mockEngine;
@@ -188,6 +193,12 @@ public class ClusteredCacheManagerTest {
         f.set(manager, value);
     }
 
+    private void setMyStartTimeMs(long value) throws Exception {
+        Field f = ClusteredCacheManager.class.getDeclaredField("myStartTimeMs");
+        f.setAccessible(true);
+        f.set(manager, value);
+    }
+
     private void callDetectEngineState(String peerId, String engineName, ClusterEngineStateMessage msg) throws Exception {
         detectEngineStateMethod.invoke(manager, peerId, engineName, msg, System.currentTimeMillis(), THRESHOLD_MS);
     }
@@ -285,6 +296,56 @@ public class ClusteredCacheManagerTest {
         when(mockCoordinator.addPeer(SERVER_2)).thenReturn(false);
         manager.addPeer(SERVER_2, new Date());
         assertFalse(peerStates.containsKey(SERVER_2));
+    }
+
+    @Test
+    public void addPeer_clusteringNotEnabled_myStartTimeNewer_triggersShutdown() throws Exception {
+        manager.registerEngine(mockEngine);
+        setMyServerId(MANAGER_SERVER_ID);
+        AtomicBoolean exitCalled = suppressExit();
+        long now = System.currentTimeMillis();
+        setMyStartTimeMs(now);
+        when(mockCoordinator.addPeer(SERVER_2)).thenReturn(true);
+        manager.addPeer(SERVER_2, new Date(now - RECENT_HEARTBEAT_OFFSET_MS));
+        assertTrue(exitCalled.get());
+    }
+
+    @Test
+    public void addPeer_clusteringNotEnabled_myStartTimeOlder_doesNotShutdown() throws Exception {
+        manager.registerEngine(mockEngine);
+        setMyServerId(MANAGER_SERVER_ID);
+        long now = System.currentTimeMillis();
+        setMyStartTimeMs(now - RECENT_HEARTBEAT_OFFSET_MS);
+        when(mockCoordinator.addPeer(SERVER_2)).thenReturn(true);
+        manager.addPeer(SERVER_2, new Date(now));
+        verify(mockEngine, never()).stop();
+    }
+
+    @Test
+    public void addPeer_clusteringEnabled_doesNotShutdownRegardlessOfStartTime() throws Exception {
+        when(mockClusterService.isClusteringEnabled()).thenReturn(true);
+        manager.registerEngine(mockEngine);
+        setMyServerId(MANAGER_SERVER_ID);
+        long now = System.currentTimeMillis();
+        setMyStartTimeMs(now);
+        when(mockCoordinator.addPeer(SERVER_2)).thenReturn(true);
+        manager.addPeer(SERVER_2, new Date(now - RECENT_HEARTBEAT_OFFSET_MS));
+        verify(mockEngine, never()).stop();
+    }
+
+    @Test
+    public void addPeer_staleHeartbeat_skipsShutdownCheck() throws Exception {
+        manager.registerEngine(mockEngine);
+        setMyServerId(MANAGER_SERVER_ID);
+        setMyStartTimeMs(System.currentTimeMillis());
+        when(mockCoordinator.addPeer(SERVER_2)).thenReturn(true);
+        when(mockCoordinator.detectIfPeerIsStale(eq(SERVER_2), anyLong())).thenReturn(true);
+        Field staleThresholdField = ClusteredCacheManager.class.getDeclaredField("currentStaleThresholdMs");
+        staleThresholdField.setAccessible(true);
+        staleThresholdField.set(manager, THRESHOLD_MS);
+        Date staleHeartbeat = new Date(System.currentTimeMillis() - (THRESHOLD_MS + STALE_HEARTBEAT_EXTRA_OFFSET_MS));
+        manager.addPeer(SERVER_2, staleHeartbeat);
+        verify(mockEngine, never()).stop();
     }
 
     @Test
@@ -581,6 +642,7 @@ public class ClusteredCacheManagerTest {
     @Test
     public void checkAllClusterPeers_withRegisteredEngine_detectsEngineCrash() throws Exception {
         manager.registerEngine(mockEngine);
+        setMyServerId(MANAGER_SERVER_ID);
         suppressExit();
         Set<String> peers = new HashSet<>();
         peers.add(PEER_1);
@@ -738,49 +800,85 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
-    public void onPeerJoined_sameInstanceDifferentServer_triggersShutdown() throws Exception {
+    public void onPeerJoined_sameInstanceDifferentServer_myStartTimeNewer_triggersShutdown() throws Exception {
         manager.registerEngine(mockEngine);
-        suppressExit();
+        setMyServerId(MANAGER_SERVER_ID);
+        setMyStartTimeMs(NEWER_START_TIME_MS);
+        AtomicBoolean exitCalled = suppressExit();
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, MY_CLUSTER_PARTITION_ID, TEST_VERSION);
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, MY_CLUSTER_PARTITION_ID, TEST_VERSION, OLDER_START_TIME_MS);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);
-        verify(mockEngine).stop();
+        assertTrue(exitCalled.get());
     }
 
     @Test
-    public void onPeerJoined_clusteringNotEnabled_triggersShutdown() throws Exception {
+    public void onPeerJoined_clusteringNotEnabled_myStartTimeNewer_triggersShutdown() throws Exception {
         when(mockClusterService.isClusteringEnabled()).thenReturn(false);
         manager.registerEngine(mockEngine);
-        suppressExit();
+        setMyServerId(MANAGER_SERVER_ID);
+        setMyStartTimeMs(NEWER_START_TIME_MS);
+        AtomicBoolean exitCalled = suppressExit();
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION);
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION, OLDER_START_TIME_MS);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);
-        verify(mockEngine).stop();
+        assertTrue(exitCalled.get());
     }
 
     @Test
-    public void onPeerJoined_lockingParameterTrueButClusteringNotEnforced_triggersShutdown() throws Exception {
+    public void onPeerJoined_lockingParameterTrueButClusteringNotEnforced_myStartTimeNewer_triggersShutdown() throws Exception {
         when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
         when(mockClusterService.isClusteringEnabled()).thenReturn(false);
         manager.registerEngine(mockEngine);
-        suppressExit();
+        setMyServerId(MANAGER_SERVER_ID);
+        setMyStartTimeMs(NEWER_START_TIME_MS);
+        AtomicBoolean exitCalled = suppressExit();
         ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION);
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION, OLDER_START_TIME_MS);
         Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
         m.setAccessible(true);
         m.invoke(manager, joinMsg);
-        verify(mockEngine).stop();
+        assertTrue(exitCalled.get());
     }
 
-    private void suppressExit() throws Exception {
-        Field f = ClusteredCacheManager.class.getDeclaredField("exitAction");
+    @Test
+    public void onPeerJoined_clusteringNotEnabled_myStartTimeOlder_doesNotShutdown() throws Exception {
+        when(mockClusterService.isClusteringEnabled()).thenReturn(false);
+        manager.registerEngine(mockEngine);
+        setMyServerId(MANAGER_SERVER_ID);
+        setMyStartTimeMs(OLDER_START_TIME_MS);
+        ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_2, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION, NEWER_START_TIME_MS);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
+        m.setAccessible(true);
+        m.invoke(manager, joinMsg);
+        verify(mockEngine, never()).stop();
+    }
+
+    @Test
+    public void onPeerJoined_equalStartTimes_tieBrokenByServerIdComparison() throws Exception {
+        when(mockClusterService.isClusteringEnabled()).thenReturn(false);
+        manager.registerEngine(mockEngine);
+        setMyServerId(SERVER_2);
+        setMyStartTimeMs(OLDER_START_TIME_MS);
+        AtomicBoolean exitCalled = suppressExit();
+        ClusterPeerStatusMessage joinMsg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_JOINING, SERVER_1, OTHER_CLUSTER_PARTITION_ID, TEST_VERSION, OLDER_START_TIME_MS);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("onPeerJoined", ClusterPeerSecureMessage.class);
+        m.setAccessible(true);
+        m.invoke(manager, joinMsg);
+        assertTrue(exitCalled.get());
+    }
+
+    private AtomicBoolean suppressExit() throws Exception {
+        AtomicBoolean exitCalled = new AtomicBoolean(false);
+        Field f = ClusteredCacheManager.class.getDeclaredField("exitProcessAction");
         f.setAccessible(true);
-        f.set(manager, (Runnable) () -> {
-        });
+        f.set(manager, (Runnable) () -> exitCalled.set(true));
+        return exitCalled;
     }
 
     @Test

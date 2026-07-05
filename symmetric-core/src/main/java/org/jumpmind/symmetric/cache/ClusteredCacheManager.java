@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jumpmind.security.ISecurityService;
+import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.common.LoggingConstants;
@@ -64,7 +65,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private final Map<String, String> lastEngineStates = new ConcurrentHashMap<>();
     private String myServerId;
     private String myClusterPartitionId;
-    Runnable exitAction = () -> System.exit(1);
+    private long myStartTimeMs;
+    Runnable exitProcessAction = this::exitProcess;
 
     private ClusteredCacheManager() {
     }
@@ -101,6 +103,14 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             peerStates.put(serverId, new PeerState(true, System.currentTimeMillis()));
             log.debug("Added cluster peer. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                     serverId, historicalHeartbeat, myClusterPartitionId);
+            // historicalHeartbeat approximates when the peer started, since this discovery path (SYM_NODE_HOST) carries no true start time.
+            long peerStartTimeMs = historicalHeartbeat != null ? historicalHeartbeat.getTime() : System.currentTimeMillis();
+            for (ISymmetricEngine engine : registeredEngines.values()) {
+                if (!engine.getClusterService().isClusteringEnabled()) {
+                    enforceClusterLockingOrExit(serverId, peerStartTimeMs);
+                    break;
+                }
+            }
         } else {
             recordPeerOffline(serverId);
             log.debug("Added cluster peer as stale. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
@@ -163,6 +173,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         int port = Integer.parseInt(System.getProperty(
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
         if (isJcsEnabled) {
+            myStartTimeMs = System.currentTimeMillis();
             ensurePeerListenerStarted(myServerId, myClusterPartitionId, port);
         }
     }
@@ -283,7 +294,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private void sendMessageToPeers(String eventType) {
         lastBroadcastEventType = eventType;
-        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(eventType, myServerId, myClusterPartitionId, Version.version());
+        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(eventType, myServerId, myClusterPartitionId, Version.version(), myStartTimeMs);
         coordinator.sendMessageToPeers(msg);
     }
 
@@ -531,6 +542,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     protected void onPeerJoined(ClusterPeerSecureMessage msg) {
         log.debug("Processing peer joined notification. Peer={}, version={}", msg.getServerId(), msg.getVersion());
+        long peerStartTimeMs = msg instanceof ClusterPeerStatusMessage ? ((ClusterPeerStatusMessage) msg).getStartTimeMs() : 0L;
         for (ISymmetricEngine engine : registeredEngines.values()) {
             MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
             if (!authenticateAndJoinClusterPartition(engine, msg)) {
@@ -538,12 +550,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 return;
             }
             if (!engine.getClusterService().isClusteringEnabled()) {
-                log.error("Detected another cluster peer {} but cluster locking is not actually enforced "
-                        + "(cluster.lock.enabled=false, and/or this edition does not support clustering). "
-                        + "Multiple SymmetricDS instances cannot share a database without cluster locking! Shutting down.",
-                        msg.getServerId());
-                stopRegisteredEngines();
-                exitAction.run();
+                enforceClusterLockingOrExit(msg.getServerId(), peerStartTimeMs);
                 return;
             }
         }
@@ -551,10 +558,27 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Verifies that a peer claiming to share this engine's cluster partition ID also shares the same cluster keystore. The keystore check only runs once the
-     * peer's version is confirmed to be no newer than this engine's own version, since a newer peer's message format is not guaranteed to be interpretable. A
-     * partition ID match with a keystore mismatch means two independently-seeded clusters were pointed at the same database with colliding identities; peer
-     * messages would be mutually undecryptable in that case, so the JVM is stopped rather than left silently unable to communicate.
+     * Decides which side is the "duplicate" instance when a peer is detected but clustering isn't supported.
+     */
+    private void enforceClusterLockingOrExit(String peerServerId, long peerStartTimeMs) {
+        boolean amINewer = myStartTimeMs > peerStartTimeMs
+                || (myStartTimeMs == peerStartTimeMs && myServerId.compareTo(peerServerId) > 0);
+        if (amINewer) {
+            log.error("Detected an existing cluster peer {} while cluster locking is not enforced "
+                    + "(cluster.lock.enabled=false, and/or this edition does not support clustering). "
+                    + "This node started later, so it is shutting down to avoid data corruption from "
+                    + "multiple unclustered instances sharing the same database.", peerServerId);
+            exitProcessAction.run();
+        } else {
+            log.warn("Detected a newer cluster peer {} while cluster locking is not enforced "
+                    + "(cluster.lock.enabled=false, and/or this edition does not support clustering). "
+                    + "This node started first and will continue running; the newer peer is expected to shut itself down.",
+                    peerServerId);
+        }
+    }
+
+    /**
+     * Verifies that a peer claiming to share this engine's cluster partition ID also shares the same keystore contents.
      *
      * @return false if this engine detected the mismatch and initiated shutdown; true to continue processing other engines
      */
@@ -585,12 +609,21 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         if (!msg.isKeystoreFingerprintValid()) {
             log.error("Cluster keystore is not identical across all cluster peers - see User guide for details. Peer={}", msg.getServerId());
-            stopRegisteredEngines();
-            exitAction.run();
+            exitProcessAction.run();
             return false;
         }
         log.debug("Cluster keystore authentication succeeded for peer={}", msg.getServerId());
         return true;
+    }
+
+    /**
+     * Stops all registered engines and reports this JVM as shutting down to the application health tracker.
+     */
+    private void exitProcess() {
+        ApplicationHealthTracker.getTracker().onShutdown();
+        stopRegisteredEngines();
+        ApplicationHealthTracker.getTracker().setAlive(false);
+        System.exit(1);
     }
 
     private void stopRegisteredEngines() {
