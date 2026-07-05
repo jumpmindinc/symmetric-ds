@@ -55,6 +55,7 @@ import java.io.FileOutputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -126,7 +127,7 @@ public class ClusterService extends AbstractService implements IClusterService {
         initInstanceId();
         generateClusterPartitionId();
         checkSymDbOwnership();
-        resetAllLocks();
+        initializeAllLocks();
         loadLocksFromDatabase();
     }
 
@@ -360,8 +361,18 @@ public class ClusterService extends AbstractService implements IClusterService {
      * Loads locks from the database and merges lastLockTime values into the cache. This loads persisted lock info after restarts.
      */
     protected void loadLocksFromDatabase() {
+        for (Lock dbLock : selectLocksFromDatabase()) {
+            Lock cachedLock = lockCache.get(dbLock.getLockAction());
+            if (cachedLock != null) {
+                cachedLock.setLastLockTime(dbLock.getLastLockTime());
+                cachedLock.setLastLockingServerId(dbLock.getLastLockingServerId());
+            }
+        }
+    }
+
+    protected List<Lock> selectLocksFromDatabase() {
         try {
-            List<Lock> dbLocks = sqlTemplate.query(getSql("selectLocksSql"), new ISqlRowMapper<Lock>() {
+            return sqlTemplate.query(getSql("selectLocksSql"), new ISqlRowMapper<Lock>() {
                 @Override
                 public Lock mapRow(Row row) {
                     Lock lock = new Lock();
@@ -376,15 +387,9 @@ public class ClusterService extends AbstractService implements IClusterService {
                     return lock;
                 }
             });
-            for (Lock dbLock : dbLocks) {
-                Lock cachedLock = lockCache.get(dbLock.getLockAction());
-                if (cachedLock != null) {
-                    cachedLock.setLastLockTime(dbLock.getLastLockTime());
-                    cachedLock.setLastLockingServerId(dbLock.getLastLockingServerId());
-                }
-            }
         } catch (Exception e) {
             log.debug("Could not load locks from database (table may not exist yet): {}", e.getMessage());
+            return Collections.emptyList();
         }
     }
 
@@ -426,7 +431,7 @@ public class ClusterService extends AbstractService implements IClusterService {
         initCache();
     }
 
-    public void resetAllLocks() {
+    protected void initializeAllLocks() {
         for (Lock lock : lockCache.values()) {
             lock.setLastLockingServerId(lock.getLockingServerId());
             lock.setLockingServerId(null);
