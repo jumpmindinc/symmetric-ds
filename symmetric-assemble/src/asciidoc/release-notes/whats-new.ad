@@ -118,7 +118,7 @@ Each cluster member's peer identity — used for JCS peer discovery and for its 
 Custom extensions implementing the following core interfaces should note these changes:
 
 * `IClusterService` — adds `purgeObsoleteNodeHosts()`, which clears any cluster locks still held by a `SYM_NODE_HOST` entry older than `cluster.peer.obsolete.ms` and then removes that entry. Called automatically at the start of the outgoing purge job.
-* `INodeService` — adds `deleteObsoleteNodeHosts(String nodeId, Date obsoleteBeforeTime)`, replacing the earlier, unreleased `deleteStaleNodeHosts`.
+* `INodeService` — adds `deleteObsoleteNodeHosts(String nodeId, Date obsoleteBeforeTime)`.
 --
 
 === Container Mode
