@@ -785,7 +785,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (clusteredCacheManager.isClusterPeerListenerStarted() || StringUtils.isBlank(clusterPartitionId)) {
             return;
         }
-        clusteredCacheManager.startClusterPeerListener(securityService, clusterPartitionId, parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED));
+        clusteredCacheManager.startClusterPeerListener(securityService, clusterPartitionId, clusterService.getServerId(),
+                parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED));
         clusteredCacheManager.startClusterHeartbeat();
         clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);
         clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);

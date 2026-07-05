@@ -71,9 +71,9 @@ public class NodeHost implements Serializable {
         this.instanceId = instanceId;
     }
 
-    public void refresh(IDatabasePlatform platform, String instanceId) {
+    public void refresh(IDatabasePlatform platform, String instanceId, String serverId) {
         this.instanceId = instanceId;
-        this.hostName = StringUtils.left(AppUtils.getHostName(), 60);
+        this.hostName = serverId;
         setIpAddress(AppUtils.getIpAddress());
         this.osUser = System.getProperty("user.name");
         this.osName = System.getProperty("os.name");
@@ -107,7 +107,7 @@ public class NodeHost implements Serializable {
     }
 
     public void setHostName(String hostName) {
-        this.hostName = StringUtils.left(hostName, 60);
+        this.hostName = hostName;
     }
 
     public String getInstanceId() {

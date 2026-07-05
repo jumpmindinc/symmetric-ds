@@ -228,6 +228,7 @@ public class NodeService extends AbstractService implements INodeService {
 
     @Override
     public void updateNodeHost(ISqlTransaction transaction, NodeHost nodeHost) {
+        String hostName = StringUtils.left(nodeHost.getHostName(), 60);
         if (transaction.prepareAndExecute(getSql("updateNodeHostSql"),
                 nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getOsUser(),
                 nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
@@ -235,7 +236,7 @@ public class NodeService extends AbstractService implements INodeService {
                 nodeHost.getTotalMemoryBytes(), nodeHost.getMaxMemoryBytes(), nodeHost.getJavaVersion(),
                 nodeHost.getJavaVendor(), nodeHost.getSecurityMode(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
                 nodeHost.getTimezoneOffset(), nodeHost.getHeartbeatTime(), nodeHost.getLastRestartTime(),
-                nodeHost.getNodeId(), nodeHost.getHostName()) <= 0) {
+                nodeHost.getNodeId(), hostName) <= 0) {
             transaction.prepareAndExecute(getSql("insertNodeHostSql"),
                     nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getOsUser(),
                     nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
@@ -243,7 +244,7 @@ public class NodeService extends AbstractService implements INodeService {
                     nodeHost.getTotalMemoryBytes(), nodeHost.getMaxMemoryBytes(), nodeHost.getJavaVersion(),
                     nodeHost.getJavaVendor(), nodeHost.getSecurityMode(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
                     nodeHost.getTimezoneOffset(), nodeHost.getHeartbeatTime(), nodeHost.getLastRestartTime(),
-                    new Date(), nodeHost.getNodeId(), nodeHost.getHostName());
+                    new Date(), nodeHost.getNodeId(), hostName);
         }
     }
 
@@ -252,7 +253,7 @@ public class NodeService extends AbstractService implements INodeService {
         if (nodeHostForCurrentNode == null) {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
         }
-        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId());
+        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId());
         updateNodeHost(nodeHostForCurrentNode);
     }
 
@@ -261,7 +262,7 @@ public class NodeService extends AbstractService implements INodeService {
         if (nodeHostForCurrentNode == null) {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
         }
-        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId());
+        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId());
         updateNodeHost(transaction, nodeHostForCurrentNode);
     }
 

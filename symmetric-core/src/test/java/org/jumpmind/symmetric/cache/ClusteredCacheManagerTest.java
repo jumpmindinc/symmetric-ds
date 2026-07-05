@@ -63,6 +63,7 @@ public class ClusteredCacheManagerTest {
     private static final long THRESHOLD_MS = 9000L;
     private static final String MY_CLUSTER_PARTITION_ID = "instance1";
     private static final String TEST_CLUSTER_PARTITION_ID = "cluster1";
+    private static final String TEST_SERVER_ID = "server1";
     private static final String PEER_1 = "peer1";
     private static final String PEER_1_CLUSTER_PARTITION_ID = "inst-peer1";
     private static final String PEER_2 = "peer2";
@@ -505,7 +506,7 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void startClusterHeartbeat_createsDaemonThreadWithCorrectName() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
         manager.startClusterHeartbeat();
         Field f = ClusteredCacheManager.class.getDeclaredField("heartbeatThread");
         f.setAccessible(true);
@@ -881,14 +882,14 @@ public class ClusteredCacheManagerTest {
 
     @Test
     public void startClusterPeerListener_whenNotStarted_callsCoordinatorStart() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
         verify(mockCoordinator).start(any(IClusterCacheCoordinator.InitialSettings.class), org.mockito.ArgumentMatchers.anySet());
     }
 
     @Test
     public void startClusterPeerListener_whenAlreadyStarted_doesNotCallCoordinatorStartAgain() throws Exception {
-        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
-        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
         verify(mockCoordinator, times(1)).start(any(IClusterCacheCoordinator.InitialSettings.class), org.mockito.ArgumentMatchers.anySet());
     }
 
@@ -896,7 +897,8 @@ public class ClusteredCacheManagerTest {
     public void ensurePeerListenerStarted_coordinatorThrows_wrapsInRuntimeException() {
         doThrow(new RuntimeException("bind failed")).when(mockCoordinator).start(any(IClusterCacheCoordinator.InitialSettings.class),
                 org.mockito.ArgumentMatchers.anySet());
-        Assertions.assertThrows(RuntimeException.class, () -> manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true));
+        Assertions.assertThrows(RuntimeException.class, () -> manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID,
+                true));
     }
 
     @Test
@@ -1098,7 +1100,7 @@ public class ClusteredCacheManagerTest {
     public void monitorClusterPeers_withEngine_readsHeartbeatFromParameterService() throws Exception {
         when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS), anyLong())).thenReturn(100L);
         manager.registerEngine(mockEngine);
-        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
         manager.startClusterHeartbeat();
         Thread.sleep(50);
         stopHeartbeatThread();
@@ -1110,7 +1112,7 @@ public class ClusteredCacheManagerTest {
         when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS), anyLong())).thenReturn(20L);
         when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_STALE_MS), anyLong())).thenReturn(1L);
         manager.registerEngine(mockEngine);
-        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, true);
+        manager.startClusterPeerListener(mockSecurityService, TEST_CLUSTER_PARTITION_ID, TEST_SERVER_ID, true);
         manager.startClusterHeartbeat();
         Thread.sleep(50);
         stopHeartbeatThread();

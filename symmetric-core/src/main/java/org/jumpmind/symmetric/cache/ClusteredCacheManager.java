@@ -27,14 +27,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
-import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -158,11 +156,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return isClusterPeerListenerStarted;
     }
 
-    public synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, boolean isJcsEnabled) {
+    public synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
         ClusterPeerSecureMessage.setSecurityService(securityService);
         myClusterPartitionId = clusterPartitionId;
-        myServerId = StringUtils.defaultIfBlank(
-                System.getProperty(SystemConstants.SYSPROP_CLUSTER_SERVER_ID), AppUtils.getHostName());
+        myServerId = serverId;
         int port = Integer.parseInt(System.getProperty(
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
         if (isJcsEnabled) {

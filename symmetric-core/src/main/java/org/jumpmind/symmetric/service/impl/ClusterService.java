@@ -616,9 +616,6 @@ public class ClusterService extends AbstractService implements IClusterService {
         if (StringUtils.isBlank(serverId)) {
             serverId = parameterService.getString(ServerConstants.CLUSTER_SERVER_ID);
             if (StringUtils.isBlank(serverId)) {
-                serverId = System.getProperty(SystemConstants.SYSPROP_CLUSTER_SERVER_ID, null);
-            }
-            if (StringUtils.isBlank(serverId)) {
                 // JBoss uses this system property to identify a server in a
                 // cluster
                 serverId = System.getProperty("bind.address", null);
