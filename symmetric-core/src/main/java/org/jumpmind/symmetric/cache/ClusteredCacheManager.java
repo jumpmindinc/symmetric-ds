@@ -617,9 +617,12 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Stops all registered engines and reports this JVM as shutting down to the application health tracker.
+     * Announces departure to cluster peers, stops all registered engines, and reports this JVM as shutting down to the application health tracker, before
+     * terminating. Announcing the departure here (rather than relying solely on the JVM shutdown hook that normally drives this) means peers clear this node's
+     * locks immediately via {@code onPeerLeft} instead of waiting out the full stale-peer timeout and treating it as a crash.
      */
     private void exitProcess() {
+        stopClusterCommunication();
         ApplicationHealthTracker.getTracker().onShutdown();
         stopRegisteredEngines();
         ApplicationHealthTracker.getTracker().setAlive(false);
