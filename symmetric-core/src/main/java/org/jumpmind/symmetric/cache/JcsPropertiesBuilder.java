@@ -95,7 +95,7 @@ final class JcsPropertiesBuilder {
      * JCS's own UDP discovery timers (UDPDiscoveryAttributes.sendDelaySec/maxIdleTimeSec) are not exposed through TCPLateralCacheAttributes and so cannot be
      * set here; JCS 3.2.1 also never reads sendDelaySec (its passive broadcast runs on a hardcoded 15s interval) and always constructs UDPDiscoveryAttributes
      * with its own defaults. This is not load-bearing for SymmetricDS: peer liveness is decided by our own heartbeat cadence and staleness threshold (see
-     * ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS, CLUSTER_DB_OWNERSHIP_STALE_MS, and detectIfPeerIsStale), which run independently of JCS's UDP discovery of
+     * ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS, CLUSTER_PEER_OBSOLETE_MS, and detectIfPeerIsStale), which run independently of JCS's UDP discovery of
      * lateral TCP peers.
      */
     private static Properties buildJcsCoreProperties(InitialSettings initialSettings) {

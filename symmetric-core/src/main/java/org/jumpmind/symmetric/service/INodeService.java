@@ -88,7 +88,7 @@ public interface INodeService {
 
     public void deleteNodeHostInstance(String nodeId, String instanceId);
 
-    public void deleteStaleNodeHosts(String nodeId, Date staleBeforeTime);
+    public void deleteObsoleteNodeHosts(String nodeId, Date obsoleteBeforeTime);
 
     public void deleteNodeSecurity(String nodeId);
 

@@ -98,7 +98,6 @@ public class ClusterService extends AbstractService implements IClusterService {
             FILE_SYNC_PUSH, FILE_SYNC_TRACKER, INITIAL_LOAD_EXTRACT, INITIAL_LOAD_QUEUE, OFFLINE_PUSH, OFFLINE_PULL,
             MONITOR, SYNC_CONFIG, LOG_MINER, COMPARE, DATA_REFRESH };
     protected static final String[] sharedActions = new String[] { FILE_SYNC_SHARED };
-    protected static boolean isUpgradedInstanceId;
     protected static final Logger log = LoggerFactory.getLogger(ClusterService.class);
     protected String serverId = null;
     protected static String instanceId = null;
@@ -126,24 +125,8 @@ public class ClusterService extends AbstractService implements IClusterService {
         }
         initInstanceId();
         generateClusterPartitionId();
-        if (isUpgradedInstanceId) {
-            String nodeHostTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST);
-            String nodeId = nodeService.findIdentityNodeId();
-            long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS);
-            Date staleBeforeTime = new Date(System.currentTimeMillis() - staleThresholdMs);
-            log.info("Deleting stale {} row(s) for node '{}' (heartbeat older than {}) because the instance ID has changed",
-                    nodeHostTableName, nodeId, staleBeforeTime);
-            nodeService.deleteStaleNodeHosts(nodeId, staleBeforeTime);
-        }
         checkSymDbOwnership();
-        for (Lock lock : lockCache.values()) {
-            lock.setLastLockingServerId(lock.getLockingServerId());
-            lock.setLockingServerId(null);
-            lock.setLastLockTime(lock.getLockTime());
-            lock.setLockTime(null);
-            lock.setSharedCount(0);
-            lock.setSharedEnable(false);
-        }
+        resetAllLocks();
         loadLocksFromDatabase();
     }
 
@@ -288,7 +271,6 @@ public class ClusterService extends AbstractService implements IClusterService {
                 log.info("Generated a new instance ID ({}) because the current instance ID ({}) is invalid", newInstanceId, instanceId);
             }
             instanceId = newInstanceId;
-            isUpgradedInstanceId = true;
             if (instanceIdFile != null) {
                 try {
                     instanceIdFile.getParentFile().mkdirs();
@@ -303,12 +285,12 @@ public class ClusterService extends AbstractService implements IClusterService {
 
     protected void checkSymDbOwnership() {
         List<NodeHost> nodeHosts = nodeService.findNodeHosts(nodeService.findIdentityNodeId());
-        long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS);
+        long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS);
         for (NodeHost nodeHost : nodeHosts) {
             if (nodeHost.getInstanceId() != null && !Strings.CS.equals(instanceId, nodeHost.getInstanceId())) {
                 if (isOwnerStale(nodeHost, staleThresholdMs)) {
                     log.warn("Reclaiming ownership of node '{}' from instance id '{}' on host '{}' because its last heartbeat ({}) is older than "
-                            + "cluster.db.ownership.stale.ms={}, indicating that instance has crashed or been replaced.",
+                            + "cluster.peer.obsolete.ms={}, indicating that instance has crashed or been replaced.",
                             nodeService.findIdentityNodeId(), nodeHost.getInstanceId(), nodeHost.getHostName(), nodeHost.getHeartbeatTime(),
                             staleThresholdMs);
                     continue;
@@ -442,6 +424,17 @@ public class ClusterService extends AbstractService implements IClusterService {
     @Override
     public void clearAllLocks() {
         initCache();
+    }
+
+    public void resetAllLocks() {
+        for (Lock lock : lockCache.values()) {
+            lock.setLastLockingServerId(lock.getLockingServerId());
+            lock.setLockingServerId(null);
+            lock.setLastLockTime(lock.getLockTime());
+            lock.setLockTime(null);
+            lock.setSharedCount(0);
+            lock.setSharedEnable(false);
+        }
     }
 
     @Override
@@ -804,6 +797,22 @@ public class ClusterService extends AbstractService implements IClusterService {
         long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_STALE_MS,
                 ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS);
         return cacheManager.isPeerOfflineLongEnough(lockingServerId, staleThresholdMs);
+    }
+
+    @Override
+    public void purgeObsoleteNodeHosts() {
+        String nodeHostTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST);
+        String nodeId = nodeService.findIdentityNodeId();
+        long obsoleteThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS);
+        Date obsoleteBeforeTime = new Date(System.currentTimeMillis() - obsoleteThresholdMs);
+        for (NodeHost nodeHost : nodeService.findNodeHosts(nodeId)) {
+            if (isOwnerStale(nodeHost, obsoleteThresholdMs)) {
+                log.info("Purging obsolete {} row for node '{}' host '{}' and clearing any locks it still holds",
+                        nodeHostTableName, nodeId, nodeHost.getHostName());
+                clearLocksForServer(nodeHost.getHostName());
+            }
+        }
+        nodeService.deleteObsoleteNodeHosts(nodeId, obsoleteBeforeTime);
     }
 
     protected boolean isLockExpiredOrServerStale(String lockingServerId, Date lockTime, Date lockTimeout) {

@@ -421,6 +421,6 @@ public class MockNodeService implements INodeService {
     }
 
     @Override
-    public void deleteStaleNodeHosts(String nodeId, Date staleBeforeTime) {
+    public void deleteObsoleteNodeHosts(String nodeId, Date obsoleteBeforeTime) {
     }
 }

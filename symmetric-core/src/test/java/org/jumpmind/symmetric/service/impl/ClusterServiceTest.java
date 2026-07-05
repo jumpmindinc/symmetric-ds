@@ -103,7 +103,6 @@ class ClusterServiceTest {
     @AfterEach
     void resetInstanceId() {
         ClusterService.instanceId = null;
-        ClusterService.isUpgradedInstanceId = false;
     }
 
     @Test
@@ -218,13 +217,36 @@ class ClusterServiceTest {
     }
 
     @Test
-    void testInit_upgradedInstanceId_deletesOnlyStaleNodeHosts() {
-        ClusterService.isUpgradedInstanceId = true;
-        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
-        when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
-        clusterService.init();
-        verify(nodeService).deleteStaleNodeHosts(anyString(), any(Date.class));
-        verify(nodeService, never()).deleteNodeHost(anyString());
+    void testPurgeObsoleteNodeHosts_clearsLocksForObsoleteHostsOnly_thenDeletes() {
+        when(parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS)).thenReturn(86_400_000L);
+        Lock pushLock = clusterService.findLocks().get(ClusterConstants.PUSH);
+        pushLock.setLockingServerId("obsolete-host");
+        pushLock.setLockTime(new Date());
+        Lock pullLock = clusterService.findLocks().get(ClusterConstants.PULL);
+        pullLock.setLockingServerId("live-host");
+        pullLock.setLockTime(new Date());
+        NodeHost obsoleteHost = new NodeHost();
+        obsoleteHost.setHostName("obsolete-host");
+        obsoleteHost.setHeartbeatTime(new Date(System.currentTimeMillis() - 90_000_000L));
+        NodeHost liveHost = new NodeHost();
+        liveHost.setHostName("live-host");
+        liveHost.setHeartbeatTime(new Date());
+        when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(obsoleteHost, liveHost));
+        clusterService.purgeObsoleteNodeHosts();
+        verify(nodeService).deleteObsoleteNodeHosts(anyString(), any(Date.class));
+        assertNull(pushLock.getLockingServerId());
+        assertEquals("live-host", pullLock.getLockingServerId());
+    }
+
+    @Test
+    void testPurgeObsoleteNodeHosts_noObsoleteHosts_stillDeletes() {
+        when(parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS)).thenReturn(86_400_000L);
+        NodeHost liveHost = new NodeHost();
+        liveHost.setHostName("live-host");
+        liveHost.setHeartbeatTime(new Date());
+        when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(liveHost));
+        clusterService.purgeObsoleteNodeHosts();
+        verify(nodeService).deleteObsoleteNodeHosts(anyString(), any(Date.class));
     }
 
     @Test
@@ -242,7 +264,7 @@ class ClusterServiceTest {
 
     @Test
     void testCheckSymDbOwnership_differentInstanceId_recentHeartbeat_throws() {
-        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
+        when(parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS)).thenReturn(2_700_000L);
         NodeHost nodeHost = new NodeHost();
         nodeHost.setInstanceId("other-instance-id");
         nodeHost.setHeartbeatTime(new Date());
@@ -252,7 +274,7 @@ class ClusterServiceTest {
 
     @Test
     void testCheckSymDbOwnership_differentInstanceId_recentHeartbeat_throwsWithHostnames() {
-        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
+        when(parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS)).thenReturn(2_700_000L);
         NodeHost nodeHost = new NodeHost();
         nodeHost.setInstanceId("other-instance-id");
         nodeHost.setHostName("other-host");
@@ -264,7 +286,7 @@ class ClusterServiceTest {
 
     @Test
     void testCheckSymDbOwnership_differentInstanceId_staleHeartbeat_doesNotThrow() {
-        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
+        when(parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS)).thenReturn(2_700_000L);
         NodeHost nodeHost = new NodeHost();
         nodeHost.setInstanceId("other-instance-id");
         nodeHost.setHeartbeatTime(new Date(System.currentTimeMillis() - 3_000_000L));
@@ -274,7 +296,7 @@ class ClusterServiceTest {
 
     @Test
     void testCheckSymDbOwnership_differentInstanceId_nullHeartbeat_treatedAsStale_doesNotThrow() {
-        when(parameterService.getLong(ParameterConstants.CLUSTER_DB_OWNERSHIP_STALE_MS)).thenReturn(2_700_000L);
+        when(parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS)).thenReturn(2_700_000L);
         NodeHost nodeHost = new NodeHost();
         nodeHost.setInstanceId("other-instance-id");
         nodeHost.setHeartbeatTime(null);

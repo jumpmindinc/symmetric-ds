@@ -80,7 +80,7 @@ public class NodeServiceSqlMap extends AbstractSqlMap {
         putSql("deleteNodeSql", "delete from $(node) where node_id = ?");
         putSql("deleteNodeHostSql", "delete from $(node_host) where node_id = ?");
         putSql("deleteNodeHostInstanceSql", "delete from $(node_host) where node_id = ? and instance_id = ?");
-        putSql("deleteStaleNodeHostsSql", "delete from $(node_host) where node_id = ? and (heartbeat_time is null or heartbeat_time < ?)");
+        putSql("deleteObsoleteNodeHostsSql", "delete from $(node_host) where node_id = ? and (heartbeat_time is null or heartbeat_time < ?)");
         putSql("deleteNodeChannelCtlSql", "delete from $(node_channel_ctl) where node_id = ? or target_node_id = ?");
         putSql("deleteIncomingErrorSql", "delete from $(incoming_error) where node_id = ?");
         putSql("deleteTableReloadRequestSql", "delete from $(table_reload_request) where source_node_id = ? or target_node_id=?");

@@ -92,6 +92,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
 
     @Override
     public long purgeOutgoing(boolean force) {
+        clusterService.purgeObsoleteNodeHosts();
         long rowsPurged = 0;
         long startTime = System.currentTimeMillis();
         Calendar retentionCutoff = Calendar.getInstance();
