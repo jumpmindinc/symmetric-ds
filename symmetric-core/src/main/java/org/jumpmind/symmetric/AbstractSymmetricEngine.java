@@ -39,6 +39,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -508,8 +509,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             return;
         }
         isStartupDbParametersDifferentFromLastStart = detectStartupDbParametersDifferentFromLastStart();
-        waitForClusterPeerToFinishDbUpgrade();
-        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB);
         try {
             setupDatabase(isStartupDbParametersDifferentFromLastStart);
         } catch (RuntimeException ex) {
@@ -573,6 +572,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 log.info("Version matches for tables and objects");
             } else {
                 log.info("Checking tables and objects. force={}", force);
+                waitForClusterPeerToFinishDbUpgrade();
+                clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB);
                 symmetricDialect.initTablesAndDatabaseObjects();
             }
         } else {
@@ -764,7 +765,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (!starting && !started) {
             try {
                 starting = true;
-                clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
                 symmetricDialect.verifyDatabaseIsCompatible();
                 checkForProOnlyDatabase();
                 setup();
@@ -792,20 +792,28 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     private void waitForClusterPeerToFinishDbUpgrade() {
+        String engineName = getEngineName();
         long heartbeatMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS,
                 ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
-        try {
-            log.debug("Waiting {} ms for cluster peer heartbeat messages to arrive", heartbeatMs);
-            Thread.sleep(heartbeatMs);
-        } catch (InterruptedException e) {
-            log.warn("Interrupted while waiting for cluster peer heartbeat messages to arrive");
-            Thread.currentThread().interrupt();
+        clusteredCacheManager.broadcastEngineState(engineName, ClusterEngineStateMessage.ENGINE_STARTING);
+        if(clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_STARTING)) {
+            long randomMs = ThreadLocalRandom.current().nextLong(heartbeatMs * 2) + heartbeatMs;
+            try {
+                log.debug("Waiting {} ms for cluster peer heartbeat messages to arrive", randomMs);
+                Thread.sleep(randomMs);
+            } catch (InterruptedException e) {
+                log.warn("Interrupted while waiting for cluster peer heartbeat messages to arrive!");
+                Thread.currentThread().interrupt();
+            }
         }
-        while (clusteredCacheManager.isAnyPeerWithEngineInState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
+        while (clusteredCacheManager.isAnyPeerOnline()
+            && clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
             log.info("A cluster peer is upgrading the database. Pausing engine startup for {} ms.",
                     ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS);
+            long randomMs = ThreadLocalRandom.current().nextLong(ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS) + heartbeatMs;
             try {
-                Thread.sleep(ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS);
+                log.info("Waiting {} ms for cluster peer to complete database upgrade...", randomMs);
+                Thread.sleep(randomMs);
             } catch (InterruptedException e) {
                 log.warn("Interrupted while waiting for cluster peer to complete database upgrade.");
                 Thread.currentThread().interrupt();
