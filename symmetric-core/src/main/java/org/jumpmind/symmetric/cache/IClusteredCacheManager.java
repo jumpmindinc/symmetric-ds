@@ -45,6 +45,12 @@ public interface IClusteredCacheManager {
     void registerEngine(ISymmetricEngine engine);
 
     /**
+     * Subscribe a SymmetricDS engine to this manager and immediately broadcast its initial engine state (see {@link #broadcastEngineState}), so cluster peers
+     * learn this engine is starting without waiting for the next heartbeat tick.
+     */
+    void registerEngine(ISymmetricEngine engine, String initialEngineState);
+
+    /**
      * Remove a SymmetricDS engine from this manager. JCS is stopped when the last engine unregisters.
      */
     void unregisterEngine(ISymmetricEngine engine);
@@ -77,6 +83,12 @@ public interface IClusteredCacheManager {
 
     /** The JCS cluster partition ID this node resolved and is currently announcing under. */
     String getClusterPartitionId();
+
+    /** The current interval, in milliseconds, between cluster peer heartbeat broadcasts. */
+    long getHeartbeatIntervalMs();
+
+    /** The current age, in milliseconds, after which a peer's last heartbeat is considered stale. */
+    long getStaleIntervalMs();
 
     void startClusterHeartbeat();
 

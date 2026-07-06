@@ -353,6 +353,9 @@ public abstract class AbstractCommandLauncher {
     protected void setContainerized(boolean containerized) {
         isContainerEnabled = containerized;
         System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, containerized ? "true" : "false");
+        if (containerized) {
+            System.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
+        }
     }
 
     protected boolean isContainerized() {

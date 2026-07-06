@@ -80,8 +80,17 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     @Override
+    public synchronized void registerEngine(ISymmetricEngine engine, String initialEngineState) {
+        registerEngine(engine);
+        broadcastEngineState(engine.getEngineName(), initialEngineState);
+    }
+
+    @Override
     public synchronized void unregisterEngine(ISymmetricEngine engine) {
         registeredEngines.remove(engine.getEngineName());
+        if (registeredEngines.isEmpty()) {
+            stopClusterCommunication();
+        }
     }
 
     @Override
@@ -209,6 +218,16 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public String getClusterPartitionId() {
         return myClusterPartitionId;
+    }
+
+    @Override
+    public long getHeartbeatIntervalMs() {
+        return currentHeartbeatMs;
+    }
+
+    @Override
+    public long getStaleIntervalMs() {
+        return currentStaleThresholdMs;
     }
 
     private synchronized void ensurePeerListenerStarted(String serverId, String clusterPartitionId, int port) {

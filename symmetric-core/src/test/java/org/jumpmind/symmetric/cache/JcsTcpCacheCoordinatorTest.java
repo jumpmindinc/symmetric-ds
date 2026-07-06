@@ -379,22 +379,22 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    void sendMessageToPeers_noPeers_doesNotSendToCache() throws Exception {
+    void sendMessageToPeers_noPeers_stillSendsToCache() throws Exception {
         CacheAccess<String, ClusterPeerSecureMessage> mockCache = mock(CacheAccess.class);
         setPeerHeartbeatCache(mockCache);
         ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
                 ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         coordinator.sendMessageToPeers(msg);
-        verify(mockCache, never()).put(anyString(), any());
+        verify(mockCache).put("server1", msg);
     }
 
     @Test
-    void sendEngineStateMessage_noPeers_doesNotSendToCache() throws Exception {
+    void sendEngineStateMessage_noPeers_stillSendsToCache() throws Exception {
         CacheAccess<String, ClusterEngineStateMessage> mockCache = mock(CacheAccess.class);
         setEngineStateCache(mockCache);
         ClusterEngineStateMessage msg = new ClusterEngineStateMessage("ENGINE_ONLINE", "engine1", "server1", "inst1", "1.0");
         coordinator.sendEngineStateMessage(msg);
-        verify(mockCache, never()).put(anyString(), any());
+        verify(mockCache).put(IClusterCacheCoordinator.generateEngineClusterPeerKey("server1", "engine1"), msg);
     }
 
     @Test

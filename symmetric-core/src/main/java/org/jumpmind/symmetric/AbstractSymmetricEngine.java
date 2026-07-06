@@ -381,7 +381,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.dataService = createDataService();
         this.clusterService = createClusterService();
         this.clusteredCacheManager = ClusteredCacheManager.getInstance();
-        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
+        this.clusteredCacheManager.registerEngine(this, ClusterEngineStateMessage.ENGINE_STARTING);
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
@@ -796,8 +796,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         long heartbeatMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS,
                 ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
         clusteredCacheManager.broadcastEngineState(engineName, ClusterEngineStateMessage.ENGINE_STARTING);
-        if(clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_STARTING)) {
-            long randomMs = ThreadLocalRandom.current().nextLong(heartbeatMs * 2) + heartbeatMs;
+        if (clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_STARTING)) {
+            long randomMs = ThreadLocalRandom.current().nextLong(3 * heartbeatMs) + 2 * heartbeatMs;
             try {
                 log.debug("Waiting {} ms for cluster peer heartbeat messages to arrive", randomMs);
                 Thread.sleep(randomMs);
@@ -807,13 +807,14 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             }
         }
         while (clusteredCacheManager.isAnyPeerOnline()
-            && clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
+                && clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
             log.info("A cluster peer is upgrading the database. Pausing engine startup for {} ms.",
                     ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS);
-            long randomMs = ThreadLocalRandom.current().nextLong(ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS) + heartbeatMs;
+            long sleepMs = ThreadLocalRandom.current().nextLong(ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS) + heartbeatMs;
             try {
-                log.info("Waiting {} ms for cluster peer to complete database upgrade...", randomMs);
-                Thread.sleep(randomMs);
+                log.info("Waiting {} ms for cluster peer to complete database upgrade...", sleepMs);
+                Thread.sleep(sleepMs);
+                sleepMs = ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS;
             } catch (InterruptedException e) {
                 log.warn("Interrupted while waiting for cluster peer to complete database upgrade.");
                 Thread.currentThread().interrupt();
@@ -826,7 +827,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         isInitialized = true;
         if (node != null) {
             refreshClusterPeers(node.getNodeId());
-            clusteredCacheManager.registerEngine(this);
             log.info("Starting registered node [group={}, id={}, nodeId={}]",
                     (Object) node.getNodeGroupId(), node.getNodeId(), node.getExternalId());
             boolean force = isStartupDbParametersDifferentFromLastStart
