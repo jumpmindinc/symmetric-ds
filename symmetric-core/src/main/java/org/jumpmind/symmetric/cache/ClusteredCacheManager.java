@@ -41,11 +41,8 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 /**
- * JVM-level singleton that coordinates cluster peer communication and state tracking. Multiple SymmetricDS engines co-hosted on the same JVM share one instance
- * and one heartbeat thread. Transport is delegated to an IClusterCacheCoordinator, resolved the same way as other pluggable services (see
- * {@link AppUtils#newInstance(Class, Class)}) so a different implementation can be substituted via {@code symmetric-impl.properties} without changing this
- * class; it defaults to JcsTcpCacheCoordinator when no override is present. When a remote peer is detected as crashed, locks are cleared across all registered
- * engines.
+ * JVM-level singleton that coordinates cluster peer communication and state tracking. Network transport is delegated to an IClusterCacheCoordinator (
+ * JcsTcpCacheCoordinator ).
  */
 public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final ClusteredCacheManager GLOBAL_INSTANCE = new ClusteredCacheManager();
@@ -67,7 +64,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private String myServerId;
     private String myClusterPartitionId;
     private long myStartTimeMs;
-    Runnable exitProcessAction = this::exitProcess;
+    // Runs exitProcess() on its own thread to prevent deadlocks in synchronized methods inside AbstractSymmetricEngine.
+    Runnable exitProcessAction = () -> new Thread(this::exitProcess, "sym-cluster-exit").start();
 
     private ClusteredCacheManager() {
     }
@@ -168,9 +166,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Tier 1 entry point: brings up JCS peer announcement/discovery with no database dependency. {@code serverId} is resolved from system
-     * properties/environment (falling back to the local hostname) when blank, rather than through {@code IClusterService.getServerId()}, which touches
-     * {@code IParameterService} first and so isn't safe to call before the database is known to be reachable.
+     * Initial entry point (without nodes started yet): brings up JCS peer announcement/discovery with no database dependency, so this node is visible to peers
+     * quickly. The cluster partition ID and server ID should be resolved without {@code IParameterService}!
      */
     public synchronized void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
         startClusterPeerListener(securityService, clusterPartitionId, StringUtils.isBlank(serverId) ? resolveServerId() : serverId, isJcsEnabled);
@@ -197,7 +194,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return StringUtils.left(id, 255);
     }
 
-    public synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
+    protected synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
         ClusterPeerSecureMessage.setSecurityService(securityService);
         myClusterPartitionId = clusterPartitionId;
         myServerId = serverId;

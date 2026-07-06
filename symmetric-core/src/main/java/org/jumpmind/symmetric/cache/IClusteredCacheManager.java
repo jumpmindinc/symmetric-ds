@@ -75,8 +75,6 @@ public interface IClusteredCacheManager {
      */
     void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled);
 
-    void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled);
-
     /** The JCS cluster partition ID this node resolved and is currently announcing under. */
     String getClusterPartitionId();
 

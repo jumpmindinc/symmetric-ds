@@ -62,7 +62,6 @@ import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.cache.CacheManager;
 import org.jumpmind.symmetric.cache.ClusterEngineStateMessage;
-import org.jumpmind.symmetric.cache.ClusterPartitionGenerator;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ClusterPeerStatusMessage;
 import org.jumpmind.symmetric.cache.ICacheManager;
@@ -755,7 +754,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (!starting && !started) {
             try {
                 starting = true;
-                initClusterPeerCoordinator();
+                clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
                 symmetricDialect.verifyDatabaseIsCompatible();
                 checkForProOnlyDatabase();
                 setup();
@@ -780,24 +779,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             log.info(getEngineDescription("NOT STARTED:"));
         }
         return started;
-    }
-
-    /**
-     * Tier 1: brings up JCS peer announcement/discovery with no database dependency, so this node is visible to peers (and can detect/react to duplicates) even
-     * if later database-dependent startup steps (e.g. {@code ClusterService.checkSymDbOwnership()}) fail. The cluster partition ID and server ID are both
-     * resolved without touching {@code IParameterService}/the database — see {@link org.jumpmind.symmetric.cache.ClusterPartitionGenerator} and
-     * {@link org.jumpmind.symmetric.cache.ClusteredCacheManager#initialize}.
-     */
-    private void initClusterPeerCoordinator() {
-        if (clusteredCacheManager.isClusterPeerListenerStarted()) {
-            return;
-        }
-        String clusterPartitionId = ClusterPartitionGenerator.resolve();
-        clusteredCacheManager.initialize(securityService, clusterPartitionId, null,
-                parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED));
-        clusteredCacheManager.startClusterHeartbeat();
-        clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);
-        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
     }
 
     private String waitForClusterPeerUpgradeDatabaseAndGetVersion() {

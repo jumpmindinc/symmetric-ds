@@ -56,7 +56,10 @@ import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
 import org.jumpmind.symmetric.SymmetricException;
+import org.jumpmind.symmetric.cache.ClusterPartitionGenerator;
+import org.jumpmind.symmetric.cache.ClusterPeerStatusMessage;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
@@ -124,6 +127,40 @@ public class SymmetricEngineHolder {
     private String deploymentType = Constants.DEPLOYMENT_TYPE_SERVER;
     private boolean holderHasBeenStarted = false;
     private static final String DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT = "5";
+
+    SymmetricEngineHolder() {
+        initClusterPeerCoordinator();
+    }
+
+    /**
+     * Tier 1: brings up JCS peer announcement/discovery with no database dependency, so this node is visible to peers (and can detect/react to duplicates) even
+     * if later database-dependent startup steps (e.g. {@code ClusterService.checkSymDbOwnership()}) fail. The cluster partition ID, server ID and JCS on/off
+     * flag are all resolved without touching any engine's {@code IParameterService}/the database — see {@link ClusterPartitionGenerator} and
+     * {@link ClusteredCacheManager#initialize}.
+     */
+    private void initClusterPeerCoordinator() {
+        IClusteredCacheManager clusteredCacheManager = ClusteredCacheManager.getInstance();
+        if (clusteredCacheManager.isClusterPeerListenerStarted()) {
+            return;
+        }
+        ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
+        String clusterPartitionId = ClusterPartitionGenerator.resolve();
+        clusteredCacheManager.initialize(securityService, clusterPartitionId, null, isJcsEnabled());
+        clusteredCacheManager.startClusterHeartbeat();
+        clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);
+    }
+
+    /**
+     * Resolved without any engine's {@code IParameterService}/the database, since no engine has been loaded yet at this point. Equivalent environment variable:
+     * SYM_CLUSTER_LOCK_ENABLED.
+     */
+    private static boolean isJcsEnabled() {
+        String value = System.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+        if (StringUtils.isBlank(value)) {
+            value = System.getenv("SYM_CLUSTER_LOCK_ENABLED");
+        }
+        return Boolean.parseBoolean(value);
+    }
 
     public void start() {
         try {
