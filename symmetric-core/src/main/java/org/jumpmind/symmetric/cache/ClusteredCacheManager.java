@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.security.ISecurityService;
@@ -160,7 +161,15 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return active;
     }
 
+    /**
+     * Checks {@code myServerId} (this JVM's own announced identity, valid for its whole lifetime) before falling back to scanning registered engines. Relying
+     * on registered engines alone is unsafe: once the last engine unregisters (e.g. after a crash), this JVM's own lingering heartbeat message could be
+     * misclassified as belonging to a genuinely new external peer, since there would be no registered engine left to recognize it as "self".
+     */
     private boolean isOwnServerId(String serverId) {
+        if (serverId.equals(myServerId)) {
+            return true;
+        }
         for (ISymmetricEngine engine : registeredEngines.values()) {
             if (serverId.equals(engine.getClusterService().getServerId())) {
                 return true;
@@ -179,28 +188,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      * quickly. The cluster partition ID and server ID should be resolved without {@code IParameterService}!
      */
     public synchronized void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
-        startClusterPeerListener(securityService, clusterPartitionId, StringUtils.isBlank(serverId) ? resolveServerId() : serverId, isJcsEnabled);
-    }
-
-    private static String resolveServerId() {
-        String id = System.getProperty(ServerConstants.CLUSTER_SERVER_ID);
-        if (StringUtils.isBlank(id)) {
-            id = System.getenv("SYM_CLUSTER_SERVER_ID");
-        }
-        if (StringUtils.isBlank(id)) {
-            id = System.getProperty("bind.address");
-        }
-        if (StringUtils.isBlank(id)) {
-            id = System.getProperty("jboss.bind.address");
-        }
-        if (StringUtils.isBlank(id)) {
-            try {
-                id = AppUtils.getHostName();
-            } catch (Exception ex) {
-                id = "unknown";
-            }
-        }
-        return StringUtils.left(id, 255);
+        startClusterPeerListener(securityService, clusterPartitionId, StringUtils.isBlank(serverId) ? ClusterPartitionGenerator.resolveServerId() : serverId,
+                isJcsEnabled);
     }
 
     protected synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
@@ -218,6 +207,11 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public String getClusterPartitionId() {
         return myClusterPartitionId;
+    }
+
+    @Override
+    public String getServerId() {
+        return myServerId;
     }
 
     @Override
@@ -719,5 +713,24 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private ISymmetricEngine getAnyEngine() {
         return registeredEngines.values().stream().findFirst().orElse(null);
+    }
+
+    @Override
+    public long generatePeerCoordinationDelay() {
+        return pickDelay(this.currentHeartbeatMs, this.currentStaleThresholdMs);
+    }
+
+    /**
+     * Non-cryptographic jitter to minimize race conditions during simultaneous startups, not security-sensitive.
+     */
+    public static long pickDelay(long min, long max) {
+        if (min > max) {
+            throw new IllegalArgumentException("Min must be less than or equal to max");
+        }
+        if (min == max) {
+            log.warn("Min and max are equal, defeating the purpose of minimizing race conditions. Delay={} ms", min);
+            return min;
+        }
+        return ThreadLocalRandom.current().nextLong(max - min + 1) + min;
     }
 }

@@ -793,32 +793,38 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     private void waitForClusterPeerToFinishDbUpgrade() {
         String engineName = getEngineName();
-        long heartbeatMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS,
-                ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
         clusteredCacheManager.broadcastEngineState(engineName, ClusterEngineStateMessage.ENGINE_STARTING);
+        long delayMs = clusteredCacheManager.generatePeerCoordinationDelay();
         if (clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_STARTING)) {
-            long randomMs = ThreadLocalRandom.current().nextLong(3 * heartbeatMs) + 2 * heartbeatMs;
             try {
-                log.debug("Waiting {} ms for cluster peer heartbeat messages to arrive", randomMs);
-                Thread.sleep(randomMs);
+                log.debug("Waiting {} ms for cluster peer heartbeat messages to arrive", delayMs);
+                Thread.sleep(delayMs);
             } catch (InterruptedException e) {
                 log.warn("Interrupted while waiting for cluster peer heartbeat messages to arrive!");
                 Thread.currentThread().interrupt();
             }
         }
-        while (clusteredCacheManager.isAnyPeerOnline()
+        long startTime = System.currentTimeMillis();
+        long actualWaitTime = 0;
+        while ((actualWaitTime < ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS)
+                && clusteredCacheManager.isAnyPeerOnline()
                 && clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
-            log.info("A cluster peer is upgrading the database. Pausing engine startup for {} ms.",
-                    ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS);
-            long sleepMs = ThreadLocalRandom.current().nextLong(ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS) + heartbeatMs;
+            delayMs = clusteredCacheManager.generatePeerCoordinationDelay();
+            log.info("A cluster peer is upgrading the database. Pausing engine startup for {} ms ...", delayMs);
             try {
-                log.info("Waiting {} ms for cluster peer to complete database upgrade...", sleepMs);
-                Thread.sleep(sleepMs);
-                sleepMs = ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS;
+                Thread.sleep(delayMs);
+                delayMs = ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS;
+                actualWaitTime = System.currentTimeMillis() - startTime;
             } catch (InterruptedException e) {
                 log.warn("Interrupted while waiting for cluster peer to complete database upgrade.");
                 Thread.currentThread().interrupt();
             }
+        }
+        if (actualWaitTime > ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS) {
+            log.warn("Waited {} ms for cluster peer to complete database upgrade, but timeout had expired! Proceeding with engine startup...",
+                    actualWaitTime);
+        } else if (log.isDebugEnabled()) {
+            log.debug("Waited {} ms for cluster peer to complete database upgrade. Proceeding with engine startup...", actualWaitTime);
         }
     }
 

@@ -23,8 +23,10 @@ package org.jumpmind.symmetric;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
@@ -232,6 +234,104 @@ class ApplicationHealthTrackerTest {
         tracker.setEngineReadiness("engine-1", true);
         tracker.setEngineReadiness("engine-2", false);
         tracker.stopTrackingEngine("engine-2");
+        assertTrue(tracker.isReady());
+    }
+
+    @Test
+    void newTrackerIsAliveByDefault() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        assertTrue(tracker.isAlive());
+    }
+
+    @Test
+    void setAliveRoundTripsBackToTrue() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setAlive(false);
+        tracker.setAlive(true);
+        assertTrue(tracker.isAlive());
+    }
+
+    @Test
+    void setTrackerToNullClearsTracker() {
+        ApplicationHealthTracker.setTracker(new ApplicationHealthTracker());
+        ApplicationHealthTracker.setTracker(null);
+        assertNull(ApplicationHealthTracker.getTracker());
+    }
+
+    @Test
+    void setTrackerOverwritesPreviouslySetInstance() {
+        ApplicationHealthTracker first = new ApplicationHealthTracker();
+        ApplicationHealthTracker second = new ApplicationHealthTracker();
+        ApplicationHealthTracker.setTracker(first);
+        ApplicationHealthTracker.setTracker(second);
+        assertSame(second, ApplicationHealthTracker.getTracker());
+        assertNotSame(first, ApplicationHealthTracker.getTracker());
+    }
+
+    @Test
+    void isEngineReadyThrowsForUnknownEngine() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        assertThrows(NullPointerException.class, () -> tracker.isEngineReady("unknown-engine"));
+    }
+
+    @Test
+    void differentTrackerInstancesHaveIndependentReadinessMaps() {
+        ApplicationHealthTracker first = new ApplicationHealthTracker();
+        ApplicationHealthTracker second = new ApplicationHealthTracker();
+        first.setEngineReadiness("engine-1", true);
+        assertTrue(first.getReadinessMap().containsKey("engine-1"));
+        assertTrue(second.getReadinessMap().isEmpty());
+    }
+
+    @Test
+    void onShutdownSetsAliveToFalse() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.onShutdown();
+        assertFalse(tracker.isAlive());
+    }
+
+    @Test
+    void onShutdownWithNoTrackedEnginesStillSetsAliveFalse() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.onShutdown();
+        assertFalse(tracker.isAlive());
+        assertTrue(tracker.getReadinessMap().isEmpty());
+    }
+
+    @Test
+    void onShutdownForcesAllTrackedEnginesToNotReady() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-2", true);
+        tracker.onShutdown();
+        assertFalse(tracker.isEngineReady("engine-1"));
+        assertFalse(tracker.isEngineReady("engine-2"));
+    }
+
+    @Test
+    void onShutdownPreservesEngineKeysAndOnlyFlipsTheirValue() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.setEngineReadiness("engine-2", false);
+        tracker.onShutdown();
+        Map<String, Boolean> readiness = tracker.getReadinessMap();
+        assertEquals(2, readiness.size());
+        assertTrue(readiness.containsKey("engine-1"));
+        assertTrue(readiness.containsKey("engine-2"));
+    }
+
+    @Test
+    void onShutdownMakesIsReadyFalseWhenEnginesWereTracked() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.setEngineReadiness("engine-1", true);
+        tracker.onShutdown();
+        assertFalse(tracker.isReady());
+    }
+
+    @Test
+    void onShutdownWithNoTrackedEnginesLeavesIsReadyTrue() {
+        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
+        tracker.onShutdown();
         assertTrue(tracker.isReady());
     }
 }

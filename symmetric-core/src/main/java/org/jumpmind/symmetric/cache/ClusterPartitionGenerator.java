@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.cache;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.UUID;
@@ -60,6 +61,27 @@ public class ClusterPartitionGenerator {
         return clusterPartitionId;
     }
 
+    public static String resolveServerId() {
+        String id = System.getProperty(ServerConstants.CLUSTER_SERVER_ID);
+        if (StringUtils.isBlank(id)) {
+            id = System.getenv("SYM_CLUSTER_SERVER_ID");
+        }
+        if (StringUtils.isBlank(id)) {
+            id = System.getProperty("bind.address");
+        }
+        if (StringUtils.isBlank(id)) {
+            id = System.getProperty("jboss.bind.address");
+        }
+        if (StringUtils.isBlank(id)) {
+            try {
+                id = AppUtils.getHostName();
+            } catch (Exception ex) {
+                id = "unknown";
+            }
+        }
+        return StringUtils.left(id, 255);
+    }
+
     private static String loadOrCreateClusterPartitionId() {
         File clusterPartitionIdFile = getClusterPartitionIdFile();
         String configuredId = StringUtils.left(readConfiguredPartitionId(), 60);
@@ -71,9 +93,28 @@ public class ClusterPartitionGenerator {
         if (StringUtils.isNotBlank(id)) {
             return id;
         }
-        id = UUID.randomUUID().toString();
+        id = applyUuidMarker(UUID.randomUUID(), ServerConstants.PARTITION_ID_MARKER_AUTO).toString();
         writeClusterPartitionId(clusterPartitionIdFile, id);
         return id;
+    }
+
+    public static UUID applyUuidMarker(UUID uuid, int marker) {
+        long msb = (uuid.getMostSignificantBits() & 0xFFFFFFFF0000FFFFL) | ((long) (marker & 0xFFFF)) << 16;
+        return new UUID(msb, uuid.getLeastSignificantBits());
+    }
+
+    public static String applyUuidMarkerToId(String partitionId, int marker) {
+        if (partitionId == null || partitionId.length() < 36) {
+            String prefix = partitionId == null ? "" : partitionId;
+            return prefix + applyUuidMarker(new UUID(0L, 0L), marker);
+        }
+        String uuidPart = partitionId.substring(partitionId.length() - 36);
+        try {
+            return partitionId.substring(0, partitionId.length() - 36)
+                    + applyUuidMarker(UUID.fromString(uuidPart), marker);
+        } catch (IllegalArgumentException e) {
+            return partitionId;
+        }
     }
 
     private static String readConfiguredPartitionId() {
@@ -92,8 +133,8 @@ public class ClusterPartitionGenerator {
 
     private static String readClusterPartitionId(File clusterPartitionIdFile) {
         if (clusterPartitionIdFile != null) {
-            try {
-                return IOUtils.toString(new FileInputStream(clusterPartitionIdFile), Charset.defaultCharset()).trim();
+            try (FileInputStream in = new FileInputStream(clusterPartitionIdFile)) {
+                return IOUtils.toString(in, Charset.defaultCharset()).trim();
             } catch (Exception ex) {
                 log.debug("Failed to load cluster partition id from file '" + clusterPartitionIdFile + "'", ex);
                 return null;
@@ -101,8 +142,8 @@ public class ClusterPartitionGenerator {
         }
         URL clusterPartitionIdURL = ClusterPartitionGenerator.class.getClassLoader().getResource("/cluster-partition.uuid");
         if (clusterPartitionIdURL != null) {
-            try {
-                return IOUtils.toString(clusterPartitionIdURL.openStream(), Charset.defaultCharset()).trim();
+            try (InputStream in = clusterPartitionIdURL.openStream()) {
+                return IOUtils.toString(in, Charset.defaultCharset()).trim();
             } catch (Exception ex) {
                 log.debug("Failed to load cluster partition id from classpath '" + clusterPartitionIdURL + "'", ex);
             }
@@ -114,7 +155,9 @@ public class ClusterPartitionGenerator {
         if (clusterPartitionIdFile != null) {
             try {
                 clusterPartitionIdFile.getParentFile().mkdirs();
-                IOUtils.write(id, new FileOutputStream(clusterPartitionIdFile), Charset.defaultCharset());
+                try (FileOutputStream out = new FileOutputStream(clusterPartitionIdFile)) {
+                    IOUtils.write(id, out, Charset.defaultCharset());
+                }
             } catch (Exception ex) {
                 log.warn("Failed to save cluster partition id to file '" + clusterPartitionIdFile + "'", ex);
             }

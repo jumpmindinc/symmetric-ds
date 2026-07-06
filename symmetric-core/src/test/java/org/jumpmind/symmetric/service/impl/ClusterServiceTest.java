@@ -50,7 +50,6 @@ import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.common.ParameterConstants;
-import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.model.NodeHost;
@@ -305,86 +304,10 @@ class ClusterServiceTest {
     }
 
     @Test
-    void testApplyUuidMarker_embeddingAutoMarker() {
-        UUID original = UUID.fromString("12345678-9abc-def0-1234-567890abcdef");
-        UUID marked = ClusterService.applyUuidMarker(original, ServerConstants.INSTANCE_UUID_MARKER_AUTO);
-        assertEquals("12345678-aaaa-def0-1234-567890abcdef", marked.toString());
-    }
-
-    @Test
-    void testApplyUuidMarker_embeddingHardwareMarker() {
-        UUID original = UUID.fromString("12345678-9abc-def0-1234-567890abcdef");
-        UUID marked = ClusterService.applyUuidMarker(original, ServerConstants.INSTANCE_UUID_MARKER_HARDWARE);
-        assertEquals("12345678-bbbb-def0-1234-567890abcdef", marked.toString());
-    }
-
-    @Test
-    void testApplyUuidMarker_embeddingConfiguredMarker() {
-        UUID original = UUID.fromString("12345678-9abc-def0-1234-567890abcdef");
-        UUID marked = ClusterService.applyUuidMarker(original, ServerConstants.INSTANCE_UUID_MARKER_CONFIGURED);
-        assertEquals("12345678-cccc-def0-1234-567890abcdef", marked.toString());
-    }
-
-    @Test
-    void testApplyUuidMarker_preservesAllOtherBytes() {
-        UUID original = UUID.fromString("aabbccdd-eeff-1122-3344-556677889900");
-        UUID marked = ClusterService.applyUuidMarker(original, ServerConstants.INSTANCE_UUID_MARKER_AUTO);
-        String s = marked.toString();
-        assertEquals("aabbccdd", s.substring(0, 8));
-        assertEquals("1122", s.substring(14, 18));
-        assertEquals("3344-556677889900", s.substring(19));
-    }
-
-    @Test
-    void testApplyUuidMarkerToId_hostnamePrefix() {
-        String input = "myhost-12345678-9abc-def0-1234-567890abcdef";
-        String result = ClusterService.applyUuidMarkerToId(input, ServerConstants.INSTANCE_UUID_MARKER_AUTO);
-        assertEquals("myhost-12345678-aaaa-def0-1234-567890abcdef", result);
-    }
-
-    @Test
-    void testApplyUuidMarkerToId_plainUuid() {
-        String input = "12345678-9abc-def0-1234-567890abcdef";
-        String result = ClusterService.applyUuidMarkerToId(input, ServerConstants.INSTANCE_UUID_MARKER_CONFIGURED);
-        assertEquals("12345678-cccc-def0-1234-567890abcdef", result);
-    }
-
-    @Test
-    void testApplyUuidMarkerToId_nullUsesZeroUuidWithMarker() {
-        String result = ClusterService.applyUuidMarkerToId(null, ServerConstants.INSTANCE_UUID_MARKER_AUTO);
-        assertEquals(36, result.length());
-        int byte4 = Integer.parseInt(result.substring(9, 11), 16);
-        int byte5 = Integer.parseInt(result.substring(11, 13), 16);
-        assertEquals(0xaa, byte4);
-        assertEquals(0xaa, byte5);
-    }
-
-    @Test
-    void testApplyUuidMarkerToId_shortStringPrefixedBeforeZeroUuid() {
-        String result = ClusterService.applyUuidMarkerToId("abc", ServerConstants.INSTANCE_UUID_MARKER_AUTO);
-        assertEquals(39, result.length());
-        assertTrue(result.startsWith("abc"));
-        int uuidStart = result.length() - 36;
-        int byte4 = Integer.parseInt(result.substring(uuidStart + 9, uuidStart + 11), 16);
-        int byte5 = Integer.parseInt(result.substring(uuidStart + 11, uuidStart + 13), 16);
-        assertEquals(0xaa, byte4);
-        assertEquals(0xaa, byte5);
-    }
-
-    @Test
-    void testApplyUuidMarkerToId_nonUuidSuffixReturnedUnchanged() {
-        String input = "prefix-GGGGGGGG-GGGG-GGGG-GGGG-GGGGGGGGGGGG";
-        assertEquals(input, ClusterService.applyUuidMarkerToId(input, ServerConstants.INSTANCE_UUID_MARKER_AUTO));
-    }
-
-    @Test
-    void testGenerateInstanceId_hasAutoMarker() {
+    void testGenerateInstanceId_producesWellFormedRandomUuidSuffix() {
         String instanceId = ClusterService.generateInstanceId("testhost");
         String uuidPart = instanceId.substring(instanceId.length() - 36);
-        int byte4 = Integer.parseInt(uuidPart.substring(9, 11), 16);
-        int byte5 = Integer.parseInt(uuidPart.substring(11, 13), 16);
-        assertEquals(0xaa, byte4);
-        assertEquals(0xaa, byte5);
+        assertEquals(uuidPart, UUID.fromString(uuidPart).toString());
     }
 
     @Test
@@ -394,7 +317,6 @@ class ClusterServiceTest {
         String prefix = instanceId.substring(0, instanceId.length() - 37);
         assertEquals(23, prefix.length());
     }
-
 
     @SuppressWarnings("unchecked")
     private void injectActivePeer(String peerId) throws Exception {

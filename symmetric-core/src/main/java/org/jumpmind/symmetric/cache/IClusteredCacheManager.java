@@ -84,11 +84,20 @@ public interface IClusteredCacheManager {
     /** The JCS cluster partition ID this node resolved and is currently announcing under. */
     String getClusterPartitionId();
 
+    /** The server ID this node resolved and is currently announcing under. */
+    String getServerId();
+
     /** The current interval, in milliseconds, between cluster peer heartbeat broadcasts. */
     long getHeartbeatIntervalMs();
 
     /** The current age, in milliseconds, after which a peer's last heartbeat is considered stale. */
     long getStaleIntervalMs();
+
+    /**
+     * Generates a random delay, bounded by the current heartbeat interval and stale threshold, used to jitter cluster peer coordination waits so simultaneous
+     * engine startups don't retry in lockstep. Not security-sensitive.
+     */
+    long generatePeerCoordinationDelay();
 
     void startClusterHeartbeat();
 

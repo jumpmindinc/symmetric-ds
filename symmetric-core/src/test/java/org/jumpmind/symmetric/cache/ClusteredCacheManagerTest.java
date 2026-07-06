@@ -524,6 +524,16 @@ public class ClusteredCacheManagerTest {
     }
 
     @Test
+    public void isOwnServerId_noEnginesButMatchesMyServerId_returnsTrue() throws Exception {
+        // Regression guard: after the last engine unregisters, no registered engine is left to recognize this JVM's own serverId, but myServerId is still
+        // valid for the JVM's lifetime and must still be recognized as "self" — otherwise a lingering self-message gets misclassified as a new external peer.
+        setMyServerId(MANAGER_SERVER_ID);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("isOwnServerId", String.class);
+        m.setAccessible(true);
+        assertTrue((boolean) m.invoke(manager, MANAGER_SERVER_ID));
+    }
+
+    @Test
     public void stopClusterCommunication_setsRunningFalseAndCallsCoordinatorStop() throws Exception {
         setListenerStarted(true);
         manager.startClusterHeartbeat();
@@ -1329,5 +1339,55 @@ public class ClusteredCacheManagerTest {
         m.setAccessible(true);
         m.invoke(manager, PEER_1, UNKNOWN_ENGINE);
         verify(mockClusterService, never()).clearLocksForServer(anyString());
+    }
+
+    @Test
+    public void pickDelay_returnsValueWithinInclusiveRange() {
+        long min = 100L;
+        long max = 200L;
+        for (int i = 0; i < 200; i++) {
+            long delay = ClusteredCacheManager.pickDelay(min, max);
+            assertTrue(delay >= min);
+            assertTrue(delay <= max);
+        }
+    }
+
+    @Test
+    public void pickDelay_minEqualsMax_returnsThatValue() {
+        assertEquals(500L, ClusteredCacheManager.pickDelay(500L, 500L));
+    }
+
+    @Test
+    public void pickDelay_minGreaterThanMax_throwsIllegalArgumentException() {
+        Assertions.assertThrows(IllegalArgumentException.class, () -> ClusteredCacheManager.pickDelay(200L, 100L));
+    }
+
+    @Test
+    public void pickDelay_minZero_returnsWithinRange() {
+        long delay = ClusteredCacheManager.pickDelay(0L, 50L);
+        assertTrue(delay >= 0L);
+        assertTrue(delay <= 50L);
+    }
+
+    @Test
+    public void pickDelay_acrossManyCalls_producesVariedValues() {
+        Set<Long> observed = new HashSet<>();
+        for (int i = 0; i < 50; i++) {
+            observed.add(ClusteredCacheManager.pickDelay(0L, 1_000_000L));
+        }
+        assertTrue(observed.size() > 1);
+    }
+
+    @Test
+    public void generatePeerCoordinationDelay_usesHeartbeatAndStaleIntervalAsBounds() throws Exception {
+        Field heartbeatField = ClusteredCacheManager.class.getDeclaredField("currentHeartbeatMs");
+        heartbeatField.setAccessible(true);
+        heartbeatField.set(manager, 100L);
+        Field staleField = ClusteredCacheManager.class.getDeclaredField("currentStaleThresholdMs");
+        staleField.setAccessible(true);
+        staleField.set(manager, 200L);
+        long delay = manager.generatePeerCoordinationDelay();
+        assertTrue(delay >= 100L);
+        assertTrue(delay <= 200L);
     }
 }

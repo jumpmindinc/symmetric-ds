@@ -493,27 +493,8 @@ public class ClusterService extends AbstractService implements IClusterService {
             buff.setLength(MAX_HOST_LENGTH);
         }
         buff.append("-");
-        buff.append(applyUuidMarker(UUID.randomUUID(), ServerConstants.INSTANCE_UUID_MARKER_AUTO));
+        buff.append(UUID.randomUUID().toString());
         return buff.toString();
-    }
-
-    public static UUID applyUuidMarker(UUID uuid, int marker) {
-        long msb = (uuid.getMostSignificantBits() & 0xFFFFFFFF0000FFFFL) | ((long) (marker & 0xFFFF)) << 16;
-        return new UUID(msb, uuid.getLeastSignificantBits());
-    }
-
-    public static String applyUuidMarkerToId(String instanceId, int marker) {
-        if (instanceId == null || instanceId.length() < 36) {
-            String prefix = instanceId == null ? "" : instanceId;
-            return prefix + applyUuidMarker(new UUID(0L, 0L), marker);
-        }
-        String uuidPart = instanceId.substring(instanceId.length() - 36);
-        try {
-            return instanceId.substring(0, instanceId.length() - 36)
-                    + applyUuidMarker(UUID.fromString(uuidPart), marker);
-        } catch (IllegalArgumentException e) {
-            return instanceId;
-        }
     }
 
     /**
