@@ -380,6 +380,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.dataService = createDataService();
         this.clusterService = createClusterService();
         this.clusteredCacheManager = ClusteredCacheManager.getInstance();
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
@@ -507,14 +508,23 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             return;
         }
         isStartupDbParametersDifferentFromLastStart = detectStartupDbParametersDifferentFromLastStart();
-        setupDatabase(isStartupDbParametersDifferentFromLastStart);
+        waitForClusterPeerToFinishDbUpgrade();
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB);
+        try {
+            setupDatabase(isStartupDbParametersDifferentFromLastStart);
+        } catch (RuntimeException ex) {
+            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_OFFLINE);
+            throw ex;
+        }
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
         parameterService.setDatabaseHasBeenInitialized(true);
-        String databaseVersion = waitForClusterPeerUpgradeDatabaseAndGetVersion();
+        String databaseVersion = getInstalledDatabaseVersion();
         String softwareVersion = Version.version();
         log.info("SymmetricDS database version : " + databaseVersion);
         log.info("SymmetricDS software version : " + softwareVersion);
         if (databaseVersion != null && !softwareVersion.equals(databaseVersion)) {
             log.info("SymmetricDS database version does not match the current software version, running software upgrade listeners.");
+            waitForClusterPeerToFinishDbUpgrade();
             upgradeDatabaseVersion(databaseVersion, softwareVersion);
         }
         parameterService.setDatabaseHasBeenSetup(true);
@@ -781,7 +791,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return started;
     }
 
-    private String waitForClusterPeerUpgradeDatabaseAndGetVersion() {
+    private void waitForClusterPeerToFinishDbUpgrade() {
         long heartbeatMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS,
                 ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS);
         try {
@@ -791,20 +801,16 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             log.warn("Interrupted while waiting for cluster peer heartbeat messages to arrive");
             Thread.currentThread().interrupt();
         }
-        String databaseVersion = getInstalledDatabaseVersion();
         while (clusteredCacheManager.isAnyPeerWithEngineInState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
             log.info("A cluster peer is upgrading the database. Pausing engine startup for {} ms.",
                     ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS);
             try {
-                log.info("Waiting for cluster peer to complete database upgrade. Current databaseVersion={}", databaseVersion);
                 Thread.sleep(ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS);
-                databaseVersion = getInstalledDatabaseVersion();
             } catch (InterruptedException e) {
-                log.warn("Interrupted while waiting for cluster peer to complete database upgrade. Current databaseVersion={}", databaseVersion);
+                log.warn("Interrupted while waiting for cluster peer to complete database upgrade.");
                 Thread.currentThread().interrupt();
             }
         }
-        return databaseVersion;
     }
 
     private void startNodeAndJobs(Node node, boolean startJobs) {
