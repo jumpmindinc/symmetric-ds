@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedStatic;
 
 public class ClusterPartitionGeneratorTest {
     private static final int UUID_STRING_LENGTH = 36;
@@ -173,6 +175,14 @@ public class ClusterPartitionGeneratorTest {
     @Test
     public void resolveServerId_noConfiguration_fallsBackToHostname() throws Exception {
         assertEquals(AppUtils.getHostName(), ClusterPartitionGenerator.resolveServerId());
+    }
+
+    @Test
+    public void resolveServerId_hostnameLookupThrows_fallsBackToUnknown() {
+        try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
+            mocked.when(AppUtils::getHostName).thenThrow(new RuntimeException("no hostname available"));
+            assertEquals("unknown", ClusterPartitionGenerator.resolveServerId());
+        }
     }
 
     @Test

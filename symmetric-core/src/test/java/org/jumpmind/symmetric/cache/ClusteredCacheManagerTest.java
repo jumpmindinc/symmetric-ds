@@ -24,6 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -1389,5 +1390,85 @@ public class ClusteredCacheManagerTest {
         long delay = manager.generatePeerCoordinationDelay();
         assertTrue(delay >= 100L);
         assertTrue(delay <= 200L);
+    }
+
+    @Test
+    public void recordPeerOffline_nullServerId_returnsFalse() {
+        assertFalse(manager.recordPeerOffline(null));
+    }
+
+    @Test
+    public void recordPeerOffline_ownServerId_returnsFalse() throws Exception {
+        manager.registerEngine(mockEngine);
+        assertFalse(manager.recordPeerOffline(SERVER_1));
+    }
+
+    @Test
+    public void recordPeerOffline_newPeer_returnsTrueAndMarksOffline() {
+        assertTrue(manager.recordPeerOffline(PEER_1));
+        assertFalse(peerStates.get(PEER_1).alive());
+    }
+
+    @Test
+    public void recordPeerOffline_alreadyTrackedPeer_returnsFalseAndDoesNotOverwrite() {
+        PeerState existing = new PeerState(true, System.currentTimeMillis());
+        peerStates.put(PEER_1, existing);
+        assertFalse(manager.recordPeerOffline(PEER_1));
+        assertSame(existing, peerStates.get(PEER_1));
+    }
+
+    @Test
+    public void getObsoleteMs_nullEngine_returnsDefault() throws Exception {
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("getObsoleteMs", ISymmetricEngine.class);
+        m.setAccessible(true);
+        assertEquals(ServerConstants.CLUSTER_PEER_OBSOLETE_DEFAULT_MS, (long) m.invoke(manager, (ISymmetricEngine) null));
+    }
+
+    @Test
+    public void getObsoleteMs_withEngine_returnsConfiguredValue() throws Exception {
+        when(mockParameterService.getLong(eq(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS), anyLong())).thenReturn(12345L);
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("getObsoleteMs", ISymmetricEngine.class);
+        m.setAccessible(true);
+        assertEquals(12345L, (long) m.invoke(manager, mockEngine));
+    }
+
+    @Test
+    public void isPeerAlive_veryStaleHeartbeat_returnsFalse() throws Exception {
+        ClusterPeerStatusMessage veryStale = msg(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1);
+        long veryFarFuture = System.currentTimeMillis() + (2 * THRESHOLD_MS) + 1000L;
+        assertFalse((boolean) isPeerAlive.invoke(manager, PEER_1, veryStale, veryFarFuture, THRESHOLD_MS));
+    }
+
+    @Test
+    public void runClusterHeartbeatLoop_genericException_isCaughtAndLoopExits() throws Exception {
+        setRunning(true);
+        when(mockCoordinator.getObservedPeers()).thenAnswer(invocation -> {
+            setRunning(false);
+            throw new RuntimeException("boom");
+        });
+        Method m = ClusteredCacheManager.class.getDeclaredMethod("runClusterHeartbeatLoop");
+        m.setAccessible(true);
+        m.invoke(manager);
+        assertFalse((boolean) getField("isHeartbeatLoopRunning"));
+    }
+
+    @Test
+    public void runClusterHeartbeatLoop_interruptedException_restoresInterruptFlagAndExits() throws Exception {
+        setRunning(true);
+        Thread.currentThread().interrupt();
+        try {
+            Method m = ClusteredCacheManager.class.getDeclaredMethod("runClusterHeartbeatLoop");
+            m.setAccessible(true);
+            m.invoke(manager);
+            assertTrue(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    private Object getField(String name) throws Exception {
+        Field f = ClusteredCacheManager.class.getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(manager);
     }
 }
