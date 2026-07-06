@@ -2245,18 +2245,87 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         awaitTermination(executor, futures);
     }
 
+<<<<<<< HEAD
     private Map<String, List<TriggerRelationSupportingInfo>> getTriggerToRelationSupportingInfo(List<Trigger> triggers,
             List<TriggerHistory> activeTriggerHistories,
+=======
+    protected Table getFilteredTableFromExcludeAndIncludeColumns(Table table, Trigger trigger) {
+        boolean foundPk = false;
+        Table modifiedTable = table;
+        Column[] columns = trigger.filterExcludedAndIncludedColumns(table.getColumns());
+        for (Column column : columns) {
+            foundPk |= column.isPrimaryKey();
+            if (foundPk) {
+                break;
+            }
+        }
+        if (!foundPk) {
+            String[] columnNames = new String[columns.length];
+            for (int i = 0; i < columns.length; i++) {
+                Column column = columns[i];
+                columnNames[i] = column.getName();
+            }
+            modifiedTable = modifiedTable.copyAndFilterColumns(columnNames, null, false, false);
+            modifiedTable = platform.makeAllColumnsPrimaryKeys(modifiedTable);
+        }
+        return modifiedTable;
+    }
+
+    protected Map<String, List<TriggerTableSupportingInfo>> getTriggerToTableSupportingInfo(List<Trigger> triggers, List<TriggerHistory> activeTriggerHistories,
+>>>>>>> d147e50a33 (SYM-7746: Fixed NPE from null triggerhist pk (#901))
             boolean useTableCache, TriggerRouterContext triggerRouterContext) {
         Map<String, List<TriggerRelationSupportingInfo>> triggerToRelationSupportingInfo = new HashMap<>();
         List<String> triggerNamesGeneratedThisSession = new ArrayList<>();
         for (final Trigger trigger : triggers) {
             Set<Relation> relations = getRelationsForTrigger(trigger, triggers, useTableCache, triggerRouterContext);
             long ts = System.currentTimeMillis();
+<<<<<<< HEAD
             List<TriggerRelationSupportingInfo> infoList = buildTriggerRelationInfoList(
                     trigger, relations, activeTriggerHistories, triggerNamesGeneratedThisSession);
             triggerToRelationSupportingInfo.put(trigger.getTriggerId(), infoList);
             triggerRouterContext.incrementTriggerToRelationSupportingInfoTime(System.currentTimeMillis() - ts);
+=======
+            for (Table table : tables) {
+                Table modifiedTable = getFilteredTableFromExcludeAndIncludeColumns(table, trigger);
+                TriggerHistory latestHistoryBeforeRebuild;
+                synchronized (activeTriggerHistories) {
+                    latestHistoryBeforeRebuild = getNewestTriggerHistoryForTrigger(
+                            activeTriggerHistories,
+                            trigger.getTriggerId(),
+                            trigger.isSourceCatalogNameWildCarded() ? modifiedTable.getCatalog() : trigger.getSourceCatalogNameUnescaped(),
+                            trigger.isSourceSchemaNameWildCarded() ? modifiedTable.getSchema() : trigger.getSourceSchemaNameUnescaped(),
+                            (trigger.isSourceTableNameWildCarded() || trigger.isSourceTableNameExpanded()) ? modifiedTable.getName()
+                                    : trigger.getSourceTableNameUnescaped());
+                }
+                int maxTriggerNameLength = symmetricDialect.getMaxTriggerNameLength();
+                String insertTriggerName = null;
+                String updateTriggerName = null;
+                String deleteTriggerName = null;
+                if (trigger.isSyncOnInsert()) {
+                    insertTriggerName = getTriggerName(DataEventType.INSERT,
+                            maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
+                            .toUpperCase();
+                    triggerNamesGeneratedThisSession.add(insertTriggerName);
+                }
+                if (trigger.isSyncOnUpdate()) {
+                    updateTriggerName = getTriggerName(DataEventType.UPDATE,
+                            maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
+                            .toUpperCase();
+                    triggerNamesGeneratedThisSession.add(updateTriggerName);
+                }
+                if (trigger.isSyncOnDelete()) {
+                    deleteTriggerName = getTriggerName(DataEventType.DELETE,
+                            maxTriggerNameLength, trigger, modifiedTable, activeTriggerHistories, latestHistoryBeforeRebuild, triggerNamesGeneratedThisSession)
+                            .toUpperCase();
+                    triggerNamesGeneratedThisSession.add(deleteTriggerName);
+                }
+                TriggerTableSupportingInfo triggerTableSupportingInfo = new TriggerTableSupportingInfo(trigger.getTriggerId(), insertTriggerName,
+                        updateTriggerName, deleteTriggerName, latestHistoryBeforeRebuild, modifiedTable);
+                triggerTableSupportingInfoList.add(triggerTableSupportingInfo);
+            }
+            triggerToTableSupportingInfo.put(trigger.getTriggerId(), triggerTableSupportingInfoList);
+            triggerRouterContext.incrementTriggerToTableSupportingInfoTime(System.currentTimeMillis() - ts);
+>>>>>>> d147e50a33 (SYM-7746: Fixed NPE from null triggerhist pk (#901))
         }
         return triggerToRelationSupportingInfo;
     }
