@@ -2073,7 +2073,29 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         awaitTermination(executor, futures);
     }
 
-    private Map<String, List<TriggerTableSupportingInfo>> getTriggerToTableSupportingInfo(List<Trigger> triggers, List<TriggerHistory> activeTriggerHistories,
+    protected Table getFilteredTableFromExcludeAndIncludeColumns(Table table, Trigger trigger) {
+        boolean foundPk = false;
+        Table modifiedTable = table;
+        Column[] columns = trigger.filterExcludedAndIncludedColumns(table.getColumns());
+        for (Column column : columns) {
+            foundPk |= column.isPrimaryKey();
+            if (foundPk) {
+                break;
+            }
+        }
+        if (!foundPk) {
+            String[] columnNames = new String[columns.length];
+            for (int i = 0; i < columns.length; i++) {
+                Column column = columns[i];
+                columnNames[i] = column.getName();
+            }
+            modifiedTable = modifiedTable.copyAndFilterColumns(columnNames, null, false, false);
+            modifiedTable = platform.makeAllColumnsPrimaryKeys(modifiedTable);
+        }
+        return modifiedTable;
+    }
+
+    protected Map<String, List<TriggerTableSupportingInfo>> getTriggerToTableSupportingInfo(List<Trigger> triggers, List<TriggerHistory> activeTriggerHistories,
             boolean useTableCache, TriggerRouterContext triggerRouterContext) {
         Map<String, List<TriggerTableSupportingInfo>> triggerToTableSupportingInfo = new HashMap<String, List<TriggerTableSupportingInfo>>();
         List<String> triggerNamesGeneratedThisSession = new ArrayList<String>();
@@ -2082,18 +2104,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             Set<Table> tables = getTablesForTrigger(trigger, triggers, useTableCache, triggerRouterContext);
             long ts = System.currentTimeMillis();
             for (Table table : tables) {
-                Table modifiedTable = table;
-                boolean foundPk = false;
-                Column[] columns = trigger.filterExcludedAndIncludedColumns(modifiedTable.getColumns());
-                for (Column column : columns) {
-                    foundPk |= column.isPrimaryKey();
-                    if (foundPk) {
-                        break;
-                    }
-                }
-                if (!foundPk) {
-                    modifiedTable = platform.makeAllColumnsPrimaryKeys(modifiedTable);
-                }
+                Table modifiedTable = getFilteredTableFromExcludeAndIncludeColumns(table, trigger);
                 TriggerHistory latestHistoryBeforeRebuild;
                 synchronized (activeTriggerHistories) {
                     latestHistoryBeforeRebuild = getNewestTriggerHistoryForTrigger(
