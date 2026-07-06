@@ -97,8 +97,12 @@ class ClusterServiceTest {
     }
 
     @AfterEach
-    void resetInstanceId() {
+    @SuppressWarnings("unchecked")
+    void clearActivePeers() throws Exception {
         ClusterService.instanceId = null;
+        Field peerStatesField = ClusteredCacheManager.class.getDeclaredField("peerStates");
+        peerStatesField.setAccessible(true);
+        ((Map<String, PeerState>) peerStatesField.get(ClusteredCacheManager.getInstance())).clear();
     }
 
     @Test
@@ -391,13 +395,6 @@ class ClusterServiceTest {
         assertEquals(23, prefix.length());
     }
 
-    @AfterEach
-    @SuppressWarnings("unchecked")
-    void clearActivePeers() throws Exception {
-        Field peerStatesField = ClusteredCacheManager.class.getDeclaredField("peerStates");
-        peerStatesField.setAccessible(true);
-        ((Map<String, PeerState>) peerStatesField.get(ClusteredCacheManager.getInstance())).clear();
-    }
 
     @SuppressWarnings("unchecked")
     private void injectActivePeer(String peerId) throws Exception {
