@@ -91,10 +91,10 @@ public interface IClusterCacheCoordinator {
      */
     boolean announceDiscoveredPeer(String serverId, String address);
 
-    void sendServerStatus(ClusterPeerSecureMessage message);
+    void sendServerStatus(ClusterServerStatusMessage message);
 
     /** Returns the latest peer status message (heartbeat/join/leave) for the given peer server ID. */
-    ClusterPeerStatusMessage getPeerStatusMessage(String peerId);
+    ClusterServerStatusMessage getPeerStatusMessage(String peerId);
 
     /**
      * Returns the latest message stored in the given cache region for the given key. Supports future message types beyond peer status (e.g. cache invalidation
@@ -114,7 +114,7 @@ public interface IClusterCacheCoordinator {
      * (e.g. because they have us in their own TcpServers list) but that we have not yet added as a known peer ourselves. Returning the full message (rather
      * than just the server ID) lets callers seed a peer's initial state from its real timestamp instead of re-reading the cache a second time.
      */
-    Set<ClusterPeerStatusMessage> getObservedPeers();
+    Set<ClusterServerStatusMessage> getObservedPeers();
 
     ClusterMessageConverter getConverter();
 }

@@ -98,7 +98,7 @@ public class ClusteredCacheManagerTest {
     private Method detectPeerState;
     private Map<String, Boolean> engineStateMap;
     private Method detectEngineStateMethod;
-    private Map<String, IClusteredCacheManager.PeerState> peerStates;
+    private Map<String, Boolean> peerWasPreviouslyAlive;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -115,7 +115,7 @@ public class ClusteredCacheManagerTest {
         when(mockCoordinator.getObservedPeers()).thenReturn(new HashSet<>());
         ClusterMessageConverter converter = new ClusterMessageConverter();
         when(mockCoordinator.getConverter()).thenReturn(converter);
-        Field coordinatorField = ClusteredCacheManager.class.getDeclaredField("coordinator");
+        Field coordinatorField = ClusteredCacheManager.class.getDeclaredField("peerNetworkCoordinator");
         coordinatorField.setAccessible(true);
         coordinatorField.set(manager, mockCoordinator);
         mockClusterService = mock(IClusterService.class);
@@ -149,21 +149,21 @@ public class ClusteredCacheManagerTest {
         Field engineStateMapField = ClusteredCacheManager.class.getDeclaredField("engineStateMap");
         engineStateMapField.setAccessible(true);
         engineStateMap = (Map<String, Boolean>) engineStateMapField.get(manager);
-        Field peerStatesField = ClusteredCacheManager.class.getDeclaredField("peerStates");
-        peerStatesField.setAccessible(true);
-        peerStates = (Map<String, IClusteredCacheManager.PeerState>) peerStatesField.get(manager);
+        Field peerWasPreviouslyAliveField = ClusteredCacheManager.class.getDeclaredField("peerWasPreviouslyAlive");
+        peerWasPreviouslyAliveField.setAccessible(true);
+        peerWasPreviouslyAlive = (Map<String, Boolean>) peerWasPreviouslyAliveField.get(manager);
     }
 
-    private boolean callIsPeerAlive(String peerId, ClusterPeerStatusMessage msg) throws Exception {
+    private boolean callIsPeerAlive(String peerId, ClusterPeerSecureMessage msg) throws Exception {
         return (boolean) isPeerAlive.invoke(manager, peerId, msg, System.currentTimeMillis(), THRESHOLD_MS);
     }
 
-    private boolean callDetectPeerState(String peerId, ClusterPeerStatusMessage msg) throws Exception {
+    private boolean callDetectPeerState(String peerId, ClusterPeerSecureMessage msg) throws Exception {
         return (boolean) detectPeerState.invoke(manager, peerId, msg, System.currentTimeMillis(), THRESHOLD_MS);
     }
 
-    private ClusterPeerStatusMessage msg(String eventType, String peerId) {
-        return new ClusterPeerStatusMessage(eventType, peerId, "inst-" + peerId, TEST_VERSION);
+    private ClusterServerStatusMessage msg(String eventType, String peerId) {
+        return new ClusterServerStatusMessage(eventType, peerId, "inst-" + peerId, System.currentTimeMillis());
     }
 
     private void setRunning(boolean value) throws Exception {
@@ -235,13 +235,6 @@ public class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         manager.unregisterEngine(mockEngine);
         verify(mockCoordinator, never()).stop();
-    }
-
-    @Test
-    public void stopClusterCommunication_stopsCoordinator() throws Exception {
-        setListenerStarted(true);
-        manager.stopClusterCommunication();
-        verify(mockCoordinator).stop();
     }
 
     @Test

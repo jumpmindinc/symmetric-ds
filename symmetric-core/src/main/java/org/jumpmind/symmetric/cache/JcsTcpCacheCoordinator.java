@@ -253,7 +253,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     @Override
-    public void sendServerStatus(ClusterPeerSecureMessage message) {
+    public void sendServerStatus(ClusterServerStatusMessage message) {
         // Always publish, even with zero known peers: this is how a peer with no known peers of its own gets discovered
         // by others in the first place (see getObservedPeers()). Skipping the put here would deadlock discovery — every
         // node starts with an empty knownPeers set, so nobody would ever announce itself for anyone else to find.
@@ -263,7 +263,8 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             return;
         }
         try {
-            cache.put(message.getServerId(), message);
+            ClusterPeerSecureMessage secureMsg = wrapServerStatus(message);
+            cache.put(message.getServerId(), secureMsg);
             log.debug("Sent server status. eventType={}, serverId={}, knownPeers.size={}",
                     message.getEventType(), message.getServerId(), knownPeers.size());
         } catch (Exception ex) {
@@ -271,6 +272,12 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
                     message.getEventType(), message.getServerId());
             log.warn(msg, ex);
         }
+    }
+
+    private ClusterPeerSecureMessage wrapServerStatus(ClusterServerStatusMessage plainMsg) {
+        String payload = plainMsg.getEventType() + "|" + plainMsg.getStartTimeMs();
+        return new SecureServerStatusMessage(plainMsg.getServerId(), plainMsg.getClusterPartitionId(),
+                plainMsg.getVersion(), plainMsg.getTimestamp(), payload, plainMsg);
     }
 
     @Override
@@ -294,16 +301,22 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     @Override
-    public ClusterPeerStatusMessage getPeerStatusMessage(String peerId) {
+    public ClusterServerStatusMessage getPeerStatusMessage(String peerId) {
         CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
         if (cache == null) {
             return null;
         }
-        ClusterPeerSecureMessage msg = cache.get(peerId);
-        if (msg != null) {
-            log.debug("Received cluster-wide message. eventType={}, peerId={}", msg.getEventType(), peerId);
+        ClusterPeerSecureMessage secureMsg = cache.get(peerId);
+        if (secureMsg == null) {
+            return null;
         }
-        return msg instanceof ClusterPeerStatusMessage ? (ClusterPeerStatusMessage) msg : null;
+        ClusterPlainMessage plainMsg = converter.toPlainMessage(secureMsg, clusterPartitionId);
+        if (plainMsg instanceof ClusterServerStatusMessage) {
+            ClusterServerStatusMessage statusMsg = (ClusterServerStatusMessage) plainMsg;
+            log.debug("Received cluster-wide message. eventType={}, peerId={}", statusMsg.getEventType(), peerId);
+            return statusMsg;
+        }
+        return null;
     }
 
     @Override
@@ -335,7 +348,10 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     @Override
     public ClusterPeerSecureMessage getMessage(String region, String key) {
         if (JcsPropertiesBuilder.PEER_REGION.equals(region)) {
-            return getPeerStatusMessage(key);
+            CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
+            if (cache != null) {
+                return cache.get(key);
+            }
         }
         return null;
     }
@@ -347,27 +363,89 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public boolean detectIfPeerIsStale(String peerId, long staleThresholdMs) {
-        ClusterPeerStatusMessage peerStatusMessage = getPeerStatusMessage(peerId);
+        ClusterServerStatusMessage peerStatusMessage = getPeerStatusMessage(peerId);
         return peerStatusMessage == null || peerStatusMessage.isStale(System.currentTimeMillis(), staleThresholdMs);
     }
 
     @Override
-    public Set<ClusterPeerStatusMessage> getObservedPeers() {
-        CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
+    public Set<ClusterServerStatusMessage> getObservedPeers() {
+        CacheAccess<String, ClusterServerStatusMessage> cache = (CacheAccess<String, ClusterServerStatusMessage>) (CacheAccess<?, ?>) peerHeartbeatCache;
         if (cache == null) {
             log.debug("Skipping getObservedPeers() because JCS is not initialized. serverId={}", serverId);
             return Collections.emptySet();
         }
-        Set<ClusterPeerStatusMessage> result = new HashSet<>();
+        Set<ClusterServerStatusMessage> result = new HashSet<>();
         for (String peerId : cache.getCacheControl().getKeySet(true)) {
-            ClusterPeerSecureMessage msg = cache.get(peerId);
-            if (msg instanceof ClusterPeerStatusMessage) {
+            ClusterServerStatusMessage msg = cache.get(peerId);
+            if (msg != null) {
                 log.debug("Using observed peer message to compile list of peers. eventType={}, peerId={}, timestamp={}",
                         msg.getEventType(), peerId, msg.getTimestamp());
-                result.add((ClusterPeerStatusMessage) msg);
+                result.add(msg);
             }
         }
         log.debug("Compiled list of observed peers. All known peers={}, Observed={}", knownPeers.size(), result.size());
         return result;
+    }
+
+    private static class SecureServerStatusMessage extends ClusterPeerSecureMessage {
+        private static final long serialVersionUID = 1L;
+        private transient String eventType;
+        private transient long startTimeMs;
+
+        SecureServerStatusMessage(String serverId, String clusterPartitionId, String version, long timestamp,
+                String payload, ClusterServerStatusMessage plainMsg) {
+            super(serverId, clusterPartitionId, version, timestamp, payload);
+            this.eventType = plainMsg.getEventType();
+            this.startTimeMs = plainMsg.getStartTimeMs();
+            markDecrypted();
+        }
+
+        @Override
+        protected void parsePayload(String plainPayload) {
+            String[] parts = plainPayload.split("\\|");
+            if (parts.length >= 2) {
+                this.eventType = parts[0];
+                this.startTimeMs = Long.parseLong(parts[1]);
+            }
+        }
+
+        @Override
+        public String getEventType() {
+            ensureDecrypted();
+            return eventType;
+        }
+
+        public long getStartTimeMs() {
+            ensureDecrypted();
+            return startTimeMs;
+        }
+    }
+
+    private static class SecureEngineStateMessage extends ClusterPeerSecureMessage {
+        private static final long serialVersionUID = 1L;
+        private transient Map<String, String> engineStates;
+
+        SecureEngineStateMessage(String serverId, String clusterPartitionId, String version, long timestamp,
+                String payload, ClusterEngineStateMessage plainMsg) {
+            super(serverId, clusterPartitionId, version, timestamp, payload);
+            this.engineStates = plainMsg.getEngineStates();
+            markDecrypted();
+        }
+
+        @Override
+        protected void parsePayload(String plainPayload) {
+            // Deserialize engineStates from payload if needed
+            this.engineStates = new ConcurrentHashMap<>();
+        }
+
+        @Override
+        public String getEventType() {
+            return ClusterEngineStateMessage.MSG_TYPE_ENGINE_STATES;
+        }
+
+        public Map<String, String> getEngineStates() {
+            ensureDecrypted();
+            return engineStates;
+        }
     }
 }

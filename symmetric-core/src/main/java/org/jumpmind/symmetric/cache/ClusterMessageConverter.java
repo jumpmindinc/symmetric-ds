@@ -74,23 +74,8 @@ public class ClusterMessageConverter {
 
     private ClusterPlainMessage createPlainMessageFromSecure(ClusterPeerSecureMessage secure) {
         String eventType = secure.getEventType();
-        if (ClusterEngineStateMessage.MSG_TYPE_ENGINE_STATES.equals(eventType)) {
-            if (secure instanceof ClusterEngineStateMessage) {
-                ClusterEngineStateMessage engineMsg = (ClusterEngineStateMessage) secure;
-                return new ClusterEngineStateMessage(engineMsg.getEngineStates(), secure.getServerId(),
-                        secure.getClusterPartitionId());
-            }
-            return null;
-        } else {
-            if (secure instanceof ClusterServerStatusMessage) {
-                ClusterServerStatusMessage statusMsg = (ClusterServerStatusMessage) secure;
-                return new ClusterServerStatusMessage(eventType, secure.getServerId(), secure.getClusterPartitionId(),
-                        statusMsg.getStartTimeMs());
-            } else {
-                return new ClusterServerStatusMessage(eventType, secure.getServerId(), secure.getClusterPartitionId(),
-                        System.currentTimeMillis());
-            }
-        }
+        return new ClusterServerStatusMessage(eventType, secure.getServerId(), secure.getClusterPartitionId(),
+                System.currentTimeMillis());
     }
 
     private boolean isFromAuthorizedPartition(String messagePartitionId, String expectedPartitionId) {

@@ -108,9 +108,15 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     private static IClusteredCacheManager clusteredCacheManager;
 
     SymmetricEngineHolder() {
-        coreServerProperties = fetchStaticServerProperties();
-        securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);        
-        clusteredCacheManager = initClusteredCacheManager();
+        if (coreServerProperties == null) {
+            coreServerProperties = fetchStaticServerProperties();
+        }
+        if (securityService == null) {
+            securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
+        }
+        if (clusteredCacheManager == null) {
+            clusteredCacheManager = initClusteredCacheManager();
+        }
     }
 
     private TypedProperties fetchStaticServerProperties() {
@@ -335,6 +341,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         enginesStarting.clear();
         enginesFailed.clear();
         clusteredCacheManager.shutdown();
+        clusteredCacheManager = null;
     }
 
     public ISymmetricEngine install(Properties passedInProperties) throws Exception {
@@ -491,6 +498,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
                 properties.load(is);
             }
             engineName = getEngineName(properties);
+            ApplicationHealthTracker.getTracker().setEngineReadiness(engineName, false);
             enginesStartingNames.add(engineName);
             validateRequiredProperties(properties);
             engine = new ServerSymmetricEngine(file, springContext, this);
@@ -499,9 +507,8 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             synchronized (this) {
                 if (!engines.containsKey(engine.getEngineName())) {
                     engines.put(engine.getEngineName(), engine);
-                    ApplicationHealthTracker.getTracker().setEngineReadiness(engine.getEngineName(), false);
                 } else {
-                    String message = "An engine with the name of " + engine.getEngineName() +
+                    String message = "An engine with the name of " + engineName +
                             " was not started because an engine of the same name has already been started.  " +
                             "Please set the engine.name property in the properties file to a unique name.";
                     log.error(message);

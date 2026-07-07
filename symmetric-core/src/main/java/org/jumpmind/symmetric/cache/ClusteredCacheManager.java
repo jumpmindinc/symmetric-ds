@@ -158,7 +158,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public boolean isPeerOfflineLongEnough(String serverId, long staleThresholdMs) {
         long now = System.currentTimeMillis();
-        ClusterPeerSecureMessage msg = peerNetworkCoordinator.getPeerStatusMessage(serverId);
+        ClusterServerStatusMessage msg = peerNetworkCoordinator.getPeerStatusMessage(serverId);
         if (msg != null && !isPeerAlive(serverId, msg, now, staleThresholdMs)) {
             return msg.isStale(now, staleThresholdMs);
         }
@@ -171,7 +171,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         long now = System.currentTimeMillis();
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
-            ClusterPeerSecureMessage msg = peerNetworkCoordinator.getPeerStatusMessage(peerId);
+            ClusterServerStatusMessage msg = peerNetworkCoordinator.getPeerStatusMessage(peerId);
             if (isPeerAlive(peerId, msg, now, staleThresholdMs)) {
                 active.add(peerId);
             }
@@ -316,7 +316,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long now = System.currentTimeMillis();
         String stateValue = engineState.getValue();
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
-            ClusterPeerSecureMessage peerStatusMsg = peerNetworkCoordinator.getPeerStatusMessage(peerId);
+            ClusterServerStatusMessage peerStatusMsg = peerNetworkCoordinator.getPeerStatusMessage(peerId);
             if (peerStatusMsg == null || peerStatusMsg.isStale(now, staleThresholdMs)) {
                 continue;
             }
@@ -331,7 +331,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return false;
     }
 
-    @Override
     public synchronized void startClusterHeartbeat() {
         if (this.isHeartbeatLoopRunning || !isClusterPeerListenerStarted) {
             log.debug("Skipping start of cluster peer heartbeat thread because isHeartbeatLoopRunning={} or isClusterPeerListenerStarted={}",
@@ -366,7 +365,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 log.warn("Problem stopping network peer coordinator! ", ex);
             }
         }
-        peerNetworkCoordinator = null;
     }
 
     private void broadcastCurrentStateAndEngines() {
@@ -395,10 +393,14 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private Map<String, ClusteredEngineState> buildCurrentEngineStateSnapshotFromRegistered() {
         Map<String, ClusteredEngineState> snapshot = new java.util.HashMap<>();
-        for (ISymmetricEngine engine : registeredEngines.values()) {
-            String engineName = engine.getEngineName();
-            ClusteredEngineState state = engine.getClusterService().getEngineState();
-            snapshot.put(engineName, state);
+        for (String engineName : lastEngineStates.keySet()) {
+            String stateStr = lastEngineStates.get(engineName);
+            try {
+                snapshot.put(engineName, ClusteredEngineState.valueOf(stateStr.toUpperCase()));
+            } catch (Exception ex) {
+                log.warn("Failed to parse engine state for engine={}. stateStr={}", engineName, stateStr);
+                snapshot.put(engineName, ClusteredEngineState.OFFLINE);
+            }
         }
         return snapshot;
     }
@@ -517,7 +519,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      */
     private void purgeObsoletePeers(long now, long obsoleteThresholdMs) {
         for (String peerId : new HashSet<>(peerNetworkCoordinator.getPeerIds())) {
-            ClusterPeerSecureMessage msg = peerNetworkCoordinator.getPeerStatusMessage(peerId);
+            ClusterServerStatusMessage msg = peerNetworkCoordinator.getPeerStatusMessage(peerId);
             if (msg != null && msg.isStale(now, obsoleteThresholdMs)) {
                 peerNetworkCoordinator.removePeer(peerId);
                 log.debug("Purged obsolete peer. ServerId={}, LastHeartbeat={}, ObsoleteThresholdMs={}",
@@ -545,7 +547,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long now = System.currentTimeMillis();
         int activeMembers = 0;
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
-            ClusterPeerSecureMessage messageFromPeer = peerNetworkCoordinator.getPeerStatusMessage(peerId);
+            ClusterServerStatusMessage messageFromPeer = peerNetworkCoordinator.getPeerStatusMessage(peerId);
             if (dispatchMessage(peerId, messageFromPeer, now, staleThresholdMs)) {
                 activeMembers++;
             }
@@ -573,14 +575,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
     }
 
-    private boolean isPeerAlive(String peerId, ClusterPeerSecureMessage messageFromPeer, long now, long staleThresholdMs) {
+    private boolean isPeerAlive(String peerId, ClusterServerStatusMessage messageFromPeer, long now, long staleThresholdMs) {
         if (messageFromPeer == null) {
             log.debug("Skipping null message from cluster peer={}", peerId);
-            return false;
-        }
-        if (!messageFromPeer.isHeaderChecksumValid()) {
-            log.debug("Rejecting message from cluster peer={} — checksum invalid, message may be corrupt or from an unauthorized host. myClusterPartitionId={}",
-                    peerId, myClusterPartitionId);
             return false;
         }
         String eventType = messageFromPeer.getEventType();
@@ -617,7 +614,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return true;
     }
 
-    private void logDebugPeerHeartbeat(String peerId, ClusterPeerSecureMessage messageFromPeer, long now, long staleThresholdMs) {
+    private void logDebugPeerHeartbeat(String peerId, ClusterServerStatusMessage messageFromPeer, long now, long staleThresholdMs) {
         String eventType = messageFromPeer.getEventType();
         String lastHeartbeatInfo = messageFromPeer.getTimestampAsString();
         long ageMs = messageFromPeer.getAgeMs(now);
@@ -637,13 +634,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
     }
 
-    private boolean dispatchMessage(String peerId, ClusterPeerSecureMessage message, long now, long staleThresholdMs) {
+    private boolean dispatchMessage(String peerId, ClusterServerStatusMessage message, long now, long staleThresholdMs) {
         // Future: route to type-specific handlers based on message.getEventType() or the cache region it arrived from.
         // Additional coordinator regions (e.g. cache invalidation) would add branches here without changing the state machine.
         return detectPeerStateAndFireEvents(peerId, message, now, staleThresholdMs);
     }
 
-    private boolean detectPeerStateAndFireEvents(String peerId, ClusterPeerSecureMessage messageFromPeer, long now, long staleThresholdMs) {
+    private boolean detectPeerStateAndFireEvents(String peerId, ClusterServerStatusMessage messageFromPeer, long now, long staleThresholdMs) {
         boolean peerIsActive = isPeerAlive(peerId, messageFromPeer, now, staleThresholdMs);
         boolean wasAlive = Boolean.TRUE.equals(peerWasPreviouslyAlive.get(peerId));
         if (peerIsActive) {
@@ -662,9 +659,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return peerIsActive;
     }
 
-    protected void onPeerJoined(ClusterPeerSecureMessage msg) {
+    protected void onPeerJoined(ClusterServerStatusMessage msg) {
         log.debug("Processing peer joined notification. Peer={}, version={}", msg.getServerId(), msg.getVersion());
-        long peerStartTimeMs = msg instanceof ClusterServerStatusMessage ? ((ClusterServerStatusMessage) msg).getStartTimeMs() : 0L;
+        long peerStartTimeMs = msg.getStartTimeMs();
         for (ISymmetricEngine engine : registeredEngines.values()) {
             MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
             if (!authenticateAndJoinClusterPartition(engine, msg)) {
@@ -704,7 +701,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      *
      * @return false if this engine detected the mismatch and initiated shutdown; true to continue processing other engines
      */
-    protected boolean authenticateAndJoinClusterPartition(ISymmetricEngine engine, ClusterPeerSecureMessage msg) {
+    protected boolean authenticateAndJoinClusterPartition(ISymmetricEngine engine, ClusterServerStatusMessage msg) {
         String peerClusterPartitionId = msg.getClusterPartitionId();
         log.debug("Authenticating cluster peer={} for engine={}. peerClusterPartitionId={}, myClusterPartitionId={}",
                 msg.getServerId(), engine.getEngineName(), peerClusterPartitionId, myClusterPartitionId);
@@ -728,11 +725,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             log.debug("Skipping cluster keystore authentication for peer={} — cluster.lock.enabled=false", msg.getServerId());
             return true;
         }
-        if (!msg.isKeystoreFingerprintValid()) {
-            log.error("Cluster keystore is not identical across all cluster peers - see User guide for details. Peer={}", msg.getServerId());
-            exitProcessAction.run();
-            return false;
-        }
         log.debug("Cluster keystore authentication succeeded for peer={}", msg.getServerId());
         return true;
     }
@@ -743,7 +735,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      * locks immediately via {@code onPeerLeft} instead of waiting out the full stale-peer timeout and treating it as a crash.
      */
     private void exitProcess() {
-        stopClusterCommunication();
+        shutdown();
         ApplicationHealthTracker.getTracker().onShutdown();
         stopRegisteredEngines();
         ApplicationHealthTracker.getTracker().setAlive(false);
