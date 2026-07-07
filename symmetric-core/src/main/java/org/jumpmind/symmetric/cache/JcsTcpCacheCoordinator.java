@@ -116,6 +116,41 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         }
     }
 
+    /**
+     * Registers a peer's address so JCS's lateral cache can reach it directly, without depending on JCS's own UDP multicast discovery — which is unavailable on
+     * most cloud VPCs and managed Kubernetes networks. Reuses the same {@link IDiscoveryListener} extension point JCS's UDP layer calls when it receives a
+     * multicast announcement, so this never touches the CompositeCacheManager configuration and cannot hit the reconfigure landmine described in the class
+     * comment.
+     */
+    @Override
+    public synchronized boolean announceDiscoveredPeer(String serverId, String address) {
+        if (StringUtils.isBlank(address)) {
+            return false;
+        }
+        if (converter.getRejectedServers().containsKey(serverId)) {
+            log.debug("Rejecting UDP-discovered peer due to blacklist. serverId={}, address={}, ClusterPartitionId={}, rejectionReason={}",
+                    serverId, address, clusterPartitionId, converter.getRejectedServers().get(serverId).getReason());
+            return false;
+        }
+        UDPDiscoveryService service = getUdpDiscoveryService();
+        if (service == null) {
+            log.debug("Skipping peer discovery announcement because JCS discovery is unavailable. serverId={}, address={}", serverId, address);
+            return false;
+        }
+        String previousAddress = knownPeerAddresses.put(serverId, address);
+        if (address.equals(previousAddress)) {
+            return false;
+        }
+        if (previousAddress != null) {
+            retractDiscoveredAddress(service, previousAddress);
+        }
+        announceDiscoveredAddress(service, address);
+        log.info("Announced discovered peer for JCS lateral cache discovery. serverId={}, address={}, previousAddress={}, ClusterPartitionId={}",
+                serverId, address, previousAddress, clusterPartitionId);
+        return true;
+    }
+
+
     @Override
     public synchronized boolean addPeer(String serverId) {
         boolean isNewPeer = !knownPeers.contains(serverId);
@@ -151,40 +186,6 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             log.debug("Peer not known to cluster, nothing to remove. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
             return false;
         }
-    }
-
-    /**
-     * Registers a peer's address so JCS's lateral cache can reach it directly, without depending on JCS's own UDP multicast discovery — which is unavailable on
-     * most cloud VPCs and managed Kubernetes networks. Reuses the same {@link IDiscoveryListener} extension point JCS's UDP layer calls when it receives a
-     * multicast announcement, so this never touches the CompositeCacheManager configuration and cannot hit the reconfigure landmine described in the class
-     * comment.
-     */
-    @Override
-    public synchronized boolean announceDiscoveredPeer(String serverId, String address) {
-        if (StringUtils.isBlank(address)) {
-            return false;
-        }
-        if (converter.getRejectedServers().containsKey(serverId)) {
-            log.debug("Rejecting UDP-discovered peer due to blacklist. serverId={}, address={}, ClusterPartitionId={}, rejectionReason={}",
-                    serverId, address, clusterPartitionId, converter.getRejectedServers().get(serverId).getReason());
-            return false;
-        }
-        UDPDiscoveryService service = getUdpDiscoveryService();
-        if (service == null) {
-            log.debug("Skipping peer discovery announcement because JCS discovery is unavailable. serverId={}, address={}", serverId, address);
-            return false;
-        }
-        String previousAddress = knownPeerAddresses.put(serverId, address);
-        if (address.equals(previousAddress)) {
-            return false;
-        }
-        if (previousAddress != null) {
-            retractDiscoveredAddress(service, previousAddress);
-        }
-        announceDiscoveredAddress(service, address);
-        log.info("Announced discovered peer for JCS lateral cache discovery. serverId={}, address={}, previousAddress={}, ClusterPartitionId={}",
-                serverId, address, previousAddress, clusterPartitionId);
-        return true;
     }
 
     /**
