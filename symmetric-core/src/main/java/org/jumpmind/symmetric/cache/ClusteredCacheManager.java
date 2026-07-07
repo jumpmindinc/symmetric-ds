@@ -548,7 +548,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         int activeMembers = 0;
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
             ClusterServerStatusMessage messageFromPeer = peerNetworkCoordinator.getPeerStatusMessage(peerId);
-            if (dispatchMessage(peerId, messageFromPeer, now, staleThresholdMs)) {
+            if (isMessageSourceServerActive(peerId, messageFromPeer, now, staleThresholdMs)) {
                 activeMembers++;
             }
             ClusterEngineStateMessage engineStateMsg = peerNetworkCoordinator.getEngineStateMessage(peerId);
@@ -634,7 +634,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
     }
 
-    private boolean dispatchMessage(String peerId, ClusterServerStatusMessage message, long now, long staleThresholdMs) {
+    private boolean isMessageSourceServerActive(String peerId, ClusterServerStatusMessage message, long now, long staleThresholdMs) {
         // Future: route to type-specific handlers based on message.getEventType() or the cache region it arrived from.
         // Additional coordinator regions (e.g. cache invalidation) would add branches here without changing the state machine.
         return detectPeerStateAndFireEvents(peerId, message, now, staleThresholdMs);
