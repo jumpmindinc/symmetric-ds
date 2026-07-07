@@ -27,15 +27,7 @@ import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
 
 public interface IClusteredCacheManager {
-    /**
-     * Tracks whether a cluster peer is currently believed alive and the last time it was confirmed alive. A peer's record is retained (not deleted) when it
-     * crashes or gracefully leaves, so lock-staleness checks can still recognize it later; {@code lastAliveMs} freezes at the last genuine confirmation of that
-     * peer (a fresh heartbeat, or the "leaving" message itself) rather than the time this side happened to notice.
-     */
     record PeerState(boolean alive, long lastAliveMs) {
-        public boolean isOfflineLongerThan(long now, long staleThresholdMs) {
-            return !alive && now - lastAliveMs > staleThresholdMs;
-        }
     }
 
     /**
@@ -48,7 +40,7 @@ public interface IClusteredCacheManager {
      * Subscribe a SymmetricDS engine to this manager and immediately broadcast its initial engine state (see {@link #broadcastEngineState}), so cluster peers
      * learn this engine is starting without waiting for the next heartbeat tick.
      */
-    void registerEngine(ISymmetricEngine engine, String initialEngineState);
+    void registerEngine(ISymmetricEngine engine, ClusteredEngineState initialEngineState);
 
     /**
      * Remove a SymmetricDS engine from this manager. JCS is stopped when the last engine unregisters.
@@ -75,11 +67,15 @@ public interface IClusteredCacheManager {
 
     boolean isClusterPeerListenerStarted();
 
+    boolean isInitialized();
+
     /**
-     * Tier 1 entry point: brings up JCS peer announcement/discovery with no database dependency. {@code serverId} is resolved from system
-     * properties/environment (falling back to the local hostname) when blank.
+     * Start network communication with peers in cluster (if configured) and begin heartbeat message broadcasts + discovery without database dependency.
      */
-    void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled);
+    void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled, Object engineHolder);
+
+    /** Announce departure from the cluster and stop network communication */
+    void shutdown();
 
     /** The JCS cluster partition ID this node resolved and is currently announcing under. */
     String getClusterPartitionId();
@@ -99,19 +95,15 @@ public interface IClusteredCacheManager {
      */
     long generatePeerCoordinationDelay();
 
-    void startClusterHeartbeat();
-
-    void stopClusterCommunication();
-
     boolean isAnyPeerInState(String eventType);
 
     boolean isAnyPeerOnline();
 
-    void broadcastPeerState(String eventType);
+    void broadcastStateToPeers(ClusterPeerServerState state);
 
-    void broadcastEngineState(String engineName, String engineState);
+    void broadcastEngineState(String engineName, ClusteredEngineState engineState);
 
-    boolean isAnyPeerWithEngineInState(String engineName, String engineState);
+    boolean isAnyPeerWithEngineInState(String engineName, ClusteredEngineState engineState);
 
     /**
      * Re-broadcasts this node's last known peer status and engine states. Callers that add one or more peers outside the regular heartbeat cycle (e.g. a

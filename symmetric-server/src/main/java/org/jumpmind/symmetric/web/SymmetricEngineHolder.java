@@ -22,7 +22,6 @@ package org.jumpmind.symmetric.web;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -57,8 +56,10 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.cache.ClusterPartitionGenerator;
+import org.jumpmind.symmetric.cache.ClusterPeerServerState;
 import org.jumpmind.symmetric.cache.ClusterPeerStatusMessage;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
+import org.jumpmind.symmetric.cache.ClusteredEngineState;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -74,7 +75,6 @@ import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
-import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
@@ -83,31 +83,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
-public class SymmetricEngineHolder {
-    protected static final String[] ENGINE_MANDATORY_STARTUP_PARAMETERS = {
-            DataSourceProperties.DB_POOL_URL,
-            DataSourceProperties.DB_POOL_DRIVER,
-            ParameterConstants.REGISTRATION_URL,
-            ParameterConstants.NODE_GROUP_ID,
-            ParameterConstants.EXTERNAL_ID,
-            ParameterConstants.SYNC_URL
-    };
-    protected static final String[] ENGINE_OPTIONAL_STARTUP_PARAMETERS = {
-            DataSourceProperties.DB_POOL_USER,
-            DataSourceProperties.DB_POOL_PASSWORD,
-            DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES,
-            DataSourceProperties.DB_POOL_VALIDATION_QUERY,
-            DataSourceProperties.DB_POOL_INIT_SQL,
-            ParameterConstants.AUTO_REGISTER_ENABLED,
-            ParameterConstants.NODE_LOAD_ONLY,
-            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_DRIVER,
-            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_URL,
-            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_USER,
-            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_PASSWORD,
-            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_CONNECTION_PROPERTIES,
-            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_VALIDATION_QUERY,
-            ParameterConstants.LOAD_ONLY_PROPERTY_PREFIX + DataSourceProperties.DB_POOL_INIT_SQL
-    };
+public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private static Map<String, ServerSymmetricEngine> staticEngines = Collections.synchronizedMap(new HashMap<String, ServerSymmetricEngine>());
     private static Set<SymmetricEngineStarter> staticEnginesStarting = Collections.synchronizedSet(new HashSet<SymmetricEngineStarter>());
@@ -120,34 +96,47 @@ public class SymmetricEngineHolder {
     private ExecutorService restartExecutor;
     private boolean staticEnginesMode = false;
     private boolean multiServerMode = false;
-    private boolean autoStart = true;
-    private boolean autoDiscoverEngines = true;
+    private boolean isAutoStartEnginesEnabled = true;
+    private boolean isAutoDiscoverEnginesEnabled = true;
     private ApplicationContext springContext;
     private String singleServerPropertiesFile;
     private String deploymentType = Constants.DEPLOYMENT_TYPE_SERVER;
     private boolean holderHasBeenStarted = false;
     private static final String DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT = "5";
+    private static TypedProperties coreServerProperties;
+    private static ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
+    private static IClusteredCacheManager clusteredCacheManager;
 
     SymmetricEngineHolder() {
-        initClusterPeerCoordinator();
+        coreServerProperties = fetchStaticServerProperties();
+        securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);        
+        clusteredCacheManager = initClusteredCacheManager();
+    }
+
+    private TypedProperties fetchStaticServerProperties() {
+        TypedProperties envProps = new TypedProperties();
+        TypedProperties symEnvVars = new TypedProperties();
+        symEnvVars.collectFrom(TypedPropertiesFactory.getEnvironmentVariables(), ServerConstants.SYM_ENV_PREFIX, true);
+        if (!symEnvVars.isEmpty()) {
+            TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(envProps, true);
+        }
+        return envProps;
     }
 
     /**
-     * Tier 1: brings up JCS peer announcement/discovery with no database dependency, so this node is visible to peers (and can detect/react to duplicates) even
-     * if later database-dependent startup steps (e.g. {@code ClusterService.checkSymDbOwnership()}) fail. The cluster partition ID, server ID and JCS on/off
-     * flag are all resolved without touching any engine's {@code IParameterService}/the database — see {@link ClusterPartitionGenerator} and
-     * {@link ClusteredCacheManager#initialize}.
+     * Initialize JCS cluster peer heartbeat and discovery with no database dependency and no engine files. Additional peer servers can be linked later on.
      */
-    private void initClusterPeerCoordinator() {
-        IClusteredCacheManager clusteredCacheManager = ClusteredCacheManager.getInstance();
-        if (clusteredCacheManager.isClusterPeerListenerStarted()) {
-            return;
+    private IClusteredCacheManager initClusteredCacheManager() {
+        if (clusteredCacheManager != null && clusteredCacheManager.isInitialized()) {
+            return clusteredCacheManager;
         }
-        ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
-        String clusterPartitionId = ClusterPartitionGenerator.resolve();
-        clusteredCacheManager.initialize(securityService, clusterPartitionId, null, isJcsEnabled());
-        clusteredCacheManager.startClusterHeartbeat();
-        clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_INITIALIZING);
+        IClusteredCacheManager ccManager = ClusteredCacheManager.getInstance();
+        String clusterPartitionId = ClusterPartitionGenerator.resolve(coreServerProperties);
+        String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
+        ccManager.initialize(securityService, clusterPartitionId, serverId, isJcsEnabled(), this);
+        ccManager.startClusterHeartbeat();
+        ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);
+        return ccManager;
     }
 
     /**
@@ -168,7 +157,7 @@ public class SymmetricEngineHolder {
             if (staticEnginesMode) {
                 switchToStaticEnginesMode();
             }
-            if (autoDiscoverEngines) {
+            if (isAutoDiscoverEnginesEnabled) {
                 discoverEngines();
             }
             startAllEngines();
@@ -191,12 +180,7 @@ public class SymmetricEngineHolder {
             log.debug("Reading property files -> load SymmetricEngineStarters into enginesStarting. Current directory is {}", System.getProperty(
                     "user.dir"));
         }
-        TypedProperties envProps = new TypedProperties();
-        TypedProperties symEnvVars = new TypedProperties();
-        symEnvVars.collectFrom(TypedPropertiesFactory.getEnvironmentVariables(), ServerConstants.SYM_ENV_PREFIX, true);
-        if (!symEnvVars.isEmpty()) {
-            TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(envProps, true);
-        }
+        TypedProperties envProps = fetchEnvironmentProperties();
         if (isMultiServerMode()) {
             String enginesDirName = PropertiesUtil.getEnginesDir();
             loadMultiServerEngines(enginesDirName, envProps);
@@ -212,10 +196,10 @@ public class SymmetricEngineHolder {
         File[] engineFiles = enginesDir.listFiles();
         if (engineFiles == null) {
             String firstAttempt = enginesDir.getAbsolutePath();
-            enginesDir = new File(".");
+            File currentDir = new File(".");
             log.warn("Unable to retrieve engine properties files from {}.  Trying current working directory {}",
-                    firstAttempt, enginesDir.getAbsolutePath());
-            engineFiles = enginesDir.listFiles();
+                    firstAttempt, currentDir.getAbsolutePath());
+            engineFiles = currentDir.listFiles();
         }
         if (engineFiles == null) {
             log.error("Still unable to retrieve engine properties files after checking default location and current working directory.  No engines to start.");
@@ -229,12 +213,28 @@ public class SymmetricEngineHolder {
             }
         }
         if (enginesStarting.size() == startingEngineCount) {
-            if (isEngineConnectionSpecified(envProps)) {
-                File engineFile = createEngineFileFromEnvironment(envProps);
-                enginesStarting.add(new SymmetricEngineStarter(engineFile.getAbsolutePath(), this));
-            } else {
+            if (!SymmetricEngineFileUtils.isEnginePossibleFromEnvironmentVars(envProps)
+                    || !createAndAddEngineFromEnvironmentVars(enginesDir, envProps)) {
                 log.info("No engine *.properties files found");
             }
+        }
+    }
+
+    private boolean createAndAddEngineFromEnvironmentVars(File enginesDir, TypedProperties envProps) {
+        try {
+            File engineFile = SymmetricEngineFileUtils.createEngineFileFromEnvironmentVars(enginesDir, envProps);
+            if (engineFile != null) {
+                String engineFilePath = engineFile.getAbsolutePath();
+                enginesStarting.add(new SymmetricEngineStarter(engineFilePath, this));
+                log.debug("Built engine properties file from environment variables. Path={}", engineFilePath);
+                return true;
+            } else {
+                log.warn("Failed to build engine properties file from environment variables!");
+                return false;
+            }
+        } catch (Exception ex) {
+            log.error("Error while building engine properties file from environment variables!", ex);
+            return false;
         }
     }
 
@@ -248,11 +248,9 @@ public class SymmetricEngineHolder {
         }
         if (StringUtils.isNotBlank(engineFileName)) {
             enginesStarting.add(new SymmetricEngineStarter(engineFileName, this));
-        } else if (isEngineConnectionSpecified(envProps)) {
-            File engineFile = createEngineFileFromEnvironment(envProps);
-            enginesStarting.add(new SymmetricEngineStarter(engineFile.getAbsolutePath(), this));
-        } else {
-            log.info("No engine symmetric.properties file found");
+        } else if (!SymmetricEngineFileUtils.isEnginePossibleFromEnvironmentVars(envProps)
+                || !createAndAddEngineFromEnvironmentVars(new File(PropertiesUtil.getEnginesDir()), envProps)) {
+            log.error("No engine properties found in symmetric.properties file!");
         }
     }
 
@@ -329,13 +327,14 @@ public class SymmetricEngineHolder {
     }
 
     public synchronized void stop() {
+        ApplicationHealthTracker.getTracker().onShutdown();
         for (ServerSymmetricEngine engine : engines.values()) {
             engine.destroy();
-            ApplicationHealthTracker.getTracker().stopTrackingEngine(engine.getEngineName());
         }
         engines.clear();
+        enginesStarting.clear();
         enginesFailed.clear();
-        ClusteredCacheManager.getInstance().stopClusterCommunication();
+        clusteredCacheManager.shutdown();
     }
 
     public ISymmetricEngine install(Properties passedInProperties) throws Exception {
@@ -616,44 +615,6 @@ public class SymmetricEngineHolder {
         return engineName;
     }
 
-    private boolean isEngineConnectionSpecified(TypedProperties envProps) {
-        for (String param : ENGINE_MANDATORY_STARTUP_PARAMETERS) {
-            if (param.equals(ParameterConstants.REGISTRATION_URL)) {
-                if (!envProps.containsKey(param)) {
-                    return false;
-                }
-            } else if (StringUtils.isBlank(envProps.getProperty(param))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private File createEngineFileFromEnvironment(TypedProperties envProps) {
-        Properties props = new Properties();
-        for (String param : ENGINE_MANDATORY_STARTUP_PARAMETERS) {
-            props.setProperty(param, envProps.getProperty(param));
-        }
-        for (String param : ENGINE_OPTIONAL_STARTUP_PARAMETERS) {
-            String value = envProps.getProperty(param);
-            if (StringUtils.isNotBlank(value)) {
-                props.setProperty(param, value);
-            }
-        }
-        String engineName = getEngineName(props);
-        props.setProperty(ParameterConstants.ENGINE_NAME, engineName);
-        File enginesDir = new File(PropertiesUtil.getEnginesDir());
-        enginesDir.mkdirs();
-        File engineFile = new File(enginesDir, engineName + ".properties");
-        try (FileOutputStream fos = new FileOutputStream(engineFile)) {
-            props.store(fos, "Auto-generated from environment variables by SymmetricDS version " + Version.version());
-            log.info("Created engine properties file {} from environment variables", engineFile.getAbsolutePath());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create engine properties file " + engineFile, e);
-        }
-        return engineFile;
-    }
-
     public boolean hasAnyEngineInitialized() {
         for (ServerSymmetricEngine engine : engines.values()) {
             if (engine.isInitialized()) {
@@ -685,6 +646,17 @@ public class SymmetricEngineHolder {
 
     public int getEngineCount() {
         return engines.size();
+    }
+
+    /** Builds a consolidated snapshot of all currently registered engines and their states. */
+    public Map<String, ClusteredEngineState> buildCurrentEngineStateSnapshot() {
+        Map<String, ClusteredEngineState> snapshot = new java.util.HashMap<>();
+        for (ISymmetricEngine engine : engines.values()) {
+            String engineName = engine.getEngineName();
+            ClusteredEngineState state = engine.getClusterService().getEngineState();
+            snapshot.put(engineName, state);
+        }
+        return snapshot;
     }
 
     public Set<SymmetricEngineStarter> getEnginesStarting() {
@@ -723,12 +695,12 @@ public class SymmetricEngineHolder {
         this.multiServerMode = multiServerMode;
     }
 
-    public void setAutoCreate(boolean autoCreate) {
-        this.autoDiscoverEngines = autoCreate;
+    public void setAutoDiscoverEngines(boolean autoCreate) {
+        this.isAutoDiscoverEnginesEnabled = autoCreate;
     }
 
-    public boolean isAutoCreate() {
-        return autoDiscoverEngines;
+    public boolean isAutoDiscoverEngines() {
+        return isAutoDiscoverEnginesEnabled;
     }
 
     public boolean isMultiServerMode() {
@@ -752,10 +724,10 @@ public class SymmetricEngineHolder {
     }
 
     public void setAutoStart(boolean autoStart) {
-        this.autoStart = autoStart;
+        this.isAutoStartEnginesEnabled = autoStart;
     }
 
     public boolean isAutoStart() {
-        return autoStart;
+        return isAutoStartEnginesEnabled;
     }
 }

@@ -60,7 +60,7 @@ public class SymmetricContextListener implements ServletContextListener {
         String autoStart = ctx.getInitParameter(WebConstants.INIT_PARAM_AUTO_START);
         engineHolder.setAutoStart(autoStart == null ? true : autoStart.equalsIgnoreCase("true"));
         String autoCreate = ctx.getInitParameter(WebConstants.INIT_PARAM_AUTO_CREATE);
-        engineHolder.setAutoCreate(autoCreate == null ? true : autoCreate.equalsIgnoreCase("true"));
+        engineHolder.setAutoDiscoverEngines(autoCreate == null ? true : autoCreate.equalsIgnoreCase("true"));
         String multiServerMode = ctx.getInitParameter(WebConstants.INIT_PARAM_MULTI_SERVER_MODE);
         engineHolder.setMultiServerMode((multiServerMode != null && multiServerMode.equalsIgnoreCase("true")) ||
                 StringUtils.isNotBlank(System.getProperty(SystemConstants.SYSPROP_ENGINES_DIR)));
@@ -86,7 +86,7 @@ public class SymmetricContextListener implements ServletContextListener {
 
     private static void shutdownClusterCommunicationAndHealth() {
         ApplicationHealthTracker.getTracker().onShutdown();
-        ClusteredCacheManager.getInstance().stopClusterCommunication();
+        ClusteredCacheManager.getInstance().shutdown();
     }
 
     protected Class<?> loadRemoteStatusEndpoint() {

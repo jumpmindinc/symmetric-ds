@@ -26,6 +26,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.util.Properties;
 import java.util.UUID;
 
 import org.apache.commons.io.IOUtils;
@@ -78,6 +79,15 @@ public class ClusterPartitionGenerator {
             } catch (Exception ex) {
                 id = "unknown";
             }
+        }
+        return StringUtils.left(id, 255);
+    }
+
+    /** Resolves server ID from properties or hostname. First checks properties for cluster.server.id, falls back to hostname. */
+    public static String resolveServerId(Properties properties) {
+        String id = properties != null ? properties.getProperty(ServerConstants.CLUSTER_SERVER_ID) : null;
+        if (StringUtils.isBlank(id)) {
+            id = AppUtils.getHostName();
         }
         return StringUtils.left(id, 255);
     }

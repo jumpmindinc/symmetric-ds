@@ -463,6 +463,60 @@ class JcsTcpCacheCoordinatorTest {
         }
     }
 
+    @Test
+    void addPeer_rejectedServer_blocksAddition() {
+        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        coordinator.getConverter().toPlainMessage(msg, "inst2");
+        assertFalse(coordinator.addPeer("server1"));
+    }
+
+    @Test
+    void addPeer_rejectedThenNewRejected_blocksNewAddition() {
+        ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
+                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        coordinator.getConverter().toPlainMessage(msg, "inst2");
+        assertFalse(coordinator.addPeer("server1"));
+    }
+
+    @Test
+    void addPeer_notRejected_allowsAddition() {
+        assertTrue(coordinator.addPeer("server1"));
+        assertTrue(coordinator.getPeerIds().contains("server1"));
+    }
+
+    @Test
+    void addPeer_knownPeerNotRejected_allowsReprocessing() {
+        coordinator.addPeer("server1");
+        assertFalse(coordinator.addPeer("server1"));
+    }
+
+    @Test
+    void announceDiscoveredPeer_rejectedServer_blocksAnnouncement() throws Exception {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of());
+            ClusterPeerStatusMessage msg = new ClusterPeerStatusMessage(
+                    ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server2", "inst1", "1.0");
+            coordinator.getConverter().toPlainMessage(msg, "inst2");
+            assertFalse(coordinator.announceDiscoveredPeer("server2", "10.0.0.5"));
+        }
+    }
+
+    @Test
+    void announceDiscoveredPeer_notRejected_allowsAnnouncement() throws Exception {
+        try (MockedStatic<CompositeCacheManager> mocked = mockStatic(CompositeCacheManager.class)) {
+            CompositeCacheManager mockManager = mock(CompositeCacheManager.class);
+            mocked.when(() -> CompositeCacheManager.getUnconfiguredInstance()).thenReturn(mockManager);
+            coordinator.start(new IClusterCacheCoordinator.InitialSettings("server1", "inst1", 1101), Set.of());
+            UDPDiscoveryService mockDiscoveryService = mock(UDPDiscoveryService.class);
+            when(mockDiscoveryService.getCopyOfDiscoveryListeners()).thenReturn(Set.of());
+            setDiscoveryService(mockDiscoveryService);
+            assertTrue(coordinator.announceDiscoveredPeer("server2", "10.0.0.5"));
+        }
+    }
+
     private void setPeerHeartbeatCache(CacheAccess<String, ClusterPeerSecureMessage> cache) throws Exception {
         Field f = JcsTcpCacheCoordinator.class.getDeclaredField("peerHeartbeatCache");
         f.setAccessible(true);

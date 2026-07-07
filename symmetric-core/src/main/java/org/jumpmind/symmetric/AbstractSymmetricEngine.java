@@ -64,7 +64,9 @@ import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.cache.CacheManager;
 import org.jumpmind.symmetric.cache.ClusterEngineStateMessage;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
-import org.jumpmind.symmetric.cache.ClusterPeerStatusMessage;
+import org.jumpmind.symmetric.cache.ClusteredEngineState;
+import org.jumpmind.symmetric.cache.ClusterPeerServerState;
+import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.model.NodeHost;
@@ -381,7 +383,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.dataService = createDataService();
         this.clusterService = createClusterService();
         this.clusteredCacheManager = ClusteredCacheManager.getInstance();
-        this.clusteredCacheManager.registerEngine(this, ClusterEngineStateMessage.ENGINE_STARTING);
+        this.clusteredCacheManager.registerEngine(this, ClusteredEngineState.STARTING);
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
@@ -512,10 +514,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         try {
             setupDatabase(isStartupDbParametersDifferentFromLastStart);
         } catch (RuntimeException ex) {
-            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_OFFLINE);
+            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.OFFLINE);
             throw ex;
         }
-        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.STARTING);
         parameterService.setDatabaseHasBeenInitialized(true);
         String databaseVersion = getInstalledDatabaseVersion();
         String softwareVersion = Version.version();
@@ -536,15 +538,15 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     private void upgradeDatabaseVersion(String databaseVersion, String softwareVersion) {
-        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB);
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.UPGRADING);
         try {
             callUpgradeListeners(databaseVersion, softwareVersion);
         } catch (Exception ex) {
-            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_OFFLINE);
+            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.OFFLINE);
             throw new SymmetricException("Failed to upgrade database from version " + databaseVersion
                     + " to " + softwareVersion, ex);
         }
-        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_STARTING);
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.STARTING);
     }
 
     private void callUpgradeListeners(String databaseVersion, String softwareVersion) {
@@ -573,7 +575,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             } else {
                 log.info("Checking tables and objects. force={}", force);
                 waitForClusterPeerToFinishDbUpgrade();
-                clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_UPGRADING_DB);
+                clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.UPGRADING);
                 symmetricDialect.initTablesAndDatabaseObjects();
             }
         } else {
@@ -793,9 +795,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     private void waitForClusterPeerToFinishDbUpgrade() {
         String engineName = getEngineName();
-        clusteredCacheManager.broadcastEngineState(engineName, ClusterEngineStateMessage.ENGINE_STARTING);
+        clusteredCacheManager.broadcastEngineState(engineName, ClusteredEngineState.STARTING);
         long delayMs = clusteredCacheManager.generatePeerCoordinationDelay();
-        if (clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_STARTING)) {
+        if (clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusteredEngineState.STARTING)) {
             try {
                 log.debug("Waiting {} ms for cluster peer heartbeat messages to arrive", delayMs);
                 Thread.sleep(delayMs);
@@ -808,7 +810,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         long actualWaitTime = 0;
         while ((actualWaitTime < ServerConstants.CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS)
                 && clusteredCacheManager.isAnyPeerOnline()
-                && clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusterEngineStateMessage.ENGINE_UPGRADING_DB)) {
+                && clusteredCacheManager.isAnyPeerWithEngineInState(engineName, ClusteredEngineState.UPGRADING)) {
             delayMs = clusteredCacheManager.generatePeerCoordinationDelay();
             log.info("A cluster peer is upgrading the database. Pausing engine startup for {} ms ...", delayMs);
             try {
@@ -870,8 +872,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         statisticManager.incrementRestart();
         startMetricsAggregation();
         started = true;
-        clusteredCacheManager.broadcastPeerState(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT);
-        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_ONLINE);
+        clusteredCacheManager.broadcastStateToPeers(ClusterPeerServerState.HEARTBEAT);
+        clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.RUNNING);
         ApplicationHealthTracker.getTracker().setEngineReadiness(getEngineName(), true);
         for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
             ext.started(this);
@@ -1133,7 +1135,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 new Object[] { parameterService == null ? "?" : parameterService.getExternalId(), Version.version(),
                         symmetricDialect == null ? "?" : symmetricDialect.getName() });
         if (clusteredCacheManager != null) {
-            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusterEngineStateMessage.ENGINE_OFFLINE);
+            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.OFFLINE);
             clusteredCacheManager.unregisterEngine(this);
         }
         if (jobManager != null) {

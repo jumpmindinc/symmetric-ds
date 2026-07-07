@@ -20,52 +20,60 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
+
 /**
- * Per-engine cluster status message transmitted via the SYM_CLUSTER_ENGINES JCS region. Decoupled from JVM-level peer status so that multiple engines sharing a
- * JVM can each broadcast independent states (e.g. engine A upgrading while engine B is online).
+ * All-engine cluster state message transmitted via the SYM_CLUSTER_ENGINES JCS region, consolidating states for all engines in a peer into a single message
+ * stored in one JCS cache slot (keyed by peerId only). Decoupled from JVM-level peer status so that multiple engines sharing a JVM can each report independent
+ * states (e.g. engine A upgrading while engine B is online). Message is re-transmitted by heartbeat and occupies only one JCS slot per peer regardless of
+ * engine count.
  */
-public class ClusterEngineStateMessage extends ClusterPeerSecureMessage {
+public class ClusterEngineStateMessage extends ClusterPlainMessage {
     private static final long serialVersionUID = 1L;
+    public static final String MSG_TYPE_ENGINE_STATES = "ENGINE_STATES";
     public static final String ENGINE_STARTING = "ENGINE_STARTING";
     public static final String ENGINE_UPGRADING_DB = "ENGINE_UPGRADING_DB";
     public static final String ENGINE_ONLINE = "ENGINE_ONLINE";
     public static final String ENGINE_OFFLINE = "ENGINE_OFFLINE";
-    private transient String cachedEngineState;
-    private transient String cachedEngineName;
+    private transient Map<String, String> engineStates;
+    private transient String engineState;
+    private transient String engineName;
 
-    public ClusterEngineStateMessage(String engineState, String engineName,
-            String serverId, String clusterPartitionId, String version) {
-        this(engineState, engineName, serverId, clusterPartitionId, version, System.currentTimeMillis());
+    public ClusterEngineStateMessage(Map<String, String> allEngineStates,
+            String serverId, String clusterPartitionId) {
+        super(serverId, clusterPartitionId, System.currentTimeMillis());
+        this.engineStates = allEngineStates != null ? new TreeMap<>(allEngineStates) : new TreeMap<>();
+        this.engineState = null;
+        this.engineName = null;
     }
 
-    private ClusterEngineStateMessage(String engineState, String engineName,
-            String serverId, String clusterPartitionId, String version, long timestamp) {
-        super(serverId, clusterPartitionId, version, timestamp, engineState + "|" + engineName);
-        this.cachedEngineState = engineState;
-        this.cachedEngineName = engineName;
-        markDecrypted();
+    public ClusterEngineStateMessage(ClusteredEngineState state, String engineName,
+            String serverId, String clusterPartitionId) {
+        this(state.getValue(), engineName, serverId, clusterPartitionId);
     }
 
-    @Override
-    protected void parsePayload(String plainPayload) {
-        String[] parts = plainPayload.split("\\|", 2);
-        cachedEngineState = parts[0];
-        cachedEngineName = parts.length > 1 ? parts[1] : "";
+    public ClusterEngineStateMessage(String state, String engineName,
+            String serverId, String clusterPartitionId) {
+        super(serverId, clusterPartitionId, System.currentTimeMillis());
+        this.engineStates = new TreeMap<>();
+        this.engineStates.put(engineName, state);
+        this.engineState = state;
+        this.engineName = engineName;
     }
 
     @Override
     public String getEventType() {
-        ensureDecrypted();
-        return cachedEngineState;
+        return MSG_TYPE_ENGINE_STATES;
     }
 
-    public String getEngineState() {
-        ensureDecrypted();
-        return cachedEngineState;
+    public Map<String, String> getEngineStates() {
+        return Collections.unmodifiableMap(engineStates);
     }
 
-    public String getEngineName() {
-        ensureDecrypted();
-        return cachedEngineName;
+    public String getEngineState(String name) {
+        return engineStates.get(name);
     }
 }

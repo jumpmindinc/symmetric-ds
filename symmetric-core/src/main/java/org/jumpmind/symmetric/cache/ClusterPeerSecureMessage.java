@@ -119,6 +119,18 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
         }
     }
 
+    /** Computes a message fingerprint including version, partition ID, and server ID for authentication. */
+    public String computeMessageFingerprint() {
+        try {
+            MessageDigest digest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
+            String input = version + "|" + clusterPartitionId + "|" + serverId;
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static ISecurityService getSecurityService() {
         ISecurityService svc = securityService;
         if (svc == null) {

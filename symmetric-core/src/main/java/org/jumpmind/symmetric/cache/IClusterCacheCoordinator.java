@@ -63,11 +63,17 @@ public interface IClusterCacheCoordinator {
      */
     void start(InitialSettings initialSettings, Set<RegionSettings> regionSettings);
 
+    boolean isInitialized();
+
     void stop();
 
-    void sendEngineStateMessage(ClusterEngineStateMessage message);
+    void sendEngineStates(ClusterEngineStateMessage message);
 
-    ClusterEngineStateMessage getEngineStateMessage(String serverId, String engineName);
+    /** Returns the engine state message containing states for ALL engines on the given peer. */
+    ClusterEngineStateMessage getEngineStateMessage(String peerId);
+
+    /** Returns the engine state for a specific engine on a peer. Extracts from the full message. */
+    String getEngineState(String peerId, String engineName);
 
     /** Adds a new peer to the cluster. Returns true if the peer was not already known. */
     boolean addPeer(String serverId);
@@ -85,7 +91,7 @@ public interface IClusterCacheCoordinator {
      */
     boolean announceDiscoveredPeer(String serverId, String address);
 
-    void sendMessageToPeers(ClusterPeerSecureMessage message);
+    void sendServerStatus(ClusterPeerSecureMessage message);
 
     /** Returns the latest peer status message (heartbeat/join/leave) for the given peer server ID. */
     ClusterPeerStatusMessage getPeerStatusMessage(String peerId);
@@ -109,4 +115,6 @@ public interface IClusterCacheCoordinator {
      * than just the server ID) lets callers seed a peer's initial state from its real timestamp instead of re-reading the cache a second time.
      */
     Set<ClusterPeerStatusMessage> getObservedPeers();
+
+    ClusterMessageConverter getConverter();
 }
