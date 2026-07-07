@@ -57,7 +57,7 @@ import org.jumpmind.symmetric.ITypedPropertiesFactory;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.cache.ClusterPartitionGenerator;
 import org.jumpmind.symmetric.cache.ClusterPeerServerState;
-import org.jumpmind.symmetric.cache.ClusterPeerStatusMessage;
+import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ClusteredEngineState;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
@@ -660,8 +660,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         Map<String, ClusteredEngineState> snapshot = new java.util.HashMap<>();
         for (ISymmetricEngine engine : engines.values()) {
             String engineName = engine.getEngineName();
-            ClusteredEngineState state = engine.getClusterService().getEngineState();
-            snapshot.put(engineName, state);
+            snapshot.put(engineName, ClusteredEngineState.RUNNING);
         }
         for (SymmetricEngineStarter starter : enginesStarting) {
             snapshot.put(starter.getEngineName(), ClusteredEngineState.STARTING);

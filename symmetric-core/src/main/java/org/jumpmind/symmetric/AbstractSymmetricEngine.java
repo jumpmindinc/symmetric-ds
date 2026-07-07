@@ -1744,7 +1744,33 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     protected boolean detectStartupDbParametersDifferentFromLastStart() {
-        log.debug("Skipping startup database parameter change detection (STARTUP_DB_OBJECTS_SETUP_PARAMS not yet defined in ParameterConstants)");
-        return false;
+        boolean dbParamsDifferent = false;
+        try {
+            int hashDbParams = parameterService.hashParameterValues(
+                    org.jumpmind.symmetric.web.SymmetricEngineFileUtils.STARTUP_DB_OBJECTS_SETUP_PARAMS);
+            String currentHashDbParamsAsString = "0x" + Integer.toHexString(hashDbParams);
+            String priorHashDbParams = contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH);
+            if (currentHashDbParamsAsString.equals(priorHashDbParams)) {
+                log.debug("No change in SymmetricDS startup database parameters. Hash {} == {}", currentHashDbParamsAsString,
+                        priorHashDbParams);
+            } else {
+                dbParamsDifferent = true;
+                contextService.save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, currentHashDbParamsAsString);
+                log.info("Detected change in SymmetricDS startup database parameters. Hash {} != {}", currentHashDbParamsAsString,
+                        priorHashDbParams);
+            }
+        } catch (SqlException ex) {
+            dbParamsDifferent = true;
+            String exMessage = ex.getMessage();
+            if (exMessage != null && exMessage.contains("does not exist")) {
+                log.warn("Unable to compare SymmetricDS startup database parameters. Assuming there are differences. SqlMessage={}", exMessage);
+            } else {
+                log.warn("Unable to compare SymmetricDS startup database parameters! Assuming there are differences.", ex);
+            }
+        } catch (Exception e) {
+            dbParamsDifferent = true;
+            log.warn("Unknown exception trying to check SymmetricDS startup database parameters! Assuming there are differences.", e);
+        }
+        return dbParamsDifferent;
     }
 }
