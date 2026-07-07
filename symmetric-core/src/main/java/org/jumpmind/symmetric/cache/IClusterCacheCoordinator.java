@@ -28,10 +28,30 @@ import java.util.Set;
  */
 public interface IClusterCacheCoordinator {
     /**
-     * Identity and network settings needed to join the cluster. {@code heartbeatMs} is the cluster peer heartbeat interval; the transport derives its
-     * message-delivery timeout from it (half the interval) so a blocked delivery can never stall the heartbeat loop for longer than the loop's own cadence.
+     * Identity and network settings needed to join the cluster. {@code heartbeatMs} is the cluster peer heartbeat interval; both the transport's
+     * message-delivery timeout and the underlying JCS socket timeouts are derived from it so they always track the (operator-tunable) heartbeat cadence and can
+     * never exceed it.
      */
     record CacheCoordinatorNetworkSettings(String serverId, String clusterPartitionId, int port, boolean udpDiscoveryEnabled, long heartbeatMs) {
+
+        private static final long DELIVERY_TIMEOUT_FLOOR_MS = 250L;
+        private static final long SOCKET_TIMEOUT_CEILING_MS = 2000L;
+        /**
+         * Time budget for delivering a single lateral message: half the heartbeat interval (never below {@value #DELIVERY_TIMEOUT_FLOOR_MS} ms), so a blocked
+         * put can never stall the heartbeat loop for longer than the loop's own cadence.
+         */
+        public long deliveryTimeoutMs() {
+            return Math.max(DELIVERY_TIMEOUT_FLOOR_MS, heartbeatMs / 2);
+        }
+
+        /**
+         * JCS lateral socket open/read timeout. Capped at the delivery budget so a dead-peer connection fails inside the budget rather than being abandoned
+         * mid-flight by the delivery executor, and ceilinged at {@value #SOCKET_TIMEOUT_CEILING_MS} ms so it never waits pointlessly long when the heartbeat
+         * interval is large.
+         */
+        public long socketTimeoutMs() {
+            return Math.min(SOCKET_TIMEOUT_CEILING_MS, deliveryTimeoutMs());
+        }
     }
 
     /** Sizing/expiration settings for a single cache region. A negative maxLifeSeconds means entries never expire by age. */

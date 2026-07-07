@@ -59,7 +59,6 @@ import org.slf4j.LoggerFactory;
 public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
     static final int JCS_TCP_PORT_DEFAULT = 1101;
-    private static final long DELIVERY_TIMEOUT_FLOOR_MS = 250L;
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet(); // Used for actual network communication
     private final Map<String, String> knownPeerAddresses = new ConcurrentHashMap<>(); // serverId -> last address announced for JCS discovery
     private final ClusterMessageConverter converter = new ClusterMessageConverter();
@@ -75,13 +74,13 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     // put so a stuck delivery is skipped rather than piling work onto the queue.
     private volatile ExecutorService messageDeliveryExecutor;
     private final AtomicReference<Future<?>> deliveryInFlight = new AtomicReference<>();
-    private volatile long deliveryTimeoutMs = DELIVERY_TIMEOUT_FLOOR_MS;
+    private volatile long deliveryTimeoutMs; // Derived from the heartbeat interval in start(); only read after start() via the executor guard.
 
     @Override
     public synchronized void start(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings) {
         this.networkSettings = networkSettings;
         this.myPartitionId = networkSettings.clusterPartitionId();
-        this.deliveryTimeoutMs = Math.max(DELIVERY_TIMEOUT_FLOOR_MS, networkSettings.heartbeatMs() / 2);
+        this.deliveryTimeoutMs = networkSettings.deliveryTimeoutMs();
         this.messageDeliveryExecutor = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable, "sym-cluster-msg-delivery-" + networkSettings.serverId());
             thread.setDaemon(true);

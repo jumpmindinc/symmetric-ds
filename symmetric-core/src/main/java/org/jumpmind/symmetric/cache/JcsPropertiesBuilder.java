@@ -44,11 +44,6 @@ final class JcsPropertiesBuilder {
      * are derived from this constant so they can never drift apart.
      */
     static final String LATERAL_TCP_AUX_NAME = "LATERAL_TCP";
-    // Fail fast on an unreachable peer so a single lateral put cannot block longer than the transport's delivery budget (half the heartbeat interval). Both
-    // are kept below that budget (3000 ms heartbeat -> 1500 ms budget by default), so a dead-peer connection attempt resolves inside it rather than being
-    // abandoned mid-flight. See JcsTcpCacheCoordinator's message-delivery executor.
-    private static final int DEFAULT_SOCKET_TIMEOUT_MS = 1000;
-    private static final int DEFAULT_OPEN_TIMEOUT_MS = 1000;
     // A disconnected peer buffers no outbound events: cluster status/engine-state messages are idempotent and re-sent every heartbeat, so replaying a backlog
     // on reconnect only delays fresh state behind stale copies. Zero keeps the zombie queue empty (events are dropped while disconnected and the next
     // heartbeat re-establishes current state) rather than accumulating up to JCS's default of 1000.
@@ -122,8 +117,11 @@ final class JcsPropertiesBuilder {
         props.setProperty(auxPrefix + ".attributes.UdpDiscoveryEnabled", String.valueOf(networkSettings.udpDiscoveryEnabled()));
         props.setProperty(auxPrefix + ".attributes.AllowGet", "false");
         props.setProperty(auxPrefix + ".attributes.Receive", "true");
-        props.setProperty(auxPrefix + ".attributes.SocketTimeOut", String.valueOf(DEFAULT_SOCKET_TIMEOUT_MS));
-        props.setProperty(auxPrefix + ".attributes.OpenTimeOut", String.valueOf(DEFAULT_OPEN_TIMEOUT_MS));
+        // Socket open/read timeouts track the heartbeat cadence (see CacheCoordinatorNetworkSettings.socketTimeoutMs): kept at or below the delivery budget so
+        // a dead-peer connection fails fast enough that the delivery executor never has to abandon it mid-flight.
+        String socketTimeout = String.valueOf(networkSettings.socketTimeoutMs());
+        props.setProperty(auxPrefix + ".attributes.SocketTimeOut", socketTimeout);
+        props.setProperty(auxPrefix + ".attributes.OpenTimeOut", socketTimeout);
         props.setProperty(auxPrefix + ".attributes.ZombieQueueMaxSize", String.valueOf(DEFAULT_ZOMBIE_QUEUE_MAX_SIZE));
         return props;
     }

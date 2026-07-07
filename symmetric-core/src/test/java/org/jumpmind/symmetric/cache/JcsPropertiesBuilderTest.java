@@ -76,11 +76,32 @@ class JcsPropertiesBuilderTest {
     @Test
     void build_setsDisconnectionTuningOnTheDefinedAuxiliary() {
         Properties props = JcsPropertiesBuilder.build(INITIAL_SETTINGS, Set.of());
+        // heartbeat 3000 -> delivery budget 1500 -> socket timeout capped at the 1000 ms ceiling.
         assertEquals("1000", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.SocketTimeOut"));
         assertEquals("1000", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.OpenTimeOut"));
         assertEquals("0", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.ZombieQueueMaxSize"));
         // Guard against auxiliary-name drift: these must attach to the auxiliary that is actually defined, not a stray name JCS would ignore.
         assertNull(props.getProperty("jcs.auxiliary.LTCP.attributes.ZombieQueueMaxSize"));
+    }
+
+    @Test
+    void build_shortHeartbeat_shrinksSocketTimeoutsToTheDeliveryBudget() {
+        // heartbeat 1000 -> delivery budget 500 -> socket timeouts follow the budget rather than the 1000 ms ceiling, so a dead-peer put still fails in budget.
+        Properties props = JcsPropertiesBuilder.build(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, true, 1000L), Set.of());
+        assertEquals("500", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.SocketTimeOut"));
+        assertEquals("500", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.OpenTimeOut"));
+    }
+
+    @Test
+    void networkSettings_deriveTimeoutsFromHeartbeat_acrossFloorCeilingAndHalving() {
+        assertEquals(1500L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 3000L).deliveryTimeoutMs());
+        assertEquals(1000L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 3000L).socketTimeoutMs());
+        assertEquals(500L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 1000L).socketTimeoutMs());
+        // Below 2x the floor, the delivery budget floors at 250 ms and the socket timeout follows it.
+        assertEquals(250L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 200L).deliveryTimeoutMs());
+        assertEquals(250L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 200L).socketTimeoutMs());
+        // Above 2x the ceiling, the socket timeout stays capped at 1000 ms even though the budget is larger.
+        assertEquals(1000L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 10000L).socketTimeoutMs());
     }
 
     @Test
