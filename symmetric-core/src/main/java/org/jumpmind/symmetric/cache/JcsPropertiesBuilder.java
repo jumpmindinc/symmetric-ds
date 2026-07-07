@@ -40,8 +40,8 @@ final class JcsPropertiesBuilder {
     static final String ENGINE_REGION = "SYM_CLUSTER_ENGINES";
     /**
      * The single JCS auxiliary name for the lateral TCP transport. It is an arbitrary label (JCS's own docs use "LTCP"); the only requirement is that the
-     * auxiliary definition ({@code jcs.auxiliary.<name>}) and each region's auxiliary list ({@code jcs.region.<region>=<name>}) use the exact same string.
-     * Both are derived from this constant so they can never drift apart.
+     * auxiliary definition ({@code jcs.auxiliary.<name>}) and each region's auxiliary list ({@code jcs.region.<region>=<name>}) use the exact same string. Both
+     * are derived from this constant so they can never drift apart.
      */
     static final String LATERAL_TCP_AUX_NAME = "LATERAL_TCP";
     // Fail fast on an unreachable peer so a single lateral put cannot block longer than the transport's delivery budget (half the heartbeat interval). Both
