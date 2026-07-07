@@ -140,7 +140,6 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         String clusterPartitionId = ClusterPartitionGenerator.resolve(coreServerProperties);
         String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
         ccManager.initialize(securityService, clusterPartitionId, serverId, isJcsEnabled(), this);
-        ccManager.startClusterHeartbeat();
         ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);
         return ccManager;
     }
@@ -186,7 +185,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             log.debug("Reading property files -> load SymmetricEngineStarters into enginesStarting. Current directory is {}", System.getProperty(
                     "user.dir"));
         }
-        TypedProperties envProps = fetchEnvironmentProperties();
+        TypedProperties envProps = fetchStaticServerProperties();
         if (isMultiServerMode()) {
             String enginesDirName = PropertiesUtil.getEnginesDir();
             loadMultiServerEngines(enginesDirName, envProps);
@@ -338,6 +337,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             engine.destroy();
         }
         engines.clear();
+        enginesStartingNames.clear();
         enginesStarting.clear();
         enginesFailed.clear();
         clusteredCacheManager.shutdown();
@@ -663,7 +663,10 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             snapshot.put(engineName, ClusteredEngineState.RUNNING);
         }
         for (SymmetricEngineStarter starter : enginesStarting) {
-            snapshot.put(starter.getEngineName(), ClusteredEngineState.STARTING);
+            String engineName = starter.getEngineName();
+            if (engineName != null) {
+                snapshot.put(engineName, ClusteredEngineState.STARTING);
+            }
         }
         for (String engineName : enginesFailed.keySet()) {
             snapshot.put(engineName, ClusteredEngineState.FAILED);

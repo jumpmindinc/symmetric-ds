@@ -51,15 +51,19 @@ public class ClusterPartitionGenerator {
     private ClusterPartitionGenerator() {
     }
 
-    public static String resolve() {
+    public synchronized static String resolve() {
         if (clusterPartitionId == null) {
-            synchronized (ClusterPartitionGenerator.class) {
-                if (clusterPartitionId == null) {
-                    clusterPartitionId = loadOrCreateClusterPartitionId();
-                }
-            }
+            clusterPartitionId = loadOrCreateClusterPartitionId();
         }
         return clusterPartitionId;
+    }
+
+    public static String resolve(Properties properties) {
+        String configuredId = properties != null ? properties.getProperty(ServerConstants.CLUSTER_PARTITION_ID) : null;
+        if (StringUtils.isNotBlank(configuredId)) {
+            return StringUtils.left(configuredId, 60);
+        }
+        return resolve();
     }
 
     public static String resolveServerId() {

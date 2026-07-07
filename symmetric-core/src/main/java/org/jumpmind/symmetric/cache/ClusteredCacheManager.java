@@ -449,6 +449,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
         discoverPeersIncomingHeartbeats();
         broadcastCurrentStateAndEngines();
+        if (log.isDebugEnabled()) {
+            logEngineStates();
+            logPeerStates();
+        }
         purgeObsoletePeers(startTime, getObsoleteMs(getAnyEngine()));
         if (this.isHeartbeatLoopRunning) {
             sleepUntilNextHeartbeat(startTime, sleepBetweenHeartbeatsMs, staleThresholdMs);
@@ -800,5 +804,31 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             return min;
         }
         return ThreadLocalRandom.current().nextLong(max - min + 1) + min;
+    }
+
+    private void logEngineStates() {
+        if (lastEngineStates.isEmpty()) {
+            log.debug("No engine state information available");
+        } else {
+            lastEngineStates.forEach((engineName, state) -> log.debug("Engine state: engineName={}, state={}", engineName, state));
+        }
+    }
+
+    private void logPeerStates() {
+        Set<String> peerIds = peerNetworkCoordinator.getPeerIds();
+        if (peerIds.isEmpty()) {
+            log.debug("No peer information available");
+        } else {
+            peerIds.forEach(peerId -> {
+                IClusteredCacheManager.PeerState peerState = peerStates.get(peerId);
+                if (peerState != null) {
+                    long ageMs = System.currentTimeMillis() - peerState.lastAliveMs();
+                    String state = peerState.alive() ? "ALIVE" : "OFFLINE";
+                    log.debug("Peer state: peerId={}, state={}, lastAliveMs={}, ageMs={}", peerId, state, peerState.lastAliveMs(), ageMs);
+                } else {
+                    log.debug("Peer state: peerId={}, state=UNKNOWN", peerId);
+                }
+            });
+        }
     }
 }

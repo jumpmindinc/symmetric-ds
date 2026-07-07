@@ -69,6 +69,20 @@ public class SymmetricEngineStarter implements Runnable {
         return engine;
     }
 
+    public String getEngineName() {
+        if (engine != null) {
+            return engine.getEngineName();
+        }
+        Properties props = new Properties();
+        try (InputStream is = new FileInputStream(getPropertiesFile())) {
+            props.load(is);
+        } catch (IOException e) {
+            log.warn("Unable to read properties file to determine engine name: {}", getPropertiesFile());
+            return null;
+        }
+        return holder.getEngineName(props);
+    }
+
     public boolean isRegistrationEngineStarter() {
         Properties props = new Properties();
         try (InputStream is = new FileInputStream(getPropertiesFile())) {
