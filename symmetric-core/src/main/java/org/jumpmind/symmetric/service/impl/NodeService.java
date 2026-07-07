@@ -243,7 +243,6 @@ public class NodeService extends AbstractService implements INodeService {
                 nodeHost.getJavaVendor(), nodeHost.getSecurityMode(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
                 nodeHost.getTimezoneOffset(), nodeHost.getHeartbeatTime(), nodeHost.getLastRestartTime(),
                 nodeHost.getNodeId(), hostName);
-
         if (updateCount <= 0) {
             log.debug("NodeHost update returned {} rows, inserting new record. nodeId={}, hostname={}, ip={}",
                     updateCount, nodeHost.getNodeId(), hostName, nodeHost.getIpAddress());

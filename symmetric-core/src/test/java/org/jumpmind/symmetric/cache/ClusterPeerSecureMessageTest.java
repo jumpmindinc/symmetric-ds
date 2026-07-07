@@ -44,6 +44,28 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 class ClusterPeerSecureMessageTest {
+    private static final class TestPeerHeartbeatMessage extends ClusterPeerSecureMessage {
+        private static final long serialVersionUID = 1L;
+        private transient String eventType;
+
+        TestPeerHeartbeatMessage(String eventType, String serverId, String clusterPartitionId, String version) {
+            super(serverId, clusterPartitionId, version, System.currentTimeMillis(), eventType);
+            this.eventType = eventType;
+            markDecrypted();
+        }
+
+        @Override
+        protected void parsePayload(String plainPayload) {
+            this.eventType = plainPayload;
+        }
+
+        @Override
+        public String getEventType() {
+            ensureDecrypted();
+            return eventType;
+        }
+    }
+
     @BeforeEach
     void setUp() {
         ISecurityService mockSecurityService = mock(ISecurityService.class);
@@ -52,15 +74,15 @@ class ClusterPeerSecureMessageTest {
         ClusterPeerSecureMessage.setSecurityService(mockSecurityService);
     }
 
-    private ClusterPeerStatusMessage heartbeat() {
-        return new ClusterPeerStatusMessage(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+    private TestPeerHeartbeatMessage heartbeat() {
+        return new TestPeerHeartbeatMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
     }
 
-    private ClusterPeerStatusMessage serializeRoundTrip(ClusterPeerStatusMessage msg) throws Exception {
+    private TestPeerHeartbeatMessage serializeRoundTrip(TestPeerHeartbeatMessage msg) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         new ObjectOutputStream(baos).writeObject(msg);
         ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
-        return (ClusterPeerStatusMessage) ois.readObject();
+        return (TestPeerHeartbeatMessage) ois.readObject();
     }
 
     @Test
@@ -75,7 +97,7 @@ class ClusterPeerSecureMessageTest {
 
     @Test
     void isHeaderChecksumValid_tamperedChecksum_returnsFalse() throws Exception {
-        ClusterPeerStatusMessage msg = heartbeat();
+        TestPeerHeartbeatMessage msg = heartbeat();
         Field f = ClusterPeerSecureMessage.class.getDeclaredField("headerChecksum");
         f.setAccessible(true);
         f.set(msg, "tampered-checksum");
@@ -84,14 +106,14 @@ class ClusterPeerSecureMessageTest {
 
     @Test
     void ensureDecrypted_deserializedMessage_lazyDecryptsPayload() throws Exception {
-        ClusterPeerStatusMessage deserialized = serializeRoundTrip(heartbeat());
-        assertEquals(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, deserialized.getEventType());
+        TestPeerHeartbeatMessage deserialized = serializeRoundTrip(heartbeat());
+        assertEquals(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, deserialized.getEventType());
         assertEquals("inst1", deserialized.getClusterPartitionId());
     }
 
     @Test
     void decryptPayload_securityServiceNull_throwsIllegalStateException() throws Exception {
-        ClusterPeerStatusMessage deserialized = serializeRoundTrip(heartbeat());
+        TestPeerHeartbeatMessage deserialized = serializeRoundTrip(heartbeat());
         ClusterPeerSecureMessage.setSecurityService(null);
         try {
             deserialized.getEventType();
@@ -107,7 +129,7 @@ class ClusterPeerSecureMessageTest {
             mocked.when(() -> MessageDigest.getInstance(anyString()))
                     .thenThrow(new NoSuchAlgorithmException("mocked"));
             try {
-                new ClusterPeerStatusMessage(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "s1", "i1", "1.0");
+                new TestPeerHeartbeatMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "s1", "i1", "1.0");
                 fail("Expected RuntimeException");
             } catch (RuntimeException ex) {
                 assertTrue(ex.getCause() instanceof NoSuchAlgorithmException);

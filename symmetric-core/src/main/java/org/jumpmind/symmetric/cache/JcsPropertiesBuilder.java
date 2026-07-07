@@ -25,7 +25,7 @@ import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.Set;
 
-import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.InitialSettings;
+import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.CacheCoordinatorNetworkSettings;
 import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.RegionSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,8 +58,8 @@ final class JcsPropertiesBuilder {
      * @throws IllegalArgumentException
      *             if a region name in regionSettings collides with another region name or with a mandatory region name
      */
-    static Properties build(InitialSettings initialSettings, Set<RegionSettings> regionSettings) {
-        Properties props = buildJcsCoreProperties(initialSettings);
+    static Properties build(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings) {
+        Properties props = buildJcsCoreProperties(networkSettings);
         props.putAll(buildRegionalProperties(withMandatoryRegions(regionSettings)));
         log.debug("Built JCS properties: {}", props);
         return props;
@@ -98,14 +98,14 @@ final class JcsPropertiesBuilder {
      * ParameterConstants.CLUSTER_PEER_HEARTBEAT_MS, CLUSTER_PEER_OBSOLETE_MS, and detectIfPeerIsStale), which run independently of JCS's UDP discovery of
      * lateral TCP peers.
      */
-    private static Properties buildJcsCoreProperties(InitialSettings initialSettings) {
+    private static Properties buildJcsCoreProperties(CacheCoordinatorNetworkSettings networkSettings) {
         Properties props = new Properties();
         props.setProperty(JCS_CONFIG_GLOBAL_PREFIX, "");
         String auxPrefix = JCS_CONFIG_AUX_PREFIX + ".LATERAL_TCP";
         props.setProperty(auxPrefix, "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.LateralTCPCacheFactory");
         props.setProperty(auxPrefix + ".attributes", "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes");
-        props.setProperty(auxPrefix + ".attributes.TcpListenerPort", String.valueOf(initialSettings.port()));
-        props.setProperty(auxPrefix + ".attributes.UdpDiscoveryEnabled", "true");
+        props.setProperty(auxPrefix + ".attributes.TcpListenerPort", String.valueOf(networkSettings.port()));
+        props.setProperty(auxPrefix + ".attributes.UdpDiscoveryEnabled", String.valueOf(networkSettings.udpDiscoveryEnabled()));
         props.setProperty(auxPrefix + ".attributes.AllowGet", "false");
         props.setProperty(auxPrefix + ".attributes.Receive", "true");
         return props;

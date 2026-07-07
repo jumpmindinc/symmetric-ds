@@ -38,6 +38,28 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ClusterMessageConverterTest {
+    private static final class TestPeerHeartbeatMessage extends ClusterPeerSecureMessage {
+        private static final long serialVersionUID = 1L;
+        private transient String eventType;
+
+        TestPeerHeartbeatMessage(String eventType, String serverId, String clusterPartitionId, String version) {
+            super(serverId, clusterPartitionId, version, System.currentTimeMillis(), eventType);
+            this.eventType = eventType;
+            markDecrypted();
+        }
+
+        @Override
+        protected void parsePayload(String plainPayload) {
+            this.eventType = plainPayload;
+        }
+
+        @Override
+        public String getEventType() {
+            ensureDecrypted();
+            return eventType;
+        }
+    }
+
     private ClusterMessageConverter converter;
     private ISecurityService mockSecurityService;
 
@@ -52,8 +74,8 @@ class ClusterMessageConverterTest {
 
     @Test
     void toPlainMessage_validMessage_returnsPlainMessage() {
-        ClusterPeerStatusMessage secure = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         ClusterPlainMessage result = converter.toPlainMessage(secure, "inst1");
         assertNotNull(result);
         assertEquals(1, converter.getSuccessfullyConverted());
@@ -68,8 +90,8 @@ class ClusterMessageConverterTest {
 
     @Test
     void recordRejection_tracksRejectionInfo() {
-        ClusterPeerStatusMessage secure = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         converter.toPlainMessage(secure, "inst2");
         Map<String, RejectionInfo> rejected = converter.getRejectedServers();
         assertTrue(rejected.containsKey("server1"));
@@ -77,10 +99,10 @@ class ClusterMessageConverterTest {
 
     @Test
     void recordRejection_multipleRejections_tracksLatest() {
-        ClusterPeerStatusMessage secure1 = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
-        ClusterPeerStatusMessage secure2 = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_JOINING, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure1 = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure2 = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_JOINING, "server1", "inst1", "1.0");
         converter.toPlainMessage(secure1, "inst2");
         converter.toPlainMessage(secure2, "inst2");
         Map<String, RejectionInfo> rejected = converter.getRejectedServers();
@@ -91,8 +113,8 @@ class ClusterMessageConverterTest {
 
     @Test
     void getRejectedServers_returnsCorrectMap() {
-        ClusterPeerStatusMessage secure = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         converter.toPlainMessage(secure, "inst2");
         Map<String, RejectionInfo> rejected = converter.getRejectedServers();
         assertEquals(1, rejected.size());
@@ -101,8 +123,8 @@ class ClusterMessageConverterTest {
 
     @Test
     void toPlainMessage_partitionMismatch_recordsRejection() {
-        ClusterPeerStatusMessage secure = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         converter.toPlainMessage(secure, "inst2");
         Map<String, RejectionInfo> rejected = converter.getRejectedServers();
         RejectionInfo info = rejected.get("server1");
@@ -111,7 +133,7 @@ class ClusterMessageConverterTest {
 
     @Test
     void toPlainMessage_fingerprintFailure_recordsRejection() {
-        ClusterPeerStatusMessage secure = mock(ClusterPeerStatusMessage.class);
+        TestPeerHeartbeatMessage secure = mock(TestPeerHeartbeatMessage.class);
         when(secure.getServerId()).thenReturn("server1");
         when(secure.getClusterPartitionId()).thenReturn("inst1");
         when(secure.isHeaderChecksumValid()).thenReturn(true);
@@ -125,7 +147,7 @@ class ClusterMessageConverterTest {
 
     @Test
     void toPlainMessage_checksumFailure_recordsRejection() {
-        ClusterPeerStatusMessage secure = mock(ClusterPeerStatusMessage.class);
+        TestPeerHeartbeatMessage secure = mock(TestPeerHeartbeatMessage.class);
         when(secure.getServerId()).thenReturn("server1");
         when(secure.getClusterPartitionId()).thenReturn("inst1");
         when(secure.isHeaderChecksumValid()).thenReturn(false);
@@ -138,8 +160,8 @@ class ClusterMessageConverterTest {
 
     @Test
     void rejectionInfo_containsFullMessageDetails() {
-        ClusterPeerStatusMessage secure = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         converter.toPlainMessage(secure, "inst2");
         Map<String, RejectionInfo> rejected = converter.getRejectedServers();
         RejectionInfo info = rejected.get("server1");
@@ -151,8 +173,8 @@ class ClusterMessageConverterTest {
 
     @Test
     void rejectionInfo_getDebugInfo_includesAllDetails() {
-        ClusterPeerStatusMessage secure = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         converter.toPlainMessage(secure, "inst2");
         Map<String, RejectionInfo> rejected = converter.getRejectedServers();
         RejectionInfo info = rejected.get("server1");
@@ -163,10 +185,10 @@ class ClusterMessageConverterTest {
 
     @Test
     void toPlainMessage_multipleServersRejected_tracksSeparately() {
-        ClusterPeerStatusMessage secure1 = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
-        ClusterPeerStatusMessage secure2 = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server2", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure1 = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure2 = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server2", "inst1", "1.0");
         converter.toPlainMessage(secure1, "inst2");
         converter.toPlainMessage(secure2, "inst2");
         Map<String, RejectionInfo> rejected = converter.getRejectedServers();
@@ -177,8 +199,8 @@ class ClusterMessageConverterTest {
 
     @Test
     void toPlainMessage_successfullyConverted_incrementsCounter() {
-        ClusterPeerStatusMessage secure = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
         assertEquals(0, converter.getSuccessfullyConverted());
         converter.toPlainMessage(secure, "inst1");
         assertEquals(1, converter.getSuccessfullyConverted());
@@ -186,12 +208,12 @@ class ClusterMessageConverterTest {
 
     @Test
     void getTotalRejected_returnsCorrectSum() {
-        ClusterPeerStatusMessage secure1 = mock(ClusterPeerStatusMessage.class);
+        TestPeerHeartbeatMessage secure1 = mock(TestPeerHeartbeatMessage.class);
         when(secure1.getServerId()).thenReturn("server1");
         when(secure1.getClusterPartitionId()).thenReturn("inst1");
         when(secure1.isHeaderChecksumValid()).thenReturn(false);
-        ClusterPeerStatusMessage secure2 = new ClusterPeerStatusMessage(
-                ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server2", "inst1", "1.0");
+        TestPeerHeartbeatMessage secure2 = new TestPeerHeartbeatMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server2", "inst1", "1.0");
         converter.toPlainMessage(secure1, "inst1");
         converter.toPlainMessage(secure2, "inst2");
         assertEquals(1, converter.getRejectedPartitionIdMismatch());
@@ -199,7 +221,7 @@ class ClusterMessageConverterTest {
 
     @Test
     void rejectionInfo_nullMessage_handledGracefully() {
-        ClusterPeerStatusMessage secure = mock(ClusterPeerStatusMessage.class);
+        TestPeerHeartbeatMessage secure = mock(TestPeerHeartbeatMessage.class);
         when(secure.getServerId()).thenReturn("server1");
         when(secure.getClusterPartitionId()).thenReturn("inst1");
         when(secure.isHeaderChecksumValid()).thenReturn(true);

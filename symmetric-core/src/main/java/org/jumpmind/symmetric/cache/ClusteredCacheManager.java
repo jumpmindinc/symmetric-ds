@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.jumpmind.security.ISecurityService;
+import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.CacheCoordinatorNetworkSettings;
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
@@ -221,7 +222,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
         if (isJcsEnabled) {
             myStartTimeMs = System.currentTimeMillis();
-            ensurePeerListenerStarted(myServerId, myClusterPartitionId, port);
+            boolean udpDiscoveryEnabled = Boolean.parseBoolean(System.getProperty(ServerConstants.CLUSTER_JCS_UDP_DISCOVERY_ENABLED, "false"));
+            CacheCoordinatorNetworkSettings networkSettings = new CacheCoordinatorNetworkSettings(serverId,
+                    clusterPartitionId, port, udpDiscoveryEnabled);
+            ensurePeerListenerStarted(networkSettings);
         }
     }
 
@@ -245,15 +249,16 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return currentStaleThresholdMs;
     }
 
-    private synchronized void ensurePeerListenerStarted(String serverId, String clusterPartitionId, int port) {
-        String serverInfo = String.format("serverId=%s, clusterPartitionId=%s, port=%d", serverId, clusterPartitionId, port);
+    private synchronized void ensurePeerListenerStarted(CacheCoordinatorNetworkSettings networkSettings) {
+        String serverInfo = String.format("serverId=%s, clusterPartitionId=%s, port=%d, udpDiscoveryEnabled=%s",
+                networkSettings.serverId(), networkSettings.clusterPartitionId(), networkSettings.port(), networkSettings.udpDiscoveryEnabled());
         if (isClusterPeerListenerStarted) {
             log.debug("Skipping redundant JCS cluster peer listener start on {}", serverInfo);
             return;
         }
         try {
             log.debug("Starting JCS cluster peer listener on {}", serverInfo);
-            peerNetworkCoordinator.start(new IClusterCacheCoordinator.InitialSettings(serverId, clusterPartitionId, port), Collections.emptySet());
+            peerNetworkCoordinator.start(networkSettings, Collections.emptySet());
             isClusterPeerListenerStarted = true;
             log.info("Started JCS cluster peer listener on {}", serverInfo);
         } catch (Exception ex) {

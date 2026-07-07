@@ -66,6 +66,7 @@ class SymmetricEngineHolderTest {
     private File createPropertiesFile(String name, String registrationUrl, String syncUrl) throws IOException {
         File file = new File(tempDir, name + ".properties");
         Properties props = new Properties();
+        props.setProperty(ParameterConstants.ENGINE_NAME, name);
         if (registrationUrl != null) {
             props.setProperty(ParameterConstants.REGISTRATION_URL, registrationUrl);
         }
@@ -266,7 +267,7 @@ class SymmetricEngineHolderTest {
         @Test
         void areEnginesStartingFalseAfterHolderStarts() {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            holder.setAutoCreate(false);
+            holder.setAutoDiscoverEngines(false);
             holder.start();
             assertFalse(holder.areEnginesStarting());
         }
@@ -274,7 +275,7 @@ class SymmetricEngineHolderTest {
         @Test
         void areEnginesStartingTrueWhenStartersRemain() {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            holder.setAutoCreate(false);
+            holder.setAutoDiscoverEngines(false);
             holder.start();
             holder.getEnginesStarting().add(new SymmetricEngineStarter("fake.properties", holder));
             assertTrue(holder.areEnginesStarting());
@@ -303,7 +304,7 @@ class SymmetricEngineHolderTest {
             // required -- we only need to prove the registration path executed and the engine was
             // picked up and processed.
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            holder.setAutoCreate(false);
+            holder.setAutoDiscoverEngines(false);
             File regFile = createPropertiesFile("corp", "", "http://localhost:31415/sync/corp");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(regFile.getAbsolutePath(), holder));
             holder.start();
@@ -360,7 +361,7 @@ class SymmetricEngineHolderTest {
             // start() static branch -> switchToStaticEnginesMode().
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             holder.setStaticEnginesMode(true);
-            holder.setAutoCreate(false);
+            holder.setAutoDiscoverEngines(false);
             holder.start();
             assertFalse(holder.areEnginesStarting());
         }
@@ -408,10 +409,11 @@ class SymmetricEngineHolderTest {
         }
 
         @Test
-        void initializesTimestampWhenEnginesRunning() {
+        void initializesTimestampWhenEnginesRunning() throws IOException {
             System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            holder.getEnginesStarting().add(new SymmetricEngineStarter("fake.properties", holder));
+            File props = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
+            holder.getEnginesStarting().add(new SymmetricEngineStarter(props.getAbsolutePath(), holder));
             Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
             assertTrue(snapshot.values().stream().anyMatch(state -> state == ClusteredEngineState.STARTING));
         }
@@ -425,9 +427,10 @@ class SymmetricEngineHolderTest {
         }
 
         @Test
-        void containsRunningEnginesInSnapshot() {
+        void containsRunningEnginesInSnapshot() throws IOException {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            holder.getEnginesStarting().add(new SymmetricEngineStarter("running1.properties", holder));
+            File props = createPropertiesFile("running1", "", "http://localhost:31415/sync/running1");
+            holder.getEnginesStarting().add(new SymmetricEngineStarter(props.getAbsolutePath(), holder));
             Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
             assertTrue(snapshot.values().stream().anyMatch(state -> state == ClusteredEngineState.STARTING));
         }
@@ -495,14 +498,11 @@ class SymmetricEngineHolderTest {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             long staleInterval = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
             long expectedThreshold = 2 * staleInterval;
-
             Map<String, ClusteredEngineState> emptySnapshot = Map.of();
             holder.buildCurrentEngineStateSnapshot();
-
             for (int i = 0; i < 3; i++) {
                 holder.buildCurrentEngineStateSnapshot();
             }
-
             assertTrue(holder.buildCurrentEngineStateSnapshot().isEmpty());
         }
 
@@ -510,11 +510,10 @@ class SymmetricEngineHolderTest {
         void tracksTransitionFromRunningToNoEngines() throws Exception {
             System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-
-            holder.getEnginesStarting().add(new SymmetricEngineStarter("engine1.properties", holder));
+            File props = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
+            holder.getEnginesStarting().add(new SymmetricEngineStarter(props.getAbsolutePath(), holder));
             Map<String, ClusteredEngineState> snapshot1 = holder.buildCurrentEngineStateSnapshot();
             assertTrue(snapshot1.values().stream().anyMatch(s -> s == ClusteredEngineState.STARTING));
-
             holder.getEnginesStarting().clear();
             Map<String, ClusteredEngineState> snapshot2 = holder.buildCurrentEngineStateSnapshot();
             assertTrue(snapshot2.isEmpty());
@@ -524,14 +523,13 @@ class SymmetricEngineHolderTest {
         void resetsTimestampWhenEnginesReappear() throws Exception {
             System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-
-            holder.getEnginesStarting().add(new SymmetricEngineStarter("engine1.properties", holder));
+            File props1 = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
+            holder.getEnginesStarting().add(new SymmetricEngineStarter(props1.getAbsolutePath(), holder));
             holder.buildCurrentEngineStateSnapshot();
-
             holder.getEnginesStarting().clear();
             holder.buildCurrentEngineStateSnapshot();
-
-            holder.getEnginesStarting().add(new SymmetricEngineStarter("engine2.properties", holder));
+            File props2 = createPropertiesFile("engine2", "", "http://localhost:31415/sync/engine2");
+            holder.getEnginesStarting().add(new SymmetricEngineStarter(props2.getAbsolutePath(), holder));
             Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
             assertTrue(snapshot.values().stream().anyMatch(s -> s == ClusteredEngineState.STARTING));
         }
@@ -540,10 +538,8 @@ class SymmetricEngineHolderTest {
         void onlyShutdownsWhenThresholdExceeded() {
             System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
             SymmetricEngineHolder holder = spy(new SymmetricEngineHolder());
-
             holder.getEnginesStarting().clear();
             holder.buildCurrentEngineStateSnapshot();
-
             verify(holder, Mockito.never()).stop();
         }
     }

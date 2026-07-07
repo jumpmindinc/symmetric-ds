@@ -29,13 +29,13 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.InitialSettings;
+import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.CacheCoordinatorNetworkSettings;
 import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.RegionSettings;
 import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.RemovalType;
 import org.junit.jupiter.api.Test;
 
 class JcsPropertiesBuilderTest {
-    private static final InitialSettings INITIAL_SETTINGS = new InitialSettings("server1", "inst1", 1101);
+    private static final CacheCoordinatorNetworkSettings INITIAL_SETTINGS = new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, true);
 
     @Test
     void build_containsJcsDefaultKeyWithNoTrailingPeriod() {
@@ -55,7 +55,7 @@ class JcsPropertiesBuilderTest {
 
     @Test
     void build_setsTcpListenerPortFromInitialSettings() {
-        Properties props = JcsPropertiesBuilder.build(new InitialSettings("server1", "inst1", 5150), Set.of());
+        Properties props = JcsPropertiesBuilder.build(new CacheCoordinatorNetworkSettings("server1", "inst1", 5150, true), Set.of());
         assertEquals("5150", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort"));
     }
 

@@ -44,9 +44,9 @@ import org.slf4j.LoggerFactory;
  * IClusterCacheCoordinator implementation that uses Apache JCS lateral TCP cache for peer-to-peer communication. Peers can find each other through JCS's
  * built-in UDP multicast discovery, or through {@link #announceDiscoveredPeer(String, String)} feeding in addresses learned from SYM_NODE_HOST — needed because
  * UDP multicast is unavailable on most cloud VPCs and managed Kubernetes networks. Either way, the JCS CompositeCacheManager is configured once in
- * {@link #start(InitialSettings, Set)} and is never torn down or reconfigured as peers come and go. Reconfiguring it on every new peer previously caused JCS to
- * silently keep returning its already-shutdown TCP listener for the port (JCS caches listeners in a static, port-keyed registry that a shutdown never clears),
- * leaving the node unreachable for the rest of its life.
+ * {@link #start(CacheCoordinatorNetworkSettings, Set)} and is never torn down or reconfigured as peers come and go. Reconfiguring it on every new peer
+ * previously caused JCS to silently keep returning its already-shutdown TCP listener for the port (JCS caches listeners in a static, port-keyed registry that a
+ * shutdown never clears), leaving the node unreachable for the rest of its life.
  */
 public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
@@ -59,16 +59,14 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private volatile CacheAccess<String, ClusterEngineStateMessage> engineStateCache;
     private Set<String> discoveryRegionNames = Collections.emptySet();
     private UDPDiscoveryService discoveryService; // Resolved lazily; only accessed from methods synchronized on this
-    private int port;
-    private String serverId;
-    private String clusterPartitionId;
+    private CacheCoordinatorNetworkSettings networkSettings;
+    private String myPartitionId;
 
     @Override
-    public synchronized void start(InitialSettings initialSettings, Set<RegionSettings> regionSettings) {
-        this.serverId = initialSettings.serverId();
-        this.clusterPartitionId = initialSettings.clusterPartitionId();
-        this.port = initialSettings.port();
-        Properties jcsProperties = JcsPropertiesBuilder.build(initialSettings, regionSettings);
+    public synchronized void start(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings) {
+        this.networkSettings = networkSettings;
+        this.myPartitionId = networkSettings.clusterPartitionId();
+        Properties jcsProperties = JcsPropertiesBuilder.build(networkSettings, regionSettings);
         Set<String> regionNames = new HashSet<>(Set.of(JcsPropertiesBuilder.PEER_REGION, JcsPropertiesBuilder.ENGINE_REGION));
         for (RegionSettings settings : regionSettings) {
             regionNames.add(settings.regionName());
@@ -79,9 +77,10 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             jcsManager.configure(jcsProperties);
             peerHeartbeatCache = new CacheAccess<>(jcsManager.getCache(JcsPropertiesBuilder.PEER_REGION));
             engineStateCache = new CacheAccess<>(jcsManager.getCache(JcsPropertiesBuilder.ENGINE_REGION));
-            log.info("Started JCS cluster communication. Port={}, ServerId={}, ClusterPartitionId={}", port, serverId, clusterPartitionId);
+            log.info("Started JCS cluster communication. Port={}, ServerId={}, ClusterPartitionId={}", networkSettings.port(), networkSettings.serverId(),
+                    myPartitionId);
         } catch (Exception ex) {
-            String msg = String.format("Failed to initialize JCS cluster communication on port %d", port);
+            String msg = String.format("Failed to initialize JCS cluster communication on port %d", networkSettings.port());
             log.error(msg, ex);
             stop();
             throw new RuntimeException(msg, ex);
@@ -100,7 +99,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     @Override
     public synchronized void stop() {
         if (jcsManager != null) {
-            log.debug("Stopping JCS cluster communication. ServerId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+            log.debug("Stopping JCS cluster communication. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);
             try {
                 jcsManager.shutDown();
             } catch (Exception ex) {
@@ -110,9 +109,10 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             peerHeartbeatCache = null;
             engineStateCache = null;
             discoveryService = null;
-            log.debug("JCS cluster cache shutdown complete. ServerId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+            log.debug("JCS cluster cache shutdown complete. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);
         } else {
-            log.debug("JCS cluster cache was not running, so no shutdown was performed. ServerId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+            log.debug("JCS cluster cache was not running, so no shutdown was performed. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(),
+                    myPartitionId);
         }
     }
 
@@ -129,7 +129,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         }
         if (converter.getRejectedServers().containsKey(serverId)) {
             log.debug("Rejecting UDP-discovered peer due to blacklist. serverId={}, address={}, ClusterPartitionId={}, rejectionReason={}",
-                    serverId, address, clusterPartitionId, converter.getRejectedServers().get(serverId).getReason());
+                    serverId, address, myPartitionId, converter.getRejectedServers().get(serverId).getReason());
             return false;
         }
         UDPDiscoveryService service = getUdpDiscoveryService();
@@ -146,24 +146,23 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         }
         announceDiscoveredAddress(service, address);
         log.info("Announced discovered peer for JCS lateral cache discovery. serverId={}, address={}, previousAddress={}, ClusterPartitionId={}",
-                serverId, address, previousAddress, clusterPartitionId);
+                serverId, address, previousAddress, myPartitionId);
         return true;
     }
-
 
     @Override
     public synchronized boolean addPeer(String serverId) {
         boolean isNewPeer = !knownPeers.contains(serverId);
         if (isNewPeer && converter.getRejectedServers().containsKey(serverId)) {
             log.debug("Rejecting new peer due to blacklist. serverId={}, ClusterPartitionId={}, rejectionReason={}",
-                    serverId, clusterPartitionId, converter.getRejectedServers().get(serverId).getReason());
+                    serverId, myPartitionId, converter.getRejectedServers().get(serverId).getReason());
             return false;
         }
         if (knownPeers.add(serverId)) {
-            log.info("Added new peer to cluster. serverId={}, ClusterPartitionId={}, knownPeers.size={}", serverId, clusterPartitionId, knownPeers.size());
+            log.info("Added new peer to cluster. serverId={}, ClusterPartitionId={}, knownPeers.size={}", serverId, myPartitionId, knownPeers.size());
             return true;
         } else {
-            log.debug("Peer already known to cluster. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+            log.debug("Peer already known to cluster. serverId={}, ClusterPartitionId={}", serverId, myPartitionId);
             return false;
         }
     }
@@ -179,11 +178,11 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         }
         if (knownPeers.remove(serverId)) {
             purgePeerMessages(serverId);
-            log.info("Removed obsolete peer from cluster. serverId={}, ClusterPartitionId={}, knownPeers.size={}", serverId, clusterPartitionId,
+            log.info("Removed obsolete peer from cluster. serverId={}, ClusterPartitionId={}, knownPeers.size={}", serverId, myPartitionId,
                     knownPeers.size());
             return true;
         } else {
-            log.debug("Peer not known to cluster, nothing to remove. serverId={}, ClusterPartitionId={}", serverId, clusterPartitionId);
+            log.debug("Peer not known to cluster, nothing to remove. serverId={}, ClusterPartitionId={}", serverId, myPartitionId);
             return false;
         }
     }
@@ -207,10 +206,10 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             TCPLateralCacheAttributes discoveryDefaults = new TCPLateralCacheAttributes();
             currentDiscoveryService = UDPDiscoveryManager.getInstance().getService(
                     discoveryDefaults.getUdpDiscoveryAddr(), discoveryDefaults.getUdpDiscoveryPort(),
-                    null, port, 0, jcsManager, new StandardSerializer());
-            log.debug("Resolved JCS UDP discovery service. ServerId={}", serverId);
+                    null, networkSettings.port(), 0, jcsManager, new StandardSerializer());
+            log.debug("Resolved JCS UDP discovery service. ServerId={}", networkSettings.serverId());
         } catch (Exception ex) {
-            log.warn("Unable to resolve JCS UDP discovery service! ServerId={}", serverId, ex);
+            log.warn("Unable to resolve JCS UDP discovery service! ServerId={}", networkSettings.serverId(), ex);
         }
         return currentDiscoveryService;
     }
@@ -230,16 +229,16 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     /**
-     *  Builds a JCS compatible DiscoveredService, which is used to inject (announce) or retract expected peer servers into the JCS lateral cache discovery mechanism.
-     * https://commons.apache.org/proper/commons-jcs//commons-jcs-core/apidocs/org/apache/commons/jcs/utils/discovery/DiscoveredService.html
+     * Builds a JCS compatible DiscoveredService, which is used to inject (announce) or retract expected peer servers into the JCS lateral cache discovery
+     * mechanism. https://commons.apache.org/proper/commons-jcs//commons-jcs-core/apidocs/org/apache/commons/jcs/utils/discovery/DiscoveredService.html
      */
     private DiscoveredService buildHostDiscoveredInjector(String address) {
         DiscoveredService discoveredHostsWatcher = new DiscoveredService();
         discoveredHostsWatcher.setServiceAddress(address);
-        discoveredHostsWatcher.setServicePort(port);
+        discoveredHostsWatcher.setServicePort(networkSettings.port());
         discoveredHostsWatcher.setCacheNames(new ArrayList<>(discoveryRegionNames));
         log.debug("Built discovered service. ipAddress={}, port={}, ClusterPartitionId={}",
-                address, port, clusterPartitionId);
+                address, networkSettings.port(), myPartitionId);
         return discoveredHostsWatcher;
     }
 
@@ -266,7 +265,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         // node starts with an empty knownPeers set, so nobody would ever announce itself for anyone else to find.
         CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
         if (cache == null) {
-            log.debug("Skipping send to cluster peers because JCS is not initialized. serverId={}", serverId);
+            log.debug("Skipping send to cluster peers because JCS is not initialized. serverId={}", networkSettings.serverId());
             return;
         }
         try {
@@ -293,7 +292,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         // Now consolidates all engine states for a peer into a single message stored by peerId (not per-engine key).
         CacheAccess<String, ClusterEngineStateMessage> cache = engineStateCache;
         if (cache == null) {
-            log.debug("Skipping engine state message — JCS not initialized. serverId={}", serverId);
+            log.debug("Skipping engine state message — JCS not initialized. serverId={}", networkSettings.serverId());
             return;
         }
         try {
@@ -317,7 +316,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         if (secureMsg == null) {
             return null;
         }
-        ClusterPlainMessage plainMsg = converter.toPlainMessage(secureMsg, clusterPartitionId);
+        ClusterPlainMessage plainMsg = converter.toPlainMessage(secureMsg, myPartitionId);
         if (plainMsg instanceof ClusterServerStatusMessage) {
             ClusterServerStatusMessage statusMsg = (ClusterServerStatusMessage) plainMsg;
             log.debug("Received cluster-wide message. eventType={}, peerId={}", statusMsg.getEventType(), peerId);
@@ -378,7 +377,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     public Set<ClusterServerStatusMessage> getObservedPeers() {
         CacheAccess<String, ClusterServerStatusMessage> cache = (CacheAccess<String, ClusterServerStatusMessage>) (CacheAccess<?, ?>) peerHeartbeatCache;
         if (cache == null) {
-            log.debug("Skipping getObservedPeers() because JCS is not initialized. serverId={}", serverId);
+            log.debug("Skipping getObservedPeers() because JCS is not initialized. serverId={}", networkSettings.serverId());
             return Collections.emptySet();
         }
         Set<ClusterServerStatusMessage> result = new HashSet<>();

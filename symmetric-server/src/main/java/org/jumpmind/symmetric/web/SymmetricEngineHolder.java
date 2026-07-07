@@ -53,6 +53,7 @@ import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.ApplicationHealthTracker;
+import org.jumpmind.symmetric.IApplicationHealthTracker;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
 import org.jumpmind.symmetric.SymmetricException;
@@ -336,7 +337,10 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     public void stop() {
         Collection<ServerSymmetricEngine> enginesCopy;
         synchronized (this) {
-            ApplicationHealthTracker.getTracker().onShutdown();
+            IApplicationHealthTracker healthTracker = ApplicationHealthTracker.getTracker();
+            if (healthTracker != null) {
+                healthTracker.onShutdown();
+            }
             enginesCopy = new ArrayList<>(engines.values());
         }
         stopEnginesInParallel(enginesCopy);
@@ -345,8 +349,10 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             enginesStartingNames.clear();
             enginesStarting.clear();
             enginesFailed.clear();
-            clusteredCacheManager.shutdown();
-            clusteredCacheManager = null;
+            if (clusteredCacheManager != null) {
+                clusteredCacheManager.shutdown();
+                clusteredCacheManager = null;
+            }
         }
     }
 
@@ -715,7 +721,8 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         if (hasRunningEngines) {
             lastRunningEngineTimestampMs = now;
         } else if (lastRunningEngineTimestampMs > 0) {
-            long staleIntervalMs = clusteredCacheManager.getStaleIntervalMs();
+            long staleIntervalMs = clusteredCacheManager != null ? clusteredCacheManager.getStaleIntervalMs()
+                    : ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
             long noEnginesDurationMs = now - lastRunningEngineTimestampMs;
             long shutdownThresholdMs = 2 * staleIntervalMs;
             if (noEnginesDurationMs >= shutdownThresholdMs) {

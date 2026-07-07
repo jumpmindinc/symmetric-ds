@@ -32,7 +32,7 @@ import org.jumpmind.security.ISecurityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class ClusterPeerStatusMessageTest {
+class ClusterServerStatusMessageTest {
     private static final long THRESHOLD_MS = 9000L;
 
     @BeforeEach
@@ -43,20 +43,20 @@ class ClusterPeerStatusMessageTest {
         ClusterPeerSecureMessage.setSecurityService(securityService);
     }
 
-    private ClusterPeerStatusMessage heartbeat() {
-        return new ClusterPeerStatusMessage(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
+    private ClusterServerStatusMessage heartbeat() {
+        return new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 0L);
     }
 
     @Test
     void eventTypeConstants_areNonNull() {
-        assertNotNull(ClusterPeerStatusMessage.EVENT_PEER_JOINING);
-        assertNotNull(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT);
-        assertNotNull(ClusterPeerStatusMessage.EVENT_PEER_LEAVING);
+        assertNotNull(ClusterServerStatusMessage.EVENT_PEER_JOINING);
+        assertNotNull(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT);
+        assertNotNull(ClusterServerStatusMessage.EVENT_PEER_LEAVING);
     }
 
     @Test
     void getEventType_returnsConstructedType() {
-        assertEquals(ClusterPeerStatusMessage.EVENT_PEER_HEARTBEAT, heartbeat().getEventType());
+        assertEquals(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, heartbeat().getEventType());
     }
 
     @Test
@@ -66,14 +66,14 @@ class ClusterPeerStatusMessageTest {
 
     @Test
     void isStaleReturnsTrueWhenAgeExceedsThreshold() {
-        ClusterPeerStatusMessage msg = heartbeat();
+        ClusterServerStatusMessage msg = heartbeat();
         long now = System.currentTimeMillis() + THRESHOLD_MS + 1;
         assertTrue(msg.isStale(now, THRESHOLD_MS));
     }
 
     @Test
     void isStaleReturnsFalseWhenAgeEqualsThreshold() {
-        ClusterPeerStatusMessage msg = heartbeat();
+        ClusterServerStatusMessage msg = heartbeat();
         long now = msg.getTimestamp() + THRESHOLD_MS;
         assertFalse(msg.isStale(now, THRESHOLD_MS));
     }
