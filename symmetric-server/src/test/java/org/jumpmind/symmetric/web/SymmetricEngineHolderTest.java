@@ -25,16 +25,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.SymmetricException;
@@ -47,9 +53,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mockito;
 
 class SymmetricEngineHolderTest {
     @TempDir
@@ -406,6 +414,137 @@ class SymmetricEngineHolderTest {
             holder.getEnginesStarting().add(new SymmetricEngineStarter("fake.properties", holder));
             Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
             assertTrue(snapshot.values().stream().anyMatch(state -> state == ClusteredEngineState.STARTING));
+        }
+
+        @Test
+        void doesNotShutdownOnFirstCallWithoutEngines() {
+            System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
+            assertTrue(snapshot.isEmpty());
+        }
+
+        @Test
+        void containsRunningEnginesInSnapshot() {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            holder.getEnginesStarting().add(new SymmetricEngineStarter("running1.properties", holder));
+            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
+            assertTrue(snapshot.values().stream().anyMatch(state -> state == ClusteredEngineState.STARTING));
+        }
+
+        @Test
+        void containsFailedEnginesInSnapshot() {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            holder.getEnginesFailed().put("failed-engine", new FailedEngineInfo("failed-engine", "failed.properties", "Test failure"));
+            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
+            assertTrue(snapshot.containsValue(ClusteredEngineState.FAILED));
+        }
+    }
+
+    @Nested
+    class ParallelEngineStop {
+        @Test
+        @Timeout(value = 5, unit = TimeUnit.SECONDS)
+        void stopDoesNotDeadlock() throws InterruptedException {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            Thread stopThread = new Thread(holder::stop);
+            stopThread.start();
+            stopThread.join();
+            assertTrue(holder.getEngines().isEmpty());
+        }
+
+        @Test
+        void clearsMapsAfterStop() {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            holder.getEnginesStarting().add(new SymmetricEngineStarter("fake.properties", holder));
+            holder.stop();
+            assertTrue(holder.getEngines().isEmpty());
+            assertTrue(holder.getEnginesStarting().isEmpty());
+            assertTrue(holder.getEnginesStartingNames().isEmpty());
+            assertTrue(holder.getEnginesFailed().isEmpty());
+        }
+
+        @Test
+        void handlesEmptyEngineListGracefully() {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            assertDoesNotThrow(holder::stop);
+        }
+    }
+
+    @Nested
+    class ContainerModeShutdownThreshold {
+        private String previousContainerMode;
+
+        @BeforeEach
+        void setUp() {
+            previousContainerMode = System.getProperty(ServerConstants.CONTAINER_MODE_ENABLED);
+        }
+
+        @AfterEach
+        void tearDown() {
+            if (previousContainerMode == null) {
+                System.clearProperty(ServerConstants.CONTAINER_MODE_ENABLED);
+            } else {
+                System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, previousContainerMode);
+            }
+        }
+
+        @Test
+        void shutdownThresholdIs2xStaleInterval() throws Exception {
+            System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            long staleInterval = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
+            long expectedThreshold = 2 * staleInterval;
+
+            Map<String, ClusteredEngineState> emptySnapshot = Map.of();
+            holder.buildCurrentEngineStateSnapshot();
+
+            for (int i = 0; i < 3; i++) {
+                holder.buildCurrentEngineStateSnapshot();
+            }
+
+            assertTrue(holder.buildCurrentEngineStateSnapshot().isEmpty());
+        }
+
+        @Test
+        void tracksTransitionFromRunningToNoEngines() throws Exception {
+            System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+
+            holder.getEnginesStarting().add(new SymmetricEngineStarter("engine1.properties", holder));
+            Map<String, ClusteredEngineState> snapshot1 = holder.buildCurrentEngineStateSnapshot();
+            assertTrue(snapshot1.values().stream().anyMatch(s -> s == ClusteredEngineState.STARTING));
+
+            holder.getEnginesStarting().clear();
+            Map<String, ClusteredEngineState> snapshot2 = holder.buildCurrentEngineStateSnapshot();
+            assertTrue(snapshot2.isEmpty());
+        }
+
+        @Test
+        void resetsTimestampWhenEnginesReappear() throws Exception {
+            System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+
+            holder.getEnginesStarting().add(new SymmetricEngineStarter("engine1.properties", holder));
+            holder.buildCurrentEngineStateSnapshot();
+
+            holder.getEnginesStarting().clear();
+            holder.buildCurrentEngineStateSnapshot();
+
+            holder.getEnginesStarting().add(new SymmetricEngineStarter("engine2.properties", holder));
+            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
+            assertTrue(snapshot.values().stream().anyMatch(s -> s == ClusteredEngineState.STARTING));
+        }
+
+        @Test
+        void onlyShutdownsWhenThresholdExceeded() {
+            System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
+            SymmetricEngineHolder holder = spy(new SymmetricEngineHolder());
+
+            holder.getEnginesStarting().clear();
+            holder.buildCurrentEngineStateSnapshot();
+
+            verify(holder, Mockito.never()).stop();
         }
     }
 }
