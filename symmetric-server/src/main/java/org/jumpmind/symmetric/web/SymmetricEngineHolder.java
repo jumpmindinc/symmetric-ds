@@ -663,6 +663,9 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             ClusteredEngineState state = engine.getClusterService().getEngineState();
             snapshot.put(engineName, state);
         }
+        for (String engineName : enginesFailed.keySet()) {
+            snapshot.put(engineName, ClusteredEngineState.FAILED);
+        }
         return snapshot;
     }
 
