@@ -60,6 +60,8 @@ public interface ISecurityService {
 
     public String nextSecureHexString(int len);
 
+    public long nextSecureLong();
+
     public String encrypt(String plainText);
 
     public String decrypt(String encText);

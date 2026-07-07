@@ -215,7 +215,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     protected synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
-        ClusterPeerSecureMessage.setSecurityService(securityService);
+        peerNetworkCoordinator.getConverter().setSecurityService(securityService);
         myClusterPartitionId = clusterPartitionId;
         myServerId = serverId;
         int port = Integer.parseInt(System.getProperty(

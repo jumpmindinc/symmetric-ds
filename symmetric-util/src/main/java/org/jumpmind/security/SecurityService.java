@@ -497,6 +497,11 @@ public class SecurityService implements ISecurityService {
         return new String(password);
     }
 
+    @Override
+    public long nextSecureLong() {
+        return random.nextLong();
+    }
+
     protected SecretKey getDefaultSecretKey() throws Exception {
         for (int i = 0; i < SecurityConstants.CIPHERS.length; i++) {
             try {

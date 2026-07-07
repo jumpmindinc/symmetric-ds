@@ -22,6 +22,7 @@ package org.jumpmind.security;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.Arrays;
@@ -104,5 +105,13 @@ class SecurityServiceTest {
         assertEquals(false, securityService.isValidAesKeyLength(new byte[15]));
         assertEquals(false, securityService.isValidAesKeyLength(new byte[20]));
         assertEquals(false, securityService.isValidAesKeyLength(new byte[33]));
+    }
+
+    @Test
+    void nextSecureLong_returnsVaryingValues() {
+        TestSecurityService securityService = new TestSecurityService();
+        long a = securityService.nextSecureLong();
+        long b = securityService.nextSecureLong();
+        assertNotEquals(a, b);
     }
 }

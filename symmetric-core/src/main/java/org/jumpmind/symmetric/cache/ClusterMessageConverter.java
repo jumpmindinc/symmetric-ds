@@ -21,30 +21,99 @@
 package org.jumpmind.symmetric.cache;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.Collections;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.jumpmind.security.ISecurityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClusterMessageConverter {
     private static final Logger log = LoggerFactory.getLogger(ClusterMessageConverter.class);
+    private static final String SALT_DELIMITER = "|";
     private final AtomicLong successfullyConverted = new AtomicLong(0);
     private final AtomicLong rejectedPartitionIdMismatch = new AtomicLong(0);
     private final AtomicLong rejectedFingerprintFailure = new AtomicLong(0);
     private final Map<String, RejectionInfo> rejectedServers = new ConcurrentHashMap<>();
+    private volatile ISecurityService securityService;
 
-    public ClusterPlainMessage toPlainMessage(ClusterPeerSecureMessage secure, String expectedPartitionId) {
+    public void setSecurityService(ISecurityService securityService) {
+        this.securityService = securityService;
+    }
+
+    private ISecurityService getSecurityService() {
+        ISecurityService svc = securityService;
+        if (svc == null) {
+            throw new IllegalStateException("Security service not initialized on ClusterMessageConverter");
+        }
+        return svc;
+    }
+
+    public ClusterPeerSecureMessage toEncryptedMessage(ClusterServerStatusMessage plain) {
+        String payload = plain.getEventType() + "|" + plain.getStartTimeMs();
+        return buildEncryptedMessage(plain.getServerId(), plain.getClusterPartitionId(), plain.getVersion(),
+                plain.getTimestamp(), payload);
+    }
+
+    public ClusterPeerSecureMessage toEncryptedMessage(ClusterEngineStateMessage plain) {
+        String payload = serializeEngineStates(plain.getEngineStates());
+        return buildEncryptedMessage(plain.getServerId(), plain.getClusterPartitionId(), plain.getVersion(),
+                plain.getTimestamp(), payload);
+    }
+
+    private ClusterPeerSecureMessage buildEncryptedMessage(String serverId, String clusterPartitionId, String version,
+            long timestamp, String plainPayload) {
+        ISecurityService secSvc = getSecurityService();
+        long messageSalt = secSvc.nextSecureLong();
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum(serverId, timestamp, messageSalt);
+        String keystoreFingerprint = secSvc.encrypt(salt(messageSalt, version));
+        String encryptedPayload = secSvc.encrypt(salt(messageSalt, plainPayload));
+        return new ClusterPeerSecureMessage(serverId, clusterPartitionId, version, timestamp, messageSalt,
+                headerChecksum, keystoreFingerprint, encryptedPayload);
+    }
+
+    public ClusterServerStatusMessage toServerStatusMessage(ClusterPeerSecureMessage secure, String expectedPartitionId) {
+        if (!isValid(secure, expectedPartitionId)) {
+            return null;
+        }
+        String plainPayload = unsalt(getSecurityService().decrypt(secure.getEncryptedPayload()));
+        String[] parts = plainPayload.split("\\|", 2);
+        long startTimeMs = parts.length > 1 ? Long.parseLong(parts[1]) : 0L;
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(parts[0], secure.getServerId(),
+                secure.getClusterPartitionId(), startTimeMs);
+        successfullyConverted.incrementAndGet();
+        log.debug("Successfully converted secure message to ClusterServerStatusMessage. EventType={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
+                plain.getEventType(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
+        return plain;
+    }
+
+    public ClusterEngineStateMessage toEngineStateMessage(ClusterPeerSecureMessage secure, String expectedPartitionId) {
+        if (!isValid(secure, expectedPartitionId)) {
+            return null;
+        }
+        String plainPayload = unsalt(getSecurityService().decrypt(secure.getEncryptedPayload()));
+        Map<String, String> engineStates = parseEngineStates(plainPayload);
+        ClusterEngineStateMessage plain = new ClusterEngineStateMessage(engineStates, secure.getServerId(),
+                secure.getClusterPartitionId());
+        successfullyConverted.incrementAndGet();
+        log.debug("Successfully converted secure message to ClusterEngineStateMessage. EngineStatesCount={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
+                engineStates.size(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
+        return plain;
+    }
+
+    private boolean isValid(ClusterPeerSecureMessage secure, String expectedPartitionId) {
         if (secure == null) {
             log.debug("Received null secure message, skipping conversion");
-            return null;
+            return false;
         }
         if (!secure.isHeaderChecksumValid()) {
             recordRejection(secure, ConversionFailureReason.CHECKSUM);
             RejectionInfo rejection = rejectedServers.get(secure.getServerId());
             log.debug("Message header checksum invalid, rejecting message. {}", rejection != null ? rejection.getDebugInfo()
                     : "serverId=" + secure.getServerId());
-            return null;
+            return false;
         }
         String messagePartitionId = secure.getClusterPartitionId();
         if (!isFromAuthorizedPartition(messagePartitionId, expectedPartitionId)) {
@@ -53,29 +122,72 @@ public class ClusterMessageConverter {
             RejectionInfo rejection = rejectedServers.get(secure.getServerId());
             log.debug("Message rejected due to partition ID mismatch. {}, ExpectedPartitionId={}, MessagePartitionId={}",
                     rejection != null ? rejection.getDebugInfo() : "serverId=" + secure.getServerId(), expectedPartitionId, messagePartitionId);
-            return null;
+            return false;
         }
-        if (!secure.isKeystoreFingerprintValid()) {
+        if (!isKeystoreFingerprintValid(secure)) {
             rejectedFingerprintFailure.incrementAndGet();
             recordRejection(secure, ConversionFailureReason.FINGERPRINT);
             RejectionInfo rejection = rejectedServers.get(secure.getServerId());
             log.debug("Message rejected due to keystore fingerprint validation failure. {}", rejection != null ? rejection.getDebugInfo()
                     : "serverId=" + secure.getServerId());
-            return null;
+            return false;
         }
-        ClusterPlainMessage plainMessage = createPlainMessageFromSecure(secure);
-        if (plainMessage != null) {
-            successfullyConverted.incrementAndGet();
-            log.debug("Successfully converted secure message to plain message. MessageType={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
-                    plainMessage.getClass().getSimpleName(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
-        }
-        return plainMessage;
+        return true;
     }
 
-    private ClusterPlainMessage createPlainMessageFromSecure(ClusterPeerSecureMessage secure) {
-        String eventType = secure.getEventType();
-        return new ClusterServerStatusMessage(eventType, secure.getServerId(), secure.getClusterPartitionId(),
-                System.currentTimeMillis());
+    private boolean isKeystoreFingerprintValid(ClusterPeerSecureMessage secure) {
+        try {
+            return secure.getVersion().equals(unsalt(getSecurityService().decrypt(secure.getKeystoreFingerprint())));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String salt(long messageSalt, String value) {
+        return messageSalt + SALT_DELIMITER + value;
+    }
+
+    private static String unsalt(String saltedValue) {
+        int delimiterIndex = saltedValue.indexOf(SALT_DELIMITER);
+        return delimiterIndex >= 0 ? saltedValue.substring(delimiterIndex + 1) : saltedValue;
+    }
+
+    private String serializeEngineStates(Map<String, String> engineStates) {
+        if (engineStates == null || engineStates.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, String> entry : engineStates.entrySet()) {
+            if (!first) {
+                sb.append(";");
+            }
+            sb.append(entry.getKey()).append("=").append(entry.getValue());
+            first = false;
+        }
+        return sb.toString();
+    }
+
+    private Map<String, String> parseEngineStates(String payload) {
+        Map<String, String> engineStates = new TreeMap<>();
+        if (payload == null || payload.isEmpty()) {
+            return engineStates;
+        }
+        String[] pairs = payload.split(";");
+        for (String pair : pairs) {
+            int eqIndex = pair.indexOf('=');
+            if (eqIndex > 0) {
+                String name = pair.substring(0, eqIndex);
+                String state = pair.substring(eqIndex + 1);
+                engineStates.put(name, state);
+            }
+        }
+        return engineStates;
+    }
+
+    @Deprecated
+    public ClusterPlainMessage toPlainMessage(ClusterPeerSecureMessage secure, String expectedPartitionId) {
+        return toServerStatusMessage(secure, expectedPartitionId);
     }
 
     private boolean isFromAuthorizedPartition(String messagePartitionId, String expectedPartitionId) {

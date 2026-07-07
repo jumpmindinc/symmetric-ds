@@ -64,7 +64,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private final ClusterMessageConverter converter = new ClusterMessageConverter();
     private volatile CompositeCacheManager jcsManager;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache;
-    private volatile CacheAccess<String, ClusterEngineStateMessage> engineStateCache;
+    private volatile CacheAccess<String, ClusterPeerSecureMessage> engineStateCache;
     private Set<String> discoveryRegionNames = Collections.emptySet();
     private UDPDiscoveryService discoveryService; // Resolved lazily; only accessed from methods synchronized on this
     private CacheCoordinatorNetworkSettings networkSettings;
@@ -279,7 +279,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         if (heartbeatCache != null) {
             heartbeatCache.remove(serverId);
         }
-        CacheAccess<String, ClusterEngineStateMessage> engineCache = engineStateCache;
+        CacheAccess<String, ClusterPeerSecureMessage> engineCache = engineStateCache;
         if (engineCache != null) {
             engineCache.remove(serverId);
         }
@@ -297,7 +297,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         }
         deliverWithTimeout("server status", () -> {
             try {
-                ClusterPeerSecureMessage secureMsg = wrapServerStatus(message);
+                ClusterPeerSecureMessage secureMsg = converter.toEncryptedMessage(message);
                 cache.put(message.getServerId(), secureMsg);
                 log.debug("Sent server status. eventType={}, serverId={}, knownPeers.size={}",
                         message.getEventType(), message.getServerId(), knownPeers.size());
@@ -309,24 +309,19 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         });
     }
 
-    private ClusterPeerSecureMessage wrapServerStatus(ClusterServerStatusMessage plainMsg) {
-        String payload = plainMsg.getEventType() + "|" + plainMsg.getStartTimeMs();
-        return new SecureServerStatusMessage(plainMsg.getServerId(), plainMsg.getClusterPartitionId(),
-                plainMsg.getVersion(), plainMsg.getTimestamp(), payload, plainMsg);
-    }
-
     @Override
     public void sendEngineStates(ClusterEngineStateMessage message) {
         // Same reasoning as sendServerStatus(): must publish even with zero known peers, or discovery can never bootstrap.
         // Now consolidates all engine states for a peer into a single message stored by peerId (not per-engine key).
-        CacheAccess<String, ClusterEngineStateMessage> cache = engineStateCache;
+        CacheAccess<String, ClusterPeerSecureMessage> cache = engineStateCache;
         if (cache == null) {
             log.debug("Skipping engine state message — JCS not initialized. serverId={}", networkSettings.serverId());
             return;
         }
         deliverWithTimeout("engine states", () -> {
             try {
-                cache.put(message.getServerId(), message);
+                ClusterPeerSecureMessage secureMsg = converter.toEncryptedMessage(message);
+                cache.put(message.getServerId(), secureMsg);
                 log.debug("Sent consolidated engine states. engineStatesCount={}, serverId={}",
                         message.getEngineStates().size(), message.getServerId());
             } catch (Exception ex) {
@@ -396,26 +391,20 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         if (secureMsg == null) {
             return null;
         }
-        ClusterPlainMessage plainMsg = converter.toPlainMessage(secureMsg, myPartitionId);
-        if (plainMsg instanceof ClusterServerStatusMessage) {
-            ClusterServerStatusMessage statusMsg = (ClusterServerStatusMessage) plainMsg;
-            log.debug("Received cluster-wide message. eventType={}, peerId={}", statusMsg.getEventType(), peerId);
-            return statusMsg;
-        }
-        return null;
+        return converter.toServerStatusMessage(secureMsg, myPartitionId);
     }
 
     @Override
     public ClusterEngineStateMessage getEngineStateMessage(String peerId) {
-        CacheAccess<String, ClusterEngineStateMessage> cache = engineStateCache;
+        CacheAccess<String, ClusterPeerSecureMessage> cache = engineStateCache;
         if (cache == null) {
             return null;
         }
-        ClusterEngineStateMessage msg = cache.get(peerId);
-        if (msg != null) {
-            log.debug("Received consolidated engine states message. engineStatesCount={}, peerId={}", msg.getEngineStates().size(), peerId);
+        ClusterPeerSecureMessage secureMsg = cache.get(peerId);
+        if (secureMsg == null) {
+            return null;
         }
-        return msg;
+        return converter.toEngineStateMessage(secureMsg, myPartitionId);
     }
 
     @Override
@@ -455,83 +444,24 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public Set<ClusterServerStatusMessage> getObservedPeers() {
-        CacheAccess<String, ClusterServerStatusMessage> cache = (CacheAccess<String, ClusterServerStatusMessage>) (CacheAccess<?, ?>) peerHeartbeatCache;
+        CacheAccess<String, ClusterPeerSecureMessage> cache = peerHeartbeatCache;
         if (cache == null) {
             log.debug("Skipping getObservedPeers() because JCS is not initialized. serverId={}", networkSettings.serverId());
             return Collections.emptySet();
         }
         Set<ClusterServerStatusMessage> result = new HashSet<>();
         for (String peerId : cache.getCacheControl().getKeySet(true)) {
-            ClusterServerStatusMessage msg = cache.get(peerId);
-            if (msg != null) {
-                log.debug("Using observed peer message to compile list of peers. eventType={}, peerId={}, timestamp={}",
-                        msg.getEventType(), peerId, msg.getTimestamp());
-                result.add(msg);
+            ClusterPeerSecureMessage secureMsg = cache.get(peerId);
+            if (secureMsg != null) {
+                ClusterServerStatusMessage msg = converter.toServerStatusMessage(secureMsg, myPartitionId);
+                if (msg != null) {
+                    log.debug("Using observed peer message to compile list of peers. eventType={}, peerId={}, timestamp={}",
+                            msg.getEventType(), peerId, msg.getTimestamp());
+                    result.add(msg);
+                }
             }
         }
         log.debug("Compiled list of observed peers. All known peers={}, Observed={}", knownPeers.size(), result.size());
         return result;
-    }
-
-    private static class SecureServerStatusMessage extends ClusterPeerSecureMessage {
-        private static final long serialVersionUID = 1L;
-        private transient String eventType;
-        private transient long startTimeMs;
-
-        SecureServerStatusMessage(String serverId, String clusterPartitionId, String version, long timestamp,
-                String payload, ClusterServerStatusMessage plainMsg) {
-            super(serverId, clusterPartitionId, version, timestamp, payload);
-            this.eventType = plainMsg.getEventType();
-            this.startTimeMs = plainMsg.getStartTimeMs();
-            markDecrypted();
-        }
-
-        @Override
-        protected void parsePayload(String plainPayload) {
-            String[] parts = plainPayload.split("\\|");
-            if (parts.length >= 2) {
-                this.eventType = parts[0];
-                this.startTimeMs = Long.parseLong(parts[1]);
-            }
-        }
-
-        @Override
-        public String getEventType() {
-            ensureDecrypted();
-            return eventType;
-        }
-
-        public long getStartTimeMs() {
-            ensureDecrypted();
-            return startTimeMs;
-        }
-    }
-
-    private static class SecureEngineStateMessage extends ClusterPeerSecureMessage {
-        private static final long serialVersionUID = 1L;
-        private transient Map<String, String> engineStates;
-
-        SecureEngineStateMessage(String serverId, String clusterPartitionId, String version, long timestamp,
-                String payload, ClusterEngineStateMessage plainMsg) {
-            super(serverId, clusterPartitionId, version, timestamp, payload);
-            this.engineStates = plainMsg.getEngineStates();
-            markDecrypted();
-        }
-
-        @Override
-        protected void parsePayload(String plainPayload) {
-            // Deserialize engineStates from payload if needed
-            this.engineStates = new ConcurrentHashMap<>();
-        }
-
-        @Override
-        public String getEventType() {
-            return ClusterEngineStateMessage.MSG_TYPE_ENGINE_STATES;
-        }
-
-        public Map<String, String> getEngineStates() {
-            ensureDecrypted();
-            return engineStates;
-        }
     }
 }

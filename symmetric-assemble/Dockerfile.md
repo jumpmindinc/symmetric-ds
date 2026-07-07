@@ -48,7 +48,7 @@ This only takes effect on first startup, i.e. when no keystore file exists yet; 
 
 Clustering
 ===
-When running multiple SymmetricDS containers that share the same database, each container communicates with its peers using Apache JCS lateral TCP cache on port 1101 (configurable via the `cluster.jcs.port` engine property).  Each container sends a heartbeat to all peer containers every 3 seconds (configurable via `cache.peer.heartbeat.ms`).  If a peer misses three consecutive heartbeats, its database locks are cleared automatically so that other containers can acquire them without waiting for `cluster.lock.timeout.ms` to expire.
+When running multiple SymmetricDS containers that share the same database, each container communicates with its peers using Apache JCS lateral TCP cache on port 1101 (configurable via the `cluster.jcs.port` engine property).  Each container sends a heartbeat to all peer containers every 3 seconds (configurable via `cluster.peer.heartbeat.ms`).  If a peer misses three consecutive heartbeats, its database locks are cleared automatically so that other containers can acquire them without waiting for `cluster.lock.timeout.ms` to expire.
 
 Expose and publish port 1101 so that peer containers can reach each other:
 `docker run -p 31415:31415 -p 1101:1101 --name sym jumpmind/symmetricds`

@@ -30,10 +30,6 @@ import org.junit.jupiter.api.BeforeEach;
 class ClusterEngineStateMessageTest {
     @BeforeEach
     void setUp() {
-        ISecurityService mockSecurityService = mock(ISecurityService.class);
-        when(mockSecurityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
-        when(mockSecurityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
-        ClusterPeerSecureMessage.setSecurityService(mockSecurityService);
     }
 
     private ClusterEngineStateMessage msg(String state, String engineName) {

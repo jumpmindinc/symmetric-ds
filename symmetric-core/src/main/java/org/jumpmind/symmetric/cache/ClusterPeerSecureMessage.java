@@ -24,33 +24,24 @@ import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 
-import org.jumpmind.security.ISecurityService;
-
 /**
- * Base class for cluster peer messages transmitted via JCS lateral TCP cache.
+ * Encrypted envelope for cluster peer messages transmitted via JCS lateral TCP cache. A simple value object — all encryption/decryption and salt generation is
+ * handled externally by {@link ClusterMessageConverter}.
  *
  * Plain fields (serverId, clusterPartitionId, keystoreFingerprint, version, timestamp) are visible to peers without decryption so they can route, log, perform
- * stale checks, and authenticate cluster membership efficiently. keystoreFingerprint is this node's own version string encrypted with its sym.secret AES key; a
- * receiving peer decrypts it with its own key via isKeystoreFingerprintValid() and compares the result back to the plaintext version field, which lets peers
- * detect a keystore mismatch even though the main encrypted payload itself would be undecryptable in that case. headerChecksum is
- * SHA-512(messageSalt|timestamp|serverId) and is validated first to quickly reject corrupt or malformed messages before decryption is attempted. All remaining
- * message content is encrypted using the shared sym.secret AES key so that rogue nodes cannot read or forge payload details.
- *
- * Subclasses define the payload structure by implementing parsePayload(String). The ensureDecrypted() template method lazily decrypts the payload on first
- * access and caches the result. Subclasses that construct a message locally (not deserialized) must call markDecrypted() in their constructor to skip the
- * unnecessary decrypt round-trip.
+ * stale checks, and authenticate cluster membership efficiently. keystoreFingerprint is the sender's version string encrypted with its sym.secret AES key; a
+ * receiving peer decrypts it with its own key and compares the result back to the plaintext version field to detect keystore mismatches. headerChecksum is
+ * SHA-512(messageSalt|timestamp|serverId) validated before decryption to quickly reject corrupt messages. The encrypted payload and fingerprint are both salted
+ * (prepended with messageSalt) before encryption to ensure no two messages encrypt identical plaintext to the same ciphertext.
  */
-public abstract class ClusterPeerSecureMessage implements Serializable {
+public final class ClusterPeerSecureMessage implements Serializable {
     private static final long serialVersionUID = 1L;
     private static final int CURRENT_VERSION_NO = 20260611;
     private static final String CHECKSUM_ALGORITHM = "SHA-512";
-    private static final SecureRandom RANDOM = new SecureRandom();
-    private static volatile ISecurityService securityService;
     private final int versionNo;
     private final String serverId;
     private final String clusterPartitionId;
@@ -60,43 +51,21 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
     private final long messageSalt;
     private final String headerChecksum;
     private final String encryptedPayload;
-    private transient volatile boolean payloadDecrypted;
 
-    protected ClusterPeerSecureMessage(String serverId, String clusterPartitionId, String version, long timestamp, String plainPayload) {
+    ClusterPeerSecureMessage(String serverId, String clusterPartitionId, String version, long timestamp,
+            long messageSalt, String headerChecksum, String keystoreFingerprint, String encryptedPayload) {
         this.versionNo = CURRENT_VERSION_NO;
         this.serverId = serverId;
         this.clusterPartitionId = clusterPartitionId;
         this.version = version;
-        this.keystoreFingerprint = encrypt(version);
+        this.keystoreFingerprint = keystoreFingerprint;
         this.timestamp = timestamp;
-        this.messageSalt = RANDOM.nextLong();
-        this.headerChecksum = computeChecksum(serverId, timestamp, messageSalt);
-        this.encryptedPayload = encrypt(plainPayload);
+        this.messageSalt = messageSalt;
+        this.headerChecksum = headerChecksum;
+        this.encryptedPayload = encryptedPayload;
     }
 
-    public static void setSecurityService(ISecurityService service) {
-        securityService = service;
-    }
-
-    /** Called by subclass constructors to skip decryption when fields are already populated. */
-    protected final void markDecrypted() {
-        payloadDecrypted = true;
-    }
-
-    /** Lazily decrypts the payload on first access, delegating field population to parsePayload. */
-    protected final void ensureDecrypted() {
-        if (!payloadDecrypted) {
-            parsePayload(decryptPayload());
-            payloadDecrypted = true;
-        }
-    }
-
-    /** Subclass parses the decrypted plaintext string and populates its transient cached fields. */
-    protected abstract void parsePayload(String plainPayload);
-
-    public abstract String getEventType();
-
-    private static String computeChecksum(String serverId, long timestamp, long messageSalt) {
+    static String computeChecksum(String serverId, long timestamp, long messageSalt) {
         try {
             MessageDigest digest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
             byte[] input = (messageSalt + "|" + timestamp + "|" + serverId).getBytes(StandardCharsets.UTF_8);
@@ -108,43 +77,6 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
 
     public boolean isHeaderChecksumValid() {
         return headerChecksum != null && headerChecksum.equals(computeChecksum(serverId, timestamp, messageSalt));
-    }
-
-    /** Decrypts keystoreFingerprint with this node's own key and compares it to the plaintext version field to detect a cluster keystore mismatch. */
-    public boolean isKeystoreFingerprintValid() {
-        try {
-            return version.equals(getSecurityService().decrypt(keystoreFingerprint));
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /** Computes a message fingerprint including version, partition ID, and server ID for authentication. */
-    public String computeMessageFingerprint() {
-        try {
-            MessageDigest digest = MessageDigest.getInstance(CHECKSUM_ALGORITHM);
-            String input = version + "|" + clusterPartitionId + "|" + serverId;
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static ISecurityService getSecurityService() {
-        ISecurityService svc = securityService;
-        if (svc == null) {
-            throw new IllegalStateException("Security service not initialized on ClusterPeerSecureMessage");
-        }
-        return svc;
-    }
-
-    private static String encrypt(String plaintext) {
-        return getSecurityService().encrypt(plaintext);
-    }
-
-    protected String decryptPayload() {
-        return getSecurityService().decrypt(encryptedPayload);
     }
 
     public int getVersionNo() {
@@ -185,5 +117,13 @@ public abstract class ClusterPeerSecureMessage implements Serializable {
 
     public boolean isStale(long now, long staleThresholdMs) {
         return getAgeMs(now) > staleThresholdMs;
+    }
+
+    public String getEncryptedPayload() {
+        return encryptedPayload;
+    }
+
+    public long getMessageSalt() {
+        return messageSalt;
     }
 }

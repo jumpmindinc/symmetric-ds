@@ -22,118 +22,43 @@ package org.jumpmind.symmetric.cache;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.lang.reflect.Field;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
-import org.jumpmind.security.ISecurityService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
 class ClusterPeerSecureMessageTest {
-    private static final class TestPeerHeartbeatMessage extends ClusterPeerSecureMessage {
-        private static final long serialVersionUID = 1L;
-        private transient String eventType;
-
-        TestPeerHeartbeatMessage(String eventType, String serverId, String clusterPartitionId, String version) {
-            super(serverId, clusterPartitionId, version, System.currentTimeMillis(), eventType);
-            this.eventType = eventType;
-            markDecrypted();
-        }
-
-        @Override
-        protected void parsePayload(String plainPayload) {
-            this.eventType = plainPayload;
-        }
-
-        @Override
-        public String getEventType() {
-            ensureDecrypted();
-            return eventType;
-        }
-    }
-
-    @BeforeEach
-    void setUp() {
-        ISecurityService mockSecurityService = mock(ISecurityService.class);
-        when(mockSecurityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
-        when(mockSecurityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
-        ClusterPeerSecureMessage.setSecurityService(mockSecurityService);
-    }
-
-    private TestPeerHeartbeatMessage heartbeat() {
-        return new TestPeerHeartbeatMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", "1.0");
-    }
-
-    private TestPeerHeartbeatMessage serializeRoundTrip(TestPeerHeartbeatMessage msg) throws Exception {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        new ObjectOutputStream(baos).writeObject(msg);
-        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
-        return (TestPeerHeartbeatMessage) ois.readObject();
-    }
-
     @Test
     void getVersionNo_returnsExpectedConstant() {
-        assertEquals(20260611, heartbeat().getVersionNo());
+        long messageSalt = 98765L;
+        long timestamp = System.currentTimeMillis();
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum("server1", timestamp, messageSalt);
+        ClusterPeerSecureMessage msg = new ClusterPeerSecureMessage("server1", "inst1", "1.0", timestamp,
+                messageSalt, headerChecksum, "fingerprint", "payload");
+        assertEquals(20260611, msg.getVersionNo());
     }
 
     @Test
     void isHeaderChecksumValid_freshMessage_returnsTrue() {
-        assertTrue(heartbeat().isHeaderChecksumValid());
+        long messageSalt = 98765L;
+        long timestamp = System.currentTimeMillis();
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum("server1", timestamp, messageSalt);
+        ClusterPeerSecureMessage msg = new ClusterPeerSecureMessage("server1", "inst1", "1.0", timestamp,
+                messageSalt, headerChecksum, "fingerprint", "payload");
+        assertTrue(msg.isHeaderChecksumValid());
     }
 
     @Test
     void isHeaderChecksumValid_tamperedChecksum_returnsFalse() throws Exception {
-        TestPeerHeartbeatMessage msg = heartbeat();
+        long messageSalt = 98765L;
+        long timestamp = System.currentTimeMillis();
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum("server1", timestamp, messageSalt);
+        ClusterPeerSecureMessage msg = new ClusterPeerSecureMessage("server1", "inst1", "1.0", timestamp,
+                messageSalt, headerChecksum, "fingerprint", "payload");
         Field f = ClusterPeerSecureMessage.class.getDeclaredField("headerChecksum");
         f.setAccessible(true);
         f.set(msg, "tampered-checksum");
         assertFalse(msg.isHeaderChecksumValid());
-    }
-
-    @Test
-    void ensureDecrypted_deserializedMessage_lazyDecryptsPayload() throws Exception {
-        TestPeerHeartbeatMessage deserialized = serializeRoundTrip(heartbeat());
-        assertEquals(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, deserialized.getEventType());
-        assertEquals("inst1", deserialized.getClusterPartitionId());
-    }
-
-    @Test
-    void decryptPayload_securityServiceNull_throwsIllegalStateException() throws Exception {
-        TestPeerHeartbeatMessage deserialized = serializeRoundTrip(heartbeat());
-        ClusterPeerSecureMessage.setSecurityService(null);
-        try {
-            deserialized.getEventType();
-            fail("Expected IllegalStateException");
-        } catch (IllegalStateException ex) {
-            assertNotNull(ex.getMessage());
-        }
-    }
-
-    @Test
-    void computeChecksum_noSuchAlgorithm_throwsRuntimeException() {
-        try (MockedStatic<MessageDigest> mocked = mockStatic(MessageDigest.class)) {
-            mocked.when(() -> MessageDigest.getInstance(anyString()))
-                    .thenThrow(new NoSuchAlgorithmException("mocked"));
-            try {
-                new TestPeerHeartbeatMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "s1", "i1", "1.0");
-                fail("Expected RuntimeException");
-            } catch (RuntimeException ex) {
-                assertTrue(ex.getCause() instanceof NoSuchAlgorithmException);
-            }
-        }
     }
 }

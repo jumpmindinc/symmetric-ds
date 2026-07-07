@@ -37,10 +37,6 @@ class ClusterServerStatusMessageTest {
 
     @BeforeEach
     void setUp() {
-        ISecurityService securityService = mock(ISecurityService.class);
-        when(securityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
-        when(securityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
-        ClusterPeerSecureMessage.setSecurityService(securityService);
     }
 
     private ClusterServerStatusMessage heartbeat() {
