@@ -27,8 +27,11 @@ import java.util.Set;
  * ClusteredCacheManager to remain agnostic of the underlying transport (JCS lateral TCP, UDP multicast, etc.).
  */
 public interface IClusterCacheCoordinator {
-    /** Identity and network settings needed to join the cluster. */
-    record CacheCoordinatorNetworkSettings(String serverId, String clusterPartitionId, int port, boolean udpDiscoveryEnabled) {
+    /**
+     * Identity and network settings needed to join the cluster. {@code heartbeatMs} is the cluster peer heartbeat interval; the transport derives its
+     * message-delivery timeout from it (half the interval) so a blocked delivery can never stall the heartbeat loop for longer than the loop's own cadence.
+     */
+    record CacheCoordinatorNetworkSettings(String serverId, String clusterPartitionId, int port, boolean udpDiscoveryEnabled, long heartbeatMs) {
     }
 
     /** Sizing/expiration settings for a single cache region. A negative maxLifeSeconds means entries never expire by age. */

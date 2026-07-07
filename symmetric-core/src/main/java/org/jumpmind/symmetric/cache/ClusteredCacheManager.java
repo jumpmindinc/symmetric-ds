@@ -222,9 +222,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
         if (isJcsEnabled) {
             myStartTimeMs = System.currentTimeMillis();
-            boolean udpDiscoveryEnabled = Boolean.parseBoolean(System.getProperty(ServerConstants.CLUSTER_JCS_UDP_DISCOVERY_ENABLED, "false"));
+            boolean udpDiscoveryEnabled = Boolean.parseBoolean(System.getProperty(ServerConstants.CLUSTER_JCS_UDP_DISCOVERY_ENABLED, "true"));
             CacheCoordinatorNetworkSettings networkSettings = new CacheCoordinatorNetworkSettings(serverId,
-                    clusterPartitionId, port, udpDiscoveryEnabled);
+                    clusterPartitionId, port, udpDiscoveryEnabled, currentHeartbeatMs);
             ensurePeerListenerStarted(networkSettings);
         }
     }

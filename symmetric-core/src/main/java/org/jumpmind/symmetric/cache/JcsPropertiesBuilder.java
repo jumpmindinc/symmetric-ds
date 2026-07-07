@@ -38,7 +38,21 @@ final class JcsPropertiesBuilder {
     private static final Logger log = LoggerFactory.getLogger(JcsPropertiesBuilder.class);
     static final String PEER_REGION = "SYM_CLUSTER_PEERS";
     static final String ENGINE_REGION = "SYM_CLUSTER_ENGINES";
-    private static final String JCS_REGION_SYNC_LATERAL_TCP = "LATERAL_TCP"; // Sync mode specific to this class
+    /**
+     * The single JCS auxiliary name for the lateral TCP transport. It is an arbitrary label (JCS's own docs use "LTCP"); the only requirement is that the
+     * auxiliary definition ({@code jcs.auxiliary.<name>}) and each region's auxiliary list ({@code jcs.region.<region>=<name>}) use the exact same string.
+     * Both are derived from this constant so they can never drift apart.
+     */
+    static final String LATERAL_TCP_AUX_NAME = "LATERAL_TCP";
+    // Fail fast on an unreachable peer so a single lateral put cannot block longer than the transport's delivery budget (half the heartbeat interval). Both
+    // are kept below that budget (3000 ms heartbeat -> 1500 ms budget by default), so a dead-peer connection attempt resolves inside it rather than being
+    // abandoned mid-flight. See JcsTcpCacheCoordinator's message-delivery executor.
+    private static final int DEFAULT_SOCKET_TIMEOUT_MS = 1000;
+    private static final int DEFAULT_OPEN_TIMEOUT_MS = 1000;
+    // A disconnected peer buffers no outbound events: cluster status/engine-state messages are idempotent and re-sent every heartbeat, so replaying a backlog
+    // on reconnect only delays fresh state behind stale copies. Zero keeps the zombie queue empty (events are dropped while disconnected and the next
+    // heartbeat re-establishes current state) rather than accumulating up to JCS's default of 1000.
+    private static final int DEFAULT_ZOMBIE_QUEUE_MAX_SIZE = 0;
     private static final int DEFAULT_MAX_OBJECTS = 1000;
     private static final int DEFAULT_MAX_LIFE_SECONDS = -1;
     private static final boolean DEFAULT_USE_MEMORY_SHRINKER = false;
@@ -101,13 +115,16 @@ final class JcsPropertiesBuilder {
     private static Properties buildJcsCoreProperties(CacheCoordinatorNetworkSettings networkSettings) {
         Properties props = new Properties();
         props.setProperty(JCS_CONFIG_GLOBAL_PREFIX, "");
-        String auxPrefix = JCS_CONFIG_AUX_PREFIX + ".LATERAL_TCP";
+        String auxPrefix = JCS_CONFIG_AUX_PREFIX + "." + LATERAL_TCP_AUX_NAME;
         props.setProperty(auxPrefix, "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.LateralTCPCacheFactory");
         props.setProperty(auxPrefix + ".attributes", "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes");
         props.setProperty(auxPrefix + ".attributes.TcpListenerPort", String.valueOf(networkSettings.port()));
         props.setProperty(auxPrefix + ".attributes.UdpDiscoveryEnabled", String.valueOf(networkSettings.udpDiscoveryEnabled()));
         props.setProperty(auxPrefix + ".attributes.AllowGet", "false");
         props.setProperty(auxPrefix + ".attributes.Receive", "true");
+        props.setProperty(auxPrefix + ".attributes.SocketTimeOut", String.valueOf(DEFAULT_SOCKET_TIMEOUT_MS));
+        props.setProperty(auxPrefix + ".attributes.OpenTimeOut", String.valueOf(DEFAULT_OPEN_TIMEOUT_MS));
+        props.setProperty(auxPrefix + ".attributes.ZombieQueueMaxSize", String.valueOf(DEFAULT_ZOMBIE_QUEUE_MAX_SIZE));
         return props;
     }
 
@@ -120,7 +137,7 @@ final class JcsPropertiesBuilder {
         Properties props = new Properties();
         for (RegionSettings settings : regionSettings) {
             String regionPrefix = JCS_CONFIG_REGION_PREFIX + "." + settings.regionName();
-            props.setProperty(regionPrefix, JCS_REGION_SYNC_LATERAL_TCP);
+            props.setProperty(regionPrefix, LATERAL_TCP_AUX_NAME);
             props.setProperty(regionPrefix + ".cacheattributes.MaxObjects", String.valueOf(settings.maxObjects()));
             props.setProperty(regionPrefix + ".cacheattributes.UseLateral", "true");
             props.setProperty(regionPrefix + ".cacheattributes.UseRemote", "false");

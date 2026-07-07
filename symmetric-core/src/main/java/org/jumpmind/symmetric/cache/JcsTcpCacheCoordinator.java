@@ -27,6 +27,14 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.jcs3.access.CacheAccess;
 import org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes;
@@ -51,6 +59,7 @@ import org.slf4j.LoggerFactory;
 public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
     static final int JCS_TCP_PORT_DEFAULT = 1101;
+    private static final long DELIVERY_TIMEOUT_FLOOR_MS = 250L;
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet(); // Used for actual network communication
     private final Map<String, String> knownPeerAddresses = new ConcurrentHashMap<>(); // serverId -> last address announced for JCS discovery
     private final ClusterMessageConverter converter = new ClusterMessageConverter();
@@ -61,11 +70,23 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private UDPDiscoveryService discoveryService; // Resolved lazily; only accessed from methods synchronized on this
     private CacheCoordinatorNetworkSettings networkSettings;
     private String myPartitionId;
+    // Actual lateral-cache puts run on this single background thread so a blocked delivery (e.g. an unreachable peer or a JCS-internal
+    // deadlock) can never stall the caller's heartbeat loop for longer than deliveryTimeoutMs. deliveryInFlight tracks the outstanding
+    // put so a stuck delivery is skipped rather than piling work onto the queue.
+    private volatile ExecutorService messageDeliveryExecutor;
+    private final AtomicReference<Future<?>> deliveryInFlight = new AtomicReference<>();
+    private volatile long deliveryTimeoutMs = DELIVERY_TIMEOUT_FLOOR_MS;
 
     @Override
     public synchronized void start(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings) {
         this.networkSettings = networkSettings;
         this.myPartitionId = networkSettings.clusterPartitionId();
+        this.deliveryTimeoutMs = Math.max(DELIVERY_TIMEOUT_FLOOR_MS, networkSettings.heartbeatMs() / 2);
+        this.messageDeliveryExecutor = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "sym-cluster-msg-delivery-" + networkSettings.serverId());
+            thread.setDaemon(true);
+            return thread;
+        });
         Properties jcsProperties = JcsPropertiesBuilder.build(networkSettings, regionSettings);
         Set<String> regionNames = new HashSet<>(Set.of(JcsPropertiesBuilder.PEER_REGION, JcsPropertiesBuilder.ENGINE_REGION));
         for (RegionSettings settings : regionSettings) {
@@ -100,6 +121,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     public synchronized void stop() {
         if (jcsManager != null) {
             log.debug("Stopping JCS cluster communication. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);
+            shutdownMessageDeliveryExecutor();
             try {
                 jcsManager.shutDown();
             } catch (Exception ex) {
@@ -194,6 +216,12 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
      * approach returns the existing UDP instance rather than creating a new one!
      */
     private UDPDiscoveryService getUdpDiscoveryService() {
+        if (networkSettings != null && !networkSettings.udpDiscoveryEnabled()) {
+            // UDP discovery is disabled: never obtain (and thereby create) a UDPDiscoveryService. UDPDiscoveryManager.getService() is
+            // get-or-create, so calling it here would spin up the multicast sender/receiver even though JCS itself did not, leaving a node
+            // that broadcasts on 228.5.6.7 despite udpDiscoveryEnabled=false. Returning null makes discovery a genuine no-op.
+            return null;
+        }
         if (this.discoveryService == null && jcsManager != null) {
             this.discoveryService = obtainUdpDiscoveryService();
         }
@@ -268,16 +296,18 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             log.debug("Skipping send to cluster peers because JCS is not initialized. serverId={}", networkSettings.serverId());
             return;
         }
-        try {
-            ClusterPeerSecureMessage secureMsg = wrapServerStatus(message);
-            cache.put(message.getServerId(), secureMsg);
-            log.debug("Sent server status. eventType={}, serverId={}, knownPeers.size={}",
-                    message.getEventType(), message.getServerId(), knownPeers.size());
-        } catch (Exception ex) {
-            String msg = String.format("Failed to send server status. eventType=%s, serverId=%s",
-                    message.getEventType(), message.getServerId());
-            log.warn(msg, ex);
-        }
+        deliverWithTimeout("server status", () -> {
+            try {
+                ClusterPeerSecureMessage secureMsg = wrapServerStatus(message);
+                cache.put(message.getServerId(), secureMsg);
+                log.debug("Sent server status. eventType={}, serverId={}, knownPeers.size={}",
+                        message.getEventType(), message.getServerId(), knownPeers.size());
+            } catch (Exception ex) {
+                String msg = String.format("Failed to send server status. eventType=%s, serverId=%s",
+                        message.getEventType(), message.getServerId());
+                log.warn(msg, ex);
+            }
+        });
     }
 
     private ClusterPeerSecureMessage wrapServerStatus(ClusterServerStatusMessage plainMsg) {
@@ -295,15 +325,66 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             log.debug("Skipping engine state message — JCS not initialized. serverId={}", networkSettings.serverId());
             return;
         }
-        try {
-            cache.put(message.getServerId(), message);
-            log.debug("Sent consolidated engine states. engineStatesCount={}, serverId={}",
-                    message.getEngineStates().size(), message.getServerId());
-        } catch (Exception ex) {
-            String msg = String.format("Failed to send consolidated engine states. serverId=%s, engineStatesCount=%d",
-                    message.getServerId(), message.getEngineStates().size());
-            log.warn(msg, ex);
+        deliverWithTimeout("engine states", () -> {
+            try {
+                cache.put(message.getServerId(), message);
+                log.debug("Sent consolidated engine states. engineStatesCount={}, serverId={}",
+                        message.getEngineStates().size(), message.getServerId());
+            } catch (Exception ex) {
+                String msg = String.format("Failed to send consolidated engine states. serverId=%s, engineStatesCount=%d",
+                        message.getServerId(), message.getEngineStates().size());
+                log.warn(msg, ex);
+            }
+        });
+    }
+
+    /**
+     * Runs a lateral-cache delivery on the dedicated background thread and waits at most {@link #deliveryTimeoutMs} (half the heartbeat interval) for it to
+     * finish. If a prior delivery is still running — the signature of a blocked transport — this delivery is skipped rather than queued, so the caller's
+     * heartbeat loop keeps ticking (discovery, staleness checks, purge) instead of deadlocking on a single unreachable peer. The delivery itself is not
+     * cancelled on timeout: interrupting a socket write mid-flight can corrupt the lateral connection, so the stuck task is left to finish or die with the JVM
+     * while newer ticks simply skip.
+     */
+    private void deliverWithTimeout(String description, Runnable deliveryTask) {
+        ExecutorService executor = messageDeliveryExecutor;
+        if (executor == null) {
+            log.debug("Skipping cluster {} delivery because the delivery executor is not running. serverId={}", description, networkSettings.serverId());
+            return;
         }
+        Future<?> previous = deliveryInFlight.get();
+        if (previous != null && !previous.isDone()) {
+            log.warn("Skipping cluster {} delivery; the previous delivery has not completed within {} ms and the transport may be blocked. serverId={}",
+                    description, deliveryTimeoutMs, networkSettings.serverId());
+            return;
+        }
+        Future<?> future;
+        try {
+            future = executor.submit(deliveryTask);
+        } catch (RejectedExecutionException ex) {
+            log.debug("Cluster {} delivery was rejected because the delivery executor is shutting down. serverId={}", description,
+                    networkSettings.serverId());
+            return;
+        }
+        deliveryInFlight.set(future);
+        try {
+            future.get(deliveryTimeoutMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException ex) {
+            log.warn("Cluster {} delivery did not complete within {} ms; continuing without blocking the heartbeat loop. serverId={}",
+                    description, deliveryTimeoutMs, networkSettings.serverId());
+        } catch (ExecutionException ex) {
+            log.warn("Cluster {} delivery failed. serverId={}", description, networkSettings.serverId(), ex.getCause());
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void shutdownMessageDeliveryExecutor() {
+        ExecutorService executor = messageDeliveryExecutor;
+        if (executor != null) {
+            executor.shutdownNow();
+            messageDeliveryExecutor = null;
+        }
+        deliveryInFlight.set(null);
     }
 
     @Override

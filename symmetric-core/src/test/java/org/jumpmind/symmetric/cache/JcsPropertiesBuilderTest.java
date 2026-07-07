@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.cache;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -35,7 +36,7 @@ import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.RemovalType;
 import org.junit.jupiter.api.Test;
 
 class JcsPropertiesBuilderTest {
-    private static final CacheCoordinatorNetworkSettings INITIAL_SETTINGS = new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, true);
+    private static final CacheCoordinatorNetworkSettings INITIAL_SETTINGS = new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, true, 3000L);
 
     @Test
     void build_containsJcsDefaultKeyWithNoTrailingPeriod() {
@@ -55,7 +56,7 @@ class JcsPropertiesBuilderTest {
 
     @Test
     void build_setsTcpListenerPortFromInitialSettings() {
-        Properties props = JcsPropertiesBuilder.build(new CacheCoordinatorNetworkSettings("server1", "inst1", 5150, true), Set.of());
+        Properties props = JcsPropertiesBuilder.build(new CacheCoordinatorNetworkSettings("server1", "inst1", 5150, true, 3000L), Set.of());
         assertEquals("5150", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort"));
     }
 
@@ -70,6 +71,16 @@ class JcsPropertiesBuilderTest {
         Properties props = JcsPropertiesBuilder.build(INITIAL_SETTINGS, Set.of());
         assertEquals("false", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.AllowGet"));
         assertEquals("true", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.Receive"));
+    }
+
+    @Test
+    void build_setsDisconnectionTuningOnTheDefinedAuxiliary() {
+        Properties props = JcsPropertiesBuilder.build(INITIAL_SETTINGS, Set.of());
+        assertEquals("1000", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.SocketTimeOut"));
+        assertEquals("1000", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.OpenTimeOut"));
+        assertEquals("0", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.ZombieQueueMaxSize"));
+        // Guard against auxiliary-name drift: these must attach to the auxiliary that is actually defined, not a stray name JCS would ignore.
+        assertNull(props.getProperty("jcs.auxiliary.LTCP.attributes.ZombieQueueMaxSize"));
     }
 
     @Test
