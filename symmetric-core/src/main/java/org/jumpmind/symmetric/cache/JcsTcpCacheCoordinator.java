@@ -215,25 +215,31 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     }
 
     private void announceDiscoveredAddress(UDPDiscoveryService service, String address) {
-        DiscoveredService discovered = buildDiscoveredService(address);
+        DiscoveredService discoveredHostsWatcher = buildHostDiscoveredInjector(address);
         for (IDiscoveryListener listener : service.getCopyOfDiscoveryListeners()) {
-            listener.addDiscoveredService(discovered);
+            listener.addDiscoveredService(discoveredHostsWatcher);
         }
     }
 
     private void retractDiscoveredAddress(UDPDiscoveryService service, String address) {
-        DiscoveredService discovered = buildDiscoveredService(address);
+        DiscoveredService discoveredHostsWatcher = buildHostDiscoveredInjector(address);
         for (IDiscoveryListener listener : service.getCopyOfDiscoveryListeners()) {
-            listener.removeDiscoveredService(discovered);
+            listener.removeDiscoveredService(discoveredHostsWatcher);
         }
     }
 
-    private DiscoveredService buildDiscoveredService(String address) {
-        DiscoveredService discovered = new DiscoveredService();
-        discovered.setServiceAddress(address);
-        discovered.setServicePort(port);
-        discovered.setCacheNames(new ArrayList<>(discoveryRegionNames));
-        return discovered;
+    /**
+     *  Builds a JCS compatible DiscoveredService, which is used to inject (announce) or retract expected peer servers into the JCS lateral cache discovery mechanism.
+     * https://commons.apache.org/proper/commons-jcs//commons-jcs-core/apidocs/org/apache/commons/jcs/utils/discovery/DiscoveredService.html
+     */
+    private DiscoveredService buildHostDiscoveredInjector(String address) {
+        DiscoveredService discoveredHostsWatcher = new DiscoveredService();
+        discoveredHostsWatcher.setServiceAddress(address);
+        discoveredHostsWatcher.setServicePort(port);
+        discoveredHostsWatcher.setCacheNames(new ArrayList<>(discoveryRegionNames));
+        log.debug("Built discovered service. ipAddress={}, port={}, ClusterPartitionId={}",
+                address, port, clusterPartitionId);
+        return discoveredHostsWatcher;
     }
 
     /**
