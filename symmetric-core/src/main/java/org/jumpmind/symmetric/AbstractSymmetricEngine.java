@@ -1746,8 +1746,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected boolean detectStartupDbParametersDifferentFromLastStart() {
         boolean dbParamsDifferent = false;
         try {
-            int hashDbParams = parameterService.hashParameterValues(
-                    org.jumpmind.symmetric.web.SymmetricEngineFileUtils.STARTUP_DB_OBJECTS_SETUP_PARAMS);
+            int hashDbParams = parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS);
             String currentHashDbParamsAsString = "0x" + Integer.toHexString(hashDbParams);
             String priorHashDbParams = contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH);
             if (currentHashDbParamsAsString.equals(priorHashDbParams)) {
