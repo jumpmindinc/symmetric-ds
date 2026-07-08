@@ -270,7 +270,6 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         } else {
             log.debug("Starting registration engines first");
             startEnginesAndWait(registrationEngineStarters);
-            log.info("All registration engines have been started (before non-registration engines).");
         }
         log.debug("All engines now starting up.");
         startEngines(nonRegistrationEngineStarters);
