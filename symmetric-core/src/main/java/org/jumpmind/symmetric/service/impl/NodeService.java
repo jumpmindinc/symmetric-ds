@@ -1357,6 +1357,7 @@ public class NodeService extends AbstractService implements INodeService {
             nodeHost.setNodeId(rs.getString(NODE_ID));
             nodeHost.setHostName(rs.getString("host_name"));
             nodeHost.setInstanceId(rs.getString("instance_id"));
+            nodeHost.setClusterPartitionId(rs.getString("cluster_partition_id"));
             nodeHost.setIpAddress(rs.getString("ip_address"));
             nodeHost.setOsUser(rs.getString("os_user"));
             nodeHost.setOsName(rs.getString("os_name"));
