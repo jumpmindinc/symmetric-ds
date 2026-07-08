@@ -36,8 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Open-source discovery: mode "none". No active auto-discovery protocol runs; peers become reachable only through addresses fed in via announcePeer (populated
- * from SYM_NODE_HOST by AbstractSymmetricEngine.refreshClusterPeers). Owns the JCS lateral-discovery injection substrate shared by all subclasses.
+ * Database-based discovery: mode "db". Populated by AbstractSymmetricEngine.refreshClusterPeers from SYM_NODE_HOST.
  */
 public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
     protected final Logger log = LoggerFactory.getLogger(getClass());

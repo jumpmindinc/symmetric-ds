@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.CacheCoordinatorNetworkSettings;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -160,7 +161,7 @@ class JcsTcpCacheCoordinatorTest {
 
     @Test
     void announceDiscoveredPeer_udpDiscoveryDisabled_isNoOpAndReturnsFalse() throws Exception {
-        setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, "none", 3000L));
+        setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB, 3000L));
         assertFalse(coordinator.announceDiscoveredPeer("peer1", "172.21.0.4"));
     }
 

@@ -22,5 +22,5 @@ package org.jumpmind.symmetric.cache;
 
 /** Selects a discovery implementation by mode name (the value of the cluster.cache.discovery property). */
 public interface ICachePeerServerDiscoveryFactory {
-    ICachePeerServerDiscovery create(String mode);
+    ICachePeerServerDiscovery create(String clusterCacheDiscoveryMode);
 }

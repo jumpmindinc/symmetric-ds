@@ -30,7 +30,7 @@ public interface IClusterCacheCoordinator {
     /**
      * Identity and network settings needed to join the cluster. {@code heartbeatMs} is the cluster peer heartbeat interval; both the transport's
      * message-delivery timeout and the underlying JCS socket timeouts are derived from it so they always track the (operator-tunable) heartbeat cadence and can
-     * never exceed it. {@code discoveryMode} selects the peer-discovery mechanism (e.g. "none", "udp", "mdns").
+     * never exceed it.
      */
     record CacheCoordinatorNetworkSettings(String serverId, String clusterPartitionId, int port, String discoveryMode, long heartbeatMs) {
 

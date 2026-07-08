@@ -222,7 +222,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
         if (isJcsEnabled) {
             myStartTimeMs = System.currentTimeMillis();
-            String discoveryMode = System.getProperty(ServerConstants.CLUSTER_CACHE_DISCOVERY, "none");
+            String discoveryMode = System.getProperty(ServerConstants.CLUSTER_CACHE_DISCOVERY, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB);
             CacheCoordinatorNetworkSettings networkSettings = new CacheCoordinatorNetworkSettings(serverId,
                     clusterPartitionId, port, discoveryMode, currentHeartbeatMs);
             ensurePeerListenerStarted(networkSettings);

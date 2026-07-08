@@ -37,6 +37,8 @@ public class ServerConstants {
     public static final String CLUSTER_PARTITION_ID = "cluster.partition.id";
     public static final String CLUSTER_JCS_PORT = "cluster.jcs.port";
     public static final String CLUSTER_CACHE_DISCOVERY = "cluster.cache.discovery";
+    public static final String CLUSTER_CACHE_DISCOVERY_DB = "db";
+    public static final String CLUSTER_CACHE_DISCOVERY_SERVERS = "cluster.cache.discovery.static.servers";
     public static final int PARTITION_ID_MARKER_AUTO = 0xaaaa; // Marked is inserted at the byte 4: xxxxxxxx-MMMM-xxxx-xxxx-xxxxxxxxxxxx
     public static final int PARTITION_ID_MARKER_HARDWARE = 0xbbbb;
     public static final int PARTITION_ID_MARKER_CONFIGURED = 0xcccc;
