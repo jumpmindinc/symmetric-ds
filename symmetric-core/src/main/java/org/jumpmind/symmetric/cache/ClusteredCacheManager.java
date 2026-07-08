@@ -543,12 +543,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Adds recently observed server ID (sent us a heartbeat message) to the set of known peers.
+     * Adds recently observed server ID (sent us a heartbeat message) to the set of known peers. Rejects peers
+     * from different cluster partitions for security.
      */
     private int discoverPeersIncomingHeartbeats() {
         int newPeersCount = 0;
         for (ClusterServerStatusMessage msg : peerNetworkCoordinator.getObservedPeers()) {
-            if (addPeer(msg.getServerId(), msg.getTimestampAsDate())) {
+            if (addPeer(msg.getServerId(), msg.getTimestampAsDate(), msg.getClusterPartitionId())) {
                 newPeersCount++;
             }
         }
