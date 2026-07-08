@@ -74,7 +74,7 @@ class JdbcDatabasePlatformFactoryTest {
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         DatabaseVersion nameVersion = newPostgresVersion(PostgreSqlDatabasePlatform.JDBC_SUBPROTOCOL, "PostgreSQL");
         factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
-        assertEquals(DatabaseNamesConstants.POSTGRESQL_AURORA, nameVersion.getName());
+        assertEquals(DatabaseNamesConstants.AURORA_POSTGRESQL, nameVersion.getName());
     }
 
     @Test
@@ -96,7 +96,7 @@ class JdbcDatabasePlatformFactoryTest {
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         DatabaseVersion nameVersion = newPostgresVersion(JdbcDatabasePlatformFactory.AWS_JDBC_WRAPPER_SUBPROTOCOL, "PostgreSQL");
         factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
-        assertEquals(DatabaseNamesConstants.POSTGRESQL_AURORA, nameVersion.getName());
+        assertEquals(DatabaseNamesConstants.AURORA_POSTGRESQL, nameVersion.getName());
     }
 
     @Test

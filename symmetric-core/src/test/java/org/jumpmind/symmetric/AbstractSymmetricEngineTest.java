@@ -102,7 +102,7 @@ class AbstractSymmetricEngineTest {
     void testAuroraPostgresFallenBackToGenericPostgresPlatform() throws Exception {
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.POSTGRESQL_AURORA);
+        dbVersion.setName(DatabaseNamesConstants.AURORA_POSTGRESQL);
         when(platform.getDatabaseVersion()).thenReturn(dbVersion);
         when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL95);
         setPlatform(platform);
@@ -115,9 +115,9 @@ class AbstractSymmetricEngineTest {
     void testDedicatedAuroraPostgresPlatform() throws Exception {
         AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
         when(platform.isDedicatedPlatform()).thenReturn(true);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL_AURORA);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.AURORA_POSTGRESQL);
         DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.POSTGRESQL_AURORA);
+        dbVersion.setName(DatabaseNamesConstants.AURORA_POSTGRESQL);
         when(platform.getDatabaseVersion()).thenReturn(dbVersion);
         setPlatform(platform);
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());

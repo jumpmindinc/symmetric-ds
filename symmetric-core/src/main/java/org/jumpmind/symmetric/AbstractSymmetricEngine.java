@@ -798,8 +798,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected void checkForProOnlyDatabase() {
         DatabaseVersion dbVersion = platform.getDatabaseVersion();
         String dbVersionName = dbVersion != null ? dbVersion.getName() : null;
-        if (DatabaseNamesConstants.POSTGRESQL_AURORA.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.POSTGRESQL_AURORA.equalsIgnoreCase(platform.getName())) {
+        if (DatabaseNamesConstants.AURORA_POSTGRESQL.equalsIgnoreCase(dbVersionName)
+                && !DatabaseNamesConstants.AURORA_POSTGRESQL.equalsIgnoreCase(platform.getName())) {
             throw new SymmetricException(
                     "The detected database platform '%s' is not supported in SymmetricDS open source. "
                             + "AWS Aurora PostgreSQL requires SymmetricDS Pro. "

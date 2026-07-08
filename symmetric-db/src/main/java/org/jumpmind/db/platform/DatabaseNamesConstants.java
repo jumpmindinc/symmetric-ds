@@ -50,7 +50,7 @@ final public class DatabaseNamesConstants {
     public final static String DB2AS400 = "db2as400";
     public final static String POSTGRESQL = "postgres";
     public final static String POSTGRESQL95 = "postgres95";
-    public static final String POSTGRESQL_AURORA = "postgresaurora";
+    public static final String AURORA_POSTGRESQL = "aurorapostgres";
     public final static String ASE = "ase";
     public final static String SQLANYWHERE = "sqlanywhere";
     public final static String SQLANYWHERE12 = "sqlanywhere12";
