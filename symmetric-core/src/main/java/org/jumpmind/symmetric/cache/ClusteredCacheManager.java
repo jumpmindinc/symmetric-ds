@@ -103,8 +103,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     @Override
-    public synchronized boolean addPeer(String serverId, Date historicalHeartbeat) {
+    public synchronized boolean addPeer(String serverId, Date historicalHeartbeat, String peerClusterPartitionId) {
         if (serverId == null || isOwnServerId(serverId)) {
+            return false;
+        }
+        if (peerClusterPartitionId != null && !peerClusterPartitionId.equals(myClusterPartitionId)) {
+            log.warn("Rejecting cluster peer due to partition ID mismatch! ServerId={}, peerClusterPartitionId={}, myClusterPartitionId={}",
+                    serverId, peerClusterPartitionId, myClusterPartitionId);
             return false;
         }
         boolean peerIsRejected = peerNetworkCoordinator.getConverter().getRejectedServers().containsKey(serverId);
