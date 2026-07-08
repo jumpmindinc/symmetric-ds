@@ -222,9 +222,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
         if (isJcsEnabled) {
             myStartTimeMs = System.currentTimeMillis();
-            boolean udpDiscoveryEnabled = Boolean.parseBoolean(System.getProperty(ServerConstants.CLUSTER_JCS_UDP_DISCOVERY_ENABLED, "true"));
+            String discoveryMode = System.getProperty(ServerConstants.CLUSTER_CACHE_DISCOVERY, "none");
             CacheCoordinatorNetworkSettings networkSettings = new CacheCoordinatorNetworkSettings(serverId,
-                    clusterPartitionId, port, udpDiscoveryEnabled, currentHeartbeatMs);
+                    clusterPartitionId, port, discoveryMode, currentHeartbeatMs);
             ensurePeerListenerStarted(networkSettings);
         }
     }
@@ -250,8 +250,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private synchronized void ensurePeerListenerStarted(CacheCoordinatorNetworkSettings networkSettings) {
-        String serverInfo = String.format("serverId=%s, clusterPartitionId=%s, port=%d, udpDiscoveryEnabled=%s",
-                networkSettings.serverId(), networkSettings.clusterPartitionId(), networkSettings.port(), networkSettings.udpDiscoveryEnabled());
+        String serverInfo = String.format("serverId=%s, clusterPartitionId=%s, port=%d, discoveryMode=%s",
+                networkSettings.serverId(), networkSettings.clusterPartitionId(), networkSettings.port(), networkSettings.discoveryMode());
         if (isClusterPeerListenerStarted) {
             log.debug("Skipping redundant JCS cluster peer listener start on {}", serverInfo);
             return;

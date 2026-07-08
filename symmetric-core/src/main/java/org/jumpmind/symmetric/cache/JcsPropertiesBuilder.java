@@ -60,6 +60,10 @@ final class JcsPropertiesBuilder {
     private JcsPropertiesBuilder() {
     }
 
+    public static String lateralAuxAttributesPrefix() {
+        return JCS_CONFIG_AUX_PREFIX + "." + LATERAL_TCP_AUX_NAME + ".attributes";
+    }
+
     /**
      * Builds the full set of JCS configuration properties: core lateral TCP/UDP discovery settings plus the mandatory regions merged with any caller-supplied
      * regions.
@@ -114,7 +118,7 @@ final class JcsPropertiesBuilder {
         props.setProperty(auxPrefix, "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.LateralTCPCacheFactory");
         props.setProperty(auxPrefix + ".attributes", "org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes");
         props.setProperty(auxPrefix + ".attributes.TcpListenerPort", String.valueOf(networkSettings.port()));
-        props.setProperty(auxPrefix + ".attributes.UdpDiscoveryEnabled", String.valueOf(networkSettings.udpDiscoveryEnabled()));
+        props.setProperty(auxPrefix + ".attributes.UdpDiscoveryEnabled", "false");
         props.setProperty(auxPrefix + ".attributes.AllowGet", "false");
         props.setProperty(auxPrefix + ".attributes.Receive", "true");
         // Socket open/read timeouts track the heartbeat cadence (see CacheCoordinatorNetworkSettings.socketTimeoutMs): kept at or below the delivery budget so

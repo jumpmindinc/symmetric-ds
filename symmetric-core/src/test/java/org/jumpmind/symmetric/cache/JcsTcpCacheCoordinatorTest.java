@@ -160,7 +160,7 @@ class JcsTcpCacheCoordinatorTest {
 
     @Test
     void announceDiscoveredPeer_udpDiscoveryDisabled_isNoOpAndReturnsFalse() throws Exception {
-        setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, false, 3000L));
+        setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, "none", 3000L));
         assertFalse(coordinator.announceDiscoveredPeer("peer1", "172.21.0.4"));
     }
 
@@ -169,7 +169,7 @@ class JcsTcpCacheCoordinatorTest {
     void deliverWithTimeout_blockedDelivery_returnsWithinTimeoutAndDoesNotWaitForCompletion() throws Exception {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, true, 400L));
+            setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, "udp", 400L));
             setField("messageDeliveryExecutor", executor);
             setField("deliveryTimeoutMs", 200L);
             CountDownLatch releaseBlockedTask = new CountDownLatch(1);
@@ -189,7 +189,7 @@ class JcsTcpCacheCoordinatorTest {
     void deliverWithTimeout_priorDeliveryStillRunning_skipsWithoutBlocking() throws Exception {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, true, 400L));
+            setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, "udp", 400L));
             setField("messageDeliveryExecutor", executor);
             setField("deliveryTimeoutMs", 200L);
             CountDownLatch releaseFirstTask = new CountDownLatch(1);
@@ -211,7 +211,7 @@ class JcsTcpCacheCoordinatorTest {
     void deliverWithTimeout_fastDelivery_runsToCompletion() throws Exception {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
-            setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, true, 400L));
+            setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, "udp", 400L));
             setField("messageDeliveryExecutor", executor);
             setField("deliveryTimeoutMs", 2000L);
             AtomicBoolean taskRan = new AtomicBoolean(false);

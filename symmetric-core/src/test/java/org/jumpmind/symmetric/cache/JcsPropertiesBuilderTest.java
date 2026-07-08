@@ -36,7 +36,7 @@ import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.RemovalType;
 import org.junit.jupiter.api.Test;
 
 class JcsPropertiesBuilderTest {
-    private static final CacheCoordinatorNetworkSettings INITIAL_SETTINGS = new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, true, 3000L);
+    private static final CacheCoordinatorNetworkSettings INITIAL_SETTINGS = new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, "udp", 3000L);
 
     @Test
     void build_containsJcsDefaultKeyWithNoTrailingPeriod() {
@@ -56,14 +56,19 @@ class JcsPropertiesBuilderTest {
 
     @Test
     void build_setsTcpListenerPortFromInitialSettings() {
-        Properties props = JcsPropertiesBuilder.build(new CacheCoordinatorNetworkSettings("server1", "inst1", 5150, true, 3000L), Set.of());
+        Properties props = JcsPropertiesBuilder.build(new CacheCoordinatorNetworkSettings("server1", "inst1", 5150, "udp", 3000L), Set.of());
         assertEquals("5150", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.TcpListenerPort"));
     }
 
     @Test
-    void build_enablesUdpDiscovery() {
+    void build_disablesUdpDiscoveryByDefault() {
         Properties props = JcsPropertiesBuilder.build(INITIAL_SETTINGS, Set.of());
-        assertEquals("true", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.UdpDiscoveryEnabled"));
+        assertEquals("false", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.UdpDiscoveryEnabled"));
+    }
+
+    @Test
+    void lateralAuxAttributesPrefix_returnsExpectedKey() {
+        assertEquals("jcs.auxiliary.LATERAL_TCP.attributes", JcsPropertiesBuilder.lateralAuxAttributesPrefix());
     }
 
     @Test
@@ -87,21 +92,21 @@ class JcsPropertiesBuilderTest {
     @Test
     void build_shortHeartbeat_shrinksSocketTimeoutsToTheDeliveryBudget() {
         // heartbeat 1000 -> delivery budget 500 -> socket timeouts follow the budget rather than the 2000 ms ceiling, so a dead-peer put still fails in budget.
-        Properties props = JcsPropertiesBuilder.build(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, true, 1000L), Set.of());
+        Properties props = JcsPropertiesBuilder.build(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, "udp", 1000L), Set.of());
         assertEquals("500", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.SocketTimeOut"));
         assertEquals("500", props.getProperty("jcs.auxiliary.LATERAL_TCP.attributes.OpenTimeOut"));
     }
 
     @Test
     void networkSettings_deriveTimeoutsFromHeartbeat_acrossFloorCeilingAndHalving() {
-        assertEquals(1500L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 3000L).deliveryTimeoutMs());
-        assertEquals(1500L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 3000L).socketTimeoutMs());
-        assertEquals(500L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 1000L).socketTimeoutMs());
+        assertEquals(1500L, new CacheCoordinatorNetworkSettings("s", "i", 1101, "udp", 3000L).deliveryTimeoutMs());
+        assertEquals(1500L, new CacheCoordinatorNetworkSettings("s", "i", 1101, "udp", 3000L).socketTimeoutMs());
+        assertEquals(500L, new CacheCoordinatorNetworkSettings("s", "i", 1101, "udp", 1000L).socketTimeoutMs());
         // Below 2x the floor, the delivery budget floors at 250 ms and the socket timeout follows it.
-        assertEquals(250L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 200L).deliveryTimeoutMs());
-        assertEquals(250L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 200L).socketTimeoutMs());
+        assertEquals(250L, new CacheCoordinatorNetworkSettings("s", "i", 1101, "udp", 200L).deliveryTimeoutMs());
+        assertEquals(250L, new CacheCoordinatorNetworkSettings("s", "i", 1101, "udp", 200L).socketTimeoutMs());
         // Above 2x the ceiling, the socket timeout stays capped at 2000 ms even though the budget is larger.
-        assertEquals(2000L, new CacheCoordinatorNetworkSettings("s", "i", 1101, true, 10000L).socketTimeoutMs());
+        assertEquals(2000L, new CacheCoordinatorNetworkSettings("s", "i", 1101, "udp", 10000L).socketTimeoutMs());
     }
 
     @Test

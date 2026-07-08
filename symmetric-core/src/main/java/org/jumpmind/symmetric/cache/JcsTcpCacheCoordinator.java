@@ -37,14 +37,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.jcs3.access.CacheAccess;
-import org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes;
 import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
-import org.apache.commons.jcs3.utils.discovery.DiscoveredService;
-import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryManager;
-import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryService;
-import org.apache.commons.jcs3.utils.discovery.behavior.IDiscoveryListener;
-import org.apache.commons.jcs3.utils.serialization.StandardSerializer;
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,13 +55,11 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
     static final int JCS_TCP_PORT_DEFAULT = 1101;
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet(); // Used for actual network communication
-    private final Map<String, String> knownPeerAddresses = new ConcurrentHashMap<>(); // serverId -> last address announced for JCS discovery
     private final ClusterMessageConverter converter = new ClusterMessageConverter();
     private volatile CompositeCacheManager jcsManager;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> engineStateCache;
-    private Set<String> discoveryRegionNames = Collections.emptySet();
-    private UDPDiscoveryService discoveryService; // Resolved lazily; only accessed from methods synchronized on this
+    private volatile ICachePeerServerDiscovery discovery;
     private CacheCoordinatorNetworkSettings networkSettings;
     private String myPartitionId;
     // Actual lateral-cache puts run on this single background thread so a blocked delivery (e.g. an unreachable peer or a JCS-internal
@@ -86,17 +79,20 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             thread.setDaemon(true);
             return thread;
         });
+        ICachePeerServerDiscoveryFactory discoveryFactory = AppUtils.newInstance(ICachePeerServerDiscoveryFactory.class, CachePeerServerDiscoveryFactory.class);
+        this.discovery = discoveryFactory.create(networkSettings.discoveryMode());
         Properties jcsProperties = JcsPropertiesBuilder.build(networkSettings, regionSettings);
+        discovery.enrichJcsProperties(jcsProperties, JcsPropertiesBuilder.lateralAuxAttributesPrefix());
         Set<String> regionNames = new HashSet<>(Set.of(JcsPropertiesBuilder.PEER_REGION, JcsPropertiesBuilder.ENGINE_REGION));
         for (RegionSettings settings : regionSettings) {
             regionNames.add(settings.regionName());
         }
-        this.discoveryRegionNames = regionNames;
         try {
             jcsManager = CompositeCacheManager.getUnconfiguredInstance();
             jcsManager.configure(jcsProperties);
             peerHeartbeatCache = new CacheAccess<>(jcsManager.getCache(JcsPropertiesBuilder.PEER_REGION));
             engineStateCache = new CacheAccess<>(jcsManager.getCache(JcsPropertiesBuilder.ENGINE_REGION));
+            discovery.start(new DiscoveryContext(jcsManager, networkSettings.port(), regionNames, networkSettings.serverId()));
             log.info("Started JCS cluster communication. Port={}, ServerId={}, ClusterPartitionId={}", networkSettings.port(), networkSettings.serverId(),
                     myPartitionId);
         } catch (Exception ex) {
@@ -121,6 +117,10 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         if (jcsManager != null) {
             log.debug("Stopping JCS cluster communication. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);
             shutdownMessageDeliveryExecutor();
+            if (discovery != null) {
+                discovery.stop();
+                discovery = null;
+            }
             try {
                 jcsManager.shutDown();
             } catch (Exception ex) {
@@ -129,7 +129,6 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             jcsManager = null;
             peerHeartbeatCache = null;
             engineStateCache = null;
-            discoveryService = null;
             log.debug("JCS cluster cache shutdown complete. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);
         } else {
             log.debug("JCS cluster cache was not running, so no shutdown was performed. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(),
@@ -149,26 +148,11 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             return false;
         }
         if (converter.getRejectedServers().containsKey(serverId)) {
-            log.debug("Rejecting UDP-discovered peer due to blacklist. serverId={}, address={}, ClusterPartitionId={}, rejectionReason={}",
-                    serverId, address, myPartitionId, converter.getRejectedServers().get(serverId).getReason());
+            log.debug("Rejecting discovered peer due to blacklist. serverId={}, address={}, reason={}", serverId, address,
+                    converter.getRejectedServers().get(serverId).getReason());
             return false;
         }
-        UDPDiscoveryService service = getUdpDiscoveryService();
-        if (service == null) {
-            log.debug("Skipping peer discovery announcement because JCS discovery is unavailable. serverId={}, address={}", serverId, address);
-            return false;
-        }
-        String previousAddress = knownPeerAddresses.put(serverId, address);
-        if (address.equals(previousAddress)) {
-            return false;
-        }
-        if (previousAddress != null) {
-            retractDiscoveredAddress(service, previousAddress);
-        }
-        announceDiscoveredAddress(service, address);
-        log.info("Announced discovered peer for JCS lateral cache discovery. serverId={}, address={}, previousAddress={}, ClusterPartitionId={}",
-                serverId, address, previousAddress, myPartitionId);
-        return true;
+        return discovery != null && discovery.announcePeer(serverId, address);
     }
 
     @Override
@@ -190,12 +174,8 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public synchronized boolean removePeer(String serverId) {
-        String address = knownPeerAddresses.remove(serverId);
-        if (address != null) {
-            UDPDiscoveryService service = getUdpDiscoveryService();
-            if (service != null) {
-                retractDiscoveredAddress(service, address);
-            }
+        if (discovery != null) {
+            discovery.retractPeer(serverId);
         }
         if (knownPeers.remove(serverId)) {
             purgePeerMessages(serverId);
@@ -206,67 +186,6 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             log.debug("Peer not known to cluster, nothing to remove. serverId={}, ClusterPartitionId={}", serverId, myPartitionId);
             return false;
         }
-    }
-
-    /**
-     * Obtains handle to the UDPDiscoveryService JCS already created while configuring the lateral TCP cache (lazy resolve to avoid zombie UDPDiscoveryService
-     * problem). UDPDiscoveryManager's internal service map is keyed only by discoveryAddress:discoveryPort:servicePort, and since buildJcsCoreProperties()
-     * never overrides the UDP discovery address/port, a fresh TCPLateralCacheAttributes' defaults are guaranteed to match what JCS is actually using. This
-     * approach returns the existing UDP instance rather than creating a new one!
-     */
-    private UDPDiscoveryService getUdpDiscoveryService() {
-        if (networkSettings != null && !networkSettings.udpDiscoveryEnabled()) {
-            // UDP discovery is disabled: never obtain (and thereby create) a UDPDiscoveryService. UDPDiscoveryManager.getService() is
-            // get-or-create, so calling it here would spin up the multicast sender/receiver even though JCS itself did not, leaving a node
-            // that broadcasts on 228.5.6.7 despite udpDiscoveryEnabled=false. Returning null makes discovery a genuine no-op.
-            return null;
-        }
-        if (this.discoveryService == null && jcsManager != null) {
-            this.discoveryService = obtainUdpDiscoveryService();
-        }
-        return this.discoveryService;
-    }
-
-    private UDPDiscoveryService obtainUdpDiscoveryService() {
-        UDPDiscoveryService currentDiscoveryService = null;
-        try {
-            TCPLateralCacheAttributes discoveryDefaults = new TCPLateralCacheAttributes();
-            currentDiscoveryService = UDPDiscoveryManager.getInstance().getService(
-                    discoveryDefaults.getUdpDiscoveryAddr(), discoveryDefaults.getUdpDiscoveryPort(),
-                    null, networkSettings.port(), 0, jcsManager, new StandardSerializer());
-            log.debug("Resolved JCS UDP discovery service. ServerId={}", networkSettings.serverId());
-        } catch (Exception ex) {
-            log.warn("Unable to resolve JCS UDP discovery service! ServerId={}", networkSettings.serverId(), ex);
-        }
-        return currentDiscoveryService;
-    }
-
-    private void announceDiscoveredAddress(UDPDiscoveryService service, String address) {
-        DiscoveredService discoveredHostsWatcher = buildHostDiscoveredInjector(address);
-        for (IDiscoveryListener listener : service.getCopyOfDiscoveryListeners()) {
-            listener.addDiscoveredService(discoveredHostsWatcher);
-        }
-    }
-
-    private void retractDiscoveredAddress(UDPDiscoveryService service, String address) {
-        DiscoveredService discoveredHostsWatcher = buildHostDiscoveredInjector(address);
-        for (IDiscoveryListener listener : service.getCopyOfDiscoveryListeners()) {
-            listener.removeDiscoveredService(discoveredHostsWatcher);
-        }
-    }
-
-    /**
-     * Builds a JCS compatible DiscoveredService, which is used to inject (announce) or retract expected peer servers into the JCS lateral cache discovery
-     * mechanism. https://commons.apache.org/proper/commons-jcs//commons-jcs-core/apidocs/org/apache/commons/jcs/utils/discovery/DiscoveredService.html
-     */
-    private DiscoveredService buildHostDiscoveredInjector(String address) {
-        DiscoveredService discoveredHostsWatcher = new DiscoveredService();
-        discoveredHostsWatcher.setServiceAddress(address);
-        discoveredHostsWatcher.setServicePort(networkSettings.port());
-        discoveredHostsWatcher.setCacheNames(new ArrayList<>(discoveryRegionNames));
-        log.debug("Built discovered service. ipAddress={}, port={}, ClusterPartitionId={}",
-                address, networkSettings.port(), myPartitionId);
-        return discoveredHostsWatcher;
     }
 
     /**
