@@ -97,7 +97,6 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     private Set<SymmetricEngineStarter> enginesStarting = Collections.synchronizedSet(new HashSet<SymmetricEngineStarter>());
     private Set<String> enginesStartingNames = Collections.synchronizedSortedSet(new TreeSet<String>());
     private Map<String, FailedEngineInfo> enginesFailed = Collections.synchronizedMap(new HashMap<String, FailedEngineInfo>());
-    private ExecutorService restartExecutor;
     private boolean staticEnginesMode = false;
     private boolean multiServerMode = false;
     private boolean isAutoStartEnginesEnabled = true;
@@ -107,7 +106,8 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     private String deploymentType = Constants.DEPLOYMENT_TYPE_SERVER;
     private boolean holderHasBeenStarted = false;
     private static final String DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT = "5";
-    private static long ENGINE_STOP_TIMEOUT_SECONDS = 15;
+    private static long ENGINE_STOP_TIMEOUT_MINUTES = 15;
+    private static long ENGINE_START_TIMEOUT_MINUTES = 5 * 60;
     private static TypedProperties coreServerProperties;
     private static ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
     private static IClusteredCacheManager clusteredCacheManager;
@@ -295,10 +295,10 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             log.debug("No registration engines found. Starting all other engines.");
         } else {
             log.debug("Starting registration engines first");
-            startEnginesAndWait(registrationEngineStarters, Thread.MAX_PRIORITY);
+            startEnginesInParallel(registrationEngineStarters, Thread.MAX_PRIORITY);
         }
         log.debug("All engines now starting up.");
-        startEngines(nonRegistrationEngineStarters);
+        startEnginesInParallel(nonRegistrationEngineStarters, Thread.NORM_PRIORITY);
     }
 
     protected Set<SymmetricEngineStarter> filterEngineStartersByRegistrationType(boolean isRegistrationEngineStarter,
@@ -308,17 +308,47 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
                 .collect(Collectors.toSet());
     }
 
-    private void startEnginesAndWait(Set<SymmetricEngineStarter> starters, int threadPriority) {
-        // try-with-resources: close() blocks until these engines finish before returning
-        try (ExecutorService executor = getThreadPoolExecutor("symmetric-engine-startup", threadPriority)) {
+    private void startEnginesInParallel(Set<SymmetricEngineStarter> starters, int threadPriority) {
+        ExecutorService executor = getThreadPoolExecutor("symmetric-engine-startup", threadPriority);
+        try {
             executeEngineStarters(executor, starters);
+            log.debug("Waiting for {} minutes while registration engines are starting", ENGINE_START_TIMEOUT_MINUTES);
+            boolean terminated = executor.awaitTermination(ENGINE_START_TIMEOUT_MINUTES, TimeUnit.MINUTES);
+            if (!terminated) {
+                log.warn("Timeout expired waiting for registration engines to start after {} minutes, forcing shutdown", ENGINE_START_TIMEOUT_MINUTES);
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException ex) {
+            log.warn("Interrupted while waiting for registration engines to start", ex);
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
         } catch (Exception e) {
             log.error("Error while waiting for registration engines to start: {}", starters, e);
+        } finally {
+            executor.shutdown();
         }
     }
 
-    private void startEngines(Set<SymmetricEngineStarter> starters) {
-        executeEngineStarters(getThreadPoolExecutor("symmetric-engine-startup", Thread.NORM_PRIORITY), starters);
+    private void stopAllEnginesInParallel(Collection<ServerSymmetricEngine> enginesToStop) {
+        ExecutorService executor = getThreadPoolExecutor("symmetric-engine-stop", Thread.MAX_PRIORITY);
+        try {
+            for (ServerSymmetricEngine engine : enginesToStop) {
+                executor.execute(engine::destroy);
+            }
+            executor.shutdown();
+            log.debug("Waiting for {} minutes while engines are stopping", ENGINE_STOP_TIMEOUT_MINUTES);
+            boolean terminated = executor.awaitTermination(ENGINE_STOP_TIMEOUT_MINUTES, TimeUnit.MINUTES);
+            if (!terminated) {
+                log.warn("Timeout expired waiting for engines to stop after {} minutes, forcing shutdown", ENGINE_STOP_TIMEOUT_MINUTES);
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException ex) {
+            log.warn("Interrupted while waiting for engines to stop", ex);
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        } finally {
+            executor.shutdown();
+        }
     }
 
     private ExecutorService getThreadPoolExecutor(String threadName, int threadPriority) {
@@ -338,7 +368,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         }
         executor.shutdown();
     }
-    
+
     public synchronized void restart(String engineName) {
         FailedEngineInfo info = enginesFailed.get(engineName);
         if (info != null) {
@@ -353,13 +383,9 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
                 ApplicationHealthTracker.getTracker().stopTrackingEngine(engineName);
             }
             enginesFailed.remove(engineName);
-            if (restartExecutor == null) {
-                int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT, "5"));
-                restartExecutor = getThreadPoolExecutor("symmetric-engine-restart", Thread.NORM_PRIORITY);
-            }
             SymmetricEngineStarter starter = new SymmetricEngineStarter(info.getPropertyFileName(), this);
             enginesStarting.add(starter);
-            restartExecutor.execute(starter);
+            startEnginesInParallel(Collections.singleton(starter), Thread.NORM_PRIORITY);
         }
     }
 
@@ -390,25 +416,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         enginesStarting.clear();
         enginesFailed.clear();
         if (!enginesCopy.isEmpty()) {
-            stopAllEnginesInParallel();
-        }
-    }
-
-    private void stopAllEnginesInParallel() {
-        try (ExecutorService executor = getThreadPoolExecutor("symmetric-engine-stop", Thread.MAX_PRIORITY)) {
-            for (ServerSymmetricEngine engine : enginesCopy) {
-                executor.execute(engine::destroy);
-            }
-            executor.shutdown();
-            log.debug("Waiting for {} seconds while engines are stopping", ENGINE_STOP_TIMEOUT_SECONDS);
-            executor.awaitTermination(ENGINE_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (InterruptedException ex) {
-            log.warn("Interrupted while waiting for engines to stop", ex);
-            Thread.currentThread().interrupt();
-        } finally {
-            if (!executor.isTerminated()) {
-                executor.shutdownNow();
-            }
+            stopAllEnginesInParallel(enginesCopy);
         }
     }
 
