@@ -96,6 +96,22 @@ public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
         knownPeerAddresses.clear();
     }
 
+    protected void ensureUdpDiscoveryServiceInitialized() {
+        DiscoveryContext ctx = context;
+        if (ctx == null || ctx.jcsManager() == null) {
+            return;
+        }
+        if (discoveryService == null) {
+            try {
+                TCPLateralCacheAttributes defaults = new TCPLateralCacheAttributes();
+                discoveryService = UDPDiscoveryManager.getInstance().getService(defaults.getUdpDiscoveryAddr(), defaults.getUdpDiscoveryPort(),
+                        null, ctx.port(), 0, ctx.jcsManager(), new StandardSerializer());
+            } catch (Exception ex) {
+                log.warn("Unable to resolve JCS UDP discovery service! serverId={}", ctx.serverId(), ex);
+            }
+        }
+    }
+
     protected UDPDiscoveryService getUdpDiscoveryService() {
         DiscoveryContext ctx = context;
         if (ctx == null || ctx.jcsManager() == null) {
