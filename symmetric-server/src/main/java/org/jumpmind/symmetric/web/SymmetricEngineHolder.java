@@ -46,6 +46,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.util.DataSourceProperties;
+import org.jumpmind.util.ExceptionUtils;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.properties.SortedProperties;
 import org.jumpmind.properties.TypedProperties;
@@ -164,9 +165,10 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         if (clusteredCacheManager != null && clusteredCacheManager.isInitialized()) {
             return clusteredCacheManager;
         }
+        IClusteredCacheManager ccManager = null;
         boolean isJcsEnabled = false;
         try {
-            IClusteredCacheManager ccManager = ClusteredCacheManager.getInstance();
+            ccManager = ClusteredCacheManager.getInstance();
             String clusterPartitionId = ClusterPartitionGenerator.resolve(coreServerProperties);
             String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
             isJcsEnabled = ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties);
@@ -320,16 +322,15 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     }
 
     private ExecutorService getThreadPoolExecutor(String threadName, int threadPriority) {
-        if (theadPriority < Thread.MIN_PRIORITY || threadPriority > Thread.MAX_PRIORITY) {
-            log.warn("Invalid thread priority! Setting to {}", Thread.MAX_NORMAL_PRIORITY);
-            threadPriority = Thread.MAX_NORMAL_PRIORITY;
+        if (threadPriority < Thread.MIN_PRIORITY || threadPriority > Thread.MAX_PRIORITY) {
+            log.warn("Invalid thread priority! Setting to {}", Thread.NORM_PRIORITY);
+            threadPriority = Thread.NORM_PRIORITY;
         }
         int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT,
                 DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT));
-        CustomizableThreadFactory threadFactory = new CustomizableThreadFactory(threadName);
-        threadFactory.setThreadPriority(threadPriority);
+        CustomizableThreadFactory threadFactory = new CustomizableThreadFactory(threadName, threadPriority);
         return Executors.newFixedThreadPool(poolSize, threadFactory);
-    } // Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-restart"));
+    }
 
     private void executeEngineStarters(ExecutorService executor, Set<SymmetricEngineStarter> engineStarters) {
         for (SymmetricEngineStarter starter : engineStarters) {
@@ -337,7 +338,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         }
         executor.shutdown();
     }
-
+    
     public synchronized void restart(String engineName) {
         FailedEngineInfo info = enginesFailed.get(engineName);
         if (info != null) {
