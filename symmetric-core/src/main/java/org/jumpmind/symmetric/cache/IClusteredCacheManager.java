@@ -48,10 +48,11 @@ public interface IClusteredCacheManager {
     void unregisterEngine(ISymmetricEngine engine);
 
     /**
-     * Add a remote server hostname to the JCS lateral peer list and seed its initial online/stale state from the provided heartbeat timestamp. Safe to call
-     * before {@link #registerEngine}; peers accumulate and are applied when JCS initializes. Return true if the peer was not already known to the cluster.
+     * Add a remote server hostname to the JCS lateral peer list and seed its initial online/stale state from the provided heartbeat timestamp. Rejects peers
+     * with mismatched cluster partition IDs for security. Safe to call before {@link #registerEngine}; peers accumulate and are applied when JCS initializes.
+     * Return true if the peer was not already known to the cluster.
      */
-    boolean addPeer(String serverId, Date heartbeatTime);
+    boolean addPeer(String serverId, Date heartbeatTime, String peerClusterPartitionId);
 
     /**
      * Registers a peer's network address for transport-level discovery, so the underlying transport can reach the peer without depending on its own

@@ -1729,7 +1729,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         for (NodeHost host : nodeService.findNodeHosts(nodeId)) {
             if (host.getHeartbeatTime() != null && host.getHeartbeatTime().getTime() > cutoff
                     && !myServerId.equals(host.getHostName())) {
-                if (clusteredCacheManager.addPeer(host.getHostName(), host.getHeartbeatTime())) {
+                if (clusteredCacheManager.addPeer(host.getHostName(), host.getHeartbeatTime(), host.getClusterPartitionId())) {
                     newPeerCount++;
                 }
                 if (StringUtils.isNotBlank(host.getIpAddress())) {

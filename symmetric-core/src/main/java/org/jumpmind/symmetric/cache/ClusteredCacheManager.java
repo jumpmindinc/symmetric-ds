@@ -543,8 +543,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Adds recently observed server ID (sent us a heartbeat message) to the set of known peers. Rejects peers
-     * from different cluster partitions for security.
+     * Adds recently observed server ID (sent us a heartbeat message) to the set of known peers. Rejects peers from different cluster partitions for security.
      */
     private int discoverPeersIncomingHeartbeats() {
         int newPeersCount = 0;
