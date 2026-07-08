@@ -80,13 +80,6 @@ public class SymmetricContextListener implements ServletContextListener {
             injectServerPropertiesIntoSystem("/symmetric-server.properties");
         }
         engineHolder.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(SymmetricContextListener::shutdownClusterCommunicationAndHealth,
-                "symmetric-cluster-communication-shutdown"));
-    }
-
-    private static void shutdownClusterCommunicationAndHealth() {
-        ApplicationHealthTracker.getTracker().onShutdown();
-        ClusteredCacheManager.getInstance().shutdown();
     }
 
     protected Class<?> loadRemoteStatusEndpoint() {

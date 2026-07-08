@@ -96,6 +96,14 @@ public class ClusterPartitionGenerator {
         return StringUtils.left(id, 255);
     }
 
+    public static boolean isClusterLockingEnabled(Properties properties) {
+        String value = properties != null ? properties.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED) : null;
+        if (StringUtils.isBlank(value)) {
+            value = System.getenv("SYM_CLUSTER_LOCK_ENABLED");
+        }
+        return Boolean.parseBoolean(value);
+    }
+
     private static String loadOrCreateClusterPartitionId() {
         File clusterPartitionIdFile = getClusterPartitionIdFile();
         String configuredId = StringUtils.left(readConfiguredPartitionId(), 60);

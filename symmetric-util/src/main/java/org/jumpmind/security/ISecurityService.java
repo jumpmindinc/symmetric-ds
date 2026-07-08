@@ -34,6 +34,10 @@ import javax.net.ssl.KeyManagerFactory;
 public interface ISecurityService {
     public void init();
 
+    public boolean isInitialized();
+
+    public boolean validateKeystoreIntegrity();
+
     public void installTrustedCert(TrustedCertificateEntry entry);
 
     public void installDefaultSslCert(String host);

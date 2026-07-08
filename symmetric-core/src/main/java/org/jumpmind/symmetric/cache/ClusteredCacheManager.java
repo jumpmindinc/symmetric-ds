@@ -215,6 +215,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     public synchronized void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled,
             Object engineHolder) {
         this.symmetricEngineHolder = engineHolder;
+        if (!securityService.isInitialized()) {
+            securityService.init();
+        }
         startClusterPeerListener(securityService, clusterPartitionId, serverId, isJcsEnabled);
         this.isInitializationComplete = true;
     }
@@ -794,7 +797,11 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private ISymmetricEngine getAnyEngine() {
-        return registeredEngines.values().stream().findFirst().orElse(null);
+        if (registeredEngines.isEmpty()) {
+            log.debug("No registered engines available yet.");
+            return null;
+        }
+        return registeredEngines.get(0);
     }
 
     @Override

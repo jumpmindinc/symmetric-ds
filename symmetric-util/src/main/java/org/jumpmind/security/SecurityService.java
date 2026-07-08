@@ -30,12 +30,14 @@ import java.nio.charset.Charset;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStore.TrustedCertificateEntry;
+import java.security.UnrecoverableKeyException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.spec.AlgorithmParameterSpec;
+import org.jumpmind.util.ExceptionUtils;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -65,6 +67,7 @@ public class SecurityService implements ISecurityService {
     protected static String trustStoreFileName;
     protected static URL trustStoreURL;
     protected static SecureRandom random;
+    protected static volatile boolean isKeystoreInitialized;
     static {
         keyStoreFileName = StringUtils.trimToNull(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE));
         if (keyStoreFileName == null) {
@@ -83,10 +86,48 @@ public class SecurityService implements ISecurityService {
     }
 
     protected SecurityService() {
+        isKeystoreInitialized = false;
     }
 
     @Override
     public synchronized void init() {
+        if (isKeystoreInitialized) {
+            log.debug("Already initialized. Key store={}", keyStoreURL);
+            return;
+        }
+        if (keyStoreFileName == null) {
+            log.debug("Using keystore from classpath {}", keyStoreURL);
+            throw new RuntimeException("Keystore path not set! Please specify a keystore file using the system property -D"
+                    + SecurityConstants.SYSPROP_KEYSTORE);
+        } else {
+            log.info("Using keystore from file {}", keyStoreFileName);
+        }
+        if (trustStoreFileName == null) {
+            log.debug("Using truststore from classpath {}", trustStoreURL);
+            throw new RuntimeException("Truststore path not set! Please specify a truststore file using the system property -D"
+                    + SecurityConstants.SYSPROP_TRUSTSTORE);
+        } else {
+            log.info("Using truststore from file {}", trustStoreFileName);
+        }
+        long secureRandom = nextSecureLong();
+        log.debug("Confirmed secure random is available. Result={}. Running keystore integrity check...", secureRandom);
+        isKeystoreInitialized = validateKeystoreIntegrity();
+    }
+
+    @Override
+    public boolean validateKeystoreIntegrity() {
+        log.debug("Testing keystore integrity. Key store={}", keyStoreFileName);
+        try {
+            encrypt("keystore-integrity-test");
+            return true;
+        } catch (Exception ex) {
+            log.debug("Failed to encrypt using current keystore! Key store=" + keyStoreFileName, ex);
+            throw ex;
+        }
+    }
+
+    public boolean isInitialized() {
+        return isKeystoreInitialized;
     }
 
     @Override

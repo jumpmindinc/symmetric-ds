@@ -27,7 +27,6 @@ import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.security.UnrecoverableKeyException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -40,6 +39,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.security.UnrecoverableKeyException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -382,6 +382,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.configurationService = new ConfigurationService(this, symmetricDialect);
         this.dataService = createDataService();
         this.clusterService = createClusterService();
+        this.securityService.validateKeystoreIntegrity();
         this.clusteredCacheManager = ClusteredCacheManager.getInstance();
         this.clusteredCacheManager.registerEngine(this, ClusteredEngineState.STARTING);
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
@@ -906,7 +907,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         checkNodeIdentityMatchesConfiguration(node);
         checkExtractJobCompatibleWithStreaming(node);
         if (extensionService.getExtensionPoint(INodePasswordFilter.class) != null) {
-            checkKeystoreIntegrity();
+            validateKeystoreIntegrity();
             node = checkNodeSecurityIntegrity(node);
         }
         return node;
@@ -940,16 +941,18 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
     }
 
-    protected void checkKeystoreIntegrity() {
-        log.info("Testing keystore integrity");
+    protected void validateKeystoreIntegrity() {
         try {
-            securityService.encrypt(ParameterConstants.EXTERNAL_ID);
-        } catch (Exception e) {
-            if (ExceptionUtils.is(e, UnrecoverableKeyException.class)) {
-                throw new SymmetricException("Failed to open keystore because keystore password is wrong.  "
-                        + "Check javax.net.ssl.keyStorePassword in conf/sym_service.conf and bin/setenv.", e);
+            if (!securityService.isInitialized()) {
+                securityService.init();
             }
-            throw e;
+            securityService.validateKeystoreIntegrity();
+        } catch (Exception ex) {
+            if (ExceptionUtils.is(ex, UnrecoverableKeyException.class)) {
+                throw new SymmetricException("Failed to open keystore because keystore password is wrong.  "
+                        + "Check javax.net.ssl.keyStorePassword in conf/sym_service.conf and bin/setenv.", ex);
+            }
+            throw ex;
         }
     }
 

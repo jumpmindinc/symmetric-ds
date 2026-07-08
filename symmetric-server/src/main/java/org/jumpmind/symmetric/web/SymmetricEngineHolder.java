@@ -37,6 +37,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
+import java.security.UnrecoverableKeyException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -105,6 +106,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     private String deploymentType = Constants.DEPLOYMENT_TYPE_SERVER;
     private boolean holderHasBeenStarted = false;
     private static final String DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT = "5";
+    private static long ENGINE_STOP_TIMEOUT_SECONDS = 15;
     private static TypedProperties coreServerProperties;
     private static ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
     private static IClusteredCacheManager clusteredCacheManager;
@@ -117,9 +119,17 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         if (securityService == null) {
             securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
         }
+        validateKeystoreIntegrity();
         if (clusteredCacheManager == null) {
             clusteredCacheManager = initClusteredCacheManager();
         }
+        Runtime.getRuntime().addShutdownHook(new Thread(this::onShutdown,
+                "symmetric-engines-shutdown"));
+    }
+
+    private void onShutdown() {
+        log.debug("Shutdown hook called, stopping all engines...");
+        this.stop();
     }
 
     private TypedProperties fetchStaticServerProperties() {
@@ -132,6 +142,21 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         return envProps;
     }
 
+    protected void validateKeystoreIntegrity() {
+        try {
+            if (!securityService.isInitialized()) {
+                securityService.init();
+            }
+            securityService.validateKeystoreIntegrity();
+        } catch (Exception ex) {
+            if (ExceptionUtils.is(ex, UnrecoverableKeyException.class)) {
+                throw new SymmetricException("Failed to open keystore because keystore password is wrong.  "
+                        + "Check javax.net.ssl.keyStorePassword in conf/sym_service.conf and bin/setenv.", ex);
+            }
+            throw ex;
+        }
+    }
+
     /**
      * Initialize JCS cluster peer heartbeat and discovery with no database dependency and no engine files. Additional peer servers can be linked later on.
      */
@@ -139,24 +164,23 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         if (clusteredCacheManager != null && clusteredCacheManager.isInitialized()) {
             return clusteredCacheManager;
         }
-        IClusteredCacheManager ccManager = ClusteredCacheManager.getInstance();
-        String clusterPartitionId = ClusterPartitionGenerator.resolve(coreServerProperties);
-        String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
-        ccManager.initialize(securityService, clusterPartitionId, serverId, isJcsEnabled(), this);
-        ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);
-        return ccManager;
-    }
-
-    /**
-     * Resolved without any engine's {@code IParameterService}/the database, since no engine has been loaded yet at this point. Equivalent environment variable:
-     * SYM_CLUSTER_LOCK_ENABLED.
-     */
-    private static boolean isJcsEnabled() {
-        String value = System.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED);
-        if (StringUtils.isBlank(value)) {
-            value = System.getenv("SYM_CLUSTER_LOCK_ENABLED");
+        boolean isJcsEnabled = false;
+        try {
+            IClusteredCacheManager ccManager = ClusteredCacheManager.getInstance();
+            String clusterPartitionId = ClusterPartitionGenerator.resolve(coreServerProperties);
+            String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
+            isJcsEnabled = ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties);
+            ccManager.initialize(securityService, clusterPartitionId, serverId, isJcsEnabled, this);
+            ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);
+        } catch (Exception ex) {
+            if (isJcsEnabled) {
+                log.debug("Failed to initialize clustered cache manager!", ex);
+                throw new RuntimeException("Failed to initialize clustered cache manager", ex);
+            } else {
+                log.warn("Failed to initialize clustered cache manager, but since it's not required, leaving it uninitialized.", ex);
+            }
         }
-        return Boolean.parseBoolean(value);
+        return ccManager;
     }
 
     public void start() {
@@ -269,7 +293,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             log.debug("No registration engines found. Starting all other engines.");
         } else {
             log.debug("Starting registration engines first");
-            startEnginesAndWait(registrationEngineStarters);
+            startEnginesAndWait(registrationEngineStarters, Thread.MAX_PRIORITY);
         }
         log.debug("All engines now starting up.");
         startEngines(nonRegistrationEngineStarters);
@@ -282,9 +306,9 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
                 .collect(Collectors.toSet());
     }
 
-    private void startEnginesAndWait(Set<SymmetricEngineStarter> starters) {
+    private void startEnginesAndWait(Set<SymmetricEngineStarter> starters, int threadPriority) {
         // try-with-resources: close() blocks until these engines finish before returning
-        try (ExecutorService executor = getEngineStarterExecutor()) {
+        try (ExecutorService executor = getThreadPoolExecutor("symmetric-engine-startup", threadPriority)) {
             executeEngineStarters(executor, starters);
         } catch (Exception e) {
             log.error("Error while waiting for registration engines to start: {}", starters, e);
@@ -292,15 +316,20 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     }
 
     private void startEngines(Set<SymmetricEngineStarter> starters) {
-        executeEngineStarters(getEngineStarterExecutor(), starters);
+        executeEngineStarters(getThreadPoolExecutor("symmetric-engine-startup", Thread.NORM_PRIORITY), starters);
     }
 
-    private ExecutorService getEngineStarterExecutor() {
+    private ExecutorService getThreadPoolExecutor(String threadName, int threadPriority) {
+        if (theadPriority < Thread.MIN_PRIORITY || threadPriority > Thread.MAX_PRIORITY) {
+            log.warn("Invalid thread priority! Setting to {}", Thread.MAX_NORMAL_PRIORITY);
+            threadPriority = Thread.MAX_NORMAL_PRIORITY;
+        }
         int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT,
                 DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT));
-        CustomizableThreadFactory launchThreadPoolFactory = new CustomizableThreadFactory("symmetric-engine-startup");
-        return Executors.newFixedThreadPool(poolSize, launchThreadPoolFactory);
-    }
+        CustomizableThreadFactory threadFactory = new CustomizableThreadFactory(threadName);
+        threadFactory.setThreadPriority(threadPriority);
+        return Executors.newFixedThreadPool(poolSize, threadFactory);
+    } // Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-restart"));
 
     private void executeEngineStarters(ExecutorService executor, Set<SymmetricEngineStarter> engineStarters) {
         for (SymmetricEngineStarter starter : engineStarters) {
@@ -325,7 +354,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             enginesFailed.remove(engineName);
             if (restartExecutor == null) {
                 int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT, "5"));
-                restartExecutor = Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-restart"));
+                restartExecutor = getThreadPoolExecutor("symmetric-engine-restart", Thread.NORM_PRIORITY);
             }
             SymmetricEngineStarter starter = new SymmetricEngineStarter(info.getPropertyFileName(), this);
             enginesStarting.add(starter);
@@ -334,40 +363,44 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     }
 
     public void stop() {
-        Collection<ServerSymmetricEngine> enginesCopy;
-        synchronized (this) {
-            IApplicationHealthTracker healthTracker = ApplicationHealthTracker.getTracker();
-            if (healthTracker != null) {
-                healthTracker.onShutdown();
-            }
-            enginesCopy = new ArrayList<>(engines.values());
-        }
-        stopEnginesInParallel(enginesCopy);
-        synchronized (this) {
-            engines.clear();
-            enginesStartingNames.clear();
-            enginesStarting.clear();
-            enginesFailed.clear();
-            if (clusteredCacheManager != null) {
-                clusteredCacheManager.shutdown();
-                clusteredCacheManager = null;
-            }
+        stopAndClearAllEngines();
+        shutdownClusterCommunication();
+        shutdownHealthTracker();
+    }
+
+    private synchronized void shutdownHealthTracker() {
+        IApplicationHealthTracker healthTracker = ApplicationHealthTracker.getTracker();
+        if (healthTracker != null) {
+            healthTracker.onShutdown();
         }
     }
 
-    private void stopEnginesInParallel(Collection<ServerSymmetricEngine> enginesCopy) {
-        if (enginesCopy.isEmpty()) {
+    private synchronized void shutdownClusterCommunication() {
+        if (clusteredCacheManager == null)
             return;
+        clusteredCacheManager.shutdown();
+        clusteredCacheManager = null;
+    }
+
+    private synchronized void stopAndClearAllEngines() {
+        Collection<ServerSymmetricEngine> enginesCopy = new ArrayList<>(engines.values());
+        engines.clear();
+        enginesStartingNames.clear();
+        enginesStarting.clear();
+        enginesFailed.clear();
+        if (!enginesCopy.isEmpty()) {
+            stopAllEnginesInParallel();
         }
-        int poolSize = Integer.parseInt(System.getProperty(SystemConstants.SYSPROP_CONCURRENT_ENGINES_STARTING_COUNT,
-                DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT));
-        ExecutorService executor = Executors.newFixedThreadPool(poolSize, new CustomizableThreadFactory("symmetric-engine-stop"));
-        try {
+    }
+
+    private void stopAllEnginesInParallel() {
+        try (ExecutorService executor = getThreadPoolExecutor("symmetric-engine-stop", Thread.MAX_PRIORITY)) {
             for (ServerSymmetricEngine engine : enginesCopy) {
                 executor.execute(engine::destroy);
             }
             executor.shutdown();
-            executor.awaitTermination(5, TimeUnit.MINUTES);
+            log.debug("Waiting for {} seconds while engines are stopping", ENGINE_STOP_TIMEOUT_SECONDS);
+            executor.awaitTermination(ENGINE_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         } catch (InterruptedException ex) {
             log.warn("Interrupted while waiting for engines to stop", ex);
             Thread.currentThread().interrupt();
