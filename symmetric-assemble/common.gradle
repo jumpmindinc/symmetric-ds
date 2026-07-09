@@ -280,6 +280,7 @@ subprojects { subproject ->
     test {
         minHeapSize = "128m"
         maxHeapSize = "512m"
+        systemProperty 'sym.keystore.file', "${buildDir}/unittest.keystore"
         useJUnitPlatform {
             excludeTags("integration")
         }
