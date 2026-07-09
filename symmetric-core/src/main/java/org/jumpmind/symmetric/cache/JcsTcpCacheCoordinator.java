@@ -57,15 +57,12 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet(); // Used for actual network communication
     private final ClusterMessageConverter converter = new ClusterMessageConverter();
     private volatile CompositeCacheManager jcsManager;
-    private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache;
-    private volatile CacheAccess<String, ClusterPeerSecureMessage> engineStateCache;
+    private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache; // JCS-managed cache for peer server status
+    private volatile CacheAccess<String, ClusterPeerSecureMessage> engineStateCache; // JCS-managed cache for engine states
     private volatile ICachePeerServerDiscovery discovery;
     private CacheCoordinatorNetworkSettings networkSettings;
     private String myPartitionId;
-    // Actual lateral-cache puts run on this single background thread so a blocked delivery (e.g. an unreachable peer or a JCS-internal
-    // deadlock) can never stall the caller's heartbeat loop for longer than deliveryTimeoutMs. deliveryInFlight tracks the outstanding
-    // put so a stuck delivery is skipped rather than piling work onto the queue.
-    private volatile ExecutorService messageDeliveryExecutor;
+    private volatile ExecutorService messageDeliveryExecutor; // Actual network cache "puts" run on this single background thread to prevent blocking
     private final AtomicReference<Future<?>> deliveryInFlight = new AtomicReference<>();
     private volatile long deliveryTimeoutMs; // Derived from the heartbeat interval in start(); only read after start() via the executor guard.
 
@@ -114,33 +111,30 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public synchronized void stop() {
-        if (jcsManager != null) {
-            log.debug("Stopping JCS cluster communication. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);
-            shutdownMessageDeliveryExecutor();
-            if (discovery != null) {
-                discovery.stop();
-                discovery = null;
-            }
-            try {
-                jcsManager.shutDown();
-            } catch (Exception ex) {
-                log.warn("Problem while stopping JCS cluster communication", ex);
-            }
-            jcsManager = null;
-            peerHeartbeatCache = null;
-            engineStateCache = null;
-            log.debug("JCS cluster cache shutdown complete. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);
-        } else {
-            log.debug("JCS cluster cache was not running, so no shutdown was performed. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(),
+        if(!isInitialized()) {
+            log.debug("JCS cluster communication was not running, so no shutdown was performed. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(),
                     myPartitionId);
         }
+        log.debug("Stopping JCS cluster communication... ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);
+        shutdownMessageDeliveryExecutor();
+        if (discovery != null) {
+            discovery.stop();
+            discovery = null;
+        }
+        try {
+            jcsManager.shutDown();
+        } catch (Exception ex) {
+            log.warn("Problem while stopping JCS cluster communication", ex);
+        }
+        jcsManager = null;
+        peerHeartbeatCache = null;
+        engineStateCache = null;
+        log.info("JCS cluster communication stopped. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);        
     }
 
     /**
      * Registers a peer's address so JCS's lateral cache can reach it directly, without depending on JCS's own UDP multicast discovery — which is unavailable on
-     * most cloud VPCs and managed Kubernetes networks. Reuses the same {@link IDiscoveryListener} extension point JCS's UDP layer calls when it receives a
-     * multicast announcement, so this never touches the CompositeCacheManager configuration and cannot hit the reconfigure landmine described in the class
-     * comment.
+     * most cloud VPCs and managed Kubernetes networks. Uses the {@link IDiscoveryListener} extension point -same as in JCS's own UDP layer.
      */
     @Override
     public synchronized boolean announceDiscoveredPeer(String serverId, String address) {
@@ -194,13 +188,17 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
      * for a peer are consolidated into a single message, purging is simplified to two single-key removals.
      */
     private void purgePeerMessages(String serverId) {
-        CacheAccess<String, ClusterPeerSecureMessage> heartbeatCache = peerHeartbeatCache;
-        if (heartbeatCache != null) {
-            heartbeatCache.remove(serverId);
-        }
-        CacheAccess<String, ClusterPeerSecureMessage> engineCache = engineStateCache;
-        if (engineCache != null) {
-            engineCache.remove(serverId);
+        try{
+            CacheAccess<String, ClusterPeerSecureMessage> heartbeatCache = peerHeartbeatCache;
+            if (heartbeatCache != null) {
+                heartbeatCache.remove(serverId);
+            }
+            CacheAccess<String, ClusterPeerSecureMessage> engineCache = engineStateCache;
+            if (engineCache != null) {
+                engineCache.remove(serverId);
+            }
+        } catch (Exception ex) {
+            log.debug("Failed to purge cached messages for removed peer. serverId={}", serverId, ex);
         }
     }
 
