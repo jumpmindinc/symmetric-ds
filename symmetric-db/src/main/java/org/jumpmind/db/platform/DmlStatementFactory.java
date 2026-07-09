@@ -30,6 +30,7 @@ import org.jumpmind.db.platform.sqlanywhere.SqlAnywhereDmlStatement;
 import org.jumpmind.db.platform.sqlite.SqliteDmlStatement;
 import org.jumpmind.db.sql.DmlStatement;
 import org.jumpmind.db.sql.DmlStatementOptions;
+import org.jumpmind.db.util.DatabaseConstants;
 import org.jumpmind.util.AppUtils;
 
 public class DmlStatementFactory implements IDmlStatementFactory {
@@ -48,7 +49,7 @@ public class DmlStatementFactory implements IDmlStatementFactory {
     @Override
     public DmlStatement create(String databaseName, DmlStatementOptions options) {
         if (DatabaseNamesConstants.POSTGRESQL.equals(databaseName) || (DatabaseNamesConstants.POSTGRESQL95.equals(databaseName) &&
-                System.getProperty("postgres.use.on.conflict", "").equalsIgnoreCase("false"))) {
+                System.getProperty(DatabaseConstants.POSTGRES_USE_ON_CONFLICT, "").equalsIgnoreCase("false"))) {
             return new PostgreSqlDmlStatement(options);
         } else if (DatabaseNamesConstants.POSTGRESQL95.equals(databaseName)) {
             return new PostgreSqlDmlStatement95(options);
