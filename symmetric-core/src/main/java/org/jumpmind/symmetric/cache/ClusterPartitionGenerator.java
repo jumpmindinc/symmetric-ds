@@ -163,7 +163,7 @@ public class ClusterPartitionGenerator {
                 return null;
             }
         }
-        URL clusterPartitionIdURL = ClusterPartitionGenerator.class.getClassLoader().getResource("/cluster-partition.uuid");
+        URL clusterPartitionIdURL = ClusterPartitionGenerator.class.getClassLoader().getResource("cluster-partition.uuid");
         if (clusterPartitionIdURL != null) {
             try (InputStream in = clusterPartitionIdURL.openStream()) {
                 return IOUtils.toString(in, Charset.defaultCharset()).trim();

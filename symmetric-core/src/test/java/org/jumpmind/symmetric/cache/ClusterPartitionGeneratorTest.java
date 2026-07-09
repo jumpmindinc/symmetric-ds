@@ -20,18 +20,24 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mockStatic;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.charset.Charset;
 import java.util.UUID;
 
+import org.apache.commons.io.FileUtils;
 import org.jumpmind.symmetric.common.ServerConstants;
+import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.util.AppUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +54,7 @@ public class ClusterPartitionGeneratorTest {
     public void setUp() throws Exception {
         resetCache();
         System.clearProperty(ServerConstants.CLUSTER_PARTITION_ID);
+        System.clearProperty(SystemConstants.SYSPROP_LAUNCHER);
         clearServerIdProperties();
     }
 
@@ -55,6 +62,7 @@ public class ClusterPartitionGeneratorTest {
     public void tearDown() throws Exception {
         resetCache();
         System.clearProperty(ServerConstants.CLUSTER_PARTITION_ID);
+        System.clearProperty(SystemConstants.SYSPROP_LAUNCHER);
         clearServerIdProperties();
     }
 
@@ -83,19 +91,32 @@ public class ClusterPartitionGeneratorTest {
     }
 
     @Test
-    public void resolve_noConfiguration_generatesRandomUuid() {
-        String id = ClusterPartitionGenerator.resolve();
+    public void resolve_noConfiguration_generatesRandomUuid(@TempDir File tempDir) throws Exception {
+        String id = resolveWithNoCachedValueAnywhere(tempDir);
         assertNotNull(id);
         assertEquals(UUID_STRING_LENGTH, id.length());
     }
 
     @Test
-    public void resolve_noConfiguration_generatedIdHasAutoMarker() {
-        String id = ClusterPartitionGenerator.resolve();
+    public void resolve_noConfiguration_generatedIdHasAutoMarker(@TempDir File tempDir) throws Exception {
+        String id = resolveWithNoCachedValueAnywhere(tempDir);
         int byte4 = Integer.parseInt(id.substring(9, 11), 16);
         int byte5 = Integer.parseInt(id.substring(11, 13), 16);
         assertEquals(0xaa, byte4);
         assertEquals(0xaa, byte5);
+    }
+
+    /**
+     * Forces resolve() down the "nothing cached yet" path deterministically: launcher mode with an empty conf dir means readClusterPartitionId() hits the file
+     * branch (and finds nothing) rather than the classpath-resource branch, which src/test/resources/cluster-partition.uuid makes non-empty for the whole
+     * module.
+     */
+    private String resolveWithNoCachedValueAnywhere(File tempDir) {
+        System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
+        try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
+            mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
+            return ClusterPartitionGenerator.resolve();
+        }
     }
 
     @Test
@@ -132,6 +153,51 @@ public class ClusterPartitionGeneratorTest {
         Method read = ClusterPartitionGenerator.class.getDeclaredMethod("readClusterPartitionId", File.class);
         read.setAccessible(true);
         assertNull(read.invoke(null, clusterPartitionIdFile));
+    }
+
+    @Test
+    public void readClusterPartitionId_noFile_fallsBackToClasspathResource() throws Exception {
+        Method read = ClusterPartitionGenerator.class.getDeclaredMethod("readClusterPartitionId", File.class);
+        read.setAccessible(true);
+        assertEquals("classpath-cluster-partition-id", read.invoke(null, (File) null));
+    }
+
+    @Test
+    public void resolve_launcherModeWithExistingFile_readsFileWithoutGeneratingNewId(@TempDir File tempDir) throws Exception {
+        System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
+        File confDir = new File(tempDir, "conf");
+        confDir.mkdirs();
+        File partitionFile = new File(confDir, "cluster-partition.uuid");
+        try (FileOutputStream out = new FileOutputStream(partitionFile)) {
+            out.write("existing-file-partition-id".getBytes(Charset.defaultCharset()));
+        }
+        try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
+            mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
+            assertEquals("existing-file-partition-id", ClusterPartitionGenerator.resolve());
+        }
+    }
+
+    @Test
+    public void resolve_launcherModeNoExistingFile_generatesAndPersistsNewId(@TempDir File tempDir) throws Exception {
+        System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
+        try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
+            mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
+            String id = ClusterPartitionGenerator.resolve();
+            File partitionFile = new File(tempDir, "conf/cluster-partition.uuid");
+            assertTrue(partitionFile.exists());
+            assertEquals(id, FileUtils.readFileToString(partitionFile, Charset.defaultCharset()).trim());
+        }
+    }
+
+    @Test
+    public void writeClusterPartitionId_parentPathIsRegularFile_swallowsExceptionAndDoesNotThrow(@TempDir File tempDir) throws Exception {
+        File notADirectory = new File(tempDir, "not-a-directory");
+        assertTrue(notADirectory.createNewFile());
+        File target = new File(notADirectory, "cluster-partition.uuid");
+        Method write = ClusterPartitionGenerator.class.getDeclaredMethod("writeClusterPartitionId", File.class, String.class);
+        write.setAccessible(true);
+        assertDoesNotThrow(() -> write.invoke(null, target, "some-id"));
+        assertFalse(target.exists());
     }
 
     @Test
