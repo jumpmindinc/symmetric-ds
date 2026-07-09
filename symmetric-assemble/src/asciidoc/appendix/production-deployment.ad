@@ -43,6 +43,6 @@ Every node announces itself to JCS from `SYM_NODE_HOST` in addition to (not inst
 
 - Disable `auto.registration` once all expected nodes have been provisioned. Leaving registration open in production lets any client that can reach the sync URL register as a node.
 - `cluster.jcs.port` carries plain serialized Java objects with no transport-level encryption or authentication, per its own parameter description. The `sym.secret`-based AES encryption described in <<Clustering>> protects the message payload, but the raw socket itself is unauthenticated, so the port must stay on a private, firewalled subnet exactly as <<Firewall and Network Requirements>> describes — the same applies to the UDP discovery port.
-- Never reuse example credentials from a lab or quick-start environment. Treat hardcoded database and keystore-seed values, like the ones in the local Docker Compose lab, as strictly non-production.
+- Never reuse example credentials from a lab environment. Treat hardcoded database and keystore-seed values, like the ones in the local Docker Compose lab, as strictly non-production.
 - Grant the SymmetricDS database user only the privileges it needs against the schemas it synchronizes; avoid handing it broader account privileges than the sync workload requires.
 - Enforce HTTPS end-to-end. If TLS terminates at the load balancer rather than at each node, confirm the load-balancer-to-node hop is also encrypted, or is on a network segment trusted to the same degree as the one required for `cluster.jcs.port`.

@@ -99,7 +99,7 @@ SymmetricDS 3.18 introduces a peer-to-peer heartbeat mechanism using Apache JCS 
 
 Each endpoint broadcasts a heartbeat every 3 seconds to all known peers.
 When an endpoint misses three consecutive heartbeats — for example, because the JVM was killed by an out-of-memory condition, the container was evicted by the orchestrator, or the host was terminated — the surviving endpoints detect the stale heartbeat and immediately clear all database locks held by the crashed endpoint.
-This eliminates the previous behaviour where surviving endpoints had to wait for the `cluster.lock.timeout.ms` expiry (default 2 hours) before they could acquire those locks.
+This eliminates the previous behavior where surviving endpoints had to wait for the `cluster.lock.timeout.ms` expiry (default 2 hours) before they could acquire those locks.
 
 In a multi-endpoint deployment where each JVM hosts multiple database endpoints independently, lock recovery is additionally scoped per endpoint.
 If only one endpoint on a JVM crashes while others remain healthy, only the locks held by that specific endpoint are cleared — the running endpoints are unaffected.
@@ -107,7 +107,7 @@ If only one endpoint on a JVM crashes while others remain healthy, only the lock
 Multiple clusters for different environments — Production, Staging, and Testing — remain fully isolated even when deployed on the same orchestrator platform or shared subnet.
 Peer discovery is driven entirely by the `SYM_NODE_HOST` table: each endpoint only learns the hostnames of other endpoints that share the same database.
 Because each environment uses its own database, its `SYM_NODE_HOST` table contains only that environment's endpoints, so JCS heartbeats are never exchanged across environments.
-As a second layer of defence, assigning a distinct `cluster.jcs.port` per environment provides network-level isolation and prevents accidental cross-environment traffic in scenarios where network segmentation is not strict.
+As a second layer of defense, assigning a distinct `cluster.jcs.port` per environment provides network-level isolation and prevents accidental cross-environment traffic in scenarios where network segmentation is not strict.
 
 The peer communication port is configured via the `cluster.jcs.port` property (default 1101, must be the same across all cluster members within an environment).
 Each cluster's shared identity is the cluster partition ID: auto-generated and persisted to `SYM_CONTEXT` on first startup so every node sharing that database converges automatically, or pinned explicitly via `cluster.partition.id` (or the `SYM_CLUSTER_PARTITION_ID` environment variable) when nodes in the same cluster point at different databases.
