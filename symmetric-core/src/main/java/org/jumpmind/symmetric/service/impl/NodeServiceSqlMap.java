@@ -113,7 +113,7 @@ public class NodeServiceSqlMap extends AbstractSqlMap {
                         + "and created_at_node_id = (select node_id from $(node_identity))))");
         putSql("selectNodeHostPrefixSql",
                 ""
-                        + "select node_id, host_name, instance_id, ip_address, os_user, os_name, os_arch, os_version, available_processors,        "
+                        + "select node_id, host_name, instance_id, cluster_partition_id, ip_address, os_user, os_name, os_arch, os_version, available_processors,        "
                         + "  free_memory_bytes, total_memory_bytes, max_memory_bytes, java_version, java_vendor, security_mode, jdbc_version, symmetric_version,   "
                         + "  timezone_offset, heartbeat_time, last_restart_time, create_time from $(node_host) h");
         putSql("selectNodeHostByNodeIdSql", "where node_id=? order by heartbeat_time desc");
