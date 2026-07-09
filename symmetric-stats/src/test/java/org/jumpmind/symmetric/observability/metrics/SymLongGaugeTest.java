@@ -35,9 +35,6 @@ import org.junit.jupiter.api.Test;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableLongGauge;
 
-/**
- * Tests {@link AbstractLongGaugeMetric} behaviour via the package-private {@link SymLongGauge} constructor.
- */
 class SymLongGaugeTest {
     private static SymLongGauge gauge() {
         SymLongGauge gauge = new SymLongGauge(new SymMetricDefinition("test.long.gauge", "", "", InstrumentType.LONG_GAUGE), Attributes.empty(),
