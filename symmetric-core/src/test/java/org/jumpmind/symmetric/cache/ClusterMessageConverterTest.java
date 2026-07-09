@@ -20,15 +20,18 @@
  */
 package org.jumpmind.symmetric.cache;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -204,5 +207,103 @@ class ClusterMessageConverterTest {
         ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
         converter.toServerStatusMessage(encrypted, "inst1");
         assertEquals(1, converter.getSuccessfullyConverted());
+    }
+
+    @Test
+    void getSecurityService_notInitialized_throwsIllegalStateException() {
+        ClusterMessageConverter uninitializedConverter = new ClusterMessageConverter();
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        assertThrows(IllegalStateException.class, () -> uninitializedConverter.toEncryptedMessage(plain));
+    }
+
+    private boolean invokeIsFromAuthorizedPartition(String messagePartitionId, String expectedPartitionId) throws Exception {
+        Method m = ClusterMessageConverter.class.getDeclaredMethod("isFromAuthorizedPartition", String.class, String.class);
+        m.setAccessible(true);
+        return (boolean) m.invoke(converter, messagePartitionId, expectedPartitionId);
+    }
+
+    @Test
+    void isFromAuthorizedPartition_nullMessagePartitionId_returnsFalse() throws Exception {
+        assertFalse(invokeIsFromAuthorizedPartition(null, "inst1"));
+    }
+
+    @Test
+    void isFromAuthorizedPartition_nullExpectedPartitionId_returnsFalse() throws Exception {
+        assertFalse(invokeIsFromAuthorizedPartition("inst1", null));
+    }
+
+    @Test
+    void isFromAuthorizedPartition_mismatchedPartitionIds_returnsFalse() throws Exception {
+        assertFalse(invokeIsFromAuthorizedPartition("inst1", "inst2"));
+    }
+
+    @Test
+    void isFromAuthorizedPartition_matchingPartitionIds_returnsTrue() throws Exception {
+        assertTrue(invokeIsFromAuthorizedPartition("inst1", "inst1"));
+    }
+
+    @Test
+    void getRejectedPartitionIdMismatch_incrementsOnPartitionMismatchOnly() {
+        assertEquals(0, converter.getRejectedPartitionIdMismatch());
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
+        converter.toServerStatusMessage(encrypted, "inst2");
+        assertEquals(1, converter.getRejectedPartitionIdMismatch());
+        assertEquals(0, converter.getRejectedFingerprintFailure());
+    }
+
+    @Test
+    void getRejectedFingerprintFailure_incrementsOnFingerprintMismatchOnly() {
+        assertEquals(0, converter.getRejectedFingerprintFailure());
+        ClusterPeerSecureMessage secure = mock(ClusterPeerSecureMessage.class);
+        when(secure.getServerId()).thenReturn("server1");
+        when(secure.getClusterPartitionId()).thenReturn("inst1");
+        when(secure.isHeaderChecksumValid()).thenReturn(true);
+        when(secure.getKeystoreFingerprint()).thenReturn("encrypted-fp");
+        when(secure.getVersion()).thenReturn("real-version");
+        when(mockSecurityService.decrypt("encrypted-fp")).thenReturn("wrong-version");
+        ClusterServerStatusMessage result = converter.toServerStatusMessage(secure, "inst1");
+        assertNull(result);
+        assertEquals(1, converter.getRejectedFingerprintFailure());
+        assertEquals(0, converter.getRejectedPartitionIdMismatch());
+    }
+
+    @Test
+    void getTotalRejected_sumsPartitionMismatchAndFingerprintFailures() {
+        assertEquals(0, converter.getTotalRejected());
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        ClusterPeerSecureMessage encryptedMismatch = converter.toEncryptedMessage(plain);
+        converter.toServerStatusMessage(encryptedMismatch, "inst2");
+        ClusterPeerSecureMessage secureFingerprintFail = mock(ClusterPeerSecureMessage.class);
+        when(secureFingerprintFail.getServerId()).thenReturn("server2");
+        when(secureFingerprintFail.getClusterPartitionId()).thenReturn("inst1");
+        when(secureFingerprintFail.isHeaderChecksumValid()).thenReturn(true);
+        when(secureFingerprintFail.getKeystoreFingerprint()).thenReturn("encrypted-fp");
+        when(secureFingerprintFail.getVersion()).thenReturn("real-version");
+        when(mockSecurityService.decrypt("encrypted-fp")).thenReturn("wrong-version");
+        converter.toServerStatusMessage(secureFingerprintFail, "inst1");
+        assertEquals(1, converter.getRejectedPartitionIdMismatch());
+        assertEquals(1, converter.getRejectedFingerprintFailure());
+        assertEquals(2, converter.getTotalRejected());
+    }
+
+    @Test
+    void getTotalRejected_checksumFailureIsNotCounted() {
+        ClusterPeerSecureMessage secure = mock(ClusterPeerSecureMessage.class);
+        when(secure.getServerId()).thenReturn("server1");
+        when(secure.isHeaderChecksumValid()).thenReturn(false);
+        converter.toServerStatusMessage(secure, "inst1");
+        assertEquals(0, converter.getTotalRejected());
+    }
+
+    @Test
+    void logMetrics_doesNotThrow() {
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        converter.toEncryptedMessage(plain);
+        assertDoesNotThrow(() -> converter.logMetrics());
     }
 }

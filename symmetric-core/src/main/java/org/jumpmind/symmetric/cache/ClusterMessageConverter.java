@@ -111,7 +111,7 @@ public class ClusterMessageConverter {
         if (!secure.isHeaderChecksumValid()) {
             recordRejection(secure, ConversionFailureReason.CHECKSUM);
             RejectionInfo rejection = rejectedServers.get(secure.getServerId());
-            log.debug("Message header checksum invalid, rejecting message. {}", rejection != null ? rejection.getDebugInfo()
+            log.warn("Message header checksum invalid, rejecting message. {}", rejection != null ? rejection.getDebugInfo()
                     : "serverId=" + secure.getServerId());
             return false;
         }
