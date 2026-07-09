@@ -18,10 +18,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.db.util;
+package org.jumpmind.db.platform.postgresql;
 
-public class DatabaseConstants {
-    public static final String IS_CONFLICT_WINNER = "isConflictWinner";
-    public final static String DATABASE_PLATFORM_FACTORY_CLASS = "database.platform.factory.class";
-    public static final String POSTGRES_USE_ON_CONFLICT = "postgres.use.on.conflict";
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+/*
+ * Detects which managed-cloud variant of PostgreSQL a live JDBC connection is talking to, based on
+ * SQL markers that only exist on that variant. Detection runs against the connection itself so it
+ * works regardless of network topology or which JDBC driver established the connection.
+ */
+public final class PostgreSqlVariantDetector {
+    private PostgreSqlVariantDetector() {
+    }
+
+    public static boolean isAuroraPostgres(Connection connection) {
+        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery("select aurora_version()")) {
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
 }
