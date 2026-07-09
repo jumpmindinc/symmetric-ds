@@ -462,6 +462,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
         discoverPeersIncomingHeartbeats();
         broadcastCurrentStateAndEngines();
+        refreshNodeHostHeartbeats();
         if (log.isDebugEnabled()) {
             logEngineStates();
             logPeerStates();
@@ -541,6 +542,22 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 peerNetworkCoordinator.removePeer(peerId);
                 log.debug("Purged obsolete peer. ServerId={}, LastHeartbeat={}, ObsoleteThresholdMs={}",
                         peerId, msg.getTimestampAsString(), obsoleteThresholdMs);
+            }
+        }
+    }
+
+    /**
+     * Refreshes SYM_NODE_HOST.heartbeat_time for every registered engine, local-only (does not sync to other nodes). This keeps the DB-based discovery
+     * timestamp fresh even when SYM_START_HEARTBEAT_JOB/WATCHDOG/REFRESH_CACHE_JOB are disabled, since this tick runs independent of those job flags. Without
+     * it, a genuinely alive peer that only wrote its heartbeat_time once at startup gets misreported as stale by any peer that (re)discovers it via
+     * SYM_NODE_HOST.
+     */
+    void refreshNodeHostHeartbeats() {
+        for (ISymmetricEngine engine : registeredEngines.values()) {
+            try {
+                engine.getDataService().updateNodeHostForCurrentNode(false);
+            } catch (Exception ex) {
+                log.warn("Failed to refresh SYM_NODE_HOST heartbeat for engine={}", engine.getEngineName(), ex);
             }
         }
     }
@@ -801,7 +818,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             log.debug("No registered engines available yet.");
             return null;
         }
-        return registeredEngines.get(0);
+        return registeredEngines.values().stream().findFirst().orElse(null);
     }
 
     @Override
