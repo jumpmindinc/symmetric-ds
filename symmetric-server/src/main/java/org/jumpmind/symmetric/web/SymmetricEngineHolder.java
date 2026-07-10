@@ -166,16 +166,16 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             return clusteredCacheManager;
         }
         IClusteredCacheManager ccManager = null;
-        boolean isJcsEnabled = false;
+        boolean isClusterLockingEnabled = false;
         try {
             ccManager = ClusteredCacheManager.getInstance();
             String clusterPartitionId = ClusterPartitionGenerator.resolve(coreServerProperties);
             String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
-            isJcsEnabled = ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties);
-            ccManager.initialize(securityService, clusterPartitionId, serverId, isJcsEnabled, this);
+            isClusterLockingEnabled = ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties);
+            ccManager.initialize(securityService, clusterPartitionId, serverId, isClusterLockingEnabled, this);
             ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);
         } catch (Exception ex) {
-            if (isJcsEnabled) {
+            if (isClusterLockingEnabled) {
                 log.debug("Failed to initialize clustered cache manager!", ex);
                 throw new RuntimeException("Failed to initialize clustered cache manager", ex);
             } else {

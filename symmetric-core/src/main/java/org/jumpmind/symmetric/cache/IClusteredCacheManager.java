@@ -78,7 +78,7 @@ public interface IClusteredCacheManager {
     /**
      * Start network communication with peers in cluster (if configured) and begin heartbeat message broadcasts + discovery without database dependency.
      */
-    void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled, Object engineHolder);
+    void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isClusterLockingEnabled, Object engineHolder);
 
     /** Announce departure from the cluster and stop network communication */
     void shutdown();

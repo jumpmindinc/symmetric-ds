@@ -208,10 +208,10 @@ public class ClusterService extends AbstractService implements IClusterService {
                 String msg = String.format("*** Node '%s' failed to claim exclusive ownership of the SymmetricDS database. *** "
                         + "This is instance id '%s' on host '%s' but instance id '%s' on host '%s' is already present in sym_node_host.  This is caused "
                         + "when 2 copies of SymmetricDS are pointed at the same database, but not clustered.  If you are configuring a cluster, set "
-                        + "cluster.lock.enabled=true and restart.  If you moved your installation or re-installed, run 'delete from sym_node_host where "
+                        + "%s=true and restart.  If you moved your installation or re-installed, run 'delete from sym_node_host where "
                         + "node_id = '%s' and restart SymmetricDS.",
                         nodeService.findIdentityNodeId(), instanceId, getServerId(), nodeHost.getInstanceId(), nodeHost.getHostName(),
-                        nodeService.findIdentityNodeId());
+                        ParameterConstants.CLUSTER_LOCKING_ENABLED, nodeService.findIdentityNodeId());
                 throw new SymmetricException(msg);
             }
         }

@@ -64,6 +64,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private volatile long currentStaleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
     private volatile long lastHeartbeatSummaryLogMs;
     private volatile boolean isClusterPeerListenerStarted;
+    private volatile boolean isClusterLockingEnabled;
     private volatile String lastBroadcastEventType = ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT;
     private final Map<String, String> lastEngineStates = new ConcurrentHashMap<>();
     private String myServerId;
@@ -222,23 +223,24 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      * quickly. The cluster partition ID and server ID should be resolved without {@code IParameterService}!
      */
     @Override
-    public synchronized void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled,
+    public synchronized void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isClusterLockingEnabled,
             Object engineHolder) {
         this.symmetricEngineHolder = engineHolder;
         if (!securityService.isInitialized()) {
             securityService.init();
         }
-        startClusterPeerListener(securityService, clusterPartitionId, serverId, isJcsEnabled);
+        startClusterPeerListener(securityService, clusterPartitionId, serverId, isClusterLockingEnabled);
         this.isInitializationComplete = true;
     }
 
-    protected synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
+    protected synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isClusterLockingEnabled) {
         converter = new ClusterMessageConverter(securityService, clusterPartitionId);
+        this.isClusterLockingEnabled = isClusterLockingEnabled;
         myClusterPartitionId = clusterPartitionId;
         myServerId = serverId;
         int port = Integer.parseInt(System.getProperty(
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
-        if (isJcsEnabled) {
+        if (isClusterLockingEnabled) {
             myStartTimeMs = System.currentTimeMillis();
             String discoveryMode = System.getProperty(ServerConstants.CLUSTER_CACHE_DISCOVERY, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB);
             CacheCoordinatorNetworkSettings networkSettings = new CacheCoordinatorNetworkSettings(serverId,
@@ -737,15 +739,16 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 || (myStartTimeMs == peerStartTimeMs && myServerId.compareTo(peerServerId) > 0);
         if (amINewer) {
             log.error("Detected an existing cluster peer {} while cluster locking is not enforced "
-                    + "(cluster.lock.enabled=false, and/or this edition does not support clustering). "
+                    + "({}=false, and/or this edition does not support clustering). "
                     + "This node started later, so it is shutting down to avoid data corruption from "
-                    + "multiple unclustered instances sharing the same database.", peerServerId);
+                    + "multiple unclustered instances sharing the same database.",
+                    peerServerId, ParameterConstants.CLUSTER_LOCKING_ENABLED);
             exitProcessAction.run();
         } else {
             log.warn("Detected a newer cluster peer {} while cluster locking is not enforced "
-                    + "(cluster.lock.enabled=false, and/or this edition does not support clustering). "
+                    + "({}=false, and/or this edition does not support clustering). "
                     + "This node started first and will continue running; the newer peer is expected to shut itself down.",
-                    peerServerId);
+                    peerServerId, ParameterConstants.CLUSTER_LOCKING_ENABLED);
         }
     }
 
@@ -774,8 +777,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     msg.getServerId(), msg.getVersion(), Version.version());
             return true;
         }
-        if (!engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
-            log.debug("Skipping cluster keystore authentication for peer={} — cluster.lock.enabled=false", msg.getServerId());
+        if (!isClusterLockingEnabled) {
+            log.debug("Skipping cluster keystore authentication for peer={} — {}=false", 
+                msg.getServerId(), ParameterConstants.CLUSTER_LOCKING_ENABLED);
             return true;
         }
         log.debug("Cluster keystore authentication succeeded for peer={}", msg.getServerId());

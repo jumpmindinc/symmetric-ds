@@ -36,6 +36,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
@@ -101,11 +102,13 @@ class ClusteredCacheManagerTest {
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
         // ClusteredCacheManager.getInstance() is a JVM-wide singleton, so state from one test must not leak into the next.
         registeredEnginesMap.clear();
         engineStateMap.clear();
         peerWasPreviouslyAlive.clear();
+        setMyClusterPartitionId(null);
+        setClusterLockingEnabled(false);
     }
 
     private boolean callIsPeerAlive(String peerId, ClusterServerStatusMessage msg, long now, long staleThresholdMs) throws Exception {
@@ -118,6 +121,45 @@ class ClusteredCacheManagerTest {
 
     private void callDetectEngineState(String peerId, String engineName, ClusterEngineStateMessage msg, long now, long staleThresholdMs) throws Exception {
         detectEngineStateMethod.invoke(manager, peerId, engineName, msg, now, staleThresholdMs);
+    }
+
+    private boolean callAuthenticateAndJoinClusterPartition(ISymmetricEngine engine, ClusterServerStatusMessage msg) throws Exception {
+        Method method = ClusteredCacheManager.class.getDeclaredMethod("authenticateAndJoinClusterPartition", ISymmetricEngine.class,
+                ClusterServerStatusMessage.class);
+        method.setAccessible(true);
+        return (boolean) method.invoke(manager, engine, msg);
+    }
+
+    private void setClusterLockingEnabled(boolean value) throws Exception {
+        Field field = ClusteredCacheManager.class.getDeclaredField("isClusterLockingEnabled");
+        field.setAccessible(true);
+        field.set(manager, value);
+    }
+
+    private void setMyClusterPartitionId(String value) throws Exception {
+        Field field = ClusteredCacheManager.class.getDeclaredField("myClusterPartitionId");
+        field.setAccessible(true);
+        field.set(manager, value);
+    }
+
+    @Test
+    void authenticateAndJoinClusterPartition_clusterLockingDisabled_skipsAuthenticationAndIgnoresLiveParameterService() throws Exception {
+        setMyClusterPartitionId(PARTITION_ID);
+        setClusterLockingEnabled(false);
+        when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
+        ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1, PARTITION_ID, 0L);
+        assertTrue(callAuthenticateAndJoinClusterPartition(mockEngine, msg));
+        verify(mockParameterService, never()).is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+    }
+
+    @Test
+    void authenticateAndJoinClusterPartition_clusterLockingEnabled_authenticatesAndIgnoresLiveParameterService() throws Exception {
+        setMyClusterPartitionId(PARTITION_ID);
+        setClusterLockingEnabled(true);
+        when(mockParameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
+        ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1, PARTITION_ID, 0L);
+        assertTrue(callAuthenticateAndJoinClusterPartition(mockEngine, msg));
+        verify(mockParameterService, never()).is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
     }
 
     @Test
