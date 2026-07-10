@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.db;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.ext.ISymmetricEngineAware;
@@ -52,6 +53,18 @@ public class SoftwareUpgradeListener implements ISoftwareUpgradeListener, ISymme
         if (Version.isOlderThanVersion(databaseVersion, "3.13.0") &&
                 engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
             engine.getNodeService().deleteNodeHost(engine.getNodeService().findIdentityNodeId());
+        }
+        if (Version.isOlderThanVersion(databaseVersion, "3.18.0")) {
+            boolean startedWithClusterLockingEnabled = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
+            boolean liveParameterValue = engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+            if (startedWithClusterLockingEnabled != liveParameterValue) {
+                log.warn("Upgrading from database version {}: {} is set to {} in the database, but as of 3.18 this parameter is resolved once from "
+                        + "file/environment configuration before any node starts and is no longer database-overridable. This node actually started JCS "
+                        + "peer-awareness with {}. Update the file/environment configuration to match if {} is intended; the database value will "
+                        + "continue to have no effect.",
+                        databaseVersion, ParameterConstants.CLUSTER_LOCKING_ENABLED, liveParameterValue, startedWithClusterLockingEnabled,
+                        liveParameterValue);
+            }
         }
         try {
             ModuleManager.getInstance().upgradeAll();

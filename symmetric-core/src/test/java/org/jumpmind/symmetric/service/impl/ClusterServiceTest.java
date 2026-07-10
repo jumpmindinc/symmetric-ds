@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -40,11 +41,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.symmetric.SymmetricException;
+import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
+import org.jumpmind.symmetric.cache.IClusterCacheCoordinator;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager.PeerState;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -73,9 +77,11 @@ class ClusterServiceTest {
     private ISqlTemplate sqlTemplate;
     private IDatabasePlatform platform;
     private ClusterService clusterService;
+    private IClusterCacheCoordinator originalPeerNetworkCoordinator;
+    private boolean originalClusterLockingEnabled;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         parameterService = mock(IParameterService.class);
         dialect = mock(ISymmetricDialect.class);
         nodeService = mock(INodeService.class);
@@ -93,6 +99,10 @@ class ClusterServiceTest {
         when(nodeService.findNodeHosts(anyString())).thenReturn(new ArrayList<>());
         clusterService = new ClusterService(parameterService, dialect, nodeService, extensionService);
         ClusterService.instanceId = "my-instance-id";
+        Field coordinatorField = ClusteredCacheManager.class.getDeclaredField("peerNetworkCoordinator");
+        coordinatorField.setAccessible(true);
+        originalPeerNetworkCoordinator = (IClusterCacheCoordinator) coordinatorField.get(ClusteredCacheManager.getInstance());
+        originalClusterLockingEnabled = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
     }
 
     @AfterEach
@@ -102,6 +112,33 @@ class ClusterServiceTest {
         Field peerStatesField = ClusteredCacheManager.class.getDeclaredField("peerStates");
         peerStatesField.setAccessible(true);
         ((Map<String, PeerState>) peerStatesField.get(ClusteredCacheManager.getInstance())).clear();
+        Field coordinatorField = ClusteredCacheManager.class.getDeclaredField("peerNetworkCoordinator");
+        coordinatorField.setAccessible(true);
+        coordinatorField.set(ClusteredCacheManager.getInstance(), originalPeerNetworkCoordinator);
+        setClusterLockingEnabled(originalClusterLockingEnabled);
+    }
+
+    private void setClusterLockingEnabled(boolean value) throws Exception {
+        Field field = ClusteredCacheManager.class.getDeclaredField("isClusterLockingEnabled");
+        field.setAccessible(true);
+        field.set(ClusteredCacheManager.getInstance(), value);
+    }
+
+    /**
+     * Replaces the singleton's real JcsTcpCacheCoordinator with a mock reporting the given peer IDs as alive (fresh heartbeat, non-stale), so
+     * ClusteredCacheManager.getActiveServerIds() reflects exactly this set. Restored to the real coordinator in {@link #clearActivePeers()}.
+     */
+    private void mockActivePeers(String... peerIds) throws Exception {
+        IClusterCacheCoordinator mockCoordinator = mock(IClusterCacheCoordinator.class);
+        when(mockCoordinator.getPeerIds()).thenReturn(Set.of(peerIds));
+        for (String peerId : peerIds) {
+            ClusterServerStatusMessage freshMessage = new ClusterServerStatusMessage(
+                    ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, peerId, "test-partition", 0L);
+            when(mockCoordinator.getPeerStatusMessage(peerId)).thenReturn(freshMessage);
+        }
+        Field coordinatorField = ClusteredCacheManager.class.getDeclaredField("peerNetworkCoordinator");
+        coordinatorField.setAccessible(true);
+        coordinatorField.set(ClusteredCacheManager.getInstance(), mockCoordinator);
     }
 
     @Test
@@ -213,6 +250,24 @@ class ClusterServiceTest {
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
         clusterService.init();
         verify(sqlTemplate).query(anyString(), any(ISqlRowMapper.class));
+    }
+
+    @Test
+    void testInit_clusterLockingEnabledMatchesLiveParameter_completesNormally() throws Exception {
+        setClusterLockingEnabled(false);
+        when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
+        when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
+        assertDoesNotThrow(() -> clusterService.init());
+        verify(parameterService, times(2)).is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+    }
+
+    @Test
+    void testInit_clusterLockingEnabledDiffersFromLiveParameter_completesNormally() throws Exception {
+        setClusterLockingEnabled(true);
+        when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
+        when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
+        assertDoesNotThrow(() -> clusterService.init());
+        verify(parameterService, times(2)).is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
     }
 
     @Test
@@ -357,10 +412,14 @@ class ClusterServiceTest {
         Date lockTimeout = new Date(System.currentTimeMillis() - 60_000);
         assertFalse(clusterService.isLockExpiredOrServerStale("other-server", lockTime, lockTimeout));
     }
-    // TODO: testIsLockExpiredOrServerStale_freshLock_ownerStale_returnsTrue requires refactoring
-    // The test depends on controlling getActiveServerIds() which now reads from JcsTcpCacheCoordinator
-    // instead of the dead peerStates field. Setting up the coordinator with mock peers requires
-    // either starting the JCS cache or complex reflection-based mocking of final fields.
+
+    @Test
+    void testIsLockExpiredOrServerStale_freshLock_ownerStale_returnsTrue() throws Exception {
+        mockActivePeers("active-server");
+        Date lockTime = new Date();
+        Date lockTimeout = new Date(System.currentTimeMillis() - 60_000);
+        assertTrue(clusterService.isLockExpiredOrServerStale("other-server", lockTime, lockTimeout));
+    }
     // TODO: testLockCluster_staleOwner_breaksLockBeforeTimeout requires refactoring
     // The test depends on controlling getActiveServerIds() which now reads from JcsTcpCacheCoordinator
     // instead of the dead peerStates field. Setting up the coordinator with mock peers requires

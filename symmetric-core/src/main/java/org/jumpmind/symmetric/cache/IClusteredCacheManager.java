@@ -80,6 +80,13 @@ public interface IClusteredCacheManager {
      */
     void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isClusterLockingEnabled, Object engineHolder);
 
+    /**
+     * The cluster.lock.enabled value this node actually started JCS peer-awareness with, resolved once from file/environment configuration before any engine
+     * existed. This parameter is not database-overridable, so this is the authoritative value — a live {@code IParameterService} read may disagree if a stale
+     * or mismatched database override exists.
+     */
+    boolean isClusterLockingEnabled();
+
     /** Announce departure from the cluster and stop network communication */
     void shutdown();
 

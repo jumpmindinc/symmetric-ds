@@ -120,6 +120,16 @@ public class ClusterService extends AbstractService implements IClusterService {
             log.warn("Cluster lock is only available in SymmetricDS Pro.  Remove {} from engine properties or install SymmetricDS PRO license.",
                     ParameterConstants.CLUSTER_LOCKING_ENABLED);
         }
+        boolean startedWithClusterLockingEnabled = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
+        boolean liveParameterValue = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+        if (startedWithClusterLockingEnabled != liveParameterValue) {
+            log.warn("{} is set to {} in the database (or environment/engine properties merged by IParameterService), but this node actually started "
+                    + " with value={} because {} is resolved once from file/environment configuration before any node starts and is not "
+                    + "database-overridable. Update the file/environment configuration to match and restart to take effect; changing the database value "
+                    + "alone will have no effect.",
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED, liveParameterValue, startedWithClusterLockingEnabled,
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED);
+        }
         initInstanceId();
         checkSymDbOwnership();
         initializeAllLocks();

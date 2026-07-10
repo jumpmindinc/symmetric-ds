@@ -233,7 +233,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         this.isInitializationComplete = true;
     }
 
-    protected synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isClusterLockingEnabled) {
+    protected synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId,
+            boolean isClusterLockingEnabled) {
         converter = new ClusterMessageConverter(securityService, clusterPartitionId);
         this.isClusterLockingEnabled = isClusterLockingEnabled;
         myClusterPartitionId = clusterPartitionId;
@@ -247,6 +248,11 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     clusterPartitionId, port, discoveryMode, currentHeartbeatMs);
             ensurePeerListenerStarted(networkSettings);
         }
+    }
+
+    @Override
+    public boolean isClusterLockingEnabled() {
+        return isClusterLockingEnabled;
     }
 
     @Override
@@ -778,8 +784,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             return true;
         }
         if (!isClusterLockingEnabled) {
-            log.debug("Skipping cluster keystore authentication for peer={} — {}=false", 
-                msg.getServerId(), ParameterConstants.CLUSTER_LOCKING_ENABLED);
+            log.debug("Skipping cluster keystore authentication for peer={} — {}=false",
+                    msg.getServerId(), ParameterConstants.CLUSTER_LOCKING_ENABLED);
             return true;
         }
         log.debug("Cluster keystore authentication succeeded for peer={}", msg.getServerId());
