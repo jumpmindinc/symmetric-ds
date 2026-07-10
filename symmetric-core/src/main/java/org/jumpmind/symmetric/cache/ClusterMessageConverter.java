@@ -34,6 +34,8 @@ import org.slf4j.LoggerFactory;
 public class ClusterMessageConverter {
     private static final Logger log = LoggerFactory.getLogger(ClusterMessageConverter.class);
     private static final String SALT_DELIMITER = "|";
+    private static final int SALT_HEX_LENGTH = 16;
+    private static final String PAYLOAD_SALTED_FORMAT = "%0" + SALT_HEX_LENGTH + "x" + SALT_DELIMITER + "%s";
     private final AtomicLong successfullyConverted = new AtomicLong(0);
     private final AtomicLong rejectedPartitionIdMismatch = new AtomicLong(0);
     private final AtomicLong rejectedFingerprintFailure = new AtomicLong(0);
@@ -72,29 +74,42 @@ public class ClusterMessageConverter {
         if (!isValid(secure, expectedPartitionId)) {
             return null;
         }
-        String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
-        String[] parts = plainPayload.split("\\|", 2);
-        long startTimeMs = parts.length > 1 ? Long.parseLong(parts[1]) : 0L;
-        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(parts[0], secure.getServerId(),
-                secure.getClusterPartitionId(), startTimeMs);
-        successfullyConverted.incrementAndGet();
-        log.debug("Successfully converted secure message to ClusterServerStatusMessage. EventType={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
-                plain.getEventType(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
-        return plain;
+        try {
+            String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
+            String[] parts = plainPayload.split("\\|", 2);
+            long startTimeMs = parts.length > 1 ? Long.parseLong(parts[1]) : 0L;
+            ClusterServerStatusMessage plain = new ClusterServerStatusMessage(parts[0], secure.getServerId(),
+                    secure.getClusterPartitionId(), startTimeMs);
+            successfullyConverted.incrementAndGet();
+            log.debug("Successfully converted secure message to ClusterServerStatusMessage. EventType={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
+                    plain.getEventType(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
+            return plain;
+        } catch (IllegalArgumentException e) {
+            recordRejection(secure, ConversionFailureReason.CORRUPTED_PAYLOAD);
+            log.warn("Message payload corrupted, rejecting message. serverId={}", secure.getServerId(), e);
+            return null;
+        }
     }
 
     public ClusterEngineStateMessage toEngineStateMessage(ClusterPeerSecureMessage secure, String expectedPartitionId) {
         if (!isValid(secure, expectedPartitionId)) {
             return null;
         }
-        String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
-        Map<String, String> engineStates = parseEngineStates(plainPayload);
-        ClusterEngineStateMessage plain = new ClusterEngineStateMessage(engineStates, secure.getServerId(),
-                secure.getClusterPartitionId());
-        successfullyConverted.incrementAndGet();
-        log.debug("Successfully converted secure message to ClusterEngineStateMessage. EngineStatesCount={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
-                engineStates.size(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
-        return plain;
+        try {
+            String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
+            Map<String, String> engineStates = parseEngineStates(plainPayload);
+            ClusterEngineStateMessage plain = new ClusterEngineStateMessage(engineStates, secure.getServerId(),
+                    secure.getClusterPartitionId());
+            successfullyConverted.incrementAndGet();
+            log.debug(
+                    "Successfully converted secure message to ClusterEngineStateMessage. EngineStatesCount={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
+                    engineStates.size(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
+            return plain;
+        } catch (IllegalArgumentException e) {
+            recordRejection(secure, ConversionFailureReason.CORRUPTED_PAYLOAD);
+            log.warn("Message payload corrupted, rejecting message. serverId={}", secure.getServerId(), e);
+            return null;
+        }
     }
 
     private boolean isValid(ClusterPeerSecureMessage secure, String expectedPartitionId) {
@@ -139,12 +154,15 @@ public class ClusterMessageConverter {
     }
 
     private static String salt(long messageSalt, String value) {
-        return messageSalt + SALT_DELIMITER + value;
+        return String.format(PAYLOAD_SALTED_FORMAT, messageSalt, value);
     }
 
     private static String unsalt(String saltedValue) {
-        int delimiterIndex = saltedValue.indexOf(SALT_DELIMITER);
-        return delimiterIndex >= 0 ? saltedValue.substring(delimiterIndex + 1) : saltedValue;
+        if (saltedValue.length() <= SALT_HEX_LENGTH || saltedValue.charAt(SALT_HEX_LENGTH) != SALT_DELIMITER.charAt(0)) {
+            log.debug("Corrupted message payload detected! Salted value={}", saltedValue);
+            throw new IllegalArgumentException("Corrupted message payload detected!");
+        }
+        return saltedValue.substring(SALT_HEX_LENGTH + SALT_DELIMITER.length());
     }
 
     private String serializeEngineStates(Map<String, String> engineStates) {
@@ -227,7 +245,7 @@ public class ClusterMessageConverter {
     }
 
     public enum ConversionFailureReason {
-        PARTITION_MISMATCH, FINGERPRINT, CHECKSUM
+        PARTITION_MISMATCH, FINGERPRINT, CHECKSUM, CORRUPTED_PAYLOAD
     }
 
     public static class RejectionInfo {

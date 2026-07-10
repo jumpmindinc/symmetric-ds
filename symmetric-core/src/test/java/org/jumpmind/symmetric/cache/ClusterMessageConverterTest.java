@@ -25,11 +25,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -333,5 +335,105 @@ class ClusterMessageConverterTest {
                 ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
         converter.toEncryptedMessage(plain);
         assertDoesNotThrow(() -> converter.logMetrics());
+    }
+
+    private String invokeSalt(long messageSalt, String value) throws Exception {
+        Method m = ClusterMessageConverter.class.getDeclaredMethod("salt", long.class, String.class);
+        m.setAccessible(true);
+        return (String) m.invoke(null, messageSalt, value);
+    }
+
+    private String invokeUnsalt(String saltedValue) throws Throwable {
+        Method m = ClusterMessageConverter.class.getDeclaredMethod("unsalt", String.class);
+        m.setAccessible(true);
+        try {
+            return (String) m.invoke(null, saltedValue);
+        } catch (InvocationTargetException e) {
+            throw e.getCause();
+        }
+    }
+
+    @Test
+    void salt_producesSixteenHexCharPrefixFollowedByDelimiterAndValue() throws Exception {
+        assertEquals("00000000000000ff|payload", invokeSalt(255L, "payload"));
+    }
+
+    @Test
+    void salt_negativeMessageSalt_producesFixedLengthSixteenHexDigits() throws Exception {
+        String salted = invokeSalt(-1L, "payload");
+        assertEquals("ffffffffffffffff|payload", salted);
+        assertEquals('|', salted.charAt(16));
+    }
+
+    @Test
+    void salt_zeroMessageSalt_isZeroPadded() throws Exception {
+        assertEquals("0000000000000000|payload", invokeSalt(0L, "payload"));
+    }
+
+    @Test
+    void unsalt_stripsFixedLengthPrefixAndDelimiter() throws Throwable {
+        assertEquals("payload", invokeUnsalt("00000000000000ff|payload"));
+    }
+
+    @Test
+    void unsalt_roundTripsWithValueContainingDelimiter() throws Throwable {
+        String salted = invokeSalt(12345L, "eventType|1000");
+        assertEquals("eventType|1000", invokeUnsalt(salted));
+    }
+
+    @Test
+    void unsalt_missingDelimiterAtExpectedPosition_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> invokeUnsalt("00000000000000ffXpayload"));
+    }
+
+    @Test
+    void unsalt_tooShortToContainPrefix_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> invokeUnsalt("short"));
+    }
+
+    @Test
+    void toServerStatusMessage_corruptedDecryptedPayload_isCaughtAndRecordedAsCorruptedPayload() {
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum("server1", encrypted.getTimestamp(), encrypted.getMessageSalt());
+        ClusterPeerSecureMessage corrupted = new ClusterPeerSecureMessage("server1", "inst1", encrypted.getVersion(),
+                encrypted.getTimestamp(), encrypted.getMessageSalt(), headerChecksum,
+                encrypted.getKeystoreFingerprint(), "not-a-valid-salted-payload");
+        ClusterServerStatusMessage result = converter.toServerStatusMessage(corrupted, "inst1");
+        assertNull(result);
+        assertEquals(ConversionFailureReason.CORRUPTED_PAYLOAD, converter.getRejectedServers().get("server1").getReason());
+    }
+
+    @Test
+    void toServerStatusMessage_corruptedPayloadForOnePeer_stillProcessesSubsequentPeer() {
+        ClusterServerStatusMessage plain1 = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        ClusterPeerSecureMessage encrypted1 = converter.toEncryptedMessage(plain1);
+        String headerChecksum1 = ClusterPeerSecureMessage.computeChecksum("server1", encrypted1.getTimestamp(), encrypted1.getMessageSalt());
+        ClusterPeerSecureMessage corrupted = new ClusterPeerSecureMessage("server1", "inst1", encrypted1.getVersion(),
+                encrypted1.getTimestamp(), encrypted1.getMessageSalt(), headerChecksum1,
+                encrypted1.getKeystoreFingerprint(), "not-a-valid-salted-payload");
+        ClusterServerStatusMessage plain2 = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server2", "inst1", 2000L);
+        ClusterPeerSecureMessage encrypted2 = converter.toEncryptedMessage(plain2);
+        assertNull(converter.toServerStatusMessage(corrupted, "inst1"));
+        ClusterServerStatusMessage result2 = converter.toServerStatusMessage(encrypted2, "inst1");
+        assertNotNull(result2);
+        assertEquals("server2", result2.getServerId());
+        assertEquals(1, converter.getSuccessfullyConverted());
+    }
+
+    @Test
+    void toServerStatusMessage_corruptedFingerprint_isCaughtAndRecordedAsFingerprintFailure() {
+        ClusterPeerSecureMessage secure = mock(ClusterPeerSecureMessage.class);
+        when(secure.getServerId()).thenReturn("server1");
+        when(secure.getClusterPartitionId()).thenReturn("inst1");
+        when(secure.isHeaderChecksumValid()).thenReturn(true);
+        when(secure.getKeystoreFingerprint()).thenReturn("encrypted-fp");
+        when(mockSecurityService.decrypt("encrypted-fp")).thenReturn("not-a-valid-salted-fingerprint");
+        ClusterServerStatusMessage result = converter.toServerStatusMessage(secure, "inst1");
+        assertNull(result);
+        assertEquals(ConversionFailureReason.FINGERPRINT, converter.getRejectedServers().get("server1").getReason());
     }
 }
