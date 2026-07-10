@@ -229,7 +229,7 @@ class ClusterServiceTest {
     @Test
     void testPersistLastLockTime_handlesException() {
         when(sqlTemplate.update(anyString(), any(Object[].class))).thenThrow(new RuntimeException("DB error"));
-        clusterService.persistLastLockTime(ClusterConstants.PUSH, new Date(), "server-1");
+        assertDoesNotThrow(() -> clusterService.persistLastLockTime(ClusterConstants.PUSH, new Date(), "server-1"));
     }
 
     @Test
@@ -293,7 +293,7 @@ class ClusterServiceTest {
 
     @Test
     void testCheckSymDbOwnership_noNodeHosts_doesNotThrow() {
-        clusterService.checkSymDbOwnership();
+        assertDoesNotThrow(() -> clusterService.checkSymDbOwnership());
     }
 
     @Test
@@ -301,7 +301,7 @@ class ClusterServiceTest {
         NodeHost nodeHost = new NodeHost();
         nodeHost.setInstanceId(ClusterService.instanceId);
         when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(nodeHost));
-        clusterService.checkSymDbOwnership();
+        assertDoesNotThrow(() -> clusterService.checkSymDbOwnership());
     }
 
     @Test
@@ -333,7 +333,7 @@ class ClusterServiceTest {
         nodeHost.setInstanceId("other-instance-id");
         nodeHost.setHeartbeatTime(new Date(System.currentTimeMillis() - 3_000_000L));
         when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(nodeHost));
-        clusterService.checkSymDbOwnership();
+        assertDoesNotThrow(() -> clusterService.checkSymDbOwnership());
     }
 
     @Test
@@ -343,7 +343,7 @@ class ClusterServiceTest {
         nodeHost.setInstanceId("other-instance-id");
         nodeHost.setHeartbeatTime(null);
         when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(nodeHost));
-        clusterService.checkSymDbOwnership();
+        assertDoesNotThrow(() -> clusterService.checkSymDbOwnership());
     }
 
     @Test
