@@ -55,7 +55,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private static final Logger log = LoggerFactory.getLogger(JcsTcpCacheCoordinator.class);
     static final int JCS_TCP_PORT_DEFAULT = 1101;
     private final Set<String> knownPeers = ConcurrentHashMap.newKeySet(); // Used for actual network communication
-    private final ClusterMessageConverter converter = new ClusterMessageConverter();
+    private volatile ClusterMessageConverter converter;
     private volatile CompositeCacheManager jcsManager;
     private volatile CacheAccess<String, ClusterPeerSecureMessage> peerHeartbeatCache; // JCS-managed cache for peer server status
     private volatile CacheAccess<String, ClusterPeerSecureMessage> engineStateCache; // JCS-managed cache for engine states
@@ -67,8 +67,9 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private volatile long deliveryTimeoutMs; // Derived from the heartbeat interval in start(); only read after start() via the executor guard.
 
     @Override
-    public synchronized void start(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings) {
+    public synchronized void start(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings, ClusterMessageConverter converter) {
         this.networkSettings = networkSettings;
+        this.converter = converter;
         this.myPartitionId = networkSettings.clusterPartitionId();
         this.deliveryTimeoutMs = networkSettings.deliveryTimeoutMs();
         this.messageDeliveryExecutor = Executors.newSingleThreadExecutor(runnable -> {
@@ -111,7 +112,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
 
     @Override
     public synchronized void stop() {
-        if(!isInitialized()) {
+        if (!isInitialized()) {
             log.debug("JCS cluster communication was not running, so no shutdown was performed. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(),
                     myPartitionId);
         }
@@ -129,7 +130,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         jcsManager = null;
         peerHeartbeatCache = null;
         engineStateCache = null;
-        log.info("JCS cluster communication stopped. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);        
+        log.info("JCS cluster communication stopped. ServerId={}, ClusterPartitionId={}", networkSettings.serverId(), myPartitionId);
     }
 
     /**
@@ -188,7 +189,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
      * for a peer are consolidated into a single message, purging is simplified to two single-key removals.
      */
     private void purgePeerMessages(String serverId) {
-        try{
+        try {
             CacheAccess<String, ClusterPeerSecureMessage> heartbeatCache = peerHeartbeatCache;
             if (heartbeatCache != null) {
                 heartbeatCache.remove(serverId);

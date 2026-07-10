@@ -51,6 +51,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
     private final IClusterCacheCoordinator peerNetworkCoordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
+    private volatile ClusterMessageConverter converter;
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerWasPreviouslyAlive = new ConcurrentHashMap<>();
     private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
@@ -112,10 +113,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                     serverId, peerClusterPartitionId, myClusterPartitionId);
             return false;
         }
-        boolean peerIsRejected = peerNetworkCoordinator.getConverter().getRejectedServers().containsKey(serverId);
+        boolean peerIsRejected = converter.getRejectedServers().containsKey(serverId);
         if (peerIsRejected) {
             log.debug("Rejecting new peer due to blacklist. ServerId={}, ClusterPartitionId={}, rejectionReason={}",
-                    serverId, myClusterPartitionId, peerNetworkCoordinator.getConverter().getRejectedServers().get(serverId).getReason());
+                    serverId, myClusterPartitionId, converter.getRejectedServers().get(serverId).getReason());
             return false;
         }
         boolean isNewPeer = peerNetworkCoordinator.addPeer(serverId);
@@ -223,7 +224,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     protected synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isJcsEnabled) {
-        peerNetworkCoordinator.getConverter().setSecurityService(securityService);
+        converter = new ClusterMessageConverter(securityService, clusterPartitionId);
         myClusterPartitionId = clusterPartitionId;
         myServerId = serverId;
         int port = Integer.parseInt(System.getProperty(
@@ -266,7 +267,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         try {
             log.debug("Starting JCS cluster peer listener on {}", serverInfo);
-            peerNetworkCoordinator.start(networkSettings, Collections.emptySet());
+            peerNetworkCoordinator.start(networkSettings, Collections.emptySet(), converter);
             isClusterPeerListenerStarted = true;
             log.info("Started JCS cluster peer listener on {}", serverInfo);
         } catch (Exception ex) {

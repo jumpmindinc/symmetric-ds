@@ -48,13 +48,13 @@ class JcsTcpCacheCoordinatorTest {
     private JcsTcpCacheCoordinator coordinator;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         coordinator = new JcsTcpCacheCoordinator();
         ISecurityService mockSecurityService = mock(ISecurityService.class);
         when(mockSecurityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(mockSecurityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(mockSecurityService.nextSecureLong()).thenReturn(12345L);
-        coordinator.getConverter().setSecurityService(mockSecurityService);
+        setField("converter", new ClusterMessageConverter(mockSecurityService, "inst1"));
     }
 
     @Test

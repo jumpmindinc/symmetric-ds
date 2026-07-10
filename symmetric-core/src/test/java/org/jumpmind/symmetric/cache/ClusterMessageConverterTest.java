@@ -25,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -36,6 +35,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.jumpmind.security.ISecurityService;
+import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.cache.ClusterMessageConverter.ConversionFailureReason;
 import org.jumpmind.symmetric.cache.ClusterMessageConverter.RejectionInfo;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,12 +47,11 @@ class ClusterMessageConverterTest {
 
     @BeforeEach
     void setUp() {
-        converter = new ClusterMessageConverter();
         mockSecurityService = mock(ISecurityService.class);
         when(mockSecurityService.encrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(mockSecurityService.decrypt(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(mockSecurityService.nextSecureLong()).thenReturn(12345L);
-        converter.setSecurityService(mockSecurityService);
+        converter = new ClusterMessageConverter(mockSecurityService, "inst1");
     }
 
     @Test
@@ -128,7 +127,6 @@ class ClusterMessageConverterTest {
         when(secure.isHeaderChecksumValid()).thenReturn(true);
         when(secure.getKeystoreFingerprint()).thenReturn("encrypted-fp");
         when(mockSecurityService.decrypt(anyString())).thenReturn("wrong-version");
-        converter.setSecurityService(mockSecurityService);
         ClusterEngineStateMessage result = converter.toEngineStateMessage(secure, "inst1");
         assertNull(result);
         Map<String, RejectionInfo> rejected = converter.getRejectedServers();
@@ -165,6 +163,44 @@ class ClusterMessageConverterTest {
         assertNotNull(msg2);
         assertFalse(msg1.getEncryptedPayload().equals(msg2.getEncryptedPayload()));
         assertFalse(msg1.getMessageSalt() == msg2.getMessageSalt());
+    }
+
+    @Test
+    void toEncryptedMessage_fingerprintSeededFromClusterPartitionIdAndSoftwareVersion() {
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
+        String decryptedFingerprint = mockSecurityService.decrypt(encrypted.getKeystoreFingerprint());
+        assertTrue(decryptedFingerprint.endsWith("inst1" + Version.version()));
+    }
+
+    @Test
+    void toEncryptedMessage_fingerprintStaysConsistentOnceSeededDespiteLaterPartitionIdChange() {
+        ClusterServerStatusMessage plain1 = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        ClusterServerStatusMessage plain2 = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst2", 1000L);
+        ClusterPeerSecureMessage encrypted1 = converter.toEncryptedMessage(plain1);
+        ClusterPeerSecureMessage encrypted2 = converter.toEncryptedMessage(plain2);
+        String fingerprint1 = mockSecurityService.decrypt(encrypted1.getKeystoreFingerprint());
+        String fingerprint2 = mockSecurityService.decrypt(encrypted2.getKeystoreFingerprint());
+        assertEquals(fingerprint1, fingerprint2);
+    }
+
+    @Test
+    void toServerStatusMessage_fingerprintFromDifferentClusterPartitionId_isRejected() {
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
+        ClusterMessageConverter otherPartitionConverter = new ClusterMessageConverter(mockSecurityService, "inst2");
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum("server1", encrypted.getTimestamp(), encrypted.getMessageSalt());
+        ClusterPeerSecureMessage forgedPartition = new ClusterPeerSecureMessage("server1", "inst2", encrypted.getVersion(),
+                encrypted.getTimestamp(), encrypted.getMessageSalt(), headerChecksum,
+                encrypted.getKeystoreFingerprint(), encrypted.getEncryptedPayload());
+        ClusterServerStatusMessage result = otherPartitionConverter.toServerStatusMessage(forgedPartition, "inst2");
+        assertNull(result);
+        assertEquals(ConversionFailureReason.FINGERPRINT,
+                otherPartitionConverter.getRejectedServers().get("server1").getReason());
     }
 
     @Test
@@ -207,14 +243,6 @@ class ClusterMessageConverterTest {
         ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
         converter.toServerStatusMessage(encrypted, "inst1");
         assertEquals(1, converter.getSuccessfullyConverted());
-    }
-
-    @Test
-    void getSecurityService_notInitialized_throwsIllegalStateException() {
-        ClusterMessageConverter uninitializedConverter = new ClusterMessageConverter();
-        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(
-                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
-        assertThrows(IllegalStateException.class, () -> uninitializedConverter.toEncryptedMessage(plain));
     }
 
     private boolean invokeIsFromAuthorizedPartition(String messagePartitionId, String expectedPartitionId) throws Exception {

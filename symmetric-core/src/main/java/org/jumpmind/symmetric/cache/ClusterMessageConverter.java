@@ -27,6 +27,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jumpmind.security.ISecurityService;
+import org.jumpmind.symmetric.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,18 +38,12 @@ public class ClusterMessageConverter {
     private final AtomicLong rejectedPartitionIdMismatch = new AtomicLong(0);
     private final AtomicLong rejectedFingerprintFailure = new AtomicLong(0);
     private final Map<String, RejectionInfo> rejectedServers = new ConcurrentHashMap<>();
-    private volatile ISecurityService securityService;
+    private final ISecurityService securityService;
+    private final String serverFingerprint;
 
-    public void setSecurityService(ISecurityService securityService) {
+    public ClusterMessageConverter(ISecurityService securityService, String clusterPartitionId) {
         this.securityService = securityService;
-    }
-
-    private ISecurityService getSecurityService() {
-        ISecurityService svc = securityService;
-        if (svc == null) {
-            throw new IllegalStateException("Security service not initialized on ClusterMessageConverter");
-        }
-        return svc;
+        this.serverFingerprint = clusterPartitionId + Version.version();
     }
 
     public ClusterPeerSecureMessage toEncryptedMessage(ClusterServerStatusMessage plain) {
@@ -65,11 +60,10 @@ public class ClusterMessageConverter {
 
     private ClusterPeerSecureMessage buildEncryptedMessage(String serverId, String clusterPartitionId, String version,
             long timestamp, String plainPayload) {
-        ISecurityService secSvc = getSecurityService();
-        long messageSalt = secSvc.nextSecureLong();
+        long messageSalt = securityService.nextSecureLong();
         String headerChecksum = ClusterPeerSecureMessage.computeChecksum(serverId, timestamp, messageSalt);
-        String keystoreFingerprint = secSvc.encrypt(salt(messageSalt, version));
-        String encryptedPayload = secSvc.encrypt(salt(messageSalt, plainPayload));
+        String keystoreFingerprint = securityService.encrypt(salt(messageSalt, serverFingerprint));
+        String encryptedPayload = securityService.encrypt(salt(messageSalt, plainPayload));
         return new ClusterPeerSecureMessage(serverId, clusterPartitionId, version, timestamp, messageSalt,
                 headerChecksum, keystoreFingerprint, encryptedPayload);
     }
@@ -78,7 +72,7 @@ public class ClusterMessageConverter {
         if (!isValid(secure, expectedPartitionId)) {
             return null;
         }
-        String plainPayload = unsalt(getSecurityService().decrypt(secure.getEncryptedPayload()));
+        String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
         String[] parts = plainPayload.split("\\|", 2);
         long startTimeMs = parts.length > 1 ? Long.parseLong(parts[1]) : 0L;
         ClusterServerStatusMessage plain = new ClusterServerStatusMessage(parts[0], secure.getServerId(),
@@ -93,7 +87,7 @@ public class ClusterMessageConverter {
         if (!isValid(secure, expectedPartitionId)) {
             return null;
         }
-        String plainPayload = unsalt(getSecurityService().decrypt(secure.getEncryptedPayload()));
+        String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
         Map<String, String> engineStates = parseEngineStates(plainPayload);
         ClusterEngineStateMessage plain = new ClusterEngineStateMessage(engineStates, secure.getServerId(),
                 secure.getClusterPartitionId());
@@ -137,7 +131,8 @@ public class ClusterMessageConverter {
 
     private boolean isKeystoreFingerprintValid(ClusterPeerSecureMessage secure) {
         try {
-            return secure.getVersion().equals(unsalt(getSecurityService().decrypt(secure.getKeystoreFingerprint())));
+            String decryptedFingerprint = securityService.decrypt(secure.getKeystoreFingerprint());
+            return serverFingerprint.equals(unsalt(decryptedFingerprint));
         } catch (Exception e) {
             return false;
         }
