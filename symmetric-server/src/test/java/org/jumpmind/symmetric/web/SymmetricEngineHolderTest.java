@@ -80,14 +80,14 @@ class SymmetricEngineHolderTest {
         return file;
     }
 
-    private long getLastRunningEngineTimestampMs(SymmetricEngineHolder holder) throws Exception {
-        Field field = SymmetricEngineHolder.class.getDeclaredField("lastRunningEngineTimestampMs");
+    private long getLastActiveEngineTimestampMs(SymmetricEngineHolder holder) throws Exception {
+        Field field = SymmetricEngineHolder.class.getDeclaredField("lastActiveEngineTimestampMs");
         field.setAccessible(true);
         return (long) field.get(holder);
     }
 
-    private void setLastRunningEngineTimestampMs(SymmetricEngineHolder holder, long value) throws Exception {
-        Field field = SymmetricEngineHolder.class.getDeclaredField("lastRunningEngineTimestampMs");
+    private void setLastActiveEngineTimestampMs(SymmetricEngineHolder holder, long value) throws Exception {
+        Field field = SymmetricEngineHolder.class.getDeclaredField("lastActiveEngineTimestampMs");
         field.setAccessible(true);
         field.set(holder, value);
     }
@@ -417,13 +417,13 @@ class SymmetricEngineHolderTest {
         void initializesTimestampWhenEnginesRunning() throws Exception {
             System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            assertEquals(0L, getLastRunningEngineTimestampMs(holder));
+            assertEquals(0L, getLastActiveEngineTimestampMs(holder));
             File props = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(props.getAbsolutePath(), holder));
             long beforeMs = System.currentTimeMillis();
             holder.buildCurrentEngineStateSnapshot();
             long afterMs = System.currentTimeMillis();
-            long timestamp = getLastRunningEngineTimestampMs(holder);
+            long timestamp = getLastActiveEngineTimestampMs(holder);
             assertTrue(timestamp >= beforeMs && timestamp <= afterMs,
                     "expected lastRunningEngineTimestampMs to be set to the current time, was " + timestamp);
         }
@@ -495,20 +495,25 @@ class SymmetricEngineHolderTest {
         }
 
         @Test
-        void shutdownThresholdIs2xStaleInterval() throws Exception {
-            System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
+        void checkAndShutdownIfNoAciveEngines_shutsDownOnlyAfterThresholdExceeded() throws Exception {
             SymmetricEngineHolder holder = spy(new SymmetricEngineHolder());
             File props = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(props.getAbsolutePath(), holder));
             holder.buildCurrentEngineStateSnapshot();
             holder.getEnginesStarting().clear();
-            long shutdownThresholdMs = 2 * ClusteredCacheManager.getInstance().getStaleIntervalMs();
-            setLastRunningEngineTimestampMs(holder, System.currentTimeMillis() - shutdownThresholdMs + 5_000L);
+            long shutdownThresholdMs = getShutdownIfNoActiveEnginesThresholdMs();
+            setLastActiveEngineTimestampMs(holder, System.currentTimeMillis() - shutdownThresholdMs + 5_000L);
             holder.buildCurrentEngineStateSnapshot();
             verify(holder, Mockito.never()).stop();
-            setLastRunningEngineTimestampMs(holder, System.currentTimeMillis() - shutdownThresholdMs - 5_000L);
+            setLastActiveEngineTimestampMs(holder, System.currentTimeMillis() - shutdownThresholdMs - 5_000L);
             holder.buildCurrentEngineStateSnapshot();
             verify(holder, Mockito.timeout(2000)).stop();
+        }
+
+        private long getShutdownIfNoActiveEnginesThresholdMs() throws Exception {
+            Field field = SymmetricEngineHolder.class.getDeclaredField("SHUTDOWN_IF_NO_ACTIVE_ENGINES_30_MINUTES_MS");
+            field.setAccessible(true);
+            return (long) field.get(null);
         }
 
         @Test
@@ -531,19 +536,19 @@ class SymmetricEngineHolderTest {
             File props1 = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(props1.getAbsolutePath(), holder));
             holder.buildCurrentEngineStateSnapshot();
-            long originalTimestamp = getLastRunningEngineTimestampMs(holder);
+            long originalTimestamp = getLastActiveEngineTimestampMs(holder);
             assertTrue(originalTimestamp > 0);
             holder.getEnginesStarting().clear();
             holder.buildCurrentEngineStateSnapshot();
-            assertEquals(originalTimestamp, getLastRunningEngineTimestampMs(holder),
+            assertEquals(originalTimestamp, getLastActiveEngineTimestampMs(holder),
                     "timestamp should not change while no engines are running");
-            setLastRunningEngineTimestampMs(holder, originalTimestamp - 60_000L);
+            setLastActiveEngineTimestampMs(holder, originalTimestamp - 60_000L);
             File props2 = createPropertiesFile("engine2", "", "http://localhost:31415/sync/engine2");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(props2.getAbsolutePath(), holder));
             long beforeMs = System.currentTimeMillis();
             holder.buildCurrentEngineStateSnapshot();
             long afterMs = System.currentTimeMillis();
-            long refreshedTimestamp = getLastRunningEngineTimestampMs(holder);
+            long refreshedTimestamp = getLastActiveEngineTimestampMs(holder);
             assertTrue(refreshedTimestamp >= beforeMs && refreshedTimestamp <= afterMs,
                     "expected lastRunningEngineTimestampMs to be refreshed to the current time when an engine reappears, was " + refreshedTimestamp);
         }

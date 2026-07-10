@@ -21,8 +21,8 @@
 package org.jumpmind.symmetric.cache;
 
 public enum ClusteredEngineState {
-    STARTING("ENGINE_STARTING"), DISCOVERING("ENGINE_DISCOVERING"), RUNNING("ENGINE_RUNNING"), UPGRADING("ENGINE_UPGRADING"), FAILED("ENGINE_FAILED"), STOPPED(
-            "ENGINE_STOPPED"), OFFLINE("ENGINE_OFFLINE");
+    STARTING("ENGINE_STARTING"), DISCOVERING("ENGINE_DISCOVERING"), RUNNING("ENGINE_RUNNING"), UPGRADING("ENGINE_UPGRADING"), FAILED("ENGINE_FAILED"), 
+        STOPPED("ENGINE_STOPPED"), OFFLINE("ENGINE_OFFLINE");
 
     private final String value;
 
@@ -32,6 +32,11 @@ public enum ClusteredEngineState {
 
     public String getValue() {
         return value;
+    }
+
+    // The Discovering state applies to remote engines and is not considered active (until heartbeat is received).
+    public boolean isActive() {
+        return value.equals(STARTING.value) || value.equals(RUNNING.value) || value.equals(UPGRADING.value);
     }
 
     public static ClusteredEngineState fromValue(String value) {
