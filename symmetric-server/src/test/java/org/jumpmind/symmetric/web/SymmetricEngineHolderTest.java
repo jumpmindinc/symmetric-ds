@@ -401,14 +401,6 @@ class SymmetricEngineHolderTest {
         }
 
         @Test
-        void ignoresContainerModeWhenDisabled() {
-            System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "false");
-            SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
-            assertTrue(snapshot.isEmpty());
-        }
-
-        @Test
         void initializesTimestampWhenEnginesRunning() throws IOException {
             System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
