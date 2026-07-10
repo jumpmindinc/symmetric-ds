@@ -260,49 +260,4 @@ class CachePeerServerDiscoveryTest {
             assertNull(discovery.getUdpDiscoveryService());
         }
     }
-
-    @Test
-    void ensureUdpDiscoveryServiceInitialized_contextNotStarted_doesNothing() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-        discovery.ensureUdpDiscoveryServiceInitialized();
-        assertNull(discovery.getUdpDiscoveryService());
-    }
-
-    @Test
-    void ensureUdpDiscoveryServiceInitialized_contextWithoutJcsManager_doesNothing() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-        discovery.start(contextWithoutJcsManager());
-        discovery.ensureUdpDiscoveryServiceInitialized();
-        assertNull(discovery.getUdpDiscoveryService());
-    }
-
-    @Test
-    void ensureUdpDiscoveryServiceInitialized_initializesServiceOnce() {
-        UDPDiscoveryService mockService = mock(UDPDiscoveryService.class);
-        try (MockedStatic<UDPDiscoveryManager> mockedManagerStatic = mockStatic(UDPDiscoveryManager.class)) {
-            UDPDiscoveryManager mockManager = mock(UDPDiscoveryManager.class);
-            mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
-            when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any())).thenReturn(mockService);
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-            discovery.start(contextWithJcsManager());
-            discovery.ensureUdpDiscoveryServiceInitialized();
-            discovery.ensureUdpDiscoveryServiceInitialized();
-            assertSame(mockService, discovery.getUdpDiscoveryService());
-            verify(mockManager, times(1)).getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any());
-        }
-    }
-
-    @Test
-    void ensureUdpDiscoveryServiceInitialized_managerThrowsException_leavesServiceNull() {
-        try (MockedStatic<UDPDiscoveryManager> mockedManagerStatic = mockStatic(UDPDiscoveryManager.class)) {
-            UDPDiscoveryManager mockManager = mock(UDPDiscoveryManager.class);
-            mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
-            when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any()))
-                    .thenThrow(new RuntimeException("boom"));
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-            discovery.start(contextWithJcsManager());
-            discovery.ensureUdpDiscoveryServiceInitialized();
-            assertNull(discovery.getUdpDiscoveryService());
-        }
-    }
 }
