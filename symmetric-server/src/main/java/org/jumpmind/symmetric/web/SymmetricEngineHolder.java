@@ -173,7 +173,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         }
     }
 
-    private IClusteredCacheManager getClusteredCacheManager(){
+    private IClusteredCacheManager getClusteredCacheManager() {
         if (clusteredCacheManager != null && clusteredCacheManager.isInitialized()) {
             return clusteredCacheManager;
         }
@@ -184,7 +184,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     /**
      * Initialize JCS cluster peer heartbeat and discovery with no database dependency and no engine files. Additional peer servers can be linked later on.
      */
-    private IClusteredCacheManager initClusteredCacheManager() {        
+    private IClusteredCacheManager initClusteredCacheManager() {
         IClusteredCacheManager ccManager = null;
         boolean isClusterLockingEnabled = false;
         try {
