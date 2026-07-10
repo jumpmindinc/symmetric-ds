@@ -113,7 +113,7 @@ The peer communication port is configured via the `cluster.jcs.port` property (d
 Each cluster's shared identity is the cluster partition ID: auto-generated and persisted to `SYM_CONTEXT` on first startup so every node sharing that database converges automatically, or pinned explicitly via `cluster.partition.id` (or the `SYM_CLUSTER_PARTITION_ID` environment variable) when nodes in the same cluster point at different databases.
 All endpoints must be reachable on the JCS port; peer messages are AES-encrypted with a SHA-512 header checksum, but the port should still be protected by network-level firewall rules and not exposed to untrusted networks.
 
-Each cluster member's peer identity — used for JCS peer discovery and for its row in `SYM_NODE_HOST` — is now resolved consistently from the single `cluster.server.id` parameter (defaulting to the container/OS hostname).  The internal `runtime.symmetric.cluster.server.id` system property used during early development of this feature has been decommissioned; set `cluster.server.id` to pin a stable, distinct identity per cluster member going forward.
+Each cluster member's peer identity — used for JCS peer discovery and for its row in `SYM_NODE_HOST` — is now resolved consistently from the single `cluster.server.id` parameter (defaulting to the container/OS hostname - recommended for most deployments!). The internal `runtime.symmetric.cluster.server.id` system property has been removed; use `cluster.server.id` to pin a stable, distinct identity per cluster member.
 
 Custom extensions implementing the following core interfaces should note these changes:
 
