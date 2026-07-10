@@ -768,6 +768,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (!starting && !started) {
             try {
                 starting = true;
+                setEngineReadinessInAppHealthTracker(false);
                 symmetricDialect.verifyDatabaseIsCompatible();
                 checkForProOnlyDatabase();
                 setup();
@@ -873,9 +874,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         statisticManager.incrementRestart();
         startMetricsAggregation();
         started = true;
-        clusteredCacheManager.broadcastStateToPeers(ClusterPeerServerState.HEARTBEAT);
         clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.RUNNING);
-        ApplicationHealthTracker.getTracker().setEngineReadiness(getEngineName(), true);
+        setEngineReadinessInAppHealthTracker(started);
         for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
             ext.started(this);
         }
@@ -1137,6 +1137,20 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         };
     }
 
+    private void removeEngineFromAppHealthTracker(){
+        ApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
+        if (appHealthTracker != null) {
+            appHealthTracker.stopTrackingEngine(engineName);
+        }
+    }    
+    
+    private void setEngineReadinessInAppHealthTracker(boolean isReady){
+        ApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
+        if (appHealthTracker != null) {
+            appHealthTracker.setEngineReadiness(getEngineName(), isReady); 
+        }
+    }
+
     @Override
     public synchronized void stop() {
         log.info("Stopping SymmetricDS externalId={} version={} database={}",
@@ -1145,6 +1159,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         if (clusteredCacheManager != null) {
             clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.OFFLINE);
             clusteredCacheManager.unregisterEngine(this);
+        }
+        removeEngineFromAppHealthTracker();
+        
+        if (metricsService != null) {
+            metricsService.shutdown();
         }
         if (jobManager != null) {
             jobManager.stopJobs();
@@ -1211,9 +1230,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         stop();
         if (jobManager != null) {
             jobManager.destroy();
-        }
-        if (metricsService != null) {
-            metricsService.shutdown();
         }
     }
 
