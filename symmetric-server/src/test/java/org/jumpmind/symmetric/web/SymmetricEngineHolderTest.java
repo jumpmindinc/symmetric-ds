@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.SymmetricException;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ClusteredEngineState;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -77,6 +78,18 @@ class SymmetricEngineHolderTest {
             props.store(out, null);
         }
         return file;
+    }
+
+    private long getLastRunningEngineTimestampMs(SymmetricEngineHolder holder) throws Exception {
+        Field field = SymmetricEngineHolder.class.getDeclaredField("lastRunningEngineTimestampMs");
+        field.setAccessible(true);
+        return (long) field.get(holder);
+    }
+
+    private void setLastRunningEngineTimestampMs(SymmetricEngineHolder holder, long value) throws Exception {
+        Field field = SymmetricEngineHolder.class.getDeclaredField("lastRunningEngineTimestampMs");
+        field.setAccessible(true);
+        field.set(holder, value);
     }
 
     @Nested
@@ -401,21 +414,18 @@ class SymmetricEngineHolderTest {
         }
 
         @Test
-        void initializesTimestampWhenEnginesRunning() throws IOException {
+        void initializesTimestampWhenEnginesRunning() throws Exception {
             System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            assertEquals(0L, getLastRunningEngineTimestampMs(holder));
             File props = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(props.getAbsolutePath(), holder));
-            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
-            assertTrue(snapshot.values().stream().anyMatch(state -> state == ClusteredEngineState.STARTING));
-        }
-
-        @Test
-        void doesNotShutdownOnFirstCallWithoutEngines() {
-            System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
-            SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
-            assertTrue(snapshot.isEmpty());
+            long beforeMs = System.currentTimeMillis();
+            holder.buildCurrentEngineStateSnapshot();
+            long afterMs = System.currentTimeMillis();
+            long timestamp = getLastRunningEngineTimestampMs(holder);
+            assertTrue(timestamp >= beforeMs && timestamp <= afterMs,
+                    "expected lastRunningEngineTimestampMs to be set to the current time, was " + timestamp);
         }
 
         @Test
@@ -487,15 +497,18 @@ class SymmetricEngineHolderTest {
         @Test
         void shutdownThresholdIs2xStaleInterval() throws Exception {
             System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
-            SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            long staleInterval = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
-            long expectedThreshold = 2 * staleInterval;
-            Map<String, ClusteredEngineState> emptySnapshot = Map.of();
+            SymmetricEngineHolder holder = spy(new SymmetricEngineHolder());
+            File props = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
+            holder.getEnginesStarting().add(new SymmetricEngineStarter(props.getAbsolutePath(), holder));
             holder.buildCurrentEngineStateSnapshot();
-            for (int i = 0; i < 3; i++) {
-                holder.buildCurrentEngineStateSnapshot();
-            }
-            assertTrue(holder.buildCurrentEngineStateSnapshot().isEmpty());
+            holder.getEnginesStarting().clear();
+            long shutdownThresholdMs = 2 * ClusteredCacheManager.getInstance().getStaleIntervalMs();
+            setLastRunningEngineTimestampMs(holder, System.currentTimeMillis() - shutdownThresholdMs + 5_000L);
+            holder.buildCurrentEngineStateSnapshot();
+            verify(holder, Mockito.never()).stop();
+            setLastRunningEngineTimestampMs(holder, System.currentTimeMillis() - shutdownThresholdMs - 5_000L);
+            holder.buildCurrentEngineStateSnapshot();
+            verify(holder, Mockito.timeout(2000)).stop();
         }
 
         @Test
@@ -518,12 +531,21 @@ class SymmetricEngineHolderTest {
             File props1 = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(props1.getAbsolutePath(), holder));
             holder.buildCurrentEngineStateSnapshot();
+            long originalTimestamp = getLastRunningEngineTimestampMs(holder);
+            assertTrue(originalTimestamp > 0);
             holder.getEnginesStarting().clear();
             holder.buildCurrentEngineStateSnapshot();
+            assertEquals(originalTimestamp, getLastRunningEngineTimestampMs(holder),
+                    "timestamp should not change while no engines are running");
+            setLastRunningEngineTimestampMs(holder, originalTimestamp - 60_000L);
             File props2 = createPropertiesFile("engine2", "", "http://localhost:31415/sync/engine2");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(props2.getAbsolutePath(), holder));
-            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
-            assertTrue(snapshot.values().stream().anyMatch(s -> s == ClusteredEngineState.STARTING));
+            long beforeMs = System.currentTimeMillis();
+            holder.buildCurrentEngineStateSnapshot();
+            long afterMs = System.currentTimeMillis();
+            long refreshedTimestamp = getLastRunningEngineTimestampMs(holder);
+            assertTrue(refreshedTimestamp >= beforeMs && refreshedTimestamp <= afterMs,
+                    "expected lastRunningEngineTimestampMs to be refreshed to the current time when an engine reappears, was " + refreshedTimestamp);
         }
 
         @Test
