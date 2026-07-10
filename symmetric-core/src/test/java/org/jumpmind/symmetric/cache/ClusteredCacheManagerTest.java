@@ -215,8 +215,8 @@ class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         manager.registerEngine(mockEngine2);
         manager.refreshNodeHostHeartbeats();
-        verify(mockDataService1).updateNodeHostForCurrentNode(false);
-        verify(mockDataService2).updateNodeHostForCurrentNode(false);
+        verify(mockDataService1).updateNodeHostForCurrentNode(true);
+        verify(mockDataService2).updateNodeHostForCurrentNode(true);
     }
 
     @Test
@@ -227,7 +227,7 @@ class ClusteredCacheManagerTest {
         manager.registerEngine(mockEngine);
         manager.registerEngine(mockEngine2);
         assertDoesNotThrow(() -> manager.refreshNodeHostHeartbeats());
-        verify(mockDataService2).updateNodeHostForCurrentNode(false);
+        verify(mockDataService2).updateNodeHostForCurrentNode(true);
     }
 
     @Test

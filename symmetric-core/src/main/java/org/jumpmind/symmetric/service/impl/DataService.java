@@ -3612,11 +3612,11 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     @Override
-    public void updateNodeHostForCurrentNode(boolean syncHeartbeatToOtherNodes) {
-        if (syncHeartbeatToOtherNodes) {
-            heartbeat(false);
-        } else {
+    public void updateNodeHostForCurrentNode(boolean bypassTrigger) {
+        if (bypassTrigger) {
             engine.getNodeService().updateNodeHostForCurrentNode(true);
+        } else {
+            heartbeat(false);
         }
     }
 

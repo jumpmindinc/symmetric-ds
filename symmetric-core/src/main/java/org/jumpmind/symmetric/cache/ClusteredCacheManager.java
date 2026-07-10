@@ -51,7 +51,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
-    private final IClusterCacheCoordinator peerNetworkCoordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
+    private volatile IClusterCacheCoordinator peerNetworkCoordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
     private volatile ClusterMessageConverter converter;
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerWasPreviouslyAlive = new ConcurrentHashMap<>();
@@ -375,9 +375,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         if (peerNetworkCoordinator != null && peerNetworkCoordinator.isInitialized()) {
             try {
-                if(isClusterPeerListenerStarted){
+                if (isClusterPeerListenerStarted) {
                     sendMessageToPeers(ClusterServerStatusMessage.EVENT_PEER_LEAVING);
-                    broadcastCurrentEngineStates(); 
+                    broadcastCurrentEngineStates();
                 }
                 peerNetworkCoordinator.stop();
             } catch (Exception ex) {
@@ -562,11 +562,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      * SYM_NODE_HOST.
      */
     void refreshNodeHostHeartbeats() {
+        String engineName = "";
         for (ISymmetricEngine engine : registeredEngines.values()) {
             try {
-                engine.getDataService().updateNodeHostForCurrentNode(false);
+                engineName = engine.getEngineName();
+                engine.getDataService().updateNodeHostForCurrentNode(true);
             } catch (Exception ex) {
-                log.warn("Failed to refresh SYM_NODE_HOST heartbeat for engine={}", engine.getEngineName(), ex);
+                log.warn("Failed to refresh SYM_NODE_HOST heartbeat for engine=" + engineName, ex);
             }
         }
     }

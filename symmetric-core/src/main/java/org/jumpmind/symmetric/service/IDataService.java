@@ -158,7 +158,12 @@ public interface IDataService {
      */
     public void heartbeat(boolean force);
 
-    public void updateNodeHostForCurrentNode(boolean syncHeartbeatToOtherNodes);
+    /**
+     * Updates the current node's heartbeat. If bypassTrigger is true, the update is applied locally to this node's own database only (via
+     * {@link INodeService#updateNodeHostForCurrentNode(boolean)}) without going through the sync pipeline. If false, a full heartbeat runs and is broadcast to
+     * other nodes.
+     */
+    public void updateNodeHostForCurrentNode(boolean bypassTrigger);
 
     public void insertHeartbeatEvent(Node node, boolean isReload);
 
