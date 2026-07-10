@@ -128,17 +128,17 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         }
         validateKeystoreIntegrity();
         clusteredCacheManager = getClusteredCacheManager();
-        Runtime.getRuntime().addShutdownHook(this::onJvmShutdown);
+        Runtime.getRuntime().addShutdownHook(new Thread(this::onJvmShutdown));
     }
 
-    private void onJvmShutdown() {
-        this.initiateShutdown("JVM shutdown detected");
+    private Thread onJvmShutdown() {
+        return this.initiateShutdown("JVM shutdown detected");
     }
 
     // Kicks off thread to stop all engines and comumication with other servers in cluster
-    private void initiateShutdown(String reason) {
+    private Thread initiateShutdown(String reason) {
+        Thread stopEnginesTask = new Thread(this::stop, THREAD_ID_ENGINES_SHUTDOWN);
         try {
-            Thread stopEnginesTask = new Thread(this::stop, THREAD_ID_ENGINES_SHUTDOWN);
             stopEnginesTask.setDaemon(false);
             stopEnginesTask.setPriority(Thread.MAX_PRIORITY);
             stopEnginesTask.start();
@@ -146,6 +146,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         } catch (Exception ex) {
             log.error("Task to stop engine holder failed! The orignal reason for shutdown was: " + reason, ex);
         }
+        return stopEnginesTask;
     }
 
     private TypedProperties fetchStaticServerProperties() {
