@@ -127,9 +127,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
         }
         validateKeystoreIntegrity();
-        if (clusteredCacheManager == null) {
-            clusteredCacheManager = initClusteredCacheManager();
-        }
+        clusteredCacheManager = getClusteredCacheManager();
         Runtime.getRuntime().addShutdownHook(this::onJvmShutdown);
     }
 
@@ -175,13 +173,18 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         }
     }
 
-    /**
-     * Initialize JCS cluster peer heartbeat and discovery with no database dependency and no engine files. Additional peer servers can be linked later on.
-     */
-    private IClusteredCacheManager initClusteredCacheManager() {
+    private IClusteredCacheManager getClusteredCacheManager(){
         if (clusteredCacheManager != null && clusteredCacheManager.isInitialized()) {
             return clusteredCacheManager;
         }
+        clusteredCacheManager = initClusteredCacheManager();
+        return clusteredCacheManager;
+    }
+
+    /**
+     * Initialize JCS cluster peer heartbeat and discovery with no database dependency and no engine files. Additional peer servers can be linked later on.
+     */
+    private IClusteredCacheManager initClusteredCacheManager() {        
         IClusteredCacheManager ccManager = null;
         boolean isClusterLockingEnabled = false;
         try {
