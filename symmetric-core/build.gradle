@@ -11,7 +11,7 @@ apply from: symAssembleDir + '/common.gradle'
         api "org.springframework:spring-core:$springVersion"
         api "org.springframework:spring-beans:$springVersion"
         implementation "com.github.jsqlparser:jsqlparser:4.9"
-        implementation "org.apache.commons:commons-jcs3-core:$commonsJcsVersion"
+        api "org.apache.commons:commons-jcs3-core:$commonsJcsVersion"
         api platform("io.opentelemetry:opentelemetry-bom:$openTelemetryVersion")
         api "io.opentelemetry:opentelemetry-api"
         implementation "io.opentelemetry:opentelemetry-sdk"

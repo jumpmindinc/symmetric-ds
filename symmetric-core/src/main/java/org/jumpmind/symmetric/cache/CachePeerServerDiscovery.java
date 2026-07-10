@@ -95,7 +95,7 @@ public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
         knownPeerAddresses.clear();
     }
 
-    protected UDPDiscoveryService getUdpDiscoveryService() {
+    public UDPDiscoveryService getUdpDiscoveryService() {
         DiscoveryContext ctx = context;
         if (ctx == null || ctx.jcsManager() == null) {
             return null;
