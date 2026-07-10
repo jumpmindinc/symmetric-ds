@@ -370,16 +370,23 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 log.warn("Problem interrupting cluster network heartbeat thread! ", ex);
             }
         }
-        if (isClusterPeerListenerStarted) {
+        for (String engineName : lastEngineStates.keySet()) {
+            lastEngineStates.put(engineName, ClusteredEngineState.OFFLINE.getValue());
         }
         if (peerNetworkCoordinator != null && peerNetworkCoordinator.isInitialized()) {
             try {
-                sendMessageToPeers(ClusterServerStatusMessage.EVENT_PEER_LEAVING);
+                if(isClusterPeerListenerStarted){
+                    sendMessageToPeers(ClusterServerStatusMessage.EVENT_PEER_LEAVING);
+                    broadcastCurrentEngineStates(); 
+                }
                 peerNetworkCoordinator.stop();
             } catch (Exception ex) {
                 log.warn("Problem stopping network peer coordinator! ", ex);
             }
         }
+        peerNetworkCoordinator = null;
+        heartbeatThread = null;
+        isClusterPeerListenerStarted = false;
     }
 
     private void broadcastCurrentStateAndEngines() {
@@ -771,8 +778,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      * locks immediately via {@code onPeerLeft} instead of waiting out the full stale-peer timeout and treating it as a crash.
      */
     private void exitProcess() {
-        shutdown();
         ApplicationHealthTracker.getTracker().onShutdown();
+        shutdown();
         stopRegisteredEngines();
         ApplicationHealthTracker.getTracker().setAlive(false);
         System.exit(1);
