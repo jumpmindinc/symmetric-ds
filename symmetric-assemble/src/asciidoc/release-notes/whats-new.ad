@@ -119,7 +119,7 @@ Custom extensions implementing the following core interfaces should note these c
 
 * `IClusterService` — adds `purgeObsoleteNodeHosts()`, which clears any cluster locks still held by a `SYM_NODE_HOST` entry older than `cluster.peer.obsolete.ms` and then removes that entry. Called automatically at the start of the outgoing purge job.
 * `INodeService` — adds `deleteObsoleteNodeHosts(String nodeId, Date obsoleteBeforeTime)`, and adds `updateNodeHostForCurrentNode(boolean bypassTrigger)` (moved here from a private `DataService` method) so any caller can update the current node's heartbeat with or without going through sync triggers.
-* `IClusterCacheCoordinator` and `IClusteredCacheManager` — add `announceDiscoveredPeer(String serverId, String address)`, which registers a peer's address for JCS peer discovery directly from `SYM_NODE_HOST`. Peer discovery no longer depends solely on JCS's UDP multicast broadcast, which does not route on most cloud VPCs (AWS, Azure, GCP, OCI) or managed Kubernetes networks; UDP multicast is still used where available since it converges faster (seconds versus the heartbeat job's cadence, `job.heartbeat.period.time.ms`, 15 minutes by default).
+* `IClusteredCacheManager` and `IClusterCacheCoordinator` — Wrap JCS server-to-server communication and peer server discovery. Peer discovery also supports simpler discovery - `SYM_NODE_HOST` table. PRO version adds support of UDP broadcast, which might not route on most cloud VPCs (AWS, Azure, GCP, OCI) or managed Kubernetes networks. Discovery services are used where available to accelerate detection of container crashes (seconds versus the heartbeat job's cadence, `job.heartbeat.period.time.ms`, 15 minutes by default).
 --
 
 === Container Mode

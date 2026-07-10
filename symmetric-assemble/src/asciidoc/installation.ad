@@ -431,13 +431,11 @@ Open the following ports between all cluster nodes, and from the load balancer t
 |Protocol|Port|Purpose
 
 |TCP|`cluster.jcs.port` (default `1101`)|Apache JCS lateral TCP cache. Carries the actual peer messages — lock heartbeats, engine state — once two nodes have found each other.
-|UDP (recommended, not required)|`6789`, multicast group `228.5.6.7`|Apache JCS UDP discovery. When multicast routes between nodes, this is how a node announces its `cluster.jcs.port`/host and learns about other nodes within seconds, before any TCP peer connection is opened. The port and multicast group are JCS's own hardcoded defaults and are not currently exposed as SymmetricDS properties.
+|UDP (recommended, if available)|`6789`, multicast group `228.5.6.7`|Apache JCS UDP discovery. When multicast routes between nodes, this is how a node announces its `cluster.jcs.port`/host and learns about other nodes within seconds, before any TCP peer connection is opened. The port and multicast group are JCS's own hardcoded defaults and are not currently exposed as SymmetricDS properties.
 |HTTP/HTTPS|The port chosen during install, see `conf/symmetric-server.properties`|Sync requests forwarded by the load balancer per `sync.url`, and the push reservation handshake described above.
 |===
 
-NOTE: UDP discovery is no longer required for clustering to function. Each node also announces its address to JCS directly from the `SYM_NODE_HOST` table (refreshed at startup and on every heartbeat job cycle), so peers are still discovered over plain TCP when multicast is blocked or unavailable — common on cloud VPCs, multi-host Docker overlay networks, and most Kubernetes CNIs. The trade-off is speed: UDP discovery converges in seconds, while the `SYM_NODE_HOST` path is only as fast as the heartbeat job's cadence (`job.heartbeat.period.time.ms`, default 15 minutes). See <<Clustering and Networking>> for the details and how to tune convergence time when UDP isn't available.
-
-See <<Clustering and Networking>> for whether UDP multicast is achievable in your specific deployment environment (bare-metal, Docker, AWS, Azure, GCP, OCI, Akamai), and <<Security Hardening>> for securing `cluster.jcs.port` and the UDP discovery port.
+NOTE: Discovery service (like UDP) is not required for clustering to function. It merely accelerates peer discovery and crash detection. Each server also updates its heartbeat and address in the `SYM_NODE_HOST` table. Peer servers are still discovered over plain TCP.
 
 ==== Sharing the Encryption Secret Key
 
