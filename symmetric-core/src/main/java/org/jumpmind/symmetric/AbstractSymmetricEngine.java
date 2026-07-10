@@ -1137,17 +1137,17 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         };
     }
 
-    private void removeEngineFromAppHealthTracker(){
+    private void removeEngineFromAppHealthTracker() {
         ApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
         if (appHealthTracker != null) {
             appHealthTracker.stopTrackingEngine(engineName);
         }
-    }    
-    
-    private void setEngineReadinessInAppHealthTracker(boolean isReady){
+    }
+
+    private void setEngineReadinessInAppHealthTracker(boolean isReady) {
         ApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
         if (appHealthTracker != null) {
-            appHealthTracker.setEngineReadiness(getEngineName(), isReady); 
+            appHealthTracker.setEngineReadiness(getEngineName(), isReady);
         }
     }
 
@@ -1161,7 +1161,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             clusteredCacheManager.unregisterEngine(this);
         }
         removeEngineFromAppHealthTracker();
-        
         if (metricsService != null) {
             metricsService.shutdown();
         }

@@ -113,7 +113,6 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     private static ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
     private static IClusteredCacheManager clusteredCacheManager;
     private volatile long lastActiveEngineTimestampMs = 0; // For inactivity-related shutdown
-
     final String THREAD_PREFIX_ENGINES_START = "symmetric-engine-start";
     final String THREAD_PREFIX_ENGINES_RESTART = "symmetric-engine-restart";
     final String THREAD_PREFIX_ENGINES_STOP = "symmetric-engine-stop";
@@ -140,14 +139,14 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
 
     // Kicks off thread to stop all engines and comumication with other servers in cluster
     private void initiateShutdown(String reason) {
-        try{
-            Thread stopEnginesTask = new Thread(this::stop, THREAD_ID_ENGINES_SHUTDOWN );
+        try {
+            Thread stopEnginesTask = new Thread(this::stop, THREAD_ID_ENGINES_SHUTDOWN);
             stopEnginesTask.setDaemon(false);
             stopEnginesTask.setPriority(Thread.MAX_PRIORITY);
             stopEnginesTask.start();
             log.info("Stopping engine holder. Reason: {}", reason);
-        } catch(Exception ex){
-            log.error("Task to stop engine holder failed! The orignal reason for shutdown was: "+ reason, ex);
+        } catch (Exception ex) {
+            log.error("Task to stop engine holder failed! The orignal reason for shutdown was: " + reason, ex);
         }
     }
 
@@ -348,7 +347,6 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         }
     }
 
-
     private void stopAllEnginesInParallel(Collection<ServerSymmetricEngine> enginesToStop) {
         ExecutorService executor = getThreadPoolExecutor(THREAD_PREFIX_ENGINES_STOP, Thread.MAX_PRIORITY);
         try {
@@ -400,7 +398,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
                 } catch (Exception e) {
                     log.warn("Destroy of engine failed", e);
                 }
-                engines.remove(engineName);                
+                engines.remove(engineName);
             }
             enginesFailed.remove(engineName);
             SymmetricEngineStarter starter = new SymmetricEngineStarter(info.getPropertyFileName(), this);
@@ -409,16 +407,18 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         }
     }
 
-    /** Stops all engines, marks app health as not-Ready and not-Alive and stops comumication with other servers in cluster
-    */
+    /**
+     * Stops all engines, marks app health as not-Ready and not-Alive and stops comumication with other servers in cluster
+     */
     public void stop() {
         stopAndClearAllEngines();
         shutdownClusterCommunication();
         shutdownHealthTracker();
     }
 
-    /** Marks app health traker as not-Ready and not-Alive
-    */
+    /**
+     * Marks app health traker as not-Ready and not-Alive
+     */
     private synchronized void shutdownHealthTracker() {
         IApplicationHealthTracker healthTracker = ApplicationHealthTracker.getTracker();
         if (healthTracker != null) {
@@ -775,18 +775,18 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         return snapshot;
     }
 
-    private void checkAndShutdownIfNoAciveEngines(Map<String, ClusteredEngineState> snapshot) {    
-        long now = System.currentTimeMillis();        
+    private void checkAndShutdownIfNoAciveEngines(Map<String, ClusteredEngineState> snapshot) {
+        long now = System.currentTimeMillis();
         long staleIntervalMs = clusteredCacheManager != null ? clusteredCacheManager.getStaleIntervalMs()
-                    : ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
+                : ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         boolean hasActiveEngines = snapshot.values().stream()
                 .anyMatch(state -> state.isActive());
         if (hasActiveEngines) {
             lastActiveEngineTimestampMs = now;
         } else if (lastActiveEngineTimestampMs > 0) {
-            long noEnginesDurationMs = now - lastActiveEngineTimestampMs; 
+            long noEnginesDurationMs = now - lastActiveEngineTimestampMs;
             if (noEnginesDurationMs >= SHUTDOWN_IF_NO_ACTIVE_ENGINES_30_MINUTES_MS) {
-                String reason= String.format("There were no active endpoints (engines) for %d ms (threshold=%d ms, staleInterval=%d ms)",
+                String reason = String.format("There were no active endpoints (engines) for %d ms (threshold=%d ms, staleInterval=%d ms)",
                         noEnginesDurationMs, SHUTDOWN_IF_NO_ACTIVE_ENGINES_30_MINUTES_MS, staleIntervalMs);
                 initiateShutdown(reason);
             }
