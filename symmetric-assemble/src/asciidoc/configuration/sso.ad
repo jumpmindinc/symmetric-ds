@@ -5,7 +5,8 @@ Users can utilize single sign-on using LDAP or SAML authentication.
 
 ==== LDAP
 
-Configuring a <<Users>> authentication on SymmetricDS using LDAP is as simple as setting up the following four <<Parameters>>.
+Configuring a <<Users>> authentication on SymmetricDS using LDAP requires setting up the following four <<Parameters>>. 
+Note that Active Directory configuration must be adjusted to make it LDAP-compatible, because it is not supported natively at this time.
 
 console.auth.ldap.baseDN::  The LDAP base DN to search for a user or group (e.g. dc=example,dc=com).
                             [&#xA0;Default:&#xA0;]
