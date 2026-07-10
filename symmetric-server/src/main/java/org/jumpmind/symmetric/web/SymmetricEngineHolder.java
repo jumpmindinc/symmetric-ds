@@ -733,7 +733,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
 
     /** Builds a consolidated snapshot of all currently registered engines and their states. */
     public Map<String, ClusteredEngineState> buildCurrentEngineStateSnapshot() {
-        Map<String, ClusteredEngineState> snapshot = new java.util.HashMap<>();
+        Map<String, ClusteredEngineState> snapshot = new HashMap<>();
         for (ISymmetricEngine engine : engines.values()) {
             String engineName = engine.getEngineName();
             snapshot.put(engineName, ClusteredEngineState.RUNNING);

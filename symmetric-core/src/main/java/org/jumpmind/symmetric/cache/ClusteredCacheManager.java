@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -310,7 +311,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     public void broadcastEngineState(String engineName, ClusteredEngineState engineState) {
         lastEngineStates.put(engineName, engineState.getValue());
         if (isClusterPeerListenerStarted) {
-            Map<String, String> currentStatesOfEngines = new java.util.HashMap<>(lastEngineStates);
+            Map<String, String> currentStatesOfEngines =new HashMap<>(lastEngineStates);
             ClusterEngineStateMessage msg = new ClusterEngineStateMessage(
                     currentStatesOfEngines, myServerId, myClusterPartitionId);
             peerNetworkCoordinator.sendEngineStates(msg);
@@ -406,7 +407,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private Map<String, ClusteredEngineState> buildCurrentEngineStateSnapshotFromRegistered() {
-        Map<String, ClusteredEngineState> snapshot = new java.util.HashMap<>();
+        Map<String, ClusteredEngineState> snapshot =new HashMap<>();
         for (String engineName : lastEngineStates.keySet()) {
             String stateStr = lastEngineStates.get(engineName);
             try {
@@ -427,7 +428,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private Map<String, String> convertEngineStatesToStrings(Map<String, ClusteredEngineState> engineStates) {
-        Map<String, String> stringStates = new java.util.HashMap<>();
+        Map<String, String> stringStates =new HashMap<>();
         for (Map.Entry<String, ClusteredEngineState> entry : engineStates.entrySet()) {
             stringStates.put(entry.getKey(), entry.getValue().getValue());
         }

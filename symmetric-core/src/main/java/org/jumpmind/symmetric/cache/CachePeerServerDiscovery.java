@@ -106,7 +106,7 @@ public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
                 discoveryService = UDPDiscoveryManager.getInstance().getService(defaults.getUdpDiscoveryAddr(), defaults.getUdpDiscoveryPort(),
                         null, ctx.port(), 0, ctx.jcsManager(), new StandardSerializer());
             } catch (Exception ex) {
-                log.warn("Unable to resolve JCS UDP discovery service! serverId={}", ctx.serverId(), ex);
+                log.warn("Unable to access JCS UDP discovery service! serverId=" + ctx.serverId(), ex);
             }
         }
     }
@@ -122,7 +122,7 @@ public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
                 discoveryService = UDPDiscoveryManager.getInstance().getService(defaults.getUdpDiscoveryAddr(), defaults.getUdpDiscoveryPort(),
                         null, ctx.port(), 0, ctx.jcsManager(), new StandardSerializer());
             } catch (Exception ex) {
-                log.warn("Unable to resolve JCS UDP discovery service! serverId={}", ctx.serverId(), ex);
+                log.warn("Unable to access JCS UDP discovery service! serverId=" + ctx.serverId(), ex);
             }
         }
         return discoveryService;
