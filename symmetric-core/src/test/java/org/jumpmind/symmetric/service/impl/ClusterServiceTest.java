@@ -383,10 +383,6 @@ class ClusterServiceTest {
         injectActivePeer("other-server");
         assertFalse(clusterService.isStaleServer("other-server"));
     }
-    // TODO: testIsStaleServer_ownerAbsentFromActivePeers_returnsTrue requires refactoring
-    // The test depends on controlling getActiveServerIds() which now reads from JcsTcpCacheCoordinator
-    // instead of the dead peerStates field. Setting up the coordinator with mock peers requires
-    // either starting the JCS cache or complex reflection-based mocking of final fields.
 
     @Test
     void testIsStaleServer_ownServerId_returnsFalse() throws Exception {
@@ -420,10 +416,6 @@ class ClusterServiceTest {
         Date lockTimeout = new Date(System.currentTimeMillis() - 60_000);
         assertTrue(clusterService.isLockExpiredOrServerStale("other-server", lockTime, lockTimeout));
     }
-    // TODO: testLockCluster_staleOwner_breaksLockBeforeTimeout requires refactoring
-    // The test depends on controlling getActiveServerIds() which now reads from JcsTcpCacheCoordinator
-    // instead of the dead peerStates field. Setting up the coordinator with mock peers requires
-    // either starting the JCS cache or complex reflection-based mocking of final fields.
 
     @Test
     void testLockCluster_freshLockNotStale_doesNotBreak() {
