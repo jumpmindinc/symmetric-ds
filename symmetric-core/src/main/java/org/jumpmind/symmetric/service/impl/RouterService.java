@@ -688,11 +688,11 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     isAllDataReadByChannel.putIfAbsent(nodeChannel.getChannelId(), context.getCommittedDataIdCount() < context.getChannel()
                             .getMaxDataToRoute());
                 }
-            } catch (Exception e) {
+            } catch (Exception ex) {
                 if (context != null) {
                     context.rollback();
                 }
-                log.error("Failed to complete batch commit for channel '{}'", nodeChannel.getChannelId(), e);
+                log.error("Failed to complete batch commit for channel "+ nodeChannel.getChannelId(), ex);
             } finally {
                 long totalTime = System.currentTimeMillis() - ts;
                 if (context != null) {
