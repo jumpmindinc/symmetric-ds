@@ -148,6 +148,14 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     @Override
+    public synchronized boolean removePeer(String serverId) {
+        if (serverId == null || isOwnServerId(serverId)) {
+            return false;
+        }
+        return peerNetworkCoordinator != null && peerNetworkCoordinator.removePeer(serverId);
+    }
+
+    @Override
     public synchronized boolean announceDiscoveredPeer(String serverId, String address) {
         if (serverId == null || isOwnServerId(serverId)) {
             return false;

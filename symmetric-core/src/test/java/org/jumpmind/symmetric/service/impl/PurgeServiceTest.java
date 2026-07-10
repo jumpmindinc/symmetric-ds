@@ -258,8 +258,8 @@ public class PurgeServiceTest {
     }
 
     @Test
-    public void testPurgeIncomingPurgesNodeHost() {
-        purgeService.purgeIncoming(true);
+    public void testPurgeOutgoingPurgesNodeHost() {
+        purgeService.purgeOutgoing(true);
         verify(sqlTemplate).update(eq(service.getSql("purgeNodeHostSql")), any(Date.class));
     }
 

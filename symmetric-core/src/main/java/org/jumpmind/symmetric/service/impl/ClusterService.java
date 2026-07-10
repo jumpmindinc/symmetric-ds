@@ -690,19 +690,28 @@ public class ClusterService extends AbstractService implements IClusterService {
     }
 
     @Override
-    public void purgeObsoleteNodeHosts() {
+    public void removeObsoleteNodeHosts() {
         String nodeHostTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST);
         String nodeId = nodeService.findIdentityNodeId();
+        if (nodeId == null) {
+            return;
+        }
         long obsoleteThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS);
-        Date obsoleteBeforeTime = new Date(System.currentTimeMillis() - obsoleteThresholdMs);
-        for (NodeHost nodeHost : nodeService.findNodeHosts(nodeId)) {
-            if (isOwnerStale(nodeHost, obsoleteThresholdMs)) {
-                log.info("Purging obsolete {} row for node '{}' host '{}' and clearing any locks it still holds",
-                        nodeHostTableName, nodeId, nodeHost.getHostName());
-                clearLocksForServer(nodeHost.getHostName());
+        List<NodeHost> nodeHosts = nodeService.findNodeHosts(nodeId);
+        if (nodeHosts != null) {
+            IClusteredCacheManager cacheManager = ClusteredCacheManager.getInstance();
+            for (NodeHost nodeHost : nodeHosts) {
+                if (nodeHost != null && isOwnerStale(nodeHost, obsoleteThresholdMs)) {
+                    String hostName = nodeHost.getHostName();
+                    log.info("Purging obsolete {} row for node '{}' host '{}' and clearing any locks it still holds",
+                            nodeHostTableName, nodeId, hostName);
+                    clearLocksForServer(hostName);
+                    if (cacheManager != null && hostName != null) {
+                        cacheManager.removePeer(hostName);
+                    }
+                }
             }
         }
-        nodeService.deleteObsoleteNodeHosts(nodeId, obsoleteBeforeTime);
     }
 
     protected boolean isLockExpiredOrServerStale(String lockingServerId, Date lockTime, Date lockTimeout) {

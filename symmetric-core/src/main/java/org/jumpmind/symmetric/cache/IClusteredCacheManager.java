@@ -55,6 +55,11 @@ public interface IClusteredCacheManager {
     boolean addPeer(String serverId, Date heartbeatTime, String peerClusterPartitionId);
 
     /**
+     * Removes a peer that is no longer relevant (e.g. its SYM_NODE_HOST row was purged as obsolete). Returns true if the peer was known and has been removed.
+     */
+    boolean removePeer(String serverId);
+
+    /**
      * Registers a peer's network address for transport-level discovery, so the underlying transport can reach the peer without depending on its own
      * broadcast/multicast discovery mechanism. Safe to call repeatedly as a peer's address changes. Returns true if this changed the registration.
      */

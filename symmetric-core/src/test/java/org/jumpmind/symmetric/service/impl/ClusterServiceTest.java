@@ -216,7 +216,7 @@ class ClusterServiceTest {
     }
 
     @Test
-    void testPurgeObsoleteNodeHosts_clearsLocksForObsoleteHostsOnly_thenDeletes() {
+    void testRemoveObsoleteNodeHosts_clearsLocksForObsoleteHostsOnly() {
         when(parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS)).thenReturn(86_400_000L);
         Lock pushLock = clusterService.findLocks().get(ClusterConstants.PUSH);
         pushLock.setLockingServerId("obsolete-host");
@@ -231,21 +231,9 @@ class ClusterServiceTest {
         liveHost.setHostName("live-host");
         liveHost.setHeartbeatTime(new Date());
         when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(obsoleteHost, liveHost));
-        clusterService.purgeObsoleteNodeHosts();
-        verify(nodeService).deleteObsoleteNodeHosts(anyString(), any(Date.class));
+        clusterService.removeObsoleteNodeHosts();
         assertNull(pushLock.getLockingServerId());
         assertEquals("live-host", pullLock.getLockingServerId());
-    }
-
-    @Test
-    void testPurgeObsoleteNodeHosts_noObsoleteHosts_stillDeletes() {
-        when(parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS)).thenReturn(86_400_000L);
-        NodeHost liveHost = new NodeHost();
-        liveHost.setHostName("live-host");
-        liveHost.setHeartbeatTime(new Date());
-        when(nodeService.findNodeHosts(anyString())).thenReturn(List.of(liveHost));
-        clusterService.purgeObsoleteNodeHosts();
-        verify(nodeService).deleteObsoleteNodeHosts(anyString(), any(Date.class));
     }
 
     @Test

@@ -692,7 +692,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 if (context != null) {
                     context.rollback();
                 }
-                log.error("Failed to complete batch commit for channel "+ nodeChannel.getChannelId(), ex);
+                log.error("Failed to complete batch commit for channel " + nodeChannel.getChannelId(), ex);
             } finally {
                 long totalTime = System.currentTimeMillis() - ts;
                 if (context != null) {

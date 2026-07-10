@@ -72,5 +72,5 @@ public interface IClusterService {
 
     public boolean isStaleServer(String lockingServerId);
 
-    public void purgeObsoleteNodeHosts();
+    public void removeObsoleteNodeHosts();
 }

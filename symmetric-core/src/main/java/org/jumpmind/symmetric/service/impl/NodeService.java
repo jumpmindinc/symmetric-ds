@@ -216,11 +216,6 @@ public class NodeService extends AbstractService implements INodeService {
     }
 
     @Override
-    public void deleteObsoleteNodeHosts(String nodeId, Date obsoleteBeforeTime) {
-        platform.getSqlTemplate().update(getSql("deleteObsoleteNodeHostsSql"), nodeId, obsoleteBeforeTime);
-    }
-
-    @Override
     public void updateNodeHost(NodeHost nodeHost) {
         ISqlTransaction transaction = null;
         try {

@@ -284,13 +284,6 @@ class ApplicationHealthTrackerTest {
     }
 
     @Test
-    void onShutdownSetsAliveToFalse() {
-        ApplicationHealthTracker tracker = new ApplicationHealthTracker();
-        tracker.onShutdown();
-        assertFalse(tracker.isAlive());
-    }
-
-    @Test
     void onShutdownWithNoTrackedEnginesStillSetsAliveFalse() {
         ApplicationHealthTracker tracker = new ApplicationHealthTracker();
         tracker.onShutdown();

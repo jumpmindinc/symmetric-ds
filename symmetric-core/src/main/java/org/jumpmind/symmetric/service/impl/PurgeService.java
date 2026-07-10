@@ -92,7 +92,6 @@ public class PurgeService extends AbstractService implements IPurgeService {
 
     @Override
     public long purgeOutgoing(boolean force) {
-        clusterService.purgeObsoleteNodeHosts();
         long rowsPurged = 0;
         long startTime = System.currentTimeMillis();
         Calendar retentionCutoff = Calendar.getInstance();
@@ -134,6 +133,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
         long rowsPurged = 0;
         if (force || clusterService.lock(ClusterConstants.PURGE_OUTGOING)) {
             try {
+                rowsPurged = purgeNodeHost();
                 log.info("The outgoing purge process is about to run for data older than {}",
                         fastFormat.format(retentionCutoff.getTime()));
                 List<IPurgeListener> purgeListeners = extensionService.getExtensionPointList(IPurgeListener.class);
@@ -549,6 +549,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
     }
 
     private long purgeNodeHost() {
+        clusterService.removeObsoleteNodeHosts();
         Calendar retentionCutoff = Calendar.getInstance();
         retentionCutoff.add(Calendar.MINUTE, -parameterService.getInt(ParameterConstants.PURGE_NODE_HOST_RETENTION_MINUTES, MINS_IN_60_DAYS));
         long count = sqlTemplate.update(getSql("purgeNodeHostSql"), retentionCutoff.getTime());
@@ -804,7 +805,6 @@ public class PurgeService extends AbstractService implements IPurgeService {
             if (force || clusterService.lock(ClusterConstants.PURGE_INCOMING)) {
                 try {
                     log.info("The incoming purge process is about to run");
-                    purgedRowCount += purgeNodeHost();
                     List<IPurgeListener> purgeListeners = extensionService.getExtensionPointList(IPurgeListener.class);
                     for (IPurgeListener purgeListener : purgeListeners) {
                         try {
