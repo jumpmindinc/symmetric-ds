@@ -109,7 +109,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public synchronized boolean addPeer(String serverId, Date historicalHeartbeat, String peerClusterPartitionId) {
-        if (serverId == null || isOwnServerId(serverId)) {
+        if (!isInitialized() || serverId == null || isOwnServerId(serverId)) {
             return false;
         }
         if (peerClusterPartitionId != null && !peerClusterPartitionId.equals(myClusterPartitionId)) {
@@ -125,9 +125,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         boolean isNewPeer = peerNetworkCoordinator.addPeer(serverId);
         if (!isNewPeer) {
-            ClusterServerStatusMessage peerStatusMessage = getPeerStatusMessage(serverId);
+            ClusterServerStatusMessage peerStatusMessage = peerNetworkCoordinator.getPeerStatusMessage(serverId);
             if (peerStatusMessage == null) {
-                log.info("This cluster peer is not new and was never detected by JCS (likely offline). ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
+                log.info(
+                        "This cluster peer is not new and was never detected by JCS (likely offline). ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                         serverId, historicalHeartbeat, myClusterPartitionId);
             } else {
                 log.debug("This cluster peer is not new. ServerId={}, Last known heartbeat={}, JCS heartbeat={}, ClusterPartitionId={}",
