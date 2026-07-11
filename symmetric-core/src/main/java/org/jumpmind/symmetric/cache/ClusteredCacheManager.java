@@ -384,7 +384,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return false;
     }
 
-    private synchronized void startClusterHeartbeat() {
+    protected synchronized void startClusterHeartbeat() {
         if (this.isHeartbeatLoopRunning || !isClusterPeerListenerStarted) {
             log.debug("Skipping start of cluster peer heartbeat thread because isHeartbeatLoopRunning={} or isClusterPeerListenerStarted={}",
                     this.isHeartbeatLoopRunning, isClusterPeerListenerStarted);
