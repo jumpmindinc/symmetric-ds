@@ -230,6 +230,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             securityService.init();
         }
         startClusterPeerListener(securityService, clusterPartitionId, serverId, isClusterLockingEnabled);
+        startClusterHeartbeat();
         this.isInitializationComplete = true;
     }
 
