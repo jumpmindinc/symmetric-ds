@@ -44,7 +44,7 @@ public class ServerConstants {
     public static final int PARTITION_ID_MARKER_CONFIGURED = 0xcccc;
     public static final long CLUSTER_PEER_HEARTBEAT_DEFAULT_MS = 3_000L;
     public static final long CLUSTER_PEER_STALE_DEFAULT_MS = 90_000L;
-    public static final long CLUSTER_PEER_OBSOLETE_DEFAULT_MS = 24 * 60 * 60000L;
+    public static final long CLUSTER_PEER_OBSOLETE_DEFAULT_MS = 8 * 60 * 60000L;
     public static final long CLUSTER_PEER_WAIT_FOR_DBUPGRADE_MS = 2 * 60 * 60000L;
     public static final String HTTPS_ENABLE = "https.enable";
     public static final String HTTPS_PORT = "https.port";

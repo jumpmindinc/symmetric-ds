@@ -125,8 +125,14 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         boolean isNewPeer = peerNetworkCoordinator.addPeer(serverId);
         if (!isNewPeer) {
-            log.debug("Recorded cluster peer, but it is not new. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
+            ClusterServerStatusMessage peerStatusMessage = getPeerStatusMessage(peerId);
+            if(peerStatusMessage == null){
+                log.debug("This cluster peer, but it is not new and was never detected by JCS. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                     serverId, historicalHeartbeat, myClusterPartitionId);
+            }else {
+                log.debug("This cluster peer, but it is not new. ServerId={}, Last known heartbeat={}, JCS heartbeat={}, ClusterPartitionId={}",
+                    serverId, historicalHeartbeat, peerStatusMessage.getTimestampAsString(), myClusterPartitionId);
+            }
             return false;
         }
         boolean isHeartbeatStale = historicalHeartbeat != null
