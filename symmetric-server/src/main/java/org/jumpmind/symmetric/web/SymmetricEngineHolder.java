@@ -124,8 +124,6 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         if (securityService == null) {
             securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
         }
-        validateKeystoreIntegrity();
-        clusteredCacheManager = getClusteredCacheManager();
         Runtime.getRuntime().addShutdownHook(new Thread(this::stop, THREAD_ID_ENGINES_SHUTDOWN));
     }
 
@@ -189,6 +187,8 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     public void start() {
         try {
             SymmetricUtils.logNotices();
+            validateKeystoreIntegrity();
+            clusteredCacheManager = getClusteredCacheManager();
             if (staticEnginesMode) {
                 switchToStaticEnginesMode();
             }

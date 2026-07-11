@@ -51,6 +51,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
+    private static final long HEARTBEAT_MIN_SLEEP_DELAY_MS = 20L; // Thread.Sleep(x) for X than this value is irrelevant
     private volatile IClusterCacheCoordinator peerNetworkCoordinator;
     private volatile ClusterMessageConverter converter;
     private volatile ICachePeerServerDiscovery discovery;
@@ -528,20 +529,32 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private void sleepUntilNextHeartbeat(long startTime, long sleepBetweenHeartbeatsMs, long staleThresholdMs) throws InterruptedException {
         // These counts only track remote peers; the current server is also an active member of the cluster, noted separately in the log message below.
-        int activeMembers = countActivePeers(staleThresholdMs);
-        int knownPeers = peerNetworkCoordinator.getPeerIds().size();
+        int activeMembersCount = countActivePeers(staleThresholdMs);
+        int knownPeersCount = peerNetworkCoordinator.getPeerIds().size();
         long now = System.currentTimeMillis();
         long durationMs = now - startTime;
-        long adjustedSleepMs = Math.max(0, sleepBetweenHeartbeatsMs - durationMs);
+        long adjustedSleepMs = sleepBetweenHeartbeatsMs - durationMs;
+        if (adjustedSleepMs < HEARTBEAT_MIN_SLEEP_DELAY_MS) {
+            if (adjustedSleepMs < 0) {
+                log.warn(
+                        "Cluster peer heartbeat completed, but system is slow - processing took so long that the next cycle is overdue! Active peers={} (plus myself), Known peers={}, myServerId={}, ClusterPartitionId={}, staleThresholdMs={}, Tick duration={} ms, sleepMs={}",
+                        activeMembersCount, knownPeersCount, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+            } else {
+                log.info(
+                        "Cluster peer heartbeat completed, but processing took so long that the next cycle is due. Active peers={} (plus myself), Known peers={}, myServerId={}, ClusterPartitionId={}, staleThresholdMs={}, Tick duration={} ms, sleepMs={}",
+                        activeMembersCount, knownPeersCount, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+            }
+            return; // No sleep!
+        }
         if (staleThresholdMs > 0 && now - lastHeartbeatSummaryLogMs >= staleThresholdMs) {
             lastHeartbeatSummaryLogMs = now;
             log.info(
-                    "Cluster peer heartbeat completed: Active peers={} (plus myself), Known peers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, Tick duration={} ms, sleepMs={}",
-                    activeMembers, knownPeers, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+                    "Cluster peer heartbeat completed: Active peers={} (plus myself), Known peers={}, myServerId={}, ClusterPartitionId={}, staleThresholdMs={}, Tick duration={} ms, sleepMs={}",
+                    activeMembersCount, knownPeersCount, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
         } else {
             log.debug(
-                    "Cluster peer heartbeat completed: Active peers={} (plus myself), Known peers={}, myServerId={}, myClusterPartitionId={}, staleThresholdMs={}, Tick duration={} ms, sleepMs={}",
-                    activeMembers, knownPeers, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
+                    "Cluster peer heartbeat completed: Active peers={} (plus myself), Known peers={}, myServerId={}, ClusterPartitionId={}, staleThresholdMs={}, Tick duration={} ms, sleepMs={}",
+                    activeMembersCount, knownPeersCount, myServerId, myClusterPartitionId, staleThresholdMs, durationMs, adjustedSleepMs);
         }
         Thread.sleep(adjustedSleepMs);
     }
@@ -632,18 +645,18 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private int countActivePeers(long staleThresholdMs) {
         long now = System.currentTimeMillis();
-        int activeMembers = 0;
+        int activeMembersCount = 0;
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
             ClusterServerStatusMessage messageFromPeer = peerNetworkCoordinator.getPeerStatusMessage(peerId);
             if (isMessageSourceServerActive(peerId, messageFromPeer, now, staleThresholdMs)) {
-                activeMembers++;
+                activeMembersCount++;
             }
             ClusterEngineStateMessage engineStateMsg = peerNetworkCoordinator.getEngineStateMessage(peerId);
             for (String engineName : registeredEngines.keySet()) {
                 detectEngineStateAndFireEvents(peerId, engineName, engineStateMsg, now, staleThresholdMs);
             }
         }
-        return activeMembers;
+        return activeMembersCount;
     }
 
     private void detectEngineStateAndFireEvents(String peerId, String engineName,
@@ -791,7 +804,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      */
     protected boolean authenticateAndJoinClusterPartition(ISymmetricEngine engine, ClusterServerStatusMessage msg) {
         String peerClusterPartitionId = msg.getClusterPartitionId();
-        log.debug("Authenticating cluster peer={} for engine={}. peerClusterPartitionId={}, myClusterPartitionId={}",
+        log.debug("Authenticating cluster peer={} for engine={}. peerClusterPartitionId={}, ClusterPartitionId={}",
                 msg.getServerId(), engine.getEngineName(), peerClusterPartitionId, myClusterPartitionId);
         if (peerClusterPartitionId == null) {
             log.debug("Peer={} sent no clusterPartitionId — skipping keystore authentication", msg.getServerId());
@@ -799,7 +812,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         if (!peerClusterPartitionId.equals(myClusterPartitionId)) {
             log.warn("Rejecting cluster peer={} — clusterPartitionId mismatch indicates different cluster or environment. "
-                    + "peerClusterPartitionId={}, myClusterPartitionId={}",
+                    + "peerClusterPartitionId={}, ClusterPartitionId={}",
                     msg.getServerId(), peerClusterPartitionId, myClusterPartitionId);
             return true;
         }

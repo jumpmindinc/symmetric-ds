@@ -33,9 +33,11 @@ import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
+import java.util.Properties;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.util.AppUtils;
@@ -55,6 +57,7 @@ public class ClusterPartitionGeneratorTest {
         resetCache();
         System.clearProperty(ServerConstants.CLUSTER_PARTITION_ID);
         System.clearProperty(SystemConstants.SYSPROP_LAUNCHER);
+        System.clearProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED);
         clearServerIdProperties();
     }
 
@@ -63,6 +66,7 @@ public class ClusterPartitionGeneratorTest {
         resetCache();
         System.clearProperty(ServerConstants.CLUSTER_PARTITION_ID);
         System.clearProperty(SystemConstants.SYSPROP_LAUNCHER);
+        System.clearProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED);
         clearServerIdProperties();
     }
 
@@ -249,6 +253,38 @@ public class ClusterPartitionGeneratorTest {
             mocked.when(AppUtils::getHostName).thenThrow(new RuntimeException("no hostname available"));
             assertEquals("unknown", ClusterPartitionGenerator.resolveServerId());
         }
+    }
+
+    @Test
+    public void isClusterLockingEnabled_propertiesValueTrue_returnsTrue() {
+        Properties properties = new Properties();
+        properties.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
+        assertTrue(ClusterPartitionGenerator.isClusterLockingEnabled(properties));
+    }
+
+    @Test
+    public void isClusterLockingEnabled_propertiesBlank_fallsBackToSystemProperty() {
+        System.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
+        assertTrue(ClusterPartitionGenerator.isClusterLockingEnabled(new Properties()));
+    }
+
+    @Test
+    public void isClusterLockingEnabled_noProperties_fallsBackToSystemProperty() {
+        System.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
+        assertTrue(ClusterPartitionGenerator.isClusterLockingEnabled(null));
+    }
+
+    @Test
+    public void isClusterLockingEnabled_propertiesValueTakesPrecedenceOverSystemProperty() {
+        Properties properties = new Properties();
+        properties.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "false");
+        System.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
+        assertFalse(ClusterPartitionGenerator.isClusterLockingEnabled(properties));
+    }
+
+    @Test
+    public void isClusterLockingEnabled_noConfiguration_returnsFalse() {
+        assertFalse(ClusterPartitionGenerator.isClusterLockingEnabled(null));
     }
 
     @Test
