@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.jcs3.access.CacheAccess;
 import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
 import org.apache.commons.lang3.StringUtils;
-import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,9 +65,11 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
     private volatile long deliveryTimeoutMs; // Derived from the heartbeat interval in start(); only read after start() via the executor guard.
 
     @Override
-    public synchronized void start(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings, ClusterMessageConverter converter) {
+    public synchronized void start(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings, ClusterMessageConverter converter,
+            ICachePeerServerDiscovery discovery) {
         this.networkSettings = networkSettings;
         this.converter = converter;
+        this.discovery = discovery;
         this.myPartitionId = networkSettings.clusterPartitionId();
         this.deliveryTimeoutMs = networkSettings.deliveryTimeoutMs();
         this.messageDeliveryExecutor = Executors.newSingleThreadExecutor(runnable -> {
@@ -76,8 +77,6 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
             thread.setDaemon(true);
             return thread;
         });
-        ICachePeerServerDiscoveryFactory discoveryFactory = AppUtils.newInstance(ICachePeerServerDiscoveryFactory.class, CachePeerServerDiscoveryFactory.class);
-        this.discovery = discoveryFactory.create(networkSettings.discoveryMode());
         Properties jcsProperties = JcsPropertiesBuilder.build(networkSettings, regionSettings);
         discovery.enrichJcsProperties(jcsProperties, JcsPropertiesBuilder.lateralAuxAttributesPrefix());
         Set<String> regionNames = new HashSet<>(Set.of(JcsPropertiesBuilder.PEER_REGION, JcsPropertiesBuilder.ENGINE_REGION));

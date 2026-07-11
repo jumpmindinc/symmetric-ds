@@ -31,23 +31,23 @@ class CachePeerServerDiscoveryFactoryTest {
     private final CachePeerServerDiscoveryFactory factory = new CachePeerServerDiscoveryFactory();
 
     @Test
-    void create_nullMode_returnsCachePeerServerDiscovery() {
-        assertInstanceOf(CachePeerServerDiscovery.class, factory.create(null));
+    void create_nullMode_returnsNodeHostCachePeerServerDiscovery() {
+        assertInstanceOf(NodeHostCachePeerServerDiscovery.class, factory.create(null));
     }
 
     @Test
-    void create_blankMode_returnsCachePeerServerDiscovery() {
-        assertInstanceOf(CachePeerServerDiscovery.class, factory.create("   "));
+    void create_blankMode_returnsNodeHostCachePeerServerDiscovery() {
+        assertInstanceOf(NodeHostCachePeerServerDiscovery.class, factory.create("   "));
     }
 
     @Test
-    void create_dbMode_returnsCachePeerServerDiscovery() {
-        assertInstanceOf(CachePeerServerDiscovery.class, factory.create(ServerConstants.CLUSTER_CACHE_DISCOVERY_DB));
+    void create_dbMode_returnsNodeHostCachePeerServerDiscovery() {
+        assertInstanceOf(NodeHostCachePeerServerDiscovery.class, factory.create(ServerConstants.CLUSTER_CACHE_DISCOVERY_DB));
     }
 
     @Test
-    void create_dbModeDifferentCase_returnsCachePeerServerDiscovery() {
-        assertInstanceOf(CachePeerServerDiscovery.class, factory.create("DB"));
+    void create_dbModeDifferentCase_returnsNodeHostCachePeerServerDiscovery() {
+        assertInstanceOf(NodeHostCachePeerServerDiscovery.class, factory.create("DB"));
     }
 
     @Test

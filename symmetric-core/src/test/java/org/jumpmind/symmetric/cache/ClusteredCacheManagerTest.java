@@ -121,10 +121,11 @@ class ClusteredCacheManagerTest {
         }
         setField("peerNetworkCoordinator", mockCoordinator);
         setField("myServerId", MY_SERVER_ID);
+        setField("isInitializationComplete", true);
     }
 
     private static final String[] SNAPSHOT_FIELDS = {
-            "peerNetworkCoordinator", "converter", "myServerId", "myClusterPartitionId", "myStartTimeMs",
+            "peerNetworkCoordinator", "converter", "discovery", "myServerId", "myClusterPartitionId", "myStartTimeMs",
             "isClusterPeerListenerStarted", "isClusterLockingEnabled", "currentHeartbeatMs", "currentStaleThresholdMs",
             "lastBroadcastEventType", "symmetricEngineHolder", "heartbeatThread", "isHeartbeatLoopRunning",
             "isInitializationComplete", "exitProcessAction"
@@ -616,7 +617,7 @@ class ClusteredCacheManagerTest {
         assertEquals(PEER_1, manager.getServerId());
         assertTrue(manager.isClusterLockingEnabled());
         assertTrue(manager.isClusterPeerListenerStarted());
-        verify(mockCoordinator).start(any(CacheCoordinatorNetworkSettings.class), eq(Collections.emptySet()), any(ClusterMessageConverter.class));
+        verify(mockCoordinator).start(any(CacheCoordinatorNetworkSettings.class), eq(Collections.emptySet()), any(ClusterMessageConverter.class), any());
     }
 
     @Test
@@ -627,7 +628,7 @@ class ClusteredCacheManagerTest {
         assertEquals(PEER_1, manager.getServerId());
         assertFalse(manager.isClusterLockingEnabled());
         assertFalse(manager.isClusterPeerListenerStarted());
-        verify(mockCoordinator, never()).start(any(), any(), any());
+        verify(mockCoordinator, never()).start(any(), any(), any(), any());
     }
 
     @Test
@@ -688,7 +689,7 @@ class ClusteredCacheManagerTest {
         CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings(PEER_1, PARTITION_ID, 1101, "db", 3000L);
         callEnsurePeerListenerStarted(settings);
         assertTrue(manager.isClusterPeerListenerStarted());
-        verify(mockCoordinator, times(1)).start(eq(settings), eq(Collections.emptySet()), any());
+        verify(mockCoordinator, times(1)).start(eq(settings), eq(Collections.emptySet()), any(), any());
     }
 
     @Test
@@ -697,13 +698,13 @@ class ClusteredCacheManagerTest {
         setField("isClusterPeerListenerStarted", true);
         CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings(PEER_1, PARTITION_ID, 1101, "db", 3000L);
         callEnsurePeerListenerStarted(settings);
-        verify(mockCoordinator, never()).start(any(), any(), any());
+        verify(mockCoordinator, never()).start(any(), any(), any(), any());
     }
 
     @Test
     void ensurePeerListenerStarted_coordinatorThrows_wrapsInRuntimeExceptionAndLeavesFlagFalse() throws Exception {
         setConverter(mock(ClusterMessageConverter.class));
-        doThrow(new RuntimeException("boom")).when(mockCoordinator).start(any(), any(), any());
+        doThrow(new RuntimeException("boom")).when(mockCoordinator).start(any(), any(), any(), any());
         CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings(PEER_1, PARTITION_ID, 1101, "db", 3000L);
         assertThrows(RuntimeException.class, () -> callEnsurePeerListenerStarted(settings));
         assertFalse(manager.isClusterPeerListenerStarted());

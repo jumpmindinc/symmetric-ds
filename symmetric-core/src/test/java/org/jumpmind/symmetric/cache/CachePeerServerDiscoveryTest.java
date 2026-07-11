@@ -30,33 +30,71 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 
+import org.apache.commons.jcs3.auxiliary.AuxiliaryCache;
+import org.apache.commons.jcs3.auxiliary.lateral.LateralCacheNoWaitFacade;
+import org.apache.commons.jcs3.engine.control.CompositeCache;
 import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
-import org.apache.commons.jcs3.utils.discovery.DiscoveredService;
 import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryManager;
 import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryService;
-import org.apache.commons.jcs3.utils.discovery.behavior.IDiscoveryListener;
+import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.CacheCoordinatorNetworkSettings;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 class CachePeerServerDiscoveryTest {
-    private final CompositeCacheManager jcsManager = mock(CompositeCacheManager.class);
+    private final CompositeCacheManager mockJcsManager = mock(CompositeCacheManager.class);
+    private CompositeCacheManager realJcsManager;
+
+    @AfterEach
+    void tearDown() {
+        if (realJcsManager != null) {
+            realJcsManager.shutDown();
+            realJcsManager = null;
+        }
+    }
 
     private DiscoveryContext contextWithJcsManager() {
-        return new DiscoveryContext(jcsManager, 4001, List.of("region1", "region2"), "server1");
+        return new DiscoveryContext(mockJcsManager, 4001, List.of("region1", "region2"), "server1");
     }
 
     private DiscoveryContext contextWithoutJcsManager() {
         return new DiscoveryContext(null, 4001, List.of("region1"), "server1");
+    }
+
+    private static int findFreePort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        }
+    }
+
+    private DiscoveryContext realContext() throws Exception {
+        int port = findFreePort();
+        CacheCoordinatorNetworkSettings networkSettings = new CacheCoordinatorNetworkSettings("server1", "inst1", port, "db", 3000L);
+        Properties jcsProperties = JcsPropertiesBuilder.build(networkSettings, Collections.emptySet());
+        realJcsManager = CompositeCacheManager.getUnconfiguredInstance();
+        realJcsManager.configure(jcsProperties);
+        return new DiscoveryContext(realJcsManager, port, List.of(JcsPropertiesBuilder.PEER_REGION, JcsPropertiesBuilder.ENGINE_REGION), "server1");
+    }
+
+    @SuppressWarnings("unchecked")
+    private <K, V> LateralCacheNoWaitFacade<K, V> getLateralFacade(String regionName) {
+        CompositeCache<K, V> cache = realJcsManager.getCache(regionName);
+        for (AuxiliaryCache<K, V> aux : cache.getAuxCacheList()) {
+            if (aux instanceof LateralCacheNoWaitFacade) {
+                return (LateralCacheNoWaitFacade<K, V>) aux;
+            }
+        }
+        return null;
     }
 
     @Test
@@ -100,63 +138,46 @@ class CachePeerServerDiscoveryTest {
     }
 
     @Test
-    void announcePeer_newPeer_returnsTrueAndAnnouncesToListeners() {
-        UDPDiscoveryService mockService = mock(UDPDiscoveryService.class);
-        IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
-        when(mockService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
-        try (MockedStatic<UDPDiscoveryManager> mockedManagerStatic = mockStatic(UDPDiscoveryManager.class)) {
-            UDPDiscoveryManager mockManager = mock(UDPDiscoveryManager.class);
-            mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
-            when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any())).thenReturn(mockService);
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-            discovery.start(contextWithJcsManager());
-            assertTrue(discovery.announcePeer("server2", "10.0.0.2:4001"));
-            ArgumentCaptor<DiscoveredService> captor = ArgumentCaptor.forClass(DiscoveredService.class);
-            verify(mockListener).addDiscoveredService(captor.capture());
-            assertEquals("10.0.0.2:4001", captor.getValue().getServiceAddress());
-            assertEquals(4001, captor.getValue().getServicePort());
-            assertEquals(List.of("region1", "region2"), captor.getValue().getCacheNames());
-        }
+    void announcePeer_newPeer_wiresLateralConnectionIntoEveryRegion() throws Exception {
+        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        discovery.start(realContext());
+        String address = "127.0.0.1:" + findFreePort();
+        assertTrue(discovery.announcePeer("server2", address));
+        assertTrue(getLateralFacade(JcsPropertiesBuilder.PEER_REGION).containsNoWait(address));
+        assertTrue(getLateralFacade(JcsPropertiesBuilder.ENGINE_REGION).containsNoWait(address));
     }
 
     @Test
-    void announcePeer_sameAddressAnnouncedTwice_secondCallReturnsFalseAndDoesNotReannounce() {
-        UDPDiscoveryService mockService = mock(UDPDiscoveryService.class);
-        IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
-        when(mockService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
-        try (MockedStatic<UDPDiscoveryManager> mockedManagerStatic = mockStatic(UDPDiscoveryManager.class)) {
-            UDPDiscoveryManager mockManager = mock(UDPDiscoveryManager.class);
-            mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
-            when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any())).thenReturn(mockService);
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-            discovery.start(contextWithJcsManager());
-            assertTrue(discovery.announcePeer("server2", "10.0.0.2:4001"));
-            assertFalse(discovery.announcePeer("server2", "10.0.0.2:4001"));
-            verify(mockListener, times(1)).addDiscoveredService(any());
-            verify(mockListener, never()).removeDiscoveredService(any());
-        }
+    void announcePeer_bareAddressWithoutPort_appendsContextPortToBuildTcpServerKey() throws Exception {
+        // AbstractSymmetricEngine.refreshClusterPeers announces bare SYM_NODE_HOST IP addresses with no port; all cluster nodes share one configured port.
+        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        DiscoveryContext ctx = realContext();
+        discovery.start(ctx);
+        String bareAddress = "127.0.0.1";
+        assertTrue(discovery.announcePeer("server2", bareAddress));
+        assertTrue(getLateralFacade(JcsPropertiesBuilder.PEER_REGION).containsNoWait(bareAddress + ":" + ctx.port()));
     }
 
     @Test
-    void announcePeer_addressChanged_retractsOldAnnouncesNewAndReturnsTrue() {
-        UDPDiscoveryService mockService = mock(UDPDiscoveryService.class);
-        IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
-        when(mockService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
-        try (MockedStatic<UDPDiscoveryManager> mockedManagerStatic = mockStatic(UDPDiscoveryManager.class)) {
-            UDPDiscoveryManager mockManager = mock(UDPDiscoveryManager.class);
-            mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
-            when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any())).thenReturn(mockService);
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-            discovery.start(contextWithJcsManager());
-            assertTrue(discovery.announcePeer("server2", "10.0.0.2:4001"));
-            assertTrue(discovery.announcePeer("server2", "10.0.0.3:4001"));
-            ArgumentCaptor<DiscoveredService> removeCaptor = ArgumentCaptor.forClass(DiscoveredService.class);
-            verify(mockListener).removeDiscoveredService(removeCaptor.capture());
-            assertEquals("10.0.0.2:4001", removeCaptor.getValue().getServiceAddress());
-            ArgumentCaptor<DiscoveredService> addCaptor = ArgumentCaptor.forClass(DiscoveredService.class);
-            verify(mockListener, times(2)).addDiscoveredService(addCaptor.capture());
-            assertEquals("10.0.0.3:4001", addCaptor.getValue().getServiceAddress());
-        }
+    void announcePeer_sameAddressAnnouncedTwice_secondCallReturnsFalseAndDoesNotDuplicate() throws Exception {
+        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        discovery.start(realContext());
+        String address = "127.0.0.1:" + findFreePort();
+        assertTrue(discovery.announcePeer("server2", address));
+        assertFalse(discovery.announcePeer("server2", address));
+        assertTrue(getLateralFacade(JcsPropertiesBuilder.PEER_REGION).containsNoWait(address));
+    }
+
+    @Test
+    void announcePeer_addressChanged_removesOldConnectionAndAddsNew() throws Exception {
+        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        discovery.start(realContext());
+        String oldAddress = "127.0.0.1:" + findFreePort();
+        String newAddress = "127.0.0.1:" + findFreePort();
+        assertTrue(discovery.announcePeer("server2", oldAddress));
+        assertTrue(discovery.announcePeer("server2", newAddress));
+        assertFalse(getLateralFacade(JcsPropertiesBuilder.PEER_REGION).containsNoWait(oldAddress));
+        assertTrue(getLateralFacade(JcsPropertiesBuilder.PEER_REGION).containsNoWait(newAddress));
     }
 
     @Test
@@ -167,57 +188,35 @@ class CachePeerServerDiscoveryTest {
     }
 
     @Test
-    void retractPeer_knownServerIdWithAvailableService_returnsTrueAndRetracts() {
-        UDPDiscoveryService mockService = mock(UDPDiscoveryService.class);
-        IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
-        when(mockService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
-        try (MockedStatic<UDPDiscoveryManager> mockedManagerStatic = mockStatic(UDPDiscoveryManager.class)) {
-            UDPDiscoveryManager mockManager = mock(UDPDiscoveryManager.class);
-            mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
-            when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any())).thenReturn(mockService);
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-            discovery.start(contextWithJcsManager());
-            discovery.announcePeer("server2", "10.0.0.2:4001");
-            assertTrue(discovery.retractPeer("server2"));
-            verify(mockListener).removeDiscoveredService(any());
-            assertFalse(discovery.retractPeer("server2"));
-        }
+    void retractPeer_knownServerId_removesLateralConnectionAndReturnsTrue() throws Exception {
+        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        discovery.start(realContext());
+        String address = "127.0.0.1:" + findFreePort();
+        discovery.announcePeer("server2", address);
+        assertTrue(discovery.retractPeer("server2"));
+        assertFalse(getLateralFacade(JcsPropertiesBuilder.PEER_REGION).containsNoWait(address));
+        assertFalse(discovery.retractPeer("server2"));
     }
 
     @Test
-    void retractPeer_knownServerIdWithUnavailableService_returnsTrueWithoutRetracting() {
-        UDPDiscoveryService mockService = mock(UDPDiscoveryService.class);
-        IDiscoveryListener mockListener = mock(IDiscoveryListener.class);
-        when(mockService.getCopyOfDiscoveryListeners()).thenReturn(Set.of(mockListener));
-        try (MockedStatic<UDPDiscoveryManager> mockedManagerStatic = mockStatic(UDPDiscoveryManager.class)) {
-            UDPDiscoveryManager mockManager = mock(UDPDiscoveryManager.class);
-            mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
-            when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any())).thenReturn(mockService);
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-            discovery.start(contextWithJcsManager());
-            discovery.announcePeer("server2", "10.0.0.2:4001");
-            discovery.start(contextWithoutJcsManager());
-            assertTrue(discovery.retractPeer("server2"));
-            verify(mockListener, never()).removeDiscoveredService(any());
-        }
+    void retractPeer_knownServerIdWithUnavailableContext_returnsTrueWithoutThrowing() throws Exception {
+        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        discovery.start(realContext());
+        String address = "127.0.0.1:" + findFreePort();
+        discovery.announcePeer("server2", address);
+        discovery.start(contextWithoutJcsManager());
+        assertTrue(discovery.retractPeer("server2"));
     }
 
     @Test
-    void stop_clearsContextDiscoveryServiceAndKnownPeers() {
-        UDPDiscoveryService mockService = mock(UDPDiscoveryService.class);
-        when(mockService.getCopyOfDiscoveryListeners()).thenReturn(Set.of());
-        try (MockedStatic<UDPDiscoveryManager> mockedManagerStatic = mockStatic(UDPDiscoveryManager.class)) {
-            UDPDiscoveryManager mockManager = mock(UDPDiscoveryManager.class);
-            mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
-            when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any())).thenReturn(mockService);
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
-            discovery.start(contextWithJcsManager());
-            discovery.announcePeer("server2", "10.0.0.2:4001");
-            discovery.stop();
-            assertNull(discovery.context);
-            assertNull(discovery.getUdpDiscoveryService());
-            assertFalse(discovery.retractPeer("server2"));
-        }
+    void stop_clearsContextAndKnownPeers() throws Exception {
+        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        discovery.start(realContext());
+        discovery.announcePeer("server2", "127.0.0.1:" + findFreePort());
+        discovery.stop();
+        assertNull(discovery.context);
+        assertNull(discovery.getUdpDiscoveryService());
+        assertFalse(discovery.retractPeer("server2"));
     }
 
     @Test

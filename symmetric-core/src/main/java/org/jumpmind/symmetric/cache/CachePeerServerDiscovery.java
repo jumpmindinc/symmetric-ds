@@ -20,23 +20,31 @@
  */
 package org.jumpmind.symmetric.cache;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.jcs3.auxiliary.AuxiliaryCache;
+import org.apache.commons.jcs3.auxiliary.lateral.LateralCacheNoWait;
+import org.apache.commons.jcs3.auxiliary.lateral.LateralCacheNoWaitFacade;
+import org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.LateralTCPCacheFactory;
 import org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.TCPLateralCacheAttributes;
-import org.apache.commons.jcs3.utils.discovery.DiscoveredService;
+import org.apache.commons.jcs3.auxiliary.lateral.socket.tcp.behavior.ITCPLateralCacheAttributes;
+import org.apache.commons.jcs3.engine.control.CompositeCache;
+import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
 import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryManager;
 import org.apache.commons.jcs3.utils.discovery.UDPDiscoveryService;
-import org.apache.commons.jcs3.utils.discovery.behavior.IDiscoveryListener;
 import org.apache.commons.jcs3.utils.serialization.StandardSerializer;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Database-based discovery: mode "db". Populated by AbstractSymmetricEngine.refreshClusterPeers from SYM_NODE_HOST.
+ * Shared base for cache-peer-server discovery mechanisms: wires a discovered peer's address directly into the running JCS lateral TCP cache's live connection
+ * set (see {@link #addPeerConnection}), bypassing JCS's own UDP-discovery-listener plumbing entirely (that plumbing is only ever registered by
+ * {@code LateralTCPCacheFactory.createDiscoveryService} when {@code UdpDiscoveryEnabled=true}, which SymmetricDS never sets — see JcsPropertiesBuilder).
+ * Mode-specific subclasses (e.g. {@code NodeHostCachePeerServerDiscovery}) decide how/when {@link #announcePeer(String, String)} gets called; this class
+ * handles the actual JCS wiring once it does.
  */
 public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
     protected final Logger log = LoggerFactory.getLogger(getClass());
@@ -58,9 +66,9 @@ public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
         if (StringUtils.isBlank(address)) {
             return false;
         }
-        UDPDiscoveryService service = getUdpDiscoveryService();
-        if (service == null) {
-            log.debug("Skipping peer discovery announcement because JCS discovery is unavailable. serverId={}, address={}", serverId, address);
+        DiscoveryContext ctx = context;
+        if (ctx == null || ctx.jcsManager() == null) {
+            log.debug("Skipping peer discovery announcement because JCS discovery is not started. serverId={}, address={}", serverId, address);
             return false;
         }
         String previousAddress = knownPeerAddresses.put(serverId, address);
@@ -68,9 +76,9 @@ public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
             return false;
         }
         if (previousAddress != null) {
-            retract(service, previousAddress);
+            removePeerConnection(ctx, previousAddress);
         }
-        announce(service, address);
+        addPeerConnection(ctx, address);
         log.info("Announced discovered peer for JCS lateral cache discovery. serverId={}, address={}, previousAddress={}", serverId, address, previousAddress);
         return true;
     }
@@ -81,9 +89,9 @@ public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
         if (address == null) {
             return false;
         }
-        UDPDiscoveryService service = getUdpDiscoveryService();
-        if (service != null) {
-            retract(service, address);
+        DiscoveryContext ctx = context;
+        if (ctx != null) {
+            removePeerConnection(ctx, address);
         }
         return true;
     }
@@ -112,25 +120,73 @@ public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
         return discoveryService;
     }
 
-    private void announce(UDPDiscoveryService service, String address) {
-        DiscoveredService ds = buildInjector(address);
-        for (IDiscoveryListener listener : service.getCopyOfDiscoveryListeners()) {
-            listener.addDiscoveredService(ds);
+    /**
+     * Adds a new outbound lateral TCP connection to {@code address} for every configured region, unless one already exists. Clones the region's currently
+     * configured {@link ITCPLateralCacheAttributes}, points the clone at the peer's address, builds a {@link LateralCacheNoWait} from it via the region's
+     * registered {@link LateralTCPCacheFactory}, and adds it directly to the running {@link LateralCacheNoWaitFacade} — exactly what
+     * {@code LateralTCPDiscoveryListener.addDiscoveredService} does internally when UDP discovery is enabled, done here ourselves instead.
+     */
+    private void addPeerConnection(DiscoveryContext ctx, String address) {
+        String tcpServer = toTcpServer(ctx, address);
+        for (String regionName : ctx.regionNames()) {
+            try {
+                addPeerConnectionForRegion(ctx.jcsManager(), regionName, tcpServer);
+            } catch (Exception ex) {
+                log.warn("Failed to add lateral TCP peer connection. region={}, tcpServer={}", regionName, tcpServer, ex);
+            }
         }
     }
 
-    private void retract(UDPDiscoveryService service, String address) {
-        DiscoveredService ds = buildInjector(address);
-        for (IDiscoveryListener listener : service.getCopyOfDiscoveryListeners()) {
-            listener.removeDiscoveredService(ds);
+    private void removePeerConnection(DiscoveryContext ctx, String address) {
+        String tcpServer = toTcpServer(ctx, address);
+        for (String regionName : ctx.regionNames()) {
+            try {
+                removePeerConnectionForRegion(ctx.jcsManager(), regionName, tcpServer);
+            } catch (Exception ex) {
+                log.warn("Failed to remove lateral TCP peer connection. region={}, tcpServer={}", regionName, tcpServer, ex);
+            }
         }
     }
 
-    private DiscoveredService buildInjector(String address) {
-        DiscoveredService ds = new DiscoveredService();
-        ds.setServiceAddress(address);
-        ds.setServicePort(context.port());
-        ds.setCacheNames(new ArrayList<>(context.regionNames()));
-        return ds;
+    /**
+     * Peer addresses reported by callers (e.g. {@code AbstractSymmetricEngine.refreshClusterPeers}, which passes just SYM_NODE_HOST's bare IP address) don't
+     * necessarily include a port, but JCS's {@code TcpServer} attribute requires "host:port". All cluster nodes share the same configured lateral TCP listener
+     * port ({@link DiscoveryContext#port()} for this node), so an address with no port already present is assumed to listen on that same port.
+     */
+    private static String toTcpServer(DiscoveryContext ctx, String address) {
+        return address.indexOf(':') >= 0 ? address : address + ":" + ctx.port();
+    }
+
+    @SuppressWarnings("unchecked")
+    private <K, V> void addPeerConnectionForRegion(CompositeCacheManager jcsManager, String regionName, String tcpServer) throws Exception {
+        CompositeCache<K, V> cache = jcsManager.getCache(regionName);
+        LateralCacheNoWaitFacade<K, V> facade = getLateralFacade(cache);
+        if (facade == null || facade.containsNoWait(tcpServer)) {
+            return;
+        }
+        ITCPLateralCacheAttributes lca = (ITCPLateralCacheAttributes) facade.getAuxiliaryCacheAttributes().clone();
+        lca.setTcpServer(tcpServer);
+        LateralTCPCacheFactory factory = (LateralTCPCacheFactory) jcsManager.registryFacGet(JcsPropertiesBuilder.LATERAL_TCP_AUX_NAME);
+        LateralCacheNoWait<K, V> noWait = factory.createCacheNoWait(lca, null, new StandardSerializer());
+        factory.monitorCache(noWait);
+        facade.addNoWait(noWait);
+    }
+
+    private <K, V> void removePeerConnectionForRegion(CompositeCacheManager jcsManager, String regionName, String tcpServer) {
+        CompositeCache<K, V> cache = jcsManager.getCache(regionName);
+        LateralCacheNoWaitFacade<K, V> facade = getLateralFacade(cache);
+        if (facade != null) {
+            facade.removeNoWait(tcpServer);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <K, V> LateralCacheNoWaitFacade<K, V> getLateralFacade(CompositeCache<K, V> cache) {
+        for (AuxiliaryCache<K, V> aux : cache.getAuxCacheList()) {
+            if (aux instanceof LateralCacheNoWaitFacade) {
+                return (LateralCacheNoWaitFacade<K, V>) aux;
+            }
+        }
+        return null;
     }
 }

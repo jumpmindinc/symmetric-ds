@@ -83,9 +83,11 @@ public interface IClusterCacheCoordinator {
     /**
      * Starts the coordinator. The implementation's own mandatory regions (e.g. peer heartbeat, engine state) are always configured; regionSettings adds
      * additional named regions on top of those. Region names must be unique, including against the mandatory region names, which are not caller-configurable.
-     * The converter is owned and initialized by the caller (ClusteredCacheManager); the coordinator uses the provided reference to encrypt/decrypt messages.
+     * The converter and discovery mechanism are owned and constructed by the caller (ClusteredCacheManager); the coordinator uses the provided references to
+     * encrypt/decrypt messages and to discover/announce peer addresses, respectively.
      */
-    void start(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings, ClusterMessageConverter converter);
+    void start(CacheCoordinatorNetworkSettings networkSettings, Set<RegionSettings> regionSettings, ClusterMessageConverter converter,
+            ICachePeerServerDiscovery discovery);
 
     boolean isInitialized();
 

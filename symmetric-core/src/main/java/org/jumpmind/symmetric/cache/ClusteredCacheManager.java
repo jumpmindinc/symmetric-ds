@@ -53,6 +53,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
     private volatile IClusterCacheCoordinator peerNetworkCoordinator;
     private volatile ClusterMessageConverter converter;
+    private volatile ICachePeerServerDiscovery discovery;
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerWasPreviouslyAlive = new ConcurrentHashMap<>();
     private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
@@ -251,6 +252,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (isClusterLockingEnabled) {
             myStartTimeMs = System.currentTimeMillis();
             String discoveryMode = System.getProperty(ServerConstants.CLUSTER_CACHE_DISCOVERY, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB);
+            ICachePeerServerDiscoveryFactory discoveryFactory = AppUtils.newInstance(ICachePeerServerDiscoveryFactory.class,
+                    CachePeerServerDiscoveryFactory.class);
+            this.discovery = discoveryFactory.create(discoveryMode);
             CacheCoordinatorNetworkSettings networkSettings = new CacheCoordinatorNetworkSettings(serverId,
                     clusterPartitionId, port, discoveryMode, currentHeartbeatMs);
             ensurePeerListenerStarted(networkSettings);
@@ -291,7 +295,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         try {
             log.debug("Starting JCS cluster peer listener on {}", serverInfo);
-            peerNetworkCoordinator.start(networkSettings, Collections.emptySet(), converter);
+            peerNetworkCoordinator.start(networkSettings, Collections.emptySet(), converter, discovery);
             isClusterPeerListenerStarted = true;
             log.info("Started JCS cluster peer listener on {}", serverInfo);
         } catch (Exception ex) {

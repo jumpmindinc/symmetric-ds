@@ -50,6 +50,7 @@ import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.IClusterCacheCoordinator;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager.PeerState;
+import org.jumpmind.symmetric.cache.JcsTcpCacheCoordinator;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.UniqueKeyException;
@@ -79,6 +80,7 @@ class ClusterServiceTest {
     private ClusterService clusterService;
     private IClusterCacheCoordinator originalPeerNetworkCoordinator;
     private boolean originalClusterLockingEnabled;
+    private boolean originalIsInitializationComplete;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -102,7 +104,16 @@ class ClusterServiceTest {
         Field coordinatorField = ClusteredCacheManager.class.getDeclaredField("peerNetworkCoordinator");
         coordinatorField.setAccessible(true);
         originalPeerNetworkCoordinator = (IClusterCacheCoordinator) coordinatorField.get(ClusteredCacheManager.getInstance());
+        if (originalPeerNetworkCoordinator == null) {
+            // peerNetworkCoordinator is only lazily constructed by ClusteredCacheManager.initialize(), which this test never calls; provide a real,
+            // unstarted coordinator so tests that don't call mockActivePeers() still exercise ClusteredCacheManager.getActiveServerIds() safely.
+            coordinatorField.set(ClusteredCacheManager.getInstance(), new JcsTcpCacheCoordinator());
+        }
         originalClusterLockingEnabled = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
+        Field initField = ClusteredCacheManager.class.getDeclaredField("isInitializationComplete");
+        initField.setAccessible(true);
+        originalIsInitializationComplete = (boolean) initField.get(ClusteredCacheManager.getInstance());
+        initField.set(ClusteredCacheManager.getInstance(), true);
     }
 
     @AfterEach
@@ -116,6 +127,9 @@ class ClusterServiceTest {
         coordinatorField.setAccessible(true);
         coordinatorField.set(ClusteredCacheManager.getInstance(), originalPeerNetworkCoordinator);
         setClusterLockingEnabled(originalClusterLockingEnabled);
+        Field initField = ClusteredCacheManager.class.getDeclaredField("isInitializationComplete");
+        initField.setAccessible(true);
+        initField.set(ClusteredCacheManager.getInstance(), originalIsInitializationComplete);
     }
 
     private void setClusterLockingEnabled(boolean value) throws Exception {

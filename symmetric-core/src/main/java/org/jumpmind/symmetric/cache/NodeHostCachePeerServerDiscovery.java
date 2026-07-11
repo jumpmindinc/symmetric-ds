@@ -20,17 +20,8 @@
  */
 package org.jumpmind.symmetric.cache;
 
-import org.jumpmind.symmetric.common.ServerConstants;
-
-public class CachePeerServerDiscoveryFactory implements ICachePeerServerDiscoveryFactory {
-    @Override
-    public ICachePeerServerDiscovery create(String clusterCacheDiscoveryMode) {
-        if (clusterCacheDiscoveryMode == null || clusterCacheDiscoveryMode.isBlank()
-                || ServerConstants.CLUSTER_CACHE_DISCOVERY_DB.equalsIgnoreCase(clusterCacheDiscoveryMode)) {
-            return new NodeHostCachePeerServerDiscovery();
-        }
-        String msg = String.format("Unsupported value for parameter %s='%s'; Note, this edition supports: %s",
-                ServerConstants.CLUSTER_CACHE_DISCOVERY, clusterCacheDiscoveryMode, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB);
-        throw new IllegalArgumentException(msg);
-    }
+/**
+ * Database-based discovery: mode "db". Populated by AbstractSymmetricEngine.refreshClusterPeers from SYM_NODE_HOST.
+ */
+public class NodeHostCachePeerServerDiscovery extends CachePeerServerDiscovery {
 }

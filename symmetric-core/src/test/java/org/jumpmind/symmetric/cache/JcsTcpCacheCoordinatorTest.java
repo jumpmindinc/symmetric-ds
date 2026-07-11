@@ -296,7 +296,7 @@ class JcsTcpCacheCoordinatorTest {
         CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings("server1", "inst1", port,
                 ServerConstants.CLUSTER_CACHE_DISCOVERY_DB, 3000L);
         try {
-            coordinator.start(settings, Collections.emptySet(), converter);
+            coordinator.start(settings, Collections.emptySet(), converter, new NodeHostCachePeerServerDiscovery());
             assertTrue(coordinator.isInitialized());
             assertNull(coordinator.getPeerStatusMessage("nonexistent"));
         } finally {
@@ -305,10 +305,13 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
-    void start_unsupportedDiscoveryMode_throwsRuntimeExceptionAndLeavesUninitialized() throws Exception {
+    void start_discoveryStartThrows_wrapsInRuntimeExceptionAndLeavesUninitialized() throws Exception {
         int port = findFreePort();
-        CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings("server1", "inst1", port, "unsupported-mode", 3000L);
-        assertThrows(RuntimeException.class, () -> coordinator.start(settings, Collections.emptySet(), converter));
+        CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings("server1", "inst1", port,
+                ServerConstants.CLUSTER_CACHE_DISCOVERY_DB, 3000L);
+        ICachePeerServerDiscovery brokenDiscovery = mock(ICachePeerServerDiscovery.class);
+        doThrow(new RuntimeException("boom")).when(brokenDiscovery).start(any());
+        assertThrows(RuntimeException.class, () -> coordinator.start(settings, Collections.emptySet(), converter, brokenDiscovery));
         assertFalse(coordinator.isInitialized());
     }
 
@@ -323,7 +326,7 @@ class JcsTcpCacheCoordinatorTest {
         int port = findFreePort();
         CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings("server1", "inst1", port,
                 ServerConstants.CLUSTER_CACHE_DISCOVERY_DB, 3000L);
-        coordinator.start(settings, Collections.emptySet(), converter);
+        coordinator.start(settings, Collections.emptySet(), converter, new NodeHostCachePeerServerDiscovery());
         coordinator.stop();
         assertFalse(coordinator.isInitialized());
         assertNull(coordinator.getPeerStatusMessage("server1"));
@@ -360,6 +363,39 @@ class JcsTcpCacheCoordinatorTest {
         setField("discovery", mockDiscovery);
         assertTrue(coordinator.announceDiscoveredPeer("peer1", "172.21.0.4"));
         verify(mockDiscovery).announcePeer("peer1", "172.21.0.4");
+    }
+
+    @Test
+    @Timeout(value = 15, unit = TimeUnit.SECONDS)
+    void announceDiscoveredPeer_realCrossInstanceDelivery_messageBecomesVisibleToOtherCoordinator() throws Exception {
+        int portA = findFreePort();
+        int portB = findFreePort();
+        JcsTcpCacheCoordinator coordinatorA = coordinator;
+        JcsTcpCacheCoordinator coordinatorB = new JcsTcpCacheCoordinator();
+        CacheCoordinatorNetworkSettings settingsA = new CacheCoordinatorNetworkSettings("serverA", "inst1", portA, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB,
+                3000L);
+        CacheCoordinatorNetworkSettings settingsB = new CacheCoordinatorNetworkSettings("serverB", "inst1", portB, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB,
+                3000L);
+        try {
+            coordinatorA.start(settingsA, Collections.emptySet(), converter, new NodeHostCachePeerServerDiscovery());
+            coordinatorB.start(settingsB, Collections.emptySet(), converter, new NodeHostCachePeerServerDiscovery());
+            assertTrue(coordinatorA.announceDiscoveredPeer("serverB", "127.0.0.1:" + portB));
+            ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "serverA", "inst1", 1000L);
+            coordinatorA.sendServerStatus(msg);
+            ClusterServerStatusMessage received = null;
+            long deadline = System.currentTimeMillis() + 10_000L;
+            while (System.currentTimeMillis() < deadline && received == null) {
+                received = coordinatorB.getPeerStatusMessage("serverA");
+                if (received == null) {
+                    Thread.sleep(200L);
+                }
+            }
+            assertNotNull(received, "coordinatorB should eventually receive coordinatorA's server status message over the real lateral TCP connection");
+            assertEquals("serverA", received.getServerId());
+        } finally {
+            coordinatorA.stop();
+            coordinatorB.stop();
+        }
     }
 
     @Test

@@ -79,6 +79,37 @@ class ClusterMessageConverterTest {
     }
 
     @Test
+    void toServerStatusMessage_preservesOriginalSecureEnvelopeTimestamp_notDecodeTime() {
+        // A message decoded long after it was originally sent (e.g. sitting unchanged in a peer's local JCS cache) must keep reporting its true age --
+        // otherwise every decode would "refresh" it to look perpetually fresh and stale-peer detection could never fire. Rebuild the envelope with a
+        // backdated timestamp and a matching recomputed checksum (mutating the original's timestamp field directly would just fail checksum validation).
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
+        long backdatedTimestamp = System.currentTimeMillis() - 60_000L;
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum("server1", backdatedTimestamp, encrypted.getMessageSalt());
+        ClusterPeerSecureMessage backdated = new ClusterPeerSecureMessage("server1", "inst1", encrypted.getVersion(),
+                backdatedTimestamp, encrypted.getMessageSalt(), headerChecksum, encrypted.getKeystoreFingerprint(), encrypted.getEncryptedPayload());
+        ClusterServerStatusMessage decoded = converter.toServerStatusMessage(backdated, "inst1");
+        assertNotNull(decoded);
+        assertEquals(backdatedTimestamp, decoded.getTimestamp());
+    }
+
+    @Test
+    void toEngineStateMessage_preservesOriginalSecureEnvelopeTimestamp_notDecodeTime() {
+        Map<String, String> engineStates = new HashMap<>();
+        engineStates.put("engine1", "ONLINE");
+        ClusterEngineStateMessage plain = new ClusterEngineStateMessage(engineStates, "server1", "inst1");
+        ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
+        long backdatedTimestamp = System.currentTimeMillis() - 60_000L;
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum("server1", backdatedTimestamp, encrypted.getMessageSalt());
+        ClusterPeerSecureMessage backdated = new ClusterPeerSecureMessage("server1", "inst1", encrypted.getVersion(),
+                backdatedTimestamp, encrypted.getMessageSalt(), headerChecksum, encrypted.getKeystoreFingerprint(), encrypted.getEncryptedPayload());
+        ClusterEngineStateMessage decoded = converter.toEngineStateMessage(backdated, "inst1");
+        assertNotNull(decoded);
+        assertEquals(backdatedTimestamp, decoded.getTimestamp());
+    }
+
+    @Test
     void toEngineStateMessage_validMessage_returnsMessage() {
         Map<String, String> engineStates = new HashMap<>();
         engineStates.put("engine1", "ONLINE");

@@ -79,7 +79,7 @@ public class ClusterMessageConverter {
             String[] parts = plainPayload.split("\\|", 2);
             long startTimeMs = parts.length > 1 ? Long.parseLong(parts[1]) : 0L;
             ClusterServerStatusMessage plain = new ClusterServerStatusMessage(parts[0], secure.getServerId(),
-                    secure.getClusterPartitionId(), startTimeMs);
+                    secure.getClusterPartitionId(), startTimeMs, secure.getTimestamp());
             successfullyConverted.incrementAndGet();
             log.debug("Successfully converted secure message to ClusterServerStatusMessage. EventType={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
                     plain.getEventType(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
@@ -99,7 +99,7 @@ public class ClusterMessageConverter {
             String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
             Map<String, String> engineStates = parseEngineStates(plainPayload);
             ClusterEngineStateMessage plain = new ClusterEngineStateMessage(engineStates, secure.getServerId(),
-                    secure.getClusterPartitionId());
+                    secure.getClusterPartitionId(), secure.getTimestamp());
             successfullyConverted.incrementAndGet();
             log.debug(
                     "Successfully converted secure message to ClusterEngineStateMessage. EngineStatesCount={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",

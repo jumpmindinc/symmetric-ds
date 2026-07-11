@@ -44,7 +44,15 @@ public class ClusterEngineStateMessage extends ClusterPlainMessage {
 
     public ClusterEngineStateMessage(Map<String, String> allEngineStates,
             String serverId, String clusterPartitionId) {
-        super(serverId, clusterPartitionId, System.currentTimeMillis());
+        this(allEngineStates, serverId, clusterPartitionId, System.currentTimeMillis());
+    }
+
+    /**
+     * Used by ClusterMessageConverter when reconstructing a message from a received/cached secure envelope, passing the envelope's own timestamp so staleness
+     * reflects when the peer actually sent it, not when this JVM happened to decode it.
+     */
+    ClusterEngineStateMessage(Map<String, String> allEngineStates, String serverId, String clusterPartitionId, long timestamp) {
+        super(serverId, clusterPartitionId, timestamp);
         this.engineStates = allEngineStates != null ? new TreeMap<>(allEngineStates) : new TreeMap<>();
         this.engineState = null;
         this.engineName = null;

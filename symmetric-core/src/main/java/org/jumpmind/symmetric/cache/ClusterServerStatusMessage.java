@@ -31,13 +31,19 @@ public class ClusterServerStatusMessage extends ClusterPlainMessage {
     private transient String serverStatus;
 
     public ClusterServerStatusMessage(ClusterPeerServerState status, String serverId, String clusterPartitionId, long startTimeMs) {
-        super(serverId, clusterPartitionId, System.currentTimeMillis());
-        this.startTimeMs = startTimeMs;
-        this.serverStatus = status.getValue();
+        this(status.getValue(), serverId, clusterPartitionId, startTimeMs, System.currentTimeMillis());
     }
 
     public ClusterServerStatusMessage(String status, String serverId, String clusterPartitionId, long startTimeMs) {
-        super(serverId, clusterPartitionId, System.currentTimeMillis());
+        this(status, serverId, clusterPartitionId, startTimeMs, System.currentTimeMillis());
+    }
+
+    /**
+     * Used by ClusterMessageConverter when reconstructing a message from a received/cached secure envelope, passing the envelope's own timestamp so staleness
+     * reflects when the peer actually sent it, not when this JVM happened to decode it.
+     */
+    ClusterServerStatusMessage(String status, String serverId, String clusterPartitionId, long startTimeMs, long timestamp) {
+        super(serverId, clusterPartitionId, timestamp);
         this.startTimeMs = startTimeMs;
         this.serverStatus = status;
     }
