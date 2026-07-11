@@ -631,6 +631,35 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
+    void initialize_clusterLockingEnabled_startsClusterHeartbeatLoop() throws Exception {
+        ISecurityService mockSecurityService = mock(ISecurityService.class);
+        when(mockSecurityService.isInitialized()).thenReturn(true);
+        try {
+            manager.initialize(mockSecurityService, PARTITION_ID, PEER_1, true, null);
+            assertTrue(manager.isClusterPeerListenerStarted());
+            Thread thread = (Thread) getField("heartbeatThread");
+            assertNotNull(thread);
+            assertTrue(thread.isAlive());
+        } finally {
+            setField("isHeartbeatLoopRunning", false);
+            Thread thread = (Thread) getField("heartbeatThread");
+            if (thread != null) {
+                thread.interrupt();
+                thread.join(2000);
+            }
+        }
+    }
+
+    @Test
+    void initialize_clusterLockingDisabled_doesNotStartClusterHeartbeatLoop() throws Exception {
+        ISecurityService mockSecurityService = mock(ISecurityService.class);
+        when(mockSecurityService.isInitialized()).thenReturn(true);
+        manager.initialize(mockSecurityService, PARTITION_ID, PEER_1, false, null);
+        assertFalse(manager.isClusterPeerListenerStarted());
+        assertNull(getField("heartbeatThread"));
+    }
+
+    @Test
     void getClusterPartitionId_returnsFieldValue() throws Exception {
         setMyClusterPartitionId(PARTITION_ID);
         assertEquals(PARTITION_ID, manager.getClusterPartitionId());
