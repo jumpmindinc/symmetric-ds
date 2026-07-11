@@ -51,7 +51,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
-    private volatile IClusterCacheCoordinator peerNetworkCoordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
+    private volatile IClusterCacheCoordinator peerNetworkCoordinator;
     private volatile ClusterMessageConverter converter;
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerWasPreviouslyAlive = new ConcurrentHashMap<>();
@@ -184,6 +184,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public Set<String> getActiveServerIds() {
+        if (!isInitialized()) {
+            throw new RuntimeException("Service was not yet initialized!");
+        }
         Set<String> active = new HashSet<>();
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         long now = System.currentTimeMillis();
@@ -228,6 +231,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         this.symmetricEngineHolder = engineHolder;
         if (!securityService.isInitialized()) {
             securityService.init();
+        }
+        if (peerNetworkCoordinator == null) {
+            peerNetworkCoordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
         }
         startClusterPeerListener(securityService, clusterPartitionId, serverId, isClusterLockingEnabled);
         startClusterHeartbeat();
@@ -296,6 +302,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public boolean isAnyPeerInState(String eventType) {
+        if (!isInitialized()) {
+            throw new RuntimeException("Service was not yet initialized!");
+        }
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
             ClusterServerStatusMessage msg = peerNetworkCoordinator.getPeerStatusMessage(peerId);
             if (msg != null && eventType.equals(msg.getEventType())) {
@@ -307,6 +316,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public boolean isAnyPeerOnline() {
+        if (!isInitialized()) {
+            throw new RuntimeException("Service was not yet initialized!");
+        }
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         long now = System.currentTimeMillis();
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
@@ -326,6 +338,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public void broadcastEngineState(String engineName, ClusteredEngineState engineState) {
+        if (!isInitialized()) {
+            throw new RuntimeException("Service was not yet initialized!");
+        }
         lastEngineStates.put(engineName, engineState.getValue());
         if (isClusterPeerListenerStarted) {
             Map<String, String> currentStatesOfEngines = new HashMap<>(lastEngineStates);
@@ -337,6 +352,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public void rebroadcastCurrentState() {
+        if (!isInitialized()) {
+            throw new RuntimeException("Service was not yet initialized!");
+        }
         if (isClusterPeerListenerStarted) {
             broadcastCurrentStateAndEngines();
         }
@@ -344,6 +362,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public boolean isAnyPeerWithEngineInState(String engineName, ClusteredEngineState engineState) {
+        if (!isInitialized()) {
+            throw new RuntimeException("Service was not yet initialized!");
+        }
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         long now = System.currentTimeMillis();
         String stateValue = engineState.getValue();
@@ -363,7 +384,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return false;
     }
 
-    public synchronized void startClusterHeartbeat() {
+    private synchronized void startClusterHeartbeat() {
         if (this.isHeartbeatLoopRunning || !isClusterPeerListenerStarted) {
             log.debug("Skipping start of cluster peer heartbeat thread because isHeartbeatLoopRunning={} or isClusterPeerListenerStarted={}",
                     this.isHeartbeatLoopRunning, isClusterPeerListenerStarted);
