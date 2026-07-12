@@ -74,7 +74,7 @@ class JcsTcpCacheCoordinatorTest {
         converter = new ClusterMessageConverter(mockSecurityService, "inst1");
         setField("converter", converter);
         setField("myPartitionId", "inst1");
-        setField("networkSettings", new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB, 3000L));
+        setField("networkSettings", new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, ServerConstants.CLUSTER_PEER_DISCOVERY_DB, 3000L));
     }
 
     private static int findFreePort() throws IOException {
@@ -192,7 +192,7 @@ class JcsTcpCacheCoordinatorTest {
 
     @Test
     void announceDiscoveredPeer_udpDiscoveryDisabled_isNoOpAndReturnsFalse() throws Exception {
-        setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB, 3000L));
+        setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, ServerConstants.CLUSTER_PEER_DISCOVERY_DB, 3000L));
         assertFalse(coordinator.announceDiscoveredPeer("peer1", "172.21.0.4"));
     }
 
@@ -294,7 +294,7 @@ class JcsTcpCacheCoordinatorTest {
     void start_dbDiscoveryMode_initializesJcsAndIsUsable() throws Exception {
         int port = findFreePort();
         CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings("server1", "inst1", port,
-                ServerConstants.CLUSTER_CACHE_DISCOVERY_DB, 3000L);
+                ServerConstants.CLUSTER_PEER_DISCOVERY_DB, 3000L);
         try {
             coordinator.start(settings, Collections.emptySet(), converter, new NodeHostCachePeerServerDiscovery());
             assertTrue(coordinator.isInitialized());
@@ -308,7 +308,7 @@ class JcsTcpCacheCoordinatorTest {
     void start_discoveryStartThrows_wrapsInRuntimeExceptionAndLeavesUninitialized() throws Exception {
         int port = findFreePort();
         CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings("server1", "inst1", port,
-                ServerConstants.CLUSTER_CACHE_DISCOVERY_DB, 3000L);
+                ServerConstants.CLUSTER_PEER_DISCOVERY_DB, 3000L);
         ICachePeerServerDiscovery brokenDiscovery = mock(ICachePeerServerDiscovery.class);
         doThrow(new RuntimeException("boom")).when(brokenDiscovery).start(any());
         assertThrows(RuntimeException.class, () -> coordinator.start(settings, Collections.emptySet(), converter, brokenDiscovery));
@@ -325,7 +325,7 @@ class JcsTcpCacheCoordinatorTest {
     void stop_afterStart_tearsDownAndMarksUninitialized() throws Exception {
         int port = findFreePort();
         CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings("server1", "inst1", port,
-                ServerConstants.CLUSTER_CACHE_DISCOVERY_DB, 3000L);
+                ServerConstants.CLUSTER_PEER_DISCOVERY_DB, 3000L);
         coordinator.start(settings, Collections.emptySet(), converter, new NodeHostCachePeerServerDiscovery());
         coordinator.stop();
         assertFalse(coordinator.isInitialized());
@@ -372,9 +372,9 @@ class JcsTcpCacheCoordinatorTest {
         int portB = findFreePort();
         JcsTcpCacheCoordinator coordinatorA = coordinator;
         JcsTcpCacheCoordinator coordinatorB = new JcsTcpCacheCoordinator();
-        CacheCoordinatorNetworkSettings settingsA = new CacheCoordinatorNetworkSettings("serverA", "inst1", portA, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB,
+        CacheCoordinatorNetworkSettings settingsA = new CacheCoordinatorNetworkSettings("serverA", "inst1", portA, ServerConstants.CLUSTER_PEER_DISCOVERY_DB,
                 3000L);
-        CacheCoordinatorNetworkSettings settingsB = new CacheCoordinatorNetworkSettings("serverB", "inst1", portB, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB,
+        CacheCoordinatorNetworkSettings settingsB = new CacheCoordinatorNetworkSettings("serverB", "inst1", portB, ServerConstants.CLUSTER_PEER_DISCOVERY_DB,
                 3000L);
         try {
             coordinatorA.start(settingsA, Collections.emptySet(), converter, new NodeHostCachePeerServerDiscovery());

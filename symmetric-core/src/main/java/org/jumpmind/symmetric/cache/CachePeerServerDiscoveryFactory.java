@@ -26,11 +26,11 @@ public class CachePeerServerDiscoveryFactory implements ICachePeerServerDiscover
     @Override
     public ICachePeerServerDiscovery create(String clusterCacheDiscoveryMode) {
         if (clusterCacheDiscoveryMode == null || clusterCacheDiscoveryMode.isBlank()
-                || ServerConstants.CLUSTER_CACHE_DISCOVERY_DB.equalsIgnoreCase(clusterCacheDiscoveryMode)) {
+                || ServerConstants.CLUSTER_PEER_DISCOVERY_DB.equalsIgnoreCase(clusterCacheDiscoveryMode)) {
             return new NodeHostCachePeerServerDiscovery();
         }
         String msg = String.format("Unsupported value for parameter %s='%s'; Note, this edition supports: %s",
-                ServerConstants.CLUSTER_CACHE_DISCOVERY, clusterCacheDiscoveryMode, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB);
+                ServerConstants.CLUSTER_PEER_DISCOVERY, clusterCacheDiscoveryMode, ServerConstants.CLUSTER_PEER_DISCOVERY_DB);
         throw new IllegalArgumentException(msg);
     }
 }

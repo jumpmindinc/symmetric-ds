@@ -259,7 +259,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
         if (isClusterLockingEnabled) {
             myStartTimeMs = System.currentTimeMillis();
-            String discoveryMode = System.getProperty(ServerConstants.CLUSTER_CACHE_DISCOVERY, ServerConstants.CLUSTER_CACHE_DISCOVERY_DB);
+            String discoveryMode = System.getProperty(ServerConstants.CLUSTER_PEER_DISCOVERY, ServerConstants.CLUSTER_PEER_DISCOVERY_DB);
             ICachePeerServerDiscoveryFactory discoveryFactory = AppUtils.newInstance(ICachePeerServerDiscoveryFactory.class,
                     CachePeerServerDiscoveryFactory.class);
             this.discovery = discoveryFactory.create(discoveryMode);

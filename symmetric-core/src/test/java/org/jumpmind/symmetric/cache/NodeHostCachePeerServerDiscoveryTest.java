@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
 class NodeHostCachePeerServerDiscoveryTest {
     @Test
     void factory_dbMode_returnsNodeHostCachePeerServerDiscovery() {
-        ICachePeerServerDiscovery discovery = new CachePeerServerDiscoveryFactory().create(ServerConstants.CLUSTER_CACHE_DISCOVERY_DB);
+        ICachePeerServerDiscovery discovery = new CachePeerServerDiscoveryFactory().create(ServerConstants.CLUSTER_PEER_DISCOVERY_DB);
         assertInstanceOf(NodeHostCachePeerServerDiscovery.class, discovery);
     }
 

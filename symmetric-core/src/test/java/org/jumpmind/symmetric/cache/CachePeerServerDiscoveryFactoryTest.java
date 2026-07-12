@@ -42,7 +42,7 @@ class CachePeerServerDiscoveryFactoryTest {
 
     @Test
     void create_dbMode_returnsNodeHostCachePeerServerDiscovery() {
-        assertInstanceOf(NodeHostCachePeerServerDiscovery.class, factory.create(ServerConstants.CLUSTER_CACHE_DISCOVERY_DB));
+        assertInstanceOf(NodeHostCachePeerServerDiscovery.class, factory.create(ServerConstants.CLUSTER_PEER_DISCOVERY_DB));
     }
 
     @Test
@@ -53,6 +53,6 @@ class CachePeerServerDiscoveryFactoryTest {
     @Test
     void create_unsupportedMode_throwsIllegalArgumentExceptionWithDetails() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> factory.create("multicast"));
-        assertEquals("Unsupported value for parameter cluster.cache.discovery='multicast'; Note, this edition supports: db", ex.getMessage());
+        assertEquals("Unsupported value for parameter cluster.peer.discovery='multicast'; Note, this edition supports: db", ex.getMessage());
     }
 }
