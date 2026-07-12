@@ -1372,6 +1372,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     public void heartbeat(boolean force) {
         LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, getEngineName());
         dataService.heartbeat(force);
+        refreshClusterPeersFromNodeHost();
+    }
+
+    @Override
+    public void refreshClusterPeersFromNodeHost() {
         Node identity = nodeService.findIdentity();
         if (identity != null) {
             refreshClusterPeers(identity.getNodeId());

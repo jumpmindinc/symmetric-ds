@@ -423,6 +423,24 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
+    void refreshNodeHostHeartbeats_dbDiscoveryMode_alsoRediscoversPeersFromNodeHost() throws Exception {
+        setField("discovery", new NodeHostCachePeerServerDiscovery());
+        when(mockEngine.getDataService()).thenReturn(mock(IDataService.class));
+        manager.registerEngine(mockEngine);
+        manager.refreshNodeHostHeartbeats();
+        verify(mockEngine).refreshClusterPeersFromNodeHost();
+    }
+
+    @Test
+    void refreshNodeHostHeartbeats_nonDbDiscoveryMode_doesNotRediscoverPeersFromNodeHost() throws Exception {
+        setField("discovery", mock(ICachePeerServerDiscovery.class));
+        when(mockEngine.getDataService()).thenReturn(mock(IDataService.class));
+        manager.registerEngine(mockEngine);
+        manager.refreshNodeHostHeartbeats();
+        verify(mockEngine, never()).refreshClusterPeersFromNodeHost();
+    }
+
+    @Test
     void getAnyEngine_returnsRegisteredEngine_notNull() throws Exception {
         manager.registerEngine(mockEngine);
         Method getAnyEngine = ClusteredCacheManager.class.getDeclaredMethod("getAnyEngine");

@@ -29,6 +29,7 @@ import java.util.Properties;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,12 +37,26 @@ class TypedPropertiesFactoryTest {
     @AfterEach
     void clearSystemProperties() {
         System.clearProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
+        System.clearProperty(ServerConstants.CLUSTER_PEER_DISCOVERY);
+        System.clearProperty(ServerConstants.CLUSTER_PEER_DISCOVERY_SERVERS);
     }
 
     @Test
     void testImportJvmEnvVars_setsSystemPropertyWhenEnvVarPresent() {
         TypedPropertiesFactory.importJvmEnvVars(Map.of("SYM_CLUSTER_KEYSTORE_SEED", "seed-value"));
         assertEquals("seed-value", System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED));
+    }
+
+    @Test
+    void testImportJvmEnvVars_setsClusterPeerDiscoverySystemPropertyWhenEnvVarPresent() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of("SYM_CLUSTER_PEER_DISCOVERY", "udp"));
+        assertEquals("udp", System.getProperty(ServerConstants.CLUSTER_PEER_DISCOVERY));
+    }
+
+    @Test
+    void testImportJvmEnvVars_setsClusterPeerDiscoveryStaticServersSystemPropertyWhenEnvVarPresent() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of("SYM_CLUSTER_PEER_DISCOVERY_STATIC_SERVERS", "sympod1:1101,sympod2:1101"));
+        assertEquals("sympod1:1101,sympod2:1101", System.getProperty(ServerConstants.CLUSTER_PEER_DISCOVERY_SERVERS));
     }
 
     @Test

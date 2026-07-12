@@ -82,5 +82,7 @@ public class ServerConstants {
             entry("SYM_HTTP_RESPONSE_TIMEOUT", "sun.net.client.defaultReadTimeout"),
             entry("SYM_NET_PREFER_IPV4STACK", "java.net.preferIPv4Stack"));
     public static final Map<String, String> JVM_IMPORT_ENV_VARS = Map.ofEntries(
-            entry("SYM_CLUSTER_KEYSTORE_SEED", SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED));
+            entry("SYM_CLUSTER_KEYSTORE_SEED", SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED),
+            entry("SYM_CLUSTER_PEER_DISCOVERY", CLUSTER_PEER_DISCOVERY),
+            entry("SYM_CLUSTER_PEER_DISCOVERY_STATIC_SERVERS", CLUSTER_PEER_DISCOVERY_SERVERS));
 }
