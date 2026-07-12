@@ -27,9 +27,9 @@ VOLUME /opt/symmetric-ds/security
 VOLUME /opt/symmetric-ds/tmp
 VOLUME /opt/symmetric-ds/logs
 
+# Most deployments allow only one of SymmetricDS ports (31415 for HTTP, 31417 for HTTPS) on the network:
 EXPOSE 31415
 EXPOSE 31417
-EXPOSE 1101
 
 # Ensure Java virtual machine running SymmetricDS is PID 1:
 ENTRYPOINT ["/bin/sh","-c","/opt/symmetric-ds/bin/sym","--container"]
