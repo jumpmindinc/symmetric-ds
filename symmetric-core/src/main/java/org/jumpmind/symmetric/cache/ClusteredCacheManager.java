@@ -622,16 +622,20 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      * peers from SYM_NODE_HOST. This keeps DB-based discovery working even when SYM_START_HEARTBEAT_JOB/WATCHDOG/REFRESH_CACHE_JOB are disabled, since this
      * tick runs independent of those job flags. Without it, peer discovery would only ever run once at each engine's own startup, so a peer that started even
      * moments later (before its row existed in SYM_NODE_HOST) would never be discovered.
+     * <p>
+     * Skips engines that aren't yet RUNNING: {@code AbstractSymmetricEngine.startNodeAndJobs()} writes this engine's own first SYM_NODE_HOST row itself (before
+     * broadcasting RUNNING), so ticking during STARTING races that write and can throw a duplicate-key error on the row's first insert.
      */
     void refreshNodeHostHeartbeats() {
-        String engineName = "";
+        String engineName = ""; 
         for (ISymmetricEngine engine : registeredEngines.values()) {
             try {
                 engineName = engine.getEngineName();
-                engine.getDataService().updateNodeHostForCurrentNode(true);
-                if (discovery instanceof NodeHostCachePeerServerDiscovery) {
-                    engine.refreshClusterPeersFromNodeHost();
+                if (!engine.isStarted()) {
+                    continue;
                 }
+                engine.refreshClusterPeersFromNodeHost();
+                engine.getDataService().updateNodeHostForCurrentNode(true);
             } catch (Exception ex) {
                 log.warn("Failed to refresh SYM_NODE_HOST heartbeat for engine=" + engineName, ex);
             }

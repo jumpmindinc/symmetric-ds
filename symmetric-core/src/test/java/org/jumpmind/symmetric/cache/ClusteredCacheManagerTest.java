@@ -401,6 +401,8 @@ class ClusteredCacheManagerTest {
         when(mockEngine2.getDataService()).thenReturn(mockDataService2);
         manager.registerEngine(mockEngine);
         manager.registerEngine(mockEngine2);
+        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.RUNNING.getValue());
+        lastEngineStatesMap.put(ENGINE_2, ClusteredEngineState.RUNNING.getValue());
         manager.refreshNodeHostHeartbeats();
         verify(mockDataService1).updateNodeHostForCurrentNode(true);
         verify(mockDataService2).updateNodeHostForCurrentNode(true);
@@ -413,6 +415,8 @@ class ClusteredCacheManagerTest {
         when(mockEngine2.getDataService()).thenReturn(mockDataService2);
         manager.registerEngine(mockEngine);
         manager.registerEngine(mockEngine2);
+        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.RUNNING.getValue());
+        lastEngineStatesMap.put(ENGINE_2, ClusteredEngineState.RUNNING.getValue());
         assertDoesNotThrow(() -> manager.refreshNodeHostHeartbeats());
         verify(mockDataService2).updateNodeHostForCurrentNode(true);
     }
@@ -423,10 +427,22 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
+    void refreshNodeHostHeartbeats_engineNotYetRunning_skipsDbWriteAndPeerRediscovery() throws Exception {
+        setField("discovery", new NodeHostCachePeerServerDiscovery());
+        when(mockEngine.getDataService()).thenReturn(mock(IDataService.class));
+        manager.registerEngine(mockEngine);
+        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.STARTING.getValue());
+        manager.refreshNodeHostHeartbeats();
+        verify(mockEngine.getDataService(), never()).updateNodeHostForCurrentNode(true);
+        verify(mockEngine, never()).refreshClusterPeersFromNodeHost();
+    }
+
+    @Test
     void refreshNodeHostHeartbeats_dbDiscoveryMode_alsoRediscoversPeersFromNodeHost() throws Exception {
         setField("discovery", new NodeHostCachePeerServerDiscovery());
         when(mockEngine.getDataService()).thenReturn(mock(IDataService.class));
         manager.registerEngine(mockEngine);
+        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.RUNNING.getValue());
         manager.refreshNodeHostHeartbeats();
         verify(mockEngine).refreshClusterPeersFromNodeHost();
     }
@@ -436,6 +452,7 @@ class ClusteredCacheManagerTest {
         setField("discovery", mock(ICachePeerServerDiscovery.class));
         when(mockEngine.getDataService()).thenReturn(mock(IDataService.class));
         manager.registerEngine(mockEngine);
+        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.RUNNING.getValue());
         manager.refreshNodeHostHeartbeats();
         verify(mockEngine, never()).refreshClusterPeersFromNodeHost();
     }
