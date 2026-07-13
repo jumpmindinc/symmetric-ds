@@ -51,7 +51,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
-class CachePeerServerDiscoveryTest {
+class BaseCachePeerServerDiscoveryTest {
     private final CompositeCacheManager mockJcsManager = mock(CompositeCacheManager.class);
     private CompositeCacheManager realJcsManager;
 
@@ -99,7 +99,7 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void enrichJcsProperties_doesNotModifyProperties() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         Properties props = new Properties();
         props.setProperty("existing", "value");
         discovery.enrichJcsProperties(props, "jcs.auxiliary.LATERAL_TCP.attributes");
@@ -109,7 +109,7 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void start_setsContext() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         DiscoveryContext ctx = contextWithJcsManager();
         discovery.start(ctx);
         assertSame(ctx, discovery.context);
@@ -117,7 +117,7 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void announcePeer_blankAddress_returnsFalse() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(contextWithJcsManager());
         assertFalse(discovery.announcePeer("server2", "   "));
         assertFalse(discovery.announcePeer("server2", null));
@@ -126,20 +126,20 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void announcePeer_notStarted_returnsFalse() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         assertFalse(discovery.announcePeer("server2", "10.0.0.2:4001"));
     }
 
     @Test
     void announcePeer_contextWithoutJcsManager_returnsFalse() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(contextWithoutJcsManager());
         assertFalse(discovery.announcePeer("server2", "10.0.0.2:4001"));
     }
 
     @Test
     void announcePeer_newPeer_wiresLateralConnectionIntoEveryRegion() throws Exception {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(realContext());
         String address = "127.0.0.1:" + findFreePort();
         assertTrue(discovery.announcePeer("server2", address));
@@ -150,7 +150,7 @@ class CachePeerServerDiscoveryTest {
     @Test
     void announcePeer_bareAddressWithoutPort_appendsContextPortToBuildTcpServerKey() throws Exception {
         // AbstractSymmetricEngine.refreshClusterPeers announces bare SYM_NODE_HOST IP addresses with no port; all cluster nodes share one configured port.
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         DiscoveryContext ctx = realContext();
         discovery.start(ctx);
         String bareAddress = "127.0.0.1";
@@ -160,7 +160,7 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void announcePeer_sameAddressAnnouncedTwice_secondCallReturnsFalseAndDoesNotDuplicate() throws Exception {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(realContext());
         String address = "127.0.0.1:" + findFreePort();
         assertTrue(discovery.announcePeer("server2", address));
@@ -170,7 +170,7 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void announcePeer_addressChanged_removesOldConnectionAndAddsNew() throws Exception {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(realContext());
         String oldAddress = "127.0.0.1:" + findFreePort();
         String newAddress = "127.0.0.1:" + findFreePort();
@@ -182,14 +182,14 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void retractPeer_unknownServerId_returnsFalse() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(contextWithJcsManager());
         assertFalse(discovery.retractPeer("unknown"));
     }
 
     @Test
     void retractPeer_knownServerId_removesLateralConnectionAndReturnsTrue() throws Exception {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(realContext());
         String address = "127.0.0.1:" + findFreePort();
         discovery.announcePeer("server2", address);
@@ -200,7 +200,7 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void retractPeer_knownServerIdWithUnavailableContext_returnsTrueWithoutThrowing() throws Exception {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(realContext());
         String address = "127.0.0.1:" + findFreePort();
         discovery.announcePeer("server2", address);
@@ -210,7 +210,7 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void stop_clearsContextAndKnownPeers() throws Exception {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(realContext());
         discovery.announcePeer("server2", "127.0.0.1:" + findFreePort());
         discovery.stop();
@@ -221,13 +221,13 @@ class CachePeerServerDiscoveryTest {
 
     @Test
     void getUdpDiscoveryService_contextNotStarted_returnsNull() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         assertNull(discovery.getUdpDiscoveryService());
     }
 
     @Test
     void getUdpDiscoveryService_contextWithoutJcsManager_returnsNull() {
-        CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(contextWithoutJcsManager());
         assertNull(discovery.getUdpDiscoveryService());
     }
@@ -239,7 +239,7 @@ class CachePeerServerDiscoveryTest {
             UDPDiscoveryManager mockManager = mock(UDPDiscoveryManager.class);
             mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
             when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any())).thenReturn(mockService);
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+            BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
             discovery.start(contextWithJcsManager());
             assertSame(mockService, discovery.getUdpDiscoveryService());
             assertSame(mockService, discovery.getUdpDiscoveryService());
@@ -254,7 +254,7 @@ class CachePeerServerDiscoveryTest {
             mockedManagerStatic.when(UDPDiscoveryManager::getInstance).thenReturn(mockManager);
             when(mockManager.getService(anyString(), anyInt(), any(), anyInt(), anyInt(), any(), any()))
                     .thenThrow(new RuntimeException("boom"));
-            CachePeerServerDiscovery discovery = new CachePeerServerDiscovery();
+            BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
             discovery.start(contextWithJcsManager());
             assertNull(discovery.getUdpDiscoveryService());
         }

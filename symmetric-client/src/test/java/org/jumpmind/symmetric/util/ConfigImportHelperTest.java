@@ -42,10 +42,10 @@ class ConfigImportHelperTest {
     private static IClusterCacheCoordinator originalPeerNetworkCoordinator;
 
     /**
-     * ConfigImportHelper builds a real ClientSymmetricEngine, whose init()/setup() unconditionally report to and query the JVM-wide
-     * ClusteredCacheManager singleton. That singleton is normally initialized once by SymmetricEngineHolder during server startup, which never
-     * runs here, so flip its switches directly for the duration of this test class: mark it initialized, and give it an unstarted peer
-     * coordinator so peer queries return empty results instead of throwing or NPEing.
+     * ConfigImportHelper builds a real ClientSymmetricEngine, whose init()/setup() unconditionally report to and query the JVM-wide ClusteredCacheManager
+     * singleton. That singleton is normally initialized once by SymmetricEngineHolder during server startup, which never runs here, so flip its switches
+     * directly for the duration of this test class: mark it initialized, and give it an unstarted peer coordinator so peer queries return empty results instead
+     * of throwing or NPEing.
      */
     @BeforeAll
     static void flipClusteredCacheManagerInitializedSwitch() throws Exception {

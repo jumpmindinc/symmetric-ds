@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * Mode-specific subclasses (e.g. {@code NodeHostCachePeerServerDiscovery}) decide how/when {@link #announcePeer(String, String)} gets called; this class
  * handles the actual JCS wiring once it does.
  */
-public class CachePeerServerDiscovery implements ICachePeerServerDiscovery {
+public class BaseCachePeerServerDiscovery implements ICachePeerServerDiscovery {
     protected final Logger log = LoggerFactory.getLogger(getClass());
     protected final Map<String, String> knownPeerAddresses = new ConcurrentHashMap<>();
     protected volatile DiscoveryContext context;

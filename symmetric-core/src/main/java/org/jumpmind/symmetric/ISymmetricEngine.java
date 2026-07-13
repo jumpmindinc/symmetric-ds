@@ -189,7 +189,7 @@ public interface ISymmetricEngine {
      * Discovers cluster peers by reading SYM_NODE_HOST for this node's other known hosts (used by the "db" cluster.peer.discovery mode). Runs independent of
      * any job schedule so peers are found even when the heartbeat/push/pull jobs are disabled.
      */
-    public void refreshClusterPeersFromNodeHost();
+    public int refreshClusterPeersFromNodeHost();
 
     /**
      * Open up registration for node to attach.

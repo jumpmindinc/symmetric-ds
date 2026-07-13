@@ -23,5 +23,5 @@ package org.jumpmind.symmetric.cache;
 /**
  * Database-based discovery: mode "db". Populated by AbstractSymmetricEngine.refreshClusterPeers from SYM_NODE_HOST.
  */
-public class NodeHostCachePeerServerDiscovery extends CachePeerServerDiscovery {
+public class NodeHostCachePeerServerDiscovery extends BaseCachePeerServerDiscovery {
 }

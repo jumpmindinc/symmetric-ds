@@ -1376,11 +1376,12 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     @Override
-    public void refreshClusterPeersFromNodeHost() {
+    public int refreshClusterPeersFromNodeHost() {
         Node identity = nodeService.findIdentity();
-        if (identity != null) {
-            refreshClusterPeers(identity.getNodeId());
+        if (identity == null) {
+            return 0;
         }
+        return refreshClusterPeers(identity.getNodeId());
     }
 
     @Override
@@ -1746,12 +1747,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return clusteredCacheManager;
     }
 
-    protected void refreshClusterPeers(String nodeId) {
+    protected int refreshClusterPeers(String nodeId) {
         if (clusteredCacheManager == null || nodeId == null) {
-            return;
+            return 0;
         }
-        long oneDayMs = 24L * 60 * 60 * 1000;
-        long cutoff = System.currentTimeMillis() - oneDayMs;
+        long cutoff = System.currentTimeMillis() - ServerConstants.CLUSTER_PEER_OBSOLETE_DEFAULT_MS;
         String myServerId = clusterService.getServerId();
         int newPeerCount = 0;
         for (NodeHost host : nodeService.findNodeHosts(nodeId)) {
@@ -1766,9 +1766,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             }
         }
         log.debug("Refreshed cluster peers for nodeId={}. New peers discovered={}", nodeId, newPeerCount);
-        if (newPeerCount > 0) {
-            clusteredCacheManager.rebroadcastCurrentState();
-        }
+        return newPeerCount;
     }
 
     protected boolean detectStartupDbParametersDifferentFromLastStart() {

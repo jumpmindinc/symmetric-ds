@@ -54,7 +54,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final long HEARTBEAT_MIN_SLEEP_DELAY_MS = 20L; // Thread.Sleep(x) for X than this value is irrelevant
     private volatile IClusterCacheCoordinator peerNetworkCoordinator;
     private volatile ClusterMessageConverter converter;
-    private volatile ICachePeerServerDiscovery discovery;
+    private volatile ICachePeerServerDiscovery peerDiscovery;
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerWasPreviouslyAlive = new ConcurrentHashMap<>();
     private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
@@ -232,40 +232,64 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     /**
      * Initial entry point (without nodes started yet): brings up JCS peer announcement/discovery with no database dependency, so this node is visible to peers
-     * quickly. The cluster partition ID and server ID should be resolved without {@code IParameterService}!
+     * quickly. The cluster partition ID and server ID should be resolved as start up parameters.
      */
     @Override
     public synchronized void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isClusterLockingEnabled,
             Object engineHolder) {
         this.symmetricEngineHolder = engineHolder;
+        this.isClusterLockingEnabled = isClusterLockingEnabled;
+        myClusterPartitionId = clusterPartitionId;
+        myServerId = serverId;
+        if (this.isClusterLockingEnabled) {
+            initializeClusterCommunicationAndDiscovery(securityService);
+            startClusterHeartbeatThread();
+        } else {
+            log.debug("Skipped cluster cache and lock initialization, because parameter is turned off");
+        }
+        this.isInitializationComplete = true;
+    }
+
+    private void initializeClusterCommunicationAndDiscovery(ISecurityService securityService) {
         if (!securityService.isInitialized()) {
             securityService.init();
+        }
+        if (converter == null) {
+            converter = new ClusterMessageConverter(securityService, myClusterPartitionId);
         }
         if (peerNetworkCoordinator == null) {
             peerNetworkCoordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
         }
-        startClusterPeerListener(securityService, clusterPartitionId, serverId, isClusterLockingEnabled);
-        startClusterHeartbeat();
-        this.isInitializationComplete = true;
-    }
-
-    protected synchronized void startClusterPeerListener(ISecurityService securityService, String clusterPartitionId, String serverId,
-            boolean isClusterLockingEnabled) {
-        converter = new ClusterMessageConverter(securityService, clusterPartitionId);
-        this.isClusterLockingEnabled = isClusterLockingEnabled;
-        myClusterPartitionId = clusterPartitionId;
-        myServerId = serverId;
-        int port = Integer.parseInt(System.getProperty(
-                ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
-        if (isClusterLockingEnabled) {
-            myStartTimeMs = System.currentTimeMillis();
-            String discoveryMode = System.getProperty(ServerConstants.CLUSTER_PEER_DISCOVERY, ServerConstants.CLUSTER_PEER_DISCOVERY_DB);
+        int jcsPort = Integer.parseInt(System.getProperty(ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
+        String discoveryMode = System.getProperty(ServerConstants.CLUSTER_PEER_DISCOVERY, ServerConstants.CLUSTER_PEER_DISCOVERY_DB);
+        if (peerDiscovery == null) {
             ICachePeerServerDiscoveryFactory discoveryFactory = AppUtils.newInstance(ICachePeerServerDiscoveryFactory.class,
                     CachePeerServerDiscoveryFactory.class);
-            this.discovery = discoveryFactory.create(discoveryMode);
-            CacheCoordinatorNetworkSettings networkSettings = new CacheCoordinatorNetworkSettings(serverId,
-                    clusterPartitionId, port, discoveryMode, currentHeartbeatMs);
-            ensurePeerListenerStarted(networkSettings);
+            peerDiscovery = discoveryFactory.create(discoveryMode);
+        }
+        if (isClusterLockingEnabled) {
+            myStartTimeMs = System.currentTimeMillis();
+            CacheCoordinatorNetworkSettings networkSettings = new CacheCoordinatorNetworkSettings(myServerId,
+                    myClusterPartitionId, jcsPort, discoveryMode, currentHeartbeatMs);
+            startClusterPeerListener(networkSettings);
+        }
+    }
+
+    private synchronized void startClusterPeerListener(CacheCoordinatorNetworkSettings networkSettings) {
+        if (isClusterPeerListenerStarted) {
+            log.debug("Skipping redundant JCS cluster peer listener start on {}", myServerId);
+            return;
+        }
+        String serverInfo = String.format("serverId=%s, clusterPartitionId=%s, port=%d, discoveryMode=%s",
+                networkSettings.serverId(), networkSettings.clusterPartitionId(), networkSettings.port(), networkSettings.discoveryMode());
+        try {
+            log.debug("Starting JCS cluster peer listener on {}", serverInfo);
+            peerNetworkCoordinator.start(networkSettings, Collections.emptySet(), converter, peerDiscovery);
+            isClusterPeerListenerStarted = true;
+            log.info("Started JCS cluster peer listener on {}", serverInfo);
+        } catch (Exception ex) {
+            log.debug("Failed to start JCS cluster peer listener on " + serverInfo, ex);
+            throw new RuntimeException("Failed to start JCS cluster peer listener on " + serverInfo, ex);
         }
     }
 
@@ -292,24 +316,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public long getStaleIntervalMs() {
         return currentStaleThresholdMs;
-    }
-
-    private synchronized void ensurePeerListenerStarted(CacheCoordinatorNetworkSettings networkSettings) {
-        String serverInfo = String.format("serverId=%s, clusterPartitionId=%s, port=%d, discoveryMode=%s",
-                networkSettings.serverId(), networkSettings.clusterPartitionId(), networkSettings.port(), networkSettings.discoveryMode());
-        if (isClusterPeerListenerStarted) {
-            log.debug("Skipping redundant JCS cluster peer listener start on {}", serverInfo);
-            return;
-        }
-        try {
-            log.debug("Starting JCS cluster peer listener on {}", serverInfo);
-            peerNetworkCoordinator.start(networkSettings, Collections.emptySet(), converter, discovery);
-            isClusterPeerListenerStarted = true;
-            log.info("Started JCS cluster peer listener on {}", serverInfo);
-        } catch (Exception ex) {
-            log.debug("Failed to start JCS cluster peer listener on " + serverInfo, ex);
-            throw new RuntimeException("Failed to start JCS cluster peer listener on " + serverInfo, ex);
-        }
     }
 
     @Override
@@ -396,7 +402,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         return false;
     }
 
-    protected synchronized void startClusterHeartbeat() {
+    protected synchronized void startClusterHeartbeatThread() {
         if (this.isHeartbeatLoopRunning || !isClusterPeerListenerStarted) {
             log.debug("Skipping start of cluster peer heartbeat thread because isHeartbeatLoopRunning={} or isClusterPeerListenerStarted={}",
                     this.isHeartbeatLoopRunning, isClusterPeerListenerStarted);
@@ -422,6 +428,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         }
         for (String engineName : lastEngineStates.keySet()) {
             lastEngineStates.put(engineName, ClusteredEngineState.OFFLINE.getValue());
+        }
+        if (peerDiscovery != null) {
+            peerDiscovery.stop();
+            peerDiscovery = null;
         }
         if (peerNetworkCoordinator != null && peerNetworkCoordinator.isInitialized()) {
             try {
@@ -520,8 +530,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long staleThresholdMs = refreshStaleThreshold();
         long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
         discoverPeersIncomingHeartbeats();
+        discoverPeersFromNodeHostTable();
         broadcastCurrentStateAndEngines();
-        refreshNodeHostHeartbeats();
+        updateOwnNodeHostHeartbeat();
         if (log.isDebugEnabled()) {
             logEngineStates();
             logPeerStates();
@@ -618,26 +629,21 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Refreshes SYM_NODE_HOST.heartbeat_time for every registered engine, local-only (does not sync to other nodes), and (in "db" discovery mode) rediscovers
-     * peers from SYM_NODE_HOST. This keeps DB-based discovery working even when SYM_START_HEARTBEAT_JOB/WATCHDOG/REFRESH_CACHE_JOB are disabled, since this
-     * tick runs independent of those job flags. Without it, peer discovery would only ever run once at each engine's own startup, so a peer that started even
-     * moments later (before its row existed in SYM_NODE_HOST) would never be discovered.
-     * <p>
-     * Skips engines that aren't yet RUNNING: {@code AbstractSymmetricEngine.startNodeAndJobs()} writes this engine's own first SYM_NODE_HOST row itself (before
-     * broadcasting RUNNING), so ticking during STARTING races that write and can throw a duplicate-key error on the row's first insert.
+     * Refreshes SYM_NODE_HOST.heartbeat_time for every registered engine, local-only (does not sync to other nodes). Skips engines that aren't started yet so
+     * avoid race conditions with DB upgrade or startup-related SYM_NODE_HOST updates.
      */
-    void refreshNodeHostHeartbeats() {
-        String engineName = ""; 
+    void updateOwnNodeHostHeartbeat() {
+        String engineName = "";
         for (ISymmetricEngine engine : registeredEngines.values()) {
             try {
                 engineName = engine.getEngineName();
                 if (!engine.isStarted()) {
+                    log.debug("Skipped heartbeat_time update for (not started) engine={}", engineName);
                     continue;
                 }
-                engine.refreshClusterPeersFromNodeHost();
                 engine.getDataService().updateNodeHostForCurrentNode(true);
             } catch (Exception ex) {
-                log.warn("Failed to refresh SYM_NODE_HOST heartbeat for engine=" + engineName, ex);
+                log.warn("Failed to refresh heartbeat_time for engine=" + engineName, ex);
             }
         }
     }
@@ -652,8 +658,27 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 newPeersCount++;
             }
         }
-        log.debug("Discovered {} new peers from incoming heartbeat messages. serverId={}, ClusterPartitionId={}",
+        log.debug("Discovered {} new peers from incoming cluster heartbeat messages. serverId={}, ClusterPartitionId={}",
                 newPeersCount, myServerId, myClusterPartitionId);
+        return newPeersCount;
+    }
+
+    private int discoverPeersFromNodeHostTable() {
+        String engineName = "";
+        int newPeersCount = 0;
+        for (ISymmetricEngine engine : registeredEngines.values()) {
+            try {
+                engineName = engine.getEngineName();
+                if (!engine.isInitialized()) {
+                    log.debug("Skipped peer discovery via NODE_HOST for engine={}", engineName);
+                    continue;
+                }
+                newPeersCount += engine.refreshClusterPeersFromNodeHost();
+            } catch (Exception ex) {
+                log.warn("Failed to complete peer discovery via NODE_HOST for engine=" + engineName, ex);
+            }
+        }
+        log.debug("Completed peer discovery via NODE_HOST. New peers found={}", newPeersCount);
         return newPeersCount;
     }
 
