@@ -197,7 +197,7 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
                 engineCache.remove(serverId);
             }
         } catch (Exception ex) {
-            log.debug("Failed to purge cached messages for removed peer. serverId={}", serverId, ex);
+            log.debug("Failed to purge cached messages for removed peer. serverId=" + serverId, ex);
         }
     }
 

@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.ServerSocket;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -585,7 +586,7 @@ class JcsTcpCacheCoordinatorTest {
         ClusterPeerSecureMessage secure = converter.toEncryptedMessage(plain);
         CacheAccess<String, ClusterPeerSecureMessage> mockPeerCache = mockCacheAccess();
         CompositeCache<String, ClusterPeerSecureMessage> mockCacheControl = mock(CompositeCache.class);
-        when(mockCacheControl.getKeySet(true)).thenReturn(new HashSet<>(java.util.Arrays.asList("server1")));
+        when(mockCacheControl.getKeySet(true)).thenReturn(new HashSet<>(Arrays.asList("server1")));
         when(mockPeerCache.getCacheControl()).thenReturn(mockCacheControl);
         when(mockPeerCache.get("server1")).thenReturn(secure);
         setField("peerHeartbeatCache", mockPeerCache);
@@ -605,7 +606,7 @@ class JcsTcpCacheCoordinatorTest {
         ClusterPeerSecureMessage secure = wrongKeystoreConverter.toEncryptedMessage(plain);
         CacheAccess<String, ClusterPeerSecureMessage> mockPeerCache = mockCacheAccess();
         CompositeCache<String, ClusterPeerSecureMessage> mockCacheControl = mock(CompositeCache.class);
-        when(mockCacheControl.getKeySet(true)).thenReturn(new HashSet<>(java.util.Arrays.asList("server1")));
+        when(mockCacheControl.getKeySet(true)).thenReturn(new HashSet<>(Arrays.asList("server1")));
         when(mockPeerCache.getCacheControl()).thenReturn(mockCacheControl);
         when(mockPeerCache.get("server1")).thenReturn(secure);
         setField("peerHeartbeatCache", mockPeerCache);

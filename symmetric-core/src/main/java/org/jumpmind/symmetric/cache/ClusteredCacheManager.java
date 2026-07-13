@@ -70,7 +70,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private volatile String lastBroadcastEventType = ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT;
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
-    private static final long HEARTBEAT_MIN_SLEEP_DELAY_MS = 20L; // Thread.Sleep(x) for X than this value is irrelevant
+    private static final long HEARTBEAT_MIN_SLEEP_DELAY_MS = 20L; // Skip sleeping (Thread.sleep) and loop again immediatelly when remaining delay is below this cutoff
     Runnable exitProcessAction = () -> new Thread(this::exitProcess, "sym-cluster-exit").start(); // Separate thread prevents deadlocks
 
     private ClusteredCacheManager() {

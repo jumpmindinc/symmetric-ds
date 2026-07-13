@@ -39,8 +39,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -198,7 +201,7 @@ class ClusteredCacheManagerTest {
         method.setAccessible(true);
         try {
             method.invoke(manager, settings);
-        } catch (java.lang.reflect.InvocationTargetException e) {
+        } catch (InvocationTargetException e) {
             if (e.getCause() instanceof RuntimeException) {
                 throw (RuntimeException) e.getCause();
             }
@@ -236,7 +239,7 @@ class ClusteredCacheManagerTest {
         method.setAccessible(true);
         try {
             return (EngineAndPeerStateMap) method.invoke(manager);
-        } catch (java.lang.reflect.InvocationTargetException e) {
+        } catch (InvocationTargetException e) {
             if (e.getCause() instanceof Exception) {
                 throw (Exception) e.getCause();
             }
@@ -508,7 +511,7 @@ class ClusteredCacheManagerTest {
     void addPeer_newPeerFreshHeartbeat_returnsTrue() throws Exception {
         setConverter(mock(ClusterMessageConverter.class));
         when(mockCoordinator.addPeer(PEER_1)).thenReturn(true);
-        assertTrue(manager.addPeer(PEER_1, new java.util.Date(), null));
+        assertTrue(manager.addPeer(PEER_1, new Date(), null));
     }
 
     @Test
@@ -526,7 +529,7 @@ class ClusteredCacheManagerTest {
         when(mockCoordinator.addPeer(PEER_1)).thenReturn(true);
         boolean[] exitInvoked = { false };
         setField("exitProcessAction", (Runnable) () -> exitInvoked[0] = true);
-        assertTrue(manager.addPeer(PEER_1, new java.util.Date(), null));
+        assertTrue(manager.addPeer(PEER_1, new Date(), null));
         assertFalse(exitInvoked[0]);
     }
 
@@ -541,7 +544,7 @@ class ClusteredCacheManagerTest {
         setField("myStartTimeMs", System.currentTimeMillis() + 3_600_000L);
         boolean[] exitInvoked = { false };
         setField("exitProcessAction", (Runnable) () -> exitInvoked[0] = true);
-        assertTrue(manager.addPeer(PEER_1, new java.util.Date(), null));
+        assertTrue(manager.addPeer(PEER_1, new Date(), null));
         assertTrue(exitInvoked[0]);
     }
 
@@ -754,7 +757,7 @@ class ClusteredCacheManagerTest {
 
     @Test
     void isAnyPeerInState_matchingPeer_returnsTrue() {
-        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(java.util.Arrays.asList(PEER_1)));
+        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(Arrays.asList(PEER_1)));
         ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_JOINING, PEER_1, PARTITION_ID, 0L);
         when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(msg);
         assertTrue(manager.isAnyPeerInState(ClusterServerStatusMessage.EVENT_PEER_JOINING));
@@ -762,7 +765,7 @@ class ClusteredCacheManagerTest {
 
     @Test
     void isAnyPeerInState_noPeerMatches_returnsFalse() {
-        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(java.util.Arrays.asList(PEER_1)));
+        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(Arrays.asList(PEER_1)));
         ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1, PARTITION_ID, 0L);
         when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(msg);
         assertFalse(manager.isAnyPeerInState(ClusterServerStatusMessage.EVENT_PEER_JOINING));
@@ -770,14 +773,14 @@ class ClusteredCacheManagerTest {
 
     @Test
     void isAnyPeerInState_nullMessageForPeer_skippedGracefully() {
-        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(java.util.Arrays.asList(PEER_1)));
+        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(Arrays.asList(PEER_1)));
         when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(null);
         assertFalse(manager.isAnyPeerInState(ClusterServerStatusMessage.EVENT_PEER_JOINING));
     }
 
     @Test
     void isAnyPeerOnline_anyPeerAlive_returnsTrue() {
-        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(java.util.Arrays.asList(PEER_1)));
+        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(Arrays.asList(PEER_1)));
         ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1, PARTITION_ID, 0L);
         when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(msg);
         assertTrue(manager.isAnyPeerOnline());
@@ -791,7 +794,7 @@ class ClusteredCacheManagerTest {
 
     @Test
     void isAnyPeerOnline_allPeersStale_returnsFalse() throws Exception {
-        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(java.util.Arrays.asList(PEER_1)));
+        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(Arrays.asList(PEER_1)));
         ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1, PARTITION_ID, 0L);
         backdateMessageTimestamp(msg, ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS + 1000L);
         when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(msg);
@@ -973,7 +976,7 @@ class ClusteredCacheManagerTest {
 
     @Test
     void getActiveServerIds_onlyIncludesAlivePeers() {
-        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(java.util.Arrays.asList(PEER_1, PEER_2)));
+        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(Arrays.asList(PEER_1, PEER_2)));
         ClusterServerStatusMessage aliveMsg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1, PARTITION_ID, 0L);
         when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(aliveMsg);
         when(mockCoordinator.getPeerStatusMessage(PEER_2)).thenReturn(null);
@@ -998,7 +1001,7 @@ class ClusteredCacheManagerTest {
 
     @Test
     void isAnyPeerWithEngineInState_matchingFreshMessages_returnsTrue() {
-        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(java.util.Arrays.asList(PEER_1)));
+        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(Arrays.asList(PEER_1)));
         ClusterServerStatusMessage statusMsg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1, PARTITION_ID, 0L);
         when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(statusMsg);
         ClusterEngineStateMessage engineMsg = new ClusterEngineStateMessage(ClusteredEngineState.RUNNING, ENGINE_1, PEER_1, PARTITION_ID);
@@ -1008,7 +1011,7 @@ class ClusteredCacheManagerTest {
 
     @Test
     void isAnyPeerWithEngineInState_noMatch_returnsFalse() {
-        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(java.util.Arrays.asList(PEER_1)));
+        when(mockCoordinator.getPeerIds()).thenReturn(new HashSet<>(Arrays.asList(PEER_1)));
         ClusterServerStatusMessage statusMsg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1, PARTITION_ID, 0L);
         when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(statusMsg);
         ClusterEngineStateMessage engineMsg = new ClusterEngineStateMessage(ClusteredEngineState.OFFLINE, ENGINE_1, PEER_1, PARTITION_ID);

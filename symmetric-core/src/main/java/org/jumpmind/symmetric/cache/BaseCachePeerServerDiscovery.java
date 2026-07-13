@@ -132,7 +132,7 @@ public class BaseCachePeerServerDiscovery implements ICachePeerServerDiscovery {
             try {
                 addPeerConnectionForRegion(ctx.jcsManager(), regionName, tcpServer);
             } catch (Exception ex) {
-                log.warn("Failed to add lateral TCP peer connection. region={}, tcpServer={}", regionName, tcpServer, ex);
+                log.warn("Failed to add lateral TCP peer connection. region=" + regionName + ", address=" + address, ex);
             }
         }
     }
@@ -143,7 +143,7 @@ public class BaseCachePeerServerDiscovery implements ICachePeerServerDiscovery {
             try {
                 removePeerConnectionForRegion(ctx.jcsManager(), regionName, tcpServer);
             } catch (Exception ex) {
-                log.warn("Failed to remove lateral TCP peer connection. region={}, tcpServer={}", regionName, tcpServer, ex);
+                log.warn("Failed to remove lateral TCP peer connection. region=" + regionName + ", address=" + address, ex);
             }
         }
     }

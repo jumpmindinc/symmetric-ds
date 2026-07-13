@@ -42,7 +42,7 @@ class NodeHostCachePeerServerDiscoveryTest {
     void announcePeer_behavesIdenticallyToInheritedBaseClass() {
         NodeHostCachePeerServerDiscovery discovery = new NodeHostCachePeerServerDiscovery();
         assertFalse(discovery.announcePeer("server2", "10.0.0.2:4001"));
-        CompositeCacheManager jcsManager = org.mockito.Mockito.mock(CompositeCacheManager.class);
+        CompositeCacheManager jcsManager = mock(CompositeCacheManager.class);
         discovery.start(new DiscoveryContext(jcsManager, 4001, List.of("region1"), "server1"));
         assertTrue(discovery.announcePeer("server2", "10.0.0.2:4001"));
     }

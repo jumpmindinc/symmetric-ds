@@ -74,19 +74,21 @@ public class ClusterMessageConverter {
         if (!isValid(secure, expectedPartitionId)) {
             return null;
         }
+        String remoteServerid="";
         try {
+            remoteServerid = secure.getServerId();
             String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
             String[] parts = plainPayload.split("\\|", 2);
             long startTimeMs = parts.length > 1 ? Long.parseLong(parts[1]) : 0L;
-            ClusterServerStatusMessage plain = new ClusterServerStatusMessage(parts[0], secure.getServerId(),
+            ClusterServerStatusMessage plain = new ClusterServerStatusMessage(parts[0], remoteServerid,
                     secure.getClusterPartitionId(), startTimeMs, secure.getTimestamp());
             successfullyConverted.incrementAndGet();
             log.debug("Successfully converted secure message to ClusterServerStatusMessage. EventType={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
-                    plain.getEventType(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
+                    plain.getEventType(), remoteServerid, secure.getClusterPartitionId(), secure.getTimestampAsString());
             return plain;
         } catch (IllegalArgumentException e) {
             recordRejection(secure, ConversionFailureReason.CORRUPTED_PAYLOAD);
-            log.warn("Message payload corrupted, rejecting message. serverId={}", secure.getServerId(), e);
+            log.warn("Message payload corrupted, rejecting message. serverId=" + remoteServerid, e);
             return null;
         }
     }
@@ -95,19 +97,21 @@ public class ClusterMessageConverter {
         if (!isValid(secure, expectedPartitionId)) {
             return null;
         }
+        String remoteServerid="";
         try {
+            remoteServerid = secure.getServerId();
             String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
             Map<String, String> engineStates = parseEngineStates(plainPayload);
-            ClusterEngineStateMessage plain = new ClusterEngineStateMessage(engineStates, secure.getServerId(),
+            ClusterEngineStateMessage plain = new ClusterEngineStateMessage(engineStates, remoteServerid,
                     secure.getClusterPartitionId(), secure.getTimestamp());
             successfullyConverted.incrementAndGet();
             log.debug(
                     "Successfully converted secure message to ClusterEngineStateMessage. EngineStatesCount={}, ServerId={}, ClusterPartitionId={}, Timestamp={}",
-                    engineStates.size(), secure.getServerId(), secure.getClusterPartitionId(), secure.getTimestampAsString());
+                    engineStates.size(), remoteServerid, secure.getClusterPartitionId(), secure.getTimestampAsString());
             return plain;
         } catch (IllegalArgumentException e) {
             recordRejection(secure, ConversionFailureReason.CORRUPTED_PAYLOAD);
-            log.warn("Message payload corrupted, rejecting message. serverId={}", secure.getServerId(), e);
+            log.warn("Message payload corrupted, rejecting message. serverId=" + remoteServerid, e);
             return null;
         }
     }
@@ -117,28 +121,30 @@ public class ClusterMessageConverter {
             log.debug("Received null secure message, skipping conversion");
             return false;
         }
+
+        String remoteServerid=  secure.getServerId();
         if (!secure.isHeaderChecksumValid()) {
             recordRejection(secure, ConversionFailureReason.CHECKSUM);
-            RejectionInfo rejection = rejectedServers.get(secure.getServerId());
+            RejectionInfo rejection = rejectedServers.get(remoteServerid);
             log.warn("Message header checksum invalid, rejecting message. {}", rejection != null ? rejection.getDebugInfo()
-                    : "serverId=" + secure.getServerId());
+                    : "serverId=" + remoteServerid);
             return false;
         }
         String messagePartitionId = secure.getClusterPartitionId();
         if (!isFromAuthorizedPartition(messagePartitionId, expectedPartitionId)) {
             rejectedPartitionIdMismatch.incrementAndGet();
             recordRejection(secure, ConversionFailureReason.PARTITION_MISMATCH);
-            RejectionInfo rejection = rejectedServers.get(secure.getServerId());
+            RejectionInfo rejection = rejectedServers.get(remoteServerid);
             log.debug("Message rejected due to partition ID mismatch. {}, ExpectedPartitionId={}, MessagePartitionId={}",
-                    rejection != null ? rejection.getDebugInfo() : "serverId=" + secure.getServerId(), expectedPartitionId, messagePartitionId);
+                    rejection != null ? rejection.getDebugInfo() : "serverId=" + remoteServerid, expectedPartitionId, messagePartitionId);
             return false;
         }
         if (!isKeystoreFingerprintValid(secure)) {
             rejectedFingerprintFailure.incrementAndGet();
             recordRejection(secure, ConversionFailureReason.FINGERPRINT);
-            RejectionInfo rejection = rejectedServers.get(secure.getServerId());
+            RejectionInfo rejection = rejectedServers.get(remoteServerid);
             log.debug("Message rejected due to keystore fingerprint validation failure. {}", rejection != null ? rejection.getDebugInfo()
-                    : "serverId=" + secure.getServerId());
+                    : "serverId=" + remoteServerid);
             return false;
         }
         return true;
