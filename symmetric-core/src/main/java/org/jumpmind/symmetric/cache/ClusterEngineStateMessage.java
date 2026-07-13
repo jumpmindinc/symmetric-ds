@@ -48,6 +48,24 @@ public class ClusterEngineStateMessage extends ClusterPlainMessage {
     }
 
     /**
+     * A constructor overload taking {@code Map<String, ClusteredEngineState>} would have the same erasure as the {@code Map<String, String>} constructor above,
+     * so this is a factory method instead. {@code allEngineStates} is expected to be keyed by {@link EngineAndPeerStateMap#generateKey} across potentially many
+     * peers (e.g. ClusteredCacheManager's unified engine/peer state map); only the entries belonging to {@code serverId} are extracted into this message, with
+     * the peer prefix stripped back down to a plain engine name.
+     */
+    public static ClusterEngineStateMessage fromEngineStates(EngineAndPeerStateMap allEngineStates,
+            String serverId, String clusterPartitionId) {
+        String searchKey = serverId + EngineAndPeerStateMap.ENGINE_PEER_KEY_SEPARATOR;
+        Map<String, String> stringStates = new HashMap<>();
+        for (Map.Entry<String, ClusteredEngineState> entry : allEngineStates.entrySet()) {
+            if (entry.getKey().startsWith(searchKey)) {
+                stringStates.put(entry.getKey().substring(searchKey.length()), entry.getValue().getValue());
+            }
+        }
+        return new ClusterEngineStateMessage(stringStates, serverId, clusterPartitionId);
+    }
+
+    /**
      * Used by ClusterMessageConverter when reconstructing a message from a received/cached secure envelope, passing the envelope's own timestamp so staleness
      * reflects when the peer actually sent it, not when this JVM happened to decode it.
      */

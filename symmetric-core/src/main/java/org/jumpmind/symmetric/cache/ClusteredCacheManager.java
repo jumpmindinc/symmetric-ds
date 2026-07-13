@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -49,32 +48,30 @@ import org.slf4j.MDC;
 public class ClusteredCacheManager implements IClusteredCacheManager {
     private static final ClusteredCacheManager GLOBAL_INSTANCE = new ClusteredCacheManager();
     private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
-    private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
-    private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
-    private static final long HEARTBEAT_MIN_SLEEP_DELAY_MS = 20L; // Thread.Sleep(x) for X than this value is irrelevant
-    private volatile IClusterCacheCoordinator peerNetworkCoordinator;
-    private volatile ClusterMessageConverter converter;
-    private volatile ICachePeerServerDiscovery peerDiscovery;
-    private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
-    private final Map<String, Boolean> peerWasPreviouslyAlive = new ConcurrentHashMap<>();
-    private final Map<String, Boolean> engineStateMap = new ConcurrentHashMap<>();
-    private final Map<String, IClusteredCacheManager.PeerState> peerStates = new ConcurrentHashMap<>();
-    private Thread heartbeatThread;
     private volatile boolean isInitializationComplete = false;
+    private volatile boolean isClusterLockingEnabled = false;
     private volatile boolean isHeartbeatLoopRunning = false;
-    private volatile long currentHeartbeatMs = ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
-    private volatile long currentStaleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
-    private volatile long lastHeartbeatSummaryLogMs;
-    private volatile boolean isClusterPeerListenerStarted;
-    private volatile boolean isClusterLockingEnabled;
-    private volatile String lastBroadcastEventType = ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT;
-    private final Map<String, String> lastEngineStates = new ConcurrentHashMap<>();
+    private volatile boolean isClusterPeerListenerStarted = false;
     private String myServerId;
     private String myClusterPartitionId;
     private long myStartTimeMs;
     private volatile Object symmetricEngineHolder;
-    // Runs exitProcess() on its own thread to prevent deadlocks in synchronized methods inside AbstractSymmetricEngine.
-    Runnable exitProcessAction = () -> new Thread(this::exitProcess, "sym-cluster-exit").start();
+    private volatile IClusterCacheCoordinator peerNetworkCoordinator;
+    private volatile ClusterMessageConverter converter;
+    private volatile ICachePeerServerDiscovery peerDiscovery;
+    private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
+    private final EngineAndPeerStateMap engineAndPeerStateMap = new EngineAndPeerStateMap();
+    private final Map<String, IClusteredCacheManager.PeerState> peerStates = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> peerWasPreviouslyAlive = new ConcurrentHashMap<>();
+    private Thread heartbeatThread;
+    private volatile long currentHeartbeatMs = ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
+    private volatile long currentStaleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
+    private volatile long lastHeartbeatSummaryLogMs;
+    private volatile String lastBroadcastEventType = ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT;
+    private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
+    private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
+    private static final long HEARTBEAT_MIN_SLEEP_DELAY_MS = 20L; // Thread.Sleep(x) for X than this value is irrelevant
+    Runnable exitProcessAction = () -> new Thread(this::exitProcess, "sym-cluster-exit").start(); // Separate thread prevents deadlocks
 
     private ClusteredCacheManager() {
     }
@@ -103,7 +100,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     public synchronized void unregisterEngine(ISymmetricEngine engine) {
         String engineName = engine.getEngineName();
         registeredEngines.remove(engineName);
-        this.engineStateMap.put(engineName, false);
         broadcastEngineState(engineName, ClusteredEngineState.OFFLINE);
     }
 
@@ -223,6 +219,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             }
         }
         return false;
+    }
+
+    private String getEngineStateMapKey(String peerId, String engineName) {
+        return EngineAndPeerStateMap.generateKey(peerId, engineName);
     }
 
     @Override
@@ -359,12 +359,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (!isInitialized()) {
             throw new RuntimeException("Service was not yet initialized!");
         }
-        lastEngineStates.put(engineName, engineState.getValue());
+        engineAndPeerStateMap.put(getEngineStateMapKey(myServerId, engineName), engineState);
         if (isClusterPeerListenerStarted) {
-            Map<String, String> currentStatesOfEngines = new HashMap<>(lastEngineStates);
-            ClusterEngineStateMessage msg = new ClusterEngineStateMessage(
-                    currentStatesOfEngines, myServerId, myClusterPartitionId);
-            peerNetworkCoordinator.sendEngineStates(msg);
+            broadcastCurrentEngineStates();
         }
     }
 
@@ -426,9 +423,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 log.warn("Problem interrupting cluster network heartbeat thread! ", ex);
             }
         }
-        for (String engineName : lastEngineStates.keySet()) {
-            lastEngineStates.put(engineName, ClusteredEngineState.OFFLINE.getValue());
-        }
+        engineAndPeerStateMap.setStateForAllEnginesAtServer(myServerId, ClusteredEngineState.OFFLINE);
         if (peerDiscovery != null) {
             peerDiscovery.stop();
             peerDiscovery = null;
@@ -455,51 +450,32 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private void broadcastCurrentEngineStates() {
-        Map<String, ClusteredEngineState> currentEnginePeerStates = getCurrentEngineStateSnapshot();
-        Map<String, String> stateStrings = convertEngineStatesToStrings(currentEnginePeerStates);
-        ClusterEngineStateMessage msg = new ClusterEngineStateMessage(
-                stateStrings, myServerId, myClusterPartitionId);
+        importCurrentEngineStatesFromHolder();
+        ClusterEngineStateMessage msg = ClusterEngineStateMessage.fromEngineStates(
+                engineAndPeerStateMap, myServerId, myClusterPartitionId);
         peerNetworkCoordinator.sendEngineStates(msg);
     }
 
-    private Map<String, ClusteredEngineState> getCurrentEngineStateSnapshot() {
-        if (symmetricEngineHolder != null) {
-            try {
-                return invokeSymmetricEngineHolderMethod("buildCurrentEngineStateSnapshot");
-            } catch (Exception ex) {
-                log.warn("Failed to get engine state snapshot from SymmetricEngineHolder, falling back to registered engines", ex);
-            }
+    /**
+     * Merges the external SymmetricEngineHolder's own engine-state snapshot (Pro edition's multi-engine host process) into engineAndPeerStateMap. Reflection is
+     * required because symmetric-core cannot depend on symmetric-server's ISymmetricEngineHolder type.
+     */
+    private void importCurrentEngineStatesFromHolder() {
+        if (symmetricEngineHolder == null) {
+            return;
         }
-        return buildCurrentEngineStateSnapshotFromRegistered();
-    }
-
-    private Map<String, ClusteredEngineState> buildCurrentEngineStateSnapshotFromRegistered() {
-        Map<String, ClusteredEngineState> snapshot = new HashMap<>();
-        for (String engineName : lastEngineStates.keySet()) {
-            String stateStr = lastEngineStates.get(engineName);
-            try {
-                snapshot.put(engineName, ClusteredEngineState.valueOf(stateStr.toUpperCase()));
-            } catch (Exception ex) {
-                log.warn("Failed to parse engine state for engine={}. stateStr={}", engineName, stateStr);
-                snapshot.put(engineName, ClusteredEngineState.OFFLINE);
-            }
+        try {
+            engineAndPeerStateMap.importStatesFrom(invokeBuildCurrentEngineStateSnapshot());
+        } catch (Exception ex) {
+            log.warn("Failed to get engine state snapshot from SymmetricEngineHolder", ex);
         }
-        return snapshot;
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, ClusteredEngineState> invokeSymmetricEngineHolderMethod(String methodName) throws Exception {
-        return (Map<String, ClusteredEngineState>) symmetricEngineHolder.getClass()
-                .getDeclaredMethod(methodName)
-                .invoke(symmetricEngineHolder);
-    }
-
-    private Map<String, String> convertEngineStatesToStrings(Map<String, ClusteredEngineState> engineStates) {
-        Map<String, String> stringStates = new HashMap<>();
-        for (Map.Entry<String, ClusteredEngineState> entry : engineStates.entrySet()) {
-            stringStates.put(entry.getKey(), entry.getValue().getValue());
-        }
-        return stringStates;
+    private EngineAndPeerStateMap invokeBuildCurrentEngineStateSnapshot() throws Exception {
+        return (EngineAndPeerStateMap) symmetricEngineHolder.getClass()
+                .getMethod("buildCurrentEngineStateSnapshot", String.class)
+                .invoke(symmetricEngineHolder, myServerId);
     }
 
     private void sendMessageToPeers(String eventType) {
@@ -529,8 +505,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long startTime = System.currentTimeMillis();
         long staleThresholdMs = refreshStaleThreshold();
         long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
-        discoverPeersIncomingHeartbeats();
         discoverPeersFromNodeHostTable();
+        discoverPeersIncomingHeartbeats();
         broadcastCurrentStateAndEngines();
         updateOwnNodeHostHeartbeat();
         if (log.isDebugEnabled()) {
@@ -658,8 +634,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 newPeersCount++;
             }
         }
-        log.debug("Discovered {} new peers from incoming cluster heartbeat messages. serverId={}, ClusterPartitionId={}",
-                newPeersCount, myServerId, myClusterPartitionId);
+        if (newPeersCount > 0) {
+            log.info("Discovered {} new peers from incoming heartbeat messages. My serverId={}, ClusterPartitionId={}",
+                    newPeersCount, myServerId, myClusterPartitionId);
+        } else {
+            log.debug("Discovered {} new peers from incoming heartbeat messages. My serverId={}, ClusterPartitionId={}",
+                    newPeersCount, myServerId, myClusterPartitionId);
+        }
         return newPeersCount;
     }
 
@@ -678,7 +659,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 log.warn("Failed to complete peer discovery via NODE_HOST for engine=" + engineName, ex);
             }
         }
-        log.debug("Completed peer discovery via NODE_HOST. New peers found={}", newPeersCount);
+        if (newPeersCount > 0) {
+            log.info("Discovered {} new peers from NODE_HOST.heartbeat_time. My serverId={}, ClusterPartitionId={}",
+                    newPeersCount, myServerId, myClusterPartitionId);
+        } else {
+            log.debug("Discovered {} new peers from NODE_HOST.heartbeat_time. My serverId={}, ClusterPartitionId={}",
+                    newPeersCount, myServerId, myClusterPartitionId);
+        }
         return newPeersCount;
     }
 
@@ -700,16 +687,20 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private void detectEngineStateAndFireEvents(String peerId, String engineName,
             ClusterEngineStateMessage msg, long now, long staleThresholdMs) {
-        String key = IClusterCacheCoordinator.generateEngineClusterPeerKey(peerId, engineName);
-        String engineState = msg != null ? msg.getEngineState(engineName) : null;
-        boolean isActive = engineState != null
-                && !ClusteredEngineState.OFFLINE.getValue().equals(engineState)
+        String key = getEngineStateMapKey(peerId, engineName);
+        String engineStateValue = msg != null ? msg.getEngineState(engineName) : null;
+        boolean isActive = engineStateValue != null
+                && !ClusteredEngineState.OFFLINE.getValue().equals(engineStateValue)
                 && !msg.isStale(now, staleThresholdMs);
-        boolean wasActive = Boolean.TRUE.equals(engineStateMap.get(key));
+        boolean wasActive = engineAndPeerStateMap.getOrDefault(key, ClusteredEngineState.OFFLINE) != ClusteredEngineState.OFFLINE;
         if (isActive) {
-            engineStateMap.put(key, Boolean.TRUE);
+            try {
+                engineAndPeerStateMap.put(key, ClusteredEngineState.fromValue(engineStateValue));
+            } catch (IllegalArgumentException ex) {
+                log.warn("Received unparseable engine state from peer={}, engine={}, state={}", peerId, engineName, engineStateValue);
+            }
         } else if (wasActive) {
-            engineStateMap.put(key, Boolean.FALSE);
+            engineAndPeerStateMap.put(key, ClusteredEngineState.OFFLINE);
             onPeerEngineCrashed(peerId, engineName);
         }
     }
@@ -892,6 +883,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     protected void onPeerCrashed(String serverId) {
         log.warn("Cluster peer JVM {} stopped sending heartbeats. Clearing its orphaned locks.", serverId);
+        engineAndPeerStateMap.setStateForAllEnginesAtServer(serverId, ClusteredEngineState.OFFLINE);
         clearLocksForPeer(serverId);
     }
 
@@ -907,6 +899,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     protected void onPeerLeft(String serverId) {
         log.info("Cluster peer {} left the cluster. Clearing its locks.", serverId);
+        engineAndPeerStateMap.setStateForAllEnginesAtServer(serverId, ClusteredEngineState.OFFLINE);
         clearLocksForPeer(serverId);
     }
 
@@ -915,8 +908,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
             engine.getClusterService().clearLocksForServer(serverId);
             engine.getNodeCommunicationService().clearLocksForServer(serverId);
-            engineStateMap.put(IClusterCacheCoordinator.generateEngineClusterPeerKey(serverId, engine.getEngineName()),
-                    Boolean.FALSE);
         }
     }
 
@@ -948,10 +939,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private void logEngineStates() {
-        if (lastEngineStates.isEmpty()) {
+        if (engineAndPeerStateMap.isEmpty()) {
             log.debug("No engine state information available");
         } else {
-            lastEngineStates.forEach((engineName, state) -> log.debug("Engine state: engineName={}, state={}", engineName, state));
+            engineAndPeerStateMap.forEach((key, state) -> log.debug("Engine state: peerId/engineName={}, state={}", key, state));
         }
     }
 

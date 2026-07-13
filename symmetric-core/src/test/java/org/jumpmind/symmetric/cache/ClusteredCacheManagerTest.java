@@ -78,10 +78,9 @@ class ClusteredCacheManagerTest {
     private Method isPeerAliveMethod;
     private Method detectPeerStateMethod;
     private Method detectEngineStateMethod;
-    private Map<String, Boolean> engineStateMap;
+    private EngineAndPeerStateMap engineAndPeerStateMap;
     private Map<String, Boolean> peerWasPreviouslyAlive;
     private Map<String, ISymmetricEngine> registeredEnginesMap;
-    private Map<String, String> lastEngineStatesMap;
     private Map<String, Object> originalFieldValues;
 
     @BeforeEach
@@ -111,10 +110,9 @@ class ClusteredCacheManagerTest {
         detectEngineStateMethod = ClusteredCacheManager.class.getDeclaredMethod("detectEngineStateAndFireEvents", String.class, String.class,
                 ClusterEngineStateMessage.class, long.class, long.class);
         detectEngineStateMethod.setAccessible(true);
-        engineStateMap = (Map<String, Boolean>) getField("engineStateMap");
+        engineAndPeerStateMap = (EngineAndPeerStateMap) getField("engineAndPeerStateMap");
         peerWasPreviouslyAlive = (Map<String, Boolean>) getField("peerWasPreviouslyAlive");
         registeredEnginesMap = (Map<String, ISymmetricEngine>) getField("registeredEngines");
-        lastEngineStatesMap = (Map<String, String>) getField("lastEngineStates");
         originalFieldValues = new HashMap<>();
         for (String fieldName : SNAPSHOT_FIELDS) {
             originalFieldValues.put(fieldName, getField(fieldName));
@@ -135,9 +133,8 @@ class ClusteredCacheManagerTest {
     void tearDown() throws Exception {
         // ClusteredCacheManager.getInstance() is a JVM-wide singleton, so state from one test must not leak into the next.
         registeredEnginesMap.clear();
-        engineStateMap.clear();
+        engineAndPeerStateMap.clear();
         peerWasPreviouslyAlive.clear();
-        lastEngineStatesMap.clear();
         Thread heartbeatThread = (Thread) getField("heartbeatThread");
         if (heartbeatThread != null && heartbeatThread.isAlive()) {
             heartbeatThread.interrupt();
@@ -227,38 +224,24 @@ class ClusteredCacheManagerTest {
         method.invoke(manager);
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, ClusteredEngineState> callGetCurrentEngineStateSnapshot() throws Exception {
-        Method method = ClusteredCacheManager.class.getDeclaredMethod("getCurrentEngineStateSnapshot");
+    private void callImportCurrentEngineStatesFromHolder() throws Exception {
+        Method method = ClusteredCacheManager.class.getDeclaredMethod("importCurrentEngineStatesFromHolder");
         method.setAccessible(true);
-        return (Map<String, ClusteredEngineState>) method.invoke(manager);
+        method.invoke(manager);
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, ClusteredEngineState> callBuildCurrentEngineStateSnapshotFromRegistered() throws Exception {
-        Method method = ClusteredCacheManager.class.getDeclaredMethod("buildCurrentEngineStateSnapshotFromRegistered");
-        method.setAccessible(true);
-        return (Map<String, ClusteredEngineState>) method.invoke(manager);
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, ClusteredEngineState> callInvokeSymmetricEngineHolderMethod(String methodName) throws Exception {
-        Method method = ClusteredCacheManager.class.getDeclaredMethod("invokeSymmetricEngineHolderMethod", String.class);
+    private EngineAndPeerStateMap callInvokeBuildCurrentEngineStateSnapshot() throws Exception {
+        Method method = ClusteredCacheManager.class.getDeclaredMethod("invokeBuildCurrentEngineStateSnapshot");
         method.setAccessible(true);
         try {
-            return (Map<String, ClusteredEngineState>) method.invoke(manager, methodName);
+            return (EngineAndPeerStateMap) method.invoke(manager);
         } catch (java.lang.reflect.InvocationTargetException e) {
             if (e.getCause() instanceof Exception) {
                 throw (Exception) e.getCause();
             }
             throw e;
         }
-    }
-
-    private Map<String, String> callConvertEngineStatesToStrings(Map<String, ClusteredEngineState> engineStates) throws Exception {
-        Method method = ClusteredCacheManager.class.getDeclaredMethod("convertEngineStatesToStrings", Map.class);
-        method.setAccessible(true);
-        return (Map<String, String>) method.invoke(manager, engineStates);
     }
 
     private void callSendMessageToPeers(String eventType) throws Exception {
@@ -274,19 +257,19 @@ class ClusteredCacheManagerTest {
     }
 
     public static class FakeEngineHolderWithSnapshot {
-        private final Map<String, ClusteredEngineState> snapshot;
+        private final EngineAndPeerStateMap snapshot;
 
-        public FakeEngineHolderWithSnapshot(Map<String, ClusteredEngineState> snapshot) {
+        public FakeEngineHolderWithSnapshot(EngineAndPeerStateMap snapshot) {
             this.snapshot = snapshot;
         }
 
-        Map<String, ClusteredEngineState> buildCurrentEngineStateSnapshot() {
+        public EngineAndPeerStateMap buildCurrentEngineStateSnapshot(String serverId) {
             return snapshot;
         }
     }
 
     public static class FakeEngineHolderThatThrows {
-        Map<String, ClusteredEngineState> buildCurrentEngineStateSnapshot() {
+        public EngineAndPeerStateMap buildCurrentEngineStateSnapshot(String serverId) {
             throw new RuntimeException("boom");
         }
     }
@@ -381,14 +364,14 @@ class ClusteredCacheManagerTest {
     @Test
     void detectEngineStateAndFireEvents_activeToOffline_firesOnceAndDoesNotRefireOnRepeat() throws Exception {
         manager.registerEngine(mockEngine);
-        String key = IClusterCacheCoordinator.generateEngineClusterPeerKey(PEER_1, ENGINE_1);
+        String key = EngineAndPeerStateMap.generateKey(PEER_1, ENGINE_1);
         ClusterEngineStateMessage activeMsg = new ClusterEngineStateMessage(ClusteredEngineState.RUNNING, ENGINE_1, PEER_1, PARTITION_ID);
         callDetectEngineState(PEER_1, ENGINE_1, activeMsg, activeMsg.getTimestamp() + 1, STALE_THRESHOLD_MS);
-        assertEquals(Boolean.TRUE, engineStateMap.get(key));
+        assertEquals(ClusteredEngineState.RUNNING, engineAndPeerStateMap.get(key));
         verify(mockClusterService, never()).clearLocksForServer(PEER_1);
         ClusterEngineStateMessage offlineMsg = new ClusterEngineStateMessage(ClusteredEngineState.OFFLINE, ENGINE_1, PEER_1, PARTITION_ID);
         callDetectEngineState(PEER_1, ENGINE_1, offlineMsg, offlineMsg.getTimestamp() + 1, STALE_THRESHOLD_MS);
-        assertEquals(Boolean.FALSE, engineStateMap.get(key));
+        assertEquals(ClusteredEngineState.OFFLINE, engineAndPeerStateMap.get(key));
         verify(mockClusterService, times(1)).clearLocksForServer(PEER_1);
         verify(mockNodeCommService, times(1)).clearLocksForServer(PEER_1);
         // Reporting the same already-inactive engine again must not re-fire the crash callback.
@@ -819,7 +802,7 @@ class ClusteredCacheManagerTest {
     void broadcastEngineState_listenerNotStarted_updatesMapButDoesNotSend() throws Exception {
         setField("isClusterPeerListenerStarted", false);
         manager.broadcastEngineState(ENGINE_1, ClusteredEngineState.RUNNING);
-        assertEquals(ClusteredEngineState.RUNNING.getValue(), lastEngineStatesMap.get(ENGINE_1));
+        assertEquals(ClusteredEngineState.RUNNING, engineAndPeerStateMap.get(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1)));
         verify(mockCoordinator, never()).sendEngineStates(any());
     }
 
@@ -905,10 +888,10 @@ class ClusteredCacheManagerTest {
 
     @Test
     void shutdown_marksAllTrackedEngineStatesOffline() throws Exception {
-        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.RUNNING.getValue());
+        engineAndPeerStateMap.put(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1), ClusteredEngineState.RUNNING);
         when(mockCoordinator.isInitialized()).thenReturn(false);
         manager.shutdown();
-        assertEquals(ClusteredEngineState.OFFLINE.getValue(), lastEngineStatesMap.get(ENGINE_1));
+        assertEquals(ClusteredEngineState.OFFLINE, engineAndPeerStateMap.get(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1)));
     }
 
     @Test
@@ -938,90 +921,42 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
-    void getCurrentEngineStateSnapshot_holderNull_fallsBackToRegisteredEnginesSnapshot() throws Exception {
-        setField("symmetricEngineHolder", null);
-        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.RUNNING.name());
-        Map<String, ClusteredEngineState> snapshot = callGetCurrentEngineStateSnapshot();
-        assertEquals(ClusteredEngineState.RUNNING, snapshot.get(ENGINE_1));
-    }
-
-    @Test
-    void getCurrentEngineStateSnapshot_holderPresent_usesHolderSnapshot() throws Exception {
-        Map<String, ClusteredEngineState> holderSnapshot = new HashMap<>();
-        holderSnapshot.put(ENGINE_1, ClusteredEngineState.UPGRADING);
+    void invokeBuildCurrentEngineStateSnapshot_delegatesToHolderWithOwnServerId_returnsSnapshot() throws Exception {
+        EngineAndPeerStateMap holderSnapshot = new EngineAndPeerStateMap();
+        holderSnapshot.put(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1), ClusteredEngineState.UPGRADING);
         setField("symmetricEngineHolder", new FakeEngineHolderWithSnapshot(holderSnapshot));
-        Map<String, ClusteredEngineState> snapshot = callGetCurrentEngineStateSnapshot();
-        assertEquals(ClusteredEngineState.UPGRADING, snapshot.get(ENGINE_1));
+        EngineAndPeerStateMap result = callInvokeBuildCurrentEngineStateSnapshot();
+        assertEquals(ClusteredEngineState.UPGRADING, result.get(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1)));
     }
 
     @Test
-    void getCurrentEngineStateSnapshot_holderMethodThrows_fallsBackToRegisteredEnginesSnapshot() throws Exception {
+    void invokeBuildCurrentEngineStateSnapshot_holderMethodThrows_propagatesException() throws Exception {
         setField("symmetricEngineHolder", new FakeEngineHolderThatThrows());
-        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.STARTING.name());
-        Map<String, ClusteredEngineState> snapshot = callGetCurrentEngineStateSnapshot();
-        assertEquals(ClusteredEngineState.STARTING, snapshot.get(ENGINE_1));
+        assertThrows(Exception.class, this::callInvokeBuildCurrentEngineStateSnapshot);
     }
 
     @Test
-    void buildCurrentEngineStateSnapshotFromRegistered_validStateStrings_parsedCorrectly() throws Exception {
-        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.RUNNING.name());
-        Map<String, ClusteredEngineState> snapshot = callBuildCurrentEngineStateSnapshotFromRegistered();
-        assertEquals(ClusteredEngineState.RUNNING, snapshot.get(ENGINE_1));
+    void importCurrentEngineStatesFromHolder_holderNull_leavesMapUnchanged() throws Exception {
+        setField("symmetricEngineHolder", null);
+        callImportCurrentEngineStatesFromHolder();
+        assertTrue(engineAndPeerStateMap.isEmpty());
     }
 
     @Test
-    void buildCurrentEngineStateSnapshotFromRegistered_invalidStateString_fallsBackToOffline() throws Exception {
-        lastEngineStatesMap.put(ENGINE_1, "NOT_A_REAL_STATE");
-        Map<String, ClusteredEngineState> snapshot = callBuildCurrentEngineStateSnapshotFromRegistered();
-        assertEquals(ClusteredEngineState.OFFLINE, snapshot.get(ENGINE_1));
-    }
-
-    /**
-     * Documents a real mismatch: broadcastEngineState()/shutdown() store engineState.getValue() (e.g. "ENGINE_RUNNING") into lastEngineStates, but this parser
-     * expects the enum's name() (e.g. "RUNNING") via ClusteredEngineState.valueOf(). A value written by normal production code paths therefore always fails to
-     * parse and silently falls back to OFFLINE here, regardless of the engine's true state.
-     */
-    @Test
-    void buildCurrentEngineStateSnapshotFromRegistered_stateStringAsWrittenByBroadcastEngineState_fallsBackToOffline() throws Exception {
-        lastEngineStatesMap.put(ENGINE_1, ClusteredEngineState.RUNNING.getValue());
-        Map<String, ClusteredEngineState> snapshot = callBuildCurrentEngineStateSnapshotFromRegistered();
-        assertEquals(ClusteredEngineState.OFFLINE, snapshot.get(ENGINE_1));
-    }
-
-    @Test
-    void buildCurrentEngineStateSnapshotFromRegistered_empty_returnsEmptyMap() throws Exception {
-        Map<String, ClusteredEngineState> snapshot = callBuildCurrentEngineStateSnapshotFromRegistered();
-        assertTrue(snapshot.isEmpty());
-    }
-
-    @Test
-    void invokeSymmetricEngineHolderMethod_successfulInvocation_returnsSnapshot() throws Exception {
-        Map<String, ClusteredEngineState> holderSnapshot = new HashMap<>();
-        holderSnapshot.put(ENGINE_1, ClusteredEngineState.RUNNING);
+    void importCurrentEngineStatesFromHolder_holderPresent_mergesIntoMap() throws Exception {
+        EngineAndPeerStateMap holderSnapshot = new EngineAndPeerStateMap();
+        holderSnapshot.put(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1), ClusteredEngineState.UPGRADING);
         setField("symmetricEngineHolder", new FakeEngineHolderWithSnapshot(holderSnapshot));
-        Map<String, ClusteredEngineState> result = callInvokeSymmetricEngineHolderMethod("buildCurrentEngineStateSnapshot");
-        assertEquals(ClusteredEngineState.RUNNING, result.get(ENGINE_1));
+        callImportCurrentEngineStatesFromHolder();
+        assertEquals(ClusteredEngineState.UPGRADING, engineAndPeerStateMap.get(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1)));
     }
 
     @Test
-    void invokeSymmetricEngineHolderMethod_noSuchMethod_throwsException() throws Exception {
-        setField("symmetricEngineHolder", new FakeEngineHolderWithSnapshot(new HashMap<>()));
-        assertThrows(Exception.class, () -> callInvokeSymmetricEngineHolderMethod("noSuchMethodOnThisObject"));
-    }
-
-    @Test
-    void convertEngineStatesToStrings_convertsEnumValuesToStrings() throws Exception {
-        Map<String, ClusteredEngineState> input = new HashMap<>();
-        input.put(ENGINE_1, ClusteredEngineState.RUNNING);
-        input.put(ENGINE_2, ClusteredEngineState.OFFLINE);
-        Map<String, String> result = callConvertEngineStatesToStrings(input);
-        assertEquals(ClusteredEngineState.RUNNING.getValue(), result.get(ENGINE_1));
-        assertEquals(ClusteredEngineState.OFFLINE.getValue(), result.get(ENGINE_2));
-    }
-
-    @Test
-    void convertEngineStatesToStrings_emptyMap_returnsEmptyMap() throws Exception {
-        assertTrue(callConvertEngineStatesToStrings(new HashMap<>()).isEmpty());
+    void importCurrentEngineStatesFromHolder_holderMethodThrows_doesNotThrowAndLeavesMapUnchanged() throws Exception {
+        engineAndPeerStateMap.put(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1), ClusteredEngineState.RUNNING);
+        setField("symmetricEngineHolder", new FakeEngineHolderThatThrows());
+        assertDoesNotThrow(this::callImportCurrentEngineStatesFromHolder);
+        assertEquals(ClusteredEngineState.RUNNING, engineAndPeerStateMap.get(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1)));
     }
 
     @Test

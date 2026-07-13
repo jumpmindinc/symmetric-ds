@@ -64,6 +64,8 @@ import org.jumpmind.symmetric.cache.ClusterPeerServerState;
 import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ClusteredEngineState;
+import org.jumpmind.symmetric.cache.EngineAndPeerStateMap;
+import org.jumpmind.symmetric.cache.IClusterCacheCoordinator;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -737,21 +739,22 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         return engines.size();
     }
 
-    /** Builds a consolidated snapshot of all currently registered engines and their states. */
-    public Map<String, ClusteredEngineState> buildCurrentEngineStateSnapshot() {
-        Map<String, ClusteredEngineState> snapshot = new HashMap<>();
+    /** Builds a consolidated snapshot of all currently registered engines and their states, keyed under {@code serverId}. */
+    @Override
+    public EngineAndPeerStateMap buildCurrentEngineStateSnapshot(String serverId) {
+        EngineAndPeerStateMap snapshot = new EngineAndPeerStateMap();
         for (ISymmetricEngine engine : engines.values()) {
             String engineName = engine.getEngineName();
-            snapshot.put(engineName, ClusteredEngineState.RUNNING);
+            snapshot.put(EngineAndPeerStateMap.generateKey(serverId, engineName), ClusteredEngineState.RUNNING);
         }
         for (SymmetricEngineStarter starter : enginesStarting) {
             String engineName = starter.getEngineName();
             if (engineName != null) {
-                snapshot.put(engineName, ClusteredEngineState.STARTING);
+                snapshot.put(EngineAndPeerStateMap.generateKey(serverId, engineName), ClusteredEngineState.STARTING);
             }
         }
         for (String engineName : enginesFailed.keySet()) {
-            snapshot.put(engineName, ClusteredEngineState.FAILED);
+            snapshot.put(EngineAndPeerStateMap.generateKey(serverId, engineName), ClusteredEngineState.FAILED);
         }
         return snapshot;
     }

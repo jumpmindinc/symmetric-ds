@@ -20,11 +20,9 @@
  */
 package org.jumpmind.symmetric.web;
 
-import java.util.Map;
-
-import org.jumpmind.symmetric.cache.ClusteredEngineState;
+import org.jumpmind.symmetric.cache.EngineAndPeerStateMap;
 
 public interface ISymmetricEngineHolder {
-    /** Builds a consolidated snapshot of all currently registered engines and their states. */
-    Map<String, ClusteredEngineState> buildCurrentEngineStateSnapshot();
+    /** Builds a consolidated snapshot of all currently registered engines and their states, keyed under {@code serverId}. */
+    EngineAndPeerStateMap buildCurrentEngineStateSnapshot(String serverId);
 }

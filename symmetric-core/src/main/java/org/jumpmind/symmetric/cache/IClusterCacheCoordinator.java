@@ -76,10 +76,6 @@ public interface IClusterCacheCoordinator {
         }
     }
 
-    static String generateEngineClusterPeerKey(String serverId, String engineName) {
-        return serverId + "|" + engineName;
-    }
-
     /**
      * Starts the coordinator. The implementation's own mandatory regions (e.g. peer heartbeat, engine state) are always configured; regionSettings adds
      * additional named regions on top of those. Region names must be unique, including against the mandatory region names, which are not caller-configurable.

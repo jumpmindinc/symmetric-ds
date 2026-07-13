@@ -397,7 +397,7 @@ class SymmetricEngineHolderTest {
         @Test
         void returnsEmptySnapshotWhenNoEngines() {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
-            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
+            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot("server1");
             assertTrue(snapshot.isEmpty());
         }
 
@@ -406,7 +406,7 @@ class SymmetricEngineHolderTest {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             File props = createPropertiesFile("running1", "", "http://localhost:31415/sync/running1");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(props.getAbsolutePath(), holder));
-            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
+            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot("server1");
             assertTrue(snapshot.values().stream().anyMatch(state -> state == ClusteredEngineState.STARTING));
         }
 
@@ -414,7 +414,7 @@ class SymmetricEngineHolderTest {
         void containsFailedEnginesInSnapshot() {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             holder.getEnginesFailed().put("failed-engine", new FailedEngineInfo("failed-engine", "failed.properties", "Test failure"));
-            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot();
+            Map<String, ClusteredEngineState> snapshot = holder.buildCurrentEngineStateSnapshot("server1");
             assertTrue(snapshot.containsValue(ClusteredEngineState.FAILED));
         }
     }
@@ -473,10 +473,10 @@ class SymmetricEngineHolderTest {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             File props = createPropertiesFile("engine1", "", "http://localhost:31415/sync/engine1");
             holder.getEnginesStarting().add(new SymmetricEngineStarter(props.getAbsolutePath(), holder));
-            Map<String, ClusteredEngineState> snapshot1 = holder.buildCurrentEngineStateSnapshot();
+            Map<String, ClusteredEngineState> snapshot1 = holder.buildCurrentEngineStateSnapshot("server1");
             assertTrue(snapshot1.values().stream().anyMatch(s -> s == ClusteredEngineState.STARTING));
             holder.getEnginesStarting().clear();
-            Map<String, ClusteredEngineState> snapshot2 = holder.buildCurrentEngineStateSnapshot();
+            Map<String, ClusteredEngineState> snapshot2 = holder.buildCurrentEngineStateSnapshot("server1");
             assertTrue(snapshot2.isEmpty());
         }
 
@@ -485,7 +485,7 @@ class SymmetricEngineHolderTest {
             System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
             SymmetricEngineHolder holder = spy(new SymmetricEngineHolder());
             holder.getEnginesStarting().clear();
-            holder.buildCurrentEngineStateSnapshot();
+            holder.buildCurrentEngineStateSnapshot("server1");
             verify(holder, Mockito.never()).stop();
         }
     }
