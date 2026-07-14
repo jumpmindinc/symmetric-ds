@@ -136,6 +136,8 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         if (!symEnvVars.isEmpty()) {
             TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(envProps, true);
         }
+        log.debug("Fetched static server properties. symEnvVarsFound={}, {}={}", symEnvVars.isEmpty() ? 0 : symEnvVars.size(),
+                ParameterConstants.CLUSTER_LOCKING_ENABLED, envProps.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED));
         return envProps;
     }
 
