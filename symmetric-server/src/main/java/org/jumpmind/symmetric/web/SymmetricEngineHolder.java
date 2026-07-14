@@ -175,6 +175,9 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
             String clusterPartitionId = ClusterPartitionGenerator.resolve(coreServerProperties);
             String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
             isClusterLockingEnabled = ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties);
+            log.debug("Resolved cluster settings. clusterPartitionId={}, serverId={}, {}={} (raw property value='{}')", clusterPartitionId, serverId,
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED, isClusterLockingEnabled,
+                    coreServerProperties.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED));
             ccManager.initialize(securityService, clusterPartitionId, serverId, isClusterLockingEnabled, this);
             ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);
         } catch (Exception ex) {
