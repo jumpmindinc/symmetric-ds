@@ -1156,10 +1156,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         log.info("Stopping SymmetricDS externalId={} version={} database={}",
                 new Object[] { parameterService == null ? "?" : parameterService.getExternalId(), Version.version(),
                         symmetricDialect == null ? "?" : symmetricDialect.getName() });
-        if (clusteredCacheManager != null) {
-            clusteredCacheManager.broadcastEngineState(getEngineName(), ClusteredEngineState.OFFLINE);
-            clusteredCacheManager.unregisterEngine(this);
-        }
         removeEngineFromAppHealthTracker();
         if (metricsService != null) {
             metricsService.shutdown();
@@ -1175,6 +1171,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
         if (updateService != null) {
             updateService.stop();
+        }
+        if (clusteredCacheManager != null) {
+            clusteredCacheManager.unregisterEngine(this, ClusteredEngineState.STOPPED);
         }
         if (statisticManager != null) {
             List<ProcessInfo> infos = statisticManager.getProcessInfos();

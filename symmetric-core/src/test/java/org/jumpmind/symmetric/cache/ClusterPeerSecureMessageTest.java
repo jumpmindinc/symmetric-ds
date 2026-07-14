@@ -69,6 +69,15 @@ class ClusterPeerSecureMessageTest {
     }
 
     @Test
+    void isHeaderChecksumValid_nullHeaderChecksum_returnsFalse() {
+        long messageSalt = 98765L;
+        long timestamp = System.currentTimeMillis();
+        ClusterPeerSecureMessage msg = new ClusterPeerSecureMessage("server1", "inst1", "1.0", timestamp,
+                messageSalt, null, "fingerprint", "payload");
+        assertFalse(msg.isHeaderChecksumValid());
+    }
+
+    @Test
     void computeChecksum_algorithmUnavailable_throwsRuntimeException() throws Exception {
         try (MockedStatic<MessageDigest> mocked = mockStatic(MessageDigest.class)) {
             mocked.when(() -> MessageDigest.getInstance("SHA-512")).thenThrow(new NoSuchAlgorithmException("no such algorithm"));

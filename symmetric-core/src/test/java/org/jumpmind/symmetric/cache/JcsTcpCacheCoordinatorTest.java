@@ -157,6 +157,15 @@ class JcsTcpCacheCoordinatorTest {
     }
 
     @Test
+    void getMessage_peerRegionWithCachedMessage_returnsMessage() throws Exception {
+        ClusterPeerSecureMessage expected = mock(ClusterPeerSecureMessage.class);
+        CacheAccess<String, ClusterPeerSecureMessage> mockCache = mockCacheAccess();
+        when(mockCache.get("server1")).thenReturn(expected);
+        setField("peerHeartbeatCache", mockCache);
+        assertEquals(expected, coordinator.getMessage(JcsPropertiesBuilder.PEER_REGION, "server1"));
+    }
+
+    @Test
     void isInitialized_beforeStart_returnsFalse() {
         assertFalse(coordinator.isInitialized());
     }
@@ -314,6 +323,18 @@ class JcsTcpCacheCoordinatorTest {
         doThrow(new RuntimeException("boom")).when(brokenDiscovery).start(any());
         assertThrows(RuntimeException.class, () -> coordinator.start(settings, Collections.emptySet(), converter, brokenDiscovery));
         assertFalse(coordinator.isInitialized());
+    }
+
+    @Test
+    void deliverWithTimeout_executorRejectsSubmission_isCaughtWithoutThrowing() throws Exception {
+        ExecutorService shutdownExecutor = Executors.newSingleThreadExecutor();
+        shutdownExecutor.shutdownNow();
+        setNetworkSettings(new CacheCoordinatorNetworkSettings("server1", "inst1", 1101, "udp", 400L));
+        setField("messageDeliveryExecutor", shutdownExecutor);
+        setField("deliveryTimeoutMs", 200L);
+        AtomicBoolean taskRan = new AtomicBoolean(false);
+        assertDoesNotThrow(() -> invokeDeliverWithTimeout("rejected", () -> taskRan.set(true)));
+        assertFalse(taskRan.get());
     }
 
     @Test

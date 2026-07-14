@@ -31,26 +31,17 @@ public interface IClusteredCacheManager {
     }
 
     /**
-     * Subscribe a SymmetricDS engine to this manager. JCS is started when the first engine registers. Call {@link #addPeer} for each remote host before
-     * registering to ensure JCS starts with a complete peer list.
-     */
-    void registerEngine(ISymmetricEngine engine);
-
-    /**
-     * Subscribe a SymmetricDS engine to this manager and immediately broadcast its initial engine state (see {@link #broadcastEngineState}), so cluster peers
-     * learn this engine is starting without waiting for the next heartbeat tick.
+     * Subscribe a SymmetricDS engine (endpoint, node) to broadcast engine state to cluster peer servers.
      */
     void registerEngine(ISymmetricEngine engine, ClusteredEngineState initialEngineState);
 
     /**
-     * Remove a SymmetricDS engine from this manager. JCS is stopped when the last engine unregisters.
+     * Remove a SymmetricDS engine, typically on stop/shutdown.
      */
-    void unregisterEngine(ISymmetricEngine engine);
+    void unregisterEngine(ISymmetricEngine engine, ClusteredEngineState finalEngineState);
 
     /**
-     * Add a remote server hostname to the JCS lateral peer list and seed its initial online/stale state from the provided heartbeat timestamp. Rejects peers
-     * with mismatched cluster partition IDs for security. Safe to call before {@link #registerEngine}; peers accumulate and are applied when JCS initializes.
-     * Return true if the peer was not already known to the cluster.
+     * Add a remote server hostname to the list of cluster peer servers. Return true if the peer was not already known to the cluster.
      */
     boolean addPeer(String serverId, Date heartbeatTime, String peerClusterPartitionId);
 

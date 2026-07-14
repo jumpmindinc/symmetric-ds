@@ -181,6 +181,26 @@ class BaseCachePeerServerDiscoveryTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void announcePeer_regionHasNoLateralFacade_skipsWithoutThrowing() {
+        CompositeCache<Object, Object> mockCache = mock(CompositeCache.class);
+        when(mockCache.getAuxCacheList()).thenReturn(Collections.emptyList());
+        when(mockJcsManager.getCache(anyString())).thenReturn(mockCache);
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
+        discovery.start(contextWithJcsManager());
+        assertTrue(discovery.announcePeer("server2", "10.0.0.2:4001"));
+    }
+
+    @Test
+    void announcePeer_jcsManagerGetCacheThrows_isCaughtForBothAddAndRemove() {
+        when(mockJcsManager.getCache(anyString())).thenThrow(new RuntimeException("boom"));
+        BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
+        discovery.start(contextWithJcsManager());
+        assertTrue(discovery.announcePeer("server2", "10.0.0.2:4001"));
+        assertTrue(discovery.announcePeer("server2", "10.0.0.3:4001"));
+    }
+
+    @Test
     void retractPeer_unknownServerId_returnsFalse() {
         BaseCachePeerServerDiscovery discovery = new BaseCachePeerServerDiscovery();
         discovery.start(contextWithJcsManager());

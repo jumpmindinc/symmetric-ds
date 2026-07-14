@@ -88,21 +88,17 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     @Override
-    public synchronized void registerEngine(ISymmetricEngine engine) {
-        registeredEngines.put(engine.getEngineName(), engine);
-    }
-
-    @Override
     public synchronized void registerEngine(ISymmetricEngine engine, ClusteredEngineState initialEngineState) {
-        registerEngine(engine);
-        broadcastEngineState(engine.getEngineName(), initialEngineState);
+        String engineName = engine.getEngineName();
+        registeredEngines.put(engineName, engine);
+        engineAndPeerStateMap.put(getEngineStateMapKey(myServerId, engineName), initialEngineState);
     }
 
     @Override
-    public synchronized void unregisterEngine(ISymmetricEngine engine) {
+    public synchronized void unregisterEngine(ISymmetricEngine engine, ClusteredEngineState finalEngineState) {
         String engineName = engine.getEngineName();
         registeredEngines.remove(engineName);
-        broadcastEngineState(engineName, ClusteredEngineState.OFFLINE);
+        engineAndPeerStateMap.put(getEngineStateMapKey(myServerId, engineName), finalEngineState);
     }
 
     @Override
@@ -181,6 +177,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     @Override
     public boolean isPeerOfflineLongEnough(String serverId, long staleThresholdMs) {
+        if (peerNetworkCoordinator == null) {
+            return false;
+        }
         long now = System.currentTimeMillis();
         ClusterServerStatusMessage msg = peerNetworkCoordinator.getPeerStatusMessage(serverId);
         if (msg != null && !isPeerAlive(serverId, msg, now, staleThresholdMs)) {
@@ -195,6 +194,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             throw new RuntimeException("Service was not yet initialized!");
         }
         Set<String> active = new HashSet<>();
+        if (peerNetworkCoordinator == null) {
+            return active;
+        }
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         long now = System.currentTimeMillis();
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
@@ -325,6 +327,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (!isInitialized()) {
             throw new RuntimeException("Service was not yet initialized!");
         }
+        if (peerNetworkCoordinator == null) {
+            return false;
+        }
         for (String peerId : peerNetworkCoordinator.getPeerIds()) {
             ClusterServerStatusMessage msg = peerNetworkCoordinator.getPeerStatusMessage(peerId);
             if (msg != null && eventType.equals(msg.getEventType())) {
@@ -338,6 +343,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     public boolean isAnyPeerOnline() {
         if (!isInitialized()) {
             throw new RuntimeException("Service was not yet initialized!");
+        }
+        if (peerNetworkCoordinator == null) {
+            return false;
         }
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         long now = System.currentTimeMillis();
@@ -381,6 +389,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     public boolean isAnyPeerWithEngineInState(String engineName, ClusteredEngineState engineState) {
         if (!isInitialized()) {
             throw new RuntimeException("Service was not yet initialized!");
+        }
+        if (peerNetworkCoordinator == null) {
+            return false;
         }
         long staleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
         long now = System.currentTimeMillis();

@@ -137,4 +137,30 @@ class ClusterEngineStateMessageTest {
         ClusterEngineStateMessage msg = new ClusterEngineStateMessage(new TreeMap<>(), "server1", "inst1");
         assertFalse(msg.isStale(msg.getTimestamp() + 1_000L, 5_000L));
     }
+
+    @Test
+    void fromEngineStates_extractsOnlyMatchingServerIdEntriesWithPrefixStripped() {
+        EngineAndPeerStateMap allStates = new EngineAndPeerStateMap();
+        allStates.put(EngineAndPeerStateMap.generateKey("server1", "engine1"), ClusteredEngineState.RUNNING);
+        allStates.put(EngineAndPeerStateMap.generateKey("server2", "engine1"), ClusteredEngineState.OFFLINE);
+        ClusterEngineStateMessage msg = ClusterEngineStateMessage.fromEngineStates(allStates, "server1", "inst1");
+        assertEquals(1, msg.getEngineStates().size());
+        assertEquals(ClusteredEngineState.RUNNING.getValue(), msg.getEngineState("engine1"));
+    }
+
+    @Test
+    void fromEngineStates_noMatchingServerId_producesEmptyMessage() {
+        EngineAndPeerStateMap allStates = new EngineAndPeerStateMap();
+        allStates.put(EngineAndPeerStateMap.generateKey("server2", "engine1"), ClusteredEngineState.OFFLINE);
+        ClusterEngineStateMessage msg = ClusterEngineStateMessage.fromEngineStates(allStates, "server1", "inst1");
+        assertTrue(msg.getEngineStates().isEmpty());
+    }
+
+    @Test
+    void fromEngineStates_setsServerIdAndClusterPartitionId() {
+        EngineAndPeerStateMap allStates = new EngineAndPeerStateMap();
+        ClusterEngineStateMessage msg = ClusterEngineStateMessage.fromEngineStates(allStates, "server1", "inst1");
+        assertEquals("server1", msg.getServerId());
+        assertEquals("inst1", msg.getClusterPartitionId());
+    }
 }

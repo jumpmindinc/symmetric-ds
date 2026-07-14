@@ -141,6 +141,32 @@ public class ClusterPartitionGeneratorTest {
     }
 
     @Test
+    public void resolveWithProperties_configuredValue_usesConfiguredValue() {
+        Properties properties = new Properties();
+        properties.setProperty(ServerConstants.CLUSTER_PARTITION_ID, "configured-partition-id");
+        assertEquals("configured-partition-id", ClusterPartitionGenerator.resolve(properties));
+    }
+
+    @Test
+    public void resolveWithProperties_configuredValueLongerThanMax_isTruncated() {
+        Properties properties = new Properties();
+        properties.setProperty(ServerConstants.CLUSTER_PARTITION_ID, "a".repeat(100));
+        assertEquals(MAX_CONFIGURED_ID_LENGTH, ClusterPartitionGenerator.resolve(properties).length());
+    }
+
+    @Test
+    public void resolveWithProperties_blankConfiguredValue_fallsBackToNoArgResolve() {
+        System.setProperty(ServerConstants.CLUSTER_PARTITION_ID, "system-property-value");
+        assertEquals("system-property-value", ClusterPartitionGenerator.resolve(new Properties()));
+    }
+
+    @Test
+    public void resolveWithProperties_nullProperties_fallsBackToNoArgResolve() {
+        System.setProperty(ServerConstants.CLUSTER_PARTITION_ID, "system-property-value");
+        assertEquals("system-property-value", ClusterPartitionGenerator.resolve(null));
+    }
+
+    @Test
     public void writeAndReadClusterPartitionId_roundTripsThroughFile(@TempDir File tempDir) throws Exception {
         File clusterPartitionIdFile = new File(tempDir, "cluster-partition.uuid");
         Method write = ClusterPartitionGenerator.class.getDeclaredMethod("writeClusterPartitionId", File.class, String.class);
@@ -256,6 +282,30 @@ public class ClusterPartitionGeneratorTest {
     }
 
     @Test
+    public void resolveServerIdWithProperties_configuredValue_usesConfiguredValue() {
+        Properties properties = new Properties();
+        properties.setProperty(ServerConstants.CLUSTER_SERVER_ID, "configured-server-id");
+        assertEquals("configured-server-id", ClusterPartitionGenerator.resolveServerId(properties));
+    }
+
+    @Test
+    public void resolveServerIdWithProperties_configuredValueLongerThanMax_isTruncated() {
+        Properties properties = new Properties();
+        properties.setProperty(ServerConstants.CLUSTER_SERVER_ID, "a".repeat(300));
+        assertEquals(MAX_SERVER_ID_LENGTH, ClusterPartitionGenerator.resolveServerId(properties).length());
+    }
+
+    @Test
+    public void resolveServerIdWithProperties_blankConfiguredValue_fallsBackToHostname() throws Exception {
+        assertEquals(AppUtils.getHostName(), ClusterPartitionGenerator.resolveServerId(new Properties()));
+    }
+
+    @Test
+    public void resolveServerIdWithProperties_nullProperties_fallsBackToHostname() throws Exception {
+        assertEquals(AppUtils.getHostName(), ClusterPartitionGenerator.resolveServerId(null));
+    }
+
+    @Test
     public void isClusterLockingEnabled_propertiesValueTrue_returnsTrue() {
         Properties properties = new Properties();
         properties.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
@@ -263,21 +313,20 @@ public class ClusterPartitionGeneratorTest {
     }
 
     @Test
-    public void isClusterLockingEnabled_propertiesBlank_fallsBackToSystemProperty() {
-        System.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
-        assertTrue(ClusterPartitionGenerator.isClusterLockingEnabled(new Properties()));
+    public void isClusterLockingEnabled_propertiesBlank_returnsFalse() {
+        assertFalse(ClusterPartitionGenerator.isClusterLockingEnabled(new Properties()));
     }
 
     @Test
-    public void isClusterLockingEnabled_noProperties_fallsBackToSystemProperty() {
-        System.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
-        assertTrue(ClusterPartitionGenerator.isClusterLockingEnabled(null));
-    }
-
-    @Test
-    public void isClusterLockingEnabled_propertiesValueTakesPrecedenceOverSystemProperty() {
+    public void isClusterLockingEnabled_propertiesValueFalse_returnsFalse() {
         Properties properties = new Properties();
         properties.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "false");
+        assertFalse(ClusterPartitionGenerator.isClusterLockingEnabled(properties));
+    }
+
+    @Test
+    public void isClusterLockingEnabled_systemPropertyIgnored_returnsFalse() {
+        Properties properties = new Properties();
         System.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, "true");
         assertFalse(ClusterPartitionGenerator.isClusterLockingEnabled(properties));
     }

@@ -467,4 +467,46 @@ class ClusterMessageConverterTest {
         assertNull(result);
         assertEquals(ConversionFailureReason.FINGERPRINT, converter.getRejectedServers().get("server1").getReason());
     }
+
+    @Test
+    void toEngineStateMessage_corruptedDecryptedPayload_isCaughtAndRecordedAsCorruptedPayload() {
+        Map<String, String> engineStates = new HashMap<>();
+        engineStates.put("engine1", "ONLINE");
+        ClusterEngineStateMessage plain = new ClusterEngineStateMessage(engineStates, "server1", "inst1");
+        ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum("server1", encrypted.getTimestamp(), encrypted.getMessageSalt());
+        ClusterPeerSecureMessage corrupted = new ClusterPeerSecureMessage("server1", "inst1", encrypted.getVersion(),
+                encrypted.getTimestamp(), encrypted.getMessageSalt(), headerChecksum,
+                encrypted.getKeystoreFingerprint(), "not-a-valid-salted-payload");
+        ClusterEngineStateMessage result = converter.toEngineStateMessage(corrupted, "inst1");
+        assertNull(result);
+        assertEquals(ConversionFailureReason.CORRUPTED_PAYLOAD, converter.getRejectedServers().get("server1").getReason());
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    void toPlainMessage_delegatesToToServerStatusMessage() {
+        ClusterServerStatusMessage plain = new ClusterServerStatusMessage(
+                ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 1000L);
+        ClusterPeerSecureMessage encrypted = converter.toEncryptedMessage(plain);
+        ClusterPlainMessage decoded = converter.toPlainMessage(encrypted, "inst1");
+        assertNotNull(decoded);
+        assertEquals(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, decoded.getEventType());
+    }
+
+    @Test
+    void toEngineStateMessage_payloadWithMalformedPair_skipsPairWithoutEquals() {
+        long messageSalt = 98765L;
+        long timestamp = System.currentTimeMillis();
+        String rawPayload = "no-equals-sign;engine1=ONLINE";
+        String saltedPayload = String.format("%016x|%s", messageSalt, rawPayload);
+        String saltedFingerprint = String.format("%016x|%s", messageSalt, "inst1" + Version.version());
+        String headerChecksum = ClusterPeerSecureMessage.computeChecksum("server1", timestamp, messageSalt);
+        ClusterPeerSecureMessage secure = new ClusterPeerSecureMessage("server1", "inst1", "1.0", timestamp,
+                messageSalt, headerChecksum, saltedFingerprint, saltedPayload);
+        ClusterEngineStateMessage decrypted = converter.toEngineStateMessage(secure, "inst1");
+        assertNotNull(decrypted);
+        assertEquals(1, decrypted.getEngineStates().size());
+        assertEquals("ONLINE", decrypted.getEngineState("engine1"));
+    }
 }

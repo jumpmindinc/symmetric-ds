@@ -85,4 +85,21 @@ class ClusterServerStatusMessageTest {
         assertNotNull(date);
         assertFalse(date.isEmpty());
     }
+
+    @Test
+    void constructor_fromClusterPeerServerState_usesStateValueAsEventType() {
+        ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterPeerServerState.HEARTBEAT, "server1", "inst1", 0L);
+        assertEquals(ClusterPeerServerState.HEARTBEAT.getValue(), msg.getEventType());
+    }
+
+    @Test
+    void getStatus_returnsConstructedStatus() {
+        assertEquals(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, heartbeat().getStatus());
+    }
+
+    @Test
+    void getStartTimeMs_returnsConstructedStartTime() {
+        ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, "server1", "inst1", 12345L);
+        assertEquals(12345L, msg.getStartTimeMs());
+    }
 }
