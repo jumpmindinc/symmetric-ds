@@ -412,9 +412,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     }
 
     /**
-     * Announces departure to cluster peers before engine teardown, which can itself take a while (each engine interrupts and joins its own worker threads).
-     * Without this, a container's SIGTERM-to-SIGKILL grace period can expire before {@link #shutdownClusterCommunication()} ever runs, so peers would only
-     * ever detect the departure via the slower stale-heartbeat path instead of immediately via {@code onPeerLeft}.
+     * Announces departure to cluster peers before engine teardown, which can itself take a while.
      */
     private synchronized void announceClusterDeparture() {
         if (clusteredCacheManager != null) {

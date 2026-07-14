@@ -452,7 +452,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             try {
                 sendMessageToPeers(ClusterServerStatusMessage.EVENT_PEER_LEAVING);
                 broadcastCurrentEngineStates();
-
             } catch (Exception ex) {
                 log.warn("Problem announcing departure to cluster peers! ", ex);
             }
