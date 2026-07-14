@@ -37,6 +37,7 @@ import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.util.AppUtils;
+import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -70,7 +71,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private volatile String lastBroadcastEventType = ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT;
     private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
-    private static final long HEARTBEAT_MIN_SLEEP_DELAY_MS = 20L; // Skip sleeping (Thread.sleep) and loop again immediatelly when remaining delay is below this cutoff
+    private static final long HEARTBEAT_MIN_SLEEP_DELAY_MS = 20L; // Skip sleeping (Thread.sleep) and loop again immediatelly when remaining delay is below this
+                                                                  // cutoff
     Runnable exitProcessAction = () -> new Thread(this::exitProcess, "sym-cluster-exit").start(); // Separate thread prevents deadlocks
 
     private ClusteredCacheManager() {
@@ -431,7 +433,6 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (peerNetworkCoordinator != null && peerNetworkCoordinator.isInitialized()) {
             try {
                 if (isClusterPeerListenerStarted) {
-                    sendMessageToPeers(ClusterServerStatusMessage.EVENT_PEER_LEAVING);
                     broadcastCurrentEngineStates();
                 }
                 peerNetworkCoordinator.stop();
@@ -444,13 +445,26 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         isClusterPeerListenerStarted = false;
     }
 
+    @Override
+    public synchronized void announceLeaving() {
+        engineAndPeerStateMap.setStateForAllEnginesAtServer(myServerId, ClusteredEngineState.OFFLINE);
+        if (peerNetworkCoordinator != null && peerNetworkCoordinator.isInitialized() && isClusterPeerListenerStarted) {
+            try {
+                sendMessageToPeers(ClusterServerStatusMessage.EVENT_PEER_LEAVING);
+                broadcastCurrentEngineStates();
+
+            } catch (Exception ex) {
+                log.warn("Problem announcing departure to cluster peers! ", ex);
+            }
+        }
+    }
+
     private void broadcastCurrentStateAndEngines() {
         sendMessageToPeers(lastBroadcastEventType);
         broadcastCurrentEngineStates();
     }
 
     private void broadcastCurrentEngineStates() {
-        importCurrentEngineStatesFromHolder();
         ClusterEngineStateMessage msg = ClusterEngineStateMessage.fromEngineStates(
                 engineAndPeerStateMap, myServerId, myClusterPartitionId);
         peerNetworkCoordinator.sendEngineStates(msg);
@@ -501,14 +515,24 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         log.debug("Ended cluster peer heartbeat thread={}", CLUSTER_HEARTBEAT_THREAD_NAME);
     }
 
+    private static String elapsedSince(long startTimeMs) {
+        return FormatUtils.formatDurationShort(System.currentTimeMillis() - startTimeMs);
+    }
+
     private void executeClusterHeartbeatAndDiscoveryTick() throws InterruptedException {
         long startTime = System.currentTimeMillis();
         long staleThresholdMs = refreshStaleThreshold();
         long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
+        importCurrentEngineStatesFromHolder();
+        log.debug("Cluster peer heartbeat loop step 1 (importCurrentEngineStatesFromHolder) done. Elapsed={}", elapsedSince(startTime));
         discoverPeersFromNodeHostTable();
+        log.debug("Cluster peer heartbeat loop step 2 (discoverPeersFromNodeHostTable) done. Elapsed={}", elapsedSince(startTime));
         discoverPeersIncomingHeartbeats();
+        log.debug("Cluster peer heartbeat loop step 3 (discoverPeersIncomingHeartbeats) done. Elapsed={}", elapsedSince(startTime));
         broadcastCurrentStateAndEngines();
+        log.debug("Cluster peer heartbeat loop step 4 (broadcastCurrentStateAndEngines) done. Elapsed={}", elapsedSince(startTime));
         updateOwnNodeHostHeartbeat();
+        log.debug("Cluster peer heartbeat loop step 5 (updateOwnNodeHostHeartbeat) done. Elapsed={}", elapsedSince(startTime));
         if (log.isDebugEnabled()) {
             logEngineStates();
             logPeerStates();

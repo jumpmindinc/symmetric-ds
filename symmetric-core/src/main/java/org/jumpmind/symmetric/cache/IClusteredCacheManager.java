@@ -87,7 +87,12 @@ public interface IClusteredCacheManager {
      */
     boolean isClusterLockingEnabled();
 
-    /** Announce departure from the cluster and stop network communication */
+    /**
+     * Announces departure to cluster peers immediately, before tearing down network resources (in shutdown method).
+     */
+    void announceLeaving();
+
+    /** Stop network communication and release JCS cluster resources. Call announceLeaving first so peer servers are notified of the departure. */
     void shutdown();
 
     /** The JCS cluster partition ID this node resolved and is currently announcing under. */

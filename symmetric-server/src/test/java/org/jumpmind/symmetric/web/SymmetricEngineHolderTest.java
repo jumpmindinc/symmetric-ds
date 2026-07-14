@@ -447,6 +447,22 @@ class SymmetricEngineHolderTest {
             SymmetricEngineHolder holder = new SymmetricEngineHolder();
             assertDoesNotThrow(holder::stop);
         }
+
+        @Test
+        void stop_announcesClusterDepartureToPeers() throws Exception {
+            SymmetricEngineHolder holder = new SymmetricEngineHolder();
+            IClusteredCacheManager mockClusteredCacheManager = mock(IClusteredCacheManager.class);
+            Field field = SymmetricEngineHolder.class.getDeclaredField("clusteredCacheManager");
+            field.setAccessible(true);
+            field.set(null, mockClusteredCacheManager);
+            try {
+                holder.stop();
+                verify(mockClusteredCacheManager).announceLeaving();
+                assertTrue(holder.getEngines().isEmpty());
+            } finally {
+                field.set(null, null);
+            }
+        }
     }
 
     @Nested

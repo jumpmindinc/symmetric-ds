@@ -395,6 +395,7 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
      * Stops all engines, marks app health as not-Ready and not-Alive and stops comumication with other servers in cluster
      */
     public void stop() {
+        announceClusterDeparture();
         stopAndClearAllEngines();
         shutdownClusterCommunication();
         shutdownHealthTracker();
@@ -407,6 +408,17 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         IApplicationHealthTracker healthTracker = ApplicationHealthTracker.getTracker();
         if (healthTracker != null) {
             healthTracker.onShutdown();
+        }
+    }
+
+    /**
+     * Announces departure to cluster peers before engine teardown, which can itself take a while (each engine interrupts and joins its own worker threads).
+     * Without this, a container's SIGTERM-to-SIGKILL grace period can expire before {@link #shutdownClusterCommunication()} ever runs, so peers would only
+     * ever detect the departure via the slower stale-heartbeat path instead of immediately via {@code onPeerLeft}.
+     */
+    private synchronized void announceClusterDeparture() {
+        if (clusteredCacheManager != null) {
+            clusteredCacheManager.announceLeaving();
         }
     }
 

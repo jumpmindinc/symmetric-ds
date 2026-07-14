@@ -857,18 +857,55 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
-    void shutdown_listenerStarted_sendsLeavingMessageAndStopsCoordinator() throws Exception {
+    void shutdown_listenerStarted_stopsCoordinatorWithoutSendingLeavingMessage() throws Exception {
         setField("isClusterPeerListenerStarted", true);
         setMyClusterPartitionId(PARTITION_ID);
         when(mockCoordinator.isInitialized()).thenReturn(true);
         manager.shutdown();
-        ArgumentCaptor<ClusterServerStatusMessage> statusCaptor = ArgumentCaptor.forClass(ClusterServerStatusMessage.class);
-        verify(mockCoordinator).sendServerStatus(statusCaptor.capture());
-        assertEquals(ClusterServerStatusMessage.EVENT_PEER_LEAVING, statusCaptor.getValue().getEventType());
+        verify(mockCoordinator, never()).sendServerStatus(any());
         verify(mockCoordinator).sendEngineStates(any());
         verify(mockCoordinator).stop();
         assertFalse(manager.isClusterPeerListenerStarted());
         assertNull(getField("peerNetworkCoordinator"));
+    }
+
+    @Test
+    void announceLeaving_listenerStarted_sendsLeavingMessageAndOfflineEngineStates() throws Exception {
+        setField("isClusterPeerListenerStarted", true);
+        setMyClusterPartitionId(PARTITION_ID);
+        when(mockCoordinator.isInitialized()).thenReturn(true);
+        engineAndPeerStateMap.put(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1), ClusteredEngineState.RUNNING);
+        manager.announceLeaving();
+        ArgumentCaptor<ClusterServerStatusMessage> statusCaptor = ArgumentCaptor.forClass(ClusterServerStatusMessage.class);
+        verify(mockCoordinator).sendServerStatus(statusCaptor.capture());
+        assertEquals(ClusterServerStatusMessage.EVENT_PEER_LEAVING, statusCaptor.getValue().getEventType());
+        ArgumentCaptor<ClusterEngineStateMessage> engineStatesCaptor = ArgumentCaptor.forClass(ClusterEngineStateMessage.class);
+        verify(mockCoordinator).sendEngineStates(engineStatesCaptor.capture());
+        assertEquals(ClusteredEngineState.OFFLINE.getValue(), engineStatesCaptor.getValue().getEngineState(ENGINE_1));
+    }
+
+    @Test
+    void announceLeaving_listenerNotStarted_doesNotSendMessage() throws Exception {
+        setField("isClusterPeerListenerStarted", false);
+        manager.announceLeaving();
+        verify(mockCoordinator, never()).sendServerStatus(any());
+        verify(mockCoordinator, never()).sendEngineStates(any());
+    }
+
+    @Test
+    void announceLeaving_coordinatorNotInitialized_doesNotSend() throws Exception {
+        setField("isClusterPeerListenerStarted", true);
+        when(mockCoordinator.isInitialized()).thenReturn(false);
+        assertDoesNotThrow(() -> manager.announceLeaving());
+        verify(mockCoordinator, never()).sendServerStatus(any());
+        verify(mockCoordinator, never()).sendEngineStates(any());
+    }
+
+    @Test
+    void announceLeaving_marksOwnEngineStatesOffline() throws Exception {
+        engineAndPeerStateMap.put(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1), ClusteredEngineState.RUNNING);
+        manager.announceLeaving();
+        assertEquals(ClusteredEngineState.OFFLINE, engineAndPeerStateMap.get(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1)));
     }
 
     @Test

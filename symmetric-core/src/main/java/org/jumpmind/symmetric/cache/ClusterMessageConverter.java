@@ -74,7 +74,7 @@ public class ClusterMessageConverter {
         if (!isValid(secure, expectedPartitionId)) {
             return null;
         }
-        String remoteServerid="";
+        String remoteServerid = "";
         try {
             remoteServerid = secure.getServerId();
             String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
@@ -97,7 +97,7 @@ public class ClusterMessageConverter {
         if (!isValid(secure, expectedPartitionId)) {
             return null;
         }
-        String remoteServerid="";
+        String remoteServerid = "";
         try {
             remoteServerid = secure.getServerId();
             String plainPayload = unsalt(securityService.decrypt(secure.getEncryptedPayload()));
@@ -121,8 +121,7 @@ public class ClusterMessageConverter {
             log.debug("Received null secure message, skipping conversion");
             return false;
         }
-
-        String remoteServerid=  secure.getServerId();
+        String remoteServerid = secure.getServerId();
         if (!secure.isHeaderChecksumValid()) {
             recordRejection(secure, ConversionFailureReason.CHECKSUM);
             RejectionInfo rejection = rejectedServers.get(remoteServerid);
