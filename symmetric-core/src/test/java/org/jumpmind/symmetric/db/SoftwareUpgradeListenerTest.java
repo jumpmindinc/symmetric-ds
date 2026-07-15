@@ -75,7 +75,7 @@ class SoftwareUpgradeListenerTest {
         field.set(ClusteredCacheManager.getInstance(), value);
     }
 
-    private void upgrade(String databaseVersion, String softwareVersion) throws Exception {
+    private void upgrade(String databaseVersion, String softwareVersion) {
         ModuleManager mockModuleManager = mock(ModuleManager.class);
         try (MockedStatic<ModuleManager> mockedStatic = mockStatic(ModuleManager.class)) {
             mockedStatic.when(ModuleManager::getInstance).thenReturn(mockModuleManager);
