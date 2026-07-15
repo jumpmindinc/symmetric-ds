@@ -562,7 +562,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testWriteKafka_avroFormatWithConfluent() throws Exception {
+    public void testWriteKafka_avroFormatWithConfluent() {
         KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -594,7 +594,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testWriteKafkaAvroFormatWithConfluentDeletePrimaryKeyOnly() throws Exception {
+    public void testWriteKafkaAvroFormatWithConfluentDeletePrimaryKeyOnly() {
         KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -624,7 +624,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testExecute_avroFormatWithConfluent() throws Exception {
+    public void testExecute_avroFormatWithConfluent() {
         KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -674,13 +674,12 @@ public class KafkaWriterTest {
     }
 
     private KafkaWriter createConfluentKafkaWriter(String outputFormat, String topicBy, String messageBy) {
-        KafkaWriter writer = new KafkaWriter(
+        return new KafkaWriter(
                 mockPlatform, mockPlatform, "sym_",
                 null, new DatabaseWriterSettings(),
                 "test-producer", outputFormat,
                 topicBy, messageBy,
                 "http://localhost:8081", null, "test-node", "localhost:9092", "kafka.", props, "reload");
-        return writer;
     }
 
     Table createPojoTable(String tableName) {
