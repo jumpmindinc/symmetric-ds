@@ -30,8 +30,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -275,6 +277,12 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                     if (curClass != null) {
                         Constructor<?> defaultConstructor = curClass.getConstructor();
                         Object pojo = defaultConstructor.newInstance();
+                        Set<String> allowedProperties = new HashSet<>();
+                        for (PropertyDescriptor pd : PropertyUtils.getPropertyDescriptors(pojo)) {
+                            if (pd.getWriteMethod() != null) {
+                                allowedProperties.add(pd.getName());
+                            }
+                        }
                         for (int i = 0; i < table.getColumnNames().length; i++) {
                             String colName = getColumnName(table.getName(), table.getColumnNames()[i], pojo);
                             if (colName != null) {
@@ -288,9 +296,13 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                                     } catch (Exception e) {
                                         log.debug(rowData[i] + " was not a recognized date format so treating it as a long.");
                                     }
-                                    BeanUtils.setProperty(pojo, colName, date != null ? date.getTime() : rowData[i]);
+                                    if (allowedProperties.contains(colName)) {
+                                        BeanUtils.setProperty(pojo, colName, date != null ? date.getTime() : rowData[i]);
+                                    }
                                 } else {
-                                    BeanUtils.setProperty(pojo, colName, rowData[i]);
+                                    if (allowedProperties.contains(colName)) {
+                                        BeanUtils.setProperty(pojo, colName, rowData[i]);
+                                    }
                                 }
                             }
                         }
@@ -736,6 +748,12 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                     if (curClass != null) {
                         Constructor<?> defaultConstructor = curClass.getConstructor();
                         Object pojo = defaultConstructor.newInstance();
+                        Set<String> allowedProperties = new HashSet<>();
+                        for (PropertyDescriptor pd : PropertyUtils.getPropertyDescriptors(pojo)) {
+                            if (pd.getWriteMethod() != null) {
+                                allowedProperties.add(pd.getName());
+                            }
+                        }
                         if (oldData != null) {
                             for (int i = 0; i < table.getColumnNames().length; i++) {
                                 String colName = getColumnName(table.getName(), table.getColumnNames()[i], pojo);
@@ -750,9 +768,13 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                                         } catch (Exception e) {
                                             log.debug(rowData[i] + " was not a recognized date format so treating it as a long.");
                                         }
-                                        BeanUtils.setProperty(pojo, colName, date != null ? date.getTime() : rowData[i]);
+                                        if (allowedProperties.contains(colName)) {
+                                            BeanUtils.setProperty(pojo, colName, date != null ? date.getTime() : rowData[i]);
+                                        }
                                     } else {
-                                        BeanUtils.setProperty(pojo, colName, rowData[i]);
+                                        if (allowedProperties.contains(colName)) {
+                                            BeanUtils.setProperty(pojo, colName, rowData[i]);
+                                        }
                                     }
                                 }
                             }
@@ -770,9 +792,13 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                                         } catch (Exception e) {
                                             log.debug(rowData[i] + " was not a recognized date format so treating it as a long.");
                                         }
-                                        BeanUtils.setProperty(pojo, colName, date != null ? date.getTime() : rowData[i]);
+                                        if (allowedProperties.contains(colName)) {
+                                            BeanUtils.setProperty(pojo, colName, date != null ? date.getTime() : rowData[i]);
+                                        }
                                     } else {
-                                        BeanUtils.setProperty(pojo, colName, rowData[i]);
+                                        if (allowedProperties.contains(colName)) {
+                                            BeanUtils.setProperty(pojo, colName, rowData[i]);
+                                        }
                                     }
                                 }
                             }

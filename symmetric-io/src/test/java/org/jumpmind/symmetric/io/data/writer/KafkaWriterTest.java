@@ -499,6 +499,15 @@ public class KafkaWriterTest {
     }
 
     @Test
+    public void testGetColumnNameReturnsNullForUnmatchedColumn() {
+        KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        PojoTestBean bean = new PojoTestBean();
+        String columnName = writer.getColumnName("test_table", "not_a_real_column", bean);
+        assertNull(columnName);
+    }
+
+    @Test
     public void testDatumToByteArray() throws Exception {
         org.apache.avro.Schema.Parser parser = new org.apache.avro.Schema.Parser();
         org.apache.avro.Schema schema = parser.parse(KafkaWriter.AVRO_CDC_SCHEMA);
@@ -553,6 +562,96 @@ public class KafkaWriterTest {
     }
 
     @Test
+    public void testWriteKafka_avroFormatWithConfluent() throws Exception {
+        KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.batch = testBatch;
+        Table pojoTable = createPojoTable("kafka_pojo");
+        writer.sourceTable = pojoTable;
+        writer.targetTable = pojoTable;
+        // Seed the class cache so getClassByTableName resolves our nested bean without scanning the classpath
+        writer.tableClassCache.put(writer.getTableName(pojoTable.getName()), PojoTestBean.class);
+        String[] rowData = { "1", "test_name", "500", "5" };
+        String[] oldData = { "1", "old_name", "0", "0" };
+        CsvData csvData = new CsvData(DataEventType.INSERT);
+        csvData.putParsedData(CsvData.ROW_DATA, rowData);
+        csvData.putParsedData(CsvData.OLD_DATA, oldData);
+        int result = writer.writeKafka(csvData, pojoTable);
+        assertEquals(1, result);
+        // The Confluent branch sends the populated POJO immediately via the producer
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<ProducerRecord<String, Object>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+        verify(mockKafkaProducer).send(captor.capture());
+        Object value = captor.getValue().value();
+        assertTrue(value instanceof PojoTestBean);
+        PojoTestBean pojo = (PojoTestBean) value;
+        assertEquals("1", pojo.getId());
+        assertEquals("test_name", pojo.getName());
+        assertEquals(Long.valueOf(500L), pojo.getAmount());
+        assertEquals(Integer.valueOf(5), pojo.getCount());
+    }
+
+    @Test
+    public void testWriteKafkaAvroFormatWithConfluentDeletePrimaryKeyOnly() throws Exception {
+        KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.batch = testBatch;
+        Table pojoTable = createPojoCompositePkTable("kafka_pojo");
+        writer.sourceTable = pojoTable;
+        writer.targetTable = pojoTable;
+        writer.tableClassCache.put(writer.getTableName(pojoTable.getName()), PojoTestBean.class);
+        // A DELETE that carries only primary-key data (no old data) drives the primary-key
+        // population loop. PK column order is id, amount, count.
+        String[] pkData = { "1", "500", "5" };
+        CsvData csvData = new CsvData(DataEventType.DELETE);
+        csvData.putParsedData(CsvData.PK_DATA, pkData);
+        int result = writer.writeKafka(csvData, pojoTable);
+        assertEquals(1, result);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<ProducerRecord<String, Object>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+        verify(mockKafkaProducer).send(captor.capture());
+        Object value = captor.getValue().value();
+        assertTrue(value instanceof PojoTestBean);
+        PojoTestBean pojo = (PojoTestBean) value;
+        assertEquals("1", pojo.getId()); // String -> CharSequence branch
+        assertEquals(Long.valueOf(500L), pojo.getAmount()); // non-date String -> Long branch
+        assertEquals(Integer.valueOf(5), pojo.getCount()); // Integer -> generic else branch
+        assertNull(pojo.getName()); // non-PK column not populated
+    }
+
+    @Test
+    public void testExecute_avroFormatWithConfluent() throws Exception {
+        KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.batch = testBatch;
+        Table pojoTable = createPojoTable("kafka_pojo");
+        writer.sourceTable = pojoTable;
+        writer.targetTable = pojoTable;
+        writer.tableClassCache.put(writer.getTableName(pojoTable.getName()), PojoTestBean.class);
+        String[] rowData = { "1", "test_name", "500", "5" };
+        CsvData csvData = new CsvData(DataEventType.INSERT);
+        csvData.putParsedData(CsvData.ROW_DATA, rowData);
+        int result = writer.execute(csvData, rowData);
+        assertEquals(1, result);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<ProducerRecord<String, Object>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+        verify(mockKafkaProducer).send(captor.capture());
+        Object value = captor.getValue().value();
+        assertTrue(value instanceof PojoTestBean);
+        PojoTestBean pojo = (PojoTestBean) value;
+        assertEquals("1", pojo.getId());
+        assertEquals("test_name", pojo.getName());
+        assertEquals(Long.valueOf(500L), pojo.getAmount());
+        assertEquals(Integer.valueOf(5), pojo.getCount());
+    }
+
+    @Test
     public void testKafkaConstants() {
         assertEquals("JSON", KafkaWriter.KAFKA_FORMAT_JSON);
         assertEquals("XML", KafkaWriter.KAFKA_FORMAT_XML);
@@ -574,6 +673,46 @@ public class KafkaWriterTest {
         return writer;
     }
 
+    private KafkaWriter createConfluentKafkaWriter(String outputFormat, String topicBy, String messageBy) {
+        KafkaWriter writer = new KafkaWriter(
+                mockPlatform, mockPlatform, "sym_",
+                null, new DatabaseWriterSettings(),
+                "test-producer", outputFormat,
+                topicBy, messageBy,
+                "http://localhost:8081", null, "test-node", "localhost:9092", "kafka.", props, "reload");
+        return writer;
+    }
+
+    Table createPojoTable(String tableName) {
+        Table table = new Table(tableName);
+        Column idColumn = new Column("id", true);
+        idColumn.setPrimaryKey(true);
+        Column nameColumn = new Column("name");
+        Column amountColumn = new Column("amount");
+        Column countColumn = new Column("count");
+        table.addColumn(idColumn);
+        table.addColumn(nameColumn);
+        table.addColumn(amountColumn);
+        table.addColumn(countColumn);
+        return table;
+    }
+
+    Table createPojoCompositePkTable(String tableName) {
+        Table table = new Table(tableName);
+        Column idColumn = new Column("id", true);
+        idColumn.setPrimaryKey(true);
+        Column nameColumn = new Column("name");
+        Column amountColumn = new Column("amount");
+        amountColumn.setPrimaryKey(true);
+        Column countColumn = new Column("count");
+        countColumn.setPrimaryKey(true);
+        table.addColumn(idColumn);
+        table.addColumn(nameColumn);
+        table.addColumn(amountColumn);
+        table.addColumn(countColumn);
+        return table;
+    }
+
     // Simple test bean for getColumnName test
     public static class TestBean {
         private String myField;
@@ -584,6 +723,48 @@ public class KafkaWriterTest {
 
         public void setMyField(String myField) {
             this.myField = myField;
+        }
+    }
+
+    // Bean used to exercise the Confluent/Avro branch of writeKafka where a POJO is
+    // instantiated and populated from row data. Property types cover each population branch:
+    // String (CharSequence branch), Long (date/long branch), and Integer (generic else branch).
+    public static class PojoTestBean {
+        private String id;
+        private String name;
+        private Long amount;
+        private Integer count;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public Long getAmount() {
+            return amount;
+        }
+
+        public void setAmount(Long amount) {
+            this.amount = amount;
+        }
+
+        public Integer getCount() {
+            return count;
+        }
+
+        public void setCount(Integer count) {
+            this.count = count;
         }
     }
 }
