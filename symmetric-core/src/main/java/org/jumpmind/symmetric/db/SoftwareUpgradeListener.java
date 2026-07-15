@@ -43,30 +43,36 @@ public class SoftwareUpgradeListener implements ISoftwareUpgradeListener, ISymme
 
     @Override
     public void upgrade(String databaseVersion, String softwareVersion) {
+        ParameterService parameterService = engine.getParameterService();
         if (databaseVersion.equals("3.8.0")) {
             log.info("Detected an original value of 3.8.0 performing necessary upgrades.");
-            String sql = "update  " + engine.getParameterService().getTablePrefix()
+            String sql = "update  " + parameterService.getTablePrefix()
                     + "_" + TableConstants.SYM_CHANNEL +
                     " set max_batch_size = 10000 where reload_flag = 1 and max_batch_size = 1";
             engine.getSqlTemplate().update(sql);
         }
         if (Version.isOlderThanVersion(databaseVersion, "3.13.0") &&
-                engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
+                parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
             engine.getNodeService().deleteNodeHost(engine.getNodeService().findIdentityNodeId());
         }
         if (Version.isOlderThanVersion(databaseVersion, "3.16.8")) {
-            engine.getParameterService().saveParameter(ParameterConstants.PURGE_STRANDED_DATA_RECAPTURE_ENABLED, false, "upgrade");
+            boolean oldDbValue = parameterService.is(ParameterConstants.PURGE_STRANDED_DATA_RECAPTURE_ENABLED);
+            parameterService.saveParameter(ParameterConstants.PURGE_STRANDED_DATA_RECAPTURE_ENABLED, false, "upgrade");
+            if (oldDbValue ) {
+                log.warn("Upgrading from database version {}: switching parameter {} "+
+                        "from {} to {} in order to prevent recapture of old data events during purge.", 
+                        databaseVersion, ParameterConstants.CLUSTER_LOCKING_ENABLED, oldDbValue, false);
+            }
         }
-        if (Version.isOlderThanVersion(databaseVersion, "3.18.0")) {
-            boolean startedWithClusterLockingEnabled = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
-            boolean liveParameterValue = engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
-            if (startedWithClusterLockingEnabled != liveParameterValue) {
-                log.warn("Upgrading from database version {}: {} is set to {} in the database, but as of 3.18 this parameter is resolved once from "
-                        + "file/environment configuration before any node starts and is no longer database-overridable. This node actually started JCS "
-                        + "peer-awareness with {}. Update the file/environment configuration to match if {} is intended; the database value will "
-                        + "continue to have no effect.",
-                        databaseVersion, ParameterConstants.CLUSTER_LOCKING_ENABLED, liveParameterValue, startedWithClusterLockingEnabled,
-                        liveParameterValue);
+         if (Version.isOlderThanVersion(databaseVersion, "3.18.0")) {
+            boolean startupValue = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
+            boolean oldDbValue = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+            parameterService.saveParameter(ParameterConstants.CLUSTER_LOCKING_ENABLED, startupValue, "upgrade");
+            if (oldDbValue != startupValue) {
+                log.warn("Upgrading from database version {}: You must manually populate now-startup parameter {} "+
+                        "in either conf/symmetric-server.properties file or environment variable to match "+
+                        "pre-upgrade value of {}. It is no longer database-overrideable.", 
+                        databaseVersion, ParameterConstants.CLUSTER_LOCKING_ENABLED, oldDbValue);
             }
         }
         try {
