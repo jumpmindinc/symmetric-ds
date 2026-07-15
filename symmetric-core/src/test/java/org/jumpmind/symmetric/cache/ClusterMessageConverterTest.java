@@ -195,7 +195,7 @@ class ClusterMessageConverterTest {
         assertNotNull(msg1);
         assertNotNull(msg2);
         assertFalse(msg1.getEncryptedPayload().equals(msg2.getEncryptedPayload()));
-        assertFalse(msg1.getMessageSalt() == msg2.getMessageSalt());
+        assertNotEquals(msg1.getMessageSalt(), msg2.getMessageSalt());
     }
 
     @Test
