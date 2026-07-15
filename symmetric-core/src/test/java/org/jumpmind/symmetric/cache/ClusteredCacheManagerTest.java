@@ -1347,6 +1347,12 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
+    void onPeerLeft_purgesPeerFromCoordinatorSoItsCachedMessagesDoNotLinger() {
+        manager.onPeerLeft(PEER_1);
+        verify(mockCoordinator).removePeer(PEER_1);
+    }
+
+    @Test
     void onPeerEngineCrashed_knownEngine_clearsLocksOnThatEngine() {
         manager.registerEngine(mockEngine, ClusteredEngineState.STARTING);
         manager.onPeerEngineCrashed(PEER_1, ENGINE_1);

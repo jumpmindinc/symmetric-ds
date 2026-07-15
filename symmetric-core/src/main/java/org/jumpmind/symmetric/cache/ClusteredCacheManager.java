@@ -935,6 +935,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         log.info("Cluster peer {} left the cluster. Clearing its locks.", serverId);
         engineAndPeerStateMap.setStateForAllEnginesAtServer(serverId, ClusteredEngineState.OFFLINE);
         clearLocksForPeer(serverId);
+        removePeer(serverId);
     }
 
     private void clearLocksForPeer(String serverId) {
