@@ -24,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -32,6 +34,11 @@ import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.symmetric.common.ContextConstants;
+import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.service.IContextService;
+import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -48,6 +55,55 @@ class AbstractSymmetricEngineTest {
         Field platformField = AbstractSymmetricEngine.class.getDeclaredField("platform");
         platformField.setAccessible(true);
         platformField.set(engine, platform);
+    }
+
+    private void setField(String fieldName, Object value) throws Exception {
+        Field field = AbstractSymmetricEngine.class.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(engine, value);
+    }
+
+    @Test
+    public void testPersistStartupDbParametersHashIfMissing_hashMissingSavesHash() throws Exception {
+        IContextService contextService = mock(IContextService.class);
+        ParameterService parameterService = mock(ParameterService.class);
+        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH)).thenReturn(null);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
+        setField("contextService", contextService);
+        setField("parameterService", parameterService);
+        engine.persistStartupDbParametersHashIfMissing();
+        verify(contextService).save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, "0x9250fa82");
+    }
+
+    @Test
+    public void testPersistStartupDbParametersHashIfMissing_hashPresentDoesNotSave() throws Exception {
+        IContextService contextService = mock(IContextService.class);
+        ParameterService parameterService = mock(ParameterService.class);
+        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH)).thenReturn("0x9250fa82");
+        setField("contextService", contextService);
+        setField("parameterService", parameterService);
+        engine.persistStartupDbParametersHashIfMissing();
+        verify(contextService, never()).save(Mockito.anyString(), Mockito.anyString());
+    }
+
+    @Test
+    public void testPersistStartupDbParametersHashIfMissing_exceptionThrownDoesNotPropagate() throws Exception {
+        IContextService contextService = mock(IContextService.class);
+        ParameterService parameterService = mock(ParameterService.class);
+        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH))
+                .thenThrow(new SqlException("relation does not exist"));
+        setField("contextService", contextService);
+        setField("parameterService", parameterService);
+        assertDoesNotThrow(() -> engine.persistStartupDbParametersHashIfMissing());
+        verify(contextService, never()).save(Mockito.anyString(), Mockito.anyString());
+    }
+
+    @Test
+    public void testComputeCurrentDbParamsHash_returnsHexFormattedString() throws Exception {
+        ParameterService parameterService = mock(ParameterService.class);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0xec461721);
+        setField("parameterService", parameterService);
+        assertTrue("0xec461721".equals(engine.computeCurrentDbParamsHash()));
     }
 
     @Test
