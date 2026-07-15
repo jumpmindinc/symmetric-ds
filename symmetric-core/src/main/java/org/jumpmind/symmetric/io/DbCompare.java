@@ -586,7 +586,7 @@ public class DbCompare {
             if (!CollectionUtils.isEmpty(targetTableNames)) {
                 targetTableName = targetTableNames.get(i);
             }
-            Table targetTable = loadTargetTable(tables, targetTableName);
+            Table targetTable = loadTargetTable(tables, targetTableName, tableNameParts.get("catalog"), tableNameParts.get("schema"));
             if (targetTable == null) {
                 log.warn("No target table found for name {}", tableName);
                 continue;
@@ -636,10 +636,10 @@ public class DbCompare {
         return true;
     }
 
-    protected Table loadTargetTable(DbCompareTables tables, String targetTableName) {
+    protected Table loadTargetTable(DbCompareTables tables, String targetTableName, String configuredCatalog, String configuredSchema) {
         Table targetTable = null;
         if (config.isUseSymmetricConfig()) {
-            TransformTableNodeGroupLink transform = getTransformFor(tables.getSourceTable());
+            TransformTableNodeGroupLink transform = getTransformFor(tables.getSourceTable(), configuredCatalog, configuredSchema);
             if (transform != null) {
                 targetTable = loadTargetTableUsingTransform(transform);
                 tables.setTransform(transform);
@@ -676,7 +676,9 @@ public class DbCompare {
                 }
             }
         }
-        // could put a check here before copying table
+        if (targetTable == null) {
+            return null;
+        }
         long targetTableCopyTime = System.currentTimeMillis();
         Table targetTableCopy = targetTable.copy();
         targetTableCopyTime = System.currentTimeMillis() - targetTableCopyTime;
@@ -699,7 +701,7 @@ public class DbCompare {
         return null;
     }
 
-    protected TransformTableNodeGroupLink getTransformFor(Table sourceTable) {
+    protected TransformTableNodeGroupLink getTransformFor(Table sourceTable, String configuredCatalog, String configuredSchema) {
         String sourceNodeGroupId = null;
         if (sourceEngine.getNodeService().findIdentity() != null) {
             sourceNodeGroupId = sourceEngine.getNodeService().findIdentity().getNodeGroupId();
@@ -708,9 +710,14 @@ public class DbCompare {
         if (targetEngine.getNodeService().findIdentity() != null) {
             targetNodeGroupId = targetEngine.getNodeService().findIdentity().getNodeGroupId();
         }
-        List<TransformTableNodeGroupLink> transforms = sourceEngine.getTransformService().findTransformsFor(
-                sourceNodeGroupId, targetNodeGroupId, sourceTable.getName(),
-                sourceTable.getSchema(), sourceTable.getCatalog());
+        List<TransformTableNodeGroupLink> transforms = findTransforms(sourceNodeGroupId, targetNodeGroupId,
+                sourceTable.getName(), sourceTable.getSchema(), sourceTable.getCatalog());
+        if (CollectionUtils.isEmpty(transforms)
+                && (!Strings.CI.equals(configuredCatalog, sourceTable.getCatalog())
+                        || !Strings.CI.equals(configuredSchema, sourceTable.getSchema()))) {
+            transforms = findTransforms(sourceNodeGroupId, targetNodeGroupId, sourceTable.getName(),
+                    configuredSchema, configuredCatalog);
+        }
         if (!CollectionUtils.isEmpty(transforms)) {
             TransformTableNodeGroupLink transform = transforms.get(0); // Only can operate on a single table transform for now.
             if (!StringUtils.isEmpty(transform.getFullyQualifiedTargetTableName())) {
@@ -718,6 +725,12 @@ public class DbCompare {
             }
         }
         return null;
+    }
+
+    private List<TransformTableNodeGroupLink> findTransforms(String sourceNodeGroupId, String targetNodeGroupId,
+            String tableName, String schema, String catalog) {
+        return sourceEngine.getTransformService().findTransformsFor(sourceNodeGroupId, targetNodeGroupId,
+                tableName, schema, catalog);
     }
 
     protected Table loadTargetTableUsingTransform(TransformTableNodeGroupLink transform) {
