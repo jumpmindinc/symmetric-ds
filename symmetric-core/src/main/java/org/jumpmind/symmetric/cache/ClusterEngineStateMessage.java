@@ -39,8 +39,6 @@ public class ClusterEngineStateMessage extends ClusterPlainMessage {
     public static final String ENGINE_ONLINE = "ENGINE_ONLINE";
     public static final String ENGINE_OFFLINE = "ENGINE_OFFLINE";
     private transient Map<String, String> engineStates;
-    private transient String engineState;
-    private transient String engineName;
 
     public ClusterEngineStateMessage(Map<String, String> allEngineStates,
             String serverId, String clusterPartitionId) {
@@ -72,8 +70,6 @@ public class ClusterEngineStateMessage extends ClusterPlainMessage {
     ClusterEngineStateMessage(Map<String, String> allEngineStates, String serverId, String clusterPartitionId, long timestamp) {
         super(serverId, clusterPartitionId, timestamp);
         this.engineStates = allEngineStates != null ? new TreeMap<>(allEngineStates) : new TreeMap<>();
-        this.engineState = null;
-        this.engineName = null;
     }
 
     public ClusterEngineStateMessage(ClusteredEngineState state, String engineName,
@@ -86,8 +82,6 @@ public class ClusterEngineStateMessage extends ClusterPlainMessage {
         super(serverId, clusterPartitionId, System.currentTimeMillis());
         this.engineStates = new TreeMap<>();
         this.engineStates.put(engineName, state);
-        this.engineState = state;
-        this.engineName = engineName;
     }
 
     @Override
