@@ -504,7 +504,7 @@ public class KafkaWriterTest {
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         PojoTestBean bean = new PojoTestBean();
         String columnName = writer.getColumnName("test_table", "not_a_real_column", bean);
-        assertNull(columnName);
+        assertEquals(null, columnName);
     }
 
     @Test
@@ -620,7 +620,7 @@ public class KafkaWriterTest {
         assertEquals("1", pojo.getId()); // String -> CharSequence branch
         assertEquals(Long.valueOf(500L), pojo.getAmount()); // non-date String -> Long branch
         assertEquals(Integer.valueOf(5), pojo.getCount()); // Integer -> generic else branch
-        assertNull(pojo.getName()); // non-PK column not populated
+        assertEquals(null, pojo.getName()); // non-PK column not populated
     }
 
     @Test

@@ -768,13 +768,9 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                                         } catch (Exception e) {
                                             log.debug(rowData[i] + " was not a recognized date format so treating it as a long.");
                                         }
-                                        if (allowedProperties.contains(colName)) {
-                                            BeanUtils.setProperty(pojo, colName, date != null ? date.getTime() : rowData[i]);
-                                        }
+                                        BeanUtils.setProperty(pojo, colName, date != null ? date.getTime() : rowData[i]);
                                     } else {
-                                        if (allowedProperties.contains(colName)) {
-                                            BeanUtils.setProperty(pojo, colName, rowData[i]);
-                                        }
+                                        BeanUtils.setProperty(pojo, colName, rowData[i]);
                                     }
                                 }
                             }
