@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.cache;
 
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -62,7 +63,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private volatile ICachePeerServerDiscovery peerDiscovery;
     private final Map<String, ISymmetricEngine> registeredEngines = new ConcurrentHashMap<>();
     private final EngineAndPeerStateMap engineAndPeerStateMap = new EngineAndPeerStateMap();
-    private final Map<String, IClusteredCacheManager.PeerState> peerStates = new ConcurrentHashMap<>();
+    private final Map<String, IClusteredCacheManager.PeerState> lastPeerStateMap = new ConcurrentHashMap<>();
     private final Map<String, Boolean> peerWasPreviouslyAlive = new ConcurrentHashMap<>();
     private Thread heartbeatThread;
     private volatile long currentHeartbeatMs = ServerConstants.CLUSTER_PEER_HEARTBEAT_DEFAULT_MS;
@@ -133,6 +134,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         boolean isHeartbeatStale = historicalHeartbeat != null
                 ? (System.currentTimeMillis() - historicalHeartbeat.getTime() > this.currentStaleThresholdMs)
                 : peerNetworkCoordinator.detectIfPeerIsStale(serverId, this.currentStaleThresholdMs);
+        long observedHeartbeatMs = historicalHeartbeat != null ? historicalHeartbeat.getTime() : System.currentTimeMillis();
+        lastPeerStateMap.put(serverId, new IClusteredCacheManager.PeerState(!isHeartbeatStale, observedHeartbeatMs));
         if (!isHeartbeatStale) {
             log.debug("Added cluster peer. ServerId={}, Last known heartbeat={}, ClusterPartitionId={}",
                     serverId, historicalHeartbeat, myClusterPartitionId);
@@ -547,7 +550,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             logEngineStates();
             logPeerStates();
         }
-        purgeObsoletePeers(startTime, getObsoleteMs(getAnyEngine()));
+        long obsoleteThresholdMs = getObsoleteMs(getAnyEngine());
+        purgeObsoletePeers(startTime, obsoleteThresholdMs);
+        purgePeerStates(startTime, obsoleteThresholdMs);
         if (this.isHeartbeatLoopRunning) {
             sleepUntilNextHeartbeat(startTime, sleepBetweenHeartbeatsMs, staleThresholdMs);
         } else {
@@ -634,6 +639,21 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 peerNetworkCoordinator.removePeer(peerId);
                 log.debug("Purged obsolete peer. ServerId={}, LastHeartbeat={}, ObsoleteThresholdMs={}",
                         peerId, msg.getTimestampAsString(), obsoleteThresholdMs);
+            }
+        }
+    }
+
+    /**
+     * Peers already removed from the coordinator (e.g. via onPeerLeft/onPeerCrashed) no longer appear in getPeerIds(), so purgeObsoletePeers() can't reach
+     * their retained logical state. This sweeps lastPeerStateMap directly, dropping any OFFLINE entry old enough that we no longer need to remember it.
+     */
+    private void purgePeerStates(long now, long obsoleteThresholdMs) {
+        for (Map.Entry<String, IClusteredCacheManager.PeerState> entry : new HashMap<>(lastPeerStateMap).entrySet()) {
+            IClusteredCacheManager.PeerState state = entry.getValue();
+            if (!state.alive() && (now - state.lastAliveMs()) > obsoleteThresholdMs) {
+                lastPeerStateMap.remove(entry.getKey());
+                log.debug("Purged obsolete logical peer state. ServerId={}, LastAliveMs={}, ObsoleteThresholdMs={}",
+                        entry.getKey(), state.lastAliveMs(), obsoleteThresholdMs);
             }
         }
     }
@@ -809,6 +829,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         boolean wasAlive = Boolean.TRUE.equals(peerWasPreviouslyAlive.get(peerId));
         if (peerIsActive) {
             peerWasPreviouslyAlive.put(peerId, Boolean.TRUE);
+            lastPeerStateMap.put(peerId, new IClusteredCacheManager.PeerState(true, now));
             if (!wasAlive) {
                 onPeerJoined(messageFromPeer);
             }
@@ -919,6 +940,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         log.warn("Cluster peer JVM {} stopped sending heartbeats. Clearing its orphaned locks.", serverId);
         engineAndPeerStateMap.setStateForAllEnginesAtServer(serverId, ClusteredEngineState.OFFLINE);
         clearLocksForPeer(serverId);
+        markPeerStateOffline(serverId);
     }
 
     protected void onPeerEngineCrashed(String peerId, String engineName) {
@@ -936,6 +958,14 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         engineAndPeerStateMap.setStateForAllEnginesAtServer(serverId, ClusteredEngineState.OFFLINE);
         clearLocksForPeer(serverId);
         removePeer(serverId);
+        markPeerStateOffline(serverId);
+    }
+
+    /** Preserves the existing lastAliveMs (when the peer was last confirmed alive) rather than resetting it to now. */
+    private void markPeerStateOffline(String serverId) {
+        IClusteredCacheManager.PeerState existing = lastPeerStateMap.get(serverId);
+        long lastAliveMs = existing != null ? existing.lastAliveMs() : System.currentTimeMillis();
+        lastPeerStateMap.put(serverId, new IClusteredCacheManager.PeerState(false, lastAliveMs));
     }
 
     private void clearLocksForPeer(String serverId) {
@@ -982,12 +1012,15 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private void logPeerStates() {
-        Set<String> peerIds = peerNetworkCoordinator.getPeerIds();
+        // Union with lastPeerStateMap.keySet(): a peer already removed from the coordinator (onPeerLeft/onPeerCrashed) no longer
+        // appears in getPeerIds(), but its retained OFFLINE entry should still be visible until purgePeerStates() ages it out.
+        Set<String> peerIds = new HashSet<>(peerNetworkCoordinator.getPeerIds());
+        peerIds.addAll(lastPeerStateMap.keySet());
         if (peerIds.isEmpty()) {
             log.debug("No peer information available");
         } else {
             peerIds.forEach(peerId -> {
-                IClusteredCacheManager.PeerState peerState = peerStates.get(peerId);
+                IClusteredCacheManager.PeerState peerState = lastPeerStateMap.get(peerId);
                 if (peerState != null) {
                     long ageMs = System.currentTimeMillis() - peerState.lastAliveMs();
                     String state = peerState.alive() ? "ALIVE" : "OFFLINE";

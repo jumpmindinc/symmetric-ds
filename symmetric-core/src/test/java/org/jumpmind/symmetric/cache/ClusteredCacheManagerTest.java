@@ -85,6 +85,7 @@ class ClusteredCacheManagerTest {
     private EngineAndPeerStateMap engineAndPeerStateMap;
     private Map<String, Boolean> peerWasPreviouslyAlive;
     private Map<String, ISymmetricEngine> registeredEnginesMap;
+    private Map<String, IClusteredCacheManager.PeerState> peerStatesMap;
     private Map<String, Object> originalFieldValues;
 
     @BeforeEach
@@ -117,6 +118,7 @@ class ClusteredCacheManagerTest {
         engineAndPeerStateMap = (EngineAndPeerStateMap) getField("engineAndPeerStateMap");
         peerWasPreviouslyAlive = (Map<String, Boolean>) getField("peerWasPreviouslyAlive");
         registeredEnginesMap = (Map<String, ISymmetricEngine>) getField("registeredEngines");
+        peerStatesMap = (Map<String, IClusteredCacheManager.PeerState>) getField("lastPeerStateMap");
         originalFieldValues = new HashMap<>();
         for (String fieldName : SNAPSHOT_FIELDS) {
             originalFieldValues.put(fieldName, getField(fieldName));
@@ -141,6 +143,7 @@ class ClusteredCacheManagerTest {
         registeredEnginesMap.clear();
         engineAndPeerStateMap.clear();
         peerWasPreviouslyAlive.clear();
+        peerStatesMap.clear();
         Thread heartbeatThread = (Thread) getField("heartbeatThread");
         if (heartbeatThread != null && heartbeatThread.isAlive()) {
             heartbeatThread.interrupt();
@@ -258,6 +261,12 @@ class ClusteredCacheManagerTest {
 
     private void callPurgeObsoletePeers(long now, long obsoleteThresholdMs) throws Exception {
         Method method = ClusteredCacheManager.class.getDeclaredMethod("purgeObsoletePeers", long.class, long.class);
+        method.setAccessible(true);
+        method.invoke(manager, now, obsoleteThresholdMs);
+    }
+
+    private void callPurgePeerStates(long now, long obsoleteThresholdMs) throws Exception {
+        Method method = ClusteredCacheManager.class.getDeclaredMethod("purgePeerStates", long.class, long.class);
         method.setAccessible(true);
         method.invoke(manager, now, obsoleteThresholdMs);
     }
@@ -1264,6 +1273,82 @@ class ClusteredCacheManagerTest {
         when(mockCoordinator.getPeerStatusMessage(PEER_1)).thenReturn(msg);
         callPurgeObsoletePeers(System.currentTimeMillis(), 5_000L);
         verify(mockCoordinator, never()).removePeer(anyString());
+    }
+
+    @Test
+    void purgePeerStates_obsoleteOfflineEntry_isRemoved() throws Exception {
+        long longAgo = System.currentTimeMillis() - 20_000L;
+        peerStatesMap.put(PEER_1, new IClusteredCacheManager.PeerState(false, longAgo));
+        callPurgePeerStates(System.currentTimeMillis(), 5_000L);
+        assertFalse(peerStatesMap.containsKey(PEER_1));
+    }
+
+    @Test
+    void purgePeerStates_recentOfflineEntry_isRetained() throws Exception {
+        peerStatesMap.put(PEER_1, new IClusteredCacheManager.PeerState(false, System.currentTimeMillis()));
+        callPurgePeerStates(System.currentTimeMillis(), 5_000L);
+        assertTrue(peerStatesMap.containsKey(PEER_1));
+    }
+
+    @Test
+    void purgePeerStates_aliveEntry_isNeverPurgedRegardlessOfAge() throws Exception {
+        long longAgo = System.currentTimeMillis() - 20_000L;
+        peerStatesMap.put(PEER_1, new IClusteredCacheManager.PeerState(true, longAgo));
+        callPurgePeerStates(System.currentTimeMillis(), 5_000L);
+        assertTrue(peerStatesMap.containsKey(PEER_1));
+    }
+
+    @Test
+    void addPeer_freshHeartbeat_seedsPeerStateAlive() throws Exception {
+        setConverter(new ClusterMessageConverter(mock(ISecurityService.class), PARTITION_ID));
+        when(mockCoordinator.addPeer(PEER_1)).thenReturn(true);
+        manager.addPeer(PEER_1, new Date(), null);
+        assertTrue(peerStatesMap.get(PEER_1).alive());
+    }
+
+    @Test
+    void addPeer_staleHeartbeat_seedsPeerStateOffline() throws Exception {
+        setConverter(new ClusterMessageConverter(mock(ISecurityService.class), PARTITION_ID));
+        setField("currentStaleThresholdMs", 5_000L);
+        when(mockCoordinator.addPeer(PEER_1)).thenReturn(true);
+        manager.addPeer(PEER_1, new Date(System.currentTimeMillis() - 10_000L), null);
+        assertFalse(peerStatesMap.get(PEER_1).alive());
+    }
+
+    @Test
+    void detectPeerStateAndFireEvents_peerActive_updatesPeerStateAlive() throws Exception {
+        ClusterServerStatusMessage msg = new ClusterServerStatusMessage(ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT, PEER_1, PARTITION_ID, 0L);
+        callDetectPeerState(PEER_1, msg, msg.getTimestamp() + 1, STALE_THRESHOLD_MS);
+        IClusteredCacheManager.PeerState state = peerStatesMap.get(PEER_1);
+        assertNotNull(state);
+        assertTrue(state.alive());
+    }
+
+    @Test
+    void onPeerCrashed_marksPeerStateOfflinePreservingLastAliveMs() {
+        long lastAliveMs = System.currentTimeMillis() - 1000L;
+        peerStatesMap.put(PEER_1, new IClusteredCacheManager.PeerState(true, lastAliveMs));
+        manager.onPeerCrashed(PEER_1);
+        IClusteredCacheManager.PeerState state = peerStatesMap.get(PEER_1);
+        assertFalse(state.alive());
+        assertEquals(lastAliveMs, state.lastAliveMs());
+    }
+
+    @Test
+    void onPeerLeft_marksPeerStateOfflinePreservingLastAliveMs() {
+        long lastAliveMs = System.currentTimeMillis() - 1000L;
+        peerStatesMap.put(PEER_1, new IClusteredCacheManager.PeerState(true, lastAliveMs));
+        manager.onPeerLeft(PEER_1);
+        IClusteredCacheManager.PeerState state = peerStatesMap.get(PEER_1);
+        assertFalse(state.alive());
+        assertEquals(lastAliveMs, state.lastAliveMs());
+    }
+
+    @Test
+    void logPeerStates_peerRemovedFromCoordinatorButRetainedInPeerStates_stillLogged() throws Exception {
+        when(mockCoordinator.getPeerIds()).thenReturn(Collections.emptySet());
+        peerStatesMap.put(PEER_1, new IClusteredCacheManager.PeerState(false, System.currentTimeMillis()));
+        assertDoesNotThrow(this::callLogPeerStates);
     }
 
     @Test
