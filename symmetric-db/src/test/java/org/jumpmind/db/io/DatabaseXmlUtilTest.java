@@ -31,7 +31,9 @@ import java.sql.Types;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -105,6 +107,21 @@ public class DatabaseXmlUtilTest {
         database.addTable(table);
         String xml = DatabaseXmlUtil.toXml(database);
         assertFalse(xml.contains("persisted="));
+    }
+
+    @Test
+    void testWriteXml_VarcharZeroSizeColumnTaggedWithAuroraMySqlVariant_WritesSizeAttribute() {
+        Column col = new Column("empty_varchar");
+        col.setMappedType("varchar");
+        col.setMappedTypeCode(Types.VARCHAR);
+        PlatformColumn platformColumn = new PlatformColumn(DatabaseNamesConstants.AURORA_MYSQL, "varchar", 0, 0, null);
+        col.addPlatformColumn(platformColumn);
+        Table table = new Table("test_table", col);
+        Database database = new Database();
+        database.addTable(table);
+        String xml = DatabaseXmlUtil.toXml(database);
+        assertTrue(xml.contains("size=\"0\""),
+                "Expected size=\"0\" to be written for a MySQL-family PlatformColumn tagged '" + DatabaseNamesConstants.AURORA_MYSQL + "'");
     }
 
     @ParameterizedTest
