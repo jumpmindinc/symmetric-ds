@@ -277,12 +277,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                     if (curClass != null) {
                         Constructor<?> defaultConstructor = curClass.getConstructor();
                         Object pojo = defaultConstructor.newInstance();
-                        Set<String> allowedProperties = new HashSet<>();
-                        for (PropertyDescriptor pd : PropertyUtils.getPropertyDescriptors(pojo)) {
-                            if (pd.getWriteMethod() != null) {
-                                allowedProperties.add(pd.getName());
-                            }
-                        }
+                        Set<String> allowedProperties = getAllowedProperties(pojo);
                         for (int i = 0; i < table.getColumnNames().length; i++) {
                             String colName = getColumnName(table.getName(), table.getColumnNames()[i], pojo);
                             if (colName != null) {
@@ -582,6 +577,16 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
         return null;
     }
 
+    public Set<String> getAllowedProperties(Object pojo) {
+        Set<String> allowedProperties = new HashSet<>();
+        for (PropertyDescriptor pd : PropertyUtils.getPropertyDescriptors(pojo)) {
+            if (pd.getWriteMethod() != null) {
+                allowedProperties.add(pd.getName());
+            }
+        }
+        return allowedProperties;
+    }
+
     public void sendKafkaMessage(ProducerRecord<String, Object> record) {
         log.debug("Sending message (topic={}) (key={}) {}", record.topic(), record.key(), record.value());
         kafkaProducer.send(record);
@@ -748,12 +753,7 @@ public class KafkaWriter extends DynamicDefaultDatabaseWriter {
                     if (curClass != null) {
                         Constructor<?> defaultConstructor = curClass.getConstructor();
                         Object pojo = defaultConstructor.newInstance();
-                        Set<String> allowedProperties = new HashSet<>();
-                        for (PropertyDescriptor pd : PropertyUtils.getPropertyDescriptors(pojo)) {
-                            if (pd.getWriteMethod() != null) {
-                                allowedProperties.add(pd.getName());
-                            }
-                        }
+                        Set<String> allowedProperties = getAllowedProperties(pojo);
                         if (oldData != null) {
                             for (int i = 0; i < table.getColumnNames().length; i++) {
                                 String colName = getColumnName(table.getName(), table.getColumnNames()[i], pojo);
