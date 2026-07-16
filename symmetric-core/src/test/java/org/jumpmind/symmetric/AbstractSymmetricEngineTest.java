@@ -66,7 +66,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testDetectStartupDbParametersDifferentFromLastStart_hashMatchesReturnsFalseAndDoesNotSave() throws Exception {
+    void testDetectStartupDbParametersDifferentFromLastStart_hashMatchesReturnsFalseAndDoesNotSave() throws Exception {
         IContextService contextService = mock(IContextService.class);
         ParameterService parameterService = mock(ParameterService.class);
         when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
@@ -78,7 +78,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testDetectStartupDbParametersDifferentFromLastStart_hashDiffersReturnsTrueAndSaves() throws Exception {
+    void testDetectStartupDbParametersDifferentFromLastStart_hashDiffersReturnsTrueAndSaves() throws Exception {
         IContextService contextService = mock(IContextService.class);
         ParameterService parameterService = mock(ParameterService.class);
         when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
@@ -90,7 +90,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testDetectStartupDbParametersDifferentFromLastStart_hashMissingReturnsTrueAndSaves() throws Exception {
+    void testDetectStartupDbParametersDifferentFromLastStart_hashMissingReturnsTrueAndSaves() throws Exception {
         IContextService contextService = mock(IContextService.class);
         ParameterService parameterService = mock(ParameterService.class);
         when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
@@ -102,7 +102,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testDetectStartupDbParametersDifferentFromLastStart_sqlExceptionReturnsTrueAndDoesNotSave() throws Exception {
+    void testDetectStartupDbParametersDifferentFromLastStart_sqlExceptionReturnsTrueAndDoesNotSave() throws Exception {
         IContextService contextService = mock(IContextService.class);
         ParameterService parameterService = mock(ParameterService.class);
         when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
@@ -115,7 +115,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testComputeCurrentDbParamsHash_returnsHexFormattedString() throws Exception {
+    void testComputeCurrentDbParamsHash_returnsHexFormattedString() throws Exception {
         ParameterService parameterService = mock(ParameterService.class);
         when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0xec461721);
         setField("parameterService", parameterService);
@@ -123,19 +123,19 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testDedicatedOraclePlatform() throws Exception {
+    void testDedicatedOraclePlatform() throws Exception {
         setPlatform(createDedicatedPlatformMock("Oracle"));
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
 
     @Test
-    public void testDedicatedSqlServerPlatform() throws Exception {
+    void testDedicatedSqlServerPlatform() throws Exception {
         setPlatform(createDedicatedPlatformMock("Microsoft SQL Server"));
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
 
     @Test
-    public void testOracleOnGenericPlatform() throws Exception {
+    void testOracleOnGenericPlatform() throws Exception {
         setPlatform(createGenericPlatformMock("Oracle"));
         SymmetricException ex = assertThrows(SymmetricException.class,
                 () -> engine.checkForProOnlyDatabase());
@@ -143,7 +143,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testSqlServerOnGenericPlatform() throws Exception {
+    void testSqlServerOnGenericPlatform() throws Exception {
         setPlatform(createGenericPlatformMock("Microsoft SQL Server"));
         SymmetricException ex = assertThrows(SymmetricException.class,
                 () -> engine.checkForProOnlyDatabase());
@@ -151,13 +151,13 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testSupportedDatabaseOnGenericPlatform() throws Exception {
+    void testSupportedDatabaseOnGenericPlatform() throws Exception {
         setPlatform(createGenericPlatformMock("H2"));
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
 
     @Test
-    public void testNullDatabaseVersion() throws Exception {
+    void testNullDatabaseVersion() throws Exception {
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         when(platform.getDatabaseVersion()).thenReturn(null);
         setPlatform(platform);
@@ -165,7 +165,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testNullDatabaseName() throws Exception {
+    void testNullDatabaseName() throws Exception {
         setPlatform(createGenericPlatformMock(null));
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }

@@ -528,7 +528,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             } else {
                 log.info("Checking tables and objects. force={}", force);
                 symmetricDialect.initTablesAndDatabaseObjects();
-                detectStartupDbParametersDifferentFromLastStart(); // persist hash now that sym_context exists (SYM-7705)
+                detectStartupDbParametersDifferentFromLastStart(); // persist hash now that sym_context exists
             }
         } else {
             if (hasSoftwareVersionChanged() && !Version.isDevelopment(Version.version())) {
