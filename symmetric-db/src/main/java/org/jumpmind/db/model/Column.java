@@ -636,6 +636,8 @@ public class Column implements Cloneable, Serializable {
                     return findDifferentVersionPlatformColumn(DatabaseNamesConstants.ORACLE);
                 } else if (name.contains(DatabaseNamesConstants.POSTGRESQL)) {
                     return findDifferentVersionPlatformColumn(DatabaseNamesConstants.POSTGRESQL);
+                } else if (name.contains(DatabaseNamesConstants.MYSQL)) {
+                    return findDifferentVersionPlatformColumn(DatabaseNamesConstants.MYSQL);
                 } else if (name.contains(DatabaseNamesConstants.SQLANYWHERE)) {
                     return findDifferentVersionPlatformColumn(DatabaseNamesConstants.SQLANYWHERE);
                 } else if (name.contains(DatabaseNamesConstants.FIREBIRD)) {
