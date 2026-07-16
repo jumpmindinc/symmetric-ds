@@ -43,6 +43,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.mariadb.MariaDBDatabasePlatform;
+import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.properties.TypedProperties;
@@ -219,7 +220,7 @@ public class SqlRunner extends Thread {
                         }
                         String lowercaseSql = sql.trim().toLowerCase();
                         if (!lowercaseSql.startsWith("delete") && !lowercaseSql.startsWith("update") && !lowercaseSql.startsWith("insert")) {
-                            if (db.getPlatform().getName().equals(DatabaseNamesConstants.MYSQL) &&
+                            if (db.getPlatform() instanceof MySqlDatabasePlatform &&
                                     !(db.getPlatform() instanceof MariaDBDatabasePlatform)) {
                                 stmt.setFetchSize(Integer.MIN_VALUE);
                             } else {

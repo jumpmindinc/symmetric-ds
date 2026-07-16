@@ -500,7 +500,7 @@ public class MySqlDdlBuilder extends AbstractDdlBuilder {
         if (column.getMappedTypeCode() == Types.TIMESTAMP && column.getScale() > 0) {
             sqlType = "DATETIME(" + column.getScale() + ")";
         }
-        PlatformColumn pc = column.getPlatformColumns() == null ? null : column.getPlatformColumns().get(DatabaseNamesConstants.MYSQL);
+        PlatformColumn pc = column.getPlatformColumns() == null ? null : column.findPlatformColumn(DatabaseNamesConstants.MYSQL);
         if (pc != null && ("ENUM".equalsIgnoreCase(column.getJdbcTypeName()) || "ENUM".equalsIgnoreCase(pc.getType())
                 || "SET".equalsIgnoreCase(column.getJdbcTypeName()) || "SET".equalsIgnoreCase(pc.getType()))) {
             String[] enumValues = pc.getEnumValues();
