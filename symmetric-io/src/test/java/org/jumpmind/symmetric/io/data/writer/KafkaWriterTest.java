@@ -169,7 +169,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testExecute_jsonFormat() {
+    void testExecute_jsonFormat() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_JSON,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -222,7 +222,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testExecute_csvFormat() {
+    void testExecute_csvFormat() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_CSV,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -270,7 +270,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testExecute_xmlFormat() {
+    void testExecute_xmlFormat() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_XML,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -574,7 +574,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testGetColumnName_returnsNullForUnmatchedColumn() {
+    void testGetColumnName_returnsNullForUnmatchedColumn() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         PojoTestBean bean = new PojoTestBean();
@@ -583,7 +583,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testGetAllowedProperties_includesWritableProperties() {
+    void testGetAllowedProperties_includesWritableProperties() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         PojoTestBean bean = new PojoTestBean();
@@ -596,7 +596,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testGetAllowedProperties_excludesReadOnlyProperties() {
+    void testGetAllowedProperties_excludesReadOnlyProperties() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         PojoTestBean bean = new PojoTestBean();
@@ -659,7 +659,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testExecute_avroFormatWithoutConfluent() {
+    void testExecute_avroFormatWithoutConfluent() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -682,7 +682,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testWriteKafka_avroFormatWithConfluent() {
+    void testWriteKafka_avroFormatWithConfluent() {
         KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -712,7 +712,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testWriteKafka_avroFormatWithConfluentDeletePrimaryKeyOnly() {
+    void testWriteKafka_avroFormatWithConfluentDeletePrimaryKeyOnly() {
         KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
@@ -740,7 +740,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testExecute_avroFormatWithConfluent() {
+    void testExecute_avroFormatWithConfluent() {
         KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
