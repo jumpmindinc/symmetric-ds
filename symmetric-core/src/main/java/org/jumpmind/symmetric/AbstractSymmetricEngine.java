@@ -501,15 +501,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
         isStartupDbParametersDifferentFromLastStart = detectStartupDbParametersDifferentFromLastStart();
         setupDatabase(isStartupDbParametersDifferentFromLastStart);
-        // Shivam's solution (new method): persistStartupDbParametersHashIfMissing();
-        // Pavel's solution (just simply call the existing detectStartupDbParametersDifferentFromLastStart() method again:
-        // which essentially does the same thing, but has extra functionality than simply writing the hash to SYM_CONTEXT if hash is missing
-        // POTENTIAL CONCERNS:
-        // 1. detectStartupDbParametersDifferentFromLastStart() is more expensive than persistStartupDbParametersHashIfMissing()
-        // 2. Discarded boolean return value
-        // 3. detectStartupDbParametersDifferentFromLastStart() runs a full check every single startup. Maybe leveraging the already computed
-        // isStartupDbParametersDifferentFromLastStart boolean?
-        detectStartupDbParametersDifferentFromLastStart();
         parameterService.setDatabaseHasBeenInitialized(true);
         String databaseVersion = this.getNodeService().findIdentity() != null ? this.getNodeService().findIdentity().getSymmetricVersion() : null;
         String softwareVersion = Version.version();
@@ -537,6 +528,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             } else {
                 log.info("Checking tables and objects. force={}", force);
                 symmetricDialect.initTablesAndDatabaseObjects();
+                detectStartupDbParametersDifferentFromLastStart(); // persist hash now that sym_context exists (SYM-7705)
             }
         } else {
             if (hasSoftwareVersionChanged() && !Version.isDevelopment(Version.version())) {
@@ -1628,24 +1620,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return cacheManager;
     }
 
-    // Optimization to detectStartupDbParametersDifferentFromLastStart()
     protected String computeCurrentDbParamsHash() {
         int hashDbParams = parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS);
         return "0x" + Integer.toHexString(hashDbParams);
-    }
-
-    // Shivam solution added method
-    protected void persistStartupDbParametersHashIfMissing() {
-        try {
-            String priorHashDbParams = contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH);
-            if (priorHashDbParams == null) {
-                log.debug("Hash value missing in SYM_CONTEXT table. Persisting hash value to SYM_CONTEXT.");
-                String currentHashDbParamsAsString = computeCurrentDbParamsHash();
-                contextService.save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, currentHashDbParamsAsString);
-            }
-        } catch (Exception e) {
-            log.warn("Unable to persist SymmetricDS startup database parameters hash after setup", e);
-        }
     }
 
     protected boolean detectStartupDbParametersDifferentFromLastStart() {
@@ -1656,11 +1633,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             if (currentHashDbParamsAsString.equals(priorHashDbParams)) {
                 log.debug("No change in SymmetricDS startup database parameters. Hash {} == {}", currentHashDbParamsAsString,
                         priorHashDbParams);
-            } else if (priorHashDbParams == null) {
-                dbParamsDifferent = true;
-                contextService.save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, currentHashDbParamsAsString);
-                log.info("No prior SymmetricDS startup database parameters hash was recorded. Persisting hash {}",
-                        currentHashDbParamsAsString);
             } else {
                 dbParamsDifferent = true;
                 contextService.save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, currentHashDbParamsAsString);

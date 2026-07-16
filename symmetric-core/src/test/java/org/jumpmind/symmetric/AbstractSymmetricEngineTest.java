@@ -21,6 +21,8 @@
 package org.jumpmind.symmetric;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -64,37 +66,51 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testPersistStartupDbParametersHashIfMissing_hashMissingSavesHash() throws Exception {
+    public void testDetectStartupDbParametersDifferentFromLastStart_hashMatchesReturnsFalseAndDoesNotSave() throws Exception {
         IContextService contextService = mock(IContextService.class);
         ParameterService parameterService = mock(ParameterService.class);
-        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH)).thenReturn(null);
         when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
-        setField("contextService", contextService);
-        setField("parameterService", parameterService);
-        engine.persistStartupDbParametersHashIfMissing();
-        verify(contextService).save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, "0x9250fa82");
-    }
-
-    @Test
-    public void testPersistStartupDbParametersHashIfMissing_hashPresentDoesNotSave() throws Exception {
-        IContextService contextService = mock(IContextService.class);
-        ParameterService parameterService = mock(ParameterService.class);
         when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH)).thenReturn("0x9250fa82");
         setField("contextService", contextService);
         setField("parameterService", parameterService);
-        engine.persistStartupDbParametersHashIfMissing();
+        assertFalse(engine.detectStartupDbParametersDifferentFromLastStart());
         verify(contextService, never()).save(Mockito.anyString(), Mockito.anyString());
     }
 
     @Test
-    public void testPersistStartupDbParametersHashIfMissing_exceptionThrownDoesNotPropagate() throws Exception {
+    public void testDetectStartupDbParametersDifferentFromLastStart_hashDiffersReturnsTrueAndSaves() throws Exception {
         IContextService contextService = mock(IContextService.class);
         ParameterService parameterService = mock(ParameterService.class);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
+        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH)).thenReturn("0xdeadbeef");
+        setField("contextService", contextService);
+        setField("parameterService", parameterService);
+        assertTrue(engine.detectStartupDbParametersDifferentFromLastStart());
+        verify(contextService).save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, "0x9250fa82");
+    }
+
+    @Test
+    public void testDetectStartupDbParametersDifferentFromLastStart_hashMissingReturnsTrueAndSaves() throws Exception {
+        IContextService contextService = mock(IContextService.class);
+        ParameterService parameterService = mock(ParameterService.class);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
+        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH)).thenReturn(null);
+        setField("contextService", contextService);
+        setField("parameterService", parameterService);
+        assertTrue(engine.detectStartupDbParametersDifferentFromLastStart());
+        verify(contextService).save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, "0x9250fa82");
+    }
+
+    @Test
+    public void testDetectStartupDbParametersDifferentFromLastStart_sqlExceptionReturnsTrueAndDoesNotSave() throws Exception {
+        IContextService contextService = mock(IContextService.class);
+        ParameterService parameterService = mock(ParameterService.class);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
         when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH))
                 .thenThrow(new SqlException("relation does not exist"));
         setField("contextService", contextService);
         setField("parameterService", parameterService);
-        assertDoesNotThrow(() -> engine.persistStartupDbParametersHashIfMissing());
+        assertTrue(engine.detectStartupDbParametersDifferentFromLastStart());
         verify(contextService, never()).save(Mockito.anyString(), Mockito.anyString());
     }
 
@@ -103,7 +119,7 @@ class AbstractSymmetricEngineTest {
         ParameterService parameterService = mock(ParameterService.class);
         when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0xec461721);
         setField("parameterService", parameterService);
-        assertTrue("0xec461721".equals(engine.computeCurrentDbParamsHash()));
+        assertEquals("0xec461721", engine.computeCurrentDbParamsHash());
     }
 
     @Test
