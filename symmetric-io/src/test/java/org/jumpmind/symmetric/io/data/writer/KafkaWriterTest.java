@@ -659,7 +659,7 @@ public class KafkaWriterTest {
     }
 
     @Test
-    public void testExecute_avroFormatWithoutConfluent() throws Exception {
+    public void testExecute_avroFormatWithoutConfluent() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
         writer.kafkaProducer = mockKafkaProducer;
