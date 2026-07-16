@@ -74,6 +74,7 @@ import org.jumpmind.db.platform.interbase.InterbaseDatabasePlatform;
 import org.jumpmind.db.platform.kafka.KafkaPlatform;
 import org.jumpmind.db.platform.mariadb.MariaDBDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
+import org.jumpmind.db.platform.mysql.MySqlVariantDetector;
 import org.jumpmind.db.platform.nuodb.NuoDbDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSql95DatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
@@ -291,6 +292,11 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
             } else if (metaData.getDatabaseMajorVersion() > 9 || (metaData.getDatabaseMajorVersion() == 9 && metaData.getDatabaseMinorVersion() >= 5)) {
                 nameVersion.setName(DatabaseNamesConstants.POSTGRESQL95);
             }
+        }
+        boolean isMySqlProtocol = nameVersion.getProtocol().equalsIgnoreCase(MySqlDatabasePlatform.JDBC_SUBPROTOCOL)
+                || (AWS_JDBC_WRAPPER_SUBPROTOCOL.equalsIgnoreCase(nameVersion.getProtocol()) && "MySQL".equalsIgnoreCase(nameVersion.getName()));
+        if (isMySqlProtocol && MySqlVariantDetector.isAuroraMySql(connection)) {
+            nameVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
         }
         if (nameVersion.getProtocol().equalsIgnoreCase(FirebirdDatabasePlatform.JDBC_SUBPROTOCOL)) {
             if (isFirebirdDialect1(connection)) {

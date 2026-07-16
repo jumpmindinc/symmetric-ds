@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Future;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -168,6 +169,34 @@ public class KafkaWriterTest {
     }
 
     @Test
+    void testExecute_jsonFormat() {
+        KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_JSON,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        // Set up the context and table without calling open()
+        writer.context = testContext;
+        writer.batch = testBatch;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
+        // Create test data with old data (required for writeKafka)
+        String[] rowData = { "1", "test_name", "test_value" };
+        CsvData csvData = new CsvData(DataEventType.INSERT);
+        csvData.putParsedData(CsvData.ROW_DATA, rowData);
+        int result = writer.execute(csvData, rowData);
+        assertEquals(1, result);
+        assertFalse(writer.kafkaDataMap.isEmpty());
+        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testBusinessTableName);
+        assertNotNull(records);
+        assertEquals(1, records.size());
+        String recordValue = (String) records.get(0).value();
+        assertTrue(recordValue.contains("\"test_table\""));
+        assertTrue(recordValue.contains("\"eventType\": \"INSERT\""));
+        assertTrue(recordValue.contains("\"id\""));
+        assertTrue(recordValue.contains("\"name\""));
+        assertTrue(recordValue.contains("\"test_name\""));
+    }
+
+    @Test
     public void testWriteKafkaCsvFormat() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_CSV,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
@@ -193,6 +222,29 @@ public class KafkaWriterTest {
     }
 
     @Test
+    void testExecute_csvFormat() {
+        KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_CSV,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.batch = testBatch;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
+        String[] rowData = { "1", "test_name", "test_value" };
+        CsvData csvData = new CsvData(DataEventType.UPDATE);
+        csvData.putParsedData(CsvData.ROW_DATA, rowData);
+        int result = writer.execute(csvData, rowData);
+        assertEquals(1, result);
+        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testBusinessTableName);
+        assertNotNull(records);
+        String recordValue = (String) records.get(0).value();
+        assertTrue(recordValue.contains("\"TABLE\""));
+        assertTrue(recordValue.contains("\"test_table\""));
+        assertTrue(recordValue.contains("\"EVENT\""));
+        assertTrue(recordValue.contains("UPDATE"));
+    }
+
+    @Test
     public void testWriteKafkaXmlFormat() {
         KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_XML,
                 KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
@@ -207,6 +259,29 @@ public class KafkaWriterTest {
         csvData.putParsedData(CsvData.ROW_DATA, rowData);
         csvData.putParsedData(CsvData.OLD_DATA, oldData);
         int result = writer.writeKafka(csvData, testBusinessTable);
+        assertEquals(1, result);
+        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testBusinessTableName);
+        assertNotNull(records);
+        String recordValue = (String) records.get(0).value();
+        assertTrue(recordValue.contains("<row entity=\"test_table\""));
+        assertTrue(recordValue.contains("dml=\"INSERT\""));
+        assertTrue(recordValue.contains("<data key=\"id\">1</data>"));
+        assertTrue(recordValue.contains("<data key=\"name\">test_name</data>"));
+    }
+
+    @Test
+    void testExecute_xmlFormat() {
+        KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_XML,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.batch = testBatch;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
+        String[] rowData = { "1", "test_name", "test_value" };
+        CsvData csvData = new CsvData(DataEventType.INSERT);
+        csvData.putParsedData(CsvData.ROW_DATA, rowData);
+        int result = writer.execute(csvData, rowData);
         assertEquals(1, result);
         List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get(testBusinessTableName);
         assertNotNull(records);
@@ -499,6 +574,37 @@ public class KafkaWriterTest {
     }
 
     @Test
+    void testGetColumnName_returnsNullForUnmatchedColumn() {
+        KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        PojoTestBean bean = new PojoTestBean();
+        String columnName = writer.getColumnName("test_table", "not_a_real_column", bean);
+        assertEquals(null, columnName);
+    }
+
+    @Test
+    void testGetAllowedProperties_includesWritableProperties() {
+        KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        PojoTestBean bean = new PojoTestBean();
+        Set<String> allowed = writer.getAllowedProperties(bean);
+        assertTrue(allowed.contains("id"));
+        assertTrue(allowed.contains("name"));
+        assertTrue(allowed.contains("amount"));
+        assertTrue(allowed.contains("count"));
+        assertEquals(4, allowed.size());
+    }
+
+    @Test
+    void testGetAllowedProperties_excludesReadOnlyProperties() {
+        KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        PojoTestBean bean = new PojoTestBean();
+        Set<String> allowed = writer.getAllowedProperties(bean);
+        assertFalse(allowed.contains("class"));
+    }
+
+    @Test
     public void testDatumToByteArray() throws Exception {
         org.apache.avro.Schema.Parser parser = new org.apache.avro.Schema.Parser();
         org.apache.avro.Schema schema = parser.parse(KafkaWriter.AVRO_CDC_SCHEMA);
@@ -553,6 +659,115 @@ public class KafkaWriterTest {
     }
 
     @Test
+    void testExecute_avroFormatWithoutConfluent() {
+        KafkaWriter writer = createKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.batch = testBatch;
+        writer.sourceTable = testBusinessTable;
+        writer.targetTable = testBusinessTable;
+        String[] rowData = { "1", "test_name", "test_value" };
+        CsvData csvData = new CsvData(DataEventType.INSERT);
+        csvData.putParsedData(CsvData.ROW_DATA, rowData);
+        int result = writer.execute(csvData, rowData);
+        assertEquals(1, result);
+        List<ProducerRecord<String, Object>> records = writer.kafkaDataMap.get("test_table");
+        assertNotNull(records);
+        assertEquals(1, records.size());
+        // The value should be a byte array for AVRO without Confluent
+        Object recordValue = records.get(0).value();
+        assertTrue(recordValue instanceof byte[]);
+        assertTrue(((byte[]) recordValue).length > 0);
+    }
+
+    @Test
+    void testWriteKafka_avroFormatWithConfluent() {
+        KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.batch = testBatch;
+        Table pojoTable = createPojoTable("kafka_pojo");
+        writer.sourceTable = pojoTable;
+        writer.targetTable = pojoTable;
+        writer.tableClassCache.put(writer.getTableName(pojoTable.getName()), PojoTestBean.class);
+        String[] rowData = { "1", "test_name", "500", "5" };
+        String[] oldData = { "1", "old_name", "0", "0" };
+        CsvData csvData = new CsvData(DataEventType.INSERT);
+        csvData.putParsedData(CsvData.ROW_DATA, rowData);
+        csvData.putParsedData(CsvData.OLD_DATA, oldData);
+        int result = writer.writeKafka(csvData, pojoTable);
+        assertEquals(1, result);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<ProducerRecord<String, Object>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+        verify(mockKafkaProducer).send(captor.capture());
+        Object value = captor.getValue().value();
+        assertTrue(value instanceof PojoTestBean);
+        PojoTestBean pojo = (PojoTestBean) value;
+        assertEquals("1", pojo.getId());
+        assertEquals("test_name", pojo.getName());
+        assertEquals(Long.valueOf(500L), pojo.getAmount());
+        assertEquals(Integer.valueOf(5), pojo.getCount());
+    }
+
+    @Test
+    void testWriteKafka_avroFormatWithConfluentDeletePrimaryKeyOnly() {
+        KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.batch = testBatch;
+        Table pojoTable = createPojoCompositePkTable("kafka_pojo");
+        writer.sourceTable = pojoTable;
+        writer.targetTable = pojoTable;
+        writer.tableClassCache.put(writer.getTableName(pojoTable.getName()), PojoTestBean.class);
+        String[] pkData = { "1", "500", "5" };
+        CsvData csvData = new CsvData(DataEventType.DELETE);
+        csvData.putParsedData(CsvData.PK_DATA, pkData);
+        int result = writer.writeKafka(csvData, pojoTable);
+        assertEquals(1, result);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<ProducerRecord<String, Object>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+        verify(mockKafkaProducer).send(captor.capture());
+        Object value = captor.getValue().value();
+        assertTrue(value instanceof PojoTestBean);
+        PojoTestBean pojo = (PojoTestBean) value;
+        assertEquals("1", pojo.getId());
+        assertEquals(Long.valueOf(500L), pojo.getAmount());
+        assertEquals(Integer.valueOf(5), pojo.getCount());
+        assertEquals(null, pojo.getName());
+    }
+
+    @Test
+    void testExecute_avroFormatWithConfluent() {
+        KafkaWriter writer = createConfluentKafkaWriter(KafkaWriter.KAFKA_FORMAT_AVRO,
+                KafkaWriter.KAFKA_TOPIC_BY_TABLE, KafkaWriter.KAFKA_MESSAGE_BY_ROW);
+        writer.kafkaProducer = mockKafkaProducer;
+        writer.context = testContext;
+        writer.batch = testBatch;
+        Table pojoTable = createPojoTable("kafka_pojo");
+        writer.sourceTable = pojoTable;
+        writer.targetTable = pojoTable;
+        writer.tableClassCache.put(writer.getTableName(pojoTable.getName()), PojoTestBean.class);
+        String[] rowData = { "1", "test_name", "500", "5" };
+        CsvData csvData = new CsvData(DataEventType.INSERT);
+        csvData.putParsedData(CsvData.ROW_DATA, rowData);
+        int result = writer.execute(csvData, rowData);
+        assertEquals(1, result);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<ProducerRecord<String, Object>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
+        verify(mockKafkaProducer).send(captor.capture());
+        Object value = captor.getValue().value();
+        assertTrue(value instanceof PojoTestBean);
+        PojoTestBean pojo = (PojoTestBean) value;
+        assertEquals("1", pojo.getId());
+        assertEquals("test_name", pojo.getName());
+        assertEquals(Long.valueOf(500L), pojo.getAmount());
+        assertEquals(Integer.valueOf(5), pojo.getCount());
+    }
+
+    @Test
     public void testKafkaConstants() {
         assertEquals("JSON", KafkaWriter.KAFKA_FORMAT_JSON);
         assertEquals("XML", KafkaWriter.KAFKA_FORMAT_XML);
@@ -574,6 +789,45 @@ public class KafkaWriterTest {
         return writer;
     }
 
+    private KafkaWriter createConfluentKafkaWriter(String outputFormat, String topicBy, String messageBy) {
+        return new KafkaWriter(
+                mockPlatform, mockPlatform, "sym_",
+                null, new DatabaseWriterSettings(),
+                "test-producer", outputFormat,
+                topicBy, messageBy,
+                "http://localhost:8081", null, "test-node", "localhost:9092", "kafka.", props, "reload");
+    }
+
+    Table createPojoTable(String tableName) {
+        Table table = new Table(tableName);
+        Column idColumn = new Column("id", true);
+        idColumn.setPrimaryKey(true);
+        Column nameColumn = new Column("name");
+        Column amountColumn = new Column("amount");
+        Column countColumn = new Column("count");
+        table.addColumn(idColumn);
+        table.addColumn(nameColumn);
+        table.addColumn(amountColumn);
+        table.addColumn(countColumn);
+        return table;
+    }
+
+    Table createPojoCompositePkTable(String tableName) {
+        Table table = new Table(tableName);
+        Column idColumn = new Column("id", true);
+        idColumn.setPrimaryKey(true);
+        Column nameColumn = new Column("name");
+        Column amountColumn = new Column("amount");
+        amountColumn.setPrimaryKey(true);
+        Column countColumn = new Column("count");
+        countColumn.setPrimaryKey(true);
+        table.addColumn(idColumn);
+        table.addColumn(nameColumn);
+        table.addColumn(amountColumn);
+        table.addColumn(countColumn);
+        return table;
+    }
+
     // Simple test bean for getColumnName test
     public static class TestBean {
         private String myField;
@@ -584,6 +838,48 @@ public class KafkaWriterTest {
 
         public void setMyField(String myField) {
             this.myField = myField;
+        }
+    }
+
+    // Bean used to exercise the Confluent/Avro branch of writeKafka where a POJO is
+    // instantiated and populated from row data. Property types cover each population branch:
+    // String (CharSequence branch), Long (date/long branch), and Integer (generic else branch).
+    public static class PojoTestBean {
+        private String id;
+        private String name;
+        private Long amount;
+        private Integer count;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public Long getAmount() {
+            return amount;
+        }
+
+        public void setAmount(Long amount) {
+            this.amount = amount;
+        }
+
+        public Integer getCount() {
+            return count;
+        }
+
+        public void setCount(Integer count) {
+            this.count = count;
         }
     }
 }

@@ -195,6 +195,31 @@ class AbstractSymmetricEngineTest {
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
 
+    @Test
+    void testAuroraMysqlFallenBackToGenericMysqlPlatform() throws Exception {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        DatabaseVersion dbVersion = new DatabaseVersion();
+        dbVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
+        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.MYSQL);
+        setPlatform(platform);
+        SymmetricException ex = assertThrows(SymmetricException.class,
+                () -> engine.checkForProOnlyDatabase());
+        assertTrue(ex.getMessage().contains("Aurora"));
+    }
+
+    @Test
+    void testDedicatedAuroraMysqlPlatform() throws Exception {
+        AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
+        when(platform.isDedicatedPlatform()).thenReturn(true);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.AURORA_MYSQL);
+        DatabaseVersion dbVersion = new DatabaseVersion();
+        dbVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
+        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
+        setPlatform(platform);
+        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
+    }
+
     /**
      * Creates a mock platform that simulates a generic (non-dedicated) platform with the given database name reported in its DatabaseVersion.
      */
