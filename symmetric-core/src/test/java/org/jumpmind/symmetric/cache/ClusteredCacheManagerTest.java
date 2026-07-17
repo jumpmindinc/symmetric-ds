@@ -49,6 +49,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -995,7 +997,7 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
-    void announceLeaving_marksOwnEngineStatesOffline() throws Exception {
+    void announceLeaving_marksOwnEngineStatesOffline() {
         engineAndPeerStateMap.put(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1), ClusteredEngineState.RUNNING);
         manager.announceLeaving();
         assertEquals(ClusteredEngineState.OFFLINE, engineAndPeerStateMap.get(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1)));
@@ -1029,11 +1031,13 @@ class ClusteredCacheManagerTest {
 
     @Test
     void shutdown_interruptsRunningHeartbeatThreadWithoutThrowing() throws Exception {
+        CountDownLatch interrupted = new CountDownLatch(1);
         Thread runningThread = new Thread(() -> {
             try {
-                Thread.sleep(60_000);
+                new CountDownLatch(1).await();
             } catch (InterruptedException ignored) {
                 Thread.currentThread().interrupt();
+                interrupted.countDown();
             }
         });
         runningThread.setDaemon(true);
@@ -1042,7 +1046,7 @@ class ClusteredCacheManagerTest {
         when(mockCoordinator.isInitialized()).thenReturn(false);
         assertDoesNotThrow(() -> manager.shutdown());
         assertNull(getField("heartbeatThread"));
-        runningThread.join(2000);
+        assertTrue(interrupted.await(2, TimeUnit.SECONDS));
     }
 
     @Test
@@ -1452,18 +1456,18 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
-    void logEngineStates_emptyMap_doesNotThrow() throws Exception {
+    void logEngineStates_emptyMap_doesNotThrow() {
         assertDoesNotThrow(this::callLogEngineStates);
     }
 
     @Test
-    void logEngineStates_withEntries_doesNotThrow() throws Exception {
+    void logEngineStates_withEntries_doesNotThrow() {
         engineAndPeerStateMap.put(EngineAndPeerStateMap.generateKey(MY_SERVER_ID, ENGINE_1), ClusteredEngineState.RUNNING);
         assertDoesNotThrow(this::callLogEngineStates);
     }
 
     @Test
-    void logPeerStates_emptyPeers_doesNotThrow() throws Exception {
+    void logPeerStates_emptyPeers_doesNotThrow() {
         when(mockCoordinator.getPeerIds()).thenReturn(Collections.emptySet());
         assertDoesNotThrow(this::callLogPeerStates);
     }

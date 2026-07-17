@@ -269,7 +269,7 @@ public class ClusterPartitionGeneratorTest {
     }
 
     @Test
-    public void resolveServerId_noConfiguration_fallsBackToHostname() throws Exception {
+    public void resolveServerId_noConfiguration_fallsBackToHostname() {
         assertEquals(AppUtils.getHostName(), ClusterPartitionGenerator.resolveServerId());
     }
 
@@ -301,7 +301,7 @@ public class ClusterPartitionGeneratorTest {
     }
 
     @Test
-    public void resolveServerIdWithProperties_nullProperties_fallsBackToHostname() throws Exception {
+    public void resolveServerIdWithProperties_nullProperties_fallsBackToHostname() {
         assertEquals(AppUtils.getHostName(), ClusterPartitionGenerator.resolveServerId(null));
     }
 

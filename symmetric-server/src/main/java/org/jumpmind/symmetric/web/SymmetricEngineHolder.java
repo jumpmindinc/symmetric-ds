@@ -107,17 +107,16 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     private String singleServerPropertiesFile;
     private String deploymentType = Constants.DEPLOYMENT_TYPE_SERVER;
     private boolean holderHasBeenStarted = false;
-    private static final String DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT = "5";
-    private static long ENGINE_STOP_TIMEOUT_MINUTES = 15;
-    private static long ENGINE_START_TIMEOUT_MINUTES = 5 * 60L;
-    private static long SHUTDOWN_IF_NO_ACTIVE_ENGINES_30_MINUTES_MS = 30 * 60 * 1000L;
     private static TypedProperties coreServerProperties;
     private static ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
     private static IClusteredCacheManager clusteredCacheManager;
-    final String THREAD_PREFIX_ENGINES_START = "symmetric-engine-start";
-    final String THREAD_PREFIX_ENGINES_RESTART = "symmetric-engine-restart";
-    final String THREAD_PREFIX_ENGINES_STOP = "symmetric-engine-stop";
-    final String THREAD_ID_ENGINES_SHUTDOWN = "symmetric-engines-shutdown";
+    static final String DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT = "5";
+    static final long ENGINE_STOP_TIMEOUT_MINUTES = 15;
+    static final long ENGINE_START_TIMEOUT_MINUTES = 5 * 60L;
+    static final String THREAD_PREFIX_ENGINES_START = "symmetric-engine-start";
+    static final String THREAD_PREFIX_ENGINES_RESTART = "symmetric-engine-restart";
+    static final String THREAD_PREFIX_ENGINES_STOP = "symmetric-engine-stop";
+    static final String THREAD_ID_ENGINES_SHUTDOWN = "symmetric-engines-shutdown";
 
     SymmetricEngineHolder() {
         if (coreServerProperties == null) {
