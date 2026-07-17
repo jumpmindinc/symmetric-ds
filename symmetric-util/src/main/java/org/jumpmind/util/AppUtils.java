@@ -34,9 +34,13 @@ import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Properties;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -44,6 +48,7 @@ import java.util.zip.ZipInputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.time.FastDateFormat;
 import org.jumpmind.exception.IoException;
 import org.slf4j.Logger;
@@ -353,12 +358,17 @@ public class AppUtils {
     }
 
     public static File createTempFile(String prefix, String suffix) throws IOException {
-        File file = File.createTempFile(prefix, suffix);
-        file.setReadable(false, false);
-        file.setReadable(true, true);
-        file.setWritable(false, false);
-        file.setWritable(true, true);
-        return file;
+        if (SystemUtils.IS_OS_UNIX) {
+            FileAttribute<Set<PosixFilePermission>> attr = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
+            return Files.createTempFile(prefix, suffix, attr).toFile();
+        } else {
+            File file = Files.createTempFile(prefix, suffix).toFile();
+            file.setReadable(false, false);
+            file.setReadable(true, true);
+            file.setWritable(false, false);
+            file.setWritable(true, true);
+            return file;
+        }
     }
 
     public static String formatStackTrace(StackTraceElement[] stackTrace) {
