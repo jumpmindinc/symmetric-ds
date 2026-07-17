@@ -1537,33 +1537,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return cacheManager;
     }
 
-    @Override
-    public IClusteredCacheManager getClusteredCacheManager() {
-        return clusteredCacheManager;
-    }
-
-    protected int refreshClusterPeers(String nodeId) {
-        if (clusteredCacheManager == null || nodeId == null) {
-            return 0;
-        }
-        long cutoff = System.currentTimeMillis() - ServerConstants.CLUSTER_PEER_OBSOLETE_DEFAULT_MS;
-        String myServerId = clusterService.getServerId();
-        int newPeerCount = 0;
-        for (NodeHost host : nodeService.findNodeHosts(nodeId)) {
-            if (host.getHeartbeatTime() != null && host.getHeartbeatTime().getTime() > cutoff
-                    && !myServerId.equals(host.getHostName())) {
-                if (clusteredCacheManager.addPeer(host.getHostName(), host.getHeartbeatTime(), host.getClusterPartitionId())) {
-                    newPeerCount++;
-                }
-                if (StringUtils.isNotBlank(host.getIpAddress())) {
-                    clusteredCacheManager.announceDiscoveredPeer(host.getHostName(), host.getIpAddress());
-                }
-            }
-        }
-        log.debug("Refreshed cluster peers for nodeId={}. New peers discovered={}", nodeId, newPeerCount);
-        return newPeerCount;
-    }
-
     protected String computeCurrentDbParamsHash() {
         int hashDbParams = parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS);
         return "0x" + Integer.toHexString(hashDbParams);

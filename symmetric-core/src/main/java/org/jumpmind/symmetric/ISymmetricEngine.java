@@ -36,7 +36,6 @@ import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.job.IJobManager;
 import org.jumpmind.symmetric.model.NodeStatus;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
-import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
 import org.jumpmind.symmetric.service.IClusterService;
@@ -336,6 +335,4 @@ public interface ISymmetricEngine {
     public String getEngineDescription(String mesage);
 
     public ICacheManager getCacheManager();
-
-    public IClusteredCacheManager getClusteredCacheManager();
 }
