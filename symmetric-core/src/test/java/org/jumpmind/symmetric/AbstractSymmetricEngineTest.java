@@ -21,9 +21,13 @@
 package org.jumpmind.symmetric;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -32,6 +36,11 @@ import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.symmetric.common.ContextConstants;
+import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.service.IContextService;
+import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -50,20 +59,83 @@ class AbstractSymmetricEngineTest {
         platformField.set(engine, platform);
     }
 
+    private void setField(String fieldName, Object value) throws Exception {
+        Field field = AbstractSymmetricEngine.class.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(engine, value);
+    }
+
     @Test
-    public void testDedicatedOraclePlatform() throws Exception {
+    void testDetectStartupDbParametersDifferentFromLastStart_hashMatchesReturnsFalseAndDoesNotSave() throws Exception {
+        IContextService contextService = mock(IContextService.class);
+        ParameterService parameterService = mock(ParameterService.class);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
+        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH)).thenReturn("0x9250fa82");
+        setField("contextService", contextService);
+        setField("parameterService", parameterService);
+        assertFalse(engine.detectStartupDbParametersDifferentFromLastStart());
+        verify(contextService, never()).save(Mockito.anyString(), Mockito.anyString());
+    }
+
+    @Test
+    void testDetectStartupDbParametersDifferentFromLastStart_hashDiffersReturnsTrueAndSaves() throws Exception {
+        IContextService contextService = mock(IContextService.class);
+        ParameterService parameterService = mock(ParameterService.class);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
+        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH)).thenReturn("0xdeadbeef");
+        setField("contextService", contextService);
+        setField("parameterService", parameterService);
+        assertTrue(engine.detectStartupDbParametersDifferentFromLastStart());
+        verify(contextService).save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, "0x9250fa82");
+    }
+
+    @Test
+    void testDetectStartupDbParametersDifferentFromLastStart_hashMissingReturnsTrueAndSaves() throws Exception {
+        IContextService contextService = mock(IContextService.class);
+        ParameterService parameterService = mock(ParameterService.class);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
+        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH)).thenReturn(null);
+        setField("contextService", contextService);
+        setField("parameterService", parameterService);
+        assertTrue(engine.detectStartupDbParametersDifferentFromLastStart());
+        verify(contextService).save(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH, "0x9250fa82");
+    }
+
+    @Test
+    void testDetectStartupDbParametersDifferentFromLastStart_sqlExceptionReturnsTrueAndDoesNotSave() throws Exception {
+        IContextService contextService = mock(IContextService.class);
+        ParameterService parameterService = mock(ParameterService.class);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0x9250fa82);
+        when(contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH))
+                .thenThrow(new SqlException("relation does not exist"));
+        setField("contextService", contextService);
+        setField("parameterService", parameterService);
+        assertTrue(engine.detectStartupDbParametersDifferentFromLastStart());
+        verify(contextService, never()).save(Mockito.anyString(), Mockito.anyString());
+    }
+
+    @Test
+    void testComputeCurrentDbParamsHash_returnsHexFormattedString() throws Exception {
+        ParameterService parameterService = mock(ParameterService.class);
+        when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0xec461721);
+        setField("parameterService", parameterService);
+        assertEquals("0xec461721", engine.computeCurrentDbParamsHash());
+    }
+
+    @Test
+    void testDedicatedOraclePlatform() throws Exception {
         setPlatform(createDedicatedPlatformMock("Oracle"));
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
 
     @Test
-    public void testDedicatedSqlServerPlatform() throws Exception {
+    void testDedicatedSqlServerPlatform() throws Exception {
         setPlatform(createDedicatedPlatformMock("Microsoft SQL Server"));
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
 
     @Test
-    public void testOracleOnGenericPlatform() throws Exception {
+    void testOracleOnGenericPlatform() throws Exception {
         setPlatform(createGenericPlatformMock("Oracle"));
         SymmetricException ex = assertThrows(SymmetricException.class,
                 () -> engine.checkForProOnlyDatabase());
@@ -71,7 +143,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testSqlServerOnGenericPlatform() throws Exception {
+    void testSqlServerOnGenericPlatform() throws Exception {
         setPlatform(createGenericPlatformMock("Microsoft SQL Server"));
         SymmetricException ex = assertThrows(SymmetricException.class,
                 () -> engine.checkForProOnlyDatabase());
@@ -79,13 +151,13 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testSupportedDatabaseOnGenericPlatform() throws Exception {
+    void testSupportedDatabaseOnGenericPlatform() throws Exception {
         setPlatform(createGenericPlatformMock("H2"));
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
 
     @Test
-    public void testNullDatabaseVersion() throws Exception {
+    void testNullDatabaseVersion() throws Exception {
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         when(platform.getDatabaseVersion()).thenReturn(null);
         setPlatform(platform);
@@ -93,7 +165,7 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
-    public void testNullDatabaseName() throws Exception {
+    void testNullDatabaseName() throws Exception {
         setPlatform(createGenericPlatformMock(null));
         assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
     }
