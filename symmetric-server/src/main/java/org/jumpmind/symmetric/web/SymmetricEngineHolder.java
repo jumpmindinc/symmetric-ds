@@ -107,9 +107,9 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
     private String singleServerPropertiesFile;
     private String deploymentType = Constants.DEPLOYMENT_TYPE_SERVER;
     private boolean holderHasBeenStarted = false;
-    private static TypedProperties coreServerProperties;
-    private static ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
-    private static IClusteredCacheManager clusteredCacheManager;
+    private TypedProperties coreServerProperties;
+    private ISecurityService securityService = SecurityServiceFactory.create(SecurityServiceType.SERVER, null);
+    private IClusteredCacheManager clusteredCacheManager;
     static final String DEFAULT_CONCURRENT_ENGINES_STARTING_COUNT = "5";
     static final long ENGINE_STOP_TIMEOUT_MINUTES = 15;
     static final long ENGINE_START_TIMEOUT_MINUTES = 5 * 60L;

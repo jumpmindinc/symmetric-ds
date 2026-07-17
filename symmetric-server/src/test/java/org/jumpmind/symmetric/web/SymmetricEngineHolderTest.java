@@ -454,14 +454,10 @@ class SymmetricEngineHolderTest {
             IClusteredCacheManager mockClusteredCacheManager = mock(IClusteredCacheManager.class);
             Field field = SymmetricEngineHolder.class.getDeclaredField("clusteredCacheManager");
             field.setAccessible(true);
-            field.set(null, mockClusteredCacheManager);
-            try {
-                holder.stop();
-                verify(mockClusteredCacheManager).announceLeaving();
-                assertTrue(holder.getEngines().isEmpty());
-            } finally {
-                field.set(null, null);
-            }
+            field.set(holder, mockClusteredCacheManager);
+            holder.stop();
+            verify(mockClusteredCacheManager).announceLeaving();
+            assertTrue(holder.getEngines().isEmpty());
         }
     }
 
