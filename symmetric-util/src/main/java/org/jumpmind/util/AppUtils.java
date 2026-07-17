@@ -361,15 +361,14 @@ public class AppUtils {
         if (SystemUtils.IS_OS_UNIX) {
             FileAttribute<Set<PosixFilePermission>> attr = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------"));
             return Files.createTempFile(prefix, suffix, attr).toFile();
-        } else {
-            File file = Files.createTempFile(prefix, suffix).toFile();
-            file.setReadable(false, false);
-            file.setReadable(true, true);
-            file.setWritable(false, false);
-            file.setWritable(true, true);
-            return file;
         }
-    }
+        File file = File.createTempFile(prefix, suffix);
+        file.setReadable(false, false);
+        file.setReadable(true, true);
+        file.setWritable(false, false);
+        file.setWritable(true, true);
+        return file;
+        }
 
     public static String formatStackTrace(StackTraceElement[] stackTrace) {
         return formatStackTrace(stackTrace, 0, true);
