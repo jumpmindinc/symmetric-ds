@@ -481,6 +481,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             } else {
                 log.info("Checking tables and objects. force={}", force);
                 symmetricDialect.initTablesAndDatabaseObjects();
+                detectStartupDbParametersDifferentFromLastStart(); // persist hash now that sym_context exists
             }
         } else {
             if (hasSoftwareVersionChanged() && !Version.isDevelopment(Version.version())) {
@@ -1536,11 +1537,45 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return cacheManager;
     }
 
+<<<<<<< HEAD
+=======
+    @Override
+    public IClusteredCacheManager getClusteredCacheManager() {
+        return clusteredCacheManager;
+    }
+
+    protected int refreshClusterPeers(String nodeId) {
+        if (clusteredCacheManager == null || nodeId == null) {
+            return 0;
+        }
+        long cutoff = System.currentTimeMillis() - ServerConstants.CLUSTER_PEER_OBSOLETE_DEFAULT_MS;
+        String myServerId = clusterService.getServerId();
+        int newPeerCount = 0;
+        for (NodeHost host : nodeService.findNodeHosts(nodeId)) {
+            if (host.getHeartbeatTime() != null && host.getHeartbeatTime().getTime() > cutoff
+                    && !myServerId.equals(host.getHostName())) {
+                if (clusteredCacheManager.addPeer(host.getHostName(), host.getHeartbeatTime(), host.getClusterPartitionId())) {
+                    newPeerCount++;
+                }
+                if (StringUtils.isNotBlank(host.getIpAddress())) {
+                    clusteredCacheManager.announceDiscoveredPeer(host.getHostName(), host.getIpAddress());
+                }
+            }
+        }
+        log.debug("Refreshed cluster peers for nodeId={}. New peers discovered={}", nodeId, newPeerCount);
+        return newPeerCount;
+    }
+
+    protected String computeCurrentDbParamsHash() {
+        int hashDbParams = parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS);
+        return "0x" + Integer.toHexString(hashDbParams);
+    }
+
+>>>>>>> c996eae3d2 (SYM-7705: The first time a node restarts, all triggers are forcefully rebuilt (#920))
     protected boolean detectStartupDbParametersDifferentFromLastStart() {
         boolean dbParamsDifferent = false;
         try {
-            int hashDbParams = parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS);
-            String currentHashDbParamsAsString = "0x" + Integer.toHexString(hashDbParams);
+            String currentHashDbParamsAsString = computeCurrentDbParamsHash();
             String priorHashDbParams = contextService.getString(ContextConstants.STARTUP_DB_OBJECTS_SETUP_HASH);
             if (currentHashDbParamsAsString.equals(priorHashDbParams)) {
                 log.debug("No change in SymmetricDS startup database parameters. Hash {} == {}", currentHashDbParamsAsString,
