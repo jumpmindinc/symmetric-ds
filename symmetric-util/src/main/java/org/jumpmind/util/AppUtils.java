@@ -368,7 +368,7 @@ public class AppUtils {
         file.setWritable(false, false);
         file.setWritable(true, true);
         return file;
-        }
+    }
 
     public static String formatStackTrace(StackTraceElement[] stackTrace) {
         return formatStackTrace(stackTrace, 0, true);
