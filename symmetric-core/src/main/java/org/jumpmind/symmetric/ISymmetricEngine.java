@@ -336,10 +336,6 @@ public interface ISymmetricEngine {
     public String getEngineDescription(String mesage);
 
     public ICacheManager getCacheManager();
-<<<<<<< HEAD
-}
-=======
 
     public IClusteredCacheManager getClusteredCacheManager();
 }
->>>>>>> c996eae3d2 (SYM-7705: The first time a node restarts, all triggers are forcefully rebuilt (#920))
