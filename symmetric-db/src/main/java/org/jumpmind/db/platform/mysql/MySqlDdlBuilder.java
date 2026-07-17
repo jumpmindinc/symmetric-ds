@@ -146,7 +146,7 @@ public class MySqlDdlBuilder extends AbstractDdlBuilder {
         databaseInfo.setBinaryQuoteStart("0x");
         databaseInfo.setBinaryQuoteEnd("");
         // MySql 5.0 returns an empty string for default values for pk columns
-        // which is different from the MySql 4 behaviour
+        // which is different from the MySql 4 behavior
         databaseInfo.setSyntheticDefaultValueForRequiredReturned(false);
         // we need to handle the backslash first otherwise the other
         // already escaped sequences would be affected

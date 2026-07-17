@@ -301,7 +301,9 @@ final public class ParameterConstants {
     public static final String NODE_ID_CREATOR_SCRIPT = "node.id.creator.script";
     public static final String NODE_ID_CREATOR_MAX_NODES = "node.id.creator.max.nodes";
     public static final String EXTERNAL_ID_IS_UNIQUE = "external.id.is.unique.enabled";
-    public static final String CLUSTER_SERVER_ID = "cluster.server.id";
+    public static final String CLUSTER_PEER_HEARTBEAT_MS = "cluster.peer.heartbeat.ms";
+    public static final String CLUSTER_PEER_STALE_MS = "cluster.peer.stale.ms";
+    public static final String CLUSTER_PEER_OBSOLETE_MS = "cluster.peer.obsolete.ms";
     public static final String CLUSTER_LOCKING_ENABLED = "cluster.lock.enabled";
     public static final String CLUSTER_STAGING_ENABLED = "cluster.staging.enabled";
     public static final String CLUSTER_LOCK_TIMEOUT_MS = "cluster.lock.timeout.ms";
@@ -319,6 +321,7 @@ final public class ParameterConstants {
     public static final String PURGE_STRANDED_DATA_RECAPTURE_ENABLED = "job.purge.recapture.stranded.data";
     public static final String PURGE_STRANDED_DATA_TIME_LIMIT_MS = "job.purge.stranded.max.time.ms";
     public static final String PURGE_MONITOR_EVENT_RETENTION_MINUTES = "purge.monitor.event.retention.minutes";
+    public static final String PURGE_NODE_HOST_RETENTION_MINUTES = "purge.node.host.retention.minutes";
     public static final String PURGE_MAX_NUMBER_OF_DATA_IDS = "job.purge.max.num.data.to.delete.in.tx";
     public static final String PURGE_MAX_NUMBER_OF_BATCH_IDS = "job.purge.max.num.batches.to.delete.in.tx";
     public static final String PURGE_MAX_NUMBER_OF_EVENT_BATCH_IDS = "job.purge.max.num.data.event.batches.to.delete.in.tx";
@@ -438,12 +441,6 @@ final public class ParameterConstants {
     public static final String POSTGRES_SECURITY_DEFINER = "postgres.security.definer";
     public static final String POSTGRES_CONVERT_INFINITY_DATE_TO_NULL = "postgres.convert.infinity.date.to.null";
     public static final String INCLUDE_ROWIDENTIFIER_AS_COLUMN = "include.rowidentifier.as.column";
-    public static final String[] STARTUP_DB_OBJECTS_SETUP_PARAMS = new String[] { TRIGGER_CAPTURE_DDL_CHANGES,
-            POSTGRES_TRIGGER_CAPTURE_TRUNCATE, TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST, TRIGGER_CAPTURE_DDL_DELIMITER,
-            DB_USER, "db.url", "target.db.url" };
-    public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
-            JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
-            INCLUDE_ROWIDENTIFIER_AS_COLUMN };
     public static final String GOOGLE_BIG_QUERY_MAX_ROWS_PER_RPC = "google.bigquery.max.rows.per.rpc";
     public static final String GOOGLE_BIG_QUERY_LOCATION = "google.bigquery.location";
     public static final String GOOGLE_BIG_QUERY_PROJECT_ID = "google.bigquery.project.id";
@@ -474,6 +471,20 @@ final public class ParameterConstants {
     public static final String KEEP_BULK_STAGING_FILES = "keep.bulk.staging.files";
     public static final String SHOW_PIPELINES_VIEW = "console.show.pipelines.view";
     public final static String TRIGGER_CAPTURE_DDL_SEND_TABLE = "trigger.capture.ddl.send.table";
+    // Collections of parameters:
+    public static final String DB_POOL_URL = "db.url";
+    public static final String DB_POOL_USER = "db.user";
+    public static final String[] STARTUP_DB_OBJECTS_SETUP_PARAMS = new String[] {
+            TRIGGER_CAPTURE_DDL_CHANGES,
+            POSTGRES_TRIGGER_CAPTURE_TRUNCATE,
+            TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST,
+            TRIGGER_CAPTURE_DDL_DELIMITER,
+            DB_POOL_USER,
+            DB_POOL_URL,
+            LOAD_ONLY_PROPERTY_PREFIX + DB_POOL_URL };
+    public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
+            JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
+            INCLUDE_ROWIDENTIFIER_AS_COLUMN };
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;

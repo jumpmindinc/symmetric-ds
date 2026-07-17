@@ -47,6 +47,8 @@ public interface INodeCommunicationService {
 
     public void persistToTableForSnapshot();
 
+    public void clearLocksForServer(String serverId);
+
     public interface INodeCommunicationExecutor {
         public void execute(NodeCommunication nodeCommunication, RemoteNodeStatus status);
     }

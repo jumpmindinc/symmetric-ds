@@ -35,6 +35,17 @@ As an example, the following run command can be used to start SymmetricDS using 
 
 The above command will allow the engines, conf, and security directories to be persisted in the sym-engines, sym-conf, and sym-security volumes respectively.  If this container is stopped or deleted, a new container can be created using the same command and the configuration from the previous container will be retained.
 
+Deterministic Secret Key
+===
+If the `security` volume is not mounted (or is lost), a new container generates a brand-new random secret key on startup, and any previously-encrypted database values (such as node passwords) can no longer be decrypted.
+
+To avoid this, set the `SYM_CLUSTER_KEYSTORE_SEED` environment variable to a fixed, Base64-encoded 16, 24, or 32-byte AES key (generate one once with `openssl rand -base64 32`) so the same secret key is derived on every container start, whether or not the `security` volume is mounted:
+`docker run -e SYM_CLUSTER_KEYSTORE_SEED=<base64-key> -p 31415:31415 --name sym jumpmind/symmetricds`
+
+This only takes effect on first startup, i.e. when no keystore file exists yet; once a keystore exists, its stored key takes precedence and the environment variable is ignored. If the value does not decode to a valid AES key length, the container logs an error and exits immediately rather than starting with a broken key.
+
+**Never bake this value into a Dockerfile** (e.g. via `ENV SYM_CLUSTER_KEYSTORE_SEED=...` or `ARG`) or commit it into any configuration file that ships inside the image — either would permanently expose the secret in the image's layer history, readable via `docker history`/`docker inspect` by anyone with pull access. Supply it only at container run time, via `docker run -e`, an `--env-file` kept outside the image and out of version control, or your orchestrator's secret mechanism (e.g. a Kubernetes `Secret` mounted as an environment variable).
+
 Building a SymmetricDS Image
 ===
 `docker build -t symmetricds .`

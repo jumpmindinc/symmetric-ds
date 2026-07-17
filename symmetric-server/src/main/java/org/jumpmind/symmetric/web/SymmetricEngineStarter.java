@@ -32,10 +32,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SymmetricEngineStarter implements Runnable {
+    private final Logger log = LoggerFactory.getLogger(getClass());
     private SymmetricEngineHolder holder;
     private String propertiesFile;
     private ISymmetricEngine engine;
-    private final Logger log = LoggerFactory.getLogger(getClass());
 
     public SymmetricEngineStarter(String propertiesFile, SymmetricEngineHolder holder) {
         this.propertiesFile = propertiesFile;
@@ -67,6 +67,20 @@ public class SymmetricEngineStarter implements Runnable {
 
     public ISymmetricEngine getEngine() {
         return engine;
+    }
+
+    public String getEngineName() {
+        if (engine != null) {
+            return engine.getEngineName();
+        }
+        Properties props = new Properties();
+        try (InputStream is = new FileInputStream(getPropertiesFile())) {
+            props.load(is);
+        } catch (IOException e) {
+            log.warn("Unable to read properties file to determine engine name: {}", getPropertiesFile());
+            return null;
+        }
+        return holder.getEngineName(props);
     }
 
     public boolean isRegistrationEngineStarter() {

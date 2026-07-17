@@ -34,6 +34,10 @@ import javax.net.ssl.KeyManagerFactory;
 public interface ISecurityService {
     public void init();
 
+    public boolean isInitialized();
+
+    public boolean validateKeystoreIntegrity();
+
     public void installTrustedCert(TrustedCertificateEntry entry);
 
     public void installDefaultSslCert(String host);
@@ -59,6 +63,8 @@ public interface ISecurityService {
     public String exportCurrentSslCert(boolean includePrivateKey);
 
     public String nextSecureHexString(int len);
+
+    public long nextSecureLong();
 
     public String encrypt(String plainText);
 

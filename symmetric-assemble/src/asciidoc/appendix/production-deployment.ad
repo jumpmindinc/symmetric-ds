@@ -1,0 +1,48 @@
+=== CPU and Memory Sizing
+
+Concurrency parameters scale together and should be sized against available CPU cores and the database connection pool, not set independently:
+
+- `pull.thread.per.server.count`, `push.thread.per.server.count`, and `routing.thread.per.server.count` each spawn that many concurrent worker threads per server. Every additional thread is a candidate for a concurrent database connection and a share of CPU time, so size these to the CPU cores available to the JVM, not to the number of nodes being synchronized.
+- `http.concurrent.workers.max` bounds concurrent inbound push/pull HTTP requests per servlet. Its own documentation recommends keeping `db.pool.max.active` at least twice `http.concurrent.workers.max` plus roughly 10 connections of headroom, so request concurrency never starves the pool.
+- For high-throughput sync workloads, set `db.pool.min.idle` equal to `db.pool.max.active`, trading idle-connection overhead for eliminating connection-creation latency during bursts. Apache DBCP2 is the default pool (`db.pool.type`); this specific guidance comes from HikariCP's own documentation, so it applies most directly when `db.pool.type=hikari` is set to opt into HikariCP instead — a fully supported, dependency-free alternative already bundled with the distribution.
+- There is no universal JVM heap preset. Heap needs scale with channel count and batch size, and are already partly self-protecting via `routing.peek.ahead.memory.threshold.percent`, which caps how much of the heap the routing reader's peek-ahead queue may consume before it disperses non-active transactions to avoid an out-of-memory error. Rather than guessing a static `-Xmx`, enable the `cpu`, `memory`, `loadAverage`, `connectionPool`, `fileHandles`, and `jvmOutOfMemory` <<Monitors>>, size heap and cores from what they show under real load, and re-check after any change to thread-count or batch-size parameters.
+
+=== Staging Area Placement and Sizing
+
+The <<Staging Area>> writes extraction and load payloads to disk once `stream.to.file.threshold.bytes` is exceeded, specifically to stop large syncs from holding a database connection or JVM heap open for the duration of a network transfer.
+
+In a clustered deployment (see <<Clustering>>), placing staging on a shared network drive rather than local disk is the better default: with `staging.dir` pointed at the share and `cluster.staging.enabled` turned on, a batch extracted in the background by one node can be served by any node, instead of every node re-extracting the same batch. This is the same mechanism that lets local staging be disabled during initial load (`initial.load.use.extract.job.enabled=false`) once shared staging is available.
+
+The trade-off: shared storage now sits directly in the sync data path, so its latency and throughput matter as much as the database's. A share provisioned on an archival or cold-storage tier trades one bottleneck (database connection pressure) for another (staging I/O wait). Provision a low-latency, high-IOPS tier — for example EFS with provisioned throughput on AWS, a premium-tier Azure Files share, or a high-scale Filestore instance on Google Cloud — sized for peak concurrent batch volume, not average. Watch the `disk` monitor against the staging volume the same way the database connection pool is watched, since a full staging volume fails syncs the same way a full database does.
+
+=== Clustering and Networking
+
+See <<Firewall and Network Requirements>> for the TCP, UDP, and HTTP(S) ports used between cluster nodes and from the load balancer. Peer discovery uses two independent paths, and a node only needs one of them working: Apache JCS's own UDP multicast (fast, but only where the network permits IP multicast), and a database-driven path that announces hostnames found in <<NODE_HOST>> directly to JCS (works over TCP). The notes below cover known limiations for popular environments.
+
+Physical Servers or Virtual Machimes:: Multicast should work normally as long as every server is the same VLAN/subnet(Layer 2 segment). Network administrator should be consulted for UDP-compatible server configuration.
+
+Docker Compose:: Supports fast UDP-discovery on a single Docker host with a user-defined network delivering multicast to every attached SymmetricDS container. Multi-host Docker (Swarm overlay networks) does not support this.
+
+AWS (ECS, EKS, Fargate):: AWS VPCs do not support multicast or broadcast traffic, regardless of subnet or security group configuration — a platform limitation. Consequently UDP discovery cannot find cluster peers, falling back to database records.
+
+Azure Kubernetes Service:: Azure VNETs and AKS's supported CNI plugins (Azure CNI, kubenet) do not forward multicast between pods, so clustering runs on the slower path here too. Consequently UDP discovery cannot find cluster peers, falling back to database records.
+
+Google Kubernetes Engine:: Google Cloud documents VPC multicast and broadcast as unsupported, with no workaround at the network layer. Consequently UDP discovery cannot find cluster peers, falling back to database records.
+
+Oracle Cloud Infrastructure (OCI/OKE):: OCI VCNs explicitly disallow the Class D address range (224.0.0.0-239.255.255.255) used for multicast. Consequently UDP discovery cannot find cluster peers, falling back to database records.
+
+Akamai Cloud (Linode/LKE):: Standard LKE clusters cannot join a VPC at all (VPC support is limited to LKE-Enterprise), so this inherits the same pod-to-pod multicast gap as the managed Kubernetes offerings above. The one exception in this survey: a non-containerized deployment directly on Linode VMs using their legacy private networking — a real Layer 2 segment, distinct from the newer VPC product — should support multicast normally, the same as the bare-metal/VM case above.
+
+[NOTE]
+.Discovery speed: UDP multicast vs. the SYM_NODE_HOST path
+====
+Every node announces itself to JCS from <<NODE_HOST>> in addition to (not instead of) UDP multicast, so clustering no longer depends on multicast routing — it only affects how fast a new peer is found. UDP multicast converges in roughly 15 seconds (JCS's fixed passive-broadcast interval). The <<NODE_HOST>> path is bounded by the heartbeat job instead: a node discovers all of its peers immediately at its own startup, but an *already-running* node only learns about a newly-joined peer at its own next heartbeat tick — `job.heartbeat.period.time.ms`, 15 minutes by default. In any environment above that lacks working multicast (every managed Kubernetes offering, or a LAN with misconfigured IGMP snooping), lower `job.heartbeat.period.time.ms` if fast convergence after scaling events matters more than the added heartbeat query load; leave it at the default for a stable cluster where convergence time isn't operationally significant.
+====
+
+=== Security Hardening
+
+- Disable `auto.registration` once all expected nodes have been provisioned. Leaving registration open in production lets any client that can reach the sync URL register as a node.
+- `cluster.jcs.port` carries plain serialized Java objects with no transport-level encryption or authentication, per its own parameter description. The `sym.secret`-based AES encryption described in <<Clustering>> protects the message payload, but the raw socket itself is unauthenticated, so the port must stay on a private, firewalled subnet exactly as <<Firewall and Network Requirements>> describes — the same applies to the UDP discovery port.
+- Never reuse example/default credentials from a lab or sample environment in Production!
+- Grant the SymmetricDS database user only the privileges it needs against the schemas it synchronizes; avoid handing it broader account privileges than the sync workload requires.
+- Enforce HTTPS end-to-end. If TLS terminates at the load balancer rather than at each node, confirm the load-balancer-to-node hop is also encrypted, or is on a network segment trusted to the same degree as the one required for `cluster.jcs.port`.

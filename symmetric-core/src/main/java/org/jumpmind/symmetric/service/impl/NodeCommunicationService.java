@@ -73,6 +73,7 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
     private boolean initialized = false;
     private Map<CommunicationType, Set<String>> currentlyExecuting;
     private Map<CommunicationType, Map<String, NodeCommunication>> lockCache;
+    private volatile long lastHeartbeatTouchMs;
 
     public NodeCommunicationService(ISymmetricEngine engine) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
@@ -583,18 +584,57 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
 
     protected boolean lock(NodeCommunication nodeCommunication, Date lockTime) {
         Date lockTimeout = getLockTimeoutDate(nodeCommunication.getCommunicationType());
+        String currentOwner = nodeCommunication.getLockingServerId();
         if (clusterService.isClusteringEnabled()) {
-            return sqlTemplate.update(getSql("aquireLockSql"), clusterService.getServerId(), lockTime, lockTime,
+            boolean locked = sqlTemplate.update(getSql("aquireLockSql"), clusterService.getServerId(), lockTime, lockTime,
                     nodeCommunication.getNodeId(), nodeCommunication.getQueue(),
                     nodeCommunication.getCommunicationType().name(), lockTimeout) == 1;
+            if (!locked && clusterService.isStaleServer(currentOwner)) {
+                log.warn("Breaking node communication lock for node '{}' queue '{}' from stale cluster peer '{}', lockTime={}",
+                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner, nodeCommunication.getLockTime());
+                locked = sqlTemplate.update(getSql("acquireLockFromStaleSql"), clusterService.getServerId(), lockTime, lockTime,
+                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(),
+                        nodeCommunication.getCommunicationType().name(), currentOwner) == 1;
+            }
+            if (locked) {
+                touchNodeHostHeartbeat();
+            }
+            return locked;
         } else {
-            if (nodeCommunication.getLockTime() == null || nodeCommunication.getLockTime().before(lockTimeout)) {
+            Date lockTimeVal = nodeCommunication.getLockTime();
+            if (lockTimeVal == null || lockTimeVal.before(lockTimeout)) {
+                if (lockTimeVal != null && currentOwner != null) {
+                    log.warn("Breaking node communication lock for node '{}' queue '{}' from '{}' due to expiry, lockTime={}",
+                            nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner, lockTimeVal);
+                }
+                nodeCommunication.setLockingServerId(clusterService.getServerId());
+                nodeCommunication.setLockTime(lockTime);
+                nodeCommunication.setLastLockTime(lockTime);
+                return true;
+            }
+            if (clusterService.isStaleServer(currentOwner)) {
+                log.warn("Breaking node communication lock for node '{}' queue '{}' from stale cluster peer '{}', lockTime={}",
+                        nodeCommunication.getNodeId(), nodeCommunication.getQueue(), currentOwner, nodeCommunication.getLockTime());
                 nodeCommunication.setLockingServerId(clusterService.getServerId());
                 nodeCommunication.setLockTime(lockTime);
                 nodeCommunication.setLastLockTime(lockTime);
                 return true;
             }
             return false;
+        }
+    }
+
+    /**
+     * Keeps this node's SYM_NODE_HOST heartbeat fresh whenever it successfully acquires a node communication lock, so a node that's busy doing push/pull/ route
+     * work doesn't go heartbeat-stale and get mistaken for crashed if the heartbeat job is disabled. Throttled to cluster.lock.refresh.ms per service instance
+     * rather than per lock, since locks here are keyed by node+queue (potentially many distinct entries) rather than the small fixed set of actions
+     * ClusterService's own lock refresh is keyed by.
+     */
+    private void touchNodeHostHeartbeat() {
+        long now = System.currentTimeMillis();
+        if (now - lastHeartbeatTouchMs >= parameterService.getLong(ParameterConstants.CLUSTER_LOCK_REFRESH_MS)) {
+            lastHeartbeatTouchMs = now;
+            nodeService.updateNodeHostForCurrentNode(false);
         }
     }
 
@@ -642,6 +682,18 @@ public class NodeCommunicationService extends AbstractService implements INodeCo
                 attempts++;
             }
         } while (!unlocked);
+    }
+
+    @Override
+    public void clearLocksForServer(String serverId) {
+        try {
+            int count = sqlTemplate.update(getSql("clearLocksForServerSql"), serverId);
+            if (count > 0) {
+                log.info("Cleared {} node communication lock(s) held by server '{}'", count, serverId);
+            }
+        } catch (Exception e) {
+            log.debug("Could not clear node communication locks for server '{}': {}", serverId, e.getMessage());
+        }
     }
 
     public void stop() {

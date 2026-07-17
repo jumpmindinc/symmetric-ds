@@ -29,6 +29,7 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.cache.ICacheManager;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.extension.IProcessInfoListener;
 import org.jumpmind.extension.IProgressListener;
@@ -185,6 +186,12 @@ public interface ISymmetricEngine {
     public void heartbeat(boolean force);
 
     /**
+     * Discovers cluster peers by reading SYM_NODE_HOST for this node's other known hosts (used by the "db" cluster.peer.discovery mode). Runs independent of
+     * any job schedule so peers are found even when the heartbeat/push/pull jobs are disabled.
+     */
+    public int refreshClusterPeersFromNodeHost();
+
+    /**
      * Open up registration for node to attach.
      * 
      * @see IRegistrationService#openRegistration(String, String)
@@ -338,4 +345,6 @@ public interface ISymmetricEngine {
     public String getEngineDescription(String mesage);
 
     public ICacheManager getCacheManager();
+
+    public IClusteredCacheManager getClusteredCacheManager();
 }

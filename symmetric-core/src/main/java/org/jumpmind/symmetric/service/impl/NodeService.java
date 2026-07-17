@@ -41,6 +41,7 @@ import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.db.sql.mapper.StringMapper;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
@@ -216,22 +217,43 @@ public class NodeService extends AbstractService implements INodeService {
 
     @Override
     public void updateNodeHost(NodeHost nodeHost) {
-        if (sqlTemplate.update(getSql("updateNodeHostSql"),
-                nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getOsUser(),
+        ISqlTransaction transaction = null;
+        try {
+            transaction = sqlTemplate.startSqlTransaction();
+            updateNodeHost(transaction, nodeHost);
+            transaction.commit();
+        } finally {
+            close(transaction);
+        }
+    }
+
+    @Override
+    public void updateNodeHost(ISqlTransaction transaction, NodeHost nodeHost) {
+        String hostName = StringUtils.left(nodeHost.getHostName(), 60);
+        int updateCount = transaction.prepareAndExecute(getSql("updateNodeHostSql"),
+                nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getClusterPartitionId(), nodeHost.getOsUser(),
                 nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
                 nodeHost.getAvailableProcessors(), nodeHost.getFreeMemoryBytes(),
                 nodeHost.getTotalMemoryBytes(), nodeHost.getMaxMemoryBytes(), nodeHost.getJavaVersion(),
                 nodeHost.getJavaVendor(), nodeHost.getSecurityMode(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
                 nodeHost.getTimezoneOffset(), nodeHost.getHeartbeatTime(), nodeHost.getLastRestartTime(),
-                nodeHost.getNodeId(), nodeHost.getHostName()) <= 0) {
-            sqlTemplate.update(getSql("insertNodeHostSql"),
-                    nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getOsUser(),
+                nodeHost.getNodeId(), hostName);
+        if (updateCount <= 0) {
+            log.debug("NodeHost update returned {} rows, inserting new record. nodeId={}, hostname={}, ip={}",
+                    updateCount, nodeHost.getNodeId(), hostName, nodeHost.getIpAddress());
+            transaction.prepareAndExecute(getSql("insertNodeHostSql"),
+                    nodeHost.getIpAddress(), nodeHost.getInstanceId(), nodeHost.getClusterPartitionId(), nodeHost.getOsUser(),
                     nodeHost.getOsName(), nodeHost.getOsArch(), nodeHost.getOsVersion(),
                     nodeHost.getAvailableProcessors(), nodeHost.getFreeMemoryBytes(),
                     nodeHost.getTotalMemoryBytes(), nodeHost.getMaxMemoryBytes(), nodeHost.getJavaVersion(),
                     nodeHost.getJavaVendor(), nodeHost.getSecurityMode(), nodeHost.getJdbcVersion(), nodeHost.getSymmetricVersion(),
                     nodeHost.getTimezoneOffset(), nodeHost.getHeartbeatTime(), nodeHost.getLastRestartTime(),
-                    new Date(), nodeHost.getNodeId(), nodeHost.getHostName());
+                    new Date(), nodeHost.getNodeId(), hostName);
+            log.info("Inserted new NodeHost record. nodeId={}, hostname={}, ip={}, heartbeat={}",
+                    nodeHost.getNodeId(), hostName, nodeHost.getIpAddress(), nodeHost.getHeartbeatTime());
+        } else {
+            log.debug("Updated existing NodeHost record. nodeId={}, hostname={}, ip={}, heartbeat={}",
+                    nodeHost.getNodeId(), hostName, nodeHost.getIpAddress(), nodeHost.getHeartbeatTime());
         }
     }
 
@@ -240,8 +262,47 @@ public class NodeService extends AbstractService implements INodeService {
         if (nodeHostForCurrentNode == null) {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
         }
-        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId());
+        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId(),
+                ClusteredCacheManager.getInstance().getClusterPartitionId());
+        log.debug("Updating NodeHost for current node: nodeId={}, hostname={}, ip={}, partition={}",
+                nodeHostForCurrentNode.getNodeId(), nodeHostForCurrentNode.getHostName(),
+                nodeHostForCurrentNode.getIpAddress(), nodeHostForCurrentNode.getClusterPartitionId());
         updateNodeHost(nodeHostForCurrentNode);
+    }
+
+    @Override
+    public void updateNodeHostForCurrentNode(ISqlTransaction transaction) {
+        if (nodeHostForCurrentNode == null) {
+            nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
+        }
+        nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId(),
+                ClusteredCacheManager.getInstance().getClusterPartitionId());
+        updateNodeHost(transaction, nodeHostForCurrentNode);
+    }
+
+    @Override
+    public void updateNodeHostForCurrentNode(boolean bypassTrigger) {
+        if (!bypassTrigger) {
+            updateNodeHostForCurrentNode();
+            return;
+        }
+        String nodeId = findIdentityNodeId();
+        ISqlTransaction transaction = null;
+        try {
+            transaction = sqlTemplate.startSqlTransaction();
+            symmetricDialect.disableSyncTriggers(transaction, nodeId);
+            updateNodeHostForCurrentNode(transaction);
+            symmetricDialect.enableSyncTriggers(transaction);
+            transaction.commit();
+        } catch (Exception ex) {
+            log.warn("Failed to update node host heartbeat for current node, but will try again next time.", ex);
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            throw ex;
+        } finally {
+            close(transaction);
+        }
     }
 
     @Override
@@ -1291,6 +1352,7 @@ public class NodeService extends AbstractService implements INodeService {
             nodeHost.setNodeId(rs.getString(NODE_ID));
             nodeHost.setHostName(rs.getString("host_name"));
             nodeHost.setInstanceId(rs.getString("instance_id"));
+            nodeHost.setClusterPartitionId(rs.getString("cluster_partition_id"));
             nodeHost.setIpAddress(rs.getString("ip_address"));
             nodeHost.setOsUser(rs.getString("os_user"));
             nodeHost.setOsName(rs.getString("os_name"));
