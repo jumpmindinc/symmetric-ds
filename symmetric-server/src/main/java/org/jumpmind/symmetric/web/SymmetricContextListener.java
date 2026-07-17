@@ -27,6 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.IApplicationHealthTracker;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.jumpmind.util.AppUtils;
@@ -59,7 +60,7 @@ public class SymmetricContextListener implements ServletContextListener {
         String autoStart = ctx.getInitParameter(WebConstants.INIT_PARAM_AUTO_START);
         engineHolder.setAutoStart(autoStart == null ? true : autoStart.equalsIgnoreCase("true"));
         String autoCreate = ctx.getInitParameter(WebConstants.INIT_PARAM_AUTO_CREATE);
-        engineHolder.setAutoCreate(autoCreate == null ? true : autoCreate.equalsIgnoreCase("true"));
+        engineHolder.setAutoDiscoverEngines(autoCreate == null ? true : autoCreate.equalsIgnoreCase("true"));
         String multiServerMode = ctx.getInitParameter(WebConstants.INIT_PARAM_MULTI_SERVER_MODE);
         engineHolder.setMultiServerMode((multiServerMode != null && multiServerMode.equalsIgnoreCase("true")) ||
                 StringUtils.isNotBlank(System.getProperty(SystemConstants.SYSPROP_ENGINES_DIR)));

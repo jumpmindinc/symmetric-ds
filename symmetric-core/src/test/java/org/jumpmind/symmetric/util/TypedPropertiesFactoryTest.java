@@ -1,16 +1,76 @@
+/**
+ * Licensed to JumpMind Inc under one or more contributor
+ * license agreements.  See the NOTICE file distributed
+ * with this work for additional information regarding
+ * copyright ownership.  JumpMind Inc licenses this file
+ * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * (the "License"); you may not use this file except in compliance
+ * with the License.
+ *
+ * You should have received a copy of the GNU General Public License,
+ * version 3.0 (GPLv3) along with this library; if not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.jumpmind.symmetric.util;
 
-import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.Map;
 import java.util.Properties;
 
 import org.jumpmind.properties.TypedProperties;
+import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class TypedPropertiesFactoryTest {
+    @AfterEach
+    void clearSystemProperties() {
+        System.clearProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
+        System.clearProperty(ServerConstants.CLUSTER_PEER_DISCOVERY);
+        System.clearProperty(ServerConstants.CLUSTER_PEER_DISCOVERY_SERVERS);
+    }
+
+    @Test
+    void testImportJvmEnvVars_setsSystemPropertyWhenEnvVarPresent() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of("SYM_CLUSTER_KEYSTORE_SEED", "seed-value"));
+        assertEquals("seed-value", System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED));
+    }
+
+    @Test
+    void testImportJvmEnvVars_setsClusterPeerDiscoverySystemPropertyWhenEnvVarPresent() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of("SYM_CLUSTER_PEER_DISCOVERY", "udp"));
+        assertEquals("udp", System.getProperty(ServerConstants.CLUSTER_PEER_DISCOVERY));
+    }
+
+    @Test
+    void testImportJvmEnvVars_setsClusterPeerDiscoveryStaticServersSystemPropertyWhenEnvVarPresent() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of("SYM_CLUSTER_PEER_DISCOVERY_STATIC_SERVERS", "sympod1:1101,sympod2:1101"));
+        assertEquals("sympod1:1101,sympod2:1101", System.getProperty(ServerConstants.CLUSTER_PEER_DISCOVERY_SERVERS));
+    }
+
+    @Test
+    void testImportJvmEnvVars_leavesSystemPropertyUnsetWhenEnvVarAbsent() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of());
+        assertNull(System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED));
+    }
+
+    @Test
+    void testImportJvmEnvVars_leavesSystemPropertyUnsetWhenEnvVarBlank() {
+        TypedPropertiesFactory.importJvmEnvVars(Map.of("SYM_CLUSTER_KEYSTORE_SEED", " "));
+        assertNull(System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED));
+    }
+
     @Test
     void testMergeAndOverrideWithJvmAndEnvironmentVariablesAddVariable() {
         TypedProperties fileProps = new TypedProperties();

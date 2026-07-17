@@ -46,7 +46,7 @@ final public class FileSyncUtils {
      * @param basePath
      *            basePath is calculated from this file
      * @param pathSeparator
-     *            directory separator. The platform default is not assumed so that we can test Unix behaviour when running on Windows (for example)
+     *            directory separator. The platform default is not assumed so that we can test Unix behavior when running on Windows (for example)
      */
     public static String getRelativePath(String targetPath, String basePath, String pathSeparator) {
         // Normalize the paths

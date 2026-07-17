@@ -490,6 +490,23 @@ public final class FormatUtils {
         return result;
     }
 
+    /**
+     * Formats a short duration (milliseconds up to a few minutes) without losing sub-second precision, unlike {@link #formatDurationReadable(long)} which
+     * rounds down to whole seconds. Intended for logging fast, repeated operations (e.g. a single heartbeat tick's step timings).
+     */
+    public static String formatDurationShort(long timeInMs) {
+        if (timeInMs > 60000) {
+            long minutes = timeInMs / 60000;
+            long seconds = (timeInMs - (minutes * 60000)) / 1000;
+            return minutes + "m " + seconds + "s";
+        } else if (timeInMs > 1000) {
+            long seconds = timeInMs / 1000;
+            return seconds + "s";
+        } else {
+            return timeInMs + "ms";
+        }
+    }
+
     public static String formatDateTimeISO(Date date) {
         if (date != null) {
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

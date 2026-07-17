@@ -118,6 +118,19 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
         }
     }
 
+    public static void importJvmEnvVars() {
+        importJvmEnvVars(System.getenv());
+    }
+
+    public static void importJvmEnvVars(Map<String, String> env) {
+        for (Map.Entry<String, String> entry : ServerConstants.JVM_IMPORT_ENV_VARS.entrySet()) {
+            String value = env.get(entry.getKey());
+            if (isNotBlank(value)) {
+                System.setProperty(entry.getValue(), value);
+            }
+        }
+    }
+
     public static final void replaceSystemAndEnvironmentVariables(Properties properties) {
         Set<Object> keys = new HashSet<Object>(properties.keySet());
         Map<String, String> env = System.getenv();

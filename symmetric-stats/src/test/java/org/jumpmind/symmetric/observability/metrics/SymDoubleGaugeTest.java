@@ -34,9 +34,6 @@ import org.junit.jupiter.api.Test;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.ObservableDoubleGauge;
 
-/**
- * Tests {@link AbstractDoubleGaugeMetric} behaviour via the package-private {@link SymDoubleGauge} constructor.
- */
 class SymDoubleGaugeTest {
     private static SymDoubleGauge gauge() {
         SymDoubleGauge gauge = new SymDoubleGauge(new SymMetricDefinition("test.double.gauge", "", "", InstrumentType.DOUBLE_GAUGE), Attributes.empty(),

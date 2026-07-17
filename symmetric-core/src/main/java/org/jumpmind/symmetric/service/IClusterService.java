@@ -67,4 +67,10 @@ public interface IClusterService {
     public void persistToTableForSnapshot();
 
     public String getInstanceId();
+
+    public void clearLocksForServer(String serverId);
+
+    public boolean isStaleServer(String lockingServerId);
+
+    public void removeObsoleteNodeHosts();
 }

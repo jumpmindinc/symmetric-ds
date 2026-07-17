@@ -185,9 +185,31 @@ abstract public class AbstractSymmetricDialect implements ISymmetricDialect {
 
     @Override
     public void initTablesAndDatabaseObjects() {
-        createRequiredDatabaseObjects();
-        createOrAlterTablesIfNecessary();
-        platform.resetCachedRelationModel();
+        ISqlTransaction installLockTransaction = acquireDatabaseInstallLock();
+        try {
+            createRequiredDatabaseObjects();
+            createOrAlterTablesIfNecessary();
+            platform.resetCachedRelationModel();
+        } finally {
+            releaseDatabaseInstallLock(installLockTransaction);
+        }
+    }
+
+    /**
+     * Serializes concurrent schema installs across processes/containers that start simultaneously against the same empty database, so they don't all race to
+     * create the same tables (this is checked before any SymmetricDS table, including sym_lock, is guaranteed to exist — so SymmetricDS's own row-based cluster
+     * locking cannot protect this step). Not every platform supports a session/transaction-scoped advisory lock; the default implementation is a no-op. Returns
+     * the transaction holding the lock, to be passed to {@link #releaseDatabaseInstallLock(ISqlTransaction)}, or null if no lock was acquired.
+     */
+    protected ISqlTransaction acquireDatabaseInstallLock() {
+        return null;
+    }
+
+    protected void releaseDatabaseInstallLock(ISqlTransaction installLockTransaction) {
+        if (installLockTransaction != null) {
+            installLockTransaction.commit();
+            installLockTransaction.close();
+        }
     }
 
     protected String replaceTokens(String sql, String objectName) {
