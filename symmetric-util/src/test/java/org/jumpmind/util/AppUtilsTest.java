@@ -22,15 +22,20 @@ package org.jumpmind.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Date;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 
 import org.apache.commons.lang3.time.DateUtils;
-import static org.junit.Assert.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AppUtilsTest {
     @TempDir
@@ -104,13 +109,46 @@ class AppUtilsTest {
     }
 
     @Test
+    void testCreateTempFile_usesPrefixSuffixAndSystemTempDir() throws IOException {
+        File file = AppUtils.createTempFile("myprefix", ".mysuffix");
+        try {
+            assertTrue(file.exists());
+            assertTrue(file.getName().startsWith("myprefix"));
+            assertTrue(file.getName().endsWith(".mysuffix"));
+            assertEquals(new File(System.getProperty("java.io.tmpdir")).getCanonicalPath(),
+                    file.getParentFile().getCanonicalPath());
+            assertTrue(file.canRead());
+            assertTrue(file.canWrite());
+        } finally {
+            file.delete();
+        }
+    }
+
+    @Test
+    void testCreateTempFile_restrictsPermissionsToOwnerOnly() throws IOException {
+        File file = AppUtils.createTempFile("apputils-test", ".tmp");
+        try {
+            assertTrue(file.exists());
+            if (file.toPath().getFileSystem().supportedFileAttributeViews().contains("posix")) {
+                Set<PosixFilePermission> perms = Files.getPosixFilePermissions(file.toPath());
+                assertEquals(Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE), perms);
+            } else {
+                assertTrue(file.canRead());
+                assertTrue(file.canWrite());
+            }
+        } finally {
+            file.delete();
+        }
+    }
+
+    @Test
     void testGetLocalDateForOffset() {
         Date gmt = AppUtils.getLocalDateForOffset("+00:00");
         Date plusFour = AppUtils.getLocalDateForOffset("+04:00");
         Date minusFour = AppUtils.getLocalDateForOffset("-04:00");
         long nearZero = plusFour.getTime() - gmt.getTime() - DateUtils.MILLIS_PER_HOUR * 4;
-        assertTrue(nearZero + " was the left over ms", Math.abs(nearZero) < 1000);
+        assertTrue(Math.abs(nearZero) < 1000, nearZero + " was the left over ms");
         nearZero = plusFour.getTime() - minusFour.getTime() - DateUtils.MILLIS_PER_HOUR * 8;
-        assertTrue(nearZero + " was the left over ms", Math.abs(nearZero) < 1000);
+        assertTrue(Math.abs(nearZero) < 1000, nearZero + " was the left over ms");
     }
 }
