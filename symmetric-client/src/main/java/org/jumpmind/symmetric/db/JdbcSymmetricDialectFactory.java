@@ -153,10 +153,6 @@ public class JdbcSymmetricDialectFactory implements ISymmetricDialectFactory {
         } else if (platform instanceof IngresDatabasePlatform) {
             dialect = new IngresSymmetricDialect(parameterService, platform);
         } else {
-            log.warn("No dedicated SymmetricDS dialect found for platform '{}'. "
-                    + "Falling back to GenericSymmetricDialect, which has limited functionality. "
-                    + "For more information contact the SymmetricDS sales team.",
-                    platform.getClass().getSimpleName());
             dialect = new GenericSymmetricDialect(parameterService, platform);
         }
         return dialect;
