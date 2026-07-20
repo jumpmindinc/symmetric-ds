@@ -405,7 +405,8 @@ public class RegistrationService extends AbstractService implements IRegistratio
             request.incrementAttemptsAndSetLatestMessage(priorRequest);
             return updateIncompleteRegistrationRequestInDatabase(request);
         }
-        if (priorRequest.isIncomplete() && request.getStatus().equals(RegistrationStatus.OK)) {
+        if (priorRequest.isIncomplete()
+                && (request.getStatus().equals(RegistrationStatus.OK) || request.getStatus().equals(RegistrationStatus.RJ))) {
             request.incrementAttemptsAndSetLatestMessage(priorRequest);
             return updateIncompleteRegistrationRequestInDatabase(request);
         }
