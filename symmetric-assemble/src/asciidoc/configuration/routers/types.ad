@@ -2,7 +2,9 @@
 ==== Router Types
 
 include::{includedir}/configuration/routers/default.ad[]
+ifdef::pro[]
 include::{includedir}/configuration/routers/column.ad[]
+endif::pro[]
 include::{includedir}/configuration/routers/audit.ad[]
 include::{includedir}/configuration/routers/lookuptable.ad[]
 include::{includedir}/configuration/routers/subselect.ad[]
