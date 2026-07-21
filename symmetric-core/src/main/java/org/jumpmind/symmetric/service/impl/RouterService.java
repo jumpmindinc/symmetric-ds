@@ -26,6 +26,7 @@ import static org.jumpmind.symmetric.common.Constants.LOG_PROCESS_SUMMARY_THRESH
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -83,7 +84,6 @@ import org.jumpmind.symmetric.route.AuditTableDataRouter;
 import org.jumpmind.symmetric.route.BshDataRouter;
 import org.jumpmind.symmetric.route.CSVRouter;
 import org.jumpmind.symmetric.route.ChannelRouterContext;
-import org.jumpmind.symmetric.route.ColumnMatchDataRouter;
 import org.jumpmind.symmetric.route.CommonBatchCollisionException;
 import org.jumpmind.symmetric.route.ConfigurationChangedDataRouter;
 import org.jumpmind.symmetric.route.ConvertToReloadRouter;
@@ -128,6 +128,8 @@ import org.jumpmind.util.FormatUtils;
  */
 public class RouterService extends AbstractService implements IRouterService, INodeCommunicationExecutor {
     final int MAX_LOGGING_LENGTH = 512;
+    protected static final Set<String> PRO_ONLY_ROUTER_TYPES = Collections.unmodifiableSet(
+            new HashSet<String>(Arrays.asList("column")));
     protected Map<Integer, CounterStat> missingTriggerRouter = new ConcurrentHashMap<Integer, CounterStat>();
     protected Map<String, CounterStat> invalidRouterType = new ConcurrentHashMap<String, CounterStat>();
     protected Map<Integer, CounterStat> missingColumns = new ConcurrentHashMap<Integer, CounterStat>();
@@ -161,7 +163,6 @@ public class RouterService extends AbstractService implements IRouterService, IN
         extensionService.addExtensionPoint("lookuptable", new LookupTableDataRouter(symmetricDialect));
         extensionService.addExtensionPoint("default", new DefaultDataRouter());
         extensionService.addExtensionPoint("audit", new AuditTableDataRouter(engine));
-        extensionService.addExtensionPoint("column", new ColumnMatchDataRouter(engine));
         extensionService.addExtensionPoint(FileSyncDataRouter.ROUTER_TYPE, new FileSyncDataRouter(engine));
         extensionService.addExtensionPoint("dbf", new DBFRouter(engine));
         extensionService.addExtensionPoint("tps", new TPSRouter(engine));
@@ -261,8 +262,14 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     }
                     for (CounterStat counterStat : invalidRouterType.values()) {
                         Router router = (Router) counterStat.getObject();
-                        log.warn("Invalid router type of '{}' configured on router '{}'.  Using default router instead.",
-                                router.getRouterType(), router.getRouterId());
+                        String routerType = router.getRouterType();
+                        if (PRO_ONLY_ROUTER_TYPES.contains(routerType)) {
+                            log.warn("Router type of '{}' configured on router '{}' is only available in SymmetricDS Pro.  Using default router instead.",
+                                    routerType, router.getRouterId());
+                        } else {
+                            log.warn("Invalid router type of '{}' configured on router '{}'.  Using default router instead.",
+                                    routerType, router.getRouterId());
+                        }
                     }
                     invalidRouterType.clear();
                     for (CounterStat counterStat : missingTriggerRouter.values()) {

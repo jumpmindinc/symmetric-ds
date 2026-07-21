@@ -52,7 +52,7 @@ need to reference the master Order record.
 There are two possible ways to solve this in SymmetricDS. 
 
 . Configure a 'subselect' router type (shown below).
-. Use an external select to capture the data via a trigger for use in a column match router, see <<External Select>>.
+. Use an external select to capture the data via a trigger for use in a column match router (Pro only), see <<External Select>>.
 
 ifndef::pro[]
 [source, SQL]
