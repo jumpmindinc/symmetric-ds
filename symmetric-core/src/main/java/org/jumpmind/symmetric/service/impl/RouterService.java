@@ -103,7 +103,6 @@ import org.jumpmind.symmetric.route.JavaDataRouter;
 import org.jumpmind.symmetric.route.NonTransactionalBatchAlgorithm;
 import org.jumpmind.symmetric.route.RegistrationServerRouter;
 import org.jumpmind.symmetric.route.SimpleRouterContext;
-import org.jumpmind.symmetric.route.SubSelectDataRouter;
 import org.jumpmind.symmetric.route.TPSRouter;
 import org.jumpmind.symmetric.route.TransactionalBatchAlgorithm;
 import org.jumpmind.symmetric.service.ClusterConstants;
@@ -128,7 +127,7 @@ import org.jumpmind.util.FormatUtils;
 public class RouterService extends AbstractService implements IRouterService, INodeCommunicationExecutor {
     final int MAX_LOGGING_LENGTH = 512;
     protected static final Set<String> PRO_ONLY_ROUTER_TYPES = Collections.unmodifiableSet(
-            new HashSet<String>(Arrays.asList("column", "lookuptable")));
+            new HashSet<String>(Arrays.asList("column", "lookuptable", "subselect")));
     protected Map<Integer, CounterStat> missingTriggerRouter = new ConcurrentHashMap<Integer, CounterStat>();
     protected Map<String, CounterStat> invalidRouterType = new ConcurrentHashMap<String, CounterStat>();
     protected Map<Integer, CounterStat> missingColumns = new ConcurrentHashMap<Integer, CounterStat>();
@@ -158,7 +157,6 @@ public class RouterService extends AbstractService implements IRouterService, IN
         extensionService.addExtensionPoint(RegistrationServerRouter.ROUTER_TYPE, new RegistrationServerRouter(engine));
         extensionService.addExtensionPoint("java", new JavaDataRouter(engine));
         extensionService.addExtensionPoint("bsh", new BshDataRouter(engine));
-        extensionService.addExtensionPoint("subselect", new SubSelectDataRouter(symmetricDialect));
         extensionService.addExtensionPoint("default", new DefaultDataRouter());
         extensionService.addExtensionPoint("audit", new AuditTableDataRouter(engine));
         extensionService.addExtensionPoint(FileSyncDataRouter.ROUTER_TYPE, new FileSyncDataRouter(engine));
