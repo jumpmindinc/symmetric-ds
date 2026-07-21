@@ -33,11 +33,11 @@ endif::pro[]
 
 ifdef::pro[]
 |lookuptable|A router which can be configured to determine routing based on an existing or ancillary table specifically for the purpose of routing data.  See <<Lookup Table Router>>|
-endif::pro[]
 
 |subselect|A router that executes a SQL expression against the database to select nodes to route to. This SQL expression can be passed values of old and new column values.  See <<Subselect Router>>|
+endif::pro[]
 
-|convertToReload|When subselect router is too slow and there are too many tables or rows for the lookuptable router (Pro only), a convertToReload router can efficiently sub-set data by converting multiple changes into a reload batch.  See <<ConvertToReload Router>>|
+|convertToReload|When the subselect router (Pro only) is too slow and there are too many tables or rows for the lookuptable router (Pro only), a convertToReload router can efficiently sub-set data by converting multiple changes into a reload batch.  See <<ConvertToReload Router>>|
 
 |bsh|A router that executes a Bean Shell script expression in order to select nodes to route to. The script can use the old and new column values.  See <<Beanshell Router>>|✔
 

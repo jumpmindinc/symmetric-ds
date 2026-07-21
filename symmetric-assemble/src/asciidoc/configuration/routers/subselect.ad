@@ -54,25 +54,11 @@ There are two possible ways to solve this in SymmetricDS.
 . Configure a 'subselect' router type (shown below).
 . Use an external select to capture the data via a trigger for use in a column match router (Pro only), see <<External Select>>.
 
-ifndef::pro[]
-[source, SQL]
-----
-insert into SYM_ROUTER (router_id,
-	source_node_group_id, target_node_group_id, router_type,
-	router_expression, create_time, last_update_time) values
-	('corp-2-store','corp', 'store', 'subselect', 'c.external_id in (select
-	STORE_ID from order where order_id=:ORDER_ID)', current_timestamp,
-	current_timestamp); 
-----
-endif::pro[]
-ifdef::pro[]
-
 .Router Expression
 
 ----
 c.external_id in (select STORE_ID from order where order_id=:ORDER_ID)
 ----
-endif::pro[]
 
 NOTE: In this example that the parent row in Order must still exist at the moment of routing for the child rows (OrderLineItem) 
 to route, since the select statement is run when routing is occurring, not when the change data is first captured.
