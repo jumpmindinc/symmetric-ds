@@ -2,7 +2,7 @@
 ===== ConvertToReload Router
 
 This router converts multiple change events into a single reload event, which can be used to sub-set data quickly
-when the subselect router is too slow or when the lookuptable router can't handle the amount of lookup data.
+when the subselect router is too slow or when the lookuptable router (Pro only) can't handle the amount of lookup data.
 ConvertToReload inserts the primary key values for each row, along with a unique load ID, into a temporary table.
 The reload event uses the initial load SQL along with a join to the temporary table to retrieve the changes
 and sub-set data.
