@@ -81,6 +81,7 @@ Metrics scoped to a node carry a `node_id` context attribute.
 |`symmetricds.data.create.time.max`|ms|Most recent unrouted data row create time per channel (epoch milliseconds)
 |===
 
+ifdef::pro[]
 .Database Connection Pool
 [cols="3,1,4", options="header"]
 |===
@@ -92,6 +93,7 @@ Metrics scoped to a node carry a `node_id` context attribute.
 |`symmetricds.dbpool.waiters.count`|connections|Threads waiting for a connection from the pool
 |`symmetricds.dbpool.waiters.delay.mean`|ms|Mean wait time for threads that were queued for a connection
 |===
+endif::pro[]
 
 .Nodes
 [cols="3,1,4", options="header"]
