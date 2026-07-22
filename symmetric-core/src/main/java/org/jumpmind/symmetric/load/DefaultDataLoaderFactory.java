@@ -366,7 +366,7 @@ public class DefaultDataLoaderFactory extends AbstractDataLoaderFactory implemen
     protected boolean getDefaultTreatBitAsInteger() {
         String name = engine.getSymmetricDialect().getTargetPlatform().getName();
         return name.equals(DatabaseNamesConstants.MYSQL) || name.equals(DatabaseNamesConstants.MARIADB)
-                || name.equals(DatabaseNamesConstants.AURORA_MYSQL);
+                || name.equals(DatabaseNamesConstants.AURORA_MYSQL) || name.equals(DatabaseNamesConstants.CLOUDSQL_MYSQL);
     }
 
     @Override

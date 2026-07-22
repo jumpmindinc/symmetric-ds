@@ -295,8 +295,12 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
         }
         boolean isMySqlProtocol = nameVersion.getProtocol().equalsIgnoreCase(MySqlDatabasePlatform.JDBC_SUBPROTOCOL)
                 || (AWS_JDBC_WRAPPER_SUBPROTOCOL.equalsIgnoreCase(nameVersion.getProtocol()) && "MySQL".equalsIgnoreCase(nameVersion.getName()));
-        if (isMySqlProtocol && MySqlVariantDetector.isAuroraMySql(connection)) {
-            nameVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
+        if (isMySqlProtocol) {
+            if (MySqlVariantDetector.isAuroraMySql(connection)) {
+                nameVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
+            } else if (MySqlVariantDetector.isCloudSqlMySql(connection)) {
+                nameVersion.setName(DatabaseNamesConstants.CLOUDSQL_MYSQL);
+            }
         }
         if (nameVersion.getProtocol().equalsIgnoreCase(FirebirdDatabasePlatform.JDBC_SUBPROTOCOL)) {
             if (isFirebirdDialect1(connection)) {

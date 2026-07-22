@@ -66,6 +66,14 @@ class JdbcDatabasePlatformFactoryTest {
         }
     }
 
+    private void stubVersionCommentQuery(Connection connection, boolean isCloudSql) throws Exception {
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = mock(ResultSet.class);
+        when(statement.executeQuery("show variables like 'version_comment'")).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true);
+        when(resultSet.getString("Value")).thenReturn(isCloudSql ? "(Google)" : "MySQL Community Server - GPL");
+    }
+
     private DatabaseVersion newPostgresVersion(String protocol, String productName) {
         DatabaseVersion nameVersion = new DatabaseVersion();
         nameVersion.setProtocol(protocol);
@@ -120,6 +128,7 @@ class JdbcDatabasePlatformFactoryTest {
     void testDetermineDatabaseNameVersionSubprotocol_awsWrapperNonPostgres_notTreatedAsPostgres() throws Exception {
         Connection connection = createMySqlConnection();
         stubAuroraVersionQuery(connection, false);
+        stubVersionCommentQuery(connection, false);
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         DatabaseVersion nameVersion = newPostgresVersion(JdbcDatabasePlatformFactory.AWS_JDBC_WRAPPER_SUBPROTOCOL, "MySQL");
         factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
@@ -140,6 +149,7 @@ class JdbcDatabasePlatformFactoryTest {
     void testDetermineDatabaseNameVersionSubprotocol_vanillaMySql_unaffected() throws Exception {
         Connection connection = createMySqlConnection();
         stubAuroraVersionQuery(connection, false);
+        stubVersionCommentQuery(connection, false);
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         DatabaseVersion nameVersion = newMySqlVersion(MySqlDatabasePlatform.JDBC_SUBPROTOCOL, "MySQL");
         factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
@@ -154,5 +164,16 @@ class JdbcDatabasePlatformFactoryTest {
         DatabaseVersion nameVersion = newMySqlVersion(JdbcDatabasePlatformFactory.AWS_JDBC_WRAPPER_SUBPROTOCOL, "MySQL");
         factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
         assertEquals(DatabaseNamesConstants.AURORA_MYSQL, nameVersion.getName());
+    }
+
+    @Test
+    void testDetermineDatabaseNameVersionSubprotocol_cloudSqlMySqlDetected_setsCloudSqlMySqlName() throws Exception {
+        Connection connection = createMySqlConnection();
+        stubAuroraVersionQuery(connection, false);
+        stubVersionCommentQuery(connection, true);
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        DatabaseVersion nameVersion = newMySqlVersion(MySqlDatabasePlatform.JDBC_SUBPROTOCOL, "MySQL");
+        factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
+        assertEquals(DatabaseNamesConstants.CLOUDSQL_MYSQL, nameVersion.getName());
     }
 }

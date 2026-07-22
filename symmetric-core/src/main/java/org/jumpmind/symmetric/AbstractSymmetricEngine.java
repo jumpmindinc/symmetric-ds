@@ -897,6 +897,14 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                             + "Contact the SymmetricDS sales team for more information.",
                     dbVersionName);
         }
+        if (DatabaseNamesConstants.CLOUDSQL_MYSQL.equalsIgnoreCase(dbVersionName)
+                && !DatabaseNamesConstants.CLOUDSQL_MYSQL.equalsIgnoreCase(platform.getName())) {
+            throw new SymmetricException(
+                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
+                            + "Google Cloud SQL for MySQL requires SymmetricDS Pro. "
+                            + "Contact the SymmetricDS sales team for more information.",
+                    dbVersionName);
+        }
         if (platform instanceof AbstractDatabasePlatform
                 && ((AbstractDatabasePlatform) platform).isDedicatedPlatform()) {
             return;

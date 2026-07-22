@@ -25,6 +25,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.apache.commons.lang3.Strings;
+
 /*
  * Detects which managed-cloud variant of MySQL a live JDBC connection is talking to, based on
  * SQL markers that only exist on that variant. Detection runs against the connection itself so it
@@ -37,6 +39,15 @@ public final class MySqlVariantDetector {
     public static boolean isAuroraMySql(Connection connection) {
         try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery("select aurora_version()")) {
             return true;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    public static boolean isCloudSqlMySql(Connection connection) {
+        try (Statement stmt = connection.createStatement();
+                ResultSet rs = stmt.executeQuery("show variables like 'version_comment'")) {
+            return rs.next() && Strings.CI.contains(rs.getString("Value"), "Google");
         } catch (SQLException e) {
             return false;
         }
