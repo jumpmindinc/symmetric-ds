@@ -46,6 +46,7 @@ final public class DatabaseNamesConstants {
     public final static String ORACLE23 = "oracle23";
     public final static String MYSQL = "mysql";
     public static final String AURORA_MYSQL = "auroramysql";
+    public static final String CLOUDSQL_MYSQL = "cloudsqlmysql";
     public final static String DB2 = "db2";
     public final static String DB2ZOS = "db2zos";
     public final static String DB2AS400 = "db2as400";

@@ -34,6 +34,19 @@ by database.
 |✔
 |✔
 
+|Google Cloud SQL for MySQL
+|Tested on 8.0.46
+|✔
+|✔
+|
+|✔
+|✔
+|✔
+|✔
+|
+|✔
+|✔
+
 |Aurora PostgreSQL
 |Tested on 17.9
 |✔
@@ -481,6 +494,13 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 |Database |Version |Catalog Support |Catalog Default |Schema Support |Schema Default
 
 |Aurora MySQL
+|
+|✔
+|select database()
+|
+|
+
+|Google Cloud SQL for MySQL
 |
 |✔
 |select database()
