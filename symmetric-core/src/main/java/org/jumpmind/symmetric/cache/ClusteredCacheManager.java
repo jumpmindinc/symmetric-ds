@@ -193,7 +193,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public Set<String> getActiveServerIds() {
         if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
+            return new HashSet<>();
         }
         Set<String> active = new HashSet<>();
         if (peerNetworkCoordinator == null) {
@@ -327,7 +327,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public boolean isAnyPeerInState(String eventType) {
         if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
+            return false;
         }
         if (peerNetworkCoordinator == null) {
             return false;
@@ -344,7 +344,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public boolean isAnyPeerOnline() {
         if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
+            return false;
         }
         if (peerNetworkCoordinator == null) {
             return false;
@@ -369,7 +369,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public void broadcastEngineState(String engineName, ClusteredEngineState engineState) {
         if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
+            return;
         }
         engineAndPeerStateMap.put(getEngineStateMapKey(myServerId, engineName), engineState);
         if (isClusterPeerListenerStarted) {
@@ -380,7 +380,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public void rebroadcastCurrentState() {
         if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
+            return;
         }
         if (isClusterPeerListenerStarted) {
             broadcastCurrentStateAndEngines();
@@ -390,7 +390,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public boolean isAnyPeerWithEngineInState(String engineName, ClusteredEngineState engineState) {
         if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
+            return false;
         }
         if (peerNetworkCoordinator == null) {
             return false;
