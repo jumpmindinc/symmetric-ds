@@ -61,4 +61,33 @@ class PostgreSqlVariantDetectorTest {
         when(statement.executeQuery("select aurora_version()")).thenThrow(new SQLException("connection closed"));
         assertFalse(PostgreSqlVariantDetector.isAuroraPostgres(connection));
     }
+
+    @Test
+    void testIsCloudSqlPostgres_whenCloudSqlIamAuthenticationGucSucceeds_returnsTrue() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        ResultSet resultSet = mock(ResultSet.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("show cloudsql.iam_authentication")).thenReturn(resultSet);
+        assertTrue(PostgreSqlVariantDetector.isCloudSqlPostgres(connection));
+    }
+
+    @Test
+    void testIsCloudSqlPostgres_whenCloudSqlIamAuthenticationGucDoesNotExist_returnsFalse() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("show cloudsql.iam_authentication"))
+                .thenThrow(new SQLException("ERROR: unrecognized configuration parameter \"cloudsql.iam_authentication\""));
+        assertFalse(PostgreSqlVariantDetector.isCloudSqlPostgres(connection));
+    }
+
+    @Test
+    void testIsCloudSqlPostgres_whenGenericSqlExceptionOccurs_returnsFalse() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("show cloudsql.iam_authentication")).thenThrow(new SQLException("connection closed"));
+        assertFalse(PostgreSqlVariantDetector.isCloudSqlPostgres(connection));
+    }
 }
