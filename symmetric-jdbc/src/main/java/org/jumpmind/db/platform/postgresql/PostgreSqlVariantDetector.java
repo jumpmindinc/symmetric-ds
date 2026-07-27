@@ -41,4 +41,13 @@ public final class PostgreSqlVariantDetector {
             return false;
         }
     }
+
+    public static boolean isCloudSqlPostgres(Connection connection) {
+        try (Statement stmt = connection.createStatement();
+                ResultSet rs = stmt.executeQuery("show cloudsql.iam_authentication")) {
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
 }

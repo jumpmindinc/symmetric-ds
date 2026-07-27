@@ -74,6 +74,16 @@ class JdbcDatabasePlatformFactoryTest {
         when(resultSet.getString("Value")).thenReturn(isCloudSql ? "(Google)" : "MySQL Community Server - GPL");
     }
 
+    private void stubCloudSqlIamAuthenticationQuery(Connection connection, boolean isCloudSql) throws Exception {
+        Statement statement = connection.createStatement();
+        if (isCloudSql) {
+            when(statement.executeQuery("show cloudsql.iam_authentication")).thenReturn(mock(ResultSet.class));
+        } else {
+            when(statement.executeQuery("show cloudsql.iam_authentication"))
+                    .thenThrow(new SQLException("ERROR: unrecognized configuration parameter \"cloudsql.iam_authentication\""));
+        }
+    }
+
     private DatabaseVersion newPostgresVersion(String protocol, String productName) {
         DatabaseVersion nameVersion = new DatabaseVersion();
         nameVersion.setProtocol(protocol);
@@ -106,12 +116,24 @@ class JdbcDatabasePlatformFactoryTest {
     void testDetermineDatabaseNameVersionSubprotocol_vanillaPostgres95_unaffected() throws Exception {
         Connection connection = createNonGreenplumConnection();
         stubAuroraVersionQuery(connection, false);
+        stubCloudSqlIamAuthenticationQuery(connection, false);
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         when(metaData.getDatabaseMajorVersion()).thenReturn(15);
         when(metaData.getDatabaseMinorVersion()).thenReturn(0);
         DatabaseVersion nameVersion = newPostgresVersion(PostgreSqlDatabasePlatform.JDBC_SUBPROTOCOL, "PostgreSQL");
         factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
         assertEquals(DatabaseNamesConstants.POSTGRESQL95, nameVersion.getName());
+    }
+
+    @Test
+    void testDetermineDatabaseNameVersionSubprotocol_cloudSqlPostgresDetected_setsCloudSqlPostgresName() throws Exception {
+        Connection connection = createNonGreenplumConnection();
+        stubAuroraVersionQuery(connection, false);
+        stubCloudSqlIamAuthenticationQuery(connection, true);
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        DatabaseVersion nameVersion = newPostgresVersion(PostgreSqlDatabasePlatform.JDBC_SUBPROTOCOL, "PostgreSQL");
+        factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
+        assertEquals(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL, nameVersion.getName());
     }
 
     @Test
