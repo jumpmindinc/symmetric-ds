@@ -30,12 +30,14 @@ import java.nio.charset.Charset;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.KeyStore.TrustedCertificateEntry;
+import java.security.UnrecoverableKeyException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.spec.AlgorithmParameterSpec;
+import org.jumpmind.util.ExceptionUtils;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -65,6 +67,7 @@ public class SecurityService implements ISecurityService {
     protected static String trustStoreFileName;
     protected static URL trustStoreURL;
     protected static SecureRandom random;
+    protected static volatile boolean isKeystoreInitialized;
     static {
         keyStoreFileName = StringUtils.trimToNull(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE));
         if (keyStoreFileName == null) {
@@ -83,10 +86,48 @@ public class SecurityService implements ISecurityService {
     }
 
     protected SecurityService() {
+        isKeystoreInitialized = false;
     }
 
     @Override
     public synchronized void init() {
+        if (isKeystoreInitialized) {
+            log.debug("Already initialized. Key store={}", keyStoreURL);
+            return;
+        }
+        if (keyStoreFileName == null) {
+            log.debug("Using keystore from classpath {}", keyStoreURL);
+            throw new RuntimeException("Keystore path not set! Please specify a keystore file using the system property -D"
+                    + SecurityConstants.SYSPROP_KEYSTORE);
+        } else {
+            log.info("Using keystore from file {}", keyStoreFileName);
+        }
+        if (trustStoreFileName == null) {
+            log.debug("Using truststore from classpath {}", trustStoreURL);
+            throw new RuntimeException("Truststore path not set! Please specify a truststore file using the system property -D"
+                    + SecurityConstants.SYSPROP_TRUSTSTORE);
+        } else {
+            log.info("Using truststore from file {}", trustStoreFileName);
+        }
+        long secureRandom = nextSecureLong();
+        log.debug("Confirmed secure random is available. Result={}. Running keystore integrity check...", secureRandom);
+        isKeystoreInitialized = validateKeystoreIntegrity();
+    }
+
+    @Override
+    public boolean validateKeystoreIntegrity() {
+        log.debug("Testing keystore integrity. Key store={}", keyStoreFileName);
+        try {
+            encrypt("keystore-integrity-test");
+            return true;
+        } catch (Exception ex) {
+            log.debug("Failed to encrypt using current keystore! Key store=" + keyStoreFileName, ex);
+            throw ex;
+        }
+    }
+
+    public boolean isInitialized() {
+        return isKeystoreInitialized;
     }
 
     @Override
@@ -408,8 +449,9 @@ public class SecurityService implements ISecurityService {
                     KeyStore ks = getKeyStore();
                     KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry) ks.getEntry(SecurityConstants.ALIAS_SYM_SECRET_KEY, param);
                     if (entry == null) {
-                        log.info("Generating secret key");
-                        entry = new KeyStore.SecretKeyEntry(getDefaultSecretKey());
+                        String seed = resolveConfiguredSeed();
+                        SecretKey key = StringUtils.isNotBlank(seed) ? createSecretKeyFromSeed(seed) : getDefaultSecretKey();
+                        entry = new KeyStore.SecretKeyEntry(key);
                         ks.setEntry(SecurityConstants.ALIAS_SYM_SECRET_KEY, entry, param);
                         saveKeyStore(ks, password);
                     } else {
@@ -420,6 +462,38 @@ public class SecurityService implements ISecurityService {
                 }
             }
         }
+    }
+
+    protected String resolveConfiguredSeed() {
+        String seed = System.getProperty(SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
+        if (StringUtils.isBlank(seed)) {
+            String legacy = System.getProperty(SecurityConstants.ALIAS_SYM_SECRET_KEY);
+            if (StringUtils.isNotBlank(legacy)) {
+                log.warn("System property -D{} as a key seed is deprecated; use -D{} instead",
+                        SecurityConstants.ALIAS_SYM_SECRET_KEY, SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED);
+                seed = legacy;
+            }
+        }
+        return seed;
+    }
+
+    protected SecretKey createSecretKeyFromSeed(String base64Seed) {
+        byte[] keyBytes = Base64.decodeBase64(base64Seed);
+        if (!isValidAesKeyLength(keyBytes)) {
+            log.error("Invalid value for system property {}: expected a Base64-encoded 16, 24, or 32-byte AES key, but decoded to {} bytes",
+                    SecurityConstants.SYSPROP_CLUSTER_KEYSTORE_SEED, keyBytes.length);
+            System.exit(1);
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Using configured secret key. Length={} bytes", keyBytes.length);
+        } else {
+            log.info("Using configured secret key");
+        }
+        return new SecretKeySpec(keyBytes, "AES");
+    }
+
+    protected boolean isValidAesKeyLength(byte[] keyBytes) {
+        return keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32;
     }
 
     @Override
@@ -462,6 +536,11 @@ public class SecurityService implements ISecurityService {
             password[i] = SecurityConstants.PASSWORD_CHARS.charAt(random.nextInt(maxInt));
         }
         return new String(password);
+    }
+
+    @Override
+    public long nextSecureLong() {
+        return random.nextLong();
     }
 
     protected SecretKey getDefaultSecretKey() throws Exception {

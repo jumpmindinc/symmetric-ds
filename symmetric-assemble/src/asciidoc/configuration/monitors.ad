@@ -4,6 +4,8 @@
 A monitor watches some part of the system for a problem, checking to see if the monitored value exceeds a threshold.
 (To be notified immediately of new monitor events, configure a notification.)
 
+TIP: The `cpu`, `memory`, `loadAverage`, `connectionPool`, `fileHandles`, and `jvmOutOfMemory` monitor types below are also the recommended feedback loop for right-sizing CPU, heap, and connection pool settings in production — see <<CPU and Memory Sizing>>.
+
 Monitor ID:: The monitor ID is a unique name to refer to the monitor.
 
 Target Nodes:: The group of nodes that will run this monitor.

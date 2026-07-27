@@ -43,7 +43,7 @@ endif::pro[]
 
 WARNING: External select SQL statements should be used carefully as they will cause the trigger to run the additional SQL each time the trigger fires.
 
-TIP: Using an external select on the trigger is similar to using the 'subselect' router.  The advantage of this approach over the 'subselect' approach 
+TIP: Using an external select on the trigger is similar to using the 'subselect' router (Pro only).  The advantage of this approach over the 'subselect' approach
 is that it guards against the (somewhat unlikely) possibility that the master Order table row might have been deleted before routing has taken place. 
 This external select solution also is a bit more efficient than the 'subselect' approach.
 		

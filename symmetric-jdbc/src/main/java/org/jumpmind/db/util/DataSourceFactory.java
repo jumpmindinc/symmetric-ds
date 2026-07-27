@@ -42,12 +42,12 @@ public class DataSourceFactory {
     }
 
     public static void prepareDriver(String clazzName) throws Exception {
-        Class<?> clazz = Class.forName(clazzName);
-        if (!Driver.class.isAssignableFrom(clazz)) {
-            throw new NotJdbcDriverException(clazzName + " is not a JDBC driver");
-        }
-        Driver driver = (Driver) clazz.getDeclaredConstructor().newInstance();
         synchronized (DriverManager.class) {
+            Class<?> clazz = Class.forName(clazzName);
+            if (!Driver.class.isAssignableFrom(clazz)) {
+                throw new NotJdbcDriverException(clazzName + " is not a JDBC driver");
+            }
+            Driver driver = (Driver) clazz.getDeclaredConstructor().newInstance();
             Enumeration<Driver> drivers = DriverManager.getDrivers();
             while (drivers.hasMoreElements()) {
                 Driver driver2 = drivers.nextElement();

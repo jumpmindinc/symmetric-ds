@@ -26,10 +26,49 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
+import org.jumpmind.symmetric.cache.IClusterCacheCoordinator;
+import org.jumpmind.symmetric.cache.JcsTcpCacheCoordinator;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class ConfigImportHelperTest {
+    private static Field isInitializationCompleteField;
+    private static Field peerNetworkCoordinatorField;
+    private static boolean originalIsInitializationComplete;
+    private static IClusterCacheCoordinator originalPeerNetworkCoordinator;
+
+    /**
+     * ConfigImportHelper builds a real ClientSymmetricEngine, whose init()/setup() unconditionally report to and query the JVM-wide ClusteredCacheManager
+     * singleton. That singleton is normally initialized once by SymmetricEngineHolder during server startup, which never runs here, so flip its switches
+     * directly for the duration of this test class: mark it initialized, and give it an unstarted peer coordinator so peer queries return empty results instead
+     * of throwing or NPEing.
+     */
+    @BeforeAll
+    static void flipClusteredCacheManagerInitializedSwitch() throws Exception {
+        ClusteredCacheManager instance = (ClusteredCacheManager) ClusteredCacheManager.getInstance();
+        isInitializationCompleteField = ClusteredCacheManager.class.getDeclaredField("isInitializationComplete");
+        isInitializationCompleteField.setAccessible(true);
+        originalIsInitializationComplete = isInitializationCompleteField.getBoolean(instance);
+        isInitializationCompleteField.setBoolean(instance, true);
+        peerNetworkCoordinatorField = ClusteredCacheManager.class.getDeclaredField("peerNetworkCoordinator");
+        peerNetworkCoordinatorField.setAccessible(true);
+        originalPeerNetworkCoordinator = (IClusterCacheCoordinator) peerNetworkCoordinatorField.get(instance);
+        if (originalPeerNetworkCoordinator == null) {
+            peerNetworkCoordinatorField.set(instance, new JcsTcpCacheCoordinator());
+        }
+    }
+
+    @AfterAll
+    static void restoreClusteredCacheManagerInitializedSwitch() throws Exception {
+        ClusteredCacheManager instance = (ClusteredCacheManager) ClusteredCacheManager.getInstance();
+        isInitializationCompleteField.setBoolean(instance, originalIsInitializationComplete);
+        peerNetworkCoordinatorField.set(instance, originalPeerNetworkCoordinator);
+    }
+
     @Test
     void containsNodeGroupReturnsTrueForLoadedGroup() throws IOException {
         try (ConfigImportHelper helper = new ConfigImportHelper("sym")) {

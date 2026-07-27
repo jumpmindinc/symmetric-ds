@@ -76,4 +76,12 @@ public class ApplicationHealthTracker implements IApplicationHealthTracker {
         }
         return ready;
     }
+
+    @Override
+    public void onShutdown() {
+        alive = false;
+        for (String engineName : engineReadiness.keySet()) {
+            engineReadiness.put(engineName, false);
+        }
+    }
 }

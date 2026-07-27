@@ -30,6 +30,7 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ext.IOfflineServerListener;
 import org.jumpmind.symmetric.io.IOfflineClientListener;
 import org.jumpmind.symmetric.model.NetworkedNode;
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeGroupLinkAction;
 import org.jumpmind.symmetric.model.NodeHost;
@@ -153,7 +154,17 @@ public interface INodeService {
 
     public void updateNodeHost(NodeHost nodeHost);
 
+    public void updateNodeHost(ISqlTransaction transaction, NodeHost nodeHost);
+
     public void updateNodeHostForCurrentNode();
+
+    public void updateNodeHostForCurrentNode(ISqlTransaction transaction);
+
+    /**
+     * Updates the current node's heartbeat. If bypassTrigger is true, sync triggers are disabled around the update so it is not captured and replicated to
+     * other nodes (used at startup, to record a heartbeat without waiting on the sync pipeline). If false, the update goes through normally.
+     */
+    public void updateNodeHostForCurrentNode(boolean bypassTrigger);
 
     public void insertNodeIdentity(String nodeId);
 

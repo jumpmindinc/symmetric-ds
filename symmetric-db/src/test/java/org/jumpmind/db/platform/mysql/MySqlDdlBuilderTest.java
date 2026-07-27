@@ -6,7 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.sql.Types;
 
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.junit.jupiter.api.Test;
 
 public class MySqlDdlBuilderTest {
@@ -57,5 +59,19 @@ public class MySqlDdlBuilderTest {
         assertTrue(ddl.contains("PRIMARY KEY"), "Should contain PRIMARY KEY");
         assertTrue(ddl.contains("KEY `col2` (`col2`)"), "Auto-increment on non-first PK column should add extra KEY");
         assertFalse(ddl.contains("KEY `col1` (`col1`)"), "Non-auto-increment column should not add extra KEY");
+    }
+
+    @Test
+    void testGetSqlType_EnumColumnTaggedWithAuroraMySqlVariant_StillAppliesEnumValues() {
+        MySqlDdlBuilder ddlBuilder = new MySqlDdlBuilder();
+        Column column = new Column("status", false, Types.CHAR, 10, 0);
+        column.setJdbcTypeName("ENUM");
+        PlatformColumn platformColumn = new PlatformColumn(DatabaseNamesConstants.AURORA_MYSQL, "ENUM", null);
+        platformColumn.setEnumValues(new String[] { "ACTIVE", "INACTIVE" });
+        column.addPlatformColumn(platformColumn);
+        String sqlType = ddlBuilder.getSqlType(column);
+        assertTrue(sqlType.contains("'ACTIVE'") && sqlType.contains("'INACTIVE'"),
+                "Expected enum values sourced via the MySQL-family PlatformColumn even though it was tagged '"
+                        + DatabaseNamesConstants.AURORA_MYSQL + "' instead of the literal '" + DatabaseNamesConstants.MYSQL + "'");
     }
 }

@@ -74,9 +74,11 @@ import org.jumpmind.db.platform.interbase.InterbaseDatabasePlatform;
 import org.jumpmind.db.platform.kafka.KafkaPlatform;
 import org.jumpmind.db.platform.mariadb.MariaDBDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
+import org.jumpmind.db.platform.mysql.MySqlVariantDetector;
 import org.jumpmind.db.platform.nuodb.NuoDbDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSql95DatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
+import org.jumpmind.db.platform.postgresql.PostgreSqlVariantDetector;
 import org.jumpmind.db.platform.raima.RaimaDatabasePlatform;
 import org.jumpmind.db.platform.redshift.RedshiftDatabasePlatform;
 import org.jumpmind.db.platform.sqlanywhere.SqlAnywhere12DatabasePlatform;
@@ -98,6 +100,7 @@ import org.slf4j.LoggerFactory;
  */
 public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
     public static final String JDBC_PREFIX = "jdbc:";
+    protected static final String AWS_JDBC_WRAPPER_SUBPROTOCOL = "aws-wrapper";
     protected static final Logger log = LoggerFactory.getLogger(JdbcDatabasePlatformFactory.class);
     /* The database name -> platform map. */
     protected Map<String, Class<? extends IDatabasePlatform>> platforms = new HashMap<String, Class<? extends IDatabasePlatform>>();
@@ -278,12 +281,25 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
 
     protected void determineDatabaseNameVersionSubprotocol(DataSource dataSource, Connection connection, DatabaseMetaData metaData, DatabaseVersion nameVersion)
             throws SQLException {
-        if (nameVersion.getProtocol().equalsIgnoreCase(PostgreSqlDatabasePlatform.JDBC_SUBPROTOCOL)) {
+        boolean isPostgresProtocol = nameVersion.getProtocol().equalsIgnoreCase(PostgreSqlDatabasePlatform.JDBC_SUBPROTOCOL)
+                || (AWS_JDBC_WRAPPER_SUBPROTOCOL.equalsIgnoreCase(nameVersion.getProtocol()) && "PostgreSQL".equalsIgnoreCase(nameVersion.getName()));
+        if (isPostgresProtocol) {
             if (isGreenplumDatabase(connection)) {
                 nameVersion.setName(DatabaseNamesConstants.GREENPLUM);
                 nameVersion.setVersion(getGreenplumVersion(connection));
+            } else if (PostgreSqlVariantDetector.isAuroraPostgres(connection)) {
+                nameVersion.setName(DatabaseNamesConstants.AURORA_POSTGRESQL);
             } else if (metaData.getDatabaseMajorVersion() > 9 || (metaData.getDatabaseMajorVersion() == 9 && metaData.getDatabaseMinorVersion() >= 5)) {
                 nameVersion.setName(DatabaseNamesConstants.POSTGRESQL95);
+            }
+        }
+        boolean isMySqlProtocol = nameVersion.getProtocol().equalsIgnoreCase(MySqlDatabasePlatform.JDBC_SUBPROTOCOL)
+                || (AWS_JDBC_WRAPPER_SUBPROTOCOL.equalsIgnoreCase(nameVersion.getProtocol()) && "MySQL".equalsIgnoreCase(nameVersion.getName()));
+        if (isMySqlProtocol) {
+            if (MySqlVariantDetector.isAuroraMySql(connection)) {
+                nameVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
+            } else if (MySqlVariantDetector.isCloudSqlMySql(connection)) {
+                nameVersion.setName(DatabaseNamesConstants.CLOUDSQL_MYSQL);
             }
         }
         if (nameVersion.getProtocol().equalsIgnoreCase(FirebirdDatabasePlatform.JDBC_SUBPROTOCOL)) {

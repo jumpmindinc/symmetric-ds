@@ -521,7 +521,7 @@ public class DbFill {
             log.info("Truncating table {}", table.getFullyQualifiedName());
         }
         String options = "";
-        if (platform.getName().startsWith(DatabaseNamesConstants.POSTGRESQL)) {
+        if (platform.getName().contains(DatabaseNamesConstants.POSTGRESQL)) {
             options = " cascade";
         }
         platform.getSqlTemplate().update("truncate table " + table.getFullyQualifiedName() + options);
@@ -852,7 +852,7 @@ public class DbFill {
     }
 
     private void loadSetColumnValues(Table table) {
-        if (!platform.getName().equals(DatabaseNamesConstants.MYSQL)) {
+        if (!platform.getName().contains(DatabaseNamesConstants.MYSQL)) {
             return;
         }
         String tableKey = table.getName() + ".";

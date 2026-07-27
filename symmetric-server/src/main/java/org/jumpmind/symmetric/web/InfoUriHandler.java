@@ -32,6 +32,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.jumpmind.symmetric.common.InfoConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.service.IClusterService;
@@ -113,7 +114,7 @@ public class InfoUriHandler extends AbstractUriHandler {
         boolean isClustered = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
         properties.setProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED, Boolean.toString(isClustered));
         if (isClustered) {
-            properties.setProperty(ParameterConstants.CLUSTER_SERVER_ID, clusterService.getServerId());
+            properties.setProperty(ServerConstants.CLUSTER_SERVER_ID, clusterService.getServerId());
         }
         properties.store(res.getOutputStream(), "SymmetricDS");
         res.flushBuffer();

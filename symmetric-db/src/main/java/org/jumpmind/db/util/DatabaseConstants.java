@@ -23,4 +23,5 @@ package org.jumpmind.db.util;
 public class DatabaseConstants {
     public static final String IS_CONFLICT_WINNER = "isConflictWinner";
     public final static String DATABASE_PLATFORM_FACTORY_CLASS = "database.platform.factory.class";
+    public static final String POSTGRES_USE_ON_CONFLICT = "postgres.use.on.conflict";
 }

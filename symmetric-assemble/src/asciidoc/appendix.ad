@@ -293,6 +293,10 @@ include::appendix/dbfill.ad[]
 
 
 [appendix]
+== Production Deployment Infrastructure Guidelines
+include::appendix/production-deployment.ad[]
+
+[appendix]
 == Replication Modes
 include::appendix/mode-trigger-based.ad[]
 

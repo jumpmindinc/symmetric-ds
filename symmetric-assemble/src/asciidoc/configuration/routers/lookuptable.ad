@@ -1,12 +1,8 @@
 
 ===== Lookup Table Router
 
-A lookup table may contain the id of the node where data needs to be routed. This could be an existing table or an ancillary table that 
-is added specifically for the purpose of routing data. 
-ifndef::pro[]
-Lookup table routers are configured by setting the router_type column on the 
-ROUTER table to lookuptable and setting a list of configuration parameters in the router_expression column.
-endif::pro[]
+A lookup table may contain the id of the node where data needs to be routed. This could be an existing table or an ancillary table that
+is added specifically for the purpose of routing data.
 
 .Each of the following configuration parameters are required.
 [IMPORTANT]
@@ -24,19 +20,6 @@ NOTE: The lookup table will be read into memory and cached for the duration of a
 Consider a table that needs to be routed to a specific store, but the data in the changing table only contains brand information. 
 In this case, the STORE table may be used as a lookup table.
 
-ifndef::pro[]
-[source, SQL]
-insert into SYM_ROUTER (router_id,
-		source_node_group_id, target_node_group_id, router_type,
-		router_expression, create_time, last_update_time) values
-		('corp-2-store-ok','corp', 'store', 'lookuptable', 'LOOKUP_TABLE=STORE
-		KEY_COLUMN=BRAND_ID LOOKUP_KEY_COLUMN=BRAND_ID
-		EXTERNAL_ID_COLUMN=STORE_ID', current_timestamp, current_timestamp);
-endif::pro[]
-
-ifdef::pro[]
 .Router Expression
 
 LOOKUP_TABLE=STORE KEY_COLUMN=BRAND_ID LOOKUP_KEY_COLUMN=BRAND_ID EXTERNAL_ID_COLUMN=STORE_ID
-endif::pro[]
- 

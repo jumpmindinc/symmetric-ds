@@ -93,6 +93,37 @@ The following categories of metrics are collected automatically:
 Metrics are published via the OpenTelemetry API under the scope `symmetricds` and are used to power the Analytics reports in SymmetricDS Pro.
 --
 
+=== Cluster Lock Recovery via JCS Peer Heartbeat
+--
+SymmetricDS 3.18 introduces a peer-to-peer heartbeat mechanism using Apache JCS lateral TCP cache to detect crashed cluster members and automatically recover their orphaned database locks.
+
+Each endpoint broadcasts a heartbeat every 3 seconds to all known peers.
+When an endpoint misses three consecutive heartbeats — for example, because the JVM was killed by an out-of-memory condition, the container was evicted by the orchestrator, or the host was terminated — the surviving endpoints detect the stale heartbeat and immediately clear all database locks held by the crashed endpoint.
+This eliminates the previous behavior where surviving endpoints had to wait for the `cluster.lock.timeout.ms` expiry (default 2 hours) before they could acquire those locks.
+
+In a multi-endpoint deployment where each JVM hosts multiple database endpoints independently, lock recovery is additionally scoped per endpoint.
+If only one endpoint on a JVM crashes while others remain healthy, only the locks held by that specific endpoint are cleared — the running endpoints are unaffected.
+
+Multiple clusters for different environments — Production, Staging, and Testing — remain fully isolated even when deployed on the same orchestrator platform or shared subnet.
+Peer discovery is driven entirely by the `SYM_NODE_HOST` table: each endpoint only learns the hostnames of other endpoints that share the same database.
+Because each environment uses its own database, its `SYM_NODE_HOST` table contains only that environment's endpoints, so JCS heartbeats are never exchanged across environments.
+As a second layer of defense, assigning a distinct `cluster.jcs.port` per environment provides network-level isolation and prevents accidental cross-environment traffic in scenarios where network segmentation is not strict.
+
+The peer communication port is configured via the `cluster.jcs.port` property (default 1101, must be the same across all cluster members within an environment).
+Each cluster's shared identity is the cluster partition ID: auto-generated and persisted to `SYM_CONTEXT` on first startup so every node sharing that database converges automatically, or pinned explicitly via `cluster.partition.id` (or the `SYM_CLUSTER_PARTITION_ID` environment variable) when nodes in the same cluster point at different databases.
+All endpoints must be reachable on the JCS port; peer messages are AES-encrypted with a SHA-512 header checksum, but the port should still be protected by network-level firewall rules and not exposed to untrusted networks.
+
+Each cluster member's peer identity — used for JCS peer discovery and for its row in `SYM_NODE_HOST` — is now resolved consistently from the single `cluster.server.id` parameter (defaulting to the container/OS hostname - recommended for most deployments!). The internal `runtime.symmetric.cluster.server.id` system property has been removed; use `cluster.server.id` to pin a stable, distinct identity per cluster member.
+
+`cluster.lock.enabled` is now a startup-only parameter and is no longer database-overridable. Whether JCS peer-awareness starts at all is decided once, before any node or engine exists, from the file/environment value of this parameter; a `SYM_PARAMETER` override was never reliably honored against that already-made decision, and code that re-checked the live database value later could disagree with what actually started, silently skipping cluster-authentication checks or misreporting whether JCS clustering is active. Set `cluster.lock.enabled` in engine properties or as an environment variable before startup; changing it in the database (or via the admin console) has no effect and requires a restart to take effect.
+
+Custom extensions implementing the following core interfaces should note these changes:
+
+* `IClusterService` — adds `removeObsoleteNodeHosts()`, which clears any cluster locks still held by a `SYM_NODE_HOST` entry older than `cluster.peer.obsolete.ms`, removes that entry, and also removes the corresponding peer from the in-memory JCS peer registry (`IClusteredCacheManager.removePeer`). Called automatically at the start of the outgoing purge job.
+* `INodeService` — adds `updateNodeHostForCurrentNode(boolean bypassTrigger)` (moved here from a private `DataService` method) so any caller can update the current node's heartbeat with or without going through sync triggers.
+* `IClusteredCacheManager` and `IClusterCacheCoordinator` — Wrap JCS server-to-server communication and peer server discovery. Peer discovery also supports simpler discovery - `SYM_NODE_HOST` table. PRO version adds support of UDP broadcast, which might not route on most cloud VPCs (AWS, Azure, GCP, OCI) or managed Kubernetes networks. Discovery services are used where available to accelerate detection of container crashes (seconds versus the heartbeat job's cadence, `job.heartbeat.period.time.ms`, 15 minutes by default).
+--
+
 === Container Mode
 --
 SymmetricDS 3.18 adds first-class container support via the `bin/sym --container` command. This mode runs SymmetricDS as PID 1 inside the container, enabling proper signal handling and graceful shutdown behavior expected by container orchestrators.

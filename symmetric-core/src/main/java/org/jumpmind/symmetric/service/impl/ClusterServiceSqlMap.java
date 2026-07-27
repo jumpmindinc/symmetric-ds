@@ -34,5 +34,7 @@ public class ClusterServiceSqlMap extends AbstractSqlMap {
                 "select lock_action, lock_type, locking_server_id, lock_time, shared_count, shared_enable, last_lock_time, last_locking_server_id from $(lock)");
         putSql("updateLastLockTimeSql",
                 "update $(lock) set last_lock_time = ?, last_locking_server_id = ? where lock_action = ?");
+        putSql("clearLocksForServerSql",
+                "update $(lock) set locking_server_id = null, lock_time = null, shared_count = 0, shared_enable = 0 where locking_server_id = ?");
     }
 }

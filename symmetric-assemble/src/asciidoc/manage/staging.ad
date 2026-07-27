@@ -11,7 +11,9 @@ The location of the temporary directory may be changed by setting the Java Syste
 [source, cli]
 ----
 -Djava.io.tmpdir=/home/.symmetricds/tmp
-----   
+----
+
+TIP: For guidance on placing the staging area on shared network storage in a clustered deployment, and sizing it for production throughput, see <<Staging Area Placement and Sizing>>.
 
 ifdef::pro[]
 

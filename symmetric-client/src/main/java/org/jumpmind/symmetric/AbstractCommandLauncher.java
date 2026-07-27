@@ -78,6 +78,7 @@ public abstract class AbstractCommandLauncher {
     private static boolean serverPropertiesInitialized = false;
     private boolean isContainerEnabled = false;
     static {
+        TypedPropertiesFactory.importJvmEnvVars();
         System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
         String symHome = AppUtils.getSymHome();
         if (isBlank(System.getProperty("h2.baseDir.disable")) && isBlank(System.getProperty("h2.baseDir"))) {

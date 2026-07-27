@@ -27,15 +27,17 @@ import java.util.Properties;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
-import org.jumpmind.security.ISecurityService;
-import org.jumpmind.symmetric.cache.ICacheManager;
-import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.extension.IProcessInfoListener;
 import org.jumpmind.extension.IProgressListener;
+import org.jumpmind.security.ISecurityService;
+import org.jumpmind.symmetric.cache.ICacheManager;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager;
+import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.job.IJobManager;
 import org.jumpmind.symmetric.model.NodeStatus;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
+import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
 import org.jumpmind.symmetric.service.IClusterService;
@@ -50,7 +52,6 @@ import org.jumpmind.symmetric.service.IGroupletService;
 import org.jumpmind.symmetric.service.IIncomingBatchService;
 import org.jumpmind.symmetric.service.IInitialLoadService;
 import org.jumpmind.symmetric.service.ILoadFilterService;
-import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IOfflinePullService;
@@ -183,6 +184,12 @@ public interface ISymmetricEngine {
      *            beats has expired.
      */
     public void heartbeat(boolean force);
+
+    /**
+     * Discovers cluster peers by reading SYM_NODE_HOST for this node's other known hosts (used by the "db" cluster.peer.discovery mode). Runs independent of
+     * any job schedule so peers are found even when the heartbeat/push/pull jobs are disabled.
+     */
+    public int refreshClusterPeersFromNodeHost();
 
     /**
      * Open up registration for node to attach.
@@ -338,4 +345,6 @@ public interface ISymmetricEngine {
     public String getEngineDescription(String mesage);
 
     public ICacheManager getCacheManager();
+
+    public IClusteredCacheManager getClusteredCacheManager();
 }

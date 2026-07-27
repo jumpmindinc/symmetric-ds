@@ -72,6 +72,9 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 public class PurgeServiceTest {
+    private static final int MINS_IN_ONE_DAY = 1440;
+    private static final int MINS_IN_ONE_WEEK = 10080;
+    private static final int MINS_IN_60_DAYS = 86400;
     private IParameterService parameterService;
     private ISymmetricDialect symmetricDialect;
     private ISqlTemplate sqlTemplate;
@@ -121,8 +124,9 @@ public class PurgeServiceTest {
         when(parameterService.getInt(ParameterConstants.PURGE_MAX_EXPIRED_DATA_GAPS_READ)).thenReturn(100);
         when(parameterService.getInt(ParameterConstants.PURGE_EXTRACT_REQUESTS_RETENTION_MINUTES)).thenReturn(1);
         when(parameterService.getInt(ParameterConstants.PURGE_REGISTRATION_REQUEST_RETENTION_MINUTES)).thenReturn(1);
-        when(parameterService.getInt(ParameterConstants.PURGE_TRIGGER_HIST_RETENTION_MINUTES)).thenReturn(1440);
-        when(parameterService.getInt(ParameterConstants.PURGE_STATS_RETENTION_MINUTES)).thenReturn(10080);
+        when(parameterService.getInt(ParameterConstants.PURGE_TRIGGER_HIST_RETENTION_MINUTES)).thenReturn(MINS_IN_ONE_DAY);
+        when(parameterService.getInt(ParameterConstants.PURGE_STATS_RETENTION_MINUTES)).thenReturn(MINS_IN_ONE_WEEK);
+        when(parameterService.getInt(ParameterConstants.PURGE_NODE_HOST_RETENTION_MINUTES, MINS_IN_60_DAYS)).thenReturn(MINS_IN_60_DAYS);
         extensionService = mock(ExtensionService.class);
         ISymmetricEngine engine = mock(AbstractSymmetricEngine.class);
         clusterService = mock(ClusterService.class);
@@ -251,6 +255,12 @@ public class PurgeServiceTest {
         verifyPurgeDataEvent(100, 102, 0, 0);
         verifyPurgeOutgoingBatch(100, 102, 0, 0);
         verifyPurgeContext(3, 102, 102);
+    }
+
+    @Test
+    public void testPurgeOutgoingPurgesNodeHost() {
+        purgeService.purgeOutgoing(true);
+        verify(sqlTemplate).update(eq(service.getSql("purgeNodeHostSql")), any(Date.class));
     }
 
     @Test
