@@ -25,4 +25,8 @@ import org.jumpmind.symmetric.cache.EngineAndPeerStateMap;
 public interface ISymmetricEngineHolder {
     /** Builds a consolidated snapshot of all currently registered engines and their states, keyed under {@code serverId}. */
     EngineAndPeerStateMap buildCurrentEngineStateSnapshot(String serverId);
+
+    ServerSymmetricEngine getRegistrationEngine();
+
+    void stop();
 }
