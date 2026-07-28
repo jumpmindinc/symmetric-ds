@@ -2301,6 +2301,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         }
         return modifiedRelation;
     }
+
     private TriggerHistory getLatestHistoryForTriggerRelation(Trigger trigger, Relation relation, List<TriggerHistory> activeTriggerHistories) {
         synchronized (activeTriggerHistories) {
             return getNewestTriggerHistoryForTrigger(activeTriggerHistories, trigger.getTriggerId(),
