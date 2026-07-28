@@ -45,6 +45,7 @@ import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
+import org.jumpmind.symmetric.service.impl.RouterService;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.Context;
 import org.slf4j.Logger;
@@ -101,6 +102,10 @@ public class ConfigurationChangedHelper {
                 CTX_KEY_RESYNC_NEEDED);
         updateContext(TableConstants.SYM_PARAMETER, table, context, CTX_KEY_FLUSH_PARAMETERS_NEEDED);
         updateContext(TableConstants.SYM_ROUTER, table, context, CTX_KEY_RESYNC_NEEDED, CTX_KEY_FLUSH_ROUTERS_NEEDED);
+        if (matchesTable(table, TableConstants.SYM_ROUTER) && (data.getDataEventType().equals(DataEventType.INSERT)
+                || data.getDataEventType().equals(DataEventType.UPDATE))) {
+            logIfUnsupportedColumnSegmentRouter(table, data);
+        }
         updateContext(TableConstants.SYM_TRANSFORM_TABLE, table, context, CTX_KEY_FLUSH_TRANSFORMS_NEEDED);
         updateContext(TableConstants.SYM_TRANSFORM_COLUMN, table, context, CTX_KEY_FLUSH_TRANSFORMS_NEEDED);
         updateContext(TableConstants.SYM_TRIGGER_ROUTER_GROUPLET, table, context, CTX_KEY_FLUSH_GROUPLETS_NEEDED, CTX_KEY_RESYNC_NEEDED);
@@ -325,6 +330,16 @@ public class ConfigurationChangedHelper {
         String nodeGroupId = engine.getParameterService().getNodeGroupId();
         String columnValue = getColumnValue(table, data, columnName);
         return columnValue == null || nodeGroupId.equals(columnValue) || columnValue.equals(ParameterConstants.ALL);
+    }
+
+    private void logIfUnsupportedColumnSegmentRouter(Table table, CsvData data) {
+        String routerType = getColumnValue(table, data, "router_type");
+        String sourceNodeGroupId = getColumnValue(table, data, "source_node_group_id");
+        if (RouterService.COLUMN_SEGMENT_ROUTER_TYPE.equals(routerType) && engine.getParameterService().getNodeGroupId().equals(sourceNodeGroupId)) {
+            String routerId = getColumnValue(table, data, "router_id");
+            log.error("Router type 'segment' configured on router '{}' is not supported in this version of SymmetricDS. "
+                    + "Upgrade to version 3.18.0 or later (PRO edition) to use the Column Segment Router.", routerId);
+        }
     }
 
     private void updateContext(String tableSuffix, Table table, Context context, String... constants) {
