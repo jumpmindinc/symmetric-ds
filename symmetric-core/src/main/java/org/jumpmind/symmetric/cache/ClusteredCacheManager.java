@@ -48,8 +48,8 @@ import org.slf4j.MDC;
  * JcsTcpCacheCoordinator ).
  */
 public class ClusteredCacheManager implements IClusteredCacheManager {
-    private static final ClusteredCacheManager GLOBAL_INSTANCE = new ClusteredCacheManager();
-    private static final Logger log = LoggerFactory.getLogger(ClusteredCacheManager.class);
+    private static final IClusteredCacheManager GLOBAL_INSTANCE = AppUtils.newInstance(IClusteredCacheManager.class, ClusteredCacheManager.class);
+    protected static final Logger log = LoggerFactory.getLogger(((ClusteredCacheManager) GLOBAL_INSTANCE).getLoggerName());
     private volatile boolean isInitializationComplete = false;
     private volatile boolean isClusterLockingEnabled = false;
     private volatile boolean isHeartbeatLoopRunning = false;
@@ -57,7 +57,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private String myServerId;
     private String myClusterPartitionId;
     private long myStartTimeMs;
-    private volatile Object symmetricEngineHolder;
+    protected volatile Object symmetricEngineHolder;
     private volatile IClusterCacheCoordinator peerNetworkCoordinator;
     private volatile ClusterMessageConverter converter;
     private volatile ICachePeerServerDiscovery peerDiscovery;
@@ -70,12 +70,19 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     private volatile long currentStaleThresholdMs = ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS;
     private volatile long lastHeartbeatSummaryLogMs;
     private volatile String lastBroadcastEventType = ClusterServerStatusMessage.EVENT_PEER_HEARTBEAT;
-    private static final String CLUSTER_HEARTBEAT_THREAD_NAME = "sym-cluster-heartbeat";
+    private static final String THREAD_ID_CLUSTER_HEARTBEAT = "sym-cluster-heartbeat";
     private static final String CLUSTERED_CACHE_LOG_CONTEXT = "sym_clustered_cache";
     private static final long HEARTBEAT_MIN_SLEEP_DELAY_MS = 20L; // Skip sleeping (Thread.sleep) and loop again when remaining delay is below this
     Runnable exitProcessAction = () -> new Thread(this::exitProcess, "sym-cluster-exit").start(); // Separate thread prevents deadlocks
 
-    private ClusteredCacheManager() {
+    protected ClusteredCacheManager() {
+    }
+
+    /**
+     * Overridden by editions/subclasses (e.g. PRO)
+     */
+    protected String getLoggerName() {
+        return getClass().getName();
     }
 
     @Override
@@ -421,9 +428,9 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             return;
         }
         this.isHeartbeatLoopRunning = true;
-        heartbeatThread = new Thread(() -> runClusterHeartbeatLoop(), CLUSTER_HEARTBEAT_THREAD_NAME);
+        heartbeatThread = new Thread(() -> runClusterHeartbeatLoop(), THREAD_ID_CLUSTER_HEARTBEAT);
         heartbeatThread.setDaemon(true);
-        log.debug("Starting cluster peer heartbeat thread = {}", CLUSTER_HEARTBEAT_THREAD_NAME);
+        log.debug("Starting cluster peer heartbeat thread = {}", THREAD_ID_CLUSTER_HEARTBEAT);
         heartbeatThread.start();
     }
 
@@ -511,7 +518,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     private void runClusterHeartbeatLoop() {
-        log.debug("Started cluster peer heartbeat thread={}", CLUSTER_HEARTBEAT_THREAD_NAME);
+        log.debug("Started cluster peer heartbeat thread={}", THREAD_ID_CLUSTER_HEARTBEAT);
         MDC.put(LoggingConstants.CONTEXT_ENGINE, CLUSTERED_CACHE_LOG_CONTEXT);
         while (this.isHeartbeatLoopRunning) {
             try {
@@ -524,31 +531,34 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 log.error("Error in cluster peer heartbeat", e);
             }
         }
-        log.debug("Ended cluster peer heartbeat thread={}", CLUSTER_HEARTBEAT_THREAD_NAME);
+        log.debug("Ended cluster peer heartbeat thread={}", THREAD_ID_CLUSTER_HEARTBEAT);
     }
 
     private static String elapsedSince(long startTimeMs) {
         return FormatUtils.formatDurationShort(System.currentTimeMillis() - startTimeMs);
     }
 
-    private void executeClusterHeartbeatAndDiscoveryTick() throws InterruptedException {
+    protected void executeClusterHeartbeatAndDiscoveryTick() throws InterruptedException {
         long startTime = System.currentTimeMillis();
         long staleThresholdMs = refreshStaleThreshold();
         long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
-        importCurrentEngineStatesFromHolder();
-        log.debug("Cluster peer heartbeat loop step 1 (importCurrentEngineStatesFromHolder) done. Elapsed={}", elapsedSince(startTime));
-        discoverPeersFromNodeHostTable();
-        log.debug("Cluster peer heartbeat loop step 2 (discoverPeersFromNodeHostTable) done. Elapsed={}", elapsedSince(startTime));
-        discoverPeersIncomingHeartbeats();
-        log.debug("Cluster peer heartbeat loop step 3 (discoverPeersIncomingHeartbeats) done. Elapsed={}", elapsedSince(startTime));
-        broadcastCurrentStateAndEngines();
-        log.debug("Cluster peer heartbeat loop step 4 (broadcastCurrentStateAndEngines) done. Elapsed={}", elapsedSince(startTime));
+        if (this.isClusterLockingEnabled()) {
+            log.debug("Skipped cluster peer heartbeat processing because isClusterLockingEnabled=false");
+            importCurrentEngineStatesFromHolder();
+            log.debug("Cluster peer heartbeat loop step 1 (importCurrentEngineStatesFromHolder) done. Elapsed={}", elapsedSince(startTime));
+            discoverPeersFromNodeHostTable();
+            log.debug("Cluster peer heartbeat loop step 2 (discoverPeersFromNodeHostTable) done. Elapsed={}", elapsedSince(startTime));
+            discoverPeersIncomingHeartbeats();
+            log.debug("Cluster peer heartbeat loop step 3 (discoverPeersIncomingHeartbeats) done. Elapsed={}", elapsedSince(startTime));
+            broadcastCurrentStateAndEngines();
+            if (log.isDebugEnabled()) {
+                log.debug("Cluster peer heartbeat loop step 4 (broadcastCurrentStateAndEngines) done. Elapsed={}", elapsedSince(startTime));
+                logEngineStates();
+                logPeerStates();
+            }
+        }
         updateOwnNodeHostHeartbeat();
         log.debug("Cluster peer heartbeat loop step 5 (updateOwnNodeHostHeartbeat) done. Elapsed={}", elapsedSince(startTime));
-        if (log.isDebugEnabled()) {
-            logEngineStates();
-            logPeerStates();
-        }
         long obsoleteThresholdMs = getObsoleteMs(getAnyEngine());
         purgeObsoletePeers(startTime, obsoleteThresholdMs);
         purgePeerStates(startTime, obsoleteThresholdMs);

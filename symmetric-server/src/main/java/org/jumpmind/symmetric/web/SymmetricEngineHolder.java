@@ -753,6 +753,16 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         return engines.size();
     }
 
+    @Override
+    public ServerSymmetricEngine getRegistrationEngine() {
+        for (ServerSymmetricEngine engine : engines.values()) {
+            if (engine.getParameterService().isRegistrationServer()) {
+                return engine;
+            }
+        }
+        return null;
+    }
+
     /** Builds a consolidated snapshot of all currently registered engines and their states, keyed under {@code serverId}. */
     @Override
     public EngineAndPeerStateMap buildCurrentEngineStateSnapshot(String serverId) {

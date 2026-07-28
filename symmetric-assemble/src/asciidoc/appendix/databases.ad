@@ -151,6 +151,32 @@ by database.
 |✔ 
 |✔
 
+|Google Cloud SQL for MySQL
+|Tested on 8.0.46
+|✔
+|✔
+|
+|✔
+|✔
+|✔
+|✔
+|
+|✔
+|✔
+
+|Google Cloud SQL for PostgreSQL
+|Tested on 17.10
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+
 |Greenplum
 |8.2.15 and above
 |
@@ -528,6 +554,20 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 |
 |
 |
+
+|Google Cloud SQL for MySQL
+|
+|✔
+|select database()
+|
+|
+
+|Google Cloud SQL for PostgreSQL
+|
+|
+|
+|✔
+|select current_schema()
 
 |Greenplum
 |

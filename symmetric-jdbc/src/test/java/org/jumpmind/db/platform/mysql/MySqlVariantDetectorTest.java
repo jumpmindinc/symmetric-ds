@@ -61,4 +61,37 @@ class MySqlVariantDetectorTest {
         when(statement.executeQuery("select aurora_version()")).thenThrow(new SQLException("connection closed"));
         assertFalse(MySqlVariantDetector.isAuroraMySql(connection));
     }
+
+    @Test
+    void testIsCloudSqlMySql_whenVersionCommentContainsGoogle_returnsTrue() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        ResultSet resultSet = mock(ResultSet.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("show variables like 'version_comment'")).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true);
+        when(resultSet.getString("Value")).thenReturn("(Google)");
+        assertTrue(MySqlVariantDetector.isCloudSqlMySql(connection));
+    }
+
+    @Test
+    void testIsCloudSqlMySql_whenVersionCommentIsVanillaMySql_returnsFalse() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        ResultSet resultSet = mock(ResultSet.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("show variables like 'version_comment'")).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true);
+        when(resultSet.getString("Value")).thenReturn("MySQL Community Server - GPL");
+        assertFalse(MySqlVariantDetector.isCloudSqlMySql(connection));
+    }
+
+    @Test
+    void testIsCloudSqlMySql_whenGenericSqlExceptionOccurs_returnsFalse() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("show variables like 'version_comment'")).thenThrow(new SQLException("connection closed"));
+        assertFalse(MySqlVariantDetector.isCloudSqlMySql(connection));
+    }
 }

@@ -127,7 +127,7 @@ import org.jumpmind.util.FormatUtils;
 public class RouterService extends AbstractService implements IRouterService, INodeCommunicationExecutor {
     final int MAX_LOGGING_LENGTH = 512;
     protected static final Set<String> PRO_ONLY_ROUTER_TYPES = Collections.unmodifiableSet(
-            new HashSet<String>(Arrays.asList("column", "lookuptable", "subselect")));
+            new HashSet<String>(Arrays.asList("column", "lookuptable", "subselect", "segment")));
     protected Map<Integer, CounterStat> missingTriggerRouter = new ConcurrentHashMap<Integer, CounterStat>();
     protected Map<String, CounterStat> invalidRouterType = new ConcurrentHashMap<String, CounterStat>();
     protected Map<Integer, CounterStat> missingColumns = new ConcurrentHashMap<Integer, CounterStat>();
