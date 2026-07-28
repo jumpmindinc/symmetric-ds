@@ -31,8 +31,8 @@ Metrics scoped to a node carry a `node_id` context attribute.
 |===
 |Metric ID|Unit|Description
 
-|`symmetricds.server.reservations.count`|connections|Active connection reservations to this server from other nodes
-|`symmetricds.server.connections.utilization`|percent|Active connections as a percentage of the configured max concurrent workers
+|`server.reservations.count`|connections|Active connection reservations to this server from other nodes
+|`server.connections.utilization`|percent|Active connections as a percentage of the configured max concurrent workers
 |===
 
 .Synchronization Pipeline (channel-scoped)
@@ -40,22 +40,22 @@ Metrics scoped to a node carry a `node_id` context attribute.
 |===
 |Metric ID|Unit|Description
 
-|`symmetricds.data.routed.count`|rows|Data rows routed per channel
-|`symmetricds.data.extracted.count`|rows|Data rows extracted per channel
-|`symmetricds.data.extracted.bytes`|bytes|Data bytes extracted per channel
-|`symmetricds.data.extracted.errors`|rows|Data extraction errors per channel
-|`symmetricds.data.events.inserted.count`|rows|Data events inserted per channel
-|`symmetricds.data.sent.count`|rows|Data rows sent per channel
-|`symmetricds.data.sent.bytes`|bytes|Data bytes sent per channel
-|`symmetricds.data.sent.errors`|rows|Data send errors per channel
-|`symmetricds.data.received.count`|rows|Data rows received per channel
-|`symmetricds.data.received.bytes`|bytes|Data bytes received per channel
-|`symmetricds.data.loaded.count`|rows|Data rows loaded per channel
-|`symmetricds.data.loaded.bytes`|bytes|Data bytes loaded per channel
-|`symmetricds.data.loaded.errors`|rows|Data load errors per channel
-|`symmetricds.data.loaded.outgoing.count`|rows|Outgoing data rows loaded per channel
-|`symmetricds.data.loaded.outgoing.bytes`|bytes|Outgoing data bytes loaded per channel
-|`symmetricds.data.loaded.outgoing.errors`|rows|Outgoing data load errors per channel
+|`rows.routed.count`|rows|Data rows routed per channel
+|`rows.extracted.count`|rows|Data rows extracted per channel
+|`rows.extracted.bytes`|bytes|Data bytes extracted per channel
+|`rows.extracted.errors`|rows|Data extraction errors per channel
+|`rows.events.inserted.count`|rows|Data events inserted per channel
+|`rows.sent.count`|rows|Data rows sent per channel
+|`rows.sent.bytes`|bytes|Data bytes sent per channel
+|`rows.sent.errors`|rows|Data send errors per channel
+|`rows.received.count`|rows|Data rows received per channel
+|`rows.received.bytes`|bytes|Data bytes received per channel
+|`rows.loaded.count`|rows|Data rows loaded per channel
+|`rows.loaded.bytes`|bytes|Data bytes loaded per channel
+|`rows.loaded.errors`|rows|Data load errors per channel
+|`rows.loaded.outgoing.count`|rows|Outgoing data rows loaded per channel
+|`rows.loaded.outgoing.bytes`|bytes|Outgoing data bytes loaded per channel
+|`rows.loaded.outgoing.errors`|rows|Outgoing data load errors per channel
 |===
 
 .Batch Status (node-scoped)
@@ -63,10 +63,10 @@ Metrics scoped to a node carry a `node_id` context attribute.
 |===
 |Metric ID|Unit|Description
 
-|`symmetricds.batches.outgoing.count`|batches|Outgoing batches per node and status
-|`symmetricds.data.outgoing.count`|rows|Outgoing data rows per node and status
-|`symmetricds.batches.incoming.count`|batches|Incoming batches per node and status
-|`symmetricds.data.incoming.count`|rows|Incoming data rows per node and status
+|`batches.outgoing.count`|batches|Outgoing batches per node and status
+|`rows.outgoing.count`|rows|Outgoing data rows per node and status
+|`batches.incoming.count`|batches|Incoming batches per node and status
+|`rows.incoming.count`|rows|Incoming data rows per node and status
 |===
 
 .Queue Depth
@@ -74,11 +74,11 @@ Metrics scoped to a node carry a `node_id` context attribute.
 |===
 |Metric ID|Unit|Description
 
-|`symmetricds.data.unrouted.total`|rows|Total unrouted data rows across all channels
-|`symmetricds.data.unrouted.channel.count`|rows|Unrouted data rows per channel
-|`symmetricds.data.gap.count`|rows|Total open data gaps
-|`symmetricds.data.create.time.min`|ms|Oldest unrouted data row create time per channel (epoch milliseconds)
-|`symmetricds.data.create.time.max`|ms|Most recent unrouted data row create time per channel (epoch milliseconds)
+|`rows.unrouted.total`|rows|Total unrouted data rows across all channels
+|`rows.unrouted.channel.count`|rows|Unrouted data rows per channel
+|`rows.gap.count`|rows|Total open data gaps
+|`rows.create.time.min`|ms|Oldest unrouted data row create time per channel (epoch milliseconds)
+|`rows.create.time.max`|ms|Most recent unrouted data row create time per channel (epoch milliseconds)
 |===
 
 ifdef::pro[]
@@ -87,11 +87,9 @@ ifdef::pro[]
 |===
 |Metric ID|Unit|Description
 
-|`symmetricds.dbpool.active.count`|connections|Active connections currently in use
-|`symmetricds.dbpool.idle.count`|connections|Idle connections available in the pool
-|`symmetricds.dbpool.connections.utilization`|percent|Pool utilization as a percentage of the configured maximum
-|`symmetricds.dbpool.waiters.count`|connections|Threads waiting for a connection from the pool
-|`symmetricds.dbpool.waiters.delay.mean`|ms|Mean wait time for threads that were queued for a connection
+|`db.client.connection.count`|connections|Active connections currently in use
+|`db.client.connection.idle.count`|connections|Idle connections available in the pool
+|`db.client.connection.utilization`|percent|Pool utilization as a percentage of the configured maximum
 |===
 endif::pro[]
 
@@ -100,15 +98,24 @@ endif::pro[]
 |===
 |Metric ID|Unit|Description
 
-|`symmetricds.engine.restarts`|count|Engine restart count
-|`symmetricds.nodes.pulled.count`|nodes|Number of nodes pulled from
-|`symmetricds.nodes.pushed.count`|nodes|Number of nodes pushed to
-|`symmetricds.nodes.pulled.time`|ms|Total elapsed time for pull operations
-|`symmetricds.nodes.pushed.time`|ms|Total elapsed time for push operations
-|`symmetricds.nodes.registered.count`|nodes|Nodes registered
-|`symmetricds.nodes.loaded.count`|nodes|Nodes that received an initial load
-|`symmetricds.nodes.rejected.count`|nodes|Nodes rejected during registration or connection
-|`symmetricds.nodes.disabled.count`|nodes|Nodes disabled by the watchdog
+|`engine.restart.count`|count|Engine restart count
+|`server.nodes.pulled.count`|nodes|Number of nodes pulled from
+|`server.nodes.pushed.count`|nodes|Number of nodes pushed to
+|`server.nodes.pulled.time`|ms|Total elapsed time for pull operations
+|`server.nodes.pushed.time`|ms|Total elapsed time for push operations
+|`server.nodes.registered.count`|nodes|Nodes registered
+|`server.nodes.loaded.count`|nodes|Nodes that received an initial load
+|`server.nodes.rejected.count`|nodes|Nodes rejected during registration or connection
+|`server.nodes.disabled.count`|nodes|Nodes disabled by the watchdog
+|===
+
+.Initial Load
+[cols="3,1,4", options="header"]
+|===
+|Metric ID|Unit|Description
+
+|`loads.outgoing.count`|loads|Active loads involving this node
+|`loads.outgoing.utilization`|percent|Active loads involving this node as a percentage of the configured maxiumum
 |===
 
 .Purge
@@ -116,13 +123,13 @@ endif::pro[]
 |===
 |Metric ID|Unit|Description
 
-|`symmetricds.purge.data.rows`|rows|Data rows purged from <<DATA>>
-|`symmetricds.purge.data.event.rows`|rows|Data event rows purged from <<DATA_EVENT>>
-|`symmetricds.purge.batch.outgoing.rows`|rows|Outgoing batch rows purged from <<OUTGOING_BATCH>>
-|`symmetricds.purge.batch.incoming.rows`|rows|Incoming batch rows purged from <<INCOMING_BATCH>>
-|`symmetricds.purge.stranded.data.rows`|rows|Stranded data rows purged from <<DATA>>
-|`symmetricds.purge.stranded.data.event.rows`|rows|Stranded data event rows purged from <<DATA_EVENT>>
-|`symmetricds.purge.expired.data.rows`|rows|Expired data rows purged from <<DATA>>
+|`purge.data.rows`|rows|Data rows purged from <<DATA>>
+|`purge.data.event.rows`|rows|Data event rows purged from <<DATA_EVENT>>
+|`purge.batch.outgoing.rows`|rows|Outgoing batch rows purged from <<OUTGOING_BATCH>>
+|`purge.batch.incoming.rows`|rows|Incoming batch rows purged from <<INCOMING_BATCH>>
+|`purge.stranded.data.rows`|rows|Stranded data rows purged from <<DATA>>
+|`purge.stranded.data.event.rows`|rows|Stranded data event rows purged from <<DATA_EVENT>>
+|`purge.expired.data.rows`|rows|Expired data rows purged from <<DATA>>
 |===
 
 .Triggers
@@ -130,7 +137,7 @@ endif::pro[]
 |===
 |Metric ID|Unit|Description
 
-|`symmetricds.triggers.created.count`|triggers|Database triggers created by the Sync Triggers Job
-|`symmetricds.triggers.rebuilt.count`|triggers|Database triggers rebuilt due to configuration or schema changes
-|`symmetricds.triggers.removed.count`|triggers|Database triggers removed
+|`triggers.created.count`|triggers|Database triggers created by the Sync Triggers Job
+|`triggers.rebuilt.count`|triggers|Database triggers rebuilt due to configuration or schema changes
+|`triggers.removed.count`|triggers|Database triggers removed
 |===

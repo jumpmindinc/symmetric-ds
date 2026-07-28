@@ -1,0 +1,62 @@
+
+===== Column Segment Router
+
+Some deployments use compound identifiers that combine two parts with a delimiter, such as a location code made up of a region code
+and a sequence number (e.g. `100-001`). The Column Segment router splits such a compound value on a delimiter and compares a single
+segment of it to a value on the other side, without needing a custom BSH or Java router.
+
+.The following configuration parameters are supported.
+[IMPORTANT]
+====
+
+sourceColumn:: The name of the captured row column to read, or the literal token `:EXTERNAL_DATA` to read the row's external data instead.
+Required.
+nodeProperty:: The node property to compare against: `externalId`, `nodeId`, or `nodeGroupId`. Optional, defaults to `externalId`.
+matchMode:: Which side gets split: `COLUMN` (split the source), `NODE_PROPERTY` (split the node property), or `BOTH` (split both,
+using separate delimiters). Required.
+delimiter:: The delimiter used to split the source in `COLUMN`/`BOTH` mode, or the node property in `NODE_PROPERTY` mode. Required.
+nodePropertyDelimiter:: The delimiter used to split the node property in `BOTH` mode. Required only when `matchMode=BOTH`.
+segmentIndex:: The zero-based segment index to compare after splitting. Optional, defaults to `0`.
+wildcard:: An optional value that, when it equals the full, unsplit source value, means "send to all nodes". Defaults to `*`.
+====
+
+NOTE: The set of candidate nodes is split and indexed once per routing pass and cached for its duration, so only the row's source
+value needs to be split on each row.
+
+Consider an `ITEM_ID` column holding a compound value of the form `<regionCode>-<sequence>` (e.g. `100-001`) that needs to be routed to
+a region node whose external ID holds only the unsplit region code (e.g. `100`):
+
+.Router Expression
+
+----
+sourceColumn=ITEM_ID nodeProperty=externalId matchMode=COLUMN delimiter=-
+----
+
+Consider the opposite case: a `REGION_CODE` column holding the unsplit region code (e.g. `100`) that needs to be routed to a node whose
+external ID is the compound value (e.g. `100-001`):
+
+.Router Expression
+
+----
+sourceColumn=REGION_CODE nodeProperty=externalId matchMode=NODE_PROPERTY delimiter=-
+----
+
+====== Migrating from a Custom BSH or Java Router
+
+Custom BSH or Java routers that split a compound identifier and compare a segment of it to a node property or column can typically be
+replaced by a single Column Segment router. For example, a BSH router that splits a column's value on `-` and compares the first segment
+to the node's external ID might look like:
+
+.Example BSH Router (before)
+----
+String[] parts = DATA.get("ITEM_ID").split("-");
+targetNode = parts[0].equals(EXTERNAL_ID);
+----
+
+This can be replaced with a Column Segment router expression, removing the need for a BSH interpreter on every row and allowing the
+candidate node set to be indexed once per routing pass instead of split on every row:
+
+.Equivalent Column Segment Router Expression (after)
+----
+sourceColumn=ITEM_ID nodeProperty=externalId matchMode=COLUMN delimiter=-
+----
