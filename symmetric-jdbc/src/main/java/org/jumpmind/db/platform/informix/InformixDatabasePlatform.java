@@ -80,6 +80,11 @@ public class InformixDatabasePlatform extends AbstractJdbcDatabasePlatform imple
     }
 
     @Override
+    public String getClassName() {
+        return InformixDatabasePlatform.class.getName();
+    }
+
+    @Override
     public String getDefaultCatalog() {
         return defaultCatalog;
     }

@@ -98,6 +98,11 @@ public class DerbyDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return DerbyDatabasePlatform.class.getName();
+    }
+
+    @Override
     public String getDefaultSchema() {
         if (StringUtils.isBlank(defaultSchema)) {
             defaultSchema = getSqlTemplate().queryForObject("values CURRENT SCHEMA", String.class);

@@ -48,6 +48,11 @@ public class MariaDBDatabasePlatform extends MySqlDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return MariaDBDatabasePlatform.class.getName();
+    }
+
+    @Override
     public PermissionResult getLogMinePermission() {
         final PermissionResult result = new PermissionResult(PermissionType.LOG_MINE, "Use LogMiner");
         StringBuilder solution = new StringBuilder();

@@ -63,4 +63,9 @@ public class FirebirdDialect1DatabasePlatform extends FirebirdDatabasePlatform {
     public String getName() {
         return DatabaseNamesConstants.FIREBIRD_DIALECT1;
     }
+
+    @Override
+    public String getClassName() {
+        return FirebirdDialect1DatabasePlatform.class.getName();
+    }
 }

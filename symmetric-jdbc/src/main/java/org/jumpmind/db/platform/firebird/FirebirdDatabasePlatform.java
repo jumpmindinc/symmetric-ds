@@ -93,6 +93,11 @@ public class FirebirdDatabasePlatform extends AbstractJdbcDatabasePlatform {
         return DatabaseNamesConstants.FIREBIRD;
     }
 
+    @Override
+    public String getClassName() {
+        return FirebirdDatabasePlatform.class.getName();
+    }
+
     public String getDefaultCatalog() {
         return null;
     }
