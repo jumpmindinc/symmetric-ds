@@ -4,18 +4,11 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-<<<<<<< HEAD
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.Mockito.doAnswer;
-=======
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
->>>>>>> d147e50a33 (SYM-7746: Fixed NPE from null triggerhist pk (#901))
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -34,13 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-<<<<<<< HEAD
-import org.jumpmind.db.model.Relation;
-=======
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
->>>>>>> d147e50a33 (SYM-7746: Fixed NPE from null triggerhist pk (#901))
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.model.UniqueIndex;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -650,16 +640,7 @@ public class TriggerRouterServiceTest {
         assertArrayEquals(expectedList.toArray(), actualList.toArray());
     }
 
-<<<<<<< HEAD
-    private TriggerRouterService buildService() {
-=======
-    /**
-     * Builds a spy of the service with the minimal mock wiring needed to exercise getTriggerToTableSupportingInfo without touching the database.
-     * getTablesForTrigger and getTriggerName are stubbed per-test so that only this method's own logic -- the primary key decision and the supporting-info
-     * assembly -- is exercised.
-     */
-    private TriggerRouterService createSpyService() {
->>>>>>> d147e50a33 (SYM-7746: Fixed NPE from null triggerhist pk (#901))
+private TriggerRouterService buildService() {
         when(engine.getCacheManager()).thenReturn(cacheManager);
         when(engine.getClusterService()).thenReturn(clusterService);
         when(engine.getConfigurationService()).thenReturn(configurationService);
@@ -674,7 +655,6 @@ public class TriggerRouterServiceTest {
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(symmetricDialect.getPlatform().getSqlTemplate()).thenReturn(sqlTemplate);
         when(symmetricDialect.getPlatform().getSqlTemplateDirty()).thenReturn(sqlTemplate);
-<<<<<<< HEAD
         return new TriggerRouterService(engine);
     }
 
@@ -690,8 +670,6 @@ public class TriggerRouterServiceTest {
             Relation r = invocation.getArgument(0);
             return r.getCatalog() + "." + r.getSchema() + "." + r.getName();
         }).when(spy).getFullyQualifiedName(ArgumentMatchers.any(Relation.class));
-=======
-        return spy(new TriggerRouterService(engine));
     }
 
     private Trigger newTrigger(String triggerId, String tableName) {
@@ -702,16 +680,12 @@ public class TriggerRouterServiceTest {
     }
 
     @Test
-    void testGetTriggerToTableSupportingInfo_noPrimaryKey_synthesizesPrimaryKeys() {
-        TriggerRouterService service = createSpyService();
+    void testGetFilteredRelationFromExcludeAndIncludeColumns_noPrimaryKey_synthesizesPrimaryKeys() {
+        TriggerRouterService service = buildService();
         Trigger trigger = newTrigger("test_table", "test_table");
-        List<Trigger> triggers = new ArrayList<Trigger>();
-        triggers.add(trigger);
         Table sourceTable = new Table("test_table");
         sourceTable.addColumn(new Column("col1"));
         sourceTable.addColumn(new Column("col2"));
-        Set<Table> tables = new HashSet<Table>();
-        tables.add(sourceTable);
         Table allColumnsPkTable = new Table("test_table");
         Column pk1 = new Column("col1");
         pk1.setPrimaryKey(true);
@@ -719,74 +693,26 @@ public class TriggerRouterServiceTest {
         pk2.setPrimaryKey(true);
         allColumnsPkTable.addColumn(pk1);
         allColumnsPkTable.addColumn(pk2);
-        doReturn(tables).when(service).getTablesForTrigger(any(Trigger.class), any(), anyBoolean(), any());
-        doReturn("TRIGGER_NAME").when(service).getTriggerName(any(DataEventType.class), anyInt(), any(Trigger.class),
-                any(Table.class), any(), any(), any());
-        when(symmetricDialect.getMaxTriggerNameLength()).thenReturn(30);
-        when(platform.makeAllColumnsPrimaryKeys(any(Table.class))).thenReturn(allColumnsPkTable);
-        Map<String, List<TriggerTableSupportingInfo>> result = service.getTriggerToTableSupportingInfo(triggers,
-                new ArrayList<TriggerHistory>(), false, mock(TriggerRouterContext.class));
-        // A table with no primary key among the synced columns gets a synthetic key, and that result is the table carried
-        // in the supporting info. (Which table object is handed to makeAllColumnsPrimaryKeys is covered separately.)
-        verify(platform, times(1)).makeAllColumnsPrimaryKeys(any(Table.class));
-        List<TriggerTableSupportingInfo> infos = result.get("test_table");
-        assertNotNull(infos);
-        assertEquals(1, infos.size());
-        assertSame(allColumnsPkTable, infos.get(0).getTable());
+        when(platform.makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class))).thenReturn(allColumnsPkTable);
+        Relation result = service.getFilteredRelationFromExcludeAndIncludeColumns(sourceTable, trigger);
+        // A table with no primary key among the synced columns gets a synthetic key, and that result is returned.
+        verify(platform, times(1)).makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class));
+        assertSame(allColumnsPkTable, result);
     }
 
     @Test
-    void testGetTriggerToTableSupportingInfo_withPrimaryKey_doesNotSynthesizePrimaryKeys() {
-        TriggerRouterService service = createSpyService();
+    void testGetFilteredRelationFromExcludeAndIncludeColumns_withPrimaryKey_doesNotSynthesizePrimaryKeys() {
+        TriggerRouterService service = buildService();
         Trigger trigger = newTrigger("test_table", "test_table");
-        List<Trigger> triggers = new ArrayList<Trigger>();
-        triggers.add(trigger);
         Table sourceTable = new Table("test_table");
         Column idColumn = new Column("id");
         idColumn.setPrimaryKey(true);
         sourceTable.addColumn(idColumn);
         sourceTable.addColumn(new Column("name"));
-        Set<Table> tables = new HashSet<Table>();
-        tables.add(sourceTable);
-        doReturn(tables).when(service).getTablesForTrigger(any(Trigger.class), any(), anyBoolean(), any());
-        doReturn("TRIGGER_NAME").when(service).getTriggerName(any(DataEventType.class), anyInt(), any(Trigger.class),
-                any(Table.class), any(), any(), any());
-        when(symmetricDialect.getMaxTriggerNameLength()).thenReturn(30);
-        Map<String, List<TriggerTableSupportingInfo>> result = service.getTriggerToTableSupportingInfo(triggers,
-                new ArrayList<TriggerHistory>(), false, mock(TriggerRouterContext.class));
-        // A real primary key is present among the synced columns, so no synthetic key is generated and the table is unchanged.
-        verify(platform, never()).makeAllColumnsPrimaryKeys(any(Table.class));
-        assertSame(sourceTable, result.get("test_table").get(0).getTable());
-    }
-
-    @Test
-    void testGetTriggerToTableSupportingInfo_buildsSupportingInfoForEachTrigger() {
-        TriggerRouterService service = createSpyService();
-        Trigger trigger = newTrigger("test_table", "test_table");
-        List<Trigger> triggers = new ArrayList<Trigger>();
-        triggers.add(trigger);
-        Table sourceTable = new Table("test_table");
-        Column idColumn = new Column("id");
-        idColumn.setPrimaryKey(true);
-        sourceTable.addColumn(idColumn);
-        Set<Table> tables = new HashSet<Table>();
-        tables.add(sourceTable);
-        doReturn(tables).when(service).getTablesForTrigger(any(Trigger.class), any(), anyBoolean(), any());
-        doReturn("MY_TRIGGER").when(service).getTriggerName(any(DataEventType.class), anyInt(), any(Trigger.class),
-                any(Table.class), any(), any(), any());
-        when(symmetricDialect.getMaxTriggerNameLength()).thenReturn(30);
-        Map<String, List<TriggerTableSupportingInfo>> result = service.getTriggerToTableSupportingInfo(triggers,
-                new ArrayList<TriggerHistory>(), false, mock(TriggerRouterContext.class));
-        assertEquals(1, result.size());
-        List<TriggerTableSupportingInfo> infos = result.get("test_table");
-        assertNotNull(infos);
-        assertEquals(1, infos.size());
-        TriggerTableSupportingInfo info = infos.get(0);
-        assertEquals("test_table", info.getTriggerId());
-        assertEquals("MY_TRIGGER", info.getInsertTriggerName());
-        assertEquals("MY_TRIGGER", info.getUpdateTriggerName());
-        assertEquals("MY_TRIGGER", info.getDeleteTriggerName());
-        assertSame(sourceTable, info.getTable());
+        Relation result = service.getFilteredRelationFromExcludeAndIncludeColumns(sourceTable, trigger);
+        // A real primary key is present among the synced columns, so no synthetic key is generated and the relation is unchanged.
+        verify(platform, never()).makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class));
+        assertSame(sourceTable, result);
     }
 
     private Table buildTableWithUniqueIndexOnExcludedColumn() {
@@ -800,47 +726,33 @@ public class TriggerRouterServiceTest {
     }
 
     @Test
-    void testGetTriggerToTableSupportingInfo_excludedUniqueIndexColumn_filtersColumnsBeforeSynthesizingPk() {
-        TriggerRouterService service = createSpyService();
+    void testGetFilteredRelationFromExcludeAndIncludeColumns_excludedUniqueIndexColumn_filtersColumnsBeforeSynthesizingPk() {
+        TriggerRouterService service = buildService();
         Trigger trigger = newTrigger("test_table", "test_table");
         trigger.setExcludedColumnNames("status");
-        List<Trigger> triggers = new ArrayList<Trigger>();
-        triggers.add(trigger);
-        Set<Table> tables = new HashSet<Table>();
-        tables.add(buildTableWithUniqueIndexOnExcludedColumn());
+        Table sourceTable = buildTableWithUniqueIndexOnExcludedColumn();
         Table synthesized = new Table("test_table");
         Column synthesizedPk = new Column("id");
         synthesizedPk.setPrimaryKey(true);
         synthesized.addColumn(synthesizedPk);
-        ArgumentCaptor<Table> captor = ArgumentCaptor.forClass(Table.class);
-        doReturn(tables).when(service).getTablesForTrigger(any(Trigger.class), any(), anyBoolean(), any());
-        doReturn("TRIGGER_NAME").when(service).getTriggerName(any(DataEventType.class), anyInt(), any(Trigger.class),
-                any(Table.class), any(), any(), any());
-        when(symmetricDialect.getMaxTriggerNameLength()).thenReturn(30);
+        ArgumentCaptor<Relation> captor = ArgumentCaptor.forClass(Relation.class);
         when(platform.makeAllColumnsPrimaryKeys(captor.capture())).thenReturn(synthesized);
-        service.getTriggerToTableSupportingInfo(triggers, new ArrayList<TriggerHistory>(), false, mock(TriggerRouterContext.class));
-        verify(platform, times(1)).makeAllColumnsPrimaryKeys(any(Table.class));
-        Table passedToSynthesis = captor.getValue();
+        service.getFilteredRelationFromExcludeAndIncludeColumns(sourceTable, trigger);
+        verify(platform, times(1)).makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class));
+        Table passedToSynthesis = (Table) captor.getValue();
         assertNotNull(passedToSynthesis.getColumnWithName("id"));
         assertNull(passedToSynthesis.getColumnWithName("status"));
         assertEquals(0, passedToSynthesis.getUniqueIndices().length);
     }
 
     @Test
-    void testGetTriggerToTableSupportingInfo_excludedUniqueIndexColumn_producesNonBlankPrimaryKey() {
-        TriggerRouterService service = createSpyService();
+    void testGetFilteredRelationFromExcludeAndIncludeColumns_excludedUniqueIndexColumn_producesNonBlankPrimaryKey() {
+        TriggerRouterService service = buildService();
         Trigger trigger = newTrigger("test_table", "test_table");
         trigger.setExcludedColumnNames("status");
-        List<Trigger> triggers = new ArrayList<Trigger>();
-        triggers.add(trigger);
-        Set<Table> tables = new HashSet<Table>();
-        tables.add(buildTableWithUniqueIndexOnExcludedColumn());
-        doReturn(tables).when(service).getTablesForTrigger(any(Trigger.class), any(), anyBoolean(), any());
-        doReturn("TRIGGER_NAME").when(service).getTriggerName(any(DataEventType.class), anyInt(), any(Trigger.class),
-                any(Table.class), any(), any(), any());
-        when(symmetricDialect.getMaxTriggerNameLength()).thenReturn(30);
-        when(platform.makeAllColumnsPrimaryKeys(any(Table.class))).thenAnswer(invocation -> {
-            Table passed = invocation.getArgument(0);
+        Table sourceTable = buildTableWithUniqueIndexOnExcludedColumn();
+        when(platform.makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class))).thenAnswer(invocation -> {
+            Table passed = (Table) invocation.getArgument(0);
             Table result = passed.copy();
             IIndex[] uniqueIndices = result.getUniqueIndices();
             if (uniqueIndices != null && uniqueIndices.length > 0) {
@@ -858,14 +770,11 @@ public class TriggerRouterServiceTest {
             }
             return result;
         });
-        Map<String, List<TriggerTableSupportingInfo>> supportingInfo = service.getTriggerToTableSupportingInfo(triggers,
-                new ArrayList<TriggerHistory>(), false, mock(TriggerRouterContext.class));
-        Table resultTable = supportingInfo.get("test_table").get(0).getTable();
+        Table resultTable = (Table) service.getFilteredRelationFromExcludeAndIncludeColumns(sourceTable, trigger);
         Column[] pkColumns = trigger.filterExcludedAndIncludedColumns(trigger.getSyncKeysColumnsForTable(resultTable));
         String pkColumnNames = Table.getCommaDeliminatedColumns(pkColumns);
         assertFalse(pkColumnNames.isEmpty());
         assertEquals(1, pkColumns.length);
         assertEquals("id", pkColumns[0].getName());
->>>>>>> d147e50a33 (SYM-7746: Fixed NPE from null triggerhist pk (#901))
     }
 }
