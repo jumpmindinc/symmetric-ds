@@ -140,10 +140,7 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
             if (isNotBlank(value)) {
                 value = FormatUtils.replaceTokens(value, env, true);
                 value = FormatUtils.replaceTokens(value, systemProperties, true);
-                if (value.contains("hostName")) {
-                    value = FormatUtils.replace("hostName", AppUtils.getHostName(), value);
-                }
-                if (value.contains("HOSTNAME")) {
+                if (value.contains("HOSTNAME") || value.contains("hostName")) {
                     value = FormatUtils.replace("HOSTNAME", AppUtils.getHostName(), value);
                 }
                 if (value.contains("portNumber")) {
