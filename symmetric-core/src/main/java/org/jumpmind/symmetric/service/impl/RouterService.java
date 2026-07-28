@@ -26,6 +26,7 @@ import static org.jumpmind.symmetric.common.Constants.LOG_PROCESS_SUMMARY_THRESH
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,6 +78,7 @@ import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.model.TriggerReBuildReason;
 import org.jumpmind.symmetric.model.TriggerRouter;
+import org.jumpmind.symmetric.route.AbstractDataRouter;
 import org.jumpmind.symmetric.route.AbstractFileParsingRouter;
 import org.jumpmind.symmetric.route.AuditTableDataRouter;
 import org.jumpmind.symmetric.route.BshDataRouter;
@@ -126,10 +128,13 @@ import org.jumpmind.util.FormatUtils;
  * @see IRouterService
  */
 public class RouterService extends AbstractService implements IRouterService, INodeCommunicationExecutor {
+    public static final String COLUMN_SEGMENT_ROUTER_TYPE = "segment";
     final int MAX_LOGGING_LENGTH = 512;
     protected Map<Integer, CounterStat> missingTriggerRouter = new ConcurrentHashMap<Integer, CounterStat>();
     protected Map<String, CounterStat> invalidRouterType = new ConcurrentHashMap<String, CounterStat>();
+    protected Map<String, CounterStat> unsupportedColumnSegmentRouterType = new ConcurrentHashMap<String, CounterStat>();
     protected Map<Integer, CounterStat> missingColumns = new ConcurrentHashMap<Integer, CounterStat>();
+    protected final IDataRouter skipRoutingDataRouter = new SkipRoutingDataRouter();
     protected long triggerRouterCacheTime = 0;
     protected Map<String, Boolean> commonBatchesLastKnownState = new ConcurrentHashMap<String, Boolean>();
     protected long commonBatchesCacheTime;
@@ -264,6 +269,12 @@ public class RouterService extends AbstractService implements IRouterService, IN
                                 router.getRouterType(), router.getRouterId());
                     }
                     invalidRouterType.clear();
+                    for (CounterStat counterStat : unsupportedColumnSegmentRouterType.values()) {
+                        Router router = (Router) counterStat.getObject();
+                        log.error("Router type 'segment' configured on router '{}' is not supported in this version of SymmetricDS. "
+                                + "Upgrade to version 3.18.0 or later (PRO edition) to use the Column Segment Router.", router.getRouterId());
+                    }
+                    unsupportedColumnSegmentRouterType.clear();
                     for (CounterStat counterStat : missingTriggerRouter.values()) {
                         Data data = (Data) counterStat.getObject();
                         log.warn("Ignoring data captured for table '{}' because there is no trigger router configured for it.  "
@@ -1225,12 +1236,10 @@ public class RouterService extends AbstractService implements IRouterService, IN
         if (!StringUtils.isBlank(router.getRouterType())) {
             dataRouter = routers.get(router.getRouterType());
             if (dataRouter == null) {
-                CounterStat counterStat = invalidRouterType.get(router.getRouterId());
-                if (counterStat == null) {
-                    counterStat = new CounterStat(router);
-                    invalidRouterType.put(router.getRouterId(), counterStat);
+                trackUnsupportedRouterType(router);
+                if (COLUMN_SEGMENT_ROUTER_TYPE.equals(router.getRouterType())) {
+                    return skipRoutingDataRouter;
                 }
-                counterStat.incrementCount();
             } else if (dataRouter.isDmlOnly() && !dataMetaData.getData().getDataEventType().isDml() && dataMetaData.getData()
                     .getDataEventType() != DataEventType.RELOAD) {
                 dataRouter = null;
@@ -1240,6 +1249,18 @@ public class RouterService extends AbstractService implements IRouterService, IN
             return getRouters().get("default");
         }
         return dataRouter;
+    }
+
+    protected void trackUnsupportedRouterType(Router router) {
+        Map<String, CounterStat> counterMap = COLUMN_SEGMENT_ROUTER_TYPE.equals(router.getRouterType())
+                ? unsupportedColumnSegmentRouterType
+                : invalidRouterType;
+        CounterStat counterStat = counterMap.get(router.getRouterId());
+        if (counterStat == null) {
+            counterStat = new CounterStat(router);
+            counterMap.put(router.getRouterId(), counterStat);
+        }
+        counterStat.incrementCount();
     }
 
     protected List<TriggerRouter> getTriggerRoutersForData(Data data, ChannelRouterContext context) {
@@ -1350,5 +1371,17 @@ public class RouterService extends AbstractService implements IRouterService, IN
             }
         }
         return true;
+    }
+
+    /**
+     * Routes to no nodes. Used in place of the default router for router types that this version of SymmetricDS doesn't support, so that unroutable data isn't
+     * broadcast to every node as the default router would otherwise do.
+     */
+    protected static class SkipRoutingDataRouter extends AbstractDataRouter {
+        @Override
+        public Set<String> routeToNodes(SimpleRouterContext context, DataMetaData dataMetaData, Set<Node> nodes,
+                boolean initialLoad, boolean initialLoadSelectUsed, TriggerRouter triggerRouter) {
+            return Collections.emptySet();
+        }
     }
 }
