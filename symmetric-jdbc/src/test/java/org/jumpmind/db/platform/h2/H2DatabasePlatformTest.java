@@ -48,6 +48,11 @@ public class H2DatabasePlatformTest {
     }
 
     @Test
+    void testGetClassName() {
+        assertEquals(H2DatabasePlatform.class.getName(), platform.getClassName());
+    }
+
+    @Test
     void testShutdown() {
         when(sqlTemplate.update("SHUTDOWN COMPACT")).thenReturn(0);
         platform.shutdown();

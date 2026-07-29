@@ -61,6 +61,11 @@ public class CassandraPlatform extends AbstractDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return CassandraPlatform.class.getName();
+    }
+
+    @Override
     public String getDefaultSchema() {
         return null;
     }

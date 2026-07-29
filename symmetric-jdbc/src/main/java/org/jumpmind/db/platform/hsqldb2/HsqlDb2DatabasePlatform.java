@@ -84,6 +84,11 @@ public class HsqlDb2DatabasePlatform extends AbstractJdbcDatabasePlatform {
         return DatabaseNamesConstants.HSQLDB2;
     }
 
+    @Override
+    public String getClassName() {
+        return HsqlDb2DatabasePlatform.class.getName();
+    }
+
     public String getDefaultSchema() {
         return getDefaultCatalog();
     }

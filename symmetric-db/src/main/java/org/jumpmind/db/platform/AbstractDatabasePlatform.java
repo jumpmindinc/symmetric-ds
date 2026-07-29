@@ -111,7 +111,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class AbstractDatabasePlatform implements IDatabasePlatform {
     /* The log for this platform. */
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+    protected final Logger log = LoggerFactory.getLogger(getClassName());
     public static final String REQUIRED_FIELD_NULL_SUBSTITUTE = " ";
     public static final String ZERO_DATE_STRING = "0000-00-00 00:00:00";
     /*

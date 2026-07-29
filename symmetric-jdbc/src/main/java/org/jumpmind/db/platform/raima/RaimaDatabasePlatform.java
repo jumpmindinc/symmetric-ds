@@ -65,6 +65,11 @@ public class RaimaDatabasePlatform extends AbstractJdbcDatabasePlatform {
         return DatabaseNamesConstants.RAIMA;
     }
 
+    @Override
+    public String getClassName() {
+        return RaimaDatabasePlatform.class.getName();
+    }
+
     public String getDefaultSchema() {
         return null;
     }
