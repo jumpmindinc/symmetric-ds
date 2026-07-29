@@ -85,6 +85,11 @@ public class InterbaseDatabasePlatform extends AbstractJdbcDatabasePlatform {
         return DatabaseNamesConstants.INTERBASE;
     }
 
+    @Override
+    public String getClassName() {
+        return InterbaseDatabasePlatform.class.getName();
+    }
+
     public String getDefaultCatalog() {
         return null;
     }

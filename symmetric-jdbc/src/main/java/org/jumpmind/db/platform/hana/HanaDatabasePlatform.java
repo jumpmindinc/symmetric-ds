@@ -56,6 +56,11 @@ public class HanaDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return HanaDatabasePlatform.class.getName();
+    }
+
+    @Override
     public String getDefaultSchema() {
         return null;
     }

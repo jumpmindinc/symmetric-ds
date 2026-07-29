@@ -97,6 +97,11 @@ public class AbstractDatabasePlatformTest {
         }
 
         @Override
+        public String getClassName() {
+            return "Test";
+        }
+
+        @Override
         public String getDefaultSchema() {
             return "default Schema.";
         }

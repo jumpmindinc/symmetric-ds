@@ -52,6 +52,11 @@ public class GenericJdbcDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return GenericJdbcDatabasePlatform.class.getName();
+    }
+
+    @Override
     public boolean isDedicatedPlatform() {
         return false;
     }
