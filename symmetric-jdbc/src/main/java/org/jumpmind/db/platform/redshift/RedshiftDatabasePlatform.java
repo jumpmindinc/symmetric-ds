@@ -84,6 +84,11 @@ public class RedshiftDatabasePlatform extends AbstractJdbcDatabasePlatform {
         return DatabaseNamesConstants.REDSHIFT;
     }
 
+    @Override
+    public String getClassName() {
+        return RedshiftDatabasePlatform.class.getName();
+    }
+
     public String getDefaultCatalog() {
         return null;
     }

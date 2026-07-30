@@ -45,6 +45,7 @@ dependencies {
 	
 	implementation "com.vaadin:vaadin-core:$vaadinVersion"
 	implementation "org.glassfish.jaxb:jaxb-runtime:$jaxbVersion"
+	implementation "org.springframework.data:spring-data-commons:$springDataVersion"
 }
 
 assemble.dependsOn jar

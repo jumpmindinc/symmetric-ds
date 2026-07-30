@@ -100,6 +100,11 @@ public class Db2DatabasePlatform extends AbstractJdbcDatabasePlatform {
         return DatabaseNamesConstants.DB2;
     }
 
+    @Override
+    public String getClassName() {
+        return Db2DatabasePlatform.class.getName();
+    }
+
     public String getDefaultSchema() {
         if (StringUtils.isBlank(defaultSchema)) {
             defaultSchema = (String) getSqlTemplate().queryForObject("select CURRENT SCHEMA from sysibm.sysdummy1", String.class);

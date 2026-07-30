@@ -40,6 +40,11 @@ class PostgreSqlDatabasePlatformTest {
     private final PostgreSqlDatabasePlatform platform = mock(PostgreSqlDatabasePlatform.class, CALLS_REAL_METHODS);
 
     @Test
+    void testGetClassName() {
+        assertEquals(PostgreSqlDatabasePlatform.class.getName(), platform.getClassName());
+    }
+
+    @Test
     void testIsMissingCitextExtensionError_citextDirectMessage() {
         assertTrue(platform.isMissingCitextExtensionError(
                 new SqlException("ERROR: type \"citext\" does not exist")));

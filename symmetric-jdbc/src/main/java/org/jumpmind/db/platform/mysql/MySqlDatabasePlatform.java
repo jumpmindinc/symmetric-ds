@@ -126,6 +126,11 @@ public class MySqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
         return DatabaseNamesConstants.MYSQL;
     }
 
+    @Override
+    public String getClassName() {
+        return MySqlDatabasePlatform.class.getName();
+    }
+
     public String getDefaultSchema() {
         return null;
     }

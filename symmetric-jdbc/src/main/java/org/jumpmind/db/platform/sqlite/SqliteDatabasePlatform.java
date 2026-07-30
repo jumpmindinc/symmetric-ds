@@ -69,6 +69,11 @@ public class SqliteDatabasePlatform extends AbstractJdbcDatabasePlatform impleme
         return DatabaseNamesConstants.SQLITE;
     }
 
+    @Override
+    public String getClassName() {
+        return SqliteDatabasePlatform.class.getName();
+    }
+
     public String getDefaultSchema() {
         return null;
     }

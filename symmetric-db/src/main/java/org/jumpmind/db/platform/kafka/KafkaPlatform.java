@@ -39,6 +39,11 @@ public class KafkaPlatform extends AbstractDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return KafkaPlatform.class.getName();
+    }
+
+    @Override
     public String getDefaultSchema() {
         return null;
     }

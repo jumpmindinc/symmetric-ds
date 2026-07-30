@@ -41,6 +41,11 @@ public class HbasePlatform extends GenericJdbcDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return HbasePlatform.class.getName();
+    }
+
+    @Override
     protected IDdlBuilder createDdlBuilder() {
         return new HbaseDdlBuilder();
     }
