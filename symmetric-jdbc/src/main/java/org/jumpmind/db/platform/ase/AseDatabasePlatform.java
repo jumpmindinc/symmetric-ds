@@ -118,6 +118,11 @@ public class AseDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return AseDatabasePlatform.class.getName();
+    }
+
+    @Override
     public String getDefaultCatalog() {
         if (StringUtils.isBlank(defaultCatalog)) {
             defaultCatalog = getSqlTemplate().queryForObject("select DB_NAME()", String.class);

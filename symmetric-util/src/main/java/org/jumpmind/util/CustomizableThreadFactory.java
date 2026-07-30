@@ -22,23 +22,37 @@ package org.jumpmind.util;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+/** Factory for creating, prioritizing, and naming threads with specified prefix. */
 public class CustomizableThreadFactory implements ThreadFactory {
+    private final Logger log = LoggerFactory.getLogger(getClass());
     AtomicInteger threadNumber = new AtomicInteger(1);
     String namePrefix;
+    int threadPriority;
 
-    public CustomizableThreadFactory(String name) {
-        this.namePrefix = name;
+    public CustomizableThreadFactory(String threadNamePrefix) {
+        this(threadNamePrefix, Thread.NORM_PRIORITY);
+    }
+
+    public CustomizableThreadFactory(String threadNamePrefix, int threadPriority) {
+        this.namePrefix = threadNamePrefix;
+        this.threadPriority = threadPriority;
     }
 
     public Thread newThread(Runnable runnable) {
         Thread thread = new Thread(runnable);
-        thread.setName(namePrefix + "-" + threadNumber.getAndIncrement());
-        if (thread.isDaemon()) {
-            thread.setDaemon(false);
-        }
-        if (thread.getPriority() != Thread.NORM_PRIORITY) {
-            thread.setPriority(Thread.NORM_PRIORITY);
+        try {
+            thread.setName(namePrefix + "-" + threadNumber.getAndIncrement());
+            if (thread.isDaemon()) {
+                thread.setDaemon(false);
+            }
+            if (thread.getPriority() != threadPriority) {
+                thread.setPriority(threadPriority);
+            }
+        } catch (Exception ex) {
+            log.error("Error occurred while customizing thread", ex);
         }
         return thread;
     }

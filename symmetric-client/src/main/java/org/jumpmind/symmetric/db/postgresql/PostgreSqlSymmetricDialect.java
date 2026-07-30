@@ -55,6 +55,8 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
     static final String SQL_FUNCTION_INSTALLED = " select count(*) from information_schema.routines " +
             " where routine_name = '$(functionName)' and specific_schema = '$(defaultSchema)'";
     static final String SQL_SELECT_TRANSACTIONS = "select min(a.xact_start) from pg_stat_activity a join pg_catalog.pg_locks l on l.pid = a.pid  where l.mode = 'RowExclusiveLock'";
+    // Arbitrary fixed key for the database install advisory lock; stable across JVMs since String.hashCode() is specified, not implementation-defined.
+    static final long DATABASE_INSTALL_LOCK_KEY = "org.jumpmind.symmetric.database.install".hashCode();
     private Boolean supportsTransactionId = null;
     protected String sharedTriggersDisabledFunction;
     protected String sharedNodeDisabledFunction;
@@ -86,6 +88,25 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
         sharedReadLargeObjectFunction = this.parameterService.getTablePrefix() + "_largeobject";
         log.debug("Detected database version: major={}, minor={}, SupportsReplaceTriggers={}", databaseMajorVersion, databaseMinorVersion,
                 versionSupportsReplaceTriggers);
+    }
+
+    /**
+     * Uses a transaction-scoped Postgres advisory lock so concurrent engines starting against the same empty database serialize their schema install instead of
+     * racing to create the same tables. The lock is tied to this transaction (not the session), so it releases automatically on commit/rollback even though the
+     * DDL statements in {@code createOrAlterTablesIfNecessary()} run over the platform's normal pooled connections, not this one.
+     */
+    @Override
+    protected ISqlTransaction acquireDatabaseInstallLock() {
+        ISqlTransaction transaction = platform.getSqlTemplate().startSqlTransaction();
+        try {
+            log.info("Waiting to acquire database install lock before checking for SymmetricDS tables that need created or altered");
+            transaction.execute("select pg_advisory_xact_lock(" + DATABASE_INSTALL_LOCK_KEY + ")");
+            log.info("Acquired database install lock");
+            return transaction;
+        } catch (RuntimeException ex) {
+            transaction.close();
+            throw ex;
+        }
     }
 
     @Override

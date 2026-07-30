@@ -55,9 +55,11 @@ import java.io.FileOutputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -70,11 +72,14 @@ import org.jumpmind.db.sql.Row;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.model.NodeHost;
+import org.jumpmind.symmetric.cache.ClusteredCacheManager;
+import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.service.IClusterInstanceGenerator;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IExtensionService;
@@ -93,7 +98,6 @@ public class ClusterService extends AbstractService implements IClusterService {
             FILE_SYNC_PUSH, FILE_SYNC_TRACKER, INITIAL_LOAD_EXTRACT, INITIAL_LOAD_QUEUE, OFFLINE_PUSH, OFFLINE_PULL,
             MONITOR, SYNC_CONFIG, LOG_MINER, COMPARE, DATA_REFRESH };
     protected static final String[] sharedActions = new String[] { FILE_SYNC_SHARED };
-    protected static boolean isUpgradedInstanceId;
     protected static final Logger log = LoggerFactory.getLogger(ClusterService.class);
     protected String serverId = null;
     protected static String instanceId = null;
@@ -113,25 +117,22 @@ public class ClusterService extends AbstractService implements IClusterService {
     @Override
     public void init() {
         if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) && !isClusteringEnabled()) {
-            log.warn("Cluster lock is only available in SymmetricDS Pro.  Remove {} from engine properties.",
+            log.warn("Cluster lock is only available in SymmetricDS Pro.  Remove {} from engine properties or install SymmetricDS PRO license.",
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED);
+        }
+        boolean startedWithClusterLockingEnabled = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
+        boolean liveParameterValue = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+        if (startedWithClusterLockingEnabled != liveParameterValue) {
+            log.warn("{} is set to {} in the database (or environment/engine properties merged by IParameterService), but this node actually started "
+                    + " with value={} because {} is resolved once from file/environment configuration before any node starts and is not "
+                    + "database-overridable. Update the file/environment configuration to match and restart to take effect; changing the database value "
+                    + "alone will have no effect.",
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED, liveParameterValue, startedWithClusterLockingEnabled,
                     ParameterConstants.CLUSTER_LOCKING_ENABLED);
         }
         initInstanceId();
-        if (isUpgradedInstanceId) {
-            String nodeHostTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST);
-            String nodeId = nodeService.findIdentityNodeId();
-            log.info("Deleting the {} row(s) for node '{}' because the instance ID has changed", nodeHostTableName, nodeId);
-            nodeService.deleteNodeHost(nodeId); // This is cleanup mostly for an upgrade.
-        }
         checkSymDbOwnership();
-        for (Lock lock : lockCache.values()) {
-            lock.setLastLockingServerId(lock.getLockingServerId());
-            lock.setLockingServerId(null);
-            lock.setLastLockTime(lock.getLockTime());
-            lock.setLockTime(null);
-            lock.setSharedCount(0);
-            lock.setSharedEnable(false);
-        }
+        initializeAllLocks();
         loadLocksFromDatabase();
     }
 
@@ -142,10 +143,9 @@ public class ClusterService extends AbstractService implements IClusterService {
     protected void initInstanceId() {
         if (instanceId == null) {
             synchronized (ClusterService.class) {
-                IClusterInstanceGenerator generator = null;
-                if (extensionService != null) {
-                    generator = extensionService.getExtensionPoint(IClusterInstanceGenerator.class);
-                }
+                IClusterInstanceGenerator generator = extensionService != null
+                        ? extensionService.getExtensionPoint(IClusterInstanceGenerator.class)
+                        : null;
                 initInstanceId(generator);
             }
         }
@@ -191,7 +191,6 @@ public class ClusterService extends AbstractService implements IClusterService {
                 log.info("Generated a new instance ID ({}) because the current instance ID ({}) is invalid", newInstanceId, instanceId);
             }
             instanceId = newInstanceId;
-            isUpgradedInstanceId = true;
             if (instanceIdFile != null) {
                 try {
                     instanceIdFile.getParentFile().mkdirs();
@@ -206,16 +205,35 @@ public class ClusterService extends AbstractService implements IClusterService {
 
     protected void checkSymDbOwnership() {
         List<NodeHost> nodeHosts = nodeService.findNodeHosts(nodeService.findIdentityNodeId());
+        long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS);
         for (NodeHost nodeHost : nodeHosts) {
             if (nodeHost.getInstanceId() != null && !Strings.CS.equals(instanceId, nodeHost.getInstanceId())) {
+                if (isOwnerStale(nodeHost, staleThresholdMs)) {
+                    log.warn("Reclaiming ownership of node '{}' from instance id '{}' on host '{}' because its last heartbeat ({}) is older than "
+                            + "cluster.peer.obsolete.ms={}, indicating that instance has crashed or been replaced.",
+                            nodeService.findIdentityNodeId(), nodeHost.getInstanceId(), nodeHost.getHostName(), nodeHost.getHeartbeatTime(),
+                            staleThresholdMs);
+                    continue;
+                }
                 String msg = String.format("*** Node '%s' failed to claim exclusive ownership of the SymmetricDS database. *** "
-                        + "This is instance id '%s' but instance id '%s' is already present in sym_node_host.  This is caused when 2 copies of SymmetricDS "
-                        + "are pointed at the same database, but not clustered.  If you are configuring a cluster, set cluster.lock.enabled=true and restart.  "
-                        + "If you moved your installation or re-installed, run 'delete from sym_node_host where node_id = '%s' and restart SymmetricDS.",
-                        nodeService.findIdentityNodeId(), instanceId, nodeHost.getInstanceId(), nodeService.findIdentityNodeId());
+                        + "This is instance id '%s' on host '%s' but instance id '%s' on host '%s' is already present in sym_node_host.  This is caused "
+                        + "when 2 copies of SymmetricDS are pointed at the same database, but not clustered.  If you are configuring a cluster, set "
+                        + "%s=true and restart.  If you moved your installation or re-installed, run 'delete from sym_node_host where "
+                        + "node_id = '%s' and restart SymmetricDS.",
+                        nodeService.findIdentityNodeId(), instanceId, getServerId(), nodeHost.getInstanceId(), nodeHost.getHostName(),
+                        ParameterConstants.CLUSTER_LOCKING_ENABLED, nodeService.findIdentityNodeId());
                 throw new SymmetricException(msg);
             }
         }
+    }
+
+    /**
+     * A prior owner is presumed crashed rather than merely slow once its sym_node_host row hasn't been refreshed for longer than the heartbeat job could
+     * plausibly take, since heartbeat_time is only ever written by that job (see job.heartbeat.period.time.ms).
+     */
+    private boolean isOwnerStale(NodeHost nodeHost, long staleThresholdMs) {
+        return nodeHost.getHeartbeatTime() == null
+                || System.currentTimeMillis() - nodeHost.getHeartbeatTime().getTime() > staleThresholdMs;
     }
 
     @Override
@@ -257,8 +275,18 @@ public class ClusterService extends AbstractService implements IClusterService {
      * Loads locks from the database and merges lastLockTime values into the cache. This loads persisted lock info after restarts.
      */
     protected void loadLocksFromDatabase() {
+        for (Lock dbLock : selectLocksFromDatabase()) {
+            Lock cachedLock = lockCache.get(dbLock.getLockAction());
+            if (cachedLock != null) {
+                cachedLock.setLastLockTime(dbLock.getLastLockTime());
+                cachedLock.setLastLockingServerId(dbLock.getLastLockingServerId());
+            }
+        }
+    }
+
+    protected List<Lock> selectLocksFromDatabase() {
         try {
-            List<Lock> dbLocks = sqlTemplate.query(getSql("selectLocksSql"), new ISqlRowMapper<Lock>() {
+            return sqlTemplate.query(getSql("selectLocksSql"), new ISqlRowMapper<Lock>() {
                 @Override
                 public Lock mapRow(Row row) {
                     Lock lock = new Lock();
@@ -273,15 +301,9 @@ public class ClusterService extends AbstractService implements IClusterService {
                     return lock;
                 }
             });
-            for (Lock dbLock : dbLocks) {
-                Lock cachedLock = lockCache.get(dbLock.getLockAction());
-                if (cachedLock != null) {
-                    cachedLock.setLastLockTime(dbLock.getLastLockTime());
-                    cachedLock.setLastLockingServerId(dbLock.getLastLockingServerId());
-                }
-            }
         } catch (Exception e) {
             log.debug("Could not load locks from database (table may not exist yet): {}", e.getMessage());
+            return Collections.emptyList();
         }
     }
 
@@ -323,6 +345,17 @@ public class ClusterService extends AbstractService implements IClusterService {
         initCache();
     }
 
+    protected void initializeAllLocks() {
+        for (Lock lock : lockCache.values()) {
+            lock.setLastLockingServerId(lock.getLockingServerId());
+            lock.setLockingServerId(null);
+            lock.setLastLockTime(lock.getLockTime());
+            lock.setLockTime(null);
+            lock.setSharedCount(0);
+            lock.setSharedEnable(false);
+        }
+    }
+
     @Override
     public boolean lock(final String action, final String lockType) {
         if (lockType.equals(TYPE_CLUSTER)) {
@@ -357,8 +390,10 @@ public class ClusterService extends AbstractService implements IClusterService {
         Lock lock = lockCache.get(action);
         if (lock != null) {
             synchronized (lock) {
-                if (lock.getLockType().equals(TYPE_CLUSTER) && (lock.getLockTime() == null
-                        || lock.getLockTime().before(timeToBreakLock) || argServerId.equals(lock.getLockingServerId()))) {
+                boolean isClusterLock = lock.getLockType().equals(TYPE_CLUSTER);
+                boolean isOwnLock = argServerId.equals(lock.getLockingServerId());
+                boolean isStealable = isLockExpiredOrServerStale(lock.getLockingServerId(), lock.getLockTime(), timeToBreakLock);
+                if (isClusterLock && (isOwnLock || isStealable)) {
                     lock.setLockingServerId(argServerId);
                     lock.setLockTime(timeLockAcquired);
                     return true;
@@ -456,7 +491,9 @@ public class ClusterService extends AbstractService implements IClusterService {
     /**
      * The instance id is similar in intent to the serverId, but it is generated by the system on initial startup, and semi-permanently cached as a file on the
      * local file system. The intension is to uniquely identity SymmetricDS installations, and protect against situations where things are misconfigured and
-     * potentially pointed at the wrong databases, or pointed at the same database without the cluster.lock.enabled parameter turned on.
+     * potentially pointed at the wrong databases, or pointed at the same database without the cluster.lock.enabled parameter turned on. Also used to discover
+     * peers in the JCS cluster, since the instance id is shared across a cluster. The serverId is a runtime identifier of the JVM instance, and is used for
+     * locking and monitoring purposes.
      */
     protected static String generateInstanceId(String hostName) {
         final int MAX_HOST_LENGTH = 23;
@@ -476,10 +513,7 @@ public class ClusterService extends AbstractService implements IClusterService {
     @Override
     public String getServerId() {
         if (StringUtils.isBlank(serverId)) {
-            serverId = parameterService.getString(ParameterConstants.CLUSTER_SERVER_ID);
-            if (StringUtils.isBlank(serverId)) {
-                serverId = System.getProperty(SystemConstants.SYSPROP_CLUSTER_SERVER_ID, null);
-            }
+            serverId = parameterService.getString(ServerConstants.CLUSTER_SERVER_ID);
             if (StringUtils.isBlank(serverId)) {
                 // JBoss uses this system property to identify a server in a
                 // cluster
@@ -625,6 +659,96 @@ public class ClusterService extends AbstractService implements IClusterService {
 
     @Override
     public boolean isClusteringEnabled() {
+        return false;
+    }
+
+    @Override
+    public void clearLocksForServer(String serverId) {
+        for (Lock lock : lockCache.values()) {
+            synchronized (lock) {
+                if (serverId.equals(lock.getLockingServerId())) {
+                    lock.setLockingServerId(null);
+                    lock.setLockTime(null);
+                    if (TYPE_SHARED.equals(lock.getLockType())) {
+                        lock.setSharedCount(0);
+                        lock.setSharedEnable(false);
+                    }
+                }
+            }
+        }
+        try {
+            sqlTemplate.update(getSql("clearLocksForServerSql"), serverId);
+        } catch (Exception e) {
+            log.debug("Could not clear sym_lock rows for server '{}': {}", serverId, e.getMessage());
+        }
+        log.info("Cleared cluster locks held by server '{}'", serverId);
+    }
+
+    @Override
+    public boolean isStaleServer(String lockingServerId) {
+        if (lockingServerId == null || getServerId().equals(lockingServerId)) {
+            return false;
+        }
+        IClusteredCacheManager cacheManager = ClusteredCacheManager.getInstance();
+        Set<String> active = cacheManager.getActiveServerIds();
+        if (!active.isEmpty()) {
+            return !active.contains(lockingServerId);
+        }
+        long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_STALE_MS,
+                ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS);
+        return cacheManager.isPeerOfflineLongEnough(lockingServerId, staleThresholdMs);
+    }
+
+    @Override
+    public void removeObsoleteNodeHosts() {
+        String nodeHostTableName = TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST);
+        String nodeId = nodeService.findIdentityNodeId();
+        if (nodeId == null) {
+            return;
+        }
+        long obsoleteThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS);
+        List<NodeHost> nodeHosts = nodeService.findNodeHosts(nodeId);
+        if (nodeHosts != null) {
+            IClusteredCacheManager cacheManager = ClusteredCacheManager.getInstance();
+            for (NodeHost nodeHost : nodeHosts) {
+                if (nodeHost != null && isOwnerStale(nodeHost, obsoleteThresholdMs)) {
+                    String hostName = nodeHost.getHostName();
+                    log.info("Purging obsolete {} row for node '{}' host '{}' and clearing any locks it still holds",
+                            nodeHostTableName, nodeId, hostName);
+                    clearLocksForServer(hostName);
+                    if (cacheManager != null && hostName != null) {
+                        cacheManager.removePeer(hostName);
+                    }
+                }
+            }
+        }
+    }
+
+    protected boolean isLockExpiredOrServerStale(String lockingServerId, Date lockTime, Date lockTimeout) {
+        if (lockTime == null || lockTime.before(lockTimeout)) {
+            if (lockingServerId != null) {
+                if (getServerId().equals(lockingServerId)) {
+                    log.debug("Resetting own cluster lock due to expiry, serverId='{}', lockTime={}", lockingServerId, lockTime);
+                } else {
+                    log.warn("Breaking cluster lock from '{}' due to expiry, lockTime={}", lockingServerId, lockTime);
+                }
+            }
+            return true;
+        }
+        if (lockingServerId != null && !getServerId().equals(lockingServerId)) {
+            boolean isNew = ClusteredCacheManager.getInstance().recordPeerOffline(lockingServerId);
+            if (isNew) {
+                long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_STALE_MS,
+                        ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS);
+                log.warn("Cluster lock owner '{}' was not detected via JCS peer heartbeat. Starting offline timer — "
+                        + "lock will be eligible for breaking in {} ms if peer does not reconnect, lockTime={}",
+                        lockingServerId, staleThresholdMs, lockTime);
+            }
+        }
+        if (isStaleServer(lockingServerId)) {
+            log.warn("Breaking cluster lock from stale cluster peer '{}', lockTime={}", lockingServerId, lockTime);
+            return true;
+        }
         return false;
     }
 }

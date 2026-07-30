@@ -48,7 +48,7 @@ Not only is file synchronization configured similar to database synchronization,
 
 The changes to FILE_SNAPSHOT are then routed and batched by a file-synchronization-specific router that delegates to the configured router based on the FILE_TRIGGER_ROUTER configuration. The file sync router can make routing decisions based on the column data of the snapshot table, columns which contain attributes of the file like the name, path, size, and last modified time. Both old and new file snapshot data are also available. The router can, for example, parse the path or name of the file and use it as the node id to route to.
 
-An additional virtual column is available for processing. The column is called TOP_RELATIVE_DIR, and is the first segment of the RELATIVE_DIR value. For example, if the RELATIVE_DIR value for the location of the file is "node1/dir1", the TOP_RELATIVE_DIR value will be set to "node1". This can make it easier for routing by the Column Match Data Router to match the first segment of the RELATIVE_DIR to the node id value or the external id value.
+An additional virtual column is available for processing. The column is called TOP_RELATIVE_DIR, and is the first segment of the RELATIVE_DIR value. For example, if the RELATIVE_DIR value for the location of the file is "node1/dir1", the TOP_RELATIVE_DIR value will be set to "node1". This can make it easier for a column-based router to match the first segment of the RELATIVE_DIR to the node id value or the external id value.
 
 Batches of file snapshot changes are stored on the filesync channel in OUTGOING_BATCH. The existing SymmetricDS pull and push jobs ignore the filesync channel. Instead, they are processed by file-synchronization-specific push and pull jobs.
 

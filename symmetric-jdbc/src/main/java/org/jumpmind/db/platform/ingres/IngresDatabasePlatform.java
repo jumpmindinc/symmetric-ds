@@ -52,6 +52,11 @@ public class IngresDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return IngresDatabasePlatform.class.getName();
+    }
+
+    @Override
     public String getDefaultSchema() {
         if (StringUtils.isBlank(defaultSchema)) {
             defaultSchema = (String) getSqlTemplate().queryForObject("SELECT DBMSINFO('SESSION_SCHEMA')", String.class);

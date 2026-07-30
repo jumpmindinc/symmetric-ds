@@ -74,6 +74,7 @@ import org.jumpmind.db.platform.interbase.InterbaseDatabasePlatform;
 import org.jumpmind.db.platform.kafka.KafkaPlatform;
 import org.jumpmind.db.platform.mariadb.MariaDBDatabasePlatform;
 import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
+import org.jumpmind.db.platform.mysql.MySqlVariantDetector;
 import org.jumpmind.db.platform.nuodb.NuoDbDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSql95DatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
@@ -288,8 +289,19 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
                 nameVersion.setVersion(getGreenplumVersion(connection));
             } else if (PostgreSqlVariantDetector.isAuroraPostgres(connection)) {
                 nameVersion.setName(DatabaseNamesConstants.AURORA_POSTGRESQL);
+            } else if (PostgreSqlVariantDetector.isCloudSqlPostgres(connection)) {
+                nameVersion.setName(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL);
             } else if (metaData.getDatabaseMajorVersion() > 9 || (metaData.getDatabaseMajorVersion() == 9 && metaData.getDatabaseMinorVersion() >= 5)) {
                 nameVersion.setName(DatabaseNamesConstants.POSTGRESQL95);
+            }
+        }
+        boolean isMySqlProtocol = nameVersion.getProtocol().equalsIgnoreCase(MySqlDatabasePlatform.JDBC_SUBPROTOCOL)
+                || (AWS_JDBC_WRAPPER_SUBPROTOCOL.equalsIgnoreCase(nameVersion.getProtocol()) && "MySQL".equalsIgnoreCase(nameVersion.getName()));
+        if (isMySqlProtocol) {
+            if (MySqlVariantDetector.isAuroraMySql(connection)) {
+                nameVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
+            } else if (MySqlVariantDetector.isCloudSqlMySql(connection)) {
+                nameVersion.setName(DatabaseNamesConstants.CLOUDSQL_MYSQL);
             }
         }
         if (nameVersion.getProtocol().equalsIgnoreCase(FirebirdDatabasePlatform.JDBC_SUBPROTOCOL)) {

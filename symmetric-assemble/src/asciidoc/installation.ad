@@ -358,6 +358,8 @@ Container orchestrators can use the `/health/liveliness` endpoint to verify that
        
 A single SymmetricDS node can be deployed across a series of servers to cooperate as a cluster.  A node can be clustered to provide load balancing and high availability.
 
+TIP: For per-environment networking notes (bare-metal, Docker, AWS, Azure, GCP, OCI, Akamai), along with sizing and hardening guidance for production clusters, see <<Production Deployment Infrastructure Guidelines>>.
+
 ifndef::pro[]
 NOTE: Clustering is available in https://www.jumpmind.com/products/symmetricds/symmetricds-overview[SymmetricDS Pro].
 endif::pro[]
@@ -368,19 +370,44 @@ Use the following steps to setup a cluster:
 
 1. Set the `cluster.lock.enabled` property to `true`
 2. Optionally, set the `cluster.server.id` property to a unique name, otherwise the hostname will be used
-3. Set the `sync.url` property to the URL of the load balancer
-4. Set the `initial.load.use.extract.job.enabled` property to `false` if using local staging
-5. Copy the engine properties, `security/keystore`, and `conf/sym_service.conf` files to each installation
-6. Configure the load balancer for sticky sessions
-7. If the load balancer requires cookies, then client nodes need to set the `server.http.cookies.enabled` property to `true` in `conf/symmetric-server.properties`
+3. If nodes in this cluster point at different databases (e.g. read replicas), set `cluster.partition.id` (or `SYM_CLUSTER_PARTITION_ID`) to the same value on every node — otherwise leave it blank and SymmetricDS will auto-generate and share it via the database
+4. Set the `sync.url` property to the URL of the load balancer
+5. Set the `initial.load.use.extract.job.enabled` property to `false` if using local staging
+6. Ensure all nodes share the same encryption secret key — see <<Sharing the Encryption Secret Key>> below for the two supported approaches
+7. Copy the engine properties and `conf/sym_service.conf` files to each installation
+8. Configure the load balancer for sticky sessions
+9. If the load balancer requires cookies, then client nodes need to set the `server.http.cookies.enabled` property to `true` in `conf/symmetric-server.properties`
 
 With the `cluster.lock.enabled` property set to `true`, jobs will acquire an entry in the <<LOCK>> table to ensure that only
 one instance of the job runs across the cluster.  When a lock is acquired, a row is updated in the lock table with the time of the lock
 and the server ID of the locking job.  The locking server ID defaults to the host name, but it can specified with the `cluster.server.id`
-property if nodes are running on the same server.  Another instance of the job cannot acquire a lock until the locking instance releases 
+property if nodes are running on the same server.  Another instance of the job cannot acquire a lock until the locking instance releases
 the lock and sets the lock time back to null.  If an instance is terminated while the lock is still held, an instance with the same server ID
-is allowed to re-acquire the lock.  If the locking instance remains down, the lock can be broken after it expires, specified by the 
+is allowed to re-acquire the lock.  If the locking instance remains down, the lock can be broken after it expires, specified by the
 `cluster.lock.timeout.ms` property.  Jobs refresh their lock periodically as they run, which prevents a lock from expiring due to a long run time.
+
+SymmetricDS uses Apache JCS lateral TCP cache for direct peer-to-peer communication within the cluster.
+Each server listens on the port defined by the `cluster.jcs.port` property (default 1101) and sends a
+heartbeat message to all peer servers at the interval defined by `cluster.peer.heartbeat.ms` (default 3 seconds).
+When a peer has not sent a heartbeat within `cluster.peer.stale.ms` (default 9 seconds),
+its locks in the `sym_lock` and `sym_node_communication` tables are cleared automatically so other cluster members
+can immediately acquire those locks without waiting for `cluster.lock.timeout.ms` to expire.
+If a server shuts down gracefully, it broadcasts a leave message and peers clear its locks at once.
+When a single JVM hosts multiple endpoints against independent databases, lock recovery is scoped per endpoint: if one endpoint crashes while the others remain healthy, only the locks held by the crashed endpoint are cleared.
+If a peer heartbeat is received while `cluster.lock.enabled=false`, the receiving node shuts down immediately to prevent data corruption from multiple unclustered instances sharing the same database.
+
+Peer discovery is driven by `SYM_NODE_HOST` entries, which are scoped to each endpoint's own database, so clusters for different environments are naturally isolated even on the same subnet or orchestrator.
+Assigning a distinct `cluster.jcs.port` per environment adds a second layer of network-level isolation.
+
+The `cluster.partition.id` property (also settable via `SYM_CLUSTER_PARTITION_ID`) is a cluster-scoped identity token shared by all nodes in the same environment; it is distinct from each node's own instance identity (`conf/instance.uuid`).
+Nodes that present a different cluster partition ID are detected and logged as belonging to a different cluster.
+If not configured, SymmetricDS auto-generates one on first startup and persists it in the `SYM_CONTEXT` table, so every node sharing that database converges on the same value automatically.
+It is also cached in `conf/cluster-partition.uuid` so restarts do not need to round-trip to the database to retrieve it.
+Set the property explicitly only when nodes in the same cluster point at different databases (e.g. read replicas), since auto-generation only converges nodes that share a database.
+
+JCS peer messages are AES-encrypted using the shared `sym.secret` key and include a SHA-512 header checksum.
+Nodes with a mismatched `cluster.partition.id` are detected and logged as unauthorized.
+Despite this, `cluster.jcs.port` must not be exposed to untrusted networks — deploy cluster nodes on a private, firewalled subnet.
 
 The load balancer should be configured to use sticky sessions if the cluster will receive push synchronization.
 Push connections first request a reservation from the target node and then connect again using the reservation to push changes.
@@ -393,6 +420,32 @@ batches on the node serving the request, rather than extracting in the backgroun
 To use shared staging in a cluster, set the `staging.dir` property to the directory path of the network drive and enable the
 `cluster.staging.enabled` property so files are locked during use.  With shared staging, the initial load extracts in the background on one node,
 but batches can be served from any of the nodes in the cluster, which can improve performance.
+
+==== Firewall and Network Requirements
+
+Open the following ports between all cluster nodes, and from the load balancer to each node:
+
+.Cluster Ports
+[cols="1,2,3"]
+|===
+|Protocol|Port|Purpose
+
+|TCP|`cluster.jcs.port` (default `1101`)|Apache JCS lateral TCP cache. Carries the actual peer messages — lock heartbeats, engine state — once two nodes have found each other.
+|UDP (recommended, if available)|`6789`, multicast group `228.5.6.7`|Apache JCS UDP discovery. When multicast routes between nodes, this is how a node announces its `cluster.jcs.port`/host and learns about other nodes within seconds, before any TCP peer connection is opened. The port and multicast group are JCS's own hardcoded defaults and are not currently exposed as SymmetricDS properties.
+|HTTP/HTTPS|The port chosen during install, see `conf/symmetric-server.properties`|Sync requests forwarded by the load balancer per `sync.url`, and the push reservation handshake described above.
+|===
+
+NOTE: Discovery service (like UDP) is not required for clustering to function. It merely accelerates peer discovery and crash detection. Each server also updates its heartbeat and address in the `SYM_NODE_HOST` table. Peer servers are still discovered over plain TCP.
+
+==== Sharing the Encryption Secret Key
+
+All nodes in a cluster must share the same encryption secret key (the `sym.secret` entry in each node's keystore), so that encrypted values written to the database by one node — such as node passwords — can be decrypted by another.  There are two ways to achieve this:
+
+*Option 1: Copy the keystore and its JVM configuration.*  Copy the `security/keystore` file from the first installation to every other node.  If the keystore password was customized during setup (see <<Changing Keystore Password>>), also copy `bin/setenv` (or `bin/setenv.bat`) and `conf/sym_service.conf`, since both independently hardcode the keystore file location and an obfuscated copy of its password as JVM arguments — copying only the keystore file will fail to decrypt if these are out of sync.  This approach works well for traditional VM or bare-metal installations where the filesystem is provisioned once and persists across restarts.
+
+*Option 2: Use an identical seed environment variable.*  Set the `cluster.keystore.seed` property (or the `SYM_CLUSTER_KEYSTORE_SEED` environment variable) to the same Base64-encoded 16, 24, or 32-byte AES key on every node — generate one with `openssl rand -base64 32` for a 256-bit key.  Each node independently derives the same secret key and writes it into its own local keystore on first startup; on subsequent restarts, each node's own keystore is the source of truth and the seed is ignored, so it only needs to be consistent across nodes the first time each one starts (or after a node's keystore is lost or reset).  This avoids copying or persisting any keystore file at all, which makes it the better fit for containers (Docker, Kubernetes) — each container can still keep its own independent SSL certificate while sharing only the encryption key.  An invalid seed (one that does not decode to a valid AES key length) causes SymmetricDS to log an error and exit immediately rather than start with a broken key.
+
+IMPORTANT: Supply `SYM_CLUSTER_KEYSTORE_SEED` only as a run-time environment variable (e.g. `docker run -e`, or a Kubernetes `Secret` mounted as an environment variable). Never bake it into a Dockerfile `ENV`/`ARG` or commit it into a properties file that ships inside an image — either would permanently expose the secret in the image's layer history.
 
 When deploying nodes in a cluster to an application server like Tomcat or JBoss, the application server does NOT need any clustering of sessions configured.
  
@@ -593,3 +646,45 @@ There are two common ways to downgrade an existing SymmetricDS instance dependin
  `UPDATE sym_node SET schema_version='your_prior_symmetric_version' WHERE node_id='your_cluster_nodes';`
 * Run the SymmetricDS installer *for an older version* - matching the old installation.
 * Start the SymmetricDS engine and monitor logs for errors.
+
+=== Environment Variables
+
+Any SymmetricDS parameter can be set with an environment variable by using the prefix "SYM_" followed by the parameter name in uppercase with periods replaced with underscores. For example, `start.pull.job` would become `SYM_START_PULL_JOB`. Environmental variables override properties found in `conf/symmetric.properties` and an engine's properties file across all engines. See <<Node Properties File>> for more details on the naming convention and precedence.
+
+The following environment variables control whether a given SymmetricDS job is allowed to be started on current server/container. Disabling jobs can be useful for running multiple SymmetricDS servers/containers in a clustered fashion. The default value is `true` for most jobs as shown in the table below.
+
+.Job Startup Environment Variables
+[cols="3,3,1"]
+|===
+|Environment Variable|Property Key|Default
+
+|SYM_START_PULL_JOB|start.pull.job|true
+|SYM_START_PUSH_JOB|start.push.job|true
+|SYM_START_ROUTING_JOB|start.routing.job|true
+|SYM_START_PURGE_OUTGOING_JOB|start.purge.outgoing.job|true
+|SYM_START_PURGE_INCOMING_JOB|start.purge.incoming.job|true
+|SYM_START_PURGE_METRIC_STATS_JOB|start.purge.metric.stats.job|true
+|SYM_START_REFRESH_BACKLOG_REPORT_JOB|start.refresh.backlog.report.job|true
+|SYM_START_HEARTBEAT_JOB|start.heartbeat.job|true
+|SYM_START_SYNCTRIGGERS_JOB|start.synctriggers.job|true
+|SYM_START_SYNC_CONFIG_JOB|start.sync.config.job|true
+|SYM_START_STAT_FLUSH_JOB|start.stat.flush.job|true
+|SYM_START_WATCHDOG_JOB|start.watchdog.job|true
+|SYM_START_STAGE_MANAGEMENT_JOB|start.stage.management.job|true
+|SYM_START_INITIAL_LOAD_EXTRACT_JOB|start.initial.load.extract.job|true
+|SYM_START_REFRESH_CACHE_JOB|start.refresh.cache.job|false
+|SYM_START_OFFLINE_PULL_JOB|start.offline.pull.job|false
+|SYM_START_OFFLINE_PUSH_JOB|start.offline.push.job|false
+|SYM_START_FILE_SYNC_TRACKER_JOB|start.file.sync.tracker.job|false
+|SYM_START_FILE_SYNC_PUSH_JOB|start.file.sync.push.job|false
+|SYM_START_FILE_SYNC_PULL_JOB|start.file.sync.pull.job|false
+|SYM_START_LOG_MINER_JOB|start.log.miner.job|false
+|SYM_START_INITIAL_LOAD_QUEUE_JOB|start.initial.load.queue.job|false
+
+ifdef::pro[]
+|SYM_START_MONITOR_JOB|start.monitor.job|true
+|SYM_START_DATA_REFRESH_JOB|start.data.refresh.job|false
+|SYM_START_COMPARE_JOB|start.compare.job|true
+|SYM_START_REFRESH_ANALYTICS_JOB|start.refresh.analytics.job|true
+endif::pro[]
+|===

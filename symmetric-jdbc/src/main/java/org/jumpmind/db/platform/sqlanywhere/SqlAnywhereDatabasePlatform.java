@@ -97,6 +97,11 @@ public class SqlAnywhereDatabasePlatform extends AbstractJdbcDatabasePlatform {
         return DatabaseNamesConstants.SQLANYWHERE;
     }
 
+    @Override
+    public String getClassName() {
+        return SqlAnywhereDatabasePlatform.class.getName();
+    }
+
     public String getDefaultCatalog() {
         if (StringUtils.isBlank(defaultCatalog)) {
             defaultCatalog = getSqlTemplate().queryForObject("select DB_NAME()", String.class);

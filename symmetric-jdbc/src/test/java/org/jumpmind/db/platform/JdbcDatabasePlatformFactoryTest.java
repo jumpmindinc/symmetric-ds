@@ -31,6 +31,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.jumpmind.db.platform.greenplum.GreenplumPlatform;
+import org.jumpmind.db.platform.mysql.MySqlDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
 import org.junit.jupiter.api.Test;
 
@@ -48,6 +49,13 @@ class JdbcDatabasePlatformFactoryTest {
         return connection;
     }
 
+    private Connection createMySqlConnection() throws Exception {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        when(connection.createStatement()).thenReturn(statement);
+        return connection;
+    }
+
     private void stubAuroraVersionQuery(Connection connection, boolean isAurora) throws Exception {
         Statement statement = connection.createStatement();
         if (isAurora) {
@@ -58,11 +66,38 @@ class JdbcDatabasePlatformFactoryTest {
         }
     }
 
+    private void stubVersionCommentQuery(Connection connection, boolean isCloudSql) throws Exception {
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = mock(ResultSet.class);
+        when(statement.executeQuery("show variables like 'version_comment'")).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true);
+        when(resultSet.getString("Value")).thenReturn(isCloudSql ? "(Google)" : "MySQL Community Server - GPL");
+    }
+
+    private void stubCloudSqlIamAuthenticationQuery(Connection connection, boolean isCloudSql) throws Exception {
+        Statement statement = connection.createStatement();
+        if (isCloudSql) {
+            when(statement.executeQuery("show cloudsql.iam_authentication")).thenReturn(mock(ResultSet.class));
+        } else {
+            when(statement.executeQuery("show cloudsql.iam_authentication"))
+                    .thenThrow(new SQLException("ERROR: unrecognized configuration parameter \"cloudsql.iam_authentication\""));
+        }
+    }
+
     private DatabaseVersion newPostgresVersion(String protocol, String productName) {
         DatabaseVersion nameVersion = new DatabaseVersion();
         nameVersion.setProtocol(protocol);
         nameVersion.setName(productName);
         nameVersion.setVersion(15);
+        nameVersion.setMinorVersion(0);
+        return nameVersion;
+    }
+
+    private DatabaseVersion newMySqlVersion(String protocol, String productName) {
+        DatabaseVersion nameVersion = new DatabaseVersion();
+        nameVersion.setProtocol(protocol);
+        nameVersion.setName(productName);
+        nameVersion.setVersion(8);
         nameVersion.setMinorVersion(0);
         return nameVersion;
     }
@@ -81,12 +116,24 @@ class JdbcDatabasePlatformFactoryTest {
     void testDetermineDatabaseNameVersionSubprotocol_vanillaPostgres95_unaffected() throws Exception {
         Connection connection = createNonGreenplumConnection();
         stubAuroraVersionQuery(connection, false);
+        stubCloudSqlIamAuthenticationQuery(connection, false);
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         when(metaData.getDatabaseMajorVersion()).thenReturn(15);
         when(metaData.getDatabaseMinorVersion()).thenReturn(0);
         DatabaseVersion nameVersion = newPostgresVersion(PostgreSqlDatabasePlatform.JDBC_SUBPROTOCOL, "PostgreSQL");
         factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
         assertEquals(DatabaseNamesConstants.POSTGRESQL95, nameVersion.getName());
+    }
+
+    @Test
+    void testDetermineDatabaseNameVersionSubprotocol_cloudSqlPostgresDetected_setsCloudSqlPostgresName() throws Exception {
+        Connection connection = createNonGreenplumConnection();
+        stubAuroraVersionQuery(connection, false);
+        stubCloudSqlIamAuthenticationQuery(connection, true);
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        DatabaseVersion nameVersion = newPostgresVersion(PostgreSqlDatabasePlatform.JDBC_SUBPROTOCOL, "PostgreSQL");
+        factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
+        assertEquals(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL, nameVersion.getName());
     }
 
     @Test
@@ -101,10 +148,54 @@ class JdbcDatabasePlatformFactoryTest {
 
     @Test
     void testDetermineDatabaseNameVersionSubprotocol_awsWrapperNonPostgres_notTreatedAsPostgres() throws Exception {
-        Connection connection = mock(Connection.class);
+        Connection connection = createMySqlConnection();
+        stubAuroraVersionQuery(connection, false);
+        stubVersionCommentQuery(connection, false);
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         DatabaseVersion nameVersion = newPostgresVersion(JdbcDatabasePlatformFactory.AWS_JDBC_WRAPPER_SUBPROTOCOL, "MySQL");
         factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
         assertEquals("MySQL", nameVersion.getName());
+    }
+
+    @Test
+    void testDetermineDatabaseNameVersionSubprotocol_auroraMySqlDetected_setsAuroraMySqlName() throws Exception {
+        Connection connection = createMySqlConnection();
+        stubAuroraVersionQuery(connection, true);
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        DatabaseVersion nameVersion = newMySqlVersion(MySqlDatabasePlatform.JDBC_SUBPROTOCOL, "MySQL");
+        factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
+        assertEquals(DatabaseNamesConstants.AURORA_MYSQL, nameVersion.getName());
+    }
+
+    @Test
+    void testDetermineDatabaseNameVersionSubprotocol_vanillaMySql_unaffected() throws Exception {
+        Connection connection = createMySqlConnection();
+        stubAuroraVersionQuery(connection, false);
+        stubVersionCommentQuery(connection, false);
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        DatabaseVersion nameVersion = newMySqlVersion(MySqlDatabasePlatform.JDBC_SUBPROTOCOL, "MySQL");
+        factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
+        assertEquals("MySQL", nameVersion.getName());
+    }
+
+    @Test
+    void testDetermineDatabaseNameVersionSubprotocol_awsWrapperMySql_stillDetectsAuroraMySql() throws Exception {
+        Connection connection = createMySqlConnection();
+        stubAuroraVersionQuery(connection, true);
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        DatabaseVersion nameVersion = newMySqlVersion(JdbcDatabasePlatformFactory.AWS_JDBC_WRAPPER_SUBPROTOCOL, "MySQL");
+        factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
+        assertEquals(DatabaseNamesConstants.AURORA_MYSQL, nameVersion.getName());
+    }
+
+    @Test
+    void testDetermineDatabaseNameVersionSubprotocol_cloudSqlMySqlDetected_setsCloudSqlMySqlName() throws Exception {
+        Connection connection = createMySqlConnection();
+        stubAuroraVersionQuery(connection, false);
+        stubVersionCommentQuery(connection, true);
+        DatabaseMetaData metaData = mock(DatabaseMetaData.class);
+        DatabaseVersion nameVersion = newMySqlVersion(MySqlDatabasePlatform.JDBC_SUBPROTOCOL, "MySQL");
+        factory.determineDatabaseNameVersionSubprotocol(null, connection, metaData, nameVersion);
+        assertEquals(DatabaseNamesConstants.CLOUDSQL_MYSQL, nameVersion.getName());
     }
 }

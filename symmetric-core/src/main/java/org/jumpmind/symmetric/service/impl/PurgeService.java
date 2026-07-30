@@ -75,6 +75,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
     private IContextService contextService;
     private FastDateFormat fastFormat = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss.SSS");
     private final int MINS_IN_ONE_WEEK = 10080;
+    private final int MINS_IN_60_DAYS = 86400;
 
     public PurgeService(IParameterService parameterService, ISymmetricDialect symmetricDialect, IClusterService clusterService,
             IDataService dataService, ISequenceService sequenceService, IStatisticManager statisticManager, IExtensionService extensionService,
@@ -132,6 +133,7 @@ public class PurgeService extends AbstractService implements IPurgeService {
         long rowsPurged = 0;
         if (force || clusterService.lock(ClusterConstants.PURGE_OUTGOING)) {
             try {
+                rowsPurged = purgeNodeHost();
                 log.info("The outgoing purge process is about to run for data older than {}",
                         fastFormat.format(retentionCutoff.getTime()));
                 List<IPurgeListener> purgeListeners = extensionService.getExtensionPointList(IPurgeListener.class);
@@ -542,6 +544,17 @@ public class PurgeService extends AbstractService implements IPurgeService {
         count = sqlTemplate.update(getSql("deleteExtractRequestSql"), ExtractRequest.ExtractStatus.OK.name(), retentionCutoff.getTime());
         if (count > 0) {
             log.info("Purged {} extract requests", count);
+        }
+        return count;
+    }
+
+    private long purgeNodeHost() {
+        clusterService.removeObsoleteNodeHosts();
+        Calendar retentionCutoff = Calendar.getInstance();
+        retentionCutoff.add(Calendar.MINUTE, -parameterService.getInt(ParameterConstants.PURGE_NODE_HOST_RETENTION_MINUTES, MINS_IN_60_DAYS));
+        long count = sqlTemplate.update(getSql("purgeNodeHostSql"), retentionCutoff.getTime());
+        if (count > 0) {
+            log.info("Purged {} node host rows older than {}", count, fastFormat.format(retentionCutoff.getTime()));
         }
         return count;
     }

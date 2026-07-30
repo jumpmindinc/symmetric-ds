@@ -3612,6 +3612,15 @@ public class DataService extends AbstractService implements IDataService {
     }
 
     @Override
+    public void updateNodeHostForCurrentNode(boolean bypassTrigger) {
+        if (bypassTrigger) {
+            engine.getNodeService().updateNodeHostForCurrentNode(true);
+        } else {
+            heartbeat(false);
+        }
+    }
+
+    @Override
     public List<Number> listDataIds(long batchId, String nodeId) {
         return sqlTemplateDirty.query(getSql("selectEventDataIdsSql", getDataOrderBy()),
                 new NumberMapper(), batchId, nodeId);

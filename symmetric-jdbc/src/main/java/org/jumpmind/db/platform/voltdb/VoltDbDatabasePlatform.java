@@ -61,6 +61,11 @@ public class VoltDbDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return VoltDbDatabasePlatform.class.getName();
+    }
+
+    @Override
     public Database readDatabaseFromXml(InputStream is, boolean alterCaseToMatchDatabaseDefaultCase) {
         Database database = super.readDatabaseFromXml(is, alterCaseToMatchDatabaseDefaultCase);
         for (Table table : database.getTables()) {

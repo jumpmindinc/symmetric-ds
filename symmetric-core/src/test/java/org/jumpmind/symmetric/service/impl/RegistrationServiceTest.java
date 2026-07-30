@@ -298,6 +298,17 @@ class RegistrationServiceTest {
     }
 
     @Test
+    void saveRegistrationRequestUpdatesInPlaceWhenRejectingPendingRequest() {
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        doReturn(new ArrayList<>(Collections.singletonList(prior))).when(sqlTemplate).query(anyString(),
+                any(ISqlRowMapper.class), any(Object[].class), any(int[].class));
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        request.setStatus(RegistrationStatus.RJ);
+        service.saveRegistrationRequest(request);
+        verify(sqlTemplate, times(1)).update(anyString(), any(Object[].class), any(int[].class));
+    }
+
+    @Test
     void updateRegistrationRequestCallsSqlUpdate() {
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
         service.updateRegistrationRequest(request);
@@ -411,6 +422,30 @@ class RegistrationServiceTest {
         int result = service.reconcileRegistrationRequestWithPriorEntry(request, prior);
         assertEquals(0, result);
         verify(sqlTemplate, never()).update(anyString(), any(Object[].class), any(int[].class));
+    }
+
+    @Test
+    void pendingPriorWithRejectedCurrentUpdatesInPlace() {
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        prior.setAttemptCount(2);
+        int result = service.reconcileRegistrationRequestWithPriorEntry(request, prior);
+        assertEquals(1, result);
+        assertEquals(RegistrationStatus.RJ, request.getStatus());
+        assertEquals(3, request.getAttemptCount());
+        verify(sqlTemplate).update(anyString(), any(Object[].class), any(int[].class));
+    }
+
+    @Test
+    void errorPriorWithRejectedCurrentUpdatesInPlace() {
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.ER);
+        prior.setAttemptCount(4);
+        int result = service.reconcileRegistrationRequestWithPriorEntry(request, prior);
+        assertEquals(1, result);
+        assertEquals(RegistrationStatus.RJ, request.getStatus());
+        assertEquals(5, request.getAttemptCount());
+        verify(sqlTemplate).update(anyString(), any(Object[].class), any(int[].class));
     }
 
     @Test
@@ -583,6 +618,20 @@ class RegistrationServiceTest {
     void isPriorRequestSupersededByNewReturnsFalseWhenOkPriorAndPendingRequest() {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK);
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
+    @Test
+    void isPriorRequestSupersededByNewReturnsFalseWhenPendingPriorAndRejectedRequest() {
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RQ);
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
+        assertFalse(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
+    @Test
+    void isPriorRequestSupersededByNewReturnsFalseWhenErrorPriorAndRejectedRequest() {
+        RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.ER);
+        RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
         assertFalse(service.isPriorRequestSupersededByNew(prior, request));
     }
 

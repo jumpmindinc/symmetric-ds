@@ -749,15 +749,7 @@ public class DatabaseXmlUtil {
     }
 
     public static boolean isMySql(Column column) {
-        if (column.getPlatformColumns() != null) {
-            Collection<PlatformColumn> platformColumns = column.getPlatformColumns().values();
-            for (PlatformColumn col : platformColumns) {
-                if (col.getName().equals(DatabaseNamesConstants.MYSQL)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return column.findPlatformColumn(DatabaseNamesConstants.MYSQL) != null;
     }
 
     public static void write(Table table, Writer output) {

@@ -88,6 +88,11 @@ public class H2DatabasePlatform extends AbstractJdbcDatabasePlatform implements 
     }
 
     @Override
+    public String getClassName() {
+        return H2DatabasePlatform.class.getName();
+    }
+
+    @Override
     public String getDefaultSchema() {
         if (StringUtils.isBlank(defaultSchema)) {
             defaultSchema = getSqlTemplate().queryForObject("select SCHEMA()", String.class);

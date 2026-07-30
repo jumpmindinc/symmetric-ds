@@ -19,4 +19,10 @@ apply from: symAssembleDir + '/common.gradle'
         }
 
         testImplementation project(path: ':symmetric-util', configuration: 'testArtifacts')
+        testImplementation ("com.datastax.cassandra:cassandra-driver-core:3.11.5") {
+            exclude group: 'org.slf4j'
+            exclude group: 'com.google.guava'
+            exclude group: 'io.netty'
+            exclude group: 'com.fasterxml.jackson.core'
+        }
     }

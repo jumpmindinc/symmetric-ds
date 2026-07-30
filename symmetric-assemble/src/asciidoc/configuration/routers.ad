@@ -23,17 +23,23 @@ Router Type:: The type of router.  Standard router types are listed below.  Cust
 
 |default|A router that sends all captured data to all nodes that belong to the target node group defined in the router. See <<Default Router>>|✔
 
+ifdef::pro[]
 |column|A router that compares old or new column values in a captured data row to a constant value or the value of a target node's external id or node id.  See <<Column Match Router>>|
+endif::pro[]
 
 |audit|A router that inserts into an automatically created audit table. It records captured changes to tables that it is linked to.  See <<Audit Table Router>>|
 
 |java|A router that executes a Java expression in order to select nodes to route to. The script can use the old and new column values.  See <<Java Router>>|✔
 
+ifdef::pro[]
 |lookuptable|A router which can be configured to determine routing based on an existing or ancillary table specifically for the purpose of routing data.  See <<Lookup Table Router>>|
 
 |subselect|A router that executes a SQL expression against the database to select nodes to route to. This SQL expression can be passed values of old and new column values.  See <<Subselect Router>>|
 
-|convertToReload|When subselect router is too slow and there are too many tables or rows for lookuptable router, a convertToReload router can efficiently sub-set data by converting multiple changes into a reload batch.  See <<ConvertToReload Router>>|
+|segment|A router that splits a delimited, compound identifier (such as an identifier combining a region code and a sequence number) on one or both sides and compares a segment of it to a node property or column value.  See <<Column Segment Router>>|
+endif::pro[]
+
+|convertToReload|When the subselect router (Pro only) is too slow and there are too many tables or rows for the lookuptable router (Pro only), a convertToReload router can efficiently sub-set data by converting multiple changes into a reload batch.  See <<ConvertToReload Router>>|
 
 |bsh|A router that executes a Bean Shell script expression in order to select nodes to route to. The script can use the old and new column values.  See <<Beanshell Router>>|✔
 

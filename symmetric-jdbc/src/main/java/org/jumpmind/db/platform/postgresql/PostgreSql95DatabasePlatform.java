@@ -56,4 +56,9 @@ public class PostgreSql95DatabasePlatform extends PostgreSqlDatabasePlatform {
     public String getName() {
         return DatabaseNamesConstants.POSTGRESQL95;
     }
+
+    @Override
+    public String getClassName() {
+        return PostgreSql95DatabasePlatform.class.getName();
+    }
 }

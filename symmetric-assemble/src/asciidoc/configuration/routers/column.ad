@@ -3,10 +3,6 @@
 
 Sometimes requirements may exist that require data to be routed based on the current value or the old 
 value of a column in the table that is being routed. 
-ifndef::pro[]
-Column routers are configured by setting the router_type column on the ROUTER table to column and setting 
-the router_expression column to an equality expression that represents the expected value of the column.
-endif::pro[]
 
 The first part of the expression is typically a column name, defined in upper case.
 The upper case column name prefixed by OLD_ can be used for a comparison being done with the old column data value.
@@ -18,48 +14,22 @@ represents some other SymmetricDS concept. Token values always begin with a colo
 
 . Consider a table that needs to be routed to all nodes in the target group only when a status column is set to 'READY TO SEND.'
 
-ifdef::pro[]
 .Router Expression
 
 ----
 STATUS=READY TO SEND
 ----
-endif::pro[]
-
-ifndef::pro[]
-.The following SQL statement will insert a column router to accomplish that.
-[source, SQL]
-----
- insert into SYM_ROUTER (router_id,
-		source_node_group_id, target_node_group_id, router_type,
-		router_expression, create_time, last_update_time) values
-		('corp-2-store-ok','corp', 'store', 'column', 'STATUS=READY TO SEND',
-		current_timestamp, current_timestamp); 
-----
-endif::pro[]
 
 
 . Consider a table that needs to be routed to all nodes in the target group only when a status column changes values.
  
 NOTE: The use of OLD_STATUS, where the OLD_ prefix gives access to the old column value.
  
-ifdef::pro[]
 .Router Expression
 
 ----
 STATUS!=:OLD_STATUS
 ----
-endif::pro[]
-ifndef::pro[]
-[source, SQL]
-----
-insert into SYM_ROUTER (router_id,
-	source_node_group_id, target_node_group_id, router_type,
-	router_expression, create_time, last_update_time) values
-	('corp-2-store-status','corp', 'store', 'column', 'STATUS!=:OLD_STATUS',
-	current_timestamp, current_timestamp); 
-----
-endif::pro[]
 
 [TIP]
 .Attributes on a NODE that can be referenced with the following tokens
@@ -84,141 +54,57 @@ endif::pro[]
 
 . Consider a table that needs to be routed to only nodes in the target group whose STORE_ID column matches the external id of a node. 
 
-ifdef::pro[]
 .Router Expression
 
 ----
 STORE_ID=:EXTERNAL_ID
 ----
-endif::pro[]
 
-ifndef::pro[]
-.The following SQL statement will insert a column router to accomplish that.
-[source, SQL]
-----
-insert into SYM_ROUTER (router_id,
-	source_node_group_id, target_node_group_id, router_type,
-	router_expression, create_time, last_update_time) values
-	('corp-2-store-id','corp', 'store', 'column', 'STORE_ID=:EXTERNAL_ID',
-	current_timestamp, current_timestamp); 
-----
-endif::pro[]
 
 . Consider a table that needs to be routed to a redirect node defined by its external id in the REGISTRATION_REDIRECT table. 
 
-ifdef::pro[]
 .Router Expression
 
 ----
 STORE_ID=:REDIRECT_NODE
 ----
-endif::pro[]
 
-ifndef::pro[]
-.The following SQL statement will insert a column router to accomplish that.
-[source, SQL]
-----
-insert into SYM_ROUTER (router_id,
-	source_node_group_id, target_node_group_id, router_type,
-	router_expression, create_time, last_update_time) values
-	('corp-2-store-redirect','corp', 'store', 'column',
-	'STORE_ID=:REDIRECT_NODE', current_timestamp, current_timestamp); 
-----
-endif::pro[]
-		
 . More than one column may be configured in a router_expression. When more than one column is configured, all matches are added to 
 the list of nodes to route to. The following is an example where the STORE_ID column may contain the STORE_ID to route to or the 
 constant of ALL which indicates that all nodes should receive the update.
 
-ifdef::pro[]
 .Router Expression
 
 ----
 STORE_ID=ALL or STORE_ID=:EXTERNAL_ID
 ----
-endif::pro[]
 
-ifndef::pro[]
-.The following SQL statement will insert a column router to accomplish that.
-[source, SQL]
-----
-insert into SYM_ROUTER (router_id,
-	source_node_group_id, target_node_group_id, router_type,
-	router_expression, create_time, last_update_time) values
-	('corp-2-store-multiple-matches','corp', 'store', 'column',
-	'STORE_ID=ALL or STORE_ID=:EXTERNAL_ID', current_timestamp,
-	current_timestamp); 
-----
-endif::pro[]
 
 . The NULL keyword may be used to check if a column is null. If the column is null, then data will be routed 
 to all nodes who qualify for the update. This following is an example where the STORE_ID column is used to 
 route to a set of nodes who have a STORE_ID equal to their EXTERNAL_ID, or to all nodes if the STORE_ID is null.
 
-ifdef::pro[]
 .Router Expression
 
 ----
 STORE_ID=NULL or STORE_ID=:EXTERNAL_ID
 ----
-endif::pro[]
 
-ifndef::pro[]
-.The following SQL statement will insert a column router to accomplish that.
-[source, SQL]
-----
-insert into SYM_ROUTER (router_id,
-	source_node_group_id, target_node_group_id, router_type,
-	router_expression, create_time, last_update_time) values
-	('corp-2-store-multiple-matches','corp', 'store', 'column',
-	'STORE_ID=NULL or STORE_ID=:EXTERNAL_ID', current_timestamp,
-	current_timestamp); 
-----
-endif::pro[]
 
 . Consider a table captured with a wildcard schema trigger (source_schema_name=*) that needs to route to nodes whose external id matches the source schema name.
 
-ifdef::pro[]
 .Router Expression
 
 ----
 :SOURCE_SCHEMA=:EXTERNAL_ID
 ----
-endif::pro[]
 
-ifndef::pro[]
-.The following SQL statement will insert a column router to accomplish that.
-[source, SQL]
-----
-insert into SYM_ROUTER (router_id,
-	source_node_group_id, target_node_group_id, router_type,
-	router_expression, create_time, last_update_time) values
-	('corp-2-store-by-schema','corp', 'store', 'column',
-	':SOURCE_SCHEMA=:EXTERNAL_ID', current_timestamp,
-	current_timestamp);
-----
-endif::pro[]
 
 . External data collected as part of the trigger firing (see <<External Select>>) can also be used as a virtual column
 in the router expression as well.  
 
-ifdef::pro[]
 .Router Expression
 
 ----
 EXTERNAL_DATA=:EXTERNAL_ID
 ----
-endif::pro[]
-
-ifndef::pro[]
-.The following SQL statement will insert a column router to accomplish that.
-[source, SQL]
-----
-insert into SYM_ROUTER (router_id,
-	source_node_group_id, target_node_group_id, router_type,
-	router_expression, create_time, last_update_time) values
-	('corp-2-store-multiple-matches','corp', 'store', 'column',
-	'EXTERNAL_DATA=:EXTERNAL_ID', current_timestamp,
-	current_timestamp); 
-----
-endif::pro[]
