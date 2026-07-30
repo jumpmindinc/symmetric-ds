@@ -792,4 +792,67 @@ public class TriggerRouterServiceTest {
         assertEquals(1, pkColumns.length);
         assertEquals("id", pkColumns[0].getName());
     }
+
+    private TriggerHistory newTriggerHistory(String triggerId) {
+        TriggerHistory history = new TriggerHistory();
+        history.setTriggerId(triggerId);
+        return history;
+    }
+
+    @Test
+    void testShouldSkipInactivationForEmptyConfig_emptyConfigWithActiveHistoriesAndCreationEnabled_returnsTrue() throws Exception {
+        TriggerRouterService service = createSpyService();
+        when(parameterService.is(ParameterConstants.SYNC_TRIGGERS_SKIP_INACTIVATION_WHEN_CONFIG_EMPTY, true)).thenReturn(true);
+        List<Trigger> emptyTriggers = new ArrayList<Trigger>();
+        List<TriggerHistory> activeHistories = new ArrayList<TriggerHistory>();
+        activeHistories.add(newTriggerHistory("test_trigger"));
+        boolean result = service.shouldSkipInactivationForEmptyConfig(emptyTriggers, activeHistories, true);
+        assertTrue(result);
+    }
+
+    @Test
+    void testShouldSkipInactivationForEmptyConfig_nonEmptyConfig_returnsFalse() throws Exception {
+        TriggerRouterService service = createSpyService();
+        when(parameterService.is(ParameterConstants.SYNC_TRIGGERS_SKIP_INACTIVATION_WHEN_CONFIG_EMPTY, true)).thenReturn(true);
+        List<Trigger> nonEmptyTriggers = new ArrayList<Trigger>();
+        nonEmptyTriggers.add(newTrigger("test_trigger", "test_table"));
+        List<TriggerHistory> activeHistories = new ArrayList<TriggerHistory>();
+        activeHistories.add(newTriggerHistory("test_trigger"));
+        boolean result = service.shouldSkipInactivationForEmptyConfig(nonEmptyTriggers, activeHistories, true);
+        assertFalse(result);
+    }
+
+    @Test
+    void testShouldSkipInactivationForEmptyConfig_emptyActiveHistories_returnsFalse() throws Exception {
+        TriggerRouterService service = createSpyService();
+        when(parameterService.is(ParameterConstants.SYNC_TRIGGERS_SKIP_INACTIVATION_WHEN_CONFIG_EMPTY, true)).thenReturn(true);
+        List<Trigger> emptyTriggers = new ArrayList<Trigger>();
+        List<TriggerHistory> emptyHistories = new ArrayList<TriggerHistory>();
+        boolean result = service.shouldSkipInactivationForEmptyConfig(emptyTriggers, emptyHistories, true);
+        assertFalse(result);
+    }
+
+    @Test
+    void testShouldSkipInactivationForEmptyConfig_initialLoadClearInProgress_returnsFalse() throws Exception {
+        // createTriggersForTables=false is the intentional initial-load clear path (see syncTriggers's
+        // triggersForCurrentNode.clear() call) -- the guard must never suppress inactivation there.
+        TriggerRouterService service = createSpyService();
+        List<Trigger> emptyTriggers = new ArrayList<Trigger>();
+        List<TriggerHistory> activeHistories = new ArrayList<TriggerHistory>();
+        activeHistories.add(newTriggerHistory("test_trigger"));
+        boolean result = service.shouldSkipInactivationForEmptyConfig(emptyTriggers, activeHistories, false);
+        assertFalse(result);
+        verify(parameterService, never()).is(ParameterConstants.SYNC_TRIGGERS_SKIP_INACTIVATION_WHEN_CONFIG_EMPTY, true);
+    }
+
+    @Test
+    void testShouldSkipInactivationForEmptyConfig_parameterDisabled_returnsFalse() throws Exception {
+        TriggerRouterService service = createSpyService();
+        when(parameterService.is(ParameterConstants.SYNC_TRIGGERS_SKIP_INACTIVATION_WHEN_CONFIG_EMPTY, true)).thenReturn(false);
+        List<Trigger> emptyTriggers = new ArrayList<Trigger>();
+        List<TriggerHistory> activeHistories = new ArrayList<TriggerHistory>();
+        activeHistories.add(newTriggerHistory("test_trigger"));
+        boolean result = service.shouldSkipInactivationForEmptyConfig(emptyTriggers, activeHistories, true);
+        assertFalse(result);
+    }
 }

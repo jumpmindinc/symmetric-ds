@@ -377,6 +377,7 @@ final public class ParameterConstants {
     public static final String SYNC_TRIGGERS_TIMEOUT_IN_SECONDS = "sync.triggers.timeout.in.seconds";
     public static final String SYNC_TRIGGERS_REG_SVR_INSTALL_WITHOUT_CONFIG = "sync.triggers.reg.svr.install.without.config";
     public static final String SYNC_TRIGGERS_FIX_DUPLICATE_ACTIVE_TRIGGER_HISTORIES = "sync.triggers.fix.duplicate.active.trigger.histories";
+    public static final String SYNC_TRIGGERS_SKIP_INACTIVATION_WHEN_CONFIG_EMPTY = "sync.triggers.skip.inactivation.when.config.empty";
     public static final String MONITOR_EVENTS_CAPTURE_ENABLED = "monitor.events.capture.enabled";
     public static final String HYBRID_PUSH_PULL_ENABLED = "hybrid.push.pull.enabled";
     public static final String HYBRID_PUSH_PULL_TIMEOUT = "hybrid.push.pull.timeout.ms";

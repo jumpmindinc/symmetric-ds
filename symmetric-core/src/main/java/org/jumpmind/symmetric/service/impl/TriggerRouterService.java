@@ -1669,7 +1669,16 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                         ts = System.currentTimeMillis();
                         List<TriggerHistory> activeTriggerHistories = getActiveTriggerHistories();
                         context.incrementActiveTriggerHistoriesTime(System.currentTimeMillis() - ts);
-                        inactivateTriggers(triggersForCurrentNode, sqlBuffer, activeTriggerHistories, context);
+                        if (shouldSkipInactivationForEmptyConfig(triggersForCurrentNode, activeTriggerHistories, createTriggersForTables)) {
+                            log.warn("Trigger configuration for this node read back empty while {} active trigger "
+                                    + "capture histories exist. Skipping trigger inactivation this run to avoid dropping "
+                                    + "all capture triggers because of what is likely a transient/in-flight configuration "
+                                    + "reload (e.g. a config delete has replicated but its re-insert has not yet been "
+                                    + "applied); this will reconcile on a subsequent sync triggers run.",
+                                    activeTriggerHistories.size());
+                        } else {
+                            inactivateTriggers(triggersForCurrentNode, sqlBuffer, activeTriggerHistories, context);
+                        }
                         updateOrCreateDatabaseTriggers(triggersForCurrentNode, sqlBuffer, force,
                                 true, activeTriggerHistories, true, context);
                         resetTriggerRouterCacheByNodeGroupId();
@@ -1746,6 +1755,32 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             numThreads = 1;
         }
         return numThreads;
+    }
+
+    /**
+     * Determines whether the inactivation/drop pass in {@link #inactivateTriggers(List, StringBuilder, List, TriggerRouterContext)} should be skipped this
+     * run because the trigger configuration for this node was read back unexpectedly empty while active trigger capture histories still exist.
+     * <p>
+     * Under normal operation, {@code triggersForCurrentNode} being empty means every table's capture should be inactivated -- that is also the
+     * <em>intentional</em> behavior when {@code createTriggersForTables} is false (initial load in progress), so this guard must never apply in that case;
+     * see the {@code triggersForCurrentNode.clear()} call in {@link #syncTriggers(StringBuilder, boolean)}.
+     * <p>
+     * However, when trigger creation IS enabled ({@code createTriggersForTables} is true) and the configuration nonetheless reads back empty, that is very
+     * likely a transient/in-flight configuration state -- e.g. a non-atomic configuration reseed where a delete has replicated to this node before its
+     * corresponding re-insert has been applied -- rather than a legitimate "drop every capture trigger" instruction. Skipping inactivation in that narrow
+     * window avoids destructively dropping every trigger; the next sync triggers run will reconcile once the configuration is complete again.
+     *
+     * @param triggersForCurrentNode the triggers read from configuration for this node
+     * @param activeTriggerHistories the trigger histories currently marked active/inactivated in the database
+     * @param createTriggersForTables whether trigger creation is enabled for this run (false only during the intentional initial-load clear)
+     * @return true if the inactivation pass should be skipped this run
+     */
+    protected boolean shouldSkipInactivationForEmptyConfig(List<Trigger> triggersForCurrentNode,
+            List<TriggerHistory> activeTriggerHistories, boolean createTriggersForTables) {
+        return createTriggersForTables
+                && parameterService.is(ParameterConstants.SYNC_TRIGGERS_SKIP_INACTIVATION_WHEN_CONFIG_EMPTY, true)
+                && (triggersForCurrentNode == null || triggersForCurrentNode.isEmpty())
+                && activeTriggerHistories != null && !activeTriggerHistories.isEmpty();
     }
 
     protected void inactivateTriggers(final List<Trigger> triggersThatShouldBeActive,
