@@ -590,6 +590,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
+    @Override
     public void save(ISqlTransaction sqlTransaction, FileSnapshot snapshot) {
         snapshot.setLastUpdateTime(new Date());
         if (0 >= executeUpdate(sqlTransaction, snapshot)) {
@@ -737,10 +738,10 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                     log.error("Missing staged ZIP file for target node {}: {}", targetNode,
                             stagedResource == null ? "<null>" : stagedResource);
                 }
-                for (int i = 0; i < batchesToProcess.size(); i++) {
-                    batchesToProcess.get(i).setStatus(Status.LD);
+                for (int i = 0; i < processedBatches.size(); i++) {
+                    processedBatches.get(i).setStatus(Status.LD);
                 }
-                engine.getOutgoingBatchService().updateOutgoingBatches(batchesToProcess);
+                engine.getOutgoingBatchService().updateOutgoingBatches(processedBatches);
             } finally {
                 if (stagedResource != null) {
                     stagedResource.close();
