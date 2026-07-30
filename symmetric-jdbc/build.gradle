@@ -27,7 +27,7 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation "org.jumpmind.symmetric.module:db2jcc:9.7"
         // Pinned to Jaybird 5.0.4 - v6 deadlocks the Firebird integration tests (background
 		// cleanup helper holds the connection lock, hanging the connection health check).
-        testImplementation "org.firebirdsql.jdbc:jaybird:5.0.4.java11"
+        testImplementation "org.firebirdsql.jdbc:jaybird:5.0.12.java11"
         testImplementation "jakarta.resource:jakarta.resource-api:2.1.0"
         testImplementation "org.jumpmind.symmetric.module:ifxjdbc:1.0"
         testImplementation "org.jumpmind.symmetric.module:ifxlang:1.0"
