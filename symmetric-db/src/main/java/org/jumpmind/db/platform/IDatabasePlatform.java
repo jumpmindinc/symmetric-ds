@@ -70,6 +70,14 @@ public interface IDatabasePlatform {
     public String getName();
 
     /**
+     * Returns the fully-qualified class name of this platform implementation. Used to name the platform's logger accurately, since some implementations have
+     * obfuscated class names at runtime.
+     *
+     * @return the fully-qualified class name
+     */
+    public String getClassName();
+
+    /**
      * Returns information about this platform.
      *
      * @return The info object

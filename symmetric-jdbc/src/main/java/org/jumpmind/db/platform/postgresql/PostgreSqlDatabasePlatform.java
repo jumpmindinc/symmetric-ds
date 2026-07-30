@@ -147,6 +147,11 @@ public class PostgreSqlDatabasePlatform extends AbstractJdbcDatabasePlatform {
     }
 
     @Override
+    public String getClassName() {
+        return PostgreSqlDatabasePlatform.class.getName();
+    }
+
+    @Override
     public String getDefaultSchema() {
         if (StringUtils.isBlank(defaultSchema)) {
             defaultSchema = getSqlTemplate().queryForObject("select current_schema()", String.class);

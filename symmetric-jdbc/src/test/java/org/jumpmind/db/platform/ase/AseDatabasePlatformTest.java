@@ -53,6 +53,11 @@ public class AseDatabasePlatformTest {
     }
 
     @Test
+    void testGetClassName() {
+        assertEquals(AseDatabasePlatform.class.getName(), platform.getClassName());
+    }
+
+    @Test
     void testCanColumnBeUsedInWhereClause_withUnitext_shouldBeLob() {
         Column column = new Column();
         column.setJdbcTypeCode(Types.LONGVARBINARY);

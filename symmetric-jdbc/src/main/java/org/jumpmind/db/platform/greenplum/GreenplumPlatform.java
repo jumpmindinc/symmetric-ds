@@ -57,4 +57,9 @@ public class GreenplumPlatform extends PostgreSqlDatabasePlatform {
     public String getName() {
         return DatabaseNamesConstants.GREENPLUM;
     }
+
+    @Override
+    public String getClassName() {
+        return GreenplumPlatform.class.getName();
+    }
 }

@@ -1056,13 +1056,13 @@
                 description="Surrogate identifier in format NNNNNNNYYYY (sequential part x 10000 + current year)." />
         <column name="attributes_hash" type="INTEGER"   required="true"
                 description="Java Objects.hash() across all six attribute fields, null substituted with N/A. Used for fast lookup." />
-        <column name="attr1_name"      type="VARCHAR"   size="255"  required="true" />
-        <column name="attr1_value"     type="VARCHAR"   size="255"  required="true" />
-        <column name="attr2_name"      type="VARCHAR"   size="255"  required="false" />
-        <column name="attr2_value"     type="VARCHAR"   size="255"  required="false" />
-        <column name="attr3_name"      type="VARCHAR"   size="255"  required="false" />
-        <column name="attr3_value"     type="VARCHAR"   size="255"  required="false" />
-        <column name="create_time"     type="TIMESTAMP" required="true" />
+        <column name="attr1_name"      type="VARCHAR"   size="255"  required="true" description="The name of the first attribute." />
+        <column name="attr1_value"     type="VARCHAR"   size="255"  required="true" description="The value of the first attribute." />
+        <column name="attr2_name"      type="VARCHAR"   size="255"  required="false" description="The name of the second attribute (optional)." />
+        <column name="attr2_value"     type="VARCHAR"   size="255"  required="false" description="The value of the second attribute (optional)." />
+        <column name="attr3_name"      type="VARCHAR"   size="255"  required="false" description="The name of the third attribute (optional)." />
+        <column name="attr3_value"     type="VARCHAR"   size="255"  required="false" description="The value of the third attribute (optional)." />
+        <column name="create_time"     type="TIMESTAMP" required="true" description="Timestamp when this entry was created." />
         <index name="idx_metric_context_hash">
             <index-column name="attributes_hash" />
         </index>

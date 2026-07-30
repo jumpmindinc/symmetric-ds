@@ -38,6 +38,11 @@ class HanaDatabasePlatformTest {
     }
 
     @Test
+    void testGetClassName() {
+        assertEquals(HanaDatabasePlatform.class.getName(), platform.getClassName());
+    }
+
+    @Test
     void testGetDefaultSchema() {
         assertNull(platform.getDefaultSchema());
     }
