@@ -74,6 +74,8 @@ public class LogbackHelper {
             }
             context.putProperty("HOSTNAME", AppUtils.getHostName());
             enforceProtectedLoggers();
+        } else {
+            log.warn("No conf/logback.xml file exists! Possible failures: Symmetric Installation OR Log4j2_Logback migration.");
         }
     }
 
