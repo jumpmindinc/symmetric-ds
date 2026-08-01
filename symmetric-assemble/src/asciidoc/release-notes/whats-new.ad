@@ -151,3 +151,23 @@ Two HTTP health endpoints are available for container orchestrators:
 }
 ----
 --
+
+=== Database Health Check
+--
+SymmetricDS 3.18 adds a pre-flight health check of the runtime database connection that acts as a circuit breaker during database outages. Before each job run and before accepting an incoming push or pull, SymmetricDS verifies that a connection to the runtime database can be established. The check only opens and closes a connection, so a failure always means the connection could not be established — it is never triggered by ordinary SQL errors related to data or constraints.
+
+Previously, a database outage caused every job to fail mid-work on each cycle with the same `SqlException`, flooding the logs and wasting remote work — for example, pull requests repeatedly re-extracting batches and inflating row transmit statistics. With the health check, the runtime database is declared unhealthy after `db.health.check.failure.threshold` consecutive connection failures (default 5). While unhealthy:
+
+* Jobs are skipped with a single warning per skipped run instead of a stack trace per failure.
+* Incoming push and pull requests are rejected with a service-not-ready response, so remote nodes back off without starting work this server cannot finish.
+* The engine is reported as not ready on the `/health/readiness` endpoint, so container orchestrators stop routing to it.
+* The connection is not tested again until a wait period of `db.health.check.failure.threshold` multiplied by `db.health.check.timeout.seconds` has elapsed (5 minutes with default settings).
+
+After the wait period, the connection is retested. Two consecutive successful tests restore the healthy state, resume jobs, accept incoming syncs again, and report the engine as ready. Manually forced job runs bypass the check, giving operators a way to probe the database during an outage. The time and outcome of the most recent connection test are recorded and available from the engine API.
+
+The feature is controlled by three new parameters:
+
+* `db.health.check.enabled` — enables the pre-flight health check (default `true`).
+* `db.health.check.failure.threshold` — consecutive connection failures before the runtime database is declared unhealthy (default `5`).
+* `db.health.check.timeout.seconds` — used to calculate the wait period between connection tests while unhealthy (default `60`).
+--
