@@ -34,6 +34,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.util.IDatabaseHealthTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,10 +50,12 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     protected Map<String, Long> transportErrorTimeByNode = new HashMap<String, Long>();
     private IUpDownCounter connectionsCounter;
     private ISymDoubleGauge utilizationGauge;
+    private IDatabaseHealthTracker databaseHealthTracker;
 
     public ConcurrentConnectionManager(IParameterService parameterService,
-            IEngineMetricsService metricsService) {
+            IEngineMetricsService metricsService, IDatabaseHealthTracker databaseHealthTracker) {
         this.parameterService = parameterService;
+        this.databaseHealthTracker = databaseHealthTracker;
         registerMetrics(metricsService);
     }
 
@@ -160,7 +163,18 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     }
 
     @Override
-    public synchronized ReservationStatus reserveConnection(String nodeId, String channelId, String poolId,
+    public ReservationStatus reserveConnection(String nodeId, String channelId, String poolId,
+            ReservationType reservationRequest, boolean requiresExistingReservation) {
+        // checked outside the synchronized reservation logic so a connection test never blocks other callers
+        if (databaseHealthTracker != null && !databaseHealthTracker.isRuntimeDbHealthy()) {
+            log.warn("Node '{}' Channel '{}' requested a {} connection, but was rejected because the runtime database is not healthy",
+                    nodeId, channelId, poolId);
+            return ReservationStatus.NOT_READY;
+        }
+        return internalReserveConnection(nodeId, channelId, poolId, reservationRequest, requiresExistingReservation);
+    }
+
+    private synchronized ReservationStatus internalReserveConnection(String nodeId, String channelId, String poolId,
             ReservationType reservationRequest, boolean requiresExistingReservation) {
         String reservationId = getReservationIdentifier(nodeId, channelId);
         log.debug("Reserving connection for {} {}", poolId, reservationId);

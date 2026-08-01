@@ -35,6 +35,7 @@ import org.jumpmind.symmetric.transport.ConcurrentConnectionManager.NodeConnecti
 import org.jumpmind.symmetric.transport.ConcurrentConnectionManager.Reservation;
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager.ReservationStatus;
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager.ReservationType;
+import org.jumpmind.symmetric.util.IDatabaseHealthTracker;
 import org.junit.jupiter.api.Test;
 
 class ConcurrentConnectionManagerTest {
@@ -47,11 +48,11 @@ class ConcurrentConnectionManagerTest {
     }
 
     private ConcurrentConnectionManager newMgr(int maxWorkers) {
-        return new ConcurrentConnectionManager(mockPs(maxWorkers), null);
+        return new ConcurrentConnectionManager(mockPs(maxWorkers), null, null);
     }
 
     private ConcurrentConnectionManager newMgrWithMetrics(int maxWorkers, IEngineMetricsService metricsService) {
-        return new ConcurrentConnectionManager(mockPs(maxWorkers), metricsService);
+        return new ConcurrentConnectionManager(mockPs(maxWorkers), metricsService, null);
     }
 
     @Test
@@ -102,6 +103,32 @@ class ConcurrentConnectionManagerTest {
         mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
         assertEquals(ReservationStatus.DUPLICATE, status);
+    }
+
+    @Test
+    void reserveConnection_runtimeDbUnhealthy_returnsNotReadyWithoutReservation() {
+        IDatabaseHealthTracker databaseHealthTracker = mock(IDatabaseHealthTracker.class);
+        when(databaseHealthTracker.isRuntimeDbHealthy()).thenReturn(false);
+        ConcurrentConnectionManager mgr = new ConcurrentConnectionManager(mockPs(5), null, databaseHealthTracker);
+        ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
+        assertEquals(ReservationStatus.NOT_READY, status);
+        assertEquals(0, mgr.getReservationCount("push"));
+    }
+
+    @Test
+    void reserveConnection_runtimeDbHealthy_returnsAccepted() {
+        IDatabaseHealthTracker databaseHealthTracker = mock(IDatabaseHealthTracker.class);
+        when(databaseHealthTracker.isRuntimeDbHealthy()).thenReturn(true);
+        ConcurrentConnectionManager mgr = new ConcurrentConnectionManager(mockPs(5), null, databaseHealthTracker);
+        ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
+        assertEquals(ReservationStatus.ACCEPTED, status);
+    }
+
+    @Test
+    void reserveConnection_nullHealthTracker_returnsAccepted() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        ReservationStatus status = mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false);
+        assertEquals(ReservationStatus.ACCEPTED, status);
     }
 
     @Test

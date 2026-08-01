@@ -23,6 +23,7 @@ package org.jumpmind.symmetric;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.Date;
 
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -39,8 +41,10 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.model.DbHealthCheckResult;
 import org.jumpmind.symmetric.service.IContextService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
+import org.jumpmind.symmetric.util.IDatabaseHealthTracker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -120,6 +124,29 @@ class AbstractSymmetricEngineTest {
         when(parameterService.hashParameterValues(ParameterConstants.STARTUP_DB_OBJECTS_SETUP_PARAMS)).thenReturn(0xec461721);
         setField("parameterService", parameterService);
         assertEquals("0xec461721", engine.computeCurrentDbParamsHash());
+    }
+
+    @Test
+    void testIsRuntimeDbHealthy_noTracker_returnsTrue() {
+        assertTrue(engine.isRuntimeDbHealthy());
+        assertNull(engine.getLastDbHealthCheckResult());
+    }
+
+    @Test
+    void testIsRuntimeDbHealthy_delegatesToTracker() throws Exception {
+        IDatabaseHealthTracker databaseHealthTracker = mock(IDatabaseHealthTracker.class);
+        when(databaseHealthTracker.isRuntimeDbHealthy()).thenReturn(false);
+        setField("databaseHealthTracker", databaseHealthTracker);
+        assertFalse(engine.isRuntimeDbHealthy());
+    }
+
+    @Test
+    void testGetLastDbHealthCheckResult_delegatesToTracker() throws Exception {
+        IDatabaseHealthTracker databaseHealthTracker = mock(IDatabaseHealthTracker.class);
+        DbHealthCheckResult result = new DbHealthCheckResult(new Date(), true, "OK");
+        when(databaseHealthTracker.getLastResult()).thenReturn(result);
+        setField("databaseHealthTracker", databaseHealthTracker);
+        assertEquals(result, engine.getLastDbHealthCheckResult());
     }
 
     @Test

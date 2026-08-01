@@ -35,6 +35,7 @@ import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.job.IJobManager;
+import org.jumpmind.symmetric.model.DbHealthCheckResult;
 import org.jumpmind.symmetric.model.NodeStatus;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
@@ -213,6 +214,18 @@ public interface ISymmetricEngine {
      * @return true if the node is started
      */
     public boolean isStarted();
+
+    /**
+     * Check that a connection to the runtime database can be established. Acts as a circuit breaker during database outages.
+     *
+     * @return true if the runtime database is considered healthy
+     */
+    public boolean isRuntimeDbHealthy();
+
+    /**
+     * @return the outcome of the most recent runtime database connection test, or null if no test has run yet
+     */
+    public DbHealthCheckResult getLastDbHealthCheckResult();
 
     public boolean isInitialized();
 
