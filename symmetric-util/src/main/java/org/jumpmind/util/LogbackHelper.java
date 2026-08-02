@@ -329,7 +329,7 @@ public class LogbackHelper {
 
     private void logNonExistentLoggingConfigurations(boolean isDebug) {
         String logFile = isDebug ? "logback-debug.xml" : "logback.xml";
-        log.warn("No conf/" + logFile + " file exists! Possible failures: Symmetric Installation OR Log4j2_Logback migration.");
+        log.warn("No conf/{} file exists! Possible failures: Symmetric Installation OR Log4j2_Logback migration.", logFile);
     }
 
     private ch.qos.logback.classic.Logger getRootLogger() {
