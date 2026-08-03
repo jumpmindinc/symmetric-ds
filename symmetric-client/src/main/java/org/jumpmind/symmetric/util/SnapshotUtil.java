@@ -508,8 +508,7 @@ public class SnapshotUtil {
             }
         }
         log.info("Writing logging configuration");
-        writeLoggingConfigFile(tmpDir, "conf/log4j2.xml.deprecated");
-        writeLoggingConfigFile(tmpDir, "conf/logback.xml");
+        writeLoggingConfigFiles(tmpDir);
         log.info("Packaging ZIP file");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         File jarFile = null;
@@ -1257,6 +1256,11 @@ public class SnapshotUtil {
         } catch (Exception e) {
             log.warn("Failed to export parameters-changed information", e);
         }
+    }
+
+    protected static void writeLoggingConfigFiles(File tmpDir) {
+        writeLoggingConfigFile(tmpDir, "conf/log4j2.xml.deprecated");
+        writeLoggingConfigFile(tmpDir, "conf/logback.xml");
     }
 
     protected static void writeLoggingConfigFile(File tmpDir, String logConfigFileString) {

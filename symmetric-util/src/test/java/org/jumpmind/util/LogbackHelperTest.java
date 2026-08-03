@@ -177,7 +177,7 @@ class LogbackHelperTest {
     }
 
     @Test
-    void logNonExistentLoggingConfigurations_missingLogbackXml_warnsAndDoesNotThrow() {
+    void logNonExistentLoggingConfigurations_missingLogbackXmlWarnsAndDoesNotThrow() {
         Assumptions.assumeFalse(new File(AppUtils.getSymHome() + "/conf/logback.xml").exists());
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         ListAppender<ILoggingEvent> captured = new ListAppender<>();
@@ -195,7 +195,7 @@ class LogbackHelperTest {
     }
 
     @Test
-    void logNonExistentLoggingConfigurations_missingLogbackDebugXml_warnsWithDebugFilename() {
+    void logNonExistentLoggingConfigurations_missingLogbackDebugXmlWarnsWithDebugFilename() {
         Assumptions.assumeFalse(new File(AppUtils.getSymHome() + "/conf/logback-debug.xml").exists());
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
         ListAppender<ILoggingEvent> captured = new ListAppender<>();

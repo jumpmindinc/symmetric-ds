@@ -52,7 +52,14 @@ public class SnapshotUtilTest {
     }
 
     @Test
-    void writeLoggingConfigFile_existingConfigs_areCopiedIntoSnapshot() throws IOException {
+    void writeLoggingConfigFiles_noConfigFilesPresentDoesNotThrow() {
+        File snapshotDir = tempDir.resolve("snapshot").toFile();
+        snapshotDir.mkdirs();
+        assertDoesNotThrow(() -> SnapshotUtil.writeLoggingConfigFiles(snapshotDir));
+    }
+
+    @Test
+    void writeLoggingConfigFile_existingConfigsAreCopiedIntoSnapshot() throws IOException {
         File confDir = tempDir.resolve("conf").toFile();
         File snapshotDir = tempDir.resolve("snapshot").toFile();
         confDir.mkdirs();
@@ -67,7 +74,7 @@ public class SnapshotUtilTest {
     }
 
     @Test
-    void writeLoggingConfigFile_missingConfig_doesNotThrowOrCreateStrayFiles() {
+    void writeLoggingConfigFile_missingConfigDoesNotThrowOrCreateStrayFiles() {
         File confDir = tempDir.resolve("conf").toFile();
         File snapshotDir = tempDir.resolve("snapshot").toFile();
         confDir.mkdirs();
@@ -77,7 +84,7 @@ public class SnapshotUtilTest {
     }
 
     @Test
-    void writeLoggingConfigFile_copyFails_logsWarningInsteadOfThrowing() throws IOException {
+    void writeLoggingConfigFile_copyFailsLogsWarningInsteadOfThrowing() throws IOException {
         File confDir = tempDir.resolve("conf").toFile();
         File snapshotDir = tempDir.resolve("snapshot").toFile();
         confDir.mkdirs();
