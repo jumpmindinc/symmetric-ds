@@ -31,6 +31,7 @@ public class PerfResult {
     public static final String OUTCOME_SUCCESS = "Success";
     public static final String OUTCOME_FAILED = "Failed";
     public static final String OUTCOME_SKIPPED = "Skipped";
+    public static final String OUTCOME_TIMED_OUT = "Timed Out";
 
     public PerfResult(String name, long count, long millis, float rating) {
         this.name = name;
