@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.LongSupplier;
 
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.IApplicationHealthTracker;
@@ -51,11 +52,18 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     private IUpDownCounter connectionsCounter;
     private ISymDoubleGauge utilizationGauge;
     private IDatabaseHealthTracker databaseHealthTracker;
+    private final LongSupplier currentSystemTime;
 
     public ConcurrentConnectionManager(IParameterService parameterService,
             IEngineMetricsService metricsService, IDatabaseHealthTracker databaseHealthTracker) {
+        this(parameterService, metricsService, databaseHealthTracker, System::currentTimeMillis);
+    }
+
+    ConcurrentConnectionManager(IParameterService parameterService,
+            IEngineMetricsService metricsService, IDatabaseHealthTracker databaseHealthTracker, LongSupplier currentSystemTime) {
         this.parameterService = parameterService;
         this.databaseHealthTracker = databaseHealthTracker;
+        this.currentSystemTime = currentSystemTime;
         registerMetrics(metricsService);
     }
 
@@ -211,7 +219,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
 
     private long computeExpirationTime(ReservationType reservationRequest) {
         long timeout = parameterService.getLong(ParameterConstants.CONCURRENT_RESERVATION_TIMEOUT);
-        long expirationTime = System.currentTimeMillis() + timeout;
+        long expirationTime = currentSystemTime.getAsLong() + timeout;
         if (reservationRequest != ReservationType.SOFT) {
             expirationTime += timeout; // Allow HARD reservations extra time to call releaseConnection() gracefully
         }
@@ -256,7 +264,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     }
 
     protected void removeTimedOutReservations(Map<String, Reservation> reservations) {
-        long currentTime = System.currentTimeMillis();
+        long currentTime = currentSystemTime.getAsLong();
         String[] keys = reservations.keySet().toArray(new String[reservations.size()]);
         if (keys != null) {
             for (String key : keys) {

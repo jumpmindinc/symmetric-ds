@@ -132,6 +132,52 @@ class ConcurrentConnectionManagerTest {
     }
 
     @Test
+    void reserveConnection_whitelistedNodeAtCapacity_returnsAccepted() {
+        ConcurrentConnectionManager mgr = newMgr(1);
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false));
+        assertEquals(ReservationStatus.BUSY, mgr.reserveConnection("node2", "0", "push", ReservationType.HARD, false));
+        mgr.addToWhitelist("node2");
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("node2", "0", "push", ReservationType.HARD, false));
+    }
+
+    @Test
+    void reserveConnection_softReservationUpgradedByHard_returnsAccepted() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("node1", "0", "push", ReservationType.SOFT, false));
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, false));
+        Reservation reservation = mgr.getActiveReservationsByNodeByPool().get("push").get("node1");
+        assertEquals(ReservationType.HARD, reservation.getType());
+    }
+
+    @Test
+    void reserveConnection_requiresExistingWithExistingReservation_returnsAccepted() {
+        ConcurrentConnectionManager mgr = newMgr(5);
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("node1", "0", "push", ReservationType.SOFT, false));
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("node1", "0", "push", ReservationType.HARD, true));
+    }
+
+    @Test
+    void reserveConnection_hardReservationGetsDoubleTimeout() {
+        long[] currentTimeMs = { 100_000 };
+        ConcurrentConnectionManager mgr = new ConcurrentConnectionManager(mockPs(5), null, null, () -> currentTimeMs[0]);
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("softNode", "0", "push", ReservationType.SOFT, false));
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("hardNode", "0", "push", ReservationType.HARD, false));
+        Map<String, Reservation> reservations = mgr.getActiveReservationsByNodeByPool().get("push");
+        assertEquals(100_000 + 30_000, reservations.get("softNode").timeToLiveInMs);
+        assertEquals(100_000 + 60_000, reservations.get("hardNode").timeToLiveInMs);
+    }
+
+    @Test
+    void reserveConnection_expiredReservationRemoved_freesCapacity() {
+        long[] currentTimeMs = { 100_000 };
+        ConcurrentConnectionManager mgr = new ConcurrentConnectionManager(mockPs(1), null, null, () -> currentTimeMs[0]);
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("node1", "0", "push", ReservationType.SOFT, false));
+        assertEquals(ReservationStatus.BUSY, mgr.reserveConnection("node2", "0", "push", ReservationType.HARD, false));
+        currentTimeMs[0] = 100_000 + 30_000 + 1;
+        assertEquals(ReservationStatus.ACCEPTED, mgr.reserveConnection("node2", "0", "push", ReservationType.HARD, false));
+    }
+
+    @Test
     void Reservation_equals_nonReservationObject_returnsFalse() {
         Reservation r = new Reservation("node1", System.currentTimeMillis() + 10_000, ReservationType.HARD);
         assertNotNull(r);

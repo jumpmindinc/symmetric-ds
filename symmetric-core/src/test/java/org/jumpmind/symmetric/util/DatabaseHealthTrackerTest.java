@@ -224,6 +224,27 @@ class DatabaseHealthTrackerTest {
     }
 
     @Test
+    void isRuntimeDbHealthy_whileAnotherThreadTests_returnsCachedVerdictWithoutTesting() throws Exception {
+        CountDownLatch testStarted = new CountDownLatch(1);
+        CountDownLatch testRelease = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            testStarted.countDown();
+            testRelease.await(5, TimeUnit.SECONDS);
+            return null;
+        }).when(sqlTemplate).testConnection();
+        Thread firstCaller = new Thread(() -> tracker.isRuntimeDbHealthy());
+        firstCaller.start();
+        try {
+            assertTrue(testStarted.await(5, TimeUnit.SECONDS));
+            assertTrue(tracker.isRuntimeDbHealthy());
+            verify(sqlTemplate, times(1)).testConnection();
+        } finally {
+            testRelease.countDown();
+            firstCaller.join(5_000);
+        }
+    }
+
+    @Test
     void isRuntimeDbHealthy_declaredUnhealthy_reportsEngineNotReady() {
         ApplicationHealthTracker appHealthTracker = new ApplicationHealthTracker();
         appHealthTracker.setEngineReadiness(ENGINE_NAME, true);

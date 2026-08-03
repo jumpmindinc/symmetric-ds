@@ -60,7 +60,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
     });
     private final Supplier<ISqlTemplate> sqlTemplateSupplier;
     private final IParameterService parameterService;
-    private final LongSupplier clock;
+    private final LongSupplier currentSystemTime;
     private final ReentrantLock testLock = new ReentrantLock();
     private final AtomicInteger consecutiveFailures = new AtomicInteger();
     private volatile DbHealthCheckResult lastDbCheckResult;
@@ -70,10 +70,10 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
         this(sqlTemplateSupplier, parameterService, System::currentTimeMillis);
     }
 
-    DatabaseHealthTracker(Supplier<ISqlTemplate> sqlTemplateSupplier, IParameterService parameterService, LongSupplier clock) {
+    DatabaseHealthTracker(Supplier<ISqlTemplate> sqlTemplateSupplier, IParameterService parameterService, LongSupplier currentSystemTime) {
         this.sqlTemplateSupplier = sqlTemplateSupplier;
         this.parameterService = parameterService;
-        this.clock = clock;
+        this.currentSystemTime = currentSystemTime;
     }
 
     @Override
@@ -81,7 +81,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
         if (!parameterService.is(ParameterConstants.DB_HEALTH_CHECK_ENABLED, true)) {
             return true;
         }
-        if (isDeclaredUnhealthy() && clock.getAsLong() < unhealthyUntilMs) {
+        if (isDeclaredUnhealthy() && currentSystemTime.getAsLong() < unhealthyUntilMs) {
             return false;
         }
         if (!testLock.tryLock()) {
@@ -89,7 +89,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
         }
         try {
             if (isDeclaredUnhealthy()) {
-                if (clock.getAsLong() < unhealthyUntilMs) {
+                if (currentSystemTime.getAsLong() < unhealthyUntilMs) {
                     return false;
                 }
                 return attemptRecovery();
@@ -129,14 +129,14 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
         }
         consecutiveFailures.incrementAndGet();
         long waitMs = getUnhealthyWaitMs();
-        unhealthyUntilMs = clock.getAsLong() + waitMs;
+        unhealthyUntilMs = currentSystemTime.getAsLong() + waitMs;
         log.info("Runtime database is still unhealthy, next connection test in {} ms: {}", waitMs, lastDbCheckResult.result());
         return false;
     }
 
     private void declareUnhealthy(int failures) {
         long waitMs = getUnhealthyWaitMs();
-        unhealthyUntilMs = clock.getAsLong() + waitMs;
+        unhealthyUntilMs = currentSystemTime.getAsLong() + waitMs;
         updateEngineReadiness(false);
         log.warn("Runtime database is unhealthy after {} consecutive connection failures, pausing jobs and incoming syncs for {} ms: {}",
                 failures, waitMs, lastDbCheckResult.result());
