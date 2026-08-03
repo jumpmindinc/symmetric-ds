@@ -21,6 +21,11 @@
 package org.jumpmind.symmetric.util;
 
 import java.util.Date;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.LongSupplier;
@@ -29,6 +34,7 @@ import java.util.function.Supplier;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jumpmind.db.sql.ISqlTemplate;
+import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.IApplicationHealthTracker;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -45,6 +51,13 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
     private static final String HEALTHY_RESULT = "OK";
     private static final int DEFAULT_FAILURE_THRESHOLD = 5;
     private static final long DEFAULT_DB_HEALTH_TIMEOUT_SECONDS = 60;
+    private static final long DEFAULT_TEST_TIMEOUT_MS = 30000;
+    private final AtomicInteger testThreadNumber = new AtomicInteger(1);
+    private final ExecutorService testExecutor = Executors.newCachedThreadPool(runnable -> {
+        Thread thread = new Thread(runnable, "db-health-check-" + testThreadNumber.getAndIncrement());
+        thread.setDaemon(true);
+        return thread;
+    });
     private final Supplier<ISqlTemplate> sqlTemplateSupplier;
     private final IParameterService parameterService;
     private final LongSupplier clock;
@@ -130,14 +143,30 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
     }
 
     private boolean testConnection() {
+        long timeoutMs = getTestTimeoutMs();
+        // run on a daemon thread with a hard timeout because a physical connect attempt is not bounded by the pool wait
+        Future<?> test = testExecutor.submit(() -> sqlTemplateSupplier.get().testConnection());
         try {
-            sqlTemplateSupplier.get().testConnection();
+            test.get(timeoutMs, TimeUnit.MILLISECONDS);
             lastDbCheckResult = new DbHealthCheckResult(new Date(), true, HEALTHY_RESULT);
             return true;
+        } catch (TimeoutException e) {
+            test.cancel(true);
+            lastDbCheckResult = new DbHealthCheckResult(new Date(), false, "Connection test timed out after " + timeoutMs + " ms");
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            lastDbCheckResult = new DbHealthCheckResult(new Date(), false, ExceptionUtils.getRootCauseMessage(e));
+            return false;
         } catch (Exception e) {
             lastDbCheckResult = new DbHealthCheckResult(new Date(), false, ExceptionUtils.getRootCauseMessage(e));
             return false;
         }
+    }
+
+    private long getTestTimeoutMs() {
+        long timeoutMs = parameterService.getLong(DataSourceProperties.DB_POOL_MAX_WAIT, DEFAULT_TEST_TIMEOUT_MS);
+        return timeoutMs > 0 ? timeoutMs : DEFAULT_TEST_TIMEOUT_MS;
     }
 
     private void updateEngineReadiness(boolean isReady) {
