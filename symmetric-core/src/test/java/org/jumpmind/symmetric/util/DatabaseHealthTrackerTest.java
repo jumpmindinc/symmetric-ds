@@ -187,7 +187,7 @@ class DatabaseHealthTrackerTest {
     @Test
     void isRuntimeDbHealthy_timeoutParameterNotPositive_usesDefaultWait() {
         when(parameterService.getLong(ParameterConstants.DB_HEALTH_CHECK_RETRY_SECONDS, 60)).thenReturn(0L);
-        long defaultWaitMs = FAILURE_THRESHOLD * 60 * 1000;
+        long defaultWaitMs = DEFAULT_DB_HEALTH_TIMEOUT_SECONDS * DateUtils.MILLIS_PER_SECOND;
         declareUnhealthy();
         currentTimeMs[0] = defaultWaitMs - 1;
         assertFalse(tracker.isRuntimeDbHealthy());
