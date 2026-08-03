@@ -78,6 +78,16 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
 
     @Override
     public boolean isRuntimeDbHealthy() {
+        try {
+            return internalIsRuntimeDbHealthy();
+        } catch (Exception e) {
+            recordResult(false, ExceptionUtils.getRootCauseMessage(e));
+            log.warn("Runtime database health check failed! Marked the database as unhealthy. Error: {}", lastDbCheckResult.result());
+            return false;
+        }
+    }
+
+    private boolean internalIsRuntimeDbHealthy() {
         if (!parameterService.is(ParameterConstants.DB_HEALTH_CHECK_ENABLED, true)) {
             return true;
         }

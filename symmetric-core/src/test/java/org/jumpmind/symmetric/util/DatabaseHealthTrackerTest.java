@@ -245,6 +245,16 @@ class DatabaseHealthTrackerTest {
     }
 
     @Test
+    void isRuntimeDbHealthy_parameterLookupFails_recordsFailureAndReturnsFalse() {
+        when(parameterService.is(ParameterConstants.DB_HEALTH_CHECK_ENABLED, true)).thenThrow(new SqlException("parameters unavailable"));
+        assertFalse(tracker.isRuntimeDbHealthy());
+        DbHealthCheckResult dbCheckResult = tracker.getLastResult();
+        assertFalse(dbCheckResult.isHealthy());
+        assertTrue(dbCheckResult.result().contains("parameters unavailable"));
+        verify(sqlTemplate, never()).testConnection();
+    }
+
+    @Test
     void isRuntimeDbHealthy_declaredUnhealthy_reportsEngineNotReady() {
         ApplicationHealthTracker appHealthTracker = new ApplicationHealthTracker();
         appHealthTracker.setEngineReadiness(ENGINE_NAME, true);
