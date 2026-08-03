@@ -193,4 +193,22 @@ class LogbackHelperTest {
             context.getLogger(LogbackHelper.class).detachAppender(captured);
         }
     }
+
+    @Test
+    void logNonExistentLoggingConfigurations_missingLogbackDebugXml_warnsWithDebugFilename() {
+        Assumptions.assumeFalse(new File(AppUtils.getSymHome() + "/conf/logback-debug.xml").exists());
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        ListAppender<ILoggingEvent> captured = new ListAppender<>();
+        captured.setContext(context);
+        captured.start();
+        context.getLogger(LogbackHelper.class).addAppender(captured);
+        try {
+            assertDoesNotThrow(() -> helper.initialize(true));
+            assertTrue(captured.list.stream().anyMatch(event -> event.getLevel() == ch.qos.logback.classic.Level.WARN
+                    && event.getFormattedMessage().contains("logback-debug.xml")),
+                    "a missing conf/logback-debug.xml should log a warning naming the debug file");
+        } finally {
+            context.getLogger(LogbackHelper.class).detachAppender(captured);
+        }
+    }
 }
