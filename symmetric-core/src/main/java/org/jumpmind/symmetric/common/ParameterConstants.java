@@ -478,13 +478,12 @@ final public class ParameterConstants {
     public static final String DB_POOL_URL = "db.url";
     public static final String DB_POOL_USER = "db.user";
     public static final String[] STARTUP_DB_OBJECTS_SETUP_PARAMS = new String[] {
-            TRIGGER_CAPTURE_DDL_CHANGES,
-            POSTGRES_TRIGGER_CAPTURE_TRUNCATE,
-            TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST,
-            TRIGGER_CAPTURE_DDL_DELIMITER,
-            DB_POOL_USER,
-            DB_POOL_URL,
-            LOAD_ONLY_PROPERTY_PREFIX + DB_POOL_URL };
+                TRIGGER_CAPTURE_DDL_CHANGES,
+                POSTGRES_TRIGGER_CAPTURE_TRUNCATE,
+                TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST,
+                TRIGGER_CAPTURE_DDL_DELIMITER,
+                DB_POOL_USER, DB_POOL_URL, LOAD_ONLY_PROPERTY_PREFIX + DB_POOL_URL ,
+                "mssql.use.ntypes.for.sync" };
     public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
             JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
             INCLUDE_ROWIDENTIFIER_AS_COLUMN
