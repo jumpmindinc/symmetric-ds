@@ -87,11 +87,11 @@ class DatabaseHealthTrackerTest {
     @Test
     void isRuntimeDbHealthy_firstTestSucceeds_recordsHealthyResult() {
         assertTrue(tracker.isRuntimeDbHealthy());
-        DbHealthCheckResult result = tracker.getLastResult();
-        assertNotNull(result);
-        assertNotNull(result.recorded());
-        assertTrue(result.isHealthy());
-        assertEquals("OK", result.result());
+        DbHealthCheckResult dbCheckResult = tracker.getLastResult();
+        assertNotNull(dbCheckResult);
+        assertNotNull(dbCheckResult.recorded());
+        assertTrue(dbCheckResult.isHealthy());
+        assertEquals("OK", dbCheckResult.result());
     }
 
     @Test
@@ -179,9 +179,9 @@ class DatabaseHealthTrackerTest {
     void isRuntimeDbHealthy_testFails_recordsExceptionMessage() {
         failConnectionTests();
         tracker.isRuntimeDbHealthy();
-        DbHealthCheckResult result = tracker.getLastResult();
-        assertFalse(result.isHealthy());
-        assertTrue(result.result().contains("connection refused"));
+        DbHealthCheckResult dbCheckResult = tracker.getLastResult();
+        assertFalse(dbCheckResult.isHealthy());
+        assertTrue(dbCheckResult.result().contains("connection refused"));
     }
 
     @Test

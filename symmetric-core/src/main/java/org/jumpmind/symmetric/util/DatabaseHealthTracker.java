@@ -50,7 +50,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
     private final LongSupplier clock;
     private final ReentrantLock testLock = new ReentrantLock();
     private final AtomicInteger consecutiveFailures = new AtomicInteger();
-    private volatile DbHealthCheckResult lastResult;
+    private volatile DbHealthCheckResult lastDbCheckResult;
     private volatile long unhealthyUntilMs;
 
     public DatabaseHealthTracker(Supplier<ISqlTemplate> sqlTemplateSupplier, IParameterService parameterService) {
@@ -89,7 +89,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
 
     @Override
     public DbHealthCheckResult getLastResult() {
-        return lastResult;
+        return lastDbCheckResult;
     }
 
     private boolean testWhileHealthy() {
@@ -103,7 +103,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
             declareUnhealthy(failures);
             return false;
         }
-        log.debug("Runtime database connection test failed {} of {} times: {}", failures, failureThreshold, lastResult.result());
+        log.debug("Runtime database connection test failed {} of {} times: {}", failures, failureThreshold, lastDbCheckResult.result());
         return true;
     }
 
@@ -117,7 +117,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
         consecutiveFailures.incrementAndGet();
         long waitMs = getUnhealthyWaitMs();
         unhealthyUntilMs = clock.getAsLong() + waitMs;
-        log.info("Runtime database is still unhealthy, next connection test in {} ms: {}", waitMs, lastResult.result());
+        log.info("Runtime database is still unhealthy, next connection test in {} ms: {}", waitMs, lastDbCheckResult.result());
         return false;
     }
 
@@ -126,16 +126,16 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
         unhealthyUntilMs = clock.getAsLong() + waitMs;
         updateEngineReadiness(false);
         log.warn("Runtime database is unhealthy after {} consecutive connection failures, pausing jobs and incoming syncs for {} ms: {}",
-                failures, waitMs, lastResult.result());
+                failures, waitMs, lastDbCheckResult.result());
     }
 
     private boolean testConnection() {
         try {
             sqlTemplateSupplier.get().testConnection();
-            lastResult = new DbHealthCheckResult(new Date(), true, HEALTHY_RESULT);
+            lastDbCheckResult = new DbHealthCheckResult(new Date(), true, HEALTHY_RESULT);
             return true;
         } catch (Exception e) {
-            lastResult = new DbHealthCheckResult(new Date(), false, ExceptionUtils.getRootCauseMessage(e));
+            lastDbCheckResult = new DbHealthCheckResult(new Date(), false, ExceptionUtils.getRootCauseMessage(e));
             return false;
         }
     }
