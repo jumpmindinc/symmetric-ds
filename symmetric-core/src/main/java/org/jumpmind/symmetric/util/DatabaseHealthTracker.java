@@ -61,10 +61,10 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
     private final Supplier<ISqlTemplate> sqlTemplateSupplier;
     private final IParameterService parameterService;
     private final LongSupplier currentSystemTime;
-    private final ReentrantLock testLock = new ReentrantLock();
     private final AtomicInteger consecutiveFailures = new AtomicInteger();
     private volatile DbHealthCheckResult lastDbCheckResult;
     private volatile long unhealthyUntilMs;
+    private final ReentrantLock reentrantLock = new ReentrantLock(); // Used to protect access to volatile members: lastDbCheckResult, unhealthyUntilMs
 
     public DatabaseHealthTracker(Supplier<ISqlTemplate> sqlTemplateSupplier, IParameterService parameterService) {
         this(sqlTemplateSupplier, parameterService, System::currentTimeMillis);
@@ -84,9 +84,10 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
         if (isDeclaredUnhealthy() && currentSystemTime.getAsLong() < unhealthyUntilMs) {
             return false;
         }
-        if (!testLock.tryLock()) {
+        if (!reentrantLock.tryLock()) {
             return !isDeclaredUnhealthy();
         }
+        // NOTE: The rest of the method, including the private methods it calls, runs while holding reentrantLock
         try {
             if (isDeclaredUnhealthy()) {
                 if (currentSystemTime.getAsLong() < unhealthyUntilMs) {
@@ -96,12 +97,12 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
             }
             return testWhileHealthy();
         } finally {
-            testLock.unlock();
+            reentrantLock.unlock();
         }
     }
 
     @Override
-    public synchronized DbHealthCheckResult getLastResult() {
+    public DbHealthCheckResult getLastResult() {
         return lastDbCheckResult;
     }
 
@@ -124,13 +125,13 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
         if (testConnection() && testConnection()) {
             int failures = consecutiveFailures.getAndSet(0);
             updateEngineReadiness(true);
-            log.info("Runtime database connection restored after {} consecutive failures", failures);
+            log.info("Runtime database connection restored after {} consecutive failures. Marked the database as healthy.", failures);
             return true;
         }
         consecutiveFailures.incrementAndGet();
         long waitMs = getUnhealthyWaitMs();
         unhealthyUntilMs = currentSystemTime.getAsLong() + waitMs;
-        log.info("Runtime database is still unhealthy, next connection test in {} ms: {}", waitMs, lastDbCheckResult.result());
+        log.debug("Runtime database is still unhealthy, next connection test in {} ms: {}", waitMs, lastDbCheckResult.result());
         return false;
     }
 
@@ -142,7 +143,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
                 failures, waitMs, lastDbCheckResult.result());
     }
 
-    private synchronized boolean testConnection() {
+    private boolean testConnection() {
         long timeoutMs = getTestTimeoutMs();
         long startTimeMs = currentSystemTime.getAsLong();
         long elapsedMs = 0;
@@ -156,22 +157,22 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
             return true;
         } catch (TimeoutException ex) {
             test.cancel(true);
-            log.warn("Test of connectivity to the runtime database had timedout after "+timeoutMs+" ms! Marking the database as unhealthy. Error: {}", ex);
+            log.warn("Test of connectivity to the runtime database had timedout after " + timeoutMs + " ms! Marked the database as unhealthy. Error: {}", ex);
             recordResult(false, "Connection test timed out after " + timeoutMs + " ms");
         } catch (InterruptedException ex) {
             elapsedMs = currentSystemTime.getAsLong() - startTimeMs;
-            log.warn("Test of connectivity to the runtime database was interrupted after "+ elapsedMs+" ms! Marking the database as unhealthy.");
+            log.warn("Test of connectivity to the runtime database was interrupted after " + elapsedMs + " ms! Marked the database as unhealthy.");
             Thread.currentThread().interrupt();
-            recordResult(false, ExceptionUtils.getRootCauseMessage(e));
+            recordResult(false, ExceptionUtils.getRootCauseMessage(ex));
         } catch (Exception e) {
             elapsedMs = currentSystemTime.getAsLong() - startTimeMs;
-            log.warn("Test of connectivity to the runtime database had failed after "+elapsedMs+" ms! Marking the database as unhealthy. Error: {}", ex);
+            log.warn("Test of connectivity to the runtime database had failed after " + elapsedMs + " ms! Marked the database as unhealthy. Error: {}", e);
             recordResult(false, ExceptionUtils.getRootCauseMessage(e));
         }
         return false;
     }
 
-    private synchronized void recordResult(boolean isHealthy, String result) {
+    private void recordResult(boolean isHealthy, String result) {
         Instant recordedInstant = Instant.ofEpochMilli(currentSystemTime.getAsLong());
         lastDbCheckResult = new DbHealthCheckResult(recordedInstant, isHealthy, result);
     }
