@@ -488,7 +488,7 @@ final public class ParameterConstants {
     public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
             JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
             INCLUDE_ROWIDENTIFIER_AS_COLUMN, "mssql.use.ntypes.for.sync"
-        };
+    };
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;
