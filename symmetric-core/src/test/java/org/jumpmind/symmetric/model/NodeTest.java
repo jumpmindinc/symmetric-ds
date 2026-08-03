@@ -61,7 +61,7 @@ class NodeTest {
     @Test
     void testEquals_null_returnsFalse() {
         Node a = new Node("00000", "http://host/sync/00000", "1.0.0");
-        assertNotEquals(a, null);
+        assertNotEquals(null, a);
     }
 
     @Test
