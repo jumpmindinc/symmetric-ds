@@ -74,6 +74,8 @@ public class LogbackHelper {
             }
             context.putProperty("HOSTNAME", AppUtils.getHostName());
             enforceProtectedLoggers();
+        } else {
+            logNonExistentLoggingConfigurations(isDebug);
         }
     }
 
@@ -323,6 +325,11 @@ public class LogbackHelper {
             throw new IllegalStateException("SLF4J is not bound to Logback in this context: " + factory.getClass().getName());
         }
         return (LoggerContext) factory;
+    }
+
+    private void logNonExistentLoggingConfigurations(boolean isDebug) {
+        String logFile = isDebug ? "logback-debug.xml" : "logback.xml";
+        log.warn("No conf/{} file exists! Possible failures: Symmetric Installation OR Log4j2_Logback migration.", logFile);
     }
 
     private ch.qos.logback.classic.Logger getRootLogger() {
