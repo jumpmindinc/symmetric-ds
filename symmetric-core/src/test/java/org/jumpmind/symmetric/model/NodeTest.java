@@ -48,47 +48,47 @@ class NodeTest {
     void testEquals_sameNodeId_returnsTrue() {
         Node a = new Node("00000", "http://host/sync/00000", "1.0.0");
         Node b = new Node("00000", "http://otherhost/sync/00000", "2.0.0");
-        assertTrue(a.equals(b));
+        assertEquals(a, b);
     }
 
     @Test
     void testEquals_differentNodeId_returnsFalse() {
         Node a = new Node("00000", "http://host/sync/00000", "1.0.0");
         Node b = new Node("00001", "http://host/sync/00000", "1.0.0");
-        assertFalse(a.equals(b));
+        assertNotEquals(a, b);
     }
 
     @Test
     void testEquals_null_returnsFalse() {
         Node a = new Node("00000", "http://host/sync/00000", "1.0.0");
-        assertFalse(a.equals(null));
+        assertNotEquals(a, null);
     }
 
     @Test
     void testEquals_thisNodeIdNull_returnsFalse() {
         Node a = new Node();
         Node b = new Node("00000", "http://host/sync/00000", "1.0.0");
-        assertFalse(a.equals(b));
+        assertNotEquals(a, b);
     }
 
     @Test
     void testEquals_bothNodeIdNull_returnsFalse() {
         Node a = new Node();
         Node b = new Node();
-        assertFalse(a.equals(b));
+        assertNotEquals(a, b);
     }
 
     @Test
     void testEquals_otherNodeIdNull_returnsFalse() {
         Node a = new Node("00000", "http://host/sync/00000", "1.0.0");
         Node b = new Node();
-        assertFalse(a.equals(b));
+        assertNotEquals(a, b);
     }
 
     @Test
     void testEquals_sameReference_returnsTrue() {
         Node a = new Node("00000", "http://host/sync/00000", "1.0.0");
-        assertTrue(a.equals(a));
+        assertEquals(a, a);
     }
 
     @Test
@@ -99,6 +99,6 @@ class NodeTest {
         Node b = new Node("00000", "http://otherhost/sync/00000", "9.9.9");
         b.setNodeGroupId("groupB");
         b.setDatabaseType("postgres");
-        assertTrue(a.equals(b));
+        assertEquals(a, b);
     }
 }
