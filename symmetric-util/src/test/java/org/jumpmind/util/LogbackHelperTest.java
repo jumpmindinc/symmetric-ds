@@ -23,13 +23,21 @@ package org.jumpmind.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import ch.qos.logback.classic.LoggerContext;
+import java.io.File;
+
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
+
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 class LogbackHelperTest {
     private static final String TEST_LOGGER = "org.jumpmind.test.LogbackHelperTest";
@@ -166,5 +174,23 @@ class LogbackHelperTest {
     @Test
     void testGetRootLevel() {
         assertNotNull(helper.getRootLevel());
+    }
+
+    @Test
+    void logNonExistentLoggingConfigurations_missingLogbackXml_warnsAndDoesNotThrow() {
+        Assumptions.assumeFalse(new File(AppUtils.getSymHome() + "/conf/logback.xml").exists());
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        ListAppender<ILoggingEvent> captured = new ListAppender<>();
+        captured.setContext(context);
+        captured.start();
+        context.getLogger(LogbackHelper.class).addAppender(captured);
+        try {
+            assertDoesNotThrow(() -> helper.initialize(false));
+            assertTrue(captured.list.stream().anyMatch(event -> event.getLevel() == ch.qos.logback.classic.Level.WARN
+                    && event.getFormattedMessage().contains("logback.xml")),
+                    "a missing conf/logback.xml should log a warning naming the expected file");
+        } finally {
+            context.getLogger(LogbackHelper.class).detachAppender(captured);
+        }
     }
 }

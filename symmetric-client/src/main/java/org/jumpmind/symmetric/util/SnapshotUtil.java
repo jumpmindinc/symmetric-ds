@@ -1259,7 +1259,7 @@ public class SnapshotUtil {
         }
     }
 
-    private static void writeLoggingConfigFile(File tmpDir, String logConfigFileString) {
+    protected static void writeLoggingConfigFile(File tmpDir, String logConfigFileString) {
         File logbackFile = new File(logConfigFileString);
         try {
             if (logbackFile.exists()) {
