@@ -155,11 +155,11 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
     }
 
     private long getUnhealthyWaitMs() {
-        long healthTimeoutSeconds = parameterService.getLong(ParameterConstants.DB_HEALTH_CHECK_TIMEOUT_SECONDS, DEFAULT_DB_HEALTH_TIMEOUT_SECONDS);
+        long healthTimeoutSeconds = parameterService.getLong(ParameterConstants.DB_HEALTH_CHECK_RETRY_SECONDS, DEFAULT_DB_HEALTH_TIMEOUT_SECONDS);
         if (healthTimeoutSeconds <= 0) {
             healthTimeoutSeconds = DEFAULT_DB_HEALTH_TIMEOUT_SECONDS;
         }
-        return getFailureThreshold() * healthTimeoutSeconds * DateUtils.MILLIS_PER_SECOND;
+        return healthTimeoutSeconds * DateUtils.MILLIS_PER_SECOND;
     }
 
     private int getFailureThreshold() {

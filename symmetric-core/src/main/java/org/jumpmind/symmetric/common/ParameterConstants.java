@@ -293,7 +293,7 @@ final public class ParameterConstants {
     public static final String DB_QUERY_TIMEOUT_SECS = "db.sql.query.timeout.seconds";
     public static final String DB_HEALTH_CHECK_ENABLED = "db.health.check.enabled";
     public static final String DB_HEALTH_CHECK_FAILURE_THRESHOLD = "db.health.check.failure.threshold";
-    public static final String DB_HEALTH_CHECK_TIMEOUT_SECONDS = "db.health.check.timeout.seconds";
+    public static final String DB_HEALTH_CHECK_RETRY_SECONDS = "db.health.check.retry.seconds";
     public static final String DB_FETCH_SIZE = "db.jdbc.streaming.results.fetch.size";
     public static final String DB_DELIMITED_IDENTIFIER_MODE = "db.delimited.identifier.mode";
     public static final String TARGET_DB_DELIMITED_IDENTIFIER_MODE = "target.db.delimited.identifier.mode";

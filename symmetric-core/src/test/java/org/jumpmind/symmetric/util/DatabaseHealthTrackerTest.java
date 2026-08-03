@@ -58,7 +58,7 @@ class DatabaseHealthTrackerTest {
         parameterService = mock(IParameterService.class);
         when(parameterService.is(ParameterConstants.DB_HEALTH_CHECK_ENABLED, true)).thenReturn(true);
         when(parameterService.getInt(ParameterConstants.DB_HEALTH_CHECK_FAILURE_THRESHOLD, 5)).thenReturn(FAILURE_THRESHOLD);
-        when(parameterService.getLong(ParameterConstants.DB_HEALTH_CHECK_TIMEOUT_SECONDS, 60)).thenReturn(10L);
+        when(parameterService.getLong(ParameterConstants.DB_HEALTH_CHECK_RETRY_SECONDS, 60)).thenReturn(10L);
         when(parameterService.getEngineName()).thenReturn(ENGINE_NAME);
         currentTimeMs = new long[] { 0 };
         tracker = new DatabaseHealthTracker(() -> sqlTemplate, parameterService, () -> currentTimeMs[0]);
@@ -186,7 +186,7 @@ class DatabaseHealthTrackerTest {
 
     @Test
     void isRuntimeDbHealthy_timeoutParameterNotPositive_usesDefaultWait() {
-        when(parameterService.getLong(ParameterConstants.DB_HEALTH_CHECK_TIMEOUT_SECONDS, 60)).thenReturn(0L);
+        when(parameterService.getLong(ParameterConstants.DB_HEALTH_CHECK_RETRY_SECONDS, 60)).thenReturn(0L);
         long defaultWaitMs = FAILURE_THRESHOLD * 60 * 1000;
         declareUnhealthy();
         currentTimeMs[0] = defaultWaitMs - 1;
