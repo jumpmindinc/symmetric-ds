@@ -142,7 +142,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
                 failures, waitMs, lastDbCheckResult.result());
     }
 
-    private boolean testConnection() {
+    private synchronized boolean testConnection() {
         long timeoutMs = getTestTimeoutMs();
         long startTimeMs = currentSystemTime.getAsLong();
         long elapsedMs = 0;
@@ -172,7 +172,8 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
     }
 
     private synchronized void recordResult(boolean isHealthy, String result) {
-        lastDbCheckResult = new DbHealthCheckResult(Instant.ofEpochMilli(currentSystemTime.getAsLong()), isHealthy, result);
+        Instant recordedInstant = Instant.ofEpochMilli(currentSystemTime.getAsLong());
+        lastDbCheckResult = new DbHealthCheckResult(recordedInstant, isHealthy, result);
     }
 
     private long getTestTimeoutMs() {
