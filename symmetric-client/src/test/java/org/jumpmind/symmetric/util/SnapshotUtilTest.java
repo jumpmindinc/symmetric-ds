@@ -75,4 +75,16 @@ public class SnapshotUtilTest {
         assertDoesNotThrow(() -> SnapshotUtil.writeLoggingConfigFile(snapshotDir, new File(confDir, "logback.xml").getAbsolutePath()));
         assertEquals(0, snapshotDir.list().length, "nothing should be copied when no logging configs exist");
     }
+
+    @Test
+    void writeLoggingConfigFile_copyFails_logsWarningInsteadOfThrowing() throws IOException {
+        File confDir = tempDir.resolve("conf").toFile();
+        File snapshotDir = tempDir.resolve("snapshot").toFile();
+        confDir.mkdirs();
+        snapshotDir.mkdirs();
+        File notActuallyAFile = new File(confDir, "logback.xml");
+        notActuallyAFile.mkdirs();
+        assertDoesNotThrow(() -> SnapshotUtil.writeLoggingConfigFile(snapshotDir, notActuallyAFile.getAbsolutePath()));
+        assertEquals(0, snapshotDir.list().length, "a failed copy should not leave a partial file behind");
+    }
 }
