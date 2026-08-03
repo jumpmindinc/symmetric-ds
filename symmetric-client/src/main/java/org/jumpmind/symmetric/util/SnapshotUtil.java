@@ -507,6 +507,8 @@ public class SnapshotUtil {
                 log.warn("Failed to copy {}", backupConfig.getName());
             }
         }
+        log.info("Writing logging configuration");
+        writeLoggingConfigFiles(tmpDir);
         log.info("Packaging ZIP file");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         File jarFile = null;
@@ -1253,6 +1255,22 @@ public class SnapshotUtil {
             writeProperties(changedParameters, tmpDir, "parameters-changed.properties");
         } catch (Exception e) {
             log.warn("Failed to export parameters-changed information", e);
+        }
+    }
+
+    protected static void writeLoggingConfigFiles(File tmpDir) {
+        writeLoggingConfigFile(tmpDir, "conf/log4j2.xml.deprecated");
+        writeLoggingConfigFile(tmpDir, "conf/logback.xml");
+    }
+
+    protected static void writeLoggingConfigFile(File tmpDir, String logConfigFileString) {
+        File logbackFile = new File(logConfigFileString);
+        try {
+            if (logbackFile.exists()) {
+                FileUtils.copyFileToDirectory(logbackFile, tmpDir);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to copy " + logbackFile.getName() + " to the snapshot directory", e);
         }
     }
 
