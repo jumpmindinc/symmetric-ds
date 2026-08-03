@@ -101,7 +101,7 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
     }
 
     @Override
-    public DbHealthCheckResult getLastResult() {
+    public synchronized DbHealthCheckResult getLastResult() {
         return lastDbCheckResult;
     }
 
@@ -144,27 +144,34 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
 
     private boolean testConnection() {
         long timeoutMs = getTestTimeoutMs();
+        long startTimeMs = currentSystemTime.getAsLong();
+        long elapsedMs = 0;
         // run on a daemon thread with a hard timeout because a physical connect attempt is not bounded by the pool wait
         Future<?> test = testExecutor.submit(() -> sqlTemplateSupplier.get().testConnection());
         try {
             test.get(timeoutMs, TimeUnit.MILLISECONDS);
             recordResult(true, HEALTHY_RESULT);
+            elapsedMs = currentSystemTime.getAsLong() - startTimeMs;
+            log.debug("Test of connectivity to the runtime database succeeded after {} ms. Timeout: {}", elapsedMs, timeoutMs);
             return true;
-        } catch (TimeoutException e) {
+        } catch (TimeoutException ex) {
             test.cancel(true);
+            log.warn("Test of connectivity to the runtime database had timedout after "+timeoutMs+" ms! Marking the database as unhealthy. Error: {}", ex);
             recordResult(false, "Connection test timed out after " + timeoutMs + " ms");
-            return false;
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ex) {
+            elapsedMs = currentSystemTime.getAsLong() - startTimeMs;
+            log.warn("Test of connectivity to the runtime database was interrupted after "+ elapsedMs+" ms! Marking the database as unhealthy.");
             Thread.currentThread().interrupt();
             recordResult(false, ExceptionUtils.getRootCauseMessage(e));
-            return false;
         } catch (Exception e) {
+            elapsedMs = currentSystemTime.getAsLong() - startTimeMs;
+            log.warn("Test of connectivity to the runtime database had failed after "+elapsedMs+" ms! Marking the database as unhealthy. Error: {}", ex);
             recordResult(false, ExceptionUtils.getRootCauseMessage(e));
-            return false;
         }
+        return false;
     }
 
-    private void recordResult(boolean isHealthy, String result) {
+    private synchronized void recordResult(boolean isHealthy, String result) {
         lastDbCheckResult = new DbHealthCheckResult(Instant.ofEpochMilli(currentSystemTime.getAsLong()), isHealthy, result);
     }
 
