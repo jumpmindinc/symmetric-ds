@@ -65,6 +65,7 @@ import org.jumpmind.symmetric.cache.ClusteredEngineState;
 import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
+import org.jumpmind.symmetric.model.DbHealthCheckResult;
 import org.jumpmind.symmetric.model.NodeHost;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ServerConstants;
@@ -158,6 +159,8 @@ import org.jumpmind.symmetric.transport.ConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
+import org.jumpmind.symmetric.util.DatabaseHealthTracker;
+import org.jumpmind.symmetric.util.IDatabaseHealthTracker;
 import org.jumpmind.symmetric.util.LogUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.util.AppUtils;
@@ -183,6 +186,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected ISecurityService securityService;
     protected ParameterService parameterService;
     protected ISymmetricDialect symmetricDialect;
+    protected IDatabaseHealthTracker databaseHealthTracker;
     protected INodeService nodeService;
     protected IConfigurationService configurationService;
     protected IBandwidthService bandwidthService;
@@ -367,6 +371,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         updatePlatformWithParametersFromDatabase();
         this.symmetricDialect = createSymmetricDialect();
         this.symmetricDialect.setTargetDialect(createTargetDialect());
+        this.databaseHealthTracker = new DatabaseHealthTracker(() -> getSymmetricDialect().getPlatform().getSqlTemplate(), parameterService);
         ensureMetricsServiceIsCreated();
         ensureExtensionServiceIsCreated();
         this.cacheManager = new CacheManager(this);
@@ -384,7 +389,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
-                metricsService);
+                metricsService, databaseHealthTracker);
         this.purgeService = new PurgeService(parameterService, symmetricDialect, clusterService, dataService, sequenceService,
                 statisticManager, extensionService, contextService);
         this.transformService = new TransformService(this, symmetricDialect);
@@ -1445,6 +1450,16 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     @Override
     public boolean isStarting() {
         return starting;
+    }
+
+    @Override
+    public boolean isRuntimeDbHealthy() {
+        return databaseHealthTracker == null || databaseHealthTracker.isRuntimeDbHealthy();
+    }
+
+    @Override
+    public DbHealthCheckResult getLastDbHealthCheckResult() {
+        return databaseHealthTracker == null ? null : databaseHealthTracker.getLastResult();
     }
 
     @Override

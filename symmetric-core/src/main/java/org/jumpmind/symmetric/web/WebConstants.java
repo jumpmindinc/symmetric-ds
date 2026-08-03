@@ -145,6 +145,8 @@ public class WebConstants {
             httpMessage = "Service is unavailable";
         } else if (httpCode == SC_SERVICE_BUSY) {
             httpMessage = "Service is busy";
+        } else if (httpCode == SC_SERVICE_NOT_READY) {
+            httpMessage = "Service is not ready";
         } else if (httpCode == SC_SERVICE_ERROR) {
             httpMessage = "Service internal error";
         } else if (httpCode == SC_NO_RESERVATION) {

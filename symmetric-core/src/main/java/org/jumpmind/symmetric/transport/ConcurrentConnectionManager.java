@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.LongSupplier;
 
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.IApplicationHealthTracker;
@@ -34,6 +35,7 @@ import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.observability.interfaces.SymMetricConstants;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.util.IDatabaseHealthTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,10 +51,19 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     protected Map<String, Long> transportErrorTimeByNode = new HashMap<String, Long>();
     private IUpDownCounter connectionsCounter;
     private ISymDoubleGauge utilizationGauge;
+    private IDatabaseHealthTracker databaseHealthTracker;
+    private final LongSupplier currentSystemTime;
 
     public ConcurrentConnectionManager(IParameterService parameterService,
-            IEngineMetricsService metricsService) {
+            IEngineMetricsService metricsService, IDatabaseHealthTracker databaseHealthTracker) {
+        this(parameterService, metricsService, databaseHealthTracker, System::currentTimeMillis);
+    }
+
+    ConcurrentConnectionManager(IParameterService parameterService,
+            IEngineMetricsService metricsService, IDatabaseHealthTracker databaseHealthTracker, LongSupplier currentSystemTime) {
         this.parameterService = parameterService;
+        this.databaseHealthTracker = databaseHealthTracker;
+        this.currentSystemTime = currentSystemTime;
         registerMetrics(metricsService);
     }
 
@@ -160,45 +171,67 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     }
 
     @Override
-    public synchronized ReservationStatus reserveConnection(String nodeId, String channelId, String poolId,
+    public ReservationStatus reserveConnection(String nodeId, String channelId, String poolId,
+            ReservationType reservationRequest, boolean requiresExistingReservation) {
+        // checked outside the synchronized reservation logic so a connection test never blocks other callers
+        if (databaseHealthTracker != null && !databaseHealthTracker.isRuntimeDbHealthy()) {
+            log.warn("Node '{}' Channel '{}' requested a {} connection, but was rejected because the runtime database is not healthy",
+                    nodeId, channelId, poolId);
+            return ReservationStatus.NOT_READY;
+        }
+        return internalReserveConnection(nodeId, channelId, poolId, reservationRequest, requiresExistingReservation);
+    }
+
+    private synchronized ReservationStatus internalReserveConnection(String nodeId, String channelId, String poolId,
             ReservationType reservationRequest, boolean requiresExistingReservation) {
         String reservationId = getReservationIdentifier(nodeId, channelId);
         log.debug("Reserving connection for {} {}", poolId, reservationId);
         Map<String, Reservation> reservations = getReservationMap(poolId);
-        int maxPoolSize = parameterService.getInt(ParameterConstants.CONCURRENT_WORKERS);
-        long timeout = parameterService.getLong(ParameterConstants.CONCURRENT_RESERVATION_TIMEOUT);
         removeTimedOutReservations(reservations);
         Reservation existingReservation = reservations.get(reservationId);
         if (requiresExistingReservation && existingReservation == null) {
-            String message = "Node '{}' Channel '{}' requested a {} connection, but was rejected because it was missing a reservation";
-            if (shouldLogTransportError(nodeId)) {
-                log.warn(message, nodeId, channelId, poolId);
-            } else {
-                log.info(message, nodeId, channelId, poolId);
-            }
+            logRejection("it was missing a reservation", nodeId, channelId, poolId);
             return ReservationStatus.NOT_FOUND;
-        } else if (reservations.size() < maxPoolSize || existingReservation != null || whiteList.contains(nodeId)) {
-            if (existingReservation == null || existingReservation.getType() == ReservationType.SOFT) {
-                long reservationExpiration = System.currentTimeMillis() + timeout;
-                if (reservationRequest != ReservationType.SOFT) {
-                    reservationExpiration += timeout; // Allow HARD reservations extra time to call releaseConnection() gracefully
-                }
-                reservations.put(reservationId, new Reservation(reservationId, reservationExpiration, reservationRequest));
-                transportErrorTimeByNode.remove(nodeId);
-                updateReadiness(reservations);
-                addConnectionAndUpdateUtilizationGauge(1);
-                return ReservationStatus.ACCEPTED;
-            } else {
-                String message = "Node '{}' Channel '{}' requested a {} connection, but was rejected because it already has one";
-                if (shouldLogTransportError(nodeId)) {
-                    log.warn(message, nodeId, channelId, poolId);
-                } else {
-                    log.info(message, nodeId, channelId, poolId);
-                }
-                return ReservationStatus.DUPLICATE;
-            }
-        } else {
+        }
+        if (existingReservation == null && !hasCapacity(reservations, nodeId)) {
             return ReservationStatus.BUSY;
+        }
+        if (existingReservation != null && existingReservation.getType() != ReservationType.SOFT) {
+            logRejection("it already has one", nodeId, channelId, poolId);
+            return ReservationStatus.DUPLICATE;
+        }
+        grantReservation(reservations, reservationId, nodeId, reservationRequest);
+        return ReservationStatus.ACCEPTED;
+    }
+
+    private boolean hasCapacity(Map<String, Reservation> reservations, String nodeId) {
+        int maxPoolSize = parameterService.getInt(ParameterConstants.CONCURRENT_WORKERS);
+        return reservations.size() < maxPoolSize || whiteList.contains(nodeId);
+    }
+
+    private void grantReservation(Map<String, Reservation> reservations, String reservationId, String nodeId,
+            ReservationType reservationRequest) {
+        reservations.put(reservationId, new Reservation(reservationId, computeExpirationTime(reservationRequest), reservationRequest));
+        transportErrorTimeByNode.remove(nodeId);
+        updateReadiness(reservations);
+        addConnectionAndUpdateUtilizationGauge(1);
+    }
+
+    private long computeExpirationTime(ReservationType reservationRequest) {
+        long timeout = parameterService.getLong(ParameterConstants.CONCURRENT_RESERVATION_TIMEOUT);
+        long expirationTime = currentSystemTime.getAsLong() + timeout;
+        if (reservationRequest != ReservationType.SOFT) {
+            expirationTime += timeout; // Allow HARD reservations extra time to call releaseConnection() gracefully
+        }
+        return expirationTime;
+    }
+
+    private void logRejection(String reason, String nodeId, String channelId, String poolId) {
+        String message = "Node '{}' Channel '{}' requested a {} connection, but was rejected because " + reason;
+        if (shouldLogTransportError(nodeId)) {
+            log.warn(message, nodeId, channelId, poolId);
+        } else {
+            log.info(message, nodeId, channelId, poolId);
         }
     }
 
@@ -231,7 +264,7 @@ public class ConcurrentConnectionManager implements IConcurrentConnectionManager
     }
 
     protected void removeTimedOutReservations(Map<String, Reservation> reservations) {
-        long currentTime = System.currentTimeMillis();
+        long currentTime = currentSystemTime.getAsLong();
         String[] keys = reservations.keySet().toArray(new String[reservations.size()]);
         if (keys != null) {
             for (String key : keys) {

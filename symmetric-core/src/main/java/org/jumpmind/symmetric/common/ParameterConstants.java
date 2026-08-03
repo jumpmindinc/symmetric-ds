@@ -291,6 +291,9 @@ final public class ParameterConstants {
     public static final String DB_METADATA_IGNORE_CASE = "db.metadata.ignore.case";
     public static final String DB_NATIVE_EXTRACTOR = "db.native.extractor";
     public static final String DB_QUERY_TIMEOUT_SECS = "db.sql.query.timeout.seconds";
+    public static final String DB_HEALTH_CHECK_ENABLED = "db.health.check.enabled";
+    public static final String DB_HEALTH_CHECK_FAILURE_THRESHOLD = "db.health.check.failure.threshold";
+    public static final String DB_HEALTH_CHECK_RETRY_SECONDS = "db.health.check.retry.seconds";
     public static final String DB_FETCH_SIZE = "db.jdbc.streaming.results.fetch.size";
     public static final String DB_DELIMITED_IDENTIFIER_MODE = "db.delimited.identifier.mode";
     public static final String TARGET_DB_DELIMITED_IDENTIFIER_MODE = "target.db.delimited.identifier.mode";
@@ -479,12 +482,11 @@ final public class ParameterConstants {
             POSTGRES_TRIGGER_CAPTURE_TRUNCATE,
             TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST,
             TRIGGER_CAPTURE_DDL_DELIMITER,
-            DB_POOL_USER,
-            DB_POOL_URL,
-            LOAD_ONLY_PROPERTY_PREFIX + DB_POOL_URL };
+            DB_POOL_USER, DB_POOL_URL, LOAD_ONLY_PROPERTY_PREFIX + DB_POOL_URL };
     public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
             JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
-            INCLUDE_ROWIDENTIFIER_AS_COLUMN };
+            INCLUDE_ROWIDENTIFIER_AS_COLUMN
+    };
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;
