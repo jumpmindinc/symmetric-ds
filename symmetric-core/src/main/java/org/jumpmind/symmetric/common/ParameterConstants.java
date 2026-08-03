@@ -472,19 +472,33 @@ final public class ParameterConstants {
     public static final String SHOW_PIPELINES_VIEW = "console.show.pipelines.view";
     public final static String TRIGGER_CAPTURE_DDL_SEND_TABLE = "trigger.capture.ddl.send.table";
     // Collections of parameters:
+<<<<<<< HEAD
     public static final String DB_POOL_URL = "db.url";
     public static final String DB_POOL_USER = "db.user";
+=======
+>>>>>>> d6710904a7 (SYM-7849: Detect mssql.use.ntypes.for.sync changes on startup (#967))
     public static final String[] STARTUP_DB_OBJECTS_SETUP_PARAMS = new String[] {
             TRIGGER_CAPTURE_DDL_CHANGES,
             POSTGRES_TRIGGER_CAPTURE_TRUNCATE,
             TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST,
             TRIGGER_CAPTURE_DDL_DELIMITER,
+<<<<<<< HEAD
             DB_POOL_USER,
             DB_POOL_URL,
             LOAD_ONLY_PROPERTY_PREFIX + DB_POOL_URL };
     public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
             JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
             INCLUDE_ROWIDENTIFIER_AS_COLUMN };
+=======
+            "db.url", "db.user", // See DataSourceProperties class
+            LOAD_ONLY_PROPERTY_PREFIX + "db.url", LOAD_ONLY_PROPERTY_PREFIX + "db.user",
+            "mssql.use.ntypes.for.sync" // See ConsoleConstants class
+    };
+    public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
+            JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
+            INCLUDE_ROWIDENTIFIER_AS_COLUMN
+    };
+>>>>>>> d6710904a7 (SYM-7849: Detect mssql.use.ntypes.for.sync changes on startup (#967))
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;
