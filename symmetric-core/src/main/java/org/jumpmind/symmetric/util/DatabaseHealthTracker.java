@@ -20,7 +20,7 @@
  */
 package org.jumpmind.symmetric.util;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -148,20 +148,24 @@ public class DatabaseHealthTracker implements IDatabaseHealthTracker {
         Future<?> test = testExecutor.submit(() -> sqlTemplateSupplier.get().testConnection());
         try {
             test.get(timeoutMs, TimeUnit.MILLISECONDS);
-            lastDbCheckResult = new DbHealthCheckResult(new Date(), true, HEALTHY_RESULT);
+            recordResult(true, HEALTHY_RESULT);
             return true;
         } catch (TimeoutException e) {
             test.cancel(true);
-            lastDbCheckResult = new DbHealthCheckResult(new Date(), false, "Connection test timed out after " + timeoutMs + " ms");
+            recordResult(false, "Connection test timed out after " + timeoutMs + " ms");
             return false;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            lastDbCheckResult = new DbHealthCheckResult(new Date(), false, ExceptionUtils.getRootCauseMessage(e));
+            recordResult(false, ExceptionUtils.getRootCauseMessage(e));
             return false;
         } catch (Exception e) {
-            lastDbCheckResult = new DbHealthCheckResult(new Date(), false, ExceptionUtils.getRootCauseMessage(e));
+            recordResult(false, ExceptionUtils.getRootCauseMessage(e));
             return false;
         }
+    }
+
+    private void recordResult(boolean isHealthy, String result) {
+        lastDbCheckResult = new DbHealthCheckResult(Instant.ofEpochMilli(currentSystemTime.getAsLong()), isHealthy, result);
     }
 
     private long getTestTimeoutMs() {

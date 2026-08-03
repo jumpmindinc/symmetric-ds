@@ -20,10 +20,10 @@
  */
 package org.jumpmind.symmetric.model;
 
-import java.util.Date;
+import java.time.Instant;
 
 /**
  * Outcome of a single runtime database connection test: when it ran, whether a connection could be established, and either "OK" or the failure message.
  */
-public record DbHealthCheckResult(Date recorded, boolean isHealthy, String result) {
+public record DbHealthCheckResult(Instant recorded, boolean isHealthy, String result) {
 }

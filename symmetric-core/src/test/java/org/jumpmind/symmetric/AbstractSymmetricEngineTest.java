@@ -32,7 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
-import java.util.Date;
+import java.time.Instant;
 
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -143,7 +143,7 @@ class AbstractSymmetricEngineTest {
     @Test
     void testGetLastDbHealthCheckResult_delegatesToTracker() throws Exception {
         IDatabaseHealthTracker databaseHealthTracker = mock(IDatabaseHealthTracker.class);
-        DbHealthCheckResult result = new DbHealthCheckResult(new Date(), true, "OK");
+        DbHealthCheckResult result = new DbHealthCheckResult(Instant.now(), true, "OK");
         when(databaseHealthTracker.getLastResult()).thenReturn(result);
         setField("databaseHealthTracker", databaseHealthTracker);
         assertEquals(result, engine.getLastDbHealthCheckResult());
