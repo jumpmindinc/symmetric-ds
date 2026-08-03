@@ -159,7 +159,7 @@ SymmetricDS 3.18 adds a pre-flight health check of the runtime database connecti
 Previously, a database outage caused every job to fail mid-work on each cycle with the same `SqlException`, flooding the logs and wasting remote work — for example, pull requests repeatedly re-extracting batches and inflating row transmit statistics. With the health check, the runtime database is declared unhealthy after `db.health.check.failure.threshold` consecutive connection failures (default 5). While unhealthy:
 
 * Jobs are skipped with a single warning per skipped run instead of a stack trace per failure.
-* Incoming push and pull requests are rejected with a service-not-ready response, so remote nodes back off without starting work this server cannot finish.
+* Incoming push and pull requests are rejected with the code 671 "Service Not Ready" response, so remote nodes back off without starting work this server cannot finish.
 * The engine is reported as not ready on the `/health/readiness` endpoint, so container orchestrators stop routing to it.
 * The connection is not tested again until a wait period of `db.health.check.failure.threshold` multiplied by `db.health.check.timeout.seconds` has elapsed (5 minutes with default settings).
 
