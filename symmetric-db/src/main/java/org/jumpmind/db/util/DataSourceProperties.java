@@ -52,7 +52,7 @@ public final class DataSourceProperties {
     /** Sets the connection pool implementation. */
     public static final String DB_POOL_TYPE = "db.pool.type";
     /** Default pool type - for backward compatibility. */
-    static final String DB_POOL_TYPE_DEFAULT = Dbcp2Builder.TYPE;
+    static final String DB_POOL_TYPE_DEFAULT = "dbcp2";
     /**
      * Maximum number of connections in the pool.
      *
