@@ -2266,7 +2266,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         List<TriggerRelationSupportingInfo> infoList = new ArrayList<>();
         int maxTriggerNameLength = symmetricDialect.getMaxTriggerNameLength();
         for (Relation relation : relations) {
-            Relation modifiedRelation = hasPrimaryKey(trigger, relation) ? relation : platform.makeAllColumnsPrimaryKeys(relation);
+            Relation modifiedRelation = getFilteredRelationFromExcludeAndIncludeColumns(relation, trigger);
             TriggerHistory latestHistory = getLatestHistoryForTriggerRelation(trigger, modifiedRelation, activeTriggerHistories);
             String insertTriggerName = resolveTriggerName(trigger, modifiedRelation, DataEventType.INSERT,
                     maxTriggerNameLength, activeTriggerHistories, latestHistory, triggerNamesGeneratedThisSession);
@@ -2280,13 +2280,26 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return infoList;
     }
 
-    private boolean hasPrimaryKey(Trigger trigger, Relation relation) {
-        for (Column column : trigger.filterExcludedAndIncludedColumns(relation.getColumns())) {
-            if (column.isPrimaryKey()) {
-                return true;
+    protected Relation getFilteredRelationFromExcludeAndIncludeColumns(Relation relation, Trigger trigger) {
+        boolean foundPk = false;
+        Relation modifiedRelation = relation;
+        Column[] columns = trigger.filterExcludedAndIncludedColumns(relation.getColumns());
+        for (Column column : columns) {
+            foundPk |= column.isPrimaryKey();
+            if (foundPk) {
+                break;
             }
         }
-        return false;
+        if (!foundPk) {
+            String[] columnNames = new String[columns.length];
+            for (int i = 0; i < columns.length; i++) {
+                Column column = columns[i];
+                columnNames[i] = column.getName();
+            }
+            modifiedRelation = modifiedRelation.copyAndFilterColumns(columnNames, null, false, false);
+            modifiedRelation = platform.makeAllColumnsPrimaryKeys(modifiedRelation);
+        }
+        return modifiedRelation;
     }
 
     private TriggerHistory getLatestHistoryForTriggerRelation(Trigger trigger, Relation relation, List<TriggerHistory> activeTriggerHistories) {
