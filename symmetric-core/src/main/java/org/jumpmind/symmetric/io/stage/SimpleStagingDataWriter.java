@@ -33,6 +33,7 @@ import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.AbstractSymmetricEngine;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.csv.CsvReader;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.Batch.BatchType;
@@ -43,6 +44,8 @@ import org.jumpmind.symmetric.io.data.writer.IProtocolDataWriterListener;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
+import org.jumpmind.symmetric.transport.http.IHttpResumeCache;
+import org.jumpmind.symmetric.transport.http.ResumeCacheEntry;
 import org.jumpmind.util.Statistics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,22 +68,24 @@ public class SimpleStagingDataWriter {
     protected Batch batch;
     protected long invalidLineCount;
     protected Exception exception;
+    protected ResumeCacheEntry resumeEntry;
+    protected StagedResourceETag currentBatchEtag;
 
-    public SimpleStagingDataWriter(ProcessInfo processInfo, BufferedReader reader, ISymmetricEngine engine, String category, long memoryThresholdInBytes,
-            BatchType batchType, String sourceNodeId, String targetNodeId, DataContext context, IProtocolDataWriterListener... listeners) {
-        this.reader = new CsvReader(reader);
+    private SimpleStagingDataWriter(Builder builder) {
+        this.reader = new CsvReader(builder.reader);
         this.reader.setEscapeMode(CsvReader.ESCAPE_MODE_BACKSLASH);
         this.reader.setSafetySwitch(false);
-        this.engine = engine;
-        this.stagingManager = engine.getStagingManager();
-        this.memoryThresholdInBytes = memoryThresholdInBytes;
-        this.category = category;
-        this.batchType = batchType;
-        this.sourceNodeId = sourceNodeId;
-        this.targetNodeId = targetNodeId;
-        this.listeners = listeners;
-        this.context = context;
-        this.processInfo = processInfo;
+        this.engine = builder.engine;
+        this.stagingManager = builder.engine.getStagingManager();
+        this.memoryThresholdInBytes = builder.memoryThresholdInBytes;
+        this.category = builder.category;
+        this.batchType = builder.batchType;
+        this.sourceNodeId = builder.sourceNodeId;
+        this.targetNodeId = builder.targetNodeId;
+        this.listeners = builder.listeners;
+        this.context = builder.context;
+        this.processInfo = builder.processInfo;
+        this.resumeEntry = builder.resumeEntry;
     }
 
     public void process() throws IOException {
@@ -95,6 +100,9 @@ public class SimpleStagingDataWriter {
             String batchStatsColumnsLine = null;
             String batchStatsLine = null;
             Statistics batchStats = null;
+            if (resumeEntry != null) {
+                resource = beginResumedBatch();
+            }
             while (reader.readRecord()) {
                 line = reader.getRawRecord();
                 if (line.startsWith(CsvConstants.CATALOG)) {
@@ -145,6 +153,7 @@ public class SimpleStagingDataWriter {
                     }
                     resource = stagingManager.create(category, location, batch.getBatchId());
                     writer = resource.getWriter(memoryThresholdInBytes);
+                    currentBatchEtag = null;
                     writeLine(nodeLine);
                     writeLine(binaryLine);
                     writeLine(channelLine);
@@ -154,6 +163,8 @@ public class SimpleStagingDataWriter {
                             listener.start(context, batch);
                         }
                     }
+                } else if (line.startsWith(CsvConstants.ETAG)) {
+                    currentBatchEtag = StagedResourceETag.fromJson(getArgLine(line));
                 } else if (line.startsWith(CsvConstants.COMMIT)) {
                     if (writer != null) {
                         writeLine(line);
@@ -169,9 +180,11 @@ public class SimpleStagingDataWriter {
                                 listener.end(context, batch, resource);
                             }
                         }
+                        clearResumeCacheEntry(batch.getBatchId());
                     }
                     batchStats = null;
                     resource = null;
+                    currentBatchEtag = null;
                 } else if (line.startsWith(CsvConstants.RETRY)) {
                     batch = new Batch(batchType, Long.parseLong(getArgLine(line)), getArgLine(channelLine), getBinaryEncoding(binaryLine),
                             getArgLine(nodeLine), targetNodeId, false);
@@ -192,6 +205,7 @@ public class SimpleStagingDataWriter {
                         resource = null;
                         writer = null;
                     }
+                    currentBatchEtag = null;
                     if (log.isDebugEnabled()) {
                         debugLine(nodeLine);
                         debugLine(binaryLine);
@@ -275,7 +289,11 @@ public class SimpleStagingDataWriter {
                 exception = ex;
             }
             if (resource != null) {
-                resource.delete();
+                if (isResumableInterruption(ex, resource)) {
+                    registerForResume(resource);
+                } else {
+                    resource.delete();
+                }
             }
             processInfo.setStatus(ProcessStatus.ERROR);
             /*
@@ -367,6 +385,84 @@ public class SimpleStagingDataWriter {
         return resource;
     }
 
+    /**
+     * A confirmed resumed ({@code 206}) response contains only the remaining row data for the one batch being resumed, not its preamble
+     * (NODEID/BINARY/CHANNEL/BATCH/ETAG lines) — that part was already received and staged on the prior, interrupted attempt. So unlike a fresh batch, there's
+     * no {@code BATCH} line here to trigger the normal setup; instead, reconstruct the batch's identity from {@link #resumeEntry} and reopen its existing local
+     * partial resource in append mode, before any lines are read from the wire.
+     *
+     * @return the reopened local resource, or {@code null} if it was missing or already finalized, in which case this pull cannot complete that batch and a
+     *         later pull will retry it in full
+     */
+    protected IStagedResource beginResumedBatch() {
+        BinaryEncoding binaryEncoding = resumeEntry.getBinaryEncoding() != null ? BinaryEncoding.valueOf(resumeEntry.getBinaryEncoding()) : null;
+        Batch candidateBatch = new Batch(batchType, resumeEntry.getBatchId(), resumeEntry.getChannelId(),
+                binaryEncoding, sourceNodeId, targetNodeId, false);
+        IStagedResource existingResource = stagingManager.find(category, candidateBatch.getStagedLocation(), candidateBatch.getBatchId());
+        if (existingResource == null || existingResource.getState() != State.CREATE) {
+            log.warn("Resume requested for batch {} from node {}, but the local partial staged resource was missing or already finalized ({}). "
+                    + "This pull cannot complete that batch; a subsequent pull will retry it in full.",
+                    candidateBatch.getBatchId(), sourceNodeId, existingResource == null ? "not found" : existingResource.getState());
+            return null;
+        }
+        batch = candidateBatch;
+        writer = existingResource.getWriter(memoryThresholdInBytes, true);
+        currentBatchEtag = resumeEntry.getEtag();
+        processInfo.setCurrentBatchId(batch.getBatchId());
+        processInfo.setCurrentBatchStartTime(new Date());
+        processInfo.incrementBatchCount();
+        processInfo.setCurrentDataCount(0);
+        processInfo.setTotalDataCount(0);
+        if (listeners != null) {
+            for (IProtocolDataWriterListener listener : listeners) {
+                listener.start(context, batch);
+            }
+        }
+        return existingResource;
+    }
+
+    /**
+     * @return whether {@code ex} represents a connection-level failure (not a data/protocol error) for a batch that's genuinely eligible to be preserved for a
+     *         resumed retry: resume is enabled, the batch's staged content is file-backed, and its ETag was captured before the interruption
+     */
+    protected boolean isResumableInterruption(Exception ex, IStagedResource resource) {
+        return ex instanceof IOException && batch != null && currentBatchEtag != null && resource.isFileResource()
+                && engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)
+                && getResumeCache() != null;
+    }
+
+    protected void registerForResume(IStagedResource resource) {
+        resource.close();
+        long receivedCount = resource.getSize();
+        getResumeCache().put(sourceNodeId, batch.getBatchId(), ResumeCacheEntry.builder()
+                .nodeId(sourceNodeId)
+                .batchId(batch.getBatchId())
+                .etag(currentBatchEtag)
+                .receivedCount(receivedCount)
+                .channelId(batch.getChannelId())
+                .binaryEncoding(batch.getBinaryEncoding() != null ? batch.getBinaryEncoding().name() : null)
+                .cachedAtTime(System.currentTimeMillis())
+                .queue(processInfo.getQueue())
+                .build());
+        log.info("Preserving partially-received batch {} from node {} for a resumed retry ({} characters received).",
+                batch.getBatchId(), sourceNodeId, receivedCount);
+    }
+
+    protected void clearResumeCacheEntry(long batchId) {
+        IHttpResumeCache resumeCache = getResumeCache();
+        if (resumeCache != null) {
+            resumeCache.remove(sourceNodeId, batchId);
+        }
+    }
+
+    protected IHttpResumeCache getResumeCache() {
+        return engine.getTransportManager() != null ? engine.getTransportManager().getResumeCache() : null;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
     static class TableLine {
         String catalogLine;
         String schemaLine;
@@ -393,6 +489,84 @@ public class SimpleStagingDataWriter {
         @Override
         public int hashCode() {
             return (catalogLine + "." + schemaLine + "." + tableLine).hashCode();
+        }
+    }
+
+    public static class Builder {
+        private ProcessInfo processInfo;
+        private BufferedReader reader;
+        private ISymmetricEngine engine;
+        private String category;
+        private long memoryThresholdInBytes;
+        private BatchType batchType;
+        private String sourceNodeId;
+        private String targetNodeId;
+        private DataContext context;
+        private ResumeCacheEntry resumeEntry;
+        private IProtocolDataWriterListener[] listeners = new IProtocolDataWriterListener[0];
+
+        public Builder processInfo(ProcessInfo processInfo) {
+            this.processInfo = processInfo;
+            return this;
+        }
+
+        public Builder reader(BufferedReader reader) {
+            this.reader = reader;
+            return this;
+        }
+
+        public Builder engine(ISymmetricEngine engine) {
+            this.engine = engine;
+            return this;
+        }
+
+        public Builder category(String category) {
+            this.category = category;
+            return this;
+        }
+
+        public Builder memoryThresholdInBytes(long memoryThresholdInBytes) {
+            this.memoryThresholdInBytes = memoryThresholdInBytes;
+            return this;
+        }
+
+        public Builder batchType(BatchType batchType) {
+            this.batchType = batchType;
+            return this;
+        }
+
+        public Builder sourceNodeId(String sourceNodeId) {
+            this.sourceNodeId = sourceNodeId;
+            return this;
+        }
+
+        public Builder targetNodeId(String targetNodeId) {
+            this.targetNodeId = targetNodeId;
+            return this;
+        }
+
+        public Builder context(DataContext context) {
+            this.context = context;
+            return this;
+        }
+
+        /**
+         * @param resumeEntry
+         *            non-null only when this pull is a confirmed resume of one specific, previously-interrupted batch; {@code null} for every normal (fresh)
+         *            pull
+         */
+        public Builder resumeEntry(ResumeCacheEntry resumeEntry) {
+            this.resumeEntry = resumeEntry;
+            return this;
+        }
+
+        public Builder listeners(IProtocolDataWriterListener... listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        public SimpleStagingDataWriter build() {
+            return new SimpleStagingDataWriter(this);
         }
     }
 }

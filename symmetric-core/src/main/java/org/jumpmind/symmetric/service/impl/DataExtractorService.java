@@ -87,6 +87,7 @@ import org.jumpmind.symmetric.common.ErrorConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.ext.IReloadQueueThreadAssigner;
+import org.jumpmind.symmetric.extract.CountingSkippingWriter;
 import org.jumpmind.symmetric.extract.ExtractDataReaderFactory;
 import org.jumpmind.symmetric.extract.IExtractDataReaderFactory;
 import org.jumpmind.symmetric.extract.MultiBatchStagingWriter;
@@ -118,6 +119,7 @@ import org.jumpmind.symmetric.io.data.writer.TransformWriter;
 import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
+import org.jumpmind.symmetric.io.stage.StagedResourceETag;
 import org.jumpmind.symmetric.io.stage.StagingFileLock;
 import org.jumpmind.symmetric.io.stage.StagingLowFreeSpace;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
@@ -1287,6 +1289,40 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return false;
     }
 
+    @Override
+    public IStagedResource getStagedResourceForResume(OutgoingBatch batch) {
+        if (batch == null) {
+            return null;
+        }
+        return getStagedResource(batch);
+    }
+
+    /**
+     * Streams a single batch's staged content to {@code destination}, optionally skipping the first {@code skipCount} characters already known to have been
+     * received by the client on a prior, interrupted attempt. Reuses {@link #transferFromStaging} unchanged so a full resend ({@code skipCount == 0}) and a
+     * resumed partial send share the exact same deterministic framing/stats-injection logic.
+     * <p>
+     * {@code skipCount} (and the returned total) are counts of decoded characters of the staged UTF-8 CSV text, not raw HTTP bytes, since the staging layer is
+     * read and written through a Reader/Writer pair, not an InputStream/OutputStream. Both sides of a resume exchange must agree on this same unit.
+     *
+     * @return the total number of characters in the batch (skipped plus forwarded), for use in a {@code Content-Range} response header
+     */
+    @Override
+    public long extractSingleBatchForResume(OutgoingBatch batch, IStagedResource stagedResource, Writer destination,
+            long skipCount, ProcessInfo processInfo) {
+        CountingSkippingWriter countingWriter = new CountingSkippingWriter(destination, skipCount);
+        BufferedWriter bufferedWriter = new BufferedWriter(countingWriter);
+        Channel channel = configurationService.getChannel(batch.getChannelId());
+        transferFromStaging(ExtractMode.FOR_SYM_CLIENT, BatchType.EXTRACT, batch, false, stagedResource, bufferedWriter,
+                new DataContext(), channel.getMaxKBytesPerSecond(), processInfo);
+        try {
+            bufferedWriter.flush();
+        } catch (IOException e) {
+            throw new IoException(e);
+        }
+        return countingWriter.getTotalCount();
+    }
+
     protected boolean isRetry(OutgoingBatch currentBatch, Node remoteNode) {
         if (currentBatch.getSentCount() > 0 && currentBatch.getStatus() != OutgoingBatch.Status.RS && currentBatch.getStatus() != OutgoingBatch.Status.IG) {
             boolean offline = parameterService.is(ParameterConstants.NODE_OFFLINE, false);
@@ -1440,13 +1476,14 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                     bufferSize = maxKBytesPerSec.multiply(new BigDecimal(1024)).intValue();
                 }
                 char[] buffer = new char[bufferSize];
-                boolean batchStatsWritten = false;
+                boolean batchPreambleExtrasWritten = false;
                 String prevBuffer = "";
                 long batchStatusUpdateMillis = parameterService.getLong(ParameterConstants.OUTGOING_BATCH_UPDATE_STATUS_MILLIS);
                 boolean is39orNewer = nodeService.findNode(batch.getNodeId(), true).isVersionGreaterThanOrEqualTo(3, 9, 0);
+                StagedResourceETag resumeEtag = getResumeEtagIfEligible(batch, stagedResource);
                 while ((numCharsRead = reader.read(buffer)) != -1) {
-                    if (!batchStatsWritten && is39orNewer) {
-                        batchStatsWritten = writeBatchStats(writer, buffer, numCharsRead, prevBuffer, batch);
+                    if (!batchPreambleExtrasWritten && (is39orNewer || resumeEtag != null)) {
+                        batchPreambleExtrasWritten = writeBatchPreambleExtras(writer, buffer, numCharsRead, prevBuffer, batch, is39orNewer, resumeEtag);
                         prevBuffer = new String(buffer);
                     } else {
                         writer.write(buffer, 0, numCharsRead);
@@ -1606,6 +1643,16 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
 
     protected boolean writeBatchStats(BufferedWriter writer, char[] buffer, int bufferSize, String prevBuffer, OutgoingBatch batch)
             throws IOException {
+        return writeBatchPreambleExtras(writer, buffer, bufferSize, prevBuffer, batch, true, null);
+    }
+
+    /**
+     * Injects any extra preamble lines (batch stats and/or a resume {@code ETAG}) immediately after the {@code BATCH,<id>} line, in the same single pass over
+     * {@code buffer} so each character is written exactly once. Passing {@code includeStats=false} and a {@code null} etag reproduces the original, pre-resume
+     * behavior byte-for-byte other than skipping the injection entirely.
+     */
+    protected boolean writeBatchPreambleExtras(BufferedWriter writer, char[] buffer, int bufferSize, String prevBuffer, OutgoingBatch batch,
+            boolean includeStats, StagedResourceETag etag) throws IOException {
         String bufferString = new String(buffer);
         int index = findStatsIndex(bufferString, prevBuffer);
         if (index > 0) {
@@ -1613,15 +1660,38 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             writer.write(prefix, 0, index);
         }
         if (index > -1) {
-            String stats = getBatchStatsColumns() + System.lineSeparator() + getBatchStats(batch) + System.lineSeparator();
-            char statsBuffer[] = stats.toCharArray();
-            writer.write(statsBuffer, 0, statsBuffer.length);
+            StringBuilder extras = new StringBuilder();
+            if (includeStats) {
+                extras.append(getBatchStatsColumns()).append(System.lineSeparator())
+                        .append(getBatchStats(batch)).append(System.lineSeparator());
+            }
+            if (etag != null) {
+                extras.append(CsvConstants.ETAG).append(",").append(etag.toJson()).append(System.lineSeparator());
+            }
+            char[] extrasBuffer = extras.toString().toCharArray();
+            writer.write(extrasBuffer, 0, extrasBuffer.length);
             char suffix[] = Arrays.copyOfRange(buffer, index, buffer.length);
             writer.write(suffix, 0, bufferSize - index);
         } else {
             writer.write(buffer, 0, bufferSize);
         }
         return index > -1;
+    }
+
+    /**
+     * A batch is eligible for a proactive resume {@code ETAG} only when resume is enabled, the target node understands it (3.18+), and the batch's staged
+     * content is file-backed and fully staged ({@link State#DONE}) — the same eligibility a resumed pull itself requires in {@code PullUriHandler}.
+     */
+    protected StagedResourceETag getResumeEtagIfEligible(OutgoingBatch batch, IStagedResource stagedResource) {
+        if (!parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)
+                || stagedResource == null || stagedResource.getState() != State.DONE || !stagedResource.isFileResource()) {
+            return null;
+        }
+        Node targetNode = nodeService.findNode(batch.getNodeId(), true);
+        if (targetNode == null || !targetNode.isVersionGreaterThanOrEqualTo(3, 18)) {
+            return null;
+        }
+        return new StagedResourceETag(stagedResource.getGenerationTime(), stagedResource.getSize());
     }
 
     protected String getBatchStatsColumns() {

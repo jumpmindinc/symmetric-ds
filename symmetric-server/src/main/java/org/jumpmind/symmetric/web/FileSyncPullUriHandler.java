@@ -28,6 +28,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.file.FileSyncPullResult;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
@@ -50,9 +51,12 @@ public class FileSyncPullUriHandler extends AbstractUriHandler {
             ServletUtils.sendError(res, WebConstants.SC_BAD_REQUEST,
                     "Node must be specified");
             return;
-        } else {
-            log.debug("File sync pull request received from {}", nodeId);
         }
+        String batchIdParam = ServletUtils.getParameter(req, WebConstants.BATCH_ID);
+        String ifETagHeader = req.getHeader(WebConstants.HEADER_IF_ETAG);
+        String rangeHeader = req.getHeader(WebConstants.HEADER_RANGE);
+        log.debug("File sync pull request received from {}: batchId={}, {}={}, {}={}", nodeId, batchIdParam,
+                WebConstants.HEADER_IF_ETAG, ifETagHeader, WebConstants.HEADER_RANGE, rangeHeader);
         IOutgoingTransport outgoingTransport = createOutgoingTransport(res.getOutputStream(),
                 req.getHeader(WebConstants.HEADER_ACCEPT_CHARSET),
                 engine.getConfigurationService().getSuspendIgnoreChannelLists(nodeId));
@@ -60,15 +64,28 @@ public class FileSyncPullUriHandler extends AbstractUriHandler {
                 new ProcessInfoKey(engine.getNodeService().findIdentityNodeId(), nodeId,
                         ProcessType.FILE_SYNC_PULL_HANDLER));
         try {
-            engine.getFileSyncService().sendFiles(processInfo,
-                    engine.getNodeService().findNode(nodeId, true), outgoingTransport);
             Node targetNode = engine.getNodeService().findNode(nodeId, true);
+            FileSyncPullResult result = engine.getFileSyncService().prepareFilesForPull(processInfo, targetNode,
+                    batchIdParam, ifETagHeader, rangeHeader);
+            if (result.getResumeEtag() != null) {
+                res.setHeader(WebConstants.HEADER_ETAG, result.getResumeEtag().toJson());
+                res.setHeader(WebConstants.HEADER_ACCEPT_RANGES, "bytes");
+                if (result.isPartialContent()) {
+                    res.setStatus(WebConstants.SC_PARTIAL_CONTENT);
+                    res.setHeader(WebConstants.HEADER_CONTENT_RANGE,
+                            result.getSkipCount() + "-" + (result.getTotalSize() - 1) + "/" + result.getTotalSize());
+                }
+            }
+            if (result.isEnvelopeFormatUsed()) {
+                res.setHeader(WebConstants.HEADER_FILESYNC_FORMAT, "1");
+            }
             if (processInfo.getTotalBatchCount() == 0 && targetNode.isVersionGreaterThanOrEqualTo(3, 8, 0)) {
                 ServletUtils.sendError(res, HttpServletResponse.SC_NO_CONTENT,
                         "No files to pull.");
             } else {
                 res.setContentType("application/zip");
                 res.addHeader("Content-Disposition", "attachment; filename=\"file-sync.zip\"");
+                engine.getFileSyncService().writeFilesForPull(result, outgoingTransport);
             }
             processInfo.setStatus(ProcessStatus.OK);
         } catch (RuntimeException ex) {

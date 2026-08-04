@@ -153,6 +153,7 @@ public class HttpIncomingTransport implements IIncomingTransport {
             case WebConstants.SC_NO_CONTENT:
                 throw new NoContentException();
             case WebConstants.SC_OK:
+            case WebConstants.SC_PARTIAL_CONTENT:
                 httpTransportManager.updateSession(connection);
                 is = HttpTransportManager.getInputStreamFrom(connection);
                 return is;
@@ -168,8 +169,15 @@ public class HttpIncomingTransport implements IIncomingTransport {
         return reader;
     }
 
+    /**
+     * {@code URLConnection.getHeaderFields()} doesn't declare {@code throws IOException} - if the underlying connection was never actually established (e.g.
+     * the network path is down), it silently returns an empty map instead of surfacing the failure. Calling {@code getResponseCode()} first forces the real
+     * connection attempt through a call that does declare {@code IOException}, so a genuine connectivity failure propagates as an exception rather than being
+     * indistinguishable from "the server responded without this header".
+     */
     @Override
-    public Map<String, String> getHeaders() {
+    public Map<String, String> getHeaders() throws IOException {
+        connection.getResponseCode();
         Map<String, String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         for (String name : connection.getHeaderFields().keySet()) {
             if (name != null) {

@@ -102,6 +102,8 @@ import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
 import org.jumpmind.symmetric.io.stage.SimpleStagingDataWriter;
 import org.jumpmind.symmetric.io.stage.StagingLowFreeSpace;
+import org.jumpmind.symmetric.transport.http.IHttpResumeCache;
+import org.jumpmind.symmetric.transport.http.ResumeCacheEntry;
 import org.jumpmind.symmetric.load.ConfigurationChangedDatabaseWriterFilter;
 import org.jumpmind.symmetric.load.DefaultDataLoaderFactory;
 import org.jumpmind.symmetric.load.DynamicDatabaseWriterFilter;
@@ -270,6 +272,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
             String registrationUrl = parameterService.getRegistrationUrl();
             IIncomingTransport transport = null;
             boolean isRegisterTransport = false;
+            ResumeCacheEntry confirmedResumeEntry = null;
             if (remote != null && localSecurity != null) {
                 Map<String, String> requestProperties = new HashMap<String, String>();
                 NodeChannels suspendIgnoreChannels = configurationService
@@ -279,8 +282,30 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                 requestProperties.put(WebConstants.IGNORED_CHANNELS,
                         suspendIgnoreChannels.getIgnoreChannelsAsString(local.getNodeId()));
                 requestProperties.put(WebConstants.CHANNEL_QUEUE, status.getQueue());
+                IHttpResumeCache resumeCache = transportManager.getResumeCache();
+                ResumeCacheEntry pendingResume = resumeCache != null ? resumeCache.getPendingForNode(remote.getNodeId(), status.getQueue()) : null;
+                if (pendingResume != null && pendingResume.isFileSync()) {
+                    pendingResume = null;
+                }
+                if (pendingResume != null) {
+                    requestProperties.put(WebConstants.HEADER_IF_ETAG, pendingResume.getEtag().toJson());
+                    requestProperties.put(WebConstants.HEADER_RANGE, "bytes=" + pendingResume.getReceivedCount() + "-");
+                }
                 transport = transportManager.getPullTransport(remote, local,
-                        localSecurity.getNodePassword(), requestProperties, registrationUrl);
+                        localSecurity.getNodePassword(), requestProperties, registrationUrl,
+                        pendingResume != null ? pendingResume.getBatchId() : null);
+                if (pendingResume != null) {
+                    boolean serverResumed = transport.getHeaders().containsKey(WebConstants.HEADER_CONTENT_RANGE);
+                    if (serverResumed) {
+                        confirmedResumeEntry = pendingResume;
+                        log.info("Resuming batch {} from node {}: server honored the resumed retry, appending to {} bytes already received.",
+                                pendingResume.getBatchId(), remote.getNodeId(), pendingResume.getReceivedCount());
+                    } else {
+                        log.info("Resume of batch {} from node {} was not honored by the server (stale etag, resume disabled, or an older peer). "
+                                + "Falling back to a full pull.", pendingResume.getBatchId(), remote.getNodeId());
+                        resumeCache.remove(remote.getNodeId(), pendingResume.getBatchId());
+                    }
+                }
             } else {
                 List<INodeRegistrationListener> registrationListeners = extensionService.getExtensionPointList(INodeRegistrationListener.class);
                 Map<String, String> requestProps = new HashMap<String, String>();
@@ -303,7 +328,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
             ProcessInfo transferInfo = statisticManager.newProcessInfo(new ProcessInfoKey(remote
                     .getNodeId(), status.getQueue(), local.getNodeId(), PULL_JOB_TRANSFER));
             try {
-                List<IncomingBatch> list = loadDataFromTransport(transferInfo, remote, transport, null, status);
+                List<IncomingBatch> list = loadDataFromTransport(transferInfo, remote, transport, null, status, confirmedResumeEntry);
                 if (list.size() > 0) {
                     transferInfo.setStatus(ProcessInfo.ProcessStatus.ACKING);
                     status.updateIncomingStatus(list);
@@ -363,7 +388,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
         }
     }
 
-    protected void updateBatchToSendCount(Node remote, IIncomingTransport transport) {
+    protected void updateBatchToSendCount(Node remote, IIncomingTransport transport) throws IOException {
         Map<String, String> headers = transport.getHeaders();
         if (headers != null && headers.containsKey(WebConstants.BATCH_TO_SEND_COUNT)) {
             Map<String, Integer> queuesToBatchCounts = nodeCommunicationService.parseQueueToBatchCounts(headers.get(WebConstants.BATCH_TO_SEND_COUNT));
@@ -543,12 +568,19 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
         return loadDataFromTransport(processInfo, sourceNode, transport, null, null);
     }
 
-    /**
-     * Load database from input stream and return a list of batch statuses. This is used for a pull request that responds with data, and the acknowledgment is
-     * sent later.
-     */
     protected List<IncomingBatch> loadDataFromTransport(final ProcessInfo transferInfo,
             final Node sourceNode, IIncomingTransport transport, OutputStream out, RemoteNodeStatus status) throws IOException {
+        return loadDataFromTransport(transferInfo, sourceNode, transport, out, status, null);
+    }
+
+    /**
+     * Load database from input stream and return a list of batch statuses. This is used for a pull request that responds with data, and the acknowledgment is
+     * sent later. {@code confirmedResumeEntry} is non-null only when the caller confirmed (via the response headers) that the server actually honored a
+     * requested resume of that one specific batch; it's {@code null} for every other call site, including a pull whose resume request was declined.
+     */
+    protected List<IncomingBatch> loadDataFromTransport(final ProcessInfo transferInfo,
+            final Node sourceNode, IIncomingTransport transport, OutputStream out, RemoteNodeStatus status, ResumeCacheEntry confirmedResumeEntry)
+            throws IOException {
         final ManageIncomingBatchListener listener = new ManageIncomingBatchListener(transferInfo, engine);
         final DataContext ctx = new DataContext();
         Throwable error = null;
@@ -582,8 +614,19 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                         sourceNode.getNodeId(), listener, executor);
                 SimpleStagingDataWriter stageWriter = null;
                 try {
-                    stageWriter = new SimpleStagingDataWriter(transferInfo, transport.openReader(), engine, Constants.STAGING_CATEGORY_INCOMING,
-                            memoryThresholdInBytes, BatchType.LOAD, sourceNode.getNodeId(), targetNodeId, ctx, loadListener);
+                    stageWriter = SimpleStagingDataWriter.builder()
+                            .processInfo(transferInfo)
+                            .reader(transport.openReader())
+                            .engine(engine)
+                            .category(Constants.STAGING_CATEGORY_INCOMING)
+                            .memoryThresholdInBytes(memoryThresholdInBytes)
+                            .batchType(BatchType.LOAD)
+                            .sourceNodeId(sourceNode.getNodeId())
+                            .targetNodeId(targetNodeId)
+                            .context(ctx)
+                            .resumeEntry(confirmedResumeEntry)
+                            .listeners(loadListener)
+                            .build();
                     notifyQueuesReady(status, transport);
                     stageWriter.process();
                 } finally {
@@ -668,7 +711,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
         return batchesProcessed;
     }
 
-    private void notifyQueuesReady(RemoteNodeStatus status, IIncomingTransport transport) {
+    private void notifyQueuesReady(RemoteNodeStatus status, IIncomingTransport transport) throws IOException {
         if (parameterService.is(ParameterConstants.SYNC_USE_READY_QUEUES) && configurationService.getQueues(false).size() > 1 &&
                 !parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT) && status != null && Constants.QUEUE_DEFAULT.equals(status.getQueue())) {
             Map<String, String> headers = transport.getHeaders();
