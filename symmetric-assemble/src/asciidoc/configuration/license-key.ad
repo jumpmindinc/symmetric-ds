@@ -17,6 +17,7 @@ Max Rows:: The maximum number of rows that can be synchronized in a 24-hour peri
 Job Schedule In Seconds:: The minimum allowed interval in seconds between Push, Pull, and custom job executions. Jobs configured to run more frequently than this limit will use this interval instead.
 Mobile Multiplier:: A multiplier applied to node limits for mobile nodes. The max nodes limit is multiplied by this value to determine the allowed number of mobile nodes.
 Compare Repair:: Indicates whether the compare and repair feature is enabled. When enabled, data can be compared between source and target nodes and optionally repaired to resolve differences.
+Jumpmind Access Token Required:: Indicates whether the root node must obtain and maintain a valid access token from Jumpmind. When enabled, the root node requests an access token from Jumpmind when it starts and periodically refreshes it.
 Instance ID:: If present in the license key, this unique identifier must match the installation. If not present, the instance ID for the current installation is shown in parentheses.
  
 
