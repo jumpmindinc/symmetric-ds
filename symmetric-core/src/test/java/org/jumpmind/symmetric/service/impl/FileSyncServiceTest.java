@@ -510,7 +510,7 @@ class FileSyncServiceTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, String>> propsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(transportManager).getFilePullTransport(eq(remoteNode), eq(identity), any(), propsCaptor.capture(), any(), isNull());
-        assertNull(propsCaptor.getValue());
+        assertTrue(propsCaptor.getValue().isEmpty());
         verify(resumeCache, never()).getPendingForNode(anyString(), anyString());
         verify(resumeCache, never()).remove(anyString(), anyLong());
     }

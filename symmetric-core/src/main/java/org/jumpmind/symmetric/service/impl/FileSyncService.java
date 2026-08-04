@@ -30,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -1629,7 +1630,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
 
     private Map<String, String> buildResumeRequestProperties(ResumeCacheEntry pendingResume) {
         if (pendingResume == null) {
-            return null;
+            return Collections.emptyMap();
         }
         Map<String, String> requestProperties = new HashMap<String, String>();
         requestProperties.put(WebConstants.HEADER_IF_ETAG, pendingResume.getEtag().toJson());
