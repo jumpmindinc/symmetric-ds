@@ -44,7 +44,7 @@ public class InterbaseTriggerTemplate extends AbstractTriggerTemplate {
         sqlTemplates.put("insertTriggerTemplate",
                 "create trigger $(triggerName) for $(schemaName)$(tableName) after insert as                                                                                                                            "
                         +
-                        "                                declare variable name integer;                                                                                                                                           "
+                        "                                declare variable name NUMERIC(18,0);                                                                                                                                           "
                         +
                         "                                declare variable sync_triggers_disabled varchar(30);                                                                                                                   "
                         +
@@ -99,7 +99,7 @@ public class InterbaseTriggerTemplate extends AbstractTriggerTemplate {
         sqlTemplates.put("insertReloadTriggerTemplate",
                 "create trigger $(triggerName) for $(schemaName)$(tableName) after insert as                                                                                                                            "
                         +
-                        "                                declare variable name integer;                                                                                                                                           "
+                        "                                declare variable name NUMERIC(18,0);                                                                                                                                           "
                         +
                         "                                declare variable sync_triggers_disabled varchar(30);                                                                                                                   "
                         +
@@ -154,7 +154,7 @@ public class InterbaseTriggerTemplate extends AbstractTriggerTemplate {
         sqlTemplates.put("updateTriggerTemplate",
                 "create trigger $(triggerName) for $(schemaName)$(tableName) after update as                                                                                                                            "
                         +
-                        "                                declare variable name integer;                                                                                                                                           "
+                        "                                declare variable name NUMERIC(18,0);                                                                                                                                           "
                         +
                         "                                declare variable sync_triggers_disabled varchar(30);                                                                                                                   "
                         +
@@ -213,7 +213,7 @@ public class InterbaseTriggerTemplate extends AbstractTriggerTemplate {
         sqlTemplates.put("updateReloadTriggerTemplate",
                 "create trigger $(triggerName) for $(schemaName)$(tableName) after update as                                                                                                                            "
                         +
-                        "                                declare variable name integer;                                                                                                                                           "
+                        "                                declare variable name NUMERIC(18,0);                                                                                                                                           "
                         +
                         "                                declare variable sync_triggers_disabled varchar(30);                                                                                                                   "
                         +
@@ -268,7 +268,7 @@ public class InterbaseTriggerTemplate extends AbstractTriggerTemplate {
         sqlTemplates.put("deleteTriggerTemplate",
                 "create trigger  $(triggerName) for $(schemaName)$(tableName) after delete as                                                                                                                           "
                         +
-                        "                                declare variable name integer;                                                                                                                                           "
+                        "                                declare variable name NUMERIC(18,0);                                                                                                                                           "
                         +
                         "                                declare variable sync_triggers_disabled varchar(30);                                                                                                                   "
                         +
