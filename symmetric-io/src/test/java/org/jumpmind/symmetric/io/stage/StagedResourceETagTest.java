@@ -21,7 +21,7 @@
 package org.jumpmind.symmetric.io.stage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
@@ -64,7 +64,7 @@ class StagedResourceETagTest {
         StagedResourceETag differentGenerationTime = new StagedResourceETag(101L, 200L);
         StagedResourceETag differentSize = new StagedResourceETag(100L, 201L);
         assertEquals(base, new StagedResourceETag(100L, 200L));
-        assertFalse(base.equals(differentGenerationTime));
-        assertFalse(base.equals(differentSize));
+        assertNotEquals(base, differentGenerationTime);
+        assertNotEquals(base, differentSize);
     }
 }

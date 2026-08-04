@@ -74,10 +74,7 @@ class StagedResourceTest {
         BufferedWriter writer = original.getWriter(0);
         writer.write("first chunk ");
         writer.flush();
-        try {
-            Thread.sleep(5);
-        } catch (InterruptedException e) {
-        }
+        assertTrue(original.file.setLastModified(originalGenerationTime - 5000));
         writer.write("second chunk");
         original.setState(State.DONE);
         StagedResource reconstructed = new StagedResource(tempDir, "path1", manager);

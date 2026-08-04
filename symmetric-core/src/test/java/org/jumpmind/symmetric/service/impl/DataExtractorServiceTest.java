@@ -78,8 +78,10 @@ public class DataExtractorServiceTest {
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         when(symmetricDialect.getName()).thenReturn("H2");
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        when(platform.getSqlTemplate()).thenReturn(mock(ISqlTemplate.class));
-        when(platform.getSqlTemplateDirty()).thenReturn(mock(ISqlTemplate.class));
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        ISqlTemplate sqlTemplateDirty = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getDatabasePlatform()).thenReturn(platform);

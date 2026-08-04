@@ -116,49 +116,55 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
             NodeChannels remoteSuspendIgnoreChannelsList = configurationService.getSuspendIgnoreChannelLists();
             nodeChannels.addSuspendChannels(remoteSuspendIgnoreChannelsList.getSuspendChannels());
             nodeChannels.addIgnoreChannels(remoteSuspendIgnoreChannelsList.getIgnoreChannels());
-            if (nodeSecurity != null) {
-                String createdAtNodeId = nodeSecurity.getCreatedAtNodeId();
-                if (nodeSecurity.isRegistrationEnabled() &&
-                        (createdAtNodeId == null || createdAtNodeId.equals(nodeService.findIdentityNodeId()))) {
-                    registrationService.registerNode(nodeService.findNode(nodeId), remoteHost,
-                            remoteAddress, outputStream, null, null, false);
-                } else {
-                    IOutgoingTransport outgoingTransport = createOutgoingTransport(outputStream, encoding,
-                            nodeChannels);
-                    ProcessInfo processInfo = statisticManager.newProcessInfo(new ProcessInfoKey(
-                            nodeService.findIdentityNodeId(), nodeChannels.getChannelQueue(), nodeId, ProcessType.PULL_HANDLER_EXTRACT));
-                    try {
-                        Node targetNode = nodeService.findNode(nodeId, true);
-                        if (Constants.QUEUE_DEFAULT.equals(nodeChannels.getChannelQueue())) {
-                            addReadyQueuesHeader(nodeId, res);
-                        }
-                        if (StringUtils.isNotBlank(resumeRequest.getBatchIdParam()) && parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)
-                                && handleResume(resumeRequest, outgoingTransport, res, processInfo)) {
-                            processInfo.setStatus(ProcessStatus.OK);
-                        } else {
-                            List<OutgoingBatch> batchList = dataExtractorService.extract(processInfo, targetNode,
-                                    nodeChannels.getChannelQueue(), outgoingTransport);
-                            logDataReceivedFromPull(targetNode, batchList, processInfo, remoteHost);
-                            if (processInfo.getStatus() != ProcessStatus.ERROR) {
-                                addPendingBatchCounts(targetNode.getNodeId(), res);
-                                processInfo.setStatus(ProcessStatus.OK);
-                            }
-                        }
-                    } finally {
-                        if (processInfo.getStatus() != ProcessStatus.OK) {
-                            processInfo.setStatus(ProcessStatus.ERROR);
-                        }
-                    }
-                    outgoingTransport.close();
-                }
-            } else {
+            if (nodeSecurity == null) {
                 log.warn("Node {} does not exist", nodeId);
+            } else if (isRegistrationRequired(nodeSecurity)) {
+                registrationService.registerNode(nodeService.findNode(nodeId), remoteHost,
+                        remoteAddress, outputStream, null, null, false);
+            } else {
+                extractAndSendBatches(resumeRequest, remoteHost, outputStream, encoding, res, nodeChannels, nodeId);
             }
         } finally {
             statisticManager.incrementNodesPulled(1);
             statisticManager.incrementTotalNodesPulledTime(System.currentTimeMillis() - ts);
         }
         log.debug("Pull completed for {} at remote address {} for queue {}", nodeId, remoteAddress, nodeChannels.getChannelQueue());
+    }
+
+    private boolean isRegistrationRequired(NodeSecurity nodeSecurity) {
+        String createdAtNodeId = nodeSecurity.getCreatedAtNodeId();
+        return nodeSecurity.isRegistrationEnabled()
+                && (createdAtNodeId == null || createdAtNodeId.equals(nodeService.findIdentityNodeId()));
+    }
+
+    private void extractAndSendBatches(ResumeRequest resumeRequest, String remoteHost, OutputStream outputStream, String encoding,
+            HttpServletResponse res, NodeChannels nodeChannels, String nodeId) throws IOException {
+        IOutgoingTransport outgoingTransport = createOutgoingTransport(outputStream, encoding, nodeChannels);
+        ProcessInfo processInfo = statisticManager.newProcessInfo(new ProcessInfoKey(
+                nodeService.findIdentityNodeId(), nodeChannels.getChannelQueue(), nodeId, ProcessType.PULL_HANDLER_EXTRACT));
+        try {
+            Node targetNode = nodeService.findNode(nodeId, true);
+            if (Constants.QUEUE_DEFAULT.equals(nodeChannels.getChannelQueue())) {
+                addReadyQueuesHeader(nodeId, res);
+            }
+            if (StringUtils.isNotBlank(resumeRequest.getBatchIdParam()) && parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)
+                    && handleResume(resumeRequest, outgoingTransport, res, processInfo)) {
+                processInfo.setStatus(ProcessStatus.OK);
+            } else {
+                List<OutgoingBatch> batchList = dataExtractorService.extract(processInfo, targetNode,
+                        nodeChannels.getChannelQueue(), outgoingTransport);
+                logDataReceivedFromPull(targetNode, batchList, processInfo, remoteHost);
+                if (processInfo.getStatus() != ProcessStatus.ERROR) {
+                    addPendingBatchCounts(targetNode.getNodeId(), res);
+                    processInfo.setStatus(ProcessStatus.OK);
+                }
+            }
+        } finally {
+            if (processInfo.getStatus() != ProcessStatus.OK) {
+                processInfo.setStatus(ProcessStatus.ERROR);
+            }
+        }
+        outgoingTransport.close();
     }
 
     /**

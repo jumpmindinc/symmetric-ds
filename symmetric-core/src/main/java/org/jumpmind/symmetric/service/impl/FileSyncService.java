@@ -124,6 +124,7 @@ import bsh.TargetError;
 public class FileSyncService extends AbstractOfflineDetectorService implements IFileSyncService,
         INodeCommunicationExecutor {
     private static final Pattern RANGE_PATTERN = Pattern.compile("bytes=(\\d+)-");
+    private static final String FILESYNC_STAGING_SUFFIX = "_filesync";
     private ISymmetricEngine engine;
     private Date lastUpdateTime;
     private ICacheManager cacheManager;
@@ -666,7 +667,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
     @Override
     public Object[] getStagingPathComponents(OutgoingBatch fileSyncBatch) {
         StringBuilder zipName = new StringBuilder(32);
-        zipName.append(StringUtils.leftPad(String.valueOf(fileSyncBatch.getBatchId()), 10, "0")).append("_filesync");
+        zipName.append(StringUtils.leftPad(String.valueOf(fileSyncBatch.getBatchId()), 10, "0")).append(FILESYNC_STAGING_SUFFIX);
         return new String[] { Constants.STAGING_CATEGORY_OUTGOING, Batch.getStagedLocation(fileSyncBatch.isCommonFlag(),
                 fileSyncBatch.getNodeId(), fileSyncBatch.getBatchId()), zipName.toString() };
     }
@@ -697,8 +698,10 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             currentBatch.setErrorFlag(true);
             engine.getOutgoingBatchService().updateOutgoingBatch(currentBatch);
             if (isStreamClosedByClient(e)) {
-                log.warn("Failed to extract file sync batch {}.  The stream was closed by the client.  The error was: {}",
-                        currentBatch, ExceptionUtils.getRootMessage(e));
+                if (log.isWarnEnabled()) {
+                    log.warn("Failed to extract file sync batch {}.  The stream was closed by the client.  The error was: {}",
+                            currentBatch, ExceptionUtils.getRootMessage(e));
+                }
             } else {
                 log.error("Failed to extract file sync batch " + currentBatch, e);
             }
@@ -828,7 +831,6 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             return FileSyncPullResult.builder().batches(batchesToProcess).allRequestedBatches(batchesToProcess)
                     .stagedResources(new ArrayList<IStagedResource>()).envelopeFormatUsed(false).build();
         }
-        IStagingManager stagingManager = engine.getStagingManager();
         long maxBytesToSync = parameterService.getLong(ParameterConstants.TRANSPORT_MAX_BYTES_TO_SYNC);
         int compressionLevel = parameterService.getInt(ParameterConstants.FILE_SYNC_COMPRESSION_LEVEL);
         List<OutgoingBatch> processedBatches = new ArrayList<OutgoingBatch>();
@@ -836,38 +838,23 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         OutgoingBatch currentBatch = null;
         try {
             long syncedBytes = 0;
-            for (int i = 0; i < batchesToProcess.size(); i++) {
+            boolean shouldStop = false;
+            for (int i = 0; i < batchesToProcess.size() && !shouldStop; i++) {
                 currentBatch = batchesToProcess.get(i);
                 IStagedResource previouslyStagedResource = getStagedResource(currentBatch);
                 if (isWaitForExtractionRequired(currentBatch, previouslyStagedResource)
                         || isFlushBatchesRequired(currentBatch, processedBatches, previouslyStagedResource)) {
-                    break;
-                }
-                IStagedResource stagedResource;
-                if (previouslyStagedResource != null) {
-                    log.debug("Using existing extraction for file sync batch {}", currentBatch.getNodeBatchId());
-                    stagedResource = previouslyStagedResource;
+                    shouldStop = true;
                 } else {
-                    stagedResource = stagingManager.create(getStagingPathComponents(currentBatch));
-                    FileSyncZipDataWriter dataWriter = new FileSyncZipDataWriter(maxBytesToSync, compressionLevel, this,
-                            engine.getNodeService(), stagedResource, engine.getExtensionService(), engine.getConfigurationService());
-                    try {
-                        log.debug("Extracting batch {} for filesync.", currentBatch.getNodeBatchId());
-                        ((DataExtractorService) engine.getDataExtractorService()).extractOutgoingBatch(
-                                processInfo, targetNode, dataWriter, currentBatch, false, true,
-                                DataExtractorService.ExtractMode.FOR_SYM_CLIENT, null);
-                    } finally {
-                        dataWriter.finish();
-                    }
-                }
-                processedBatches.add(currentBatch);
-                processedResources.add(stagedResource);
-                syncedBytes += stagedResource.getSize();
-                processInfo.incrementBatchCount();
-                processInfo.setCurrentBatchId(currentBatch.getBatchId());
-                log.debug("Processed file sync batch {}. syncedBytes={}, maxBytesToSync={}", currentBatch, syncedBytes, maxBytesToSync);
-                if (!useEnvelope || syncedBytes > maxBytesToSync) {
-                    break;
+                    IStagedResource stagedResource = extractOrReuseStagedBatch(processInfo, targetNode, currentBatch,
+                            previouslyStagedResource, maxBytesToSync, compressionLevel);
+                    processedBatches.add(currentBatch);
+                    processedResources.add(stagedResource);
+                    syncedBytes += stagedResource.getSize();
+                    processInfo.incrementBatchCount();
+                    processInfo.setCurrentBatchId(currentBatch.getBatchId());
+                    log.debug("Processed file sync batch {}. syncedBytes={}, maxBytesToSync={}", currentBatch, syncedBytes, maxBytesToSync);
+                    shouldStop = !useEnvelope || syncedBytes > maxBytesToSync;
                 }
             }
             markBatchesTransferring(processInfo, processedBatches);
@@ -878,6 +865,26 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
         return FileSyncPullResult.builder().batches(processedBatches).allRequestedBatches(batchesToProcess)
                 .stagedResources(processedResources).envelopeFormatUsed(useEnvelope).build();
+    }
+
+    private IStagedResource extractOrReuseStagedBatch(ProcessInfo processInfo, Node targetNode, OutgoingBatch currentBatch,
+            IStagedResource previouslyStagedResource, long maxBytesToSync, int compressionLevel) {
+        if (previouslyStagedResource != null) {
+            log.debug("Using existing extraction for file sync batch {}", currentBatch.getNodeBatchId());
+            return previouslyStagedResource;
+        }
+        IStagedResource stagedResource = engine.getStagingManager().create(getStagingPathComponents(currentBatch));
+        FileSyncZipDataWriter dataWriter = new FileSyncZipDataWriter(maxBytesToSync, compressionLevel, this,
+                engine.getNodeService(), stagedResource, engine.getExtensionService(), engine.getConfigurationService());
+        try {
+            log.debug("Extracting batch {} for filesync.", currentBatch.getNodeBatchId());
+            ((DataExtractorService) engine.getDataExtractorService()).extractOutgoingBatch(
+                    processInfo, targetNode, dataWriter, currentBatch, false, true,
+                    DataExtractorService.ExtractMode.FOR_SYM_CLIENT, null);
+        } finally {
+            dataWriter.finish();
+        }
+        return stagedResource;
     }
 
     /**
@@ -905,7 +912,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             OutputStream os = outgoingTransport.openStream();
             try (InputStream is = stagedResource.getInputStream()) {
                 if (skipCount > 0) {
-                    is.skip(skipCount);
+                    IOUtils.skipFully(is, skipCount);
                 }
                 IOUtils.copy(is, os);
             }
@@ -922,32 +929,37 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         List<IStagedResource> processedResources = result.getStagedResources();
         OutgoingBatch lastBatch = processedBatches.isEmpty() ? null : processedBatches.get(processedBatches.size() - 1);
         try {
-            try {
-                OutputStream os = outgoingTransport.openStream();
-                if (result.isEnvelopeFormatUsed()) {
-                    for (int i = 0; i < processedBatches.size(); i++) {
-                        IStagedResource resource = processedResources.get(i);
-                        StagedResourceETag etag = new StagedResourceETag(resource.getGenerationTime(), resource.getSize());
-                        FileSyncBatchEnvelope.writeHeader(os, processedBatches.get(i).getBatchId(), resource.getSize(), etag);
-                        try (InputStream is = resource.getInputStream()) {
-                            IOUtils.copy(is, os);
-                        }
-                    }
-                } else if (!processedResources.isEmpty()) {
-                    try (InputStream is = processedResources.get(0).getInputStream()) {
-                        IOUtils.copy(is, os);
-                    }
-                }
-                os.flush();
-                markBatchesLoaded(result.getAllRequestedBatches());
-            } catch (IOException e) {
-                throw new IoException(e);
-            }
+            writeBatchesToStream(result, outgoingTransport, processedBatches, processedResources);
         } catch (RuntimeException e) {
             handleExtractionError(e, lastBatch);
             throw e;
         } finally {
             closeStagedResources(processedResources);
+        }
+    }
+
+    private void writeBatchesToStream(FileSyncPullResult result, IOutgoingTransport outgoingTransport,
+            List<OutgoingBatch> processedBatches, List<IStagedResource> processedResources) {
+        try {
+            OutputStream os = outgoingTransport.openStream();
+            if (result.isEnvelopeFormatUsed()) {
+                for (int i = 0; i < processedBatches.size(); i++) {
+                    IStagedResource resource = processedResources.get(i);
+                    StagedResourceETag etag = new StagedResourceETag(resource.getGenerationTime(), resource.getSize());
+                    FileSyncBatchEnvelope.writeHeader(os, processedBatches.get(i).getBatchId(), resource.getSize(), etag);
+                    try (InputStream is = resource.getInputStream()) {
+                        IOUtils.copy(is, os);
+                    }
+                }
+            } else if (!processedResources.isEmpty()) {
+                try (InputStream is = processedResources.get(0).getInputStream()) {
+                    IOUtils.copy(is, os);
+                }
+            }
+            os.flush();
+            markBatchesLoaded(result.getAllRequestedBatches());
+        } catch (IOException e) {
+            throw new IoException(e);
         }
     }
 
@@ -1292,7 +1304,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         FileSyncBatchEnvelope header;
         while ((header = FileSyncBatchEnvelope.readHeader(is)) != null) {
             IStagedResource localResource = stagingManager.create(Constants.STAGING_CATEGORY_INCOMING, sourceNodeId,
-                    header.getBatchId() + "_filesync");
+                    header.getBatchId() + FILESYNC_STAGING_SUFFIX);
             try {
                 OutputStream out = localResource.getOutputStream();
                 long received = IOUtils.copyLarge(BoundedInputStream.builder().setInputStream(is).setMaxCount(header.getLength()).get(), out);
@@ -1347,7 +1359,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         IStagingManager stagingManager = engine.getStagingManager();
         IHttpResumeCache resumeCache = engine.getTransportManager() != null ? engine.getTransportManager().getResumeCache() : null;
         IStagedResource localResource = stagingManager.find(Constants.STAGING_CATEGORY_INCOMING, sourceNodeId,
-                batchId + "_filesync");
+                batchId + FILESYNC_STAGING_SUFFIX);
         if (localResource == null || localResource.getState() != State.CREATE) {
             log.warn("Resume requested for file sync batch {} from node {}, but the local partial staged resource was missing or already "
                     + "finalized ({}). This pull cannot complete that batch; a subsequent pull will retry it in full.",
@@ -1579,30 +1591,10 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             ResumeCacheEntry pendingResume = resumeCache != null
                     ? resumeCache.getPendingFileSyncEntryForNode(nodeCommunication.getNodeId())
                     : null;
-            Map<String, String> requestProperties = null;
-            if (pendingResume != null) {
-                requestProperties = new HashMap<String, String>();
-                requestProperties.put(WebConstants.HEADER_IF_ETAG, pendingResume.getEtag().toJson());
-                requestProperties.put(WebConstants.HEADER_RANGE, "bytes=" + pendingResume.getReceivedCount() + "-");
-            }
             transport = transportManager.getFilePullTransport(
-                    nodeCommunication.getNode(), identity, security.getNodePassword(), requestProperties,
+                    nodeCommunication.getNode(), identity, security.getNodePassword(), buildResumeRequestProperties(pendingResume),
                     parameterService.getRegistrationUrl(), pendingResume != null ? pendingResume.getBatchId() : null);
-            List<IncomingBatch> batchesProcessed;
-            if (pendingResume != null && transport.getHeaders().containsKey(WebConstants.HEADER_CONTENT_RANGE)) {
-                batchesProcessed = resumePartialBatch(transport.openStream(), nodeCommunication.getNodeId(), processInfo, pendingResume);
-            } else {
-                if (pendingResume != null) {
-                    log.info("Resume of file sync batch {} from node {} was not honored by the server (stale etag, resume disabled, "
-                            + "or an older peer). Falling back to a full pull.", pendingResume.getBatchId(), nodeCommunication.getNodeId());
-                    resumeCache.remove(nodeCommunication.getNodeId(), pendingResume.getBatchId());
-                }
-                if (transport.getHeaders().containsKey(WebConstants.HEADER_FILESYNC_FORMAT)) {
-                    batchesProcessed = processEnvelopedZip(transport.openStream(), nodeCommunication.getNodeId(), processInfo);
-                } else {
-                    batchesProcessed = processZip(transport.openStream(), nodeCommunication.getNodeId(), processInfo);
-                }
-            }
+            List<IncomingBatch> batchesProcessed = receiveFileSyncBatches(transport, nodeCommunication, processInfo, resumeCache, pendingResume);
             if (batchesProcessed.size() > 0) {
                 processInfo.setStatus(ProcessInfo.ProcessStatus.ACKING);
                 status.updateIncomingStatus(batchesProcessed);
@@ -1633,6 +1625,32 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                 }
             }
         }
+    }
+
+    private Map<String, String> buildResumeRequestProperties(ResumeCacheEntry pendingResume) {
+        if (pendingResume == null) {
+            return null;
+        }
+        Map<String, String> requestProperties = new HashMap<String, String>();
+        requestProperties.put(WebConstants.HEADER_IF_ETAG, pendingResume.getEtag().toJson());
+        requestProperties.put(WebConstants.HEADER_RANGE, "bytes=" + pendingResume.getReceivedCount() + "-");
+        return requestProperties;
+    }
+
+    private List<IncomingBatch> receiveFileSyncBatches(IIncomingTransport transport, NodeCommunication nodeCommunication,
+            ProcessInfo processInfo, IHttpResumeCache resumeCache, ResumeCacheEntry pendingResume) throws IOException {
+        if (pendingResume != null && transport.getHeaders().containsKey(WebConstants.HEADER_CONTENT_RANGE)) {
+            return resumePartialBatch(transport.openStream(), nodeCommunication.getNodeId(), processInfo, pendingResume);
+        }
+        if (pendingResume != null) {
+            log.info("Resume of file sync batch {} from node {} was not honored by the server (stale etag, resume disabled, "
+                    + "or an older peer). Falling back to a full pull.", pendingResume.getBatchId(), nodeCommunication.getNodeId());
+            resumeCache.remove(nodeCommunication.getNodeId(), pendingResume.getBatchId());
+        }
+        if (transport.getHeaders().containsKey(WebConstants.HEADER_FILESYNC_FORMAT)) {
+            return processEnvelopedZip(transport.openStream(), nodeCommunication.getNodeId(), processInfo);
+        }
+        return processZip(transport.openStream(), nodeCommunication.getNodeId(), processInfo);
     }
 
     protected RemoteNodeStatuses queueJob(boolean force, long minimumPeriodMs, String clusterLock,

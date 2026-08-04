@@ -434,7 +434,11 @@ public class SimpleStagingDataWriter {
     protected void registerForResume(IStagedResource resource) {
         resource.close();
         long receivedCount = resource.getSize();
-        getResumeCache().put(sourceNodeId, batch.getBatchId(), ResumeCacheEntry.builder()
+        IHttpResumeCache resumeCache = getResumeCache();
+        if (resumeCache == null) {
+            return;
+        }
+        resumeCache.put(sourceNodeId, batch.getBatchId(), ResumeCacheEntry.builder()
                 .nodeId(sourceNodeId)
                 .batchId(batch.getBatchId())
                 .etag(currentBatchEtag)

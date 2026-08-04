@@ -75,7 +75,7 @@ public class FileSyncBatchEnvelope {
         while ((b = in.read()) != -1 && b != '\n') {
             line.append((char) b);
         }
-        if (b == -1 && line.length() == 0) {
+        if (b == -1 && line.isEmpty()) {
             return null;
         }
         String headerLine = line.toString();

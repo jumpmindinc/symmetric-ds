@@ -152,8 +152,7 @@ public class HttpIncomingTransport implements IIncomingTransport {
                 throw new AuthenticationExpiredException();
             case WebConstants.SC_NO_CONTENT:
                 throw new NoContentException();
-            case WebConstants.SC_OK:
-            case WebConstants.SC_PARTIAL_CONTENT:
+            case WebConstants.SC_OK, WebConstants.SC_PARTIAL_CONTENT:
                 httpTransportManager.updateSession(connection);
                 is = HttpTransportManager.getInputStreamFrom(connection);
                 return is;

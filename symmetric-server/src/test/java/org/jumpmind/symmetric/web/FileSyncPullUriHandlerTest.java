@@ -64,7 +64,8 @@ class FileSyncPullUriHandlerTest {
     @BeforeEach
     void setUp() throws Exception {
         engine = mock(ISymmetricEngine.class);
-        when(engine.getParameterService()).thenReturn(mock(IParameterService.class));
+        IParameterService parameterService = mock(IParameterService.class);
+        when(engine.getParameterService()).thenReturn(parameterService);
         fileSyncService = mock(IFileSyncService.class);
         when(engine.getFileSyncService()).thenReturn(fileSyncService);
         nodeService = mock(INodeService.class);
@@ -80,7 +81,8 @@ class FileSyncPullUriHandlerTest {
         handler = new FileSyncPullUriHandler(engine);
         req = mock(HttpServletRequest.class);
         res = mock(HttpServletResponse.class);
-        when(res.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+        ServletOutputStream outputStream = mock(ServletOutputStream.class);
+        when(res.getOutputStream()).thenReturn(outputStream);
     }
 
     @Test

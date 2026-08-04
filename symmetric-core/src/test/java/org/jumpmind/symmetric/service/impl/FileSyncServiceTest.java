@@ -105,12 +105,16 @@ class FileSyncServiceTest {
         when(engine.getParameterService()).thenReturn(parameterService);
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        when(platform.getSqlTemplate()).thenReturn(mock(ISqlTemplate.class));
-        when(platform.getSqlTemplateDirty()).thenReturn(mock(ISqlTemplate.class));
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        ISqlTemplate sqlTemplateDirty = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
-        when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
-        when(engine.getCacheManager()).thenReturn(mock(ICacheManager.class));
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
+        ICacheManager cacheManager = mock(ICacheManager.class);
+        when(engine.getCacheManager()).thenReturn(cacheManager);
         stagingManager = mock(IStagingManager.class);
         when(engine.getStagingManager()).thenReturn(stagingManager);
         outgoingBatchService = mock(IOutgoingBatchService.class);
@@ -118,8 +122,10 @@ class FileSyncServiceTest {
         IConfigurationService configurationService = mock(IConfigurationService.class);
         when(configurationService.getChannel(anyString())).thenReturn(new Channel());
         when(engine.getConfigurationService()).thenReturn(configurationService);
-        when(engine.getDataExtractorService()).thenReturn(mock(DataExtractorService.class));
-        when(engine.getStatisticManager()).thenReturn(mock(IStatisticManager.class));
+        DataExtractorService dataExtractorService = mock(DataExtractorService.class);
+        when(engine.getDataExtractorService()).thenReturn(dataExtractorService);
+        IStatisticManager statisticManager = mock(IStatisticManager.class);
+        when(engine.getStatisticManager()).thenReturn(statisticManager);
         INodeService nodeService = mock(INodeService.class);
         when(nodeService.findIdentityNodeId()).thenReturn("localNode");
         when(engine.getNodeService()).thenReturn(nodeService);
@@ -183,7 +189,7 @@ class FileSyncServiceTest {
     }
 
     @Test
-    void sendFilesForPull_resumeWithMatchingEtagAndRange_servesPartialContentFromSkipOffset() throws IOException {
+    void sendFilesForPull_resumeWithMatchingEtagAndRange_servesPartialContentFromSkipOffset() {
         when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
         Node targetNode = targetNode("3.18.0");
         OutgoingBatch batch = new OutgoingBatch();
@@ -214,7 +220,7 @@ class FileSyncServiceTest {
     }
 
     @Test
-    void sendFilesForPull_resumeWithStaleEtag_servesFullContentNotPartial() throws IOException {
+    void sendFilesForPull_resumeWithStaleEtag_servesFullContentNotPartial() {
         when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
         Node targetNode = targetNode("3.18.0");
         OutgoingBatch batch = new OutgoingBatch();
@@ -241,7 +247,7 @@ class FileSyncServiceTest {
     }
 
     @Test
-    void sendFilesForPull_targetNodeBelowVersionGate_fallsBackToSingleBatchLegacyFormat() throws IOException {
+    void sendFilesForPull_targetNodeBelowVersionGate_fallsBackToSingleBatchLegacyFormat() {
         when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
         when(parameterService.getLong(ParameterConstants.TRANSPORT_MAX_BYTES_TO_SYNC)).thenReturn(Long.MAX_VALUE);
         Node targetNode = targetNode("3.17.0");
