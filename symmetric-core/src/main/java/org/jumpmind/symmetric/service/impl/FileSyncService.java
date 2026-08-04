@@ -602,6 +602,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         }
     }
 
+    @Override
     public void save(ISqlTransaction sqlTransaction, FileSnapshot snapshot) {
         snapshot.setLastUpdateTime(new Date());
         if (0 >= executeUpdate(sqlTransaction, snapshot)) {
@@ -781,7 +782,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                     log.error("Missing staged ZIP file for target node {}: {}", targetNode,
                             stagedResource == null ? "<null>" : stagedResource);
                 }
-                markBatchesLoaded(batchesToProcess);
+                markBatchesLoaded(processedBatches);
             } finally {
                 if (stagedResource != null) {
                     stagedResource.close();

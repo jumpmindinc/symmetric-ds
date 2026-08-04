@@ -21,6 +21,24 @@ The first step in setting up new replication is to connect to one of the endpoin
 
 As the endpoint type and display name change, the changes will be reflected in the Configure Diagram on the left. When proceeding to the next screen, SymmetricDS will verify that it can connect to the endpoint using the provided information.
 
+*FILE SYNC ONLY ENDPOINTS*
+
+NOTE: In addition to database endpoint types, the endpoint type list includes six file sync types: Filesystem,
+File Sync S3, SFTP, Azure Blob, Google Drive, and MinIO. These allow the Diagram to synchronize files and folders
+instead of database tables. Once the first endpoint is set to a file sync type, every additional endpoint in the
+same pipeline must also be a file sync type (and vice versa for database types) -- a single pipeline cannot mix
+file sync and database endpoints.
+
+Each file sync type has its own connection fields in place of the host/port/database fields used by database
+endpoints:
+
+* *Filesystem* -- a local base directory path.
+* *File Sync S3* -- bucket, region, access key, and secret key.
+* *SFTP* -- host, port, username, and password.
+* *Azure Blob* -- storage account name and SAS token.
+* *Google Drive* -- a service account key and target folder path.
+* *MinIO* -- endpoint URL, access key, and secret key.
+
 === Connect to Additional Endpoints
 
 image::images/canvas/DefineEndpointScreen_second.png[]
@@ -56,6 +74,35 @@ When using the pipelines view, another way to configure synchronization is to en
 When mirroring is configured, DML changes made to any table within the selected catalogs and/or schemas will be replicated across the pipeline. In addition, all DDL changes will be replicated across the pipeline.
 
 Subset rules and transforms cannot be configured via the Configure Diagram for mirrored tables. Advanced configuration such as this can be set up via the Configure Details screens.
+
+=== File Capture Setup 
+
+image::images/canvas/ConfigureFileTriggersScreen.png[]
+
+When both endpoints on a link are file sync endpoints, the Diagram replaces the Select Tables screen with the
+Configure File Triggers screen. This screen lists file synchronization in both directions between the two
+endpoints: an outgoing grid for files sent from the first endpoint to the second, and an incoming grid for files
+sent back, if the endpoints are different. Each row shows the source directory, target directory, and include
+pattern for a file trigger. Use the Add, Edit, and Remove buttons to manage entries.
+
+image::images/canvas/FileTriggerDialog.png[]
+
+Clicking Add or Edit opens a dialog to configure a single file trigger and its routing in one step:
+
+* *Trigger ID* -- a unique identifier, generated automatically from the source directory but editable.
+* *Source Base Directory* -- the directory on the source endpoint to monitor for changes.
+* *Recurse Subdirectories* -- whether to watch child directories as well.
+* *Include Files* / *Exclude Files* -- wildcard-enabled, comma-separated filters for which files are synchronized.
+* *Sync On Create*, *Sync On Modified*, *Sync On Delete* -- which file events trigger synchronization.
+* *Target Base Directory* -- the directory on the target endpoint that files are synchronized to.
+* *Conflict Strategy* -- Source Wins, Target Wins, or Manual, used when a file has changed on both sides. See
+<<File Routing>> for details on each strategy.
+* *Auto Reload* -- whether the target should be seeded with existing files from the source directory during
+initial load. Equivalent to <<File Routing,Initial Load Enabled>> in the Configure Details screens.
+
+Subset rules and transforms cannot be configured via the Configure Diagram for file sync pipelines, the same
+restriction that applies to mirrored tables. Behind the scenes, each entry here creates the equivalent <<File
+Triggers>> and <<File Routing>> configuration that the Configure Details screens use.
 
 === Subset Rule Configuration
 

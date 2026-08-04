@@ -277,6 +277,10 @@ abstract public class AbstractJob implements Runnable, IJob {
             log.info("Job '{}' is paused and will not run at this time.", getName());
             return false;
         }
+        if (!force && !engine.isRuntimeDbHealthy()) {
+            log.warn("The runtime database is not healthy, will not run job '{}'", getName());
+            return false;
+        }
         if (jobDefinition.isRequiresRegistration() && !engine.getRegistrationService().isRegisteredWithServer()) {
             if (!hasNotRegisteredMessageBeenLogged) {
                 log.info("Did not run the '{}' job because the engine is not registered.", getName());

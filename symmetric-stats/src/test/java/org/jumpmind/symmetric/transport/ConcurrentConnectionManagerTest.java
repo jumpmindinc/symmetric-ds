@@ -48,7 +48,7 @@ class ConcurrentConnectionManagerTest {
         when(engine.getEngineName()).thenReturn("test-engine");
         IParameterService parameterService = mock(IParameterService.class);
         ConcurrentConnectionManager mgr = new ConcurrentConnectionManager(parameterService, new EngineMetricsService(engine,
-                TestMetricsManagerFactory.create(), false));
+                TestMetricsManagerFactory.create(), false), null);
         Map<String, Reservation> reservations = new HashMap<String, Reservation>();
         String nodeId = "1";
         Reservation current = new ConcurrentConnectionManager.Reservation(nodeId, System.currentTimeMillis() + 10000, ReservationType.HARD);
@@ -70,7 +70,7 @@ class ConcurrentConnectionManagerTest {
         IParameterService ps = mock(IParameterService.class);
         when(ps.getInt(ParameterConstants.CONCURRENT_WORKERS)).thenReturn(maxWorkers);
         when(ps.getLong(ParameterConstants.CONCURRENT_RESERVATION_TIMEOUT)).thenReturn(30_000L);
-        return new ConcurrentConnectionManager(ps, new EngineMetricsService(engine, TestMetricsManagerFactory.create(), false));
+        return new ConcurrentConnectionManager(ps, new EngineMetricsService(engine, TestMetricsManagerFactory.create(), false), null);
     }
 
     @Test
