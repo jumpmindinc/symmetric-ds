@@ -61,6 +61,7 @@ class PushJobTest {
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getClusterService()).thenReturn(clusterService);
         when(engine.getExtensionService()).thenReturn(extensionService);
+        when(engine.isRuntimeDbHealthy()).thenReturn(true);
         when(parameterService.getExternalId()).thenReturn(TEST_NODE_ID);
         when(parameterService.getInt(anyString())).thenReturn(10000);
         pushJob = new PushJob(engine, taskScheduler);

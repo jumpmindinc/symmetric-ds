@@ -85,6 +85,7 @@ class AbstractJobTest {
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getClusterService()).thenReturn(clusterService);
         when(engine.getExtensionService()).thenReturn(extensionService);
+        when(engine.isRuntimeDbHealthy()).thenReturn(true);
         when(parameterService.getExternalId()).thenReturn(TEST_NODE_ID);
         when(parameterService.getInt(anyString())).thenReturn(10000);
         testJob = new TestableJob(TEST_JOB_NAME, engine, taskScheduler);
@@ -294,6 +295,22 @@ class AbstractJobTest {
     }
 
     @Test
+    void testCheckPrerequisites_runtimeDbUnhealthy_returnsFalse() {
+        when(engine.isStarted()).thenReturn(true);
+        when(engine.isRuntimeDbHealthy()).thenReturn(false);
+        assertFalse(testJob.checkPrerequisitesPublic(false));
+    }
+
+    @Test
+    void testCheckPrerequisites_runtimeDbUnhealthyButForced_returnsTrue() {
+        when(engine.isStarted()).thenReturn(true);
+        when(engine.isRuntimeDbHealthy()).thenReturn(false);
+        when(engine.getRegistrationService()).thenReturn(registrationService);
+        when(registrationService.isRegisteredWithServer()).thenReturn(true);
+        assertTrue(testJob.checkPrerequisitesPublic(true));
+    }
+
+    @Test
     void testCheckPrerequisites_jobPausedNotForced_returnsFalse() {
         when(engine.isStarted()).thenReturn(true);
         testJob.pause();
@@ -384,6 +401,14 @@ class AbstractJobTest {
         testJob.invoke(false);
         assertEquals(3, testJob.getNumberOfRuns());
         assertTrue(testJob.getTotalExecutionTimeInMs() >= 30);
+    }
+
+    @Test
+    void testInvoke_runtimeDbUnhealthy_doesNotRun() {
+        setupSuccessfulInvoke();
+        when(engine.isRuntimeDbHealthy()).thenReturn(false);
+        assertFalse(testJob.invoke(false));
+        assertEquals(0, testJob.getNumberOfRuns());
     }
 
     @Test

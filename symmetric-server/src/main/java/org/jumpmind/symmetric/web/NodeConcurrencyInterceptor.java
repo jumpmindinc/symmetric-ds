@@ -143,6 +143,9 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
         if (status == ReservationStatus.DUPLICATE) {
             log.debug("Node {} is already connected", nodeId);
             ServletUtils.sendError(resp, WebConstants.SC_ALREADY_CONNECTED);
+        } else if (status == ReservationStatus.NOT_READY) {
+            log.debug("Node {} rejected because this node is not ready", nodeId);
+            ServletUtils.sendError(resp, WebConstants.SC_SERVICE_NOT_READY);
         } else if (status == ReservationStatus.NOT_FOUND) {
             log.debug("Node {} has no reservation here", nodeId);
             ServletUtils.sendError(resp, WebConstants.SC_NO_RESERVATION);
