@@ -46,12 +46,13 @@ class DataSourceFactoryTest {
     void createWithDefault() {
         TypedProperties properties = buildH2Properties();
         DataSource ds = DataSourceFactory.create(properties);
-        assertInstanceOf(ResettableBasicDataSource.class, ds);
+        assertInstanceOf(HikariDataSource.class, ds);
     }
 
     @Test
     void createAppliesPoolProperties() {
         TypedProperties properties = buildH2Properties();
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, Dbcp2Builder.TYPE);
         properties.setProperty(DataSourceProperties.DB_POOL_INITIAL_SIZE, "3");
         properties.setProperty(DataSourceProperties.DB_POOL_MAX_ACTIVE, "15");
         properties.setProperty(DataSourceProperties.DB_POOL_MAX_IDLE, "5");
