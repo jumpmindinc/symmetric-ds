@@ -109,7 +109,7 @@ public class MetricDefinitionFactory implements IMetricDefinitionFactory {
             new SymMetricDefinition(METRIC_ID_DATA_UNROUTED_COUNT, "Total unrouted data rows", METRIC_UNIT_ROWS, InstrumentType.DOUBLE_GAUGE),
             // Runtime DB connection pool gauges
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_ACTIVE, "DB connection pool active connections", METRIC_UNIT_CONNECTIONS,
-                    InstrumentType.DOUBLE_GAUGE),
+                    InstrumentType.LONG_GAUGE),
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_IDLE, "DB connection pool idle connections", METRIC_UNIT_CONNECTIONS, InstrumentType.LONG_GAUGE),
             new SymMetricDefinition(METRIC_ID_RUNTIME_DBPOOL_UTILIZATION, "DB connection pool utilization as a percentage of max", METRIC_UNIT_PERCENT,
                     InstrumentType.DOUBLE_GAUGE),
