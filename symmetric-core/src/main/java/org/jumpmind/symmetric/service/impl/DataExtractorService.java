@@ -1541,9 +1541,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         if (System.currentTimeMillis() - progress.ts > LOG_PROCESS_SUMMARY_THRESHOLD) {
             log.info(
                     "Batch '{}', for node '{}', for process 'send from stage' has been processing for {} seconds.  "
-                            + "The following stats have been gathered: {}",
+                            + "The following stats have been gathered: CHARS={}",
                     progress.batch.getBatchId(), progress.batch.getNodeId(), (System.currentTimeMillis() - progress.startTime) / 1000,
-                    "CHARS=" + progress.totalCharsRead);
+                    progress.totalCharsRead);
             progress.ts = System.currentTimeMillis();
         }
     }
