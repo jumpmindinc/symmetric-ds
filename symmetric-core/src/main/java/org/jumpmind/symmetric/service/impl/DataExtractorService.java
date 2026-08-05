@@ -1542,8 +1542,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             log.info(
                     "Batch '{}', for node '{}', for process 'send from stage' has been processing for {} seconds.  "
                             + "The following stats have been gathered: {}",
-                    new Object[] { progress.batch.getBatchId(), progress.batch.getNodeId(), (System.currentTimeMillis() - progress.startTime) / 1000,
-                            "CHARS=" + progress.totalCharsRead });
+                    progress.batch.getBatchId(), progress.batch.getNodeId(), (System.currentTimeMillis() - progress.startTime) / 1000,
+                    "CHARS=" + progress.totalCharsRead);
             progress.ts = System.currentTimeMillis();
         }
     }
