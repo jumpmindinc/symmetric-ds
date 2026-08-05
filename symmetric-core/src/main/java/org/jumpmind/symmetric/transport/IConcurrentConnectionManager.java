@@ -54,7 +54,11 @@ public interface IConcurrentConnectionManager {
         /**
          * Reservation was not found on this server
          */
-        NOT_FOUND
+        NOT_FOUND,
+        /**
+         * Server is not ready to service the request, due to either database connection issues or other limitations
+         */
+        NOT_READY
     };
 
     /**

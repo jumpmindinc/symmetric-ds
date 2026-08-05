@@ -665,6 +665,7 @@ public class ConfigurationService extends AbstractService implements IConfigurat
                         && (!channel.isFileSyncFlag() || !channel.isReloadFlag())) {
                     log.info("Setting reload and file sync flag on file sync reload channel");
                     channel.setFileSyncFlag(true);
+                    channel.setReloadFlag(true);
                     saveChannel(channel, true);
                 } else {
                     log.debug("No need to create channel {}.  It already exists",
