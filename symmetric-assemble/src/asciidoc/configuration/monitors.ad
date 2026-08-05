@@ -77,9 +77,9 @@ be compared to a threshold value.
 
 |maxDataToRoute|Largest Max Data to Route for a channel.|✔
 
-|maxBatchToSend|Smallest Max Batch to Send for a channel.|✔
+|maxBatchToSend|Largest Max Batch to Send for a channel.|✔
 
-|multiHomedMaxBatchToSend|Number of channels with a Max Batch to Send greater than the configured threshold on a multi-homed node.|✔
+|multiHomedMaxBatchToSend|Largest Max Batch to Send for a channel used only for multi-homed nodes.|✔
 
 |maxChannels|Number of channels.|✔
 
