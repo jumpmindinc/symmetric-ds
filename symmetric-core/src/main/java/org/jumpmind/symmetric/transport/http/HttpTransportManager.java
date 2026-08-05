@@ -315,7 +315,9 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
                 conn.addRequestProperty(key, requestProperties.get(key));
             }
         }
-        log.debug("Requesting file pull from {} with headers {}", maskSecurityToken(url), requestProperties);
+        if (log.isDebugEnabled()) {
+            log.debug("Requesting file pull from {} with headers {}", maskSecurityToken(url), requestProperties);
+        }
         return new HttpIncomingTransport(this, conn, engine.getParameterService(), local.getNodeId(), securityToken);
     }
 
@@ -337,7 +339,9 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
                 conn.addRequestProperty(key, requestProperties.get(key));
             }
         }
-        log.debug("Requesting pull from {} with headers {}", maskSecurityToken(url), requestProperties);
+        if (log.isDebugEnabled()) {
+            log.debug("Requesting pull from {} with headers {}", maskSecurityToken(url), requestProperties);
+        }
         return new HttpIncomingTransport(this, conn, engine.getParameterService(), local.getNodeId(), securityToken);
     }
 

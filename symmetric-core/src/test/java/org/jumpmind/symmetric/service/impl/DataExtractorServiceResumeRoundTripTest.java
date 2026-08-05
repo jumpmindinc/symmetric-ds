@@ -160,8 +160,10 @@ class DataExtractorServiceResumeRoundTripTest {
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         when(symmetricDialect.getName()).thenReturn("H2");
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        when(platform.getSqlTemplate()).thenReturn(mock(ISqlTemplate.class));
-        when(platform.getSqlTemplateDirty()).thenReturn(mock(ISqlTemplate.class));
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        ISqlTemplate sqlTemplateDirty = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getDatabasePlatform()).thenReturn(platform);
@@ -181,7 +183,8 @@ class DataExtractorServiceResumeRoundTripTest {
         when(configurationService.getChannel("channel1")).thenReturn(channel);
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
-        when(engine.getStatisticManager()).thenReturn(mock(IStatisticManager.class));
+        IStatisticManager statisticManager = mock(IStatisticManager.class);
+        when(engine.getStatisticManager()).thenReturn(statisticManager);
         when(engine.getStagingManager()).thenReturn(serverStagingManager);
         return new DataExtractorService(engine);
     }

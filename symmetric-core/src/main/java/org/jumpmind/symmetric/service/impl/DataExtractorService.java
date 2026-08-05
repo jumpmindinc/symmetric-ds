@@ -1316,7 +1316,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         BufferedWriter bufferedWriter = new BufferedWriter(countingWriter);
         Channel channel = configurationService.getChannel(batch.getChannelId());
         transferFromStaging(new StagedBatchTransferRequest(ExtractMode.FOR_SYM_CLIENT, BatchType.EXTRACT, batch, false, stagedResource, skipCount > 0),
-                bufferedWriter, new DataContext(), channel.getMaxKBytesPerSecond(), processInfo);
+                bufferedWriter, channel.getMaxKBytesPerSecond(), processInfo);
         try {
             bufferedWriter.flush();
         } catch (IOException e) {
@@ -1403,9 +1403,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         }
                     }
                     Channel channel = configurationService.getChannel(currentBatch.getChannelId());
-                    DataContext ctx = new DataContext();
                     transferFromStaging(new StagedBatchTransferRequest(mode, BatchType.EXTRACT, currentBatch, isRetry, extractedBatch, false),
-                            writer, ctx, channel.getMaxKBytesPerSecond(), processInfo);
+                            writer, channel.getMaxKBytesPerSecond(), processInfo);
                 } else {
                     IDataReader dataReader = new ProtocolDataReader(BatchType.EXTRACT,
                             currentBatch.getNodeId(), extractedBatch);
@@ -1437,9 +1436,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return currentBatch;
     }
 
-    protected void transferFromStaging(StagedBatchTransferRequest request, BufferedWriter writer, DataContext context, BigDecimal maxKBytesPerSec,
-            ProcessInfo processInfo) {
-        final int MAX_WRITE_LENGTH = 32768;
+    protected void transferFromStaging(StagedBatchTransferRequest request, BufferedWriter writer, BigDecimal maxKBytesPerSec, ProcessInfo processInfo) {
         OutgoingBatch batch = request.getBatch();
         IStagedResource stagedResource = request.getStagedResource();
         BufferedReader reader = stagedResource.getReader();
@@ -1447,95 +1444,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             // Retry means we've sent this batch before, so let's ask to
             // retry the batch from the target's staging
             if (request.isRetry()) {
-                String line = null;
-                while ((line = reader.readLine()) != null) {
-                    if (line.startsWith(CsvConstants.BATCH)) {
-                        if (nodeService.findNode(batch.getNodeId(), true).isVersionGreaterThanOrEqualTo(3, 9, 0)) {
-                            writer.write(getBatchStatsColumns());
-                            writer.newLine();
-                            writer.write(getBatchStats(batch));
-                            writer.newLine();
-                        }
-                        writer.write(CsvConstants.RETRY + "," + batch.getBatchId());
-                        writer.newLine();
-                        writer.write(CsvConstants.COMMIT + "," + batch.getBatchId());
-                        writer.newLine();
-                        break;
-                    } else {
-                        writer.write(line);
-                        writer.newLine();
-                    }
-                }
-                writer.flush();
-                processInfo.setCurrentDataCount(batch.getDataRowCount());
+                sendRetryNotification(reader, writer, batch, processInfo);
             } else {
-                long totalBytes = stagedResource.getSize();
-                long totalCharsRead = 0, totalBytesRead = 0;
-                int numCharsRead = 0, numBytesRead = 0;
-                long startTime = System.currentTimeMillis(), ts = startTime, bts = startTime;
-                boolean isThrottled = maxKBytesPerSec != null && maxKBytesPerSec.compareTo(BigDecimal.ZERO) > 0;
-                long totalThrottleTime = 0;
-                int bufferSize = MAX_WRITE_LENGTH;
-                if (isThrottled) {
-                    bufferSize = maxKBytesPerSec.multiply(new BigDecimal(1024)).intValue();
-                }
-                char[] buffer = new char[bufferSize];
-                boolean batchPreambleExtrasWritten = false;
-                String prevBuffer = "";
-                long batchStatusUpdateMillis = parameterService.getLong(ParameterConstants.OUTGOING_BATCH_UPDATE_STATUS_MILLIS);
-                boolean is39orNewer = nodeService.findNode(batch.getNodeId(), true).isVersionGreaterThanOrEqualTo(3, 9, 0);
-                boolean isSuppressPreambleExtras = request.isSuppressPreambleExtras();
-                StagedResourceETag resumeEtag = isSuppressPreambleExtras ? null : getResumeEtagIfEligible(batch, stagedResource);
-                ExtractMode mode = request.getMode();
-                while ((numCharsRead = reader.read(buffer)) != -1) {
-                    if (!isSuppressPreambleExtras && !batchPreambleExtrasWritten && (is39orNewer || resumeEtag != null)) {
-                        batchPreambleExtrasWritten = writeBatchPreambleExtras(writer, buffer, numCharsRead, prevBuffer, batch, is39orNewer, resumeEtag);
-                        prevBuffer = new String(buffer);
-                    } else {
-                        writer.write(buffer, 0, numCharsRead);
-                    }
-                    totalCharsRead += numCharsRead;
-                    if (Thread.currentThread().isInterrupted()) {
-                        throw new IoException("This thread was interrupted");
-                    }
-                    if (System.currentTimeMillis() - ts > batchStatusUpdateMillis && batch.getStatus() != Status.SE && batch.getStatus() != Status.RS) {
-                        changeBatchStatus(Status.SE, batch, mode);
-                    }
-                    if (System.currentTimeMillis() - ts > LOG_PROCESS_SUMMARY_THRESHOLD) {
-                        log.info(
-                                "Batch '{}', for node '{}', for process 'send from stage' has been processing for {} seconds.  "
-                                        + "The following stats have been gathered: {}",
-                                new Object[] { batch.getBatchId(), batch.getNodeId(), (System.currentTimeMillis() - startTime) / 1000,
-                                        "CHARS=" + totalCharsRead });
-                        ts = System.currentTimeMillis();
-                    }
-                    if (isThrottled) {
-                        numBytesRead += new String(buffer, 0, numCharsRead).getBytes().length;
-                        totalBytesRead += numBytesRead;
-                        if (numBytesRead >= bufferSize) {
-                            long expectedMillis = (long) (((numBytesRead / 1024f) / maxKBytesPerSec.floatValue()) * 1000);
-                            long actualMillis = System.currentTimeMillis() - bts;
-                            if (actualMillis < expectedMillis) {
-                                totalThrottleTime += expectedMillis - actualMillis;
-                                Thread.sleep(expectedMillis - actualMillis);
-                            }
-                            numBytesRead = 0;
-                            bts = System.currentTimeMillis();
-                        }
-                    } else {
-                        totalBytesRead += new String(buffer, 0, numCharsRead).getBytes().length;
-                    }
-                    processInfo.setCurrentDataCount((long) ((totalBytesRead / (double) totalBytes) * batch.getDataRowCount()));
-                }
-                if (batch.getSentCount() == 1) {
-                    statisticManager.incrementDataSent(batch.getChannelId(), batch.getDataRowCount());
-                    statisticManager.incrementDataBytesSent(batch.getChannelId(), totalBytesRead);
-                }
-                if (log.isDebugEnabled() && totalThrottleTime > 0) {
-                    log.debug("Batch '{}' for node '{}' took {}ms for {} bytes and was throttled for {}ms because limit is set to {} KB/s",
-                            batch.getBatchId(), batch.getNodeId(), (System.currentTimeMillis() - startTime), totalBytesRead,
-                            totalThrottleTime, maxKBytesPerSec);
-                }
+                sendStagedContent(request, reader, writer, maxKBytesPerSec, processInfo);
             }
             if (writer instanceof BatchBufferedWriter) {
                 ((BatchBufferedWriter) writer).getBatchIds().add(batch.getBatchId());
@@ -1545,6 +1456,129 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         } finally {
             stagedResource.close();
             stagedResource.dereference();
+        }
+    }
+
+    private void sendRetryNotification(BufferedReader reader, BufferedWriter writer, OutgoingBatch batch, ProcessInfo processInfo) throws IOException {
+        String line = null;
+        while ((line = reader.readLine()) != null) {
+            if (line.startsWith(CsvConstants.BATCH)) {
+                writeRetryBatchLine(writer, batch);
+                break;
+            } else {
+                writer.write(line);
+                writer.newLine();
+            }
+        }
+        writer.flush();
+        processInfo.setCurrentDataCount(batch.getDataRowCount());
+    }
+
+    private void writeRetryBatchLine(BufferedWriter writer, OutgoingBatch batch) throws IOException {
+        if (nodeService.findNode(batch.getNodeId(), true).isVersionGreaterThanOrEqualTo(3, 9, 0)) {
+            writer.write(getBatchStatsColumns());
+            writer.newLine();
+            writer.write(getBatchStats(batch));
+            writer.newLine();
+        }
+        writer.write(CsvConstants.RETRY + "," + batch.getBatchId());
+        writer.newLine();
+        writer.write(CsvConstants.COMMIT + "," + batch.getBatchId());
+        writer.newLine();
+    }
+
+    private void sendStagedContent(StagedBatchTransferRequest request, BufferedReader reader, BufferedWriter writer, BigDecimal maxKBytesPerSec,
+            ProcessInfo processInfo) throws IOException, InterruptedException {
+        final int maxWriteLength = 32768;
+        OutgoingBatch batch = request.getBatch();
+        IStagedResource stagedResource = request.getStagedResource();
+        boolean isThrottled = maxKBytesPerSec != null && maxKBytesPerSec.compareTo(BigDecimal.ZERO) > 0;
+        int bufferSize = isThrottled ? maxKBytesPerSec.multiply(new BigDecimal(1024)).intValue() : maxWriteLength;
+        char[] buffer = new char[bufferSize];
+        boolean is39orNewer = nodeService.findNode(batch.getNodeId(), true).isVersionGreaterThanOrEqualTo(3, 9, 0);
+        StagedResourceETag resumeEtag = request.isSuppressPreambleExtras() ? null : getResumeEtagIfEligible(batch, stagedResource);
+        TransferProgress progress = new TransferProgress(request, is39orNewer, resumeEtag, isThrottled, bufferSize, maxKBytesPerSec,
+                stagedResource.getSize());
+        int numCharsRead;
+        while ((numCharsRead = reader.read(buffer)) != -1) {
+            writeChunk(writer, buffer, numCharsRead, progress);
+            progress.totalCharsRead += numCharsRead;
+            checkNotInterrupted();
+            updateBatchStatusIfDue(progress);
+            logProgressIfDue(progress);
+            applyThrottle(buffer, numCharsRead, progress);
+            processInfo.setCurrentDataCount((long) ((progress.totalBytesRead / (double) progress.totalBytes) * batch.getDataRowCount()));
+        }
+        recordSentStatistics(progress);
+        logThrottleSummary(progress);
+    }
+
+    private void writeChunk(BufferedWriter writer, char[] buffer, int numCharsRead, TransferProgress progress) throws IOException {
+        if (!progress.isSuppressPreambleExtras && !progress.batchPreambleExtrasWritten && (progress.is39orNewer || progress.resumeEtag != null)) {
+            progress.batchPreambleExtrasWritten = writeBatchPreambleExtras(writer, buffer, numCharsRead, progress.prevBuffer, progress.batch,
+                    progress.is39orNewer, progress.resumeEtag);
+            progress.prevBuffer = new String(buffer);
+        } else {
+            writer.write(buffer, 0, numCharsRead);
+        }
+    }
+
+    private void checkNotInterrupted() {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new IoException("This thread was interrupted");
+        }
+    }
+
+    private void updateBatchStatusIfDue(TransferProgress progress) {
+        long batchStatusUpdateMillis = parameterService.getLong(ParameterConstants.OUTGOING_BATCH_UPDATE_STATUS_MILLIS);
+        if (System.currentTimeMillis() - progress.ts > batchStatusUpdateMillis && progress.batch.getStatus() != Status.SE
+                && progress.batch.getStatus() != Status.RS) {
+            changeBatchStatus(Status.SE, progress.batch, progress.mode);
+        }
+    }
+
+    private void logProgressIfDue(TransferProgress progress) {
+        if (System.currentTimeMillis() - progress.ts > LOG_PROCESS_SUMMARY_THRESHOLD) {
+            log.info(
+                    "Batch '{}', for node '{}', for process 'send from stage' has been processing for {} seconds.  "
+                            + "The following stats have been gathered: {}",
+                    new Object[] { progress.batch.getBatchId(), progress.batch.getNodeId(), (System.currentTimeMillis() - progress.startTime) / 1000,
+                            "CHARS=" + progress.totalCharsRead });
+            progress.ts = System.currentTimeMillis();
+        }
+    }
+
+    private void applyThrottle(char[] buffer, int numCharsRead, TransferProgress progress) throws InterruptedException {
+        if (progress.isThrottled) {
+            progress.numBytesRead += new String(buffer, 0, numCharsRead).getBytes().length;
+            progress.totalBytesRead += progress.numBytesRead;
+            if (progress.numBytesRead >= progress.bufferSize) {
+                long expectedMillis = (long) (((progress.numBytesRead / 1024f) / progress.maxKBytesPerSec.floatValue()) * 1000);
+                long actualMillis = System.currentTimeMillis() - progress.bts;
+                if (actualMillis < expectedMillis) {
+                    progress.totalThrottleTime += expectedMillis - actualMillis;
+                    Thread.sleep(expectedMillis - actualMillis);
+                }
+                progress.numBytesRead = 0;
+                progress.bts = System.currentTimeMillis();
+            }
+        } else {
+            progress.totalBytesRead += new String(buffer, 0, numCharsRead).getBytes().length;
+        }
+    }
+
+    private void recordSentStatistics(TransferProgress progress) {
+        if (progress.batch.getSentCount() == 1) {
+            statisticManager.incrementDataSent(progress.batch.getChannelId(), progress.batch.getDataRowCount());
+            statisticManager.incrementDataBytesSent(progress.batch.getChannelId(), progress.totalBytesRead);
+        }
+    }
+
+    private void logThrottleSummary(TransferProgress progress) {
+        if (log.isDebugEnabled() && progress.totalThrottleTime > 0) {
+            log.debug("Batch '{}' for node '{}' took {}ms for {} bytes and was throttled for {}ms because limit is set to {} KB/s",
+                    progress.batch.getBatchId(), progress.batch.getNodeId(), (System.currentTimeMillis() - progress.startTime), progress.totalBytesRead,
+                    progress.totalThrottleTime, progress.maxKBytesPerSec);
         }
     }
 
@@ -2542,6 +2576,43 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
 
         public boolean isSuppressPreambleExtras() {
             return isSuppressPreambleExtras;
+        }
+    }
+
+    private static final class TransferProgress {
+        private final OutgoingBatch batch;
+        private final ExtractMode mode;
+        private final boolean isSuppressPreambleExtras;
+        private final boolean is39orNewer;
+        private final StagedResourceETag resumeEtag;
+        private final boolean isThrottled;
+        private final int bufferSize;
+        private final BigDecimal maxKBytesPerSec;
+        private final long totalBytes;
+        private final long startTime;
+        private long ts;
+        private long bts;
+        private long totalCharsRead;
+        private long totalBytesRead;
+        private long numBytesRead;
+        private long totalThrottleTime;
+        private boolean batchPreambleExtrasWritten;
+        private String prevBuffer = "";
+
+        private TransferProgress(StagedBatchTransferRequest request, boolean is39orNewer, StagedResourceETag resumeEtag, boolean isThrottled,
+                int bufferSize, BigDecimal maxKBytesPerSec, long totalBytes) {
+            this.batch = request.getBatch();
+            this.mode = request.getMode();
+            this.isSuppressPreambleExtras = request.isSuppressPreambleExtras();
+            this.is39orNewer = is39orNewer;
+            this.resumeEtag = resumeEtag;
+            this.isThrottled = isThrottled;
+            this.bufferSize = bufferSize;
+            this.maxKBytesPerSec = maxKBytesPerSec;
+            this.totalBytes = totalBytes;
+            this.startTime = System.currentTimeMillis();
+            this.ts = startTime;
+            this.bts = startTime;
         }
     }
 }
