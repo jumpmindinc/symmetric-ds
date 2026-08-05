@@ -79,6 +79,8 @@ be compared to a threshold value.
 
 |maxBatchToSend|Smallest Max Batch to Send for a channel.|✔
 
+|multiHomedMaxBatchToSend|Number of channels with a Max Batch to Send greater than the configured threshold on a multi-homed node.|✔
+
 |maxChannels|Number of channels.|✔
 
 |channelSuspend|Number of channels that are suspended or ignored.|✔
