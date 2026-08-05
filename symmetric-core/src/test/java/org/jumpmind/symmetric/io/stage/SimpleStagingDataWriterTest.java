@@ -168,6 +168,7 @@ class SimpleStagingDataWriterTest {
         assertNotNull(result);
         assertEquals(200L, writer.batch.getBatchId());
         assertEquals(etag, writer.currentBatchEtag);
+        assertEquals(0L, writer.stagedCharCount);
         assertNotNull(writer.writer);
         writer.writer.write("appended,content\n");
         writer.writer.close();
@@ -192,6 +193,7 @@ class SimpleStagingDataWriterTest {
         assertNull(result);
         assertNull(writer.batch);
         assertNull(writer.writer);
+        verify(resumeCache).remove("node1", 201L);
     }
 
     @Test
@@ -216,6 +218,7 @@ class SimpleStagingDataWriterTest {
         IStagedResource result = writer.beginResumedBatch();
         assertNull(result);
         assertNull(writer.batch);
+        verify(resumeCache).remove("node1", 202L);
     }
 
     @Test
@@ -326,8 +329,8 @@ class SimpleStagingDataWriterTest {
         SimpleStagingDataWriter writer = newWriter("", null);
         writer.batch = new Batch(BatchType.LOAD, 55L, "channel1", BinaryEncoding.NONE, "node1", "me", false);
         writer.currentBatchEtag = new StagedResourceETag(111L, 222L);
+        writer.stagedCharCount = 999L;
         IStagedResource resource = mock(IStagedResource.class);
-        when(resource.getSize()).thenReturn(999L);
         writer.registerForResume(resource);
         verify(resource).close();
         ArgumentCaptor<ResumeCacheEntry> captor = ArgumentCaptor.forClass(ResumeCacheEntry.class);
@@ -339,6 +342,53 @@ class SimpleStagingDataWriterTest {
         assertEquals(999L, entry.getReceivedCount());
         assertEquals("channel1", entry.getChannelId());
         assertEquals("NONE", entry.getBinaryEncoding());
+    }
+
+    @Test
+    void registerForResume_withPriorResumeEntry_accumulatesOnTopOfPreviouslyReceivedCount() {
+        ResumeCacheEntry priorEntry = ResumeCacheEntry.builder()
+                .nodeId("node1")
+                .batchId(55L)
+                .etag(new StagedResourceETag(1L, 2L))
+                .receivedCount(500L)
+                .channelId("channel1")
+                .binaryEncoding("NONE")
+                .cachedAtTime(1L)
+                .queue(Constants.QUEUE_DEFAULT)
+                .build();
+        SimpleStagingDataWriter writer = newWriter("", priorEntry);
+        writer.batch = new Batch(BatchType.LOAD, 55L, "channel1", BinaryEncoding.NONE, "node1", "me", false);
+        writer.currentBatchEtag = new StagedResourceETag(111L, 222L);
+        writer.stagedCharCount = 300L;
+        IStagedResource resource = mock(IStagedResource.class);
+        writer.registerForResume(resource);
+        ArgumentCaptor<ResumeCacheEntry> captor = ArgumentCaptor.forClass(ResumeCacheEntry.class);
+        verify(resumeCache).put(eq("node1"), eq(55L), captor.capture());
+        assertEquals(800L, captor.getValue().getReceivedCount());
+    }
+
+    @Test
+    void writeLine_incrementsStagedCharCountByLineLengthPlusNewline() throws IOException {
+        SimpleStagingDataWriter writer = newWriter("", null);
+        writer.writer = new BufferedWriter(new StringWriter());
+        writer.writeLine("hello");
+        assertEquals(6L, writer.stagedCharCount);
+        writer.writeLine("world!");
+        assertEquals(13L, writer.stagedCharCount);
+    }
+
+    @Test
+    void process_bigLineTriggersChunkedWrite_stagedCharCountReflectsFullLength() throws IOException {
+        String bigValue = "y".repeat(40000);
+        String content = "nodeid,node1\nbinary,NONE\nchannel,channel1\nbatch,103\ninsert,1," + bigValue + "\ncommit,103\n";
+        SimpleStagingDataWriter writer = newWriter(content, null);
+        writer.process();
+        assertNull(writer.getException());
+        IStagedResource resource = realStagingManager.find(Constants.STAGING_CATEGORY_INCOMING, "node1", 103L);
+        String staged = readContent(resource);
+        String expectedWritten = "nodeid,node1\nbinary,NONE\nchannel,channel1\nbatch,103\ninsert,1," + bigValue + "\ncommit,103\n";
+        assertEquals(expectedWritten, staged);
+        assertEquals(expectedWritten.length(), writer.stagedCharCount);
     }
 
     @Test

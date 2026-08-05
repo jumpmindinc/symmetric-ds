@@ -21,6 +21,8 @@
 package org.jumpmind.symmetric.web;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +31,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.file.FileSyncPullResult;
+import org.jumpmind.symmetric.io.stage.StagedResourceETag;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfo.ProcessStatus;
@@ -68,12 +71,12 @@ public class FileSyncPullUriHandler extends AbstractUriHandler {
             FileSyncPullResult result = engine.getFileSyncService().prepareFilesForPull(processInfo, targetNode,
                     batchIdParam, ifETagHeader, rangeHeader);
             if (result.getResumeEtag() != null) {
-                res.setHeader(WebConstants.HEADER_ETAG, result.getResumeEtag().toJson());
+                res.setHeader(WebConstants.HEADER_ETAG, quoteEtag(result.getResumeEtag()));
                 res.setHeader(WebConstants.HEADER_ACCEPT_RANGES, "bytes");
                 if (result.isPartialContent()) {
                     res.setStatus(WebConstants.SC_PARTIAL_CONTENT);
                     res.setHeader(WebConstants.HEADER_CONTENT_RANGE,
-                            result.getSkipCount() + "-" + (result.getTotalSize() - 1) + "/" + result.getTotalSize());
+                            "bytes " + result.getSkipCount() + "-" + (result.getTotalSize() - 1) + "/" + result.getTotalSize());
                 }
             }
             if (result.isEnvelopeFormatUsed()) {
@@ -96,5 +99,14 @@ public class FileSyncPullUriHandler extends AbstractUriHandler {
                 outgoingTransport.close();
             }
         }
+    }
+
+    /**
+     * An entity-tag must be an opaque quoted string (RFC 9110 section 8.8.3). Base64-encoding the JSON first guarantees the payload can never contain a quote
+     * or other syntax-breaking character; this header is never parsed back by our own client (which tracks its own {@code If-ETag} instead), so the encoding is
+     * unidirectional.
+     */
+    private static String quoteEtag(StagedResourceETag etag) {
+        return "\"" + Base64.getEncoder().encodeToString(etag.toJson().getBytes(StandardCharsets.UTF_8)) + "\"";
     }
 }

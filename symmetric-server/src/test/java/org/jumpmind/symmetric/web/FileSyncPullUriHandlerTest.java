@@ -29,7 +29,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -131,10 +133,10 @@ class FileSyncPullUriHandlerTest {
                             .totalSize(500L).skipCount(200L).build();
                 });
         handler.handle(req, res);
-        verify(res).setHeader(WebConstants.HEADER_ETAG, etag.toJson());
+        verify(res).setHeader(WebConstants.HEADER_ETAG, quotedEtag(etag));
         verify(res).setHeader(WebConstants.HEADER_ACCEPT_RANGES, "bytes");
         verify(res).setStatus(WebConstants.SC_PARTIAL_CONTENT);
-        verify(res).setHeader(WebConstants.HEADER_CONTENT_RANGE, "200-499/500");
+        verify(res).setHeader(WebConstants.HEADER_CONTENT_RANGE, "bytes 200-499/500");
     }
 
     @Test
@@ -154,7 +156,7 @@ class FileSyncPullUriHandlerTest {
                             .totalSize(500L).skipCount(0L).build();
                 });
         handler.handle(req, res);
-        verify(res).setHeader(WebConstants.HEADER_ETAG, etag.toJson());
+        verify(res).setHeader(WebConstants.HEADER_ETAG, quotedEtag(etag));
         verify(res).setHeader(WebConstants.HEADER_ACCEPT_RANGES, "bytes");
         verify(res, never()).setStatus(WebConstants.SC_PARTIAL_CONTENT);
         verify(res, never()).setHeader(eq(WebConstants.HEADER_CONTENT_RANGE), anyString());
@@ -212,5 +214,9 @@ class FileSyncPullUriHandlerTest {
         verify(res).sendError(HttpServletResponse.SC_NO_CONTENT, "No files to pull.");
         verify(res, never()).setContentType("application/zip");
         verify(fileSyncService, never()).writeFilesForPull(any(), any());
+    }
+
+    private static String quotedEtag(StagedResourceETag etag) {
+        return "\"" + Base64.getEncoder().encodeToString(etag.toJson().getBytes(StandardCharsets.UTF_8)) + "\"";
     }
 }

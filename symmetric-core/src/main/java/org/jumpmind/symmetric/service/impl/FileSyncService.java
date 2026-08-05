@@ -124,7 +124,7 @@ import bsh.TargetError;
 
 public class FileSyncService extends AbstractOfflineDetectorService implements IFileSyncService,
         INodeCommunicationExecutor {
-    private static final Pattern RANGE_PATTERN = Pattern.compile("bytes=(\\d+)-");
+    private static final Pattern RANGE_PATTERN = Pattern.compile("bytes=(\\d{1,18})-");
     private static final String FILESYNC_STAGING_SUFFIX = "_filesync";
     private ISymmetricEngine engine;
     private Date lastUpdateTime;

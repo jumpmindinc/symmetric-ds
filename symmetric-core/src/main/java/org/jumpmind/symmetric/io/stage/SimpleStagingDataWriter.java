@@ -70,6 +70,7 @@ public class SimpleStagingDataWriter {
     protected Exception exception;
     protected ResumeCacheEntry resumeEntry;
     protected StagedResourceETag currentBatchEtag;
+    protected long stagedCharCount;
 
     private SimpleStagingDataWriter(Builder builder) {
         this.reader = new CsvReader(builder.reader);
@@ -154,6 +155,7 @@ public class SimpleStagingDataWriter {
                     resource = stagingManager.create(category, location, batch.getBatchId());
                     writer = resource.getWriter(memoryThresholdInBytes);
                     currentBatchEtag = null;
+                    stagedCharCount = 0;
                     writeLine(nodeLine);
                     writeLine(binaryLine);
                     writeLine(channelLine);
@@ -206,6 +208,7 @@ public class SimpleStagingDataWriter {
                         writer = null;
                     }
                     currentBatchEtag = null;
+                    stagedCharCount = 0;
                     if (log.isDebugEnabled()) {
                         debugLine(nodeLine);
                         debugLine(binaryLine);
@@ -265,6 +268,7 @@ public class SimpleStagingDataWriter {
                             writer.append(line, i, end < size ? end : size);
                         }
                         writer.append("\n");
+                        stagedCharCount += size + 1;
                     } else {
                         writeLine(line);
                     }
@@ -339,6 +343,7 @@ public class SimpleStagingDataWriter {
             if (writer != null) {
                 writer.write(line);
                 writer.write("\n");
+                stagedCharCount += line.length() + 1;
             } else {
                 exception = new ProtocolException("Batch data is corrupt from node " + sourceNodeId + " because no batch ID was present");
                 processInfo.setStatus(ProcessStatus.ERROR);
@@ -403,11 +408,13 @@ public class SimpleStagingDataWriter {
             log.warn("Resume requested for batch {} from node {}, but the local partial staged resource was missing or already finalized ({}). "
                     + "This pull cannot complete that batch; a subsequent pull will retry it in full.",
                     candidateBatch.getBatchId(), sourceNodeId, existingResource == null ? "not found" : existingResource.getState());
+            clearResumeCacheEntry(resumeEntry.getBatchId());
             return null;
         }
         batch = candidateBatch;
         writer = existingResource.getWriter(memoryThresholdInBytes, true);
         currentBatchEtag = resumeEntry.getEtag();
+        stagedCharCount = 0;
         processInfo.setCurrentBatchId(batch.getBatchId());
         processInfo.setCurrentBatchStartTime(new Date());
         processInfo.incrementBatchCount();
@@ -433,7 +440,7 @@ public class SimpleStagingDataWriter {
 
     protected void registerForResume(IStagedResource resource) {
         resource.close();
-        long receivedCount = resource.getSize();
+        long receivedCount = (resumeEntry != null ? resumeEntry.getReceivedCount() : 0) + stagedCharCount;
         IHttpResumeCache resumeCache = getResumeCache();
         if (resumeCache == null) {
             return;

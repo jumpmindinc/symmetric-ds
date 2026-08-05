@@ -119,12 +119,31 @@ class DefaultHttpResumeCacheTest {
     }
 
     @Test
-    void testPut_secondPutOverwritesSingleSlot() {
+    void testPut_differentOwnerWhileSlotBusy_doesNotEvictExistingEntry() {
+        DefaultHttpResumeCache cache = new DefaultHttpResumeCache(null);
+        ResumeCacheEntry first = createEntry("node1", 100L);
+        cache.put("node1", 100L, first);
+        cache.put("node2", 200L, createEntry("node2", 200L));
+        assertEquals(first, cache.get("node1", 100L));
+        assertNull(cache.get("node2", 200L));
+    }
+
+    @Test
+    void testPut_sameOwnerReRegistering_replacesEntry() {
         DefaultHttpResumeCache cache = new DefaultHttpResumeCache(null);
         cache.put("node1", 100L, createEntry("node1", 100L));
+        ResumeCacheEntry updated = createEntry("node1", 100L);
+        cache.put("node1", 100L, updated);
+        assertEquals(updated, cache.get("node1", 100L));
+    }
+
+    @Test
+    void testPut_afterRemove_slotAcceptsNewOwner() {
+        DefaultHttpResumeCache cache = new DefaultHttpResumeCache(null);
+        cache.put("node1", 100L, createEntry("node1", 100L));
+        cache.remove("node1", 100L);
         ResumeCacheEntry second = createEntry("node2", 200L);
         cache.put("node2", 200L, second);
-        assertNull(cache.get("node1", 100L));
         assertEquals(second, cache.get("node2", 200L));
     }
 

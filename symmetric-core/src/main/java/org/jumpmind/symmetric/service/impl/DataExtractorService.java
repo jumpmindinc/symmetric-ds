@@ -1310,11 +1310,13 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     @Override
     public long extractSingleBatchForResume(OutgoingBatch batch, IStagedResource stagedResource, Writer destination,
             long skipCount, ProcessInfo processInfo) {
+        batch.setSentCount(batch.getSentCount() + 1);
+        outgoingBatchService.updateOutgoingBatch(batch);
         CountingSkippingWriter countingWriter = new CountingSkippingWriter(destination, skipCount);
         BufferedWriter bufferedWriter = new BufferedWriter(countingWriter);
         Channel channel = configurationService.getChannel(batch.getChannelId());
-        transferFromStaging(ExtractMode.FOR_SYM_CLIENT, BatchType.EXTRACT, batch, false, stagedResource, bufferedWriter,
-                new DataContext(), channel.getMaxKBytesPerSecond(), processInfo);
+        transferFromStaging(new StagedBatchTransferRequest(ExtractMode.FOR_SYM_CLIENT, BatchType.EXTRACT, batch, false, stagedResource, skipCount > 0),
+                bufferedWriter, new DataContext(), channel.getMaxKBytesPerSecond(), processInfo);
         try {
             bufferedWriter.flush();
         } catch (IOException e) {
@@ -1402,8 +1404,8 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                     }
                     Channel channel = configurationService.getChannel(currentBatch.getChannelId());
                     DataContext ctx = new DataContext();
-                    transferFromStaging(mode, BatchType.EXTRACT, currentBatch, isRetry, extractedBatch, writer, ctx,
-                            channel.getMaxKBytesPerSecond(), processInfo);
+                    transferFromStaging(new StagedBatchTransferRequest(mode, BatchType.EXTRACT, currentBatch, isRetry, extractedBatch, false),
+                            writer, ctx, channel.getMaxKBytesPerSecond(), processInfo);
                 } else {
                     IDataReader dataReader = new ProtocolDataReader(BatchType.EXTRACT,
                             currentBatch.getNodeId(), extractedBatch);
@@ -1435,14 +1437,16 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return currentBatch;
     }
 
-    protected void transferFromStaging(ExtractMode mode, BatchType batchType, OutgoingBatch batch, boolean isRetry, IStagedResource stagedResource,
-            BufferedWriter writer, DataContext context, BigDecimal maxKBytesPerSec, ProcessInfo processInfo) {
+    protected void transferFromStaging(StagedBatchTransferRequest request, BufferedWriter writer, DataContext context, BigDecimal maxKBytesPerSec,
+            ProcessInfo processInfo) {
         final int MAX_WRITE_LENGTH = 32768;
+        OutgoingBatch batch = request.getBatch();
+        IStagedResource stagedResource = request.getStagedResource();
         BufferedReader reader = stagedResource.getReader();
         try {
             // Retry means we've sent this batch before, so let's ask to
             // retry the batch from the target's staging
-            if (isRetry) {
+            if (request.isRetry()) {
                 String line = null;
                 while ((line = reader.readLine()) != null) {
                     if (line.startsWith(CsvConstants.BATCH)) {
@@ -1480,9 +1484,11 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 String prevBuffer = "";
                 long batchStatusUpdateMillis = parameterService.getLong(ParameterConstants.OUTGOING_BATCH_UPDATE_STATUS_MILLIS);
                 boolean is39orNewer = nodeService.findNode(batch.getNodeId(), true).isVersionGreaterThanOrEqualTo(3, 9, 0);
-                StagedResourceETag resumeEtag = getResumeEtagIfEligible(batch, stagedResource);
+                boolean isSuppressPreambleExtras = request.isSuppressPreambleExtras();
+                StagedResourceETag resumeEtag = isSuppressPreambleExtras ? null : getResumeEtagIfEligible(batch, stagedResource);
+                ExtractMode mode = request.getMode();
                 while ((numCharsRead = reader.read(buffer)) != -1) {
-                    if (!batchPreambleExtrasWritten && (is39orNewer || resumeEtag != null)) {
+                    if (!isSuppressPreambleExtras && !batchPreambleExtrasWritten && (is39orNewer || resumeEtag != null)) {
                         batchPreambleExtrasWritten = writeBatchPreambleExtras(writer, buffer, numCharsRead, prevBuffer, batch, is39orNewer, resumeEtag);
                         prevBuffer = new String(buffer);
                     } else {
@@ -2494,5 +2500,48 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         private Semaphore inMemoryLock = new Semaphore(1);
         StagingFileLock fileLock;
         int referenceCount = 0;
+    }
+
+    protected static class StagedBatchTransferRequest {
+        private final ExtractMode mode;
+        private final BatchType batchType;
+        private final OutgoingBatch batch;
+        private final boolean isRetry;
+        private final IStagedResource stagedResource;
+        private final boolean isSuppressPreambleExtras;
+
+        public StagedBatchTransferRequest(ExtractMode mode, BatchType batchType, OutgoingBatch batch, boolean isRetry,
+                IStagedResource stagedResource, boolean isSuppressPreambleExtras) {
+            this.mode = mode;
+            this.batchType = batchType;
+            this.batch = batch;
+            this.isRetry = isRetry;
+            this.stagedResource = stagedResource;
+            this.isSuppressPreambleExtras = isSuppressPreambleExtras;
+        }
+
+        public ExtractMode getMode() {
+            return mode;
+        }
+
+        public BatchType getBatchType() {
+            return batchType;
+        }
+
+        public OutgoingBatch getBatch() {
+            return batch;
+        }
+
+        public boolean isRetry() {
+            return isRetry;
+        }
+
+        public IStagedResource getStagedResource() {
+            return stagedResource;
+        }
+
+        public boolean isSuppressPreambleExtras() {
+            return isSuppressPreambleExtras;
+        }
     }
 }

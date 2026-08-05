@@ -315,7 +315,7 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
                 conn.addRequestProperty(key, requestProperties.get(key));
             }
         }
-        log.debug("Requesting file pull from {} with headers {}", url, requestProperties);
+        log.debug("Requesting file pull from {} with headers {}", maskSecurityToken(url), requestProperties);
         return new HttpIncomingTransport(this, conn, engine.getParameterService(), local.getNodeId(), securityToken);
     }
 
@@ -337,7 +337,7 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
                 conn.addRequestProperty(key, requestProperties.get(key));
             }
         }
-        log.debug("Requesting pull from {} with headers {}", url, requestProperties);
+        log.debug("Requesting pull from {} with headers {}", maskSecurityToken(url), requestProperties);
         return new HttpIncomingTransport(this, conn, engine.getParameterService(), local.getNodeId(), securityToken);
     }
 
@@ -542,6 +542,13 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
             sb.append("&").append(WebConstants.SECURITY_TOKEN).append("=").append(securityToken);
         }
         return sb.toString();
+    }
+
+    /**
+     * @return {@code url} with any {@code securitytoken} query-string value replaced by {@code ***}, for safe inclusion in debug logging
+     */
+    private static String maskSecurityToken(String url) {
+        return url.replaceAll("([?&]" + WebConstants.SECURITY_TOKEN + "=)[^&]*", "$1***");
     }
 
     protected String addNodeId(String base, String nodeId, String connector) {

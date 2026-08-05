@@ -23,6 +23,8 @@ package org.jumpmind.symmetric.transport.http;
 import java.util.Objects;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Open-source default {@link IHttpResumeCache}: a single-slot holder, since a base engine only ever has one batch in flight at a time per (node, queue) pair
@@ -30,6 +32,7 @@ import org.jumpmind.symmetric.ISymmetricEngine;
  * multi-entry map instead.
  */
 public class DefaultHttpResumeCache implements IHttpResumeCache {
+    private final Logger log = LoggerFactory.getLogger(getClass());
     private ResumeCacheEntry entry;
 
     /**
@@ -41,7 +44,12 @@ public class DefaultHttpResumeCache implements IHttpResumeCache {
 
     @Override
     public synchronized void put(String nodeId, long batchId, ResumeCacheEntry newEntry) {
-        this.entry = newEntry;
+        if (entry == null || matches(nodeId, batchId)) {
+            entry = newEntry;
+        } else {
+            log.debug("Resume cache slot busy with node {} batch {}; not registering node {} batch {}",
+                    entry.getNodeId(), entry.getBatchId(), nodeId, batchId);
+        }
     }
 
     @Override

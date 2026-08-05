@@ -22,6 +22,8 @@ package org.jumpmind.symmetric.web;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -60,7 +62,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * Handles data pulls from other nodes.
  */
 public class PullUriHandler extends AbstractCompressionUriHandler {
-    private static final Pattern RANGE_PATTERN = Pattern.compile("bytes=(\\d+)-");
+    private static final Pattern RANGE_PATTERN = Pattern.compile("chars=(\\d{1,18})-");
     private INodeService nodeService;
     private IConfigurationService configurationService;
     private IDataExtractorService dataExtractorService;
@@ -204,11 +206,11 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
         boolean isPartial = etag.equals(requestedETag) && requestedSkipCount != null && requestedSkipCount >= 0
                 && requestedSkipCount < totalSize;
         long skipCount = isPartial ? requestedSkipCount : 0;
-        res.setHeader(WebConstants.HEADER_ETAG, etag.toJson());
-        res.setHeader(WebConstants.HEADER_ACCEPT_RANGES, "bytes");
+        res.setHeader(WebConstants.HEADER_ETAG, quoteEtag(etag));
+        res.setHeader(WebConstants.HEADER_ACCEPT_RANGES, "chars");
         if (isPartial) {
             res.setStatus(WebConstants.SC_PARTIAL_CONTENT);
-            res.setHeader(WebConstants.HEADER_CONTENT_RANGE, skipCount + "-" + (totalSize - 1) + "/" + totalSize);
+            res.setHeader(WebConstants.HEADER_CONTENT_RANGE, "chars " + skipCount + "-" + (totalSize - 1) + "/" + totalSize);
         }
         dataExtractorService.extractSingleBatchForResume(batch, stagedResource, outgoingTransport.getWriter(), skipCount, processInfo);
         log.debug("Served {} pull for batch {} to node {} ({} of {} skipped)", isPartial ? "resumed" : "full", batchId, nodeId,
@@ -225,6 +227,15 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
             return null;
         }
         return Long.parseLong(matcher.group(1));
+    }
+
+    /**
+     * An entity-tag must be an opaque quoted string (RFC 9110 section 8.8.3). Base64-encoding the JSON first guarantees the payload can never contain a quote
+     * or other syntax-breaking character; this header is never parsed back by our own client (which tracks its own {@code If-ETag} from the body-embedded
+     * {@code ETAG} line instead), so the encoding is unidirectional.
+     */
+    private static String quoteEtag(StagedResourceETag etag) {
+        return "\"" + Base64.getEncoder().encodeToString(etag.toJson().getBytes(StandardCharsets.UTF_8)) + "\"";
     }
 
     private void addReadyQueuesHeader(String nodeId, HttpServletResponse res) {

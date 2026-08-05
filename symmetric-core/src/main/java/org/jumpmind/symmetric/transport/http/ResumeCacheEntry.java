@@ -71,6 +71,11 @@ public class ResumeCacheEntry {
         return etag;
     }
 
+    /**
+     * @return how much of the batch was already received when it was preserved for resume. For a table-sync entry ({@code fileSync == false}) this is a count
+     *         of decoded characters of the staged UTF-8 CSV text, matching what {@code CountingSkippingWriter} skips server-side. For a file-sync entry
+     *         ({@code fileSync == true}) this is a count of raw bytes of the staged zip, matching what {@code IOUtils.skipFully} skips server-side.
+     */
     public long getReceivedCount() {
         return receivedCount;
     }

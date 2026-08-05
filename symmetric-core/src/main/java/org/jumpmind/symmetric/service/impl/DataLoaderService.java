@@ -289,7 +289,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                 }
                 if (pendingResume != null) {
                     requestProperties.put(WebConstants.HEADER_IF_ETAG, pendingResume.getEtag().toJson());
-                    requestProperties.put(WebConstants.HEADER_RANGE, "bytes=" + pendingResume.getReceivedCount() + "-");
+                    requestProperties.put(WebConstants.HEADER_RANGE, "chars=" + pendingResume.getReceivedCount() + "-");
                 }
                 transport = transportManager.getPullTransport(remote, local,
                         localSecurity.getNodePassword(), requestProperties, registrationUrl,
@@ -298,7 +298,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
                     boolean serverResumed = transport.getHeaders().containsKey(WebConstants.HEADER_CONTENT_RANGE);
                     if (serverResumed) {
                         confirmedResumeEntry = pendingResume;
-                        log.info("Resuming batch {} from node {}: server honored the resumed retry, appending to {} bytes already received.",
+                        log.info("Resuming batch {} from node {}: server honored the resumed retry, appending to {} characters already received.",
                                 pendingResume.getBatchId(), remote.getNodeId(), pendingResume.getReceivedCount());
                     } else {
                         log.info("Resume of batch {} from node {} was not honored by the server (stale etag, resume disabled, or an older peer). "

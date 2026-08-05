@@ -175,7 +175,7 @@ class DataLoaderServiceTest {
         ArgumentCaptor<Map<String, String>> propsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(transportManager).getPullTransport(eq(remote), eq(local), any(), propsCaptor.capture(), any(), eq(77L));
         assertEquals(etag.toJson(), propsCaptor.getValue().get(WebConstants.HEADER_IF_ETAG));
-        assertEquals("bytes=200-", propsCaptor.getValue().get(WebConstants.HEADER_RANGE));
+        assertEquals("chars=200-", propsCaptor.getValue().get(WebConstants.HEADER_RANGE));
         verify(dataLoaderService).loadDataFromTransport(any(), eq(remote), eq(transport), isNull(), eq(status), eq(pendingResume));
         verify(resumeCache, never()).remove(any(), any(Long.class));
     }
