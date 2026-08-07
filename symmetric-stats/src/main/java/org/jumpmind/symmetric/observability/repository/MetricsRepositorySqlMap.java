@@ -49,25 +49,25 @@ public class MetricsRepositorySqlMap extends AbstractSqlMap {
             " WHERE hostname = ? AND engine_name IN (?, ?)");
 
         putSql("selectRecentIntervalsSql",
-            "SELECT interval_start_time, interval_end_millis, avg, min, max, std_dev, observation_count, mean, outlier" +
+            "SELECT interval_start_time, interval_end_millis, avg_value, min_value, max_value, std_dev, observation_count, mean, outlier" +
             " FROM $(metric_stats_float64)" +
             " WHERE metric_key = ? AND interval_start_time >= ?" +
             " ORDER BY interval_start_time");
 
         putSql("insertMetricIntervalFloat64Sql",
             "INSERT INTO $(metric_stats_float64)" +
-            " (metric_key, context_id, interval_start_time, duration_seconds, interval_end_millis, observation_count, min, max, avg, mean, std_dev, outlier)" +
+            " (metric_key, context_id, interval_start_time, duration_seconds, interval_end_millis, observation_count, min_value, max_value, avg_value, mean, std_dev, outlier)" +
             " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         putSql("selectRecentIntervalsInt64Sql",
-            "SELECT interval_start_time, interval_end_millis, avg, min, max, std_dev, observation_count, mean, outlier" +
+            "SELECT interval_start_time, interval_end_millis, avg_value, min_value, max_value, std_dev, observation_count, mean, outlier" +
             " FROM $(metric_stats_int64)" +
             " WHERE metric_key = ? AND interval_start_time >= ?" +
             " ORDER BY interval_start_time");
 
         putSql("insertMetricIntervalInt64Sql",
             "INSERT INTO $(metric_stats_int64)" +
-            " (metric_key, context_id, interval_start_time, duration_seconds, interval_end_millis, observation_count, min, max, avg, mean, std_dev, outlier)" +
+            " (metric_key, context_id, interval_start_time, duration_seconds, interval_end_millis, observation_count, min_value, max_value, avg_value, mean, std_dev, outlier)" +
             " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         putSql("generateContextSurrogateSql",
