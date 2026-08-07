@@ -65,6 +65,7 @@ public class MonitorConstants {
     public static final String FORM_KEYS = "formKeys";
     public static final String POSTGRES_WAL = "postgresWal";
     public static final String JVM_OOM_MONITOR = "jvmOutOfMemoryMonitor";
+    public static final String MULTI_HOMED_MAX_BATCH_TO_SEND = "multiHomedMaxBatchToSend";
 
     public static Map<String, String> getMonitorTypesByVersion() {
         Map<String, String> map = new HashMap<String, String>();
@@ -85,6 +86,9 @@ public class MonitorConstants {
         map.put(FORM_KEYS, "3.16.4");
         for (String name : new String[] { POSTGRES_WAL, JVM_OOM_MONITOR }) {
             map.put(name, "3.16.5");
+        }
+        for (String name : new String[] { MULTI_HOMED_MAX_BATCH_TO_SEND }) {
+            map.put(name, "3.17.8");
         }
         return map;
     }
