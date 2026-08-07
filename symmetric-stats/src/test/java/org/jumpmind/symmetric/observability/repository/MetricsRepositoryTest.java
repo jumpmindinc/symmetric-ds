@@ -1218,9 +1218,9 @@ class MetricsRepositoryTest {
         Row row = new Row(9);
         row.put("interval_start_time", startTs);
         row.put("interval_end_millis", 2000L);
-        row.put("avg", 1.5);
-        row.put("min", 0.5);
-        row.put("max", 2.5);
+        row.put("avg_value", 1.5);
+        row.put("min_value", 0.5);
+        row.put("max_value", 2.5);
         row.put("std_dev", 0.3);
         row.put("observation_count", 10);
         row.put("mean", 1.2);
@@ -1241,9 +1241,9 @@ class MetricsRepositoryTest {
         Row row = new Row(9);
         row.put("interval_start_time", null);
         row.put("interval_end_millis", 2000L);
-        row.put("avg", 1.0);
-        row.put("min", 0.0);
-        row.put("max", 2.0);
+        row.put("avg_value", 1.0);
+        row.put("min_value", 0.0);
+        row.put("max_value", 2.0);
         row.put("std_dev", 0.0);
         row.put("observation_count", 3);
         row.put("mean", 1.0);
@@ -1258,9 +1258,9 @@ class MetricsRepositoryTest {
         Row row = new Row(9);
         row.put("interval_start_time", new java.sql.Timestamp(0L));
         row.put("interval_end_millis", 0L);
-        row.put("avg", null);
-        row.put("min", null);
-        row.put("max", 0.0);
+        row.put("avg_value", null);
+        row.put("min_value", null);
+        row.put("max_value", 0.0);
         row.put("std_dev", 0.0);
         row.put("observation_count", 0);
         row.put("mean", 0.0);
