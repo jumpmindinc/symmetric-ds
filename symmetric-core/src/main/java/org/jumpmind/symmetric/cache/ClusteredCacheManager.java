@@ -543,7 +543,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         long staleThresholdMs = refreshStaleThreshold();
         long sleepBetweenHeartbeatsMs = refreshSleepBetweenHeartbeats();
         if (this.isClusterLockingEnabled()) {
-            log.debug("Skipped cluster peer heartbeat processing because isClusterLockingEnabled=false");
+            log.debug("Proceeding with cluster peer heartbeat processing because isClusterLockingEnabled=true");
             importCurrentEngineStatesFromHolder();
             log.debug("Cluster peer heartbeat loop step 1 (importCurrentEngineStatesFromHolder) done. Elapsed={}", elapsedSince(startTime));
             discoverPeersFromNodeHostTable();
@@ -556,6 +556,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
                 logEngineStates();
                 logPeerStates();
             }
+        } else {
+            log.debug("Skipped cluster peer heartbeat processing because isClusterLockingEnabled=false");
         }
         updateOwnNodeHostHeartbeat();
         log.debug("Cluster peer heartbeat loop step 5 (updateOwnNodeHostHeartbeat) done. Elapsed={}", elapsedSince(startTime));
