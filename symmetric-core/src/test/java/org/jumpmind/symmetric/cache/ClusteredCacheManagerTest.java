@@ -198,6 +198,12 @@ class ClusteredCacheManagerTest {
         setField("converter", value);
     }
 
+    private boolean callIsClusterPeerListenerActive() throws Exception {
+        Method method = ClusteredCacheManager.class.getDeclaredMethod("isClusterPeerListenerActive");
+        method.setAccessible(true);
+        return (boolean) method.invoke(manager);
+    }
+
     private boolean callIsOwnServerId(String serverId) throws Exception {
         Method method = ClusteredCacheManager.class.getDeclaredMethod("isOwnServerId", String.class);
         method.setAccessible(true);

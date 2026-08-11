@@ -54,6 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.jcs3.access.CacheAccess;
 import org.apache.commons.jcs3.engine.control.CompositeCache;
+import org.apache.commons.jcs3.engine.control.CompositeCacheManager;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.cache.IClusterCacheCoordinator.CacheCoordinatorNetworkSettings;
 import org.jumpmind.symmetric.common.ServerConstants;
@@ -352,6 +353,27 @@ class JcsTcpCacheCoordinatorTest {
         coordinator.stop();
         assertFalse(coordinator.isInitialized());
         assertNull(coordinator.getPeerStatusMessage("server1"));
+    }
+
+    @Test
+    void isInitialized_underlyingJcsManagerShutDownIndependently_returnsFalse() throws Exception {
+        // Apache Commons JCS's CompositeCacheManager is a JVM-wide singleton that registers its own JVM shutdown hook the first
+        // time it's initialized. That hook can call shutDown() on the shared manager directly, independently of this coordinator's
+        // own stop(). isInitialized() must reflect that, not just whether this coordinator still holds a reference to the manager.
+        int port = findFreePort();
+        CacheCoordinatorNetworkSettings settings = new CacheCoordinatorNetworkSettings("server1", "inst1", port,
+                ServerConstants.CLUSTER_PEER_DISCOVERY_DB, 3000L);
+        try {
+            coordinator.start(settings, Collections.emptySet(), converter, new NodeHostCachePeerServerDiscovery());
+            assertTrue(coordinator.isInitialized());
+            Field jcsManagerField = JcsTcpCacheCoordinator.class.getDeclaredField("jcsManager");
+            jcsManagerField.setAccessible(true);
+            CompositeCacheManager manager = (CompositeCacheManager) jcsManagerField.get(coordinator);
+            manager.shutDown();
+            assertFalse(coordinator.isInitialized());
+        } finally {
+            coordinator.stop();
+        }
     }
 
     @Test

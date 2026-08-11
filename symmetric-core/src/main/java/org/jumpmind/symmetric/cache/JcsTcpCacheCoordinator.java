@@ -99,9 +99,17 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         }
     }
 
+    /**
+     * Reflects the underlying JCS manager's own initialized state, not just whether this coordinator still holds a reference to it. Apache Commons JCS's
+     * CompositeCacheManager is a JVM-wide singleton that registers its own JVM shutdown hook the first time it's initialized; that hook can call
+     * jcsManager.shutDown() independently of (and concurrently with) this coordinator's own stop(), which would clear jcsManager's own isInitialized flag
+     * without nulling out our reference to it. Checking jcsManager.isInitialized() as well lets callers detect that condition instead of trusting a peer
+     * cache read that's silently backed by an already-disposed manager.
+     */
     @Override
     public boolean isInitialized() {
-        return jcsManager != null;
+        CompositeCacheManager manager = jcsManager;
+        return manager != null && manager.isInitialized();
     }
 
     public ClusterMessageConverter getConverter() {
