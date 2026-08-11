@@ -766,7 +766,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
             }
         } else if (wasActive) {
             if (msg == null && !isClusterPeerListenerActive()) {
-                log.debug("Skipping detected peer-engine crash, because the local cluster peer communication is not (currently) initialized. Peer={}, engine={}",
+                log.debug(
+                        "Skipping detected peer-engine crash, because the local cluster peer communication is not (currently) initialized. Peer={}, engine={}",
                         peerId, engineName);
             } else {
                 engineAndPeerStateMap.put(key, ClusteredEngineState.OFFLINE);
