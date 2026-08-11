@@ -866,10 +866,10 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     }
 
     /**
-     * Required to catch disconnect in peer communication due to pending JVM shutdown. 
+     * Required to catch disconnect in peer communication due to pending JVM shutdown.
      */
     private boolean isClusterPeerListenerActive() {
-        if(!this.isClusterPeerListenerStarted) {
+        if (!this.isClusterPeerListenerStarted) {
             return false;
         }
         IClusterCacheCoordinator coordinator = peerNetworkCoordinator;
@@ -880,7 +880,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         log.debug("Processing peer joined notification. Peer={}, version={}", msg.getServerId(), msg.getVersion());
         long peerStartTimeMs = msg.getStartTimeMs();
         for (ISymmetricEngine engine : registeredEngines.values()) {
-            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
+            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getEngineName());
             if (!authenticateAndJoinClusterPartition(engine, msg)) {
                 log.error("Aborting peer joined processing for peer={} because cluster partition authentication failed", msg.getServerId());
                 return;
@@ -963,7 +963,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private void stopRegisteredEngines() {
         for (ISymmetricEngine engine : registeredEngines.values()) {
-            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
+            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getEngineName());
             engine.stop();
         }
     }
@@ -984,7 +984,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         log.warn("Engine {} on peer {} stopped sending cluster heartbeats! Clearing its orphaned locks.", engineName, peerId);
         MDC.put(LoggingConstants.CONTEXT_ENGINE, engineName);
         localEngine.getClusterService().clearLocksForServer(peerId);
-        localEngine.getNodeCommunicationService().clearLocksForServer(peerId);    
+        localEngine.getNodeCommunicationService().clearLocksForServer(peerId);
     }
 
     protected void onPeerLeft(String serverId) {
@@ -1004,12 +1004,12 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
 
     private void clearLocksForPeer(String serverId) {
         for (ISymmetricEngine engine : registeredEngines.values()) {
-            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getParameterService().getEngineName());
             if (!engine.isStarted()) {
                 log.debug("Skipping orphaned lock clearing for peer={} on engine={} because the local engine is not currently started",
                         serverId, engine.getEngineName());
                 continue;
             }
+            MDC.put(LoggingConstants.CONTEXT_ENGINE, engine.getEngineName());
             engine.getClusterService().clearLocksForServer(serverId);
             engine.getNodeCommunicationService().clearLocksForServer(serverId);
         }
