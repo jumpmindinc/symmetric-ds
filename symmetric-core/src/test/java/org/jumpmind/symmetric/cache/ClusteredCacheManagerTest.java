@@ -557,7 +557,7 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
-    void onPeerCrashed_localEngineNotStarted_skipsLockClearing() throws Exception {
+    void onPeerCrashed_localEngineNotStarted_skipsLockClearing() {
         manager.registerEngine(mockEngine, ClusteredEngineState.STARTING);
         when(mockEngine.isStarted()).thenReturn(false);
         manager.onPeerCrashed(PEER_1);
@@ -566,7 +566,7 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
-    void onPeerCrashed_localEngineStarted_clearsLocks() throws Exception {
+    void onPeerCrashed_localEngineStarted_clearsLocks() {
         manager.registerEngine(mockEngine, ClusteredEngineState.STARTING);
         manager.onPeerCrashed(PEER_1);
         verify(mockClusterService).clearLocksForServer(PEER_1);
@@ -574,7 +574,7 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
-    void onPeerLeft_localEngineNotStarted_skipsLockClearing() throws Exception {
+    void onPeerLeft_localEngineNotStarted_skipsLockClearing() {
         manager.registerEngine(mockEngine, ClusteredEngineState.STARTING);
         when(mockEngine.isStarted()).thenReturn(false);
         manager.onPeerLeft(PEER_1);
@@ -583,7 +583,7 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
-    void onPeerEngineCrashed_localEngineNotStarted_skipsLockClearing() throws Exception {
+    void onPeerEngineCrashed_localEngineNotStarted_skipsLockClearing() {
         manager.registerEngine(mockEngine, ClusteredEngineState.STARTING);
         when(mockEngine.isStarted()).thenReturn(false);
         manager.onPeerEngineCrashed(PEER_1, ENGINE_1);
@@ -597,7 +597,7 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
-    void clearLocksForPeer_oneOfTwoLocalEnginesNotStarted_clearsOnlyForStartedEngine() throws Exception {
+    void clearLocksForPeer_oneOfTwoLocalEnginesNotStarted_clearsOnlyForStartedEngine() {
         IClusterService mockClusterService2 = mock(IClusterService.class);
         INodeCommunicationService mockNodeCommService2 = mock(INodeCommunicationService.class);
         when(mockEngine2.getClusterService()).thenReturn(mockClusterService2);
