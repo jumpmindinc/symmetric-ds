@@ -804,6 +804,9 @@ public class RouterService extends AbstractService implements IRouterService, IN
      * EVERY data row (expensive!) for nothing.
      */
     protected boolean isNodeCacheRefreshNeeded(Collection<String> missingNodeIds, TriggerRouter triggerRouter) {
+        if (!missingNodeIds.isEmpty()) {
+            return true;
+        }
         String targetNodeGroupId = triggerRouter.getRouter().getNodeGroupLink().getTargetNodeGroupId();
         for (String missingNodeId : missingNodeIds) {
             Node missingNode = engine.getNodeService().findNode(missingNodeId);
