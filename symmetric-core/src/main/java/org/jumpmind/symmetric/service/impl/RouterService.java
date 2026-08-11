@@ -799,15 +799,15 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     /**
-     * Tells whether refreshing the node cache can resolve any of the missing nodes, which is only true for a node the
-     * cache has not seen yet as an enabled member of the router's target node group. Any other missing node stays
-     * unresolved after a refresh, so refreshing would re-read every enabled node on EVERY data row (expensive!) for nothing.
+     * Tells whether refreshing the node cache can resolve any of the missing nodes, which is only true for a node the cache has not seen yet as an enabled
+     * member of the router's target node group. Any other missing node stays unresolved after a refresh, so refreshing would re-read every enabled node on
+     * EVERY data row (expensive!) for nothing.
      */
     protected boolean isNodeCacheRefreshNeeded(Collection<String> missingNodeIds, TriggerRouter triggerRouter) {
         String targetNodeGroupId = triggerRouter.getRouter().getNodeGroupLink().getTargetNodeGroupId();
         for (String missingNodeId : missingNodeIds) {
             Node missingNode = engine.getNodeService().findNode(missingNodeId);
-            if (missingNode != null && missingNode.isSyncEnabled() 
+            if (missingNode != null && missingNode.isSyncEnabled()
                     && StringUtils.equals(targetNodeGroupId, missingNode.getNodeGroupId())) {
                 return true;
             }
