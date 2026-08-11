@@ -135,6 +135,9 @@ public class SqlAnywhereDdlBuilder extends AbstractDdlBuilder {
         ddl.append(" ");
         ddl.append(getSqlType(column));
         writeColumnDefaultValueStmt(table, column, ddl);
+        if (column.isUnique() && databaseInfo.isUniqueEmbedded()) {
+            writeColumnUniqueStmt(ddl);
+        }
         // Sybase does not like NULL/NOT NULL and IDENTITY together
         if (column.isAutoIncrement()) {
             ddl.append(" ");
