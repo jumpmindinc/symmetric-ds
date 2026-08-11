@@ -24,10 +24,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -36,19 +43,24 @@ import java.util.Set;
 
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerRouter;
+import org.jumpmind.symmetric.route.ChannelRouterContext;
 import org.jumpmind.symmetric.route.IDataRouter;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IExtensionService;
+import org.jumpmind.symmetric.service.IGroupletService;
+import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,9 +69,13 @@ public class RouterServiceTest {
     final static Channel CHANNEL_2_TEST = new Channel("test", 1);
     final static String SOURCE_NODE_GROUP = "source";
     final static String TARGET_NODE_GROUP = "target";
+    final static String OTHER_NODE_GROUP = "other";
+    final static String TARGET_NODE_ID = "node1";
     RouterService routerService;
     IConfigurationService configurationService;
     IExtensionService extensionService;
+    INodeService nodeService;
+    IGroupletService groupletService;
 
     @BeforeEach
     public void setup() {
@@ -69,6 +85,8 @@ public class RouterServiceTest {
         IDatabasePlatform databasePlatform = mock(IDatabasePlatform.class);
         extensionService = mock(IExtensionService.class);
         configurationService = mock(IConfigurationService.class);
+        nodeService = mock(INodeService.class);
+        groupletService = mock(IGroupletService.class);
         when(databasePlatform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
         when(symmetricDialect.getPlatform()).thenReturn(databasePlatform);
         when(engine.getDatabasePlatform()).thenReturn(databasePlatform);
@@ -76,6 +94,8 @@ public class RouterServiceTest {
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getExtensionService()).thenReturn(extensionService);
         when(engine.getConfigurationService()).thenReturn(configurationService);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        when(engine.getGroupletService()).thenReturn(groupletService);
         routerService = new RouterService(engine);
     }
 
