@@ -801,11 +801,16 @@ public class RouterService extends AbstractService implements IRouterService, IN
     /**
      * Tells whether refreshing the node cache can resolve any of the missing nodes, which is only true for a node the cache has not seen yet as an enabled
      * member of the router's target node group. Any other missing node stays unresolved after a refresh, so refreshing would re-read every enabled node on
-     * EVERY data row (expensive!) for nothing. A node the channel ignores or a grouplet excludes is unresolvable too, because rebuilding the available nodes
-     * re-applies those filters from caches that a node cache refresh does not touch, so this method must mirror the filters in findAvailableNodes.
+     * EVERY data row (expensive!) for nothing. A router whose node group link is gone, a node the channel ignores, and a node a grouplet excludes are all
+     * unresolvable for the same reason: rebuilding the available nodes re-applies those filters from caches that a node cache refresh does not touch. This
+     * method must therefore mirror every filter in findAvailableNodes.
      */
     protected boolean isNodeCacheRefreshNeeded(Collection<String> missingNodeIds, TriggerRouter triggerRouter, NodeChannel channel) {
-        String targetNodeGroupId = triggerRouter.getRouter().getNodeGroupLink().getTargetNodeGroupId();
+        NodeGroupLink routerLink = triggerRouter.getRouter().getNodeGroupLink();
+        if (engine.getConfigurationService().getNodeGroupLinkFor(routerLink.getSourceNodeGroupId(), routerLink.getTargetNodeGroupId(), false) == null) {
+            return false;
+        }
+        String targetNodeGroupId = routerLink.getTargetNodeGroupId();
         for (String missingNodeId : missingNodeIds) {
             if (channel.isIgnoreEnabled(missingNodeId)) {
                 continue;
