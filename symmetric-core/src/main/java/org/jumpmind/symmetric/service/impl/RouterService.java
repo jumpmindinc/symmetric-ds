@@ -785,7 +785,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
         List<String> targetNodeIds = Arrays.asList(data.getNodeList().split(","));
         Collection<String> nodeIds = CollectionUtils.intersection(targetNodeIds, toNodeIds(findAvailableNodes(triggerRouter, context)));
         Collection<String> missingNodeIds = CollectionUtils.subtract(targetNodeIds, nodeIds);
-        if (isNodeCacheRefreshNeeded(missingNodeIds, triggerRouter)) {
+        if (isNodeCacheRefreshNeeded(missingNodeIds, triggerRouter, context.getChannel())) {
             engine.getNodeService().flushNodeGroupCache();
             context.getAvailableNodes().remove(triggerRouter);
             nodeIds = CollectionUtils.intersection(targetNodeIds, toNodeIds(findAvailableNodes(triggerRouter, context)));
@@ -801,14 +801,19 @@ public class RouterService extends AbstractService implements IRouterService, IN
     /**
      * Tells whether refreshing the node cache can resolve any of the missing nodes, which is only true for a node the cache has not seen yet as an enabled
      * member of the router's target node group. Any other missing node stays unresolved after a refresh, so refreshing would re-read every enabled node on
-     * EVERY data row (expensive!) for nothing.
+     * EVERY data row (expensive!) for nothing. A node the channel ignores or a grouplet excludes is unresolvable too, because rebuilding the available nodes
+     * re-applies those filters from caches that a node cache refresh does not touch, so this method must mirror the filters in findAvailableNodes.
      */
-    protected boolean isNodeCacheRefreshNeeded(Collection<String> missingNodeIds, TriggerRouter triggerRouter) {
+    protected boolean isNodeCacheRefreshNeeded(Collection<String> missingNodeIds, TriggerRouter triggerRouter, NodeChannel channel) {
         String targetNodeGroupId = triggerRouter.getRouter().getNodeGroupLink().getTargetNodeGroupId();
         for (String missingNodeId : missingNodeIds) {
+            if (channel.isIgnoreEnabled(missingNodeId)) {
+                continue;
+            }
             Node missingNode = engine.getNodeService().findNode(missingNodeId);
             if (missingNode != null && missingNode.isSyncEnabled()
-                    && StringUtils.equals(targetNodeGroupId, missingNode.getNodeGroupId())) {
+                    && StringUtils.equals(targetNodeGroupId, missingNode.getNodeGroupId())
+                    && engine.getGroupletService().isTargetEnabled(triggerRouter, missingNode)) {
                 return true;
             }
         }

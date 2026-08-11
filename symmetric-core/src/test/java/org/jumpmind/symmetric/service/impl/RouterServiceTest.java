@@ -96,6 +96,7 @@ public class RouterServiceTest {
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(engine.getNodeService()).thenReturn(nodeService);
         when(engine.getGroupletService()).thenReturn(groupletService);
+        when(groupletService.isTargetEnabled(any(TriggerRouter.class), any(Node.class))).thenReturn(true);
         routerService = new RouterService(engine);
     }
 
@@ -246,19 +247,19 @@ public class RouterServiceTest {
     @Test
     public void testIsNodeCacheRefreshNeededWhenMissingNodeIsEnabledMemberOfTargetGroup() {
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, TARGET_NODE_GROUP));
-        assertTrue(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter()));
+        assertTrue(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
     }
 
     @Test
     public void testIsNodeCacheRefreshNotNeededWhenMissingNodeBelongsToAnotherGroup() {
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, OTHER_NODE_GROUP));
-        assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter()));
+        assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
     }
 
     @Test
     public void testIsNodeCacheRefreshNotNeededWhenMissingNodeDoesNotExist() {
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(null);
-        assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter()));
+        assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
     }
 
     @Test
@@ -266,7 +267,23 @@ public class RouterServiceTest {
         Node disabledNode = new Node(TARGET_NODE_ID, TARGET_NODE_GROUP);
         disabledNode.setSyncEnabled(false);
         when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(disabledNode);
-        assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter()));
+        assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
+    }
+
+    @Test
+    public void testIsNodeCacheRefreshNotNeededWhenMissingNodeIsIgnoredOnChannel() {
+        NodeChannel channel = newChannel();
+        channel.setIgnoreEnabled(TARGET_NODE_ID, true);
+        when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, TARGET_NODE_GROUP));
+        assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), channel));
+        verify(nodeService, never()).findNode(TARGET_NODE_ID);
+    }
+
+    @Test
+    public void testIsNodeCacheRefreshNotNeededWhenMissingNodeIsExcludedByGrouplet() {
+        when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(new Node(TARGET_NODE_ID, TARGET_NODE_GROUP));
+        when(groupletService.isTargetEnabled(any(TriggerRouter.class), any(Node.class))).thenReturn(false);
+        assertFalse(routerService.isNodeCacheRefreshNeeded(Arrays.asList(TARGET_NODE_ID), newTriggerRouter(), newChannel()));
     }
 
     @Test
@@ -304,6 +321,34 @@ public class RouterServiceTest {
         verify(nodeService, never()).findNode(TARGET_NODE_ID);
     }
 
+    @Test
+    public void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenTargetNodeIsIgnoredOnChannel() {
+        givenNodeGroupLinkToTargetGroup();
+        Node targetNode = new Node(TARGET_NODE_ID, TARGET_NODE_GROUP);
+        NodeChannel channel = newChannel();
+        channel.setIgnoreEnabled(TARGET_NODE_ID, true);
+        when(nodeService.findEnabledNodesFromNodeGroup(TARGET_NODE_GROUP)).thenReturn(Collections.singletonList(targetNode));
+        when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(targetNode);
+        Collection<String> nodeIds = routerService.findNodeIdsFromNodeList(newDataForNodeList(), newTriggerRouter(), newContext(channel));
+        assertTrue(nodeIds.isEmpty());
+        verify(nodeService, never()).flushNodeGroupCache();
+        verify(nodeService, times(1)).findEnabledNodesFromNodeGroup(TARGET_NODE_GROUP);
+    }
+
+    @Test
+    public void testFindNodeIdsFromNodeListSkipsCacheRefreshWhenTargetNodeIsExcludedByGrouplet() {
+        givenNodeGroupLinkToTargetGroup();
+        Node targetNode = new Node(TARGET_NODE_ID, TARGET_NODE_GROUP);
+        when(groupletService.getTargetEnabled(any(TriggerRouter.class), any())).thenReturn(Collections.emptySet());
+        when(groupletService.isTargetEnabled(any(TriggerRouter.class), any(Node.class))).thenReturn(false);
+        when(nodeService.findEnabledNodesFromNodeGroup(TARGET_NODE_GROUP)).thenReturn(Collections.singletonList(targetNode));
+        when(nodeService.findNode(TARGET_NODE_ID)).thenReturn(targetNode);
+        Collection<String> nodeIds = routerService.findNodeIdsFromNodeList(newDataForNodeList(), newTriggerRouter(), newContext());
+        assertTrue(nodeIds.isEmpty());
+        verify(nodeService, never()).flushNodeGroupCache();
+        verify(nodeService, times(1)).findEnabledNodesFromNodeGroup(TARGET_NODE_GROUP);
+    }
+
     private void givenNodeGroupLinkToTargetGroup() {
         when(configurationService.getNodeGroupLinkFor(SOURCE_NODE_GROUP, TARGET_NODE_GROUP, false))
                 .thenReturn(new NodeGroupLink(SOURCE_NODE_GROUP, TARGET_NODE_GROUP));
@@ -323,8 +368,16 @@ public class RouterServiceTest {
         return data;
     }
 
+    private NodeChannel newChannel() {
+        return new NodeChannel(CHANNEL_2_TEST);
+    }
+
     private ChannelRouterContext newContext() {
-        return new ChannelRouterContext(SOURCE_NODE_GROUP, new NodeChannel(CHANNEL_2_TEST), mock(ISqlTransaction.class), null);
+        return newContext(newChannel());
+    }
+
+    private ChannelRouterContext newContext(NodeChannel channel) {
+        return new ChannelRouterContext(SOURCE_NODE_GROUP, channel, mock(ISqlTransaction.class), null);
     }
 
     @Test
