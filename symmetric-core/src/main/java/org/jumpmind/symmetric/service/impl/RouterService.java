@@ -781,6 +781,50 @@ public class RouterService extends AbstractService implements IRouterService, IN
         return nodes;
     }
 
+    protected Collection<String> findNodeIdsFromNodeList(Data data, TriggerRouter triggerRouter, ChannelRouterContext context) {
+        List<String> targetNodeIds = Arrays.asList(data.getNodeList().split(","));
+        Collection<String> nodeIds = CollectionUtils.intersection(targetNodeIds, toNodeIds(findAvailableNodes(triggerRouter, context)));
+        Collection<String> missingNodeIds = CollectionUtils.subtract(targetNodeIds, nodeIds);
+        if (isNodeCacheRefreshNeeded(missingNodeIds, triggerRouter, context.getChannel())) {
+            engine.getNodeService().flushNodeGroupCache();
+            context.getAvailableNodes().remove(triggerRouter);
+            nodeIds = CollectionUtils.intersection(targetNodeIds, toNodeIds(findAvailableNodes(triggerRouter, context)));
+        }
+        if (nodeIds.isEmpty() && log.isDebugEnabled()) {
+            log.debug(
+                    "None of the target nodes specified in the data.node_list field ({}) were qualified nodes. Data id {} for table '{}' will not be routed using the {} router",
+                    new Object[] { data.getNodeList(), data.getDataId(), data.getTableName(), triggerRouter.getRouter().getRouterId() });
+        }
+        return nodeIds;
+    }
+
+    /**
+     * Tells whether refreshing the node cache can resolve any of the missing nodes, which is only true for a node the cache has not seen yet as an enabled
+     * member of the router's target node group. Any other missing node stays unresolved after a refresh, so refreshing would re-read every enabled node on
+     * EVERY data row (expensive!) for nothing. A router whose node group link is gone, a node the channel ignores, and a node a grouplet excludes are all
+     * unresolvable for the same reason: rebuilding the available nodes re-applies those filters from caches that a node cache refresh does not touch. This
+     * method must therefore mirror every filter in findAvailableNodes.
+     */
+    protected boolean isNodeCacheRefreshNeeded(Collection<String> missingNodeIds, TriggerRouter triggerRouter, NodeChannel channel) {
+        NodeGroupLink routerLink = triggerRouter.getRouter().getNodeGroupLink();
+        if (engine.getConfigurationService().getNodeGroupLinkFor(routerLink.getSourceNodeGroupId(), routerLink.getTargetNodeGroupId(), false) == null) {
+            return false;
+        }
+        String targetNodeGroupId = routerLink.getTargetNodeGroupId();
+        for (String missingNodeId : missingNodeIds) {
+            if (channel.isIgnoreEnabled(missingNodeId)) {
+                continue;
+            }
+            Node missingNode = engine.getNodeService().findNode(missingNodeId);
+            if (missingNode != null && missingNode.isSyncEnabled()
+                    && StringUtils.equals(targetNodeGroupId, missingNode.getNodeGroupId())
+                    && engine.getGroupletService().isTargetEnabled(triggerRouter, missingNode)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected IDataToRouteReader createReader(ChannelRouterContext context) {
         return AppUtils.newInstance(DataGapRouteReader.class, DataGapRouteReader.class,
                 new Object[] { context, engine },
@@ -976,22 +1020,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 DataMetaData dataMetaData = new DataMetaData(data, table, router, context.getChannel());
                 Collection<String> nodeIds = null;
                 if (triggerRouter.isRouted(data.getDataEventType())) {
-                    String targetNodeIds = data.getNodeList();
-                    if (StringUtils.isNotBlank(targetNodeIds)) {
-                        List<String> targetNodeIdsList = Arrays.asList(targetNodeIds.split(","));
-                        nodeIds = CollectionUtils.intersection(targetNodeIdsList, toNodeIds(findAvailableNodes(triggerRouter, context)));
-                        if (targetNodeIdsList.size() > nodeIds.size()) {
-                            // Missing some nodes from the cache
-                            // Clear cache and try again
-                            engine.getNodeService().flushNodeGroupCache();
-                            context.getAvailableNodes().remove(triggerRouter);
-                            nodeIds = CollectionUtils.intersection(targetNodeIdsList, toNodeIds(findAvailableNodes(triggerRouter, context)));
-                        }
-                        if (nodeIds.size() == 0 && log.isDebugEnabled()) {
-                            log.debug(
-                                    "None of the target nodes specified in the data.node_list field ({}) were qualified nodes. Data id {} for table '{}' will not be routed using the {} router",
-                                    new Object[] { targetNodeIds, data.getDataId(), data.getTableName(), router.getRouterId() });
-                        }
+                    if (StringUtils.isNotBlank(data.getNodeList())) {
+                        nodeIds = findNodeIdsFromNodeList(data, triggerRouter, context);
                     } else if (data.getTriggerHistory().getLastTriggerBuildReason() == TriggerReBuildReason.TRIGGER_HIST_MISSING && !doesColumnCountMatchValues(
                             dataMetaData, data)) {
                         Integer triggerHistId = data.getTriggerHistory().getTriggerHistoryId();
