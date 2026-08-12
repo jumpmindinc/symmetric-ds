@@ -20,16 +20,10 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
-<<<<<<< HEAD
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-=======
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
->>>>>>> 890b59bc80 (SYM-7891: Fix slow Routing job when node cache misses, nodes list is empty (#988))
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -37,14 +31,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-<<<<<<< HEAD
-=======
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
->>>>>>> 890b59bc80 (SYM-7891: Fix slow Routing job when node cache misses, nodes list is empty (#988))
 import java.util.List;
 
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -55,20 +44,13 @@ import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Data;
-<<<<<<< HEAD
-=======
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
->>>>>>> 890b59bc80 (SYM-7891: Fix slow Routing job when node cache misses, nodes list is empty (#988))
 import org.jumpmind.symmetric.model.NodeGroupLink;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerRouter;
-<<<<<<< HEAD
-=======
 import org.jumpmind.symmetric.route.ChannelRouterContext;
-import org.jumpmind.symmetric.route.IDataRouter;
->>>>>>> 890b59bc80 (SYM-7891: Fix slow Routing job when node cache misses, nodes list is empty (#988))
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IGroupletService;
@@ -85,12 +67,8 @@ public class RouterServiceTest {
     final static String TARGET_NODE_ID = "node1";
     RouterService routerService;
     IConfigurationService configurationService;
-<<<<<<< HEAD
-=======
-    IExtensionService extensionService;
     INodeService nodeService;
     IGroupletService groupletService;
->>>>>>> 890b59bc80 (SYM-7891: Fix slow Routing job when node cache misses, nodes list is empty (#988))
 
     @BeforeEach
     public void setup() {
@@ -233,37 +211,6 @@ public class RouterServiceTest {
         Router router = new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "default");
         assertFalse(routerService.shouldSkipSqlEvent(data, router));
     }
-<<<<<<< HEAD
-=======
-
-    @Test
-    public void testGetDataRouterSkipsRoutingForUnsupportedColumnSegmentRouterType() {
-        IDataRouter defaultRouter = mock(IDataRouter.class);
-        Map<String, IDataRouter> routers = new HashMap<String, IDataRouter>();
-        routers.put("default", defaultRouter);
-        when(extensionService.getExtensionPointMap(IDataRouter.class)).thenReturn(routers);
-        Router router = new Router("segmentRouter", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, RouterService.COLUMN_SEGMENT_ROUTER_TYPE);
-        IDataRouter result = routerService.getDataRouter(router, null);
-        assertNotEquals(defaultRouter, result);
-        Set<Node> nodes = new HashSet<Node>();
-        nodes.add(new Node("node1", SOURCE_NODE_GROUP));
-        assertTrue(result.routeToNodes(null, null, nodes, false, false, null).isEmpty());
-        assertEquals(1, routerService.unsupportedColumnSegmentRouterType.get("segmentRouter").getCount());
-        assertFalse(routerService.invalidRouterType.containsKey("segmentRouter"));
-    }
-
-    @Test
-    public void testGetDataRouterFallsBackToDefaultForOtherInvalidRouterType() {
-        IDataRouter defaultRouter = mock(IDataRouter.class);
-        Map<String, IDataRouter> routers = new HashMap<String, IDataRouter>();
-        routers.put("default", defaultRouter);
-        when(extensionService.getExtensionPointMap(IDataRouter.class)).thenReturn(routers);
-        Router router = new Router("bogusRouter", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "bogus");
-        IDataRouter result = routerService.getDataRouter(router, null);
-        assertEquals(defaultRouter, result);
-        assertEquals(1, routerService.invalidRouterType.get("bogusRouter").getCount());
-        assertFalse(routerService.unsupportedColumnSegmentRouterType.containsKey("bogusRouter"));
-    }
 
     @Test
     public void testIsNodeCacheRefreshNeededWhenMissingNodeIsEnabledMemberOfTargetGroup() {
@@ -383,7 +330,6 @@ public class RouterServiceTest {
         verify(nodeService, times(1)).findEnabledNodesFromNodeGroup(TARGET_NODE_GROUP);
     }
 
-    @SuppressWarnings("deprecation")
     private TriggerRouter newTriggerRouter() {
         return new TriggerRouter(new Trigger("a", CHANNEL_2_TEST.getChannelId()),
                 new Router("test", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "default"));
@@ -407,18 +353,4 @@ public class RouterServiceTest {
     private ChannelRouterContext newContext(NodeChannel channel) {
         return new ChannelRouterContext(SOURCE_NODE_GROUP, channel, mock(ISqlTransaction.class), null);
     }
-
-    @Test
-    public void testGetDataRouterUsesRegisteredRouterForKnownType() {
-        IDataRouter defaultRouter = mock(IDataRouter.class);
-        Map<String, IDataRouter> routers = new HashMap<String, IDataRouter>();
-        routers.put("default", defaultRouter);
-        when(extensionService.getExtensionPointMap(IDataRouter.class)).thenReturn(routers);
-        Router router = new Router("defaultRouter", SOURCE_NODE_GROUP, TARGET_NODE_GROUP, "default");
-        IDataRouter result = routerService.getDataRouter(router, null);
-        assertEquals(defaultRouter, result);
-        assertTrue(routerService.invalidRouterType.isEmpty());
-        assertTrue(routerService.unsupportedColumnSegmentRouterType.isEmpty());
-    }
->>>>>>> 890b59bc80 (SYM-7891: Fix slow Routing job when node cache misses, nodes list is empty (#988))
 }
