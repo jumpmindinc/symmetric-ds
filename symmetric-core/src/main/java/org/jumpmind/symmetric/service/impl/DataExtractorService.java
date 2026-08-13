@@ -1733,6 +1733,9 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return transformExtractWriter;
     }
 
+    /** When recovery last scanned for stuck extract requests, so it is not re-run faster than a request can become stale. */
+    protected long lastStuckExtractRequestCheckMs;
+
     @Override
     public RemoteNodeStatuses queueWork(boolean force) {
         final RemoteNodeStatuses statuses = new RemoteNodeStatuses(configurationService.getChannels(false));
@@ -2106,72 +2109,101 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     /**
      * Whether finishing this batch means the whole extract request is done.
      * <p>
-     * The detection is exact rather than heuristic: {@code MultiBatchStagingWriter.close()} advances every remaining batch in the range, so after a completed
-     * extract-job run none of them are left at {@code RQ}. A request at {@code OK} with any batch in its range still {@code RQ} is therefore an impossible
-     * state rather than a healthy in-flight one, which is what makes both this guard and {@link #recoverStuckExtractRequests(boolean)} safe from false
-     * positives.
+     * The batch-status half of the test is exact rather than heuristic: {@code MultiBatchStagingWriter.close()} advances every remaining batch in the range, so
+     * after a completed extract-job run none of them are left at {@code RQ}. A request at {@code OK} with any batch in its range still {@code RQ} is therefore
+     * an impossible state rather than a healthy in-flight one, which is what makes both this guard and {@link #recoverStuckExtractRequests(boolean)} safe from
+     * false positives. The zero-row check is a heuristic and is called out as such where it appears.
      */
     protected boolean isExtractRequestComplete(ExtractRequest request, OutgoingBatch currentBatch, ExtractMode mode) {
         if (mode == ExtractMode.EXTRACT_ONLY) {
             // changeBatchStatus does not persist in this mode, so the batch's own row would still read RQ.
             return false;
         }
-        if (countRequestedBatchesInRange(request) > 0) {
+        if (request.getEndBatchId() > request.getStartBatchId() && currentBatch.getExtractRowCount() == 0 && request.getRows() > 0) {
+            /*
+             * Heuristic, and checked before the query because it costs nothing: a multi-batch request whose expected row count is non-zero cannot be finished
+             * by a batch that extracted nothing, because those rows belong to another batch in the range. A legitimately empty final batch on a request that
+             * expects rows is the case this misjudges, and it errs towards leaving the request open, which the reconciler then resolves.
+             */
             return false;
         }
-        boolean multiBatch = request.getEndBatchId() > request.getStartBatchId();
-        return !(multiBatch && currentBatch.getExtractRowCount() == 0 && request.getRows() > 0);
+        return !hasRequestedBatchesInRange(request);
     }
 
-    protected int countRequestedBatchesInRange(ExtractRequest request) {
-        return sqlTemplate.queryForInt(getSql("countRequestedBatchesForExtractRequestSql"), request.getNodeId(),
-                request.getStartBatchId(), request.getEndBatchId());
+    /**
+     * Whether any batch in the request's range is still requested. Deliberately not a {@code count(*)}: the answer is only ever used as a boolean, and a count
+     * has to visit every batch in the range, so across a load split into thousands of batches the cost would grow with the square of the batch count. Fetching
+     * one row stops at the first match, which in the common in-progress case is immediate.
+     */
+    protected boolean hasRequestedBatchesInRange(ExtractRequest request) {
+        return !sqlTemplate.query(getSql("selectRequestedBatchesForExtractRequestSql"), 1, new LongMapper(),
+                new Object[] { request.getNodeId(), request.getStartBatchId(), request.getEndBatchId() }, null).isEmpty();
+    }
+
+    /** Whether any batch in the request's range was already delivered, which makes an automatic restart unsafe. */
+    protected boolean hasDeliveredBatchesInRange(ExtractRequest request) {
+        return !sqlTemplate.query(getSql("selectDeliveredBatchesForExtractRequestSql"), 1, new LongMapper(),
+                new Object[] { request.getNodeId(), request.getStartBatchId(), request.getEndBatchId() }, null).isEmpty();
     }
 
     /**
      * Return extract requests to {@code NE} when they are marked complete but demonstrably are not, so a load interrupted mid-extract resumes instead of
-     * sitting silently forever. Runs from {@link #queueWork(boolean)} under the existing cluster lock, which also covers startup; a startup-only check would
-     * not have helped the reporting site, whose node ran three days in this state.
+     * sitting silently forever. Runs from {@link #queueWork(boolean)}, which also covers startup; a startup-only check would not have helped the reporting
+     * site, whose node ran three days in this state.
      * <p>
      * Requests whose range contains already-delivered batches are <em>not</em> restarted automatically. {@code restartExtractRequest} flips the whole range
      * back to {@code RQ} through a statement with no status predicate, so it would re-send rows already committed at the target, and the target's own record of
-     * them can be missing (that is the data-integrity half of this defect). Those are reported every pass and require {@code force}.
+     * them can be missing (that is the data-integrity half of this defect). Those are reported and require {@code force}.
      *
      * @return the number of requests restarted
      */
+    @Override
     public int recoverStuckExtractRequests(boolean force) {
         if (!parameterService.is(ParameterConstants.INITIAL_LOAD_EXTRACT_REQUEST_RECOVERY_ENABLED, true)) {
             return 0;
         }
         long thresholdMs = parameterService.getLong(ParameterConstants.INITIAL_LOAD_EXTRACT_REQUEST_RECOVERY_THRESHOLD_MS, 300000);
-        Date staleBefore = new Date(System.currentTimeMillis() - thresholdMs);
+        long now = System.currentTimeMillis();
+        /*
+         * A request cannot qualify until it has been untouched for the threshold, so scanning faster than that only re-runs a query that cannot have a new
+         * answer. queueWork runs every 10 seconds; at the default threshold that would be 29 wasted scans out of every 30, each walking every completed request
+         * for this node plus a correlated probe into the outgoing batch table.
+         */
+        if (!force && now - lastStuckExtractRequestCheckMs < thresholdMs) {
+            return 0;
+        }
+        lastStuckExtractRequestCheckMs = now;
         List<ExtractRequest> stuck = sqlTemplateDirty.query(getSql("selectStuckExtractRequestsSql"), new ExtractRequestMapper(),
-                engine.getNodeId(), ExtractStatus.OK.name(), staleBefore);
+                engine.getNodeId(), ExtractStatus.OK.name(), new Date(now - thresholdMs));
         int restarted = 0;
         for (ExtractRequest request : stuck) {
-            int delivered = sqlTemplate.queryForInt(getSql("countDeliveredBatchesForExtractRequestSql"), request.getNodeId(),
-                    request.getStartBatchId(), request.getEndBatchId());
-            if (delivered > 0 && !force) {
-                log.error(
-                        "Extract request {} for table {} (load {}, node {}) is marked {} with {} of {} rows extracted, but batches {} through {} are still "
-                                + "requested. {} of them were already delivered, so restarting it would re-send rows that are already committed at the target. "
-                                + "This load will not progress on its own: either truncate the target table and force recovery, or cancel the load.",
-                        request.getRequestId(), request.getTableName(), request.getLoadId(), request.getNodeId(), ExtractStatus.OK.name(),
-                        request.getExtractedRows(), request.getRows(), request.getStartBatchId(), request.getEndBatchId(), delivered);
+            if (hasDeliveredBatchesInRange(request) && !force) {
+                log.error("{} Some of those batches were already delivered, so restarting it would re-send rows that are already committed at the target. "
+                        + "This load will not progress on its own: either truncate the target table and force recovery, or cancel the load.",
+                        describeStuckRequest(request));
                 continue;
             }
-            log.warn("Extract request {} for table {} (load {}, node {}) is marked {} with {} of {} rows extracted while batches {} through {} are still "
-                    + "requested, which cannot happen on a completed extract. Re-queuing it for extraction.",
-                    request.getRequestId(), request.getTableName(), request.getLoadId(), request.getNodeId(), ExtractStatus.OK.name(),
-                    request.getExtractedRows(), request.getRows(), request.getStartBatchId(), request.getEndBatchId());
-            List<OutgoingBatch> batches = outgoingBatchService.getOutgoingBatchRange(request.getStartBatchId(), request.getEndBatchId()).getBatches();
-            restartExtractRequest(batches, request, getExtractChildRequestsForNode(request));
+            log.warn("{} That cannot happen on a completed extract, so it is being re-queued for extraction.", describeStuckRequest(request));
+            restartExtractRequest(request);
             restarted++;
         }
         if (restarted > 0) {
             log.warn("Recovered {} stuck extract request(s)", restarted);
         }
         return restarted;
+    }
+
+    protected String describeStuckRequest(ExtractRequest request) {
+        return String.format("Extract request %d for table %s (load %d, node %s) is marked %s with %d of %d rows extracted, while batches %d through %d are "
+                + "still requested.", request.getRequestId(), request.getTableName(), request.getLoadId(), request.getNodeId(), ExtractStatus.OK.name(),
+                request.getExtractedRows(), request.getRows(), request.getStartBatchId(), request.getEndBatchId());
+    }
+
+    /** Load the batch range and any child requests, then hand off to {@link #restartExtractRequest(List, ExtractRequest, List)}. */
+    protected void restartExtractRequest(ExtractRequest request) {
+        List<OutgoingBatch> batches = outgoingBatchService.getOutgoingBatchRange(request.getStartBatchId(), request.getEndBatchId()).getBatches();
+        List<ExtractRequest> childRequests = request.getParentRequestId() == 0 ? getExtractChildRequestsForNode(request) : null;
+        restartExtractRequest(batches, request, childRequests);
     }
 
     protected void restartExtractRequest(List<OutgoingBatch> batches, ExtractRequest request, List<ExtractRequest> childRequests) {

@@ -26,6 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * SYM-7915. Pins the statements behind stuck-extract-request detection and recovery.
@@ -35,27 +37,18 @@ class DataExtractorServiceSqlMapTest {
         return new DataExtractorServiceSqlMap(null, (Map<String, String>) null);
     }
 
-    @Test
-    void restartExtractRequestResetsTheExtractionCounters() {
+    @ParameterizedTest
+    @ValueSource(
+            strings = { "extracted_rows = 0", "extracted_millis = 0", "transferred_rows = 0", "loaded_rows = 0",
+                    "last_transferred_batch_id = null", "last_loaded_batch_id = null", "parent_request_id = 0", "status = ?" })
+    void restartExtractRequestResetsEveryCounter(String fragment) {
         /*
-         * Without this a restarted request keeps the extraction counters from the interrupted run, so it still reports rows it no longer has -- the misleading
-         * state the recovery exists to clear.
+         * The extraction counters are the ones this change added: without them a restarted request keeps the counters from the interrupted run and still
+         * reports rows it no longer has, which is the misleading state the recovery exists to clear. The rest guard against the additions displacing what was
+         * already there.
          */
         String sql = sqlMap().getSql("restartExtractRequest");
-        assertTrue(sql.contains("extracted_rows = 0"), sql);
-        assertTrue(sql.contains("extracted_millis = 0"), sql);
-        assertTrue(sql.contains("status = ?"), sql);
-    }
-
-    @Test
-    void restartExtractRequestStillResetsTransferAndLoadCounters() {
-        // Guard against the added resets displacing the ones that were already there.
-        String sql = sqlMap().getSql("restartExtractRequest");
-        assertTrue(sql.contains("transferred_rows = 0"), sql);
-        assertTrue(sql.contains("loaded_rows = 0"), sql);
-        assertTrue(sql.contains("last_transferred_batch_id = null"), sql);
-        assertTrue(sql.contains("last_loaded_batch_id = null"), sql);
-        assertTrue(sql.contains("parent_request_id = 0"), sql);
+        assertTrue(sql.contains(fragment), sql);
     }
 
     @Test
@@ -79,13 +72,18 @@ class DataExtractorServiceSqlMapTest {
     }
 
     @Test
-    void requestedAndDeliveredCountsLookAtDifferentStatuses() {
-        // The first decides whether a request is stuck; the second decides whether restarting it would re-send rows.
-        String requested = sqlMap().getSql("countRequestedBatchesForExtractRequestSql");
-        String delivered = sqlMap().getSql("countDeliveredBatchesForExtractRequestSql");
+    void requestedAndDeliveredLookupsUseDifferentStatusesAndDoNotCount() {
+        /*
+         * The first decides whether a request is stuck; the second decides whether restarting it would re-send rows. Both answers are booleans, so they select
+         * rows and stop at the first match rather than counting -- a count would have to visit the whole batch range.
+         */
+        String requested = sqlMap().getSql("selectRequestedBatchesForExtractRequestSql");
+        String delivered = sqlMap().getSql("selectDeliveredBatchesForExtractRequestSql");
         assertTrue(requested.contains("status = 'RQ'"), requested);
         assertTrue(delivered.contains("status in ('OK','IG')"), delivered);
         assertFalse(delivered.contains("'RQ'"), delivered);
+        assertFalse(requested.contains("count("), requested);
+        assertFalse(delivered.contains("count("), delivered);
     }
 
     @Test

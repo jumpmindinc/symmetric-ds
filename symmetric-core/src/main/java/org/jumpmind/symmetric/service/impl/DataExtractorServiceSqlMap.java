@@ -100,11 +100,11 @@ public class DataExtractorServiceSqlMap extends AbstractSqlMap {
         putSql("updateExtractRequestExtractedStats", "update $(extract_request) set extracted_rows = extracted_rows + ?, "
                 + "extracted_millis = extracted_millis + ?, last_update_time = ? where request_id = ?");
 
-        putSql("countRequestedBatchesForExtractRequestSql",
-                "select count(*) from $(outgoing_batch) where node_id = ? and batch_id between ? and ? and status = 'RQ'");
+        putSql("selectRequestedBatchesForExtractRequestSql",
+                "select batch_id from $(outgoing_batch) where node_id = ? and batch_id between ? and ? and status = 'RQ'");
 
-        putSql("countDeliveredBatchesForExtractRequestSql",
-                "select count(*) from $(outgoing_batch) where node_id = ? and batch_id between ? and ? and status in ('OK','IG')");
+        putSql("selectDeliveredBatchesForExtractRequestSql",
+                "select batch_id from $(outgoing_batch) where node_id = ? and batch_id between ? and ? and status in ('OK','IG')");
 
         /*
          * A request marked OK whose range still contains RQ batches cannot have completed: MultiBatchStagingWriter.close() advances every remaining batch, so a
