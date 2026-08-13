@@ -494,9 +494,10 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                                 if (resultsListener != null) {
                                     resultsListener.sqlErrored(statement, translate(statement, ex), statementCount, isDrop, isSequenceCreate);
                                 }
+                                boolean objectAlreadyExists = isCreateOrAlter && doesObjectAlreadyExist(ex);
                                 if ((isDrop && !failOnDrops) || (isSequenceCreate && !failOnSequenceCreate)) {
                                     log.debug("{}.  Failed to execute: {}", ex.getMessage(), statement);
-                                } else if (isCreateOrAlter && isTolerateObjectAlreadyExists() && doesObjectAlreadyExist(ex)) {
+                                } else if (objectAlreadyExists && isTolerateObjectAlreadyExists()) {
                                     /*
                                      * Re-sending a table definition to a target where the object already exists is a no-op that used to fail the batch. Because
                                      * table definitions ride the same channel as change data, one such statement stopped every batch queued behind it and all
@@ -506,7 +507,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                                     log.warn("Object already exists, continuing.  Failed to execute: {} ({})", statement, ex.getMessage());
                                 } else {
                                     log.warn("{}.  Failed to execute: {}", ex.getMessage(), statement);
-                                    if (isCreateOrAlter && doesObjectAlreadyExist(ex)) {
+                                    if (objectAlreadyExists) {
                                         // Retrying re-issues the same DDL and fails identically, so Clear Error cannot help here.
                                         log.warn("The statement above failed because the object already exists, so this batch will fail the same way on "
                                                 + "every retry.  Ignore the batch rather than clearing its error, or set {}=true to continue past this "
