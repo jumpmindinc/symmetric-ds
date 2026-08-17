@@ -828,7 +828,7 @@ public class MetricsRepository extends AbstractService {
     static class DoubleStatsSqlRowMapper implements ISqlRowMapper<ISymIntervalStats> {
         @Override
         public ISymIntervalStats mapRow(Row row) {
-            java.sql.Timestamp startTimestamp = (java.sql.Timestamp) row.get("interval_start_time");
+            java.sql.Timestamp startTimestamp = row.getTimestamp("interval_start_time");
             long intervalStart = startTimestamp != null ? startTimestamp.getTime() : 0L;
             long intervalEnd = row.getLong("interval_end_millis");
             double avg = rowDouble(row, "avg_value"); // The time-weighted average
