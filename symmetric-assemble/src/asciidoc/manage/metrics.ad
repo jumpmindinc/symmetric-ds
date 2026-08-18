@@ -138,6 +138,6 @@ endif::pro[]
 |Metric ID|Unit|Description
 
 |`triggers.created.count`|triggers|Database triggers created by the Sync Triggers Job
-|`triggers.rebuilt.count`|triggers|Database triggers rebuilt due to configuration or schema changes
+|`triggers.rebuilt.count`|triggers|Database triggers rebuilt for any reason
 |`triggers.removed.count`|triggers|Database triggers removed
 |===
