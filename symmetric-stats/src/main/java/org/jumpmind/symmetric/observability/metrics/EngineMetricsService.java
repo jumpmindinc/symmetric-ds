@@ -89,6 +89,10 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
      */
     @Override
     public void saveCompletedIntervalStats() {
+        if(this.engine == null || !this.engine.isInitialized()){
+            log.debug("Engine is not initialized, skipping saveCompletedIntervalStats");
+            return;
+        }
         MetricsRepository repo = getOrInitRepository();
         List<MetricIntervalStatsRecord> newlyCompleted = new ArrayList<>();
         int processedMetrics = 0;
@@ -203,7 +207,11 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     }
 
     @Override
-    public void initWorksetsIfNeeded() {
+    public boolean initWorksetsIfNeeded() {
+        if(this.engine == null || !this.engine.isInitialized()){
+            log.debug("Engine is not initialized, skipping initWorksetsIfNeeded");
+            return false;
+        }
         if (!worksetsInitialized) {
             MetricsRepository repo = repository.get();
             if (repo != null) {
@@ -211,6 +219,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                 worksetsInitialized = true;
             }
         }
+        return true;    
     }
 
     /**
