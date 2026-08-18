@@ -68,6 +68,11 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     }
 
     @Override
+    public boolean isEngineInitialized() {
+        return engine != null && engine.isInitialized();
+    }
+
+    @Override
     public IStatisticManager getStatisticManager() {
         return engine.getStatisticManager();
     }
@@ -89,7 +94,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
      */
     @Override
     public void saveCompletedIntervalStats() {
-        if(this.engine == null || !this.engine.isInitialized()){
+        if (!isEngineInitialized()) {
             log.debug("Engine is not initialized, skipping saveCompletedIntervalStats");
             return;
         }
@@ -134,6 +139,10 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
 
     @Override
     public void purgeMetricStats(boolean force) {
+        if (!isEngineInitialized()) {
+            log.debug("Engine is not initialized, skipping purgeMetricStats.");
+            return;
+        }
         MetricsRepository repo = getOrInitRepository();
         if (repo == null) {
             return;
@@ -208,7 +217,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
 
     @Override
     public boolean initWorksetsIfNeeded() {
-        if(this.engine == null || !this.engine.isInitialized()){
+        if (!isEngineInitialized()) {
             log.debug("Engine is not initialized, skipping initWorksetsIfNeeded");
             return false;
         }
@@ -219,7 +228,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                 worksetsInitialized = true;
             }
         }
-        return true;    
+        return true;
     }
 
     /**
