@@ -42,6 +42,7 @@ import java.util.Map;
 import org.apache.commons.lang3.time.FastDateFormat;
 import org.h2.jdbc.JdbcBlob;
 import org.h2.jdbc.JdbcClob;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.symmetric.db.h2.H2Trigger;
 import org.jumpmind.symmetric.db.hsqldb.HsqlDbTrigger;
 
@@ -286,8 +287,9 @@ abstract public class AbstractEmbeddedTrigger {
     protected Map<String, String> getTemplates(Connection conn) throws SQLException {
         Map<String, String> templates = new HashMap<String, String>();
         try (Statement stmt = conn.createStatement()) {
-            String schemaPrefix = schemaName != null && schemaName.length() > 0 ? "\"" + schemaName + "\"." : "";
-            ResultSet rs = stmt.executeQuery(String.format("select * from %s%s%s", schemaPrefix, triggerName, TEMPLATE_TABLE_SUFFIX));
+            String schemaPrefix = schemaName != null && schemaName.length() > 0 ? "\"" + SqlUtils.sanitizeIdentifier(schemaName) + "\"." : "";
+            ResultSet rs = stmt.executeQuery(String.format("select * from %s%s%s", schemaPrefix, SqlUtils.sanitizeIdentifier(triggerName),
+                    TEMPLATE_TABLE_SUFFIX));
             if (rs.next()) {
                 ResultSetMetaData metaData = rs.getMetaData();
                 int columnCount = metaData.getColumnCount();

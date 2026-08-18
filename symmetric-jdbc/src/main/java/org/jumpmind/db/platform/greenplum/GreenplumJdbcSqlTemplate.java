@@ -31,6 +31,7 @@ import javax.sql.DataSource;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.postgresql.PostgreSqlJdbcSqlTemplate;
 import org.jumpmind.db.sql.SqlTemplateSettings;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.sql.SymmetricLobHandler;
 
 public class GreenplumJdbcSqlTemplate extends PostgreSqlJdbcSqlTemplate {
@@ -54,7 +55,7 @@ public class GreenplumJdbcSqlTemplate extends PostgreSqlJdbcSqlTemplate {
             ResultSet rs = null;
             try {
                 st = conn.createStatement();
-                rs = st.executeQuery("select nextval('" + sequenceName + "_seq')");
+                rs = st.executeQuery("select nextval('" + SqlUtils.sanitizeIdentifier(sequenceName) + "_seq')");
                 if (rs.next()) {
                     key = rs.getLong(1);
                 }
