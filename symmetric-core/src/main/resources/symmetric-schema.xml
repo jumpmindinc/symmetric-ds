@@ -1075,13 +1075,13 @@
         <column name="duration_seconds"        type="INTEGER"   required="true"                    description="Duration of the interval in seconds." />
         <column name="interval_end_millis"     type="BIGINT"    required="true"                    description="End of the aggregation window in epoch milliseconds." />
         <column name="observation_count"       type="INTEGER"   required="true"                    description="Number of discrete observations recorded in the interval." />
-        <column name="min"                     type="DOUBLE"    required="true"                    description="Minimum observed value during the interval." />
-        <column name="max"                     type="DOUBLE"    required="true"                    description="Maximum observed value during the interval." />
-        <column name="avg"                     type="DOUBLE"    required="true"                    description="Time-weighted average value over the interval." />
+        <column name="min_value"               type="DOUBLE"    required="true"                    description="Minimum observed value during the interval." />
+        <column name="max_value"               type="DOUBLE"    required="true"                    description="Maximum observed value during the interval." />
+        <column name="avg_value"               type="DOUBLE"    required="true"                    description="Time-weighted average value over the interval." />
         <column name="mean"                    type="DOUBLE"    required="true"                    description="Simple arithmetic mean of observed values during the interval." />
         <column name="std_dev"                 type="DOUBLE"    required="true"                    description="Time-weighted standard deviation of the value during the interval." />
         <column name="outlier"                 type="SMALLINT"                                     description="1 if this interval was flagged as a statistical outlier, 0 otherwise." />
-        <index name="idx_metric_stats_float64_key">
+        <index name="idx_metric_stats_float64_pk">
             <index-column name="metric_key" />
         </index>
     </table>
@@ -1093,13 +1093,13 @@
         <column name="duration_seconds"        type="INTEGER"   required="true"                    description="Duration of the interval in seconds." />
         <column name="interval_end_millis"     type="BIGINT"    required="true"                    description="End of the aggregation window in epoch milliseconds." />
         <column name="observation_count"       type="INTEGER"   required="true"                    description="Number of discrete observations recorded in the interval." />
-        <column name="min"                     type="BIGINT"    required="true"                    description="Minimum observed value during the interval." />
-        <column name="max"                     type="BIGINT"    required="true"                    description="Maximum observed value during the interval." />
-        <column name="avg"                     type="BIGINT"    required="true"                    description="Time-weighted average value over the interval." />
+        <column name="min_value"               type="BIGINT"    required="true"                    description="Minimum observed value during the interval." />
+        <column name="max_value"               type="BIGINT"    required="true"                    description="Maximum observed value during the interval." />
+        <column name="avg_value"               type="BIGINT"    required="true"                    description="Time-weighted average value over the interval." />
         <column name="mean"                    type="BIGINT"    required="true"                    description="Simple arithmetic mean of observed values during the interval." />
         <column name="std_dev"                 type="DOUBLE"    required="true"                    description="Time-weighted standard deviation of the value during the interval." />
         <column name="outlier"                 type="SMALLINT"                                     description="1 if this interval was flagged as a statistical outlier, 0 otherwise." />
-        <index name="idx_metric_stats_int64_key">
+        <index name="idx_metric_stats_int64_pk">
             <index-column name="metric_key" />
         </index>
     </table>

@@ -218,8 +218,13 @@ class SecurityUtilsTest {
     }
 
     @Test
+    void testSanitizeExternalIdWithSpaceReturnsInput() {
+        assertEquals("ext id", SecurityUtils.sanitizeExternalId("ext id"));
+    }
+
+    @Test
     void testSanitizeExternalIdInvalidThrows() {
-        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeExternalId("ext id"));
+        assertThrows(IllegalArgumentException.class, () -> SecurityUtils.sanitizeExternalId("ext;id"));
     }
 
     @Test

@@ -1883,6 +1883,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         if (StringUtils.isNotBlank(triggerName)) {
             try {
                 symmetricDialect.removeTrigger(sqlBuffer, catalog, schema, triggerName, tableName);
+                statisticManager.incrementTriggersRemovedCount(1);
             } catch (SqlException e) {
                 log.error("Error while dropping trigger {} for table {}: {}", triggerName, tableName, e.getMessage());
             } catch (Throwable e) {

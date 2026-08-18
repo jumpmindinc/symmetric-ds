@@ -828,12 +828,12 @@ public class MetricsRepository extends AbstractService {
     static class DoubleStatsSqlRowMapper implements ISqlRowMapper<ISymIntervalStats> {
         @Override
         public ISymIntervalStats mapRow(Row row) {
-            java.sql.Timestamp startTimestamp = (java.sql.Timestamp) row.get("interval_start_time");
+            java.sql.Timestamp startTimestamp = row.getTimestamp("interval_start_time");
             long intervalStart = startTimestamp != null ? startTimestamp.getTime() : 0L;
             long intervalEnd = row.getLong("interval_end_millis");
-            double avg = rowDouble(row, "avg"); // The time-weighted average
-            double min = rowDouble(row, "min");
-            double max = rowDouble(row, "max");
+            double avg = rowDouble(row, "avg_value"); // The time-weighted average
+            double min = rowDouble(row, "min_value");
+            double max = rowDouble(row, "max_value");
             double stdDev = rowDouble(row, "std_dev");
             int observationCount = row.getInt("observation_count");
             double mean = rowDouble(row, "mean");

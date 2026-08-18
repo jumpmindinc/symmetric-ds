@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 
 public class SecurityUtils {
     private static final Pattern SAFE_IDENTIFIER_PATTERN = Pattern.compile("^[a-zA-Z0-9._\\-]+$");
+    private static final Pattern SAFE_EXTERNAL_ID_PATTERN = Pattern.compile("^[a-zA-Z0-9._\\- ]+$");
     private static final String REPLACE_LOG_WHITESPACE_CHARS = "[\\n\\r\\t]";
     private static final String REPLACE_NULL_IN_LOGS = "null";
 
@@ -77,6 +78,9 @@ public class SecurityUtils {
         if (input == null || input.isEmpty()) {
             throw new IllegalArgumentException("ExternalId must not be null or empty");
         }
-        return sanitizeInternalIdentifier(input);
+        if (!SAFE_EXTERNAL_ID_PATTERN.matcher(input).matches()) {
+            throw new IllegalArgumentException("ExternalId contains invalid characters: " + sanitizeForLogging(input));
+        }
+        return input;
     }
 }
