@@ -174,19 +174,19 @@ The feature is controlled by three new parameters:
 
 === Logging Framework Changed to Logback
 --
-SymmetricDS 3.18 replaces Log4j 2 with https://logback.qos.ch/[Logback] as the logging implementation. SymmetricDS continues to log through http://www.slf4j.org/[SLF4J], so log output and logger names are unchanged.
+SymmetricDS 3.18 replaces Log4j2 with https://logback.qos.ch/[Logback] as the logging implementation. SymmetricDS continues to log through http://www.slf4j.org/[SLF4J], so log output and logger names are unchanged.
 
 The configuration file changes from `conf/log4j2.xml` to `conf/logback.xml`. The `--debug` command line option now uses `conf/logback-debug.xml`, and the blank configuration is `conf/logback-blank.xml`.
 
 *Existing configuration is converted during upgrade.* The setup program translates your `log4j2.xml` into `logback.xml`, retires the old files with a `.deprecated` suffix, and repoints the startup scripts and service configuration. Loggers, levels, and the standard console and file appenders carry over without intervention.
 
-A few Log4j 2 constructs have no Logback equivalent and are left out of the converted file, each one recorded as a `WARNING` in `logs/install.log`. Review that file after upgrading if you used any of the following:
+A few Log4j2 constructs have no Logback equivalent and are left out of the converted file, each one recorded as a `WARNING` in `logs/install.log`. Review that file after upgrading if you used any of the following:
 
 * An appender other than `Console`, `File`, `RollingFile`, or `SymRollingFile`.
 * An appender filter, or a layout other than `PatternLayout`.
 * The `FATAL` level, which is converted to `ERROR` and therefore logs more than before. Change it to `OFF` to silence the logger completely.
 
-The Logging chapter of the SymmetricDS User Guide contains a full translation guide for these cases, including a before and after example and a table mapping every Log4j 2 element and attribute to its Logback equivalent.
+The Logging chapter of the SymmetricDS User Guide contains a full translation guide for these cases, including a before and after example and a table mapping every Log4j2 element and attribute to its Logback equivalent.
 
 Two behavior changes are worth noting:
 

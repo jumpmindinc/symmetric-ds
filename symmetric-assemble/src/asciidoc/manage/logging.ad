@@ -18,7 +18,7 @@ endif::pro[]
 
 ==== Migrating from Log4j to Logback
 
-SymmetricDS 3.18 replaced Log4j 2 with Logback. If you are upgrading from 3.17 or earlier, your
+SymmetricDS 3.18 replaced Log4j2 with Logback. If you are upgrading from 3.17 or earlier, your
 `log4j2.xml` file is no longer read and its contents are translated into `logback.xml`.
 
 .What changes
@@ -48,7 +48,7 @@ the standard file and console appenders -- carry over automatically.
 TIP: If a `conf/logback.xml` file already exists before the upgrade, the setup program leaves it
 alone and only retires the old Log4j files. This protects a configuration you wrote yourself.
 
-*Review the conversion warnings.* A few Log4j 2 constructs have no direct Logback equivalent. When
+*Review the conversion warnings.* A few Log4j2 constructs have no direct Logback equivalent. When
 the setup program encounters one it completes the conversion, leaves that piece out, and records a
 warning in `logs/install.log`. Search that file for `WARNING` after upgrading. You will see a warning
 when:
@@ -102,7 +102,7 @@ expresses several settings as child elements rather than attributes.
 .Element and attribute mapping
 [cols="1,1", options="header"]
 |===
-|Log4j 2|Logback
+|Log4j2|Logback
 
 |`<Configuration>`|`<configuration>`
 |`<Appenders>` wrapper|Not used -- `<appender>` goes directly under `<configuration>`
@@ -125,13 +125,13 @@ silence a logger completely, or `ERROR` to keep error messages.
 
 Two details in the pattern layout also differ:
 
-* `%c{1}` in Log4j 2 prints the last segment of the logger name. The Logback equivalent is `%c{0}`.
-* `%m%ex%n` in Log4j 2 prints the message followed by the exception. Logback appends the exception
+* `%c{1}` in Log4j2 prints the last segment of the logger name. The Logback equivalent is `%c{0}`.
+* `%m%ex%n` in Log4j2 prints the message followed by the exception. Logback appends the exception
 automatically, so `%m%n` is the equivalent.
 
 ===== Example
 
-A Log4j 2 configuration that writes to a rolling file, quiets Spring, and turns on debug logging for
+A Log4j2 configuration that writes to a rolling file, quiets Spring, and turns on debug logging for
 SQL statements:
 
 [source, xml]
