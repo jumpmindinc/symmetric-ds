@@ -272,7 +272,7 @@ class ClusterServiceTest {
         when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
         assertDoesNotThrow(() -> clusterService.init());
-        verify(parameterService, times(2)).is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+        verify(parameterService, times(1)).is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
     }
 
     @Test
@@ -281,7 +281,26 @@ class ClusterServiceTest {
         when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
         assertDoesNotThrow(() -> clusterService.init());
-        verify(parameterService, times(2)).is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+        verify(parameterService, times(1)).is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+    }
+
+    @Test
+    void testInit_clusterLockingRequestedButUnsupported_checksRegistrationUrlForBlankGuard() throws Exception {
+        setClusterLockingEnabled(true);
+        when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(true);
+        when(parameterService.getString(ParameterConstants.REGISTRATION_URL)).thenReturn(null);
+        when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
+        assertDoesNotThrow(() -> clusterService.init());
+        verify(parameterService).getString(ParameterConstants.REGISTRATION_URL);
+    }
+
+    @Test
+    void testInit_clusterLockingNotRequested_doesNotCheckRegistrationUrl() throws Exception {
+        setClusterLockingEnabled(false);
+        when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
+        when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class))).thenReturn(new ArrayList<>());
+        assertDoesNotThrow(() -> clusterService.init());
+        verify(parameterService, never()).getString(ParameterConstants.REGISTRATION_URL);
     }
 
     @Test
