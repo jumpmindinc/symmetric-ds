@@ -264,7 +264,7 @@ abstract class AbstractMetricsService implements IMetricsService {
                 metric.removeAllObservations();
                 log.debug("Closed metric {}", metric.getMetricId());
             } catch (Exception ex) {
-                log.warn("Failed to close metric " + metric.getMetricId(), ex);
+                log.warn("Failed to close metric " + metric.getMetricId() + " during shutdown! ", ex);
             }
         }
     }

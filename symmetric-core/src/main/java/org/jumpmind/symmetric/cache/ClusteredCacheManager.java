@@ -376,7 +376,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public void broadcastEngineState(String engineName, ClusteredEngineState engineState) {
         if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
+            log.debug("Service was not yet initialized! Skipped broadcastEngineState. engineName={}, engineState={}", engineName, engineState);
+            return;
         }
         engineAndPeerStateMap.put(getEngineStateMapKey(myServerId, engineName), engineState);
         if (isClusterPeerListenerStarted) {
@@ -387,7 +388,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
     @Override
     public void rebroadcastCurrentState() {
         if (!isInitialized()) {
-            throw new RuntimeException("Service was not yet initialized!");
+            log.warn("Service was not yet initialized! Skipped rebroadcastCurrentState.");
+            return;
         }
         if (isClusterPeerListenerStarted) {
             broadcastCurrentStateAndEngines();

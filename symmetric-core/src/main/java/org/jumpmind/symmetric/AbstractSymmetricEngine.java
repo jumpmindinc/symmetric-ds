@@ -372,7 +372,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.symmetricDialect = createSymmetricDialect();
         this.symmetricDialect.setTargetDialect(createTargetDialect());
         this.databaseHealthTracker = new DatabaseHealthTracker(() -> getSymmetricDialect().getPlatform().getSqlTemplate(), parameterService);
-        ensureMetricsServiceIsCreated();
         ensureExtensionServiceIsCreated();
         this.cacheManager = new CacheManager(this);
         this.contextService = new ContextService(parameterService, symmetricDialect);
@@ -858,6 +857,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             log.info("Starting unregistered node [group={}, externalId={}]",
                     parameterService.getNodeGroupId(), parameterService.getExternalId());
         }
+        ensureMetricsServiceIsCreated();
         if (jobManager != null) {
             jobManager.init();
         }

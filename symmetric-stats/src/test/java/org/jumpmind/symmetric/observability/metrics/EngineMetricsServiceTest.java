@@ -84,6 +84,7 @@ class EngineMetricsServiceTest {
         manager = TestMetricsManagerFactory.create();
         engine = mock(ISymmetricEngine.class);
         when(engine.getEngineName()).thenReturn("test-engine");
+        when(engine.isInitialized()).thenReturn(true);
     }
 
     @Test
@@ -104,6 +105,14 @@ class EngineMetricsServiceTest {
         when(engine.getStatisticManager()).thenReturn(statMgr);
         EngineMetricsService service = new EngineMetricsService(engine, manager, false);
         assertSame(statMgr, service.getStatisticManager());
+    }
+
+    @Test
+    void isEngineInitialized_delegatesToEngine() {
+        EngineMetricsService service = new EngineMetricsService(engine, manager, false);
+        assertTrue(service.isEngineInitialized());
+        when(engine.isInitialized()).thenReturn(false);
+        assertFalse(service.isEngineInitialized());
     }
 
     @Test
@@ -305,6 +314,17 @@ class EngineMetricsServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void initWorksetsIfNeeded_engineNotInitialized_returnsFalseWithoutLoadingHistory() {
+        MetricsRepository repo = mock(MetricsRepository.class);
+        OneMetricInitService service = new OneMetricInitService(engine, manager, repo);
+        service.initRepository();
+        when(engine.isInitialized()).thenReturn(false);
+        assertFalse(service.initWorksetsIfNeeded());
+        verify(repo, never()).loadRecentIntervalsPerKey(any(Collection.class));
+    }
+
+    @Test
     void purgeMetricStats_nullRepository_returnsEarlyWithoutError() {
         EngineMetricsService service = new NullRepoEngineMetricsService(engine, manager);
         service.initRepository();
@@ -322,6 +342,28 @@ class EngineMetricsServiceTest {
         service.initRepository();
         assertDoesNotThrow(() -> service.purgeMetricStats(false));
         verify(repo, atLeastOnce()).purgeIntervalStats(any());
+    }
+
+    @Test
+    void purgeMetricStats_engineNotInitialized_doesNotCallPurgeIntervalStats() {
+        MetricsRepository repo = mock(MetricsRepository.class);
+        EngineMetricsService service = new MockRepoEngineMetricsService(engine, manager, repo);
+        service.initRepository();
+        when(engine.isInitialized()).thenReturn(false);
+        service.purgeMetricStats(false);
+        verify(repo, never()).purgeIntervalStats(any());
+    }
+
+    @Test
+    void saveCompletedIntervalStats_engineNotInitialized_doesNotTouchRepository() {
+        MetricsRepository repo = mock(MetricsRepository.class);
+        EngineMetricsService service = new MockRepoEngineMetricsService(engine, manager, repo);
+        service.initRepository();
+        service.registerUpDownCounter(new SymMetricDefinition("s.uninitialized", "d", "r", InstrumentType.UPDOWN_COUNTER));
+        when(engine.isInitialized()).thenReturn(false);
+        service.saveCompletedIntervalStats();
+        verify(repo, never()).getMetricKey(anyString(), any(), any(), anyBoolean());
+        verify(repo, never()).saveIntervals(any());
     }
 
     @Test
