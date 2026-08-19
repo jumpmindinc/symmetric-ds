@@ -860,7 +860,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         ensureMetricsServiceIsCreated();
         if (jobManager != null) {
             jobManager.init();
-        }        if (startJobs && jobManager != null) {
+        }
+        if (startJobs && jobManager != null) {
             jobManager.startJobs();
         }
         if (parameterService.isRegistrationServer()) {
