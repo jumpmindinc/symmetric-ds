@@ -406,7 +406,7 @@ public class InternalTransportManagerTest {
     }
 
     @Test
-    void testGetPullTransport_throwsSyncDisabledExceptionWhenTargetNodeIsDisabled() throws IOException {
+    void testGetPullTransport_throwsSyncDisabledExceptionWhenTargetNodeIsDisabled() {
         Node disabledNode = mock(Node.class);
         when(disabledNode.isSyncEnabled()).thenReturn(false);
         when(nodeService.findNode(anyString(), eq(true))).thenReturn(disabledNode);
@@ -457,7 +457,7 @@ public class InternalTransportManagerTest {
     }
 
     @Test
-    void testGetPushTransport_throwsSyncDisabledExceptionWhenTargetNodeIsDisabled() throws IOException {
+    void testGetPushTransport_throwsSyncDisabledExceptionWhenTargetNodeIsDisabled() {
         Node disabledNode = mock(Node.class);
         when(disabledNode.isSyncEnabled()).thenReturn(false);
         when(nodeService.findNode(anyString(), eq(true))).thenReturn(disabledNode);
