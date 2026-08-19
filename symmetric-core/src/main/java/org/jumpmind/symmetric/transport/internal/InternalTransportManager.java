@@ -71,6 +71,7 @@ import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.ServiceNotReadyException;
+import org.jumpmind.symmetric.transport.SyncDisabledException;
 import org.jumpmind.symmetric.transport.TransportUtils;
 import org.jumpmind.symmetric.web.WebConstants;
 import org.jumpmind.util.AppUtils;
@@ -124,6 +125,10 @@ public class InternalTransportManager extends AbstractTransportManager implement
 
     public IIncomingTransport getPullTransport(Node remote, final Node local, String securityToken,
             Map<String, String> requestProperties, String registrationUrl) throws IOException {
+        ISymmetricEngine targetEngine = getTargetEngine(remote.getSyncUrl());
+        if (targetEngine != null) {
+            checkSyncEnabled(targetEngine, local.getNodeId());
+        }
         final PipedOutputStream respOs = new PipedOutputStream();
         final PipedInputStream respIs = new PipedInputStream(respOs);
         final NodeChannels suspendIgnoreChannels = symmetricEngine.getConfigurationService()
@@ -244,6 +249,7 @@ public class InternalTransportManager extends AbstractTransportManager implement
         ISymmetricEngine targetEngine = getTargetEngine(remote.getSyncUrl());
         NodeChannels remoteNodeChannels = null;
         if (targetEngine != null) {
+            checkSyncEnabled(targetEngine, local.getNodeId());
             remoteNodeChannels = targetEngine.getConfigurationService().getSuspendIgnoreChannelLists(local.getNodeId());
         }
         final PipedOutputStream pushOs = new PipedOutputStream();
@@ -485,6 +491,20 @@ public class InternalTransportManager extends AbstractTransportManager implement
                     "Could not find the engine reference for the following url: " + url);
         } else {
             return engine;
+        }
+    }
+
+    protected void checkSyncEnabled(ISymmetricEngine targetEngine, String nodeId) {
+        INodeService targetNodeService = targetEngine.getNodeService();
+        Node targetNode = targetNodeService.findNode(nodeId, true);
+        if (targetNode == null) {
+            targetNode = targetNodeService.findNode(nodeId, false);
+        }
+        if (targetNode != null && !targetNode.isSyncEnabled()) {
+            NodeSecurity targetNodeSecurity = targetNodeService.findNodeSecurity(nodeId, true);
+            if (targetNodeSecurity == null || !targetNodeSecurity.isRegistrationEnabled()) {
+                throw new SyncDisabledException();
+            }
         }
     }
 
