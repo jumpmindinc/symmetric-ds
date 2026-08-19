@@ -834,6 +834,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     private void startNodeAndJobs(Node node, boolean startJobs) {
+        ensureMetricsServiceIsCreated();
         node = checkSystemIntegrity(node);
         isInitialized = true;
         if (node != null) {
@@ -857,7 +858,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
             log.info("Starting unregistered node [group={}, externalId={}]",
                     parameterService.getNodeGroupId(), parameterService.getExternalId());
         }
-        ensureMetricsServiceIsCreated();
         if (jobManager != null) {
             jobManager.init();
         }
