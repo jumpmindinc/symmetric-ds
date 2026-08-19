@@ -53,13 +53,11 @@ Router Expression:: An expression that is specific to the type of router that is
 [[use-source-catalog-schema]]Use Source Catalog/Schema:: If set then the source catalog and source schema are sent to the target to be used to find the target table.
 [[router-target-catalog]]Target Catalog:: Optional name of catalog where a target table is located. 
 If this field is unspecified, the catalog will be either the default catalog at the target node or the "source catalog name" from the table trigger, 
-depending on how "use source catalog schema" is set for the router.  Variables are substituted for `$(sourceNodeId)`, `$(sourceExternalId)`, `$(sourceNodeGroupId)`, 
-`$(targetNodeId)`, `$(targetExternalId)`, `$(targetNodeGroupId)`, `$(sourceCatalogName)`, and `$(sourceSchemaName)`.
+depending on how "use source catalog schema" is set for the router.  Variables are substituted for `$(sourceCatalogName)` and `$(sourceSchemaName)`.
 Parameter values can be substituted using `$(name)` syntax.  See <<Variables>>.
 [[router-target-schema]]Target Schema:: Optional name of schema where a target table is located. 
 If this field is unspecified, the schema will be either the default schema at the target node or the "source schema name" from the table trigger,
-depending on how "use source catalog schema" is set for the router.  Variables are substituted for `$(sourceNodeId)`, `$(sourceExternalId)`, `$(sourceNodeGroupId)`, 
-`$(targetNodeId)`, `$(targetExternalId)`, `$(targetNodeGroupId)`, `$(sourceCatalogName)`, and `$(sourceSchemaName)`.
+depending on how "use source catalog schema" is set for the router.  Variables are substituted for `$(sourceCatalogName)` and `$(sourceSchemaName)`.
 Parameter values can be substituted using `$(name)` syntax.  See <<Variables>>.
 
 ifdef::pro[]
