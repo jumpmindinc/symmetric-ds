@@ -74,7 +74,7 @@ not mistaken for live configuration files.
 `-Dlog4j2.configurationFile`.
 endif::pro[]
 
-===== Two behavior changes to be aware of
+===== Behavior changes to be aware of
 
 *The root level in the shipped configuration (default) changed from `INFO` to `ERROR`.* SymmetricDS 3.17
 shipped `<Root level="INFO">` together with a `<Logger name="org" level="WARN"/>` entry.
@@ -123,7 +123,7 @@ expresses several settings as child elements rather than attributes.
 Levels are the same in both frameworks with one exception: Logback has no `FATAL` level. Use `OFF` to
 silence a logger completely, or `ERROR` to keep error messages.
 
-Two details in the pattern layout also differ:
+Details in the pattern layout also differ:
 
 * `%c{1}` in Log4j2 prints the last segment of the logger name. The Logback equivalent is `%c{0}`.
 * `%m%ex%n` in Log4j2 prints the message followed by the exception. Logback appends the exception

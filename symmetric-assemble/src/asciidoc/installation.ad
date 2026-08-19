@@ -612,7 +612,7 @@ Contact mailto:sales@jumpmind.com[JumpStart,Upgrade Project,How JumpStart can he
 . Install SymmetricDS on all new servers (upgrade in place is possible, but slows down rollback plan).
 . Migrate SymmetricDS configuration from an old server:
 * Parameters: copy the engine .properties file from the old SymmetricDS server to a new one.
-* Logging: When upgrading from a version earlier than 3.18, the old file is `log4j2.xml` and its contents are translated to `logback.xml`. Some logging configs might get dropped in the process, and need to be verified manually -- see <<Migrating from Log4j to Logback>>.
+* Logging: When upgrading from a version earlier than 3.18, the old file is `log4j2.xml` and its contents are translated to `logback.xml`. Some logging configurations might get dropped in the process, and need to be verified manually -- see <<Migrating from Log4j to Logback>>.
 . First start and initialization:
 * Start *only one SymmetricDS engine*
 * Allow SymmetricDS the time necessary to execute any database change (schema upgrade scripts). Duration of this step varies as it *depends on the version number you are upgrading from*.

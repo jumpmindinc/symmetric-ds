@@ -188,7 +188,7 @@ A few Log4j2 constructs have no Logback equivalent and are left out of the conve
 
 The Logging chapter of the SymmetricDS User Guide contains a full translation guide for these cases, including a before and after example and a table mapping every Log4j2 element and attribute to its Logback equivalent.
 
-Two behavior changes are worth noting:
+Behavior changes worth noting:
 
 * The root level in the shipped `logback.xml` changed from `INFO` to `ERROR`. SymmetricDS logging is unaffected because its own loggers are set to `INFO` explicitly, but third-party libraries are quieter under the new default. This applies to new installations and to upgrades where the configuration was not converted; a converted configuration keeps its original root level. Add an explicit logger entry for any library whose output you rely on.
 * Logging configuration is now reloaded automatically. `logback.xml` ships with `scan="true"`, so edits take effect within about a minute without restarting SymmetricDS. This makes it possible to enable debug logging for a live problem and turn it off again without an outage.
