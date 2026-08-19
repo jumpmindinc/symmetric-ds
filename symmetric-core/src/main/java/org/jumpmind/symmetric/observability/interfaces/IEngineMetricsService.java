@@ -102,12 +102,15 @@ public interface IEngineMetricsService extends IMetricsService {
 
     Collection<ISymMetric> getAllMetrics();
 
+    // Returns true if the engine is initialized and ready to load, save or process metrics.
+    boolean isEngineInitialized();
+
     /**
      * Seeds the sliding worksets of all registered metrics with historical data. Called once by the background processor on its first processing tick after the
-     * repository becomes available. Implementations that do not use a repository may leave this as a no-op.
+     * repository becomes available. Implementations that do not use a repository may leave this as a no-op. Return false if the worksets could not be
+     * initialized (e.g. engine's database is not yet initialized), true otherwise.
      */
-    default void initWorksetsIfNeeded() {
-    }
+    boolean initWorksetsIfNeeded();
 
     /**
      * Drains all completed intervals from this metric's queue into permanent storage (database).

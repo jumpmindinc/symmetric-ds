@@ -143,7 +143,10 @@ public class BackgroundMetricProcessor implements IBackgroundMetricProcessor {
         for (IEngineMetricsService svc : metricsManager.getEngineMetricsServices()) {
             LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, svc.getEngineName());
             try {
-                svc.initWorksetsIfNeeded();
+                if (!svc.isEngineInitialized() || !svc.initWorksetsIfNeeded()) {
+                    log.debug("Worksets not initialized for engine {}. Likely engine's database was not yet initialized.", svc.getEngineName());
+                    continue;
+                }
                 Collection<ISymMetric> allMetrics = svc.getAllMetrics();
                 for (ISymMetric metric : allMetrics) {
                     metric.processAllObservationsAndRefreshInterval();
