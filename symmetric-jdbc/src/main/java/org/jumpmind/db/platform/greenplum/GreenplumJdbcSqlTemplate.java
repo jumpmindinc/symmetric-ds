@@ -55,7 +55,7 @@ public class GreenplumJdbcSqlTemplate extends PostgreSqlJdbcSqlTemplate {
             ResultSet rs = null;
             try {
                 st = conn.createStatement();
-                rs = st.executeQuery("select nextval('" + SqlUtils.sanitizeIdentifier(sequenceName) + "_seq')");
+                rs = st.executeQuery("select nextval('" + SqlUtils.sanitizeFunction(sequenceName) + "_seq')");
                 if (rs.next()) {
                     key = rs.getLong(1);
                 }
