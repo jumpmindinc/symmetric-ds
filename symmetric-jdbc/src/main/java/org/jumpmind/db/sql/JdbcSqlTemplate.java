@@ -872,7 +872,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                 if (supportsGetGeneratedKeys) {
                     ps = conn.prepareStatement(sql, new int[] { 1 });
                 } else if (supportsReturningKeys) {
-                    ps = conn.prepareStatement(sql + " returning " + column);
+                    ps = conn.prepareStatement(sql + " returning " + SqlUtils.sanitizeIdentifier(column));
                 } else {
                     ps = conn.prepareStatement(sql);
                 }
@@ -912,7 +912,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                 ps.execute();
                 try {
                     st = conn.createStatement();
-                    rs = st.executeQuery(getSelectLastInsertIdSql(sequenceName));
+                    rs = st.executeQuery(getSelectLastInsertIdSql(SqlUtils.sanitizeIdentifier(sequenceName)));
                     if (rs.next()) {
                         key = rs.getLong(1);
                     }
