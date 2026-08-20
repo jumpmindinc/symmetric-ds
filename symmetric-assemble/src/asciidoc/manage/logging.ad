@@ -15,3 +15,193 @@ You can use the logging screen to dynamically adjust the log level in order to h
 
 image::images/manage/logging.png[]
 endif::pro[]
+
+==== Migrating from Log4j to Logback
+
+SymmetricDS 3.18 replaced Log4j2 with Logback. 
+ifdef::pro[]
+If you are upgrading from 3.17 or earlier, your `log4j2.xml` file is no longer read and its contents are translated into `logback.xml`.
+endif::pro[]
+.What changes
+[cols="1,1", options="header"]
+|===
+|Before (3.17 and earlier)|After (3.18 and later)
+
+|`conf/log4j2.xml`|`conf/logback.xml`
+|`conf/log4j2-debug.xml`|`conf/logback-debug.xml`
+|`conf/log4j2-blank.xml`|`conf/logback-blank.xml`
+|===
+
+===== What the upgrade does for you
+
+ifdef::pro[]
+The SymmetricDS Pro setup program migrates your logging configuration for you. During an upgrade it:
+
+. Converts your existing `conf/log4j2.xml` into `conf/logback.xml`, translating your appenders,
+loggers, and levels into Logback syntax.
+. Renames the old files to `log4j2.xml.deprecated`, `log4j2-debug.xml.deprecated`, and
+`log4j2-blank.xml.deprecated`. They are kept for reference but are no longer read.
+. Updates the startup scripts and service configuration to point at `logback.xml`.
+
+In most cases no further action is needed. Your customizations -- extra loggers, changed levels, and
+the standard file and console appenders -- carry over automatically.
+
+TIP: If a `conf/logback.xml` file already exists before the upgrade, the setup program leaves it
+alone and only retires the old Log4j files. This protects a configuration you wrote yourself.
+
+*Review the conversion warnings.* A few Log4j2 constructs have no direct Logback equivalent. When
+the setup program encounters one it completes the conversion, leaves that piece out, and records a
+warning in `logs/install.log`. Search that file for `WARNING` after upgrading. You will see a warning
+when:
+
+* An appender type other than `Console`, `File`, `RollingFile`, or `SymRollingFile` was used. It is
+not converted, and must be added to `logback.xml` by hand.
+* An appender used a filter, or a layout other than `PatternLayout`. These are dropped and must be
+reconfigured.
+* A logger used the `FATAL` level. Logback has no `FATAL`, so it is converted to `ERROR`, which logs
+more than before. Change it to `OFF` in `logback.xml` if you want the logger silenced completely.
+
+Use the translation guide below to re-apply anything listed in those warnings.
+endif::pro[]
+
+ifndef::pro[]
+Nothing is migrated automatically. After upgrading you need to:
+
+. Re-apply any customizations from your old `log4j2.xml` to the new `conf/logback.xml`, using the
+translation guide below.
+. Delete or rename `conf/log4j2.xml`, `conf/log4j2-debug.xml`, and `conf/log4j2-blank.xml` so they are
+not mistaken for live configuration files.
+. Confirm that your startup scripts pass `-Dlogback.configurationFile` rather than
+`-Dlog4j2.configurationFile`.
+endif::pro[]
+
+===== Behavior changes to be aware of
+
+*The root level in the shipped configuration (default) changed from `INFO` to `ERROR`.* SymmetricDS 3.17
+shipped `<Root level="INFO">` together with a `<Logger name="org" level="WARN"/>` entry.
+SymmetricDS 3.18 ships `<root level="ERROR">` and sets the SymmetricDS loggers to `INFO` explicitly.
+SymmetricDS logging is unchanged either way, but third-party libraries are quieter under the new
+default. If you depend on output from a third-party library, add an explicit logger for it.
+
+This applies to the `logback.xml` that ships with SymmetricDS -- a new installation, or an upgrade
+where the file was not converted. If your configuration was converted from `log4j2.xml`, your
+original root level is preserved.
+
+*Configuration is now reloaded automatically.* The `<configuration scan="true">` attribute in
+`logback.xml` means edits to the file take effect within about a minute without restarting
+SymmetricDS. This is useful for turning on debug logging to diagnose a live problem, and for turning
+it back off again afterwards.
+
+===== Translating your configuration
+
+Use this section when you are migrating a configuration by hand, or when you need to re-apply
+something the setup program reported it could not convert.
+
+Logback uses lowercase element names, drops the `<Appenders>` and `<Loggers>` wrapper elements, and
+expresses several settings as child elements rather than attributes.
+
+.Element and attribute mapping
+[cols="1,1", options="header"]
+|===
+|Log4j2|Logback
+
+|`<Configuration>`|`<configuration>`
+|`<Appenders>` wrapper|Not used -- `<appender>` goes directly under `<configuration>`
+|`<Loggers>` wrapper|Not used -- `<logger>` goes directly under `<configuration>`
+|`<Logger name="x" level="INFO"/>`|`<logger name="x" level="INFO"/>`
+|`<Root level="INFO">`|`<root level="INFO">`
+|`<AppenderRef ref="ROLLING"/>`|`<appender-ref ref="ROLLING"/>`
+|`<PatternLayout pattern="..."/>`|`<encoder><pattern>...</pattern></encoder>`
+|`<SymRollingFile name="ROLLING" fileName="..."/>`|`<appender name="ROLLING" class="org.jumpmind.util.SymRollingFileAppender">` with a `<file>` child
+|`filePattern="..."` attribute|`<rollingPolicy><fileNamePattern>...</fileNamePattern></rollingPolicy>`
+|`<SizeBasedTriggeringPolicy size="20 MB"/>`|`<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy"><maxFileSize>20MB</maxFileSize></triggeringPolicy>`
+|`<DefaultRolloverStrategy max="3"/>`|`<rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">` with `<minIndex>` and `<maxIndex>`
+|`${env:SYM_HOME:-.}`|`${SYM_HOME:-.}`
+|`monitorInterval="30"`|`scan="true" scanPeriod="30 seconds"` on `<configuration>`
+|`status="warn"` on `<Configuration>`|`<statusListener class="ch.qos.logback.core.status.NopStatusListener"/>`
+|===
+
+Levels are the same in both frameworks with one exception: Logback has no `FATAL` level. Use `OFF` to
+silence a logger completely, or `ERROR` to keep error messages.
+
+Details in the pattern layout also differ:
+
+* `%c{1}` in Log4j2 prints the last segment of the logger name. The Logback equivalent is `%c{0}`.
+* `%m%ex%n` in Log4j2 prints the message followed by the exception. Logback appends the exception
+automatically, so `%m%n` is the equivalent.
+
+===== Example
+
+A Log4j2 configuration that writes to a rolling file, quiets Spring, and turns on debug logging for
+SQL statements:
+
+[source, xml]
+----
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration name="SYM" status="warn">
+    <Appenders>
+        <SymRollingFile name="ROLLING" fileName="${env:SYM_HOME:-.}/logs/symmetric.log"
+                        filePattern="${env:SYM_HOME:-.}/logs/symmetric.log.%i" createOnDemand="true">
+            <PatternLayout pattern="%d %p [%X{engineName}] [%c{1}] [%t] %m%ex%n" />
+            <Policies>
+                <SizeBasedTriggeringPolicy size="20 MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="3" fileIndex="min" />
+        </SymRollingFile>
+    </Appenders>
+    <Loggers>
+        <Logger name="org.jumpmind" level="INFO" />
+        <Logger name="org.springframework" level="ERROR" />
+        <Logger name="org.atmosphere" level="FATAL" />
+        <Logger name="org.jumpmind.db.sql" level="DEBUG" />
+        <Root level="INFO">
+            <AppenderRef ref="ROLLING" />
+        </Root>
+    </Loggers>
+</Configuration>
+----
+
+The same configuration in Logback:
+
+[source, xml]
+----
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true">
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+    <appender name="ROLLING" class="org.jumpmind.util.SymRollingFileAppender">
+        <file>${SYM_HOME:-.}/logs/symmetric.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>${SYM_HOME:-.}/logs/symmetric.log.%i</fileNamePattern>
+            <minIndex>1</minIndex>
+            <maxIndex>3</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>20MB</maxFileSize>
+        </triggeringPolicy>
+        <encoder>
+            <pattern>%d %p [%X{engineName}] [%c{0}] [%t] %m%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="org.jumpmind" level="INFO" />
+    <logger name="org.springframework" level="ERROR" />
+    <logger name="org.atmosphere" level="OFF" />
+    <logger name="org.jumpmind.db.sql" level="DEBUG" />
+
+    <root level="INFO">
+        <appender-ref ref="ROLLING" />
+    </root>
+</configuration>
+----
+
+The `logback.xml` file that ships with SymmetricDS contains commented-out loggers for common
+troubleshooting scenarios such as SQL statements, conflict resolution, and DDL comparison. Uncomment
+the one you need rather than writing it from scratch.
+
+===== If logging stops working after upgrade
+
+* Confirm that `conf/logback.xml` exists and that `conf/log4j2.xml` has been renamed or removed.
+* Confirm that `bin/setenv` (or `bin\setenv.bat` on Windows) sets `-Dlogback.configurationFile` and
+that `conf/sym_service.conf` no longer references `log4j2.configurationFile`.
+* If a specific library went quiet, it is most likely the root level change described above. Add an
+explicit `<logger>` entry for it.

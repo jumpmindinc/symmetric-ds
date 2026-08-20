@@ -586,7 +586,13 @@ Upgrading an existing SymmetricDS instance depends on the deployment option used
 . *Embedded Installation*: As noted in the <<Embedded>> section, you would need to swap all SymmetricDS Java Archive (JAR) library on the classpath (used for your Java application) for their new version.
 . *Rollback*: a combination of restoring database from a prior backup and the The SymmetricDS Pro setup program will overwrite current installation with an older version. See <<Downgrade Considerations>> for more details and options.
 
+NOTE: When upgrading to 3.18 from any earlier version, the logging framework changes from Log4j2 to
+Logback, and `conf/log4j2.xml` is replaced by `conf/logback.xml`. 
+ifdef::pro[]
+The setup program deprecates and converts your existing configuration, but a few Log4j2 constructs cannot be translated automatically. See <<Migrating from Log4j to Logback>> for what is converted and what to check afterwards.
+endif::pro[]
 
+ifdef::pro[]
 ==== Upgrade SymmetricDS Cluster
 
 Upgrading a cluster with multiple SymmetricDS installations requires careful coordination. Below are the most important steps. However, it is recommended to test the entire upgrade process in a non-Production environment and to measure time each step took.
@@ -607,7 +613,7 @@ Contact mailto:sales@jumpmind.com[JumpStart,Upgrade Project,How JumpStart can he
 . Install SymmetricDS on all new servers (upgrade in place is possible, but slows down rollback plan).
 . Migrate SymmetricDS configuration from an old server:
 * Parameters: copy the engine .properties file from the old SymmetricDS server to a new one.
-* Logging: edit the `logback.xml` file on the new SymmetricDS installation to include features from the old logback file.
+* Logging: When upgrading from a version earlier than 3.18, the old file is `log4j2.xml` and its contents are translated to `logback.xml`. Some logging configurations might get dropped in the process, and need to be verified manually -- see <<Migrating from Log4j to Logback>>.
 . First start and initialization:
 * Start *only one SymmetricDS engine*
 * Allow SymmetricDS the time necessary to execute any database change (schema upgrade scripts). Duration of this step varies as it *depends on the version number you are upgrading from*.
@@ -617,7 +623,7 @@ Contact mailto:sales@jumpmind.com[JumpStart,Upgrade Project,How JumpStart can he
 * Review symmetricds.log for any errors. If an error is linked to the SSL certificate CA(unrecognised issuing authority), use the [Import URL] button in the console (Manage->Security->Authorities tab). This will update the keystore file.
 . Clone SymmetricDS cluster configuration to new servers
 * Copy the engine .properties file from the old SymmetricDS server to a new one.
-* Edit the `logback.xml` file on the new SymmetricDS installation and manually migrate all features from the older logback configuration.
+* Copy the `logback.xml` file from the first upgraded server so all nodes log consistently.
 * Copy the entire security sub-directory (contains keystore, which must be kept in-sync for all nodes in this cluster!).
 * Start SymmetricDS engine on additional servers in the cluster and monitor errors in the log;
 * Enable additional SymmetricDS servers in the load balancer;
@@ -628,6 +634,7 @@ Contact mailto:sales@jumpmind.com[JumpStart,Upgrade Project,How JumpStart can he
 * Ensure load balancer detects changes (server is listed as offline);
 * Confirm that the SymmetricDS engine runs automatically at system start-up.
 . Enable any external application jobs or batch processes.
+endif::pro[]
 
 
 === Downgrade Considerations
