@@ -57,28 +57,32 @@ public class MySqlJdbcSqlTemplate extends JdbcSqlTemplate {
         for (int i = 1; i <= args.length; i++) {
             Object arg = args[i - 1];
             int argType = argTypes != null && argTypes.length >= i ? argTypes[i - 1] : SqlTypeValue.TYPE_UNKNOWN;
-            try {
-                if (argType == Types.BLOB && lobHandler != null && arg instanceof byte[]) {
-                    lobHandler.setBlobAsBytes(ps, i, (byte[]) arg);
-                } else if (argType == Types.BLOB && lobHandler != null && arg instanceof String) {
-                    lobHandler.setBlobAsBytes(ps, i, arg.toString().getBytes(Charset.defaultCharset()));
-                } else if (argType == Types.CLOB && lobHandler != null) {
-                    lobHandler.setClobAsString(ps, i, (String) arg);
-                } else if ((argType == Types.DECIMAL || argType == Types.NUMERIC) && arg != null) {
-                    setDecimalValue(ps, i, arg, argType);
-                } else if (argType == Types.TINYINT) {
-                    setTinyIntValue(ps, i, arg, argType);
-                } else if (argType == Types.BIGINT && arg instanceof BigInteger
-                        && ((BigInteger) arg).compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
-                    ps.setString(i, arg.toString());
-                } else {
-                    StatementCreatorUtils.setParameterValue(ps, i, verifyArgType(arg, argType), arg);
-                }
-            } catch (SQLException ex) {
-                String msg = String.format("Parameter arg '%s' type: %s caused exception: %s", arg,
-                        TypeMap.getJdbcTypeName(argType), ex.getMessage());
-                throw new SQLException(msg, ex);
+            setValue(ps, i, arg, argType, lobHandler);
+        }
+    }
+
+    private void setValue(PreparedStatement ps, int i, Object arg, int argType, SymmetricLobHandler lobHandler) throws SQLException {
+        try {
+            if (argType == Types.BLOB && lobHandler != null && arg instanceof byte[]) {
+                lobHandler.setBlobAsBytes(ps, i, (byte[]) arg);
+            } else if (argType == Types.BLOB && lobHandler != null && arg instanceof String) {
+                lobHandler.setBlobAsBytes(ps, i, arg.toString().getBytes(Charset.defaultCharset()));
+            } else if (argType == Types.CLOB && lobHandler != null) {
+                lobHandler.setClobAsString(ps, i, (String) arg);
+            } else if ((argType == Types.DECIMAL || argType == Types.NUMERIC) && arg != null) {
+                setDecimalValue(ps, i, arg, argType);
+            } else if (argType == Types.TINYINT) {
+                setTinyIntValue(ps, i, arg, argType);
+            } else if (argType == Types.BIGINT && arg instanceof BigInteger
+                    && ((BigInteger) arg).compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
+                ps.setString(i, arg.toString());
+            } else {
+                StatementCreatorUtils.setParameterValue(ps, i, verifyArgType(arg, argType), arg);
             }
+        } catch (SQLException ex) {
+            String msg = String.format("Parameter arg '%s' type: %s caused exception: %s", arg,
+                    TypeMap.getJdbcTypeName(argType), ex.getMessage());
+            throw new SQLException(msg, ex);
         }
     }
 }
