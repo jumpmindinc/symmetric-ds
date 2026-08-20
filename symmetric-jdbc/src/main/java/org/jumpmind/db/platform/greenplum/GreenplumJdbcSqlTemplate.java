@@ -65,7 +65,7 @@ public class GreenplumJdbcSqlTemplate extends PostgreSqlJdbcSqlTemplate {
             String replaceSql = sql.replaceFirst("\\(null,", "(" + key + ",");
             ps = conn.prepareStatement(replaceSql);
             ps.setQueryTimeout(settings.getQueryTimeout());
-            setValues(ps, args, types, lobHandler.getDefaultHandler());
+            setValues(ps, args, types, lobHandler);
             ps.executeUpdate();
         } finally {
             close(ps);

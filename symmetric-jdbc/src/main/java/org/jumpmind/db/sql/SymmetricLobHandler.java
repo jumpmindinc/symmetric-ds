@@ -20,39 +20,71 @@
  */
 package org.jumpmind.db.sql;
 
+import java.io.ByteArrayInputStream;
+import java.io.StringReader;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import org.springframework.jdbc.support.lob.DefaultLobHandler;
-import org.springframework.jdbc.support.lob.LobHandler;
+import org.jumpmind.db.sql.SqlTemplateSettings.JdbcLobHandling;
 
 public class SymmetricLobHandler {
-    protected LobHandler lobHandler;
+    protected JdbcLobHandling lobHandling;
 
     public SymmetricLobHandler() {
-        this(new DefaultLobHandler());
+        this(JdbcLobHandling.PLAIN);
     }
 
-    public SymmetricLobHandler(LobHandler lobHandler) {
+    public SymmetricLobHandler(JdbcLobHandling lobHandling) {
         super();
-        this.lobHandler = lobHandler;
+        this.lobHandling = lobHandling == null ? JdbcLobHandling.PLAIN : lobHandling;
     }
 
     public String getClobAsString(ResultSet rs, int columnIndex, int jdbcTypeCode,
             String jdbcTypeName) throws SQLException {
-        return lobHandler.getClobAsString(rs, columnIndex);
+        return rs.getString(columnIndex);
     }
 
     public byte[] getBlobAsBytes(ResultSet rs, int columnIndex, int jdbcTypeCode, String jdbcTypeName)
             throws SQLException {
-        return lobHandler.getBlobAsBytes(rs, columnIndex);
-    }
-
-    public LobHandler getDefaultHandler() {
-        return lobHandler;
+        return rs.getBytes(columnIndex);
     }
 
     public boolean needsAutoCommitFalseForBlob(int jdbcTypeCode, String jdbcTypeName) {
         return false;
+    }
+
+    public void setBlobAsBytes(PreparedStatement ps, int i, byte[] bytes) throws SQLException {
+        switch (lobHandling) {
+            case CREATETEMPORARYLOB:
+                Blob blob = ps.getConnection().createBlob();
+                blob.setBytes(1, bytes);
+                ps.setBlob(i, blob);
+                break;
+            case STREAMLOB:
+                ps.setBlob(i, new ByteArrayInputStream(bytes), bytes.length);
+                break;
+            case PLAIN:
+            default:
+                ps.setBytes(i, bytes);
+        }
+    }
+
+    public void setClobAsString(PreparedStatement ps, int i, String string) throws SQLException {
+        switch (lobHandling) {
+            case CREATETEMPORARYLOB:
+                Clob clob = ps.getConnection().createClob();
+                clob.setString(1, string);
+                ps.setClob(i, clob);
+                break;
+            case STREAMLOB:
+                ps.setClob(i, new StringReader(string), string.length());
+                break;
+            case PLAIN:
+            default:
+                ps.setString(i, string);
+        }
     }
 }

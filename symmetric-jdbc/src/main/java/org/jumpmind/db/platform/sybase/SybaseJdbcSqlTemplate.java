@@ -171,7 +171,7 @@ public class SybaseJdbcSqlTemplate extends JdbcSqlTemplate implements ISqlTempla
             for (int i = 0; i < argTypes.length; i++) {
                 argTypes[i] = SqlTypeValue.TYPE_UNKNOWN;
             }
-            setValues(ps, args, argTypes, getLobHandler().getDefaultHandler());
+            setValues(ps, args, argTypes, getLobHandler());
         }
     }
 

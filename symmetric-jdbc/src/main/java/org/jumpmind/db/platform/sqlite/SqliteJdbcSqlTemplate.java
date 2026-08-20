@@ -40,7 +40,6 @@ import org.jumpmind.db.sql.SymmetricLobHandler;
 import org.jumpmind.util.FormatUtils;
 import org.springframework.jdbc.core.SqlTypeValue;
 import org.springframework.jdbc.core.StatementCreatorUtils;
-import org.springframework.jdbc.support.lob.LobHandler;
 
 public class SqliteJdbcSqlTemplate extends JdbcSqlTemplate {
     public SqliteJdbcSqlTemplate(DataSource dataSource, SqlTemplateSettings settings, SymmetricLobHandler lobHandler,
@@ -87,16 +86,16 @@ public class SqliteJdbcSqlTemplate extends JdbcSqlTemplate {
 
     @Override
     public void setValues(PreparedStatement ps, Object[] args, int[] argTypes,
-            LobHandler lobHandler) throws SQLException {
+            SymmetricLobHandler lobHandler) throws SQLException {
         for (int i = 1; i <= args.length; i++) {
             Object arg = args[i - 1];
             int argType = argTypes != null && argTypes.length >= i ? argTypes[i - 1] : SqlTypeValue.TYPE_UNKNOWN;
             if (argType == Types.BLOB && lobHandler != null && arg instanceof byte[]) {
-                lobHandler.getLobCreator().setBlobAsBytes(ps, i, (byte[]) arg);
+                lobHandler.setBlobAsBytes(ps, i, (byte[]) arg);
             } else if (argType == Types.BLOB && lobHandler != null && arg instanceof String) {
-                lobHandler.getLobCreator().setBlobAsBytes(ps, i, arg.toString().getBytes(Charset.defaultCharset()));
+                lobHandler.setBlobAsBytes(ps, i, arg.toString().getBytes(Charset.defaultCharset()));
             } else if (argType == Types.CLOB && lobHandler != null) {
-                lobHandler.getLobCreator().setClobAsString(ps, i, (String) arg);
+                lobHandler.setClobAsString(ps, i, (String) arg);
             } else if (arg != null && argType == Types.DATE && arg instanceof Date) {
                 Date clone = (Date) (((Date) arg).clone());
                 arg = FormatUtils.TIMESTAMP_FORMATTER.format(DateUtils.truncate(clone, Calendar.DATE));
