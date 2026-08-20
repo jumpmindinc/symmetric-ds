@@ -1187,8 +1187,8 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
         } else if (oldData != null && applyChangesOnly) {
             /*
              * Old data isn't captured for some lob fields. When both values are null, then we always have to update because we don't know if the lob field was
-             * previously null. The check is on the column's mapped type rather than the target platform's isLob(), because a platform may classify a large text
-             * type as an ordinary string (SQL Server does for varchar(max)) while the source trigger still could not capture its old value.
+             * previously null. The mapped type is checked in addition to the target platform's isLob(), because a platform may classify a large text type as an
+             * ordinary string (SQL Server does this for varchar(max)) while the source trigger still could not capture its old value.
              */
             boolean containsEmptyLobColumn = (getPlatform().isLob(column) || isClobMappedType(column))
                     && StringUtils.isBlank(oldData[targetColumnIndex]);
