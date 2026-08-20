@@ -93,6 +93,8 @@ The following categories of metrics are collected automatically:
 Metrics are published via the OpenTelemetry API under the scope `symmetricds` and are used to power the Analytics reports in SymmetricDS Pro.
 --
 
+ifdef::pro[]
+
 === Cluster Lock Recovery via JCS Peer Heartbeat
 --
 SymmetricDS 3.18 introduces a peer-to-peer heartbeat mechanism using Apache JCS lateral TCP cache to detect crashed cluster members and automatically recover their orphaned database locks.
@@ -123,6 +125,9 @@ Custom extensions implementing the following core interfaces should note these c
 * `INodeService` — adds `updateNodeHostForCurrentNode(boolean bypassTrigger)` (moved here from a private `DataService` method) so any caller can update the current node's heartbeat with or without going through sync triggers.
 * `IClusteredCacheManager` and `IClusterCacheCoordinator` — Wrap JCS server-to-server communication and peer server discovery. Peer discovery also supports simpler discovery - `SYM_NODE_HOST` table. PRO version adds support of UDP broadcast, which might not route on most cloud VPCs (AWS, Azure, GCP, OCI) or managed Kubernetes networks. Discovery services are used where available to accelerate detection of container crashes (seconds versus the heartbeat job's cadence, `job.heartbeat.period.time.ms`, 15 minutes by default).
 --
+
+endif::pro[]
+
 
 === Container Mode
 --
@@ -170,4 +175,32 @@ The feature is controlled by three new parameters:
 * `db.health.check.enabled` — enables the pre-flight health check (default `true`).
 * `db.health.check.failure.threshold` — consecutive connection failures before the runtime database is declared unhealthy (default `5`).
 * `db.health.check.retry.seconds` — wait period between connection tests while unhealthy (default `60`).
+--
+
+=== Logging Framework Changed to Logback
+--
+SymmetricDS 3.18 replaces Log4j2 with https://logback.qos.ch/[Logback] as the logging implementation. SymmetricDS continues to log through http://www.slf4j.org/[SLF4J], so log output and logger names are unchanged.
+
+The configuration file changes from `conf/log4j2.xml` to `conf/logback.xml`. The `--debug` command line option now uses `conf/logback-debug.xml`, and the blank configuration is `conf/logback-blank.xml`.
+
+ifdef::pro[]
+*Existing configuration is converted during upgrade.* The setup program translates your `log4j2.xml` into `logback.xml`, retires the old files with a `.deprecated` suffix, and repoints the startup scripts and service configuration. Loggers, levels, and the standard console and file appenders carry over without intervention.
+
+A few Log4j2 constructs have no Logback equivalent and are left out of the converted file, each one recorded as a `WARNING` in `logs/install.log`. Review that file after upgrading if you used any of the following:
+
+* An appender other than `Console`, `File`, `RollingFile`, or `SymRollingFile`.
+* An appender filter, or a layout other than `PatternLayout`.
+* The `FATAL` level, which is converted to `ERROR` and therefore logs more than before. Change it to `OFF` to silence the logger completely.
+endif::pro[]
+
+ifndef::pro[]
+*An existing log4j2.xml configuration from versions of SymmetricDS older than 3.18 needs to be manually converted to logback.xml! Automatic conversion is a SymmetricDS Pro feature.*
+endif::pro[]
+
+The Logging chapter of the SymmetricDS User Guide contains a full translation guide, including a before and after example and a table mapping every Log4j2 element and attribute to its Logback equivalent.
+
+Behavior changes worth noting:
+
+* The root level in the shipped `logback.xml` changed from `INFO` to `ERROR`. SymmetricDS logging is unaffected because its own loggers are set to `INFO` explicitly, but third-party libraries are quieter under the new default. This applies to new installations and to upgrades where the configuration was not converted; a converted configuration keeps its original root level. Add an explicit logger entry for any library whose output you rely on.
+* Logging configuration is now reloaded automatically. `logback.xml` ships with `scan="true"`, so edits take effect within about a minute without restarting SymmetricDS. This makes it possible to enable debug logging for a live problem and turn it off again without an outage.
 --
