@@ -18,10 +18,11 @@ endif::pro[]
 
 ==== Migrating from Log4j to Logback
 
-SymmetricDS 3.18 replaced Log4j2 with Logback. 
+SymmetricDS 3.18 replaced Log4j2 with Logback. If you are upgrading from 3.17 or earlier, your `log4j2.xml` file is no longer read.
 ifdef::pro[]
-If you are upgrading from 3.17 or earlier, your `log4j2.xml` file is no longer read and its contents are translated into `logback.xml`.
+Its contents are translated into `logback.xml` during the upgrade.
 endif::pro[]
+
 .What changes
 [cols="1,1", options="header"]
 |===
@@ -95,7 +96,7 @@ it back off again afterwards.
 ===== Translating your configuration
 
 Use this section when you are migrating a configuration by hand, or when you need to re-apply
-something the setup program reported it could not convert.
+something the symmetricDS PRO setup program reported it could not convert.
 
 Logback uses lowercase element names, drops the `<Appenders>` and `<Loggers>` wrapper elements, and
 expresses several settings as child elements rather than attributes.

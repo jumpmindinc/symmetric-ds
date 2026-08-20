@@ -197,7 +197,7 @@ ifndef::pro[]
 *An existing log4j2.xml configuration from versions of SymmetricDS older than 3.18 needs to be manually converted to logback.xml! Automatic conversion is a SymmetricDS Pro feature.*
 endif::pro[]
 
-The Logging chapter of the SymmetricDS User Guide contains a full translation guide for these cases, including a before and after example and a table mapping every Log4j2 element and attribute to its Logback equivalent.
+The Logging chapter of the SymmetricDS User Guide contains a full translation guide, including a before and after example and a table mapping every Log4j2 element and attribute to its Logback equivalent.
 
 Behavior changes worth noting:
 
