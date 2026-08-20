@@ -40,7 +40,7 @@ public class PostgresLobHandler extends SymmetricLobHandler {
         if (PostgreSqlDatabasePlatform.isBlobStoredByReference(jdbcTypeName)) {
             return getLoColumnAsBytes(rs, columnIndex);
         } else {
-            return getDefaultHandler().getBlobAsBytes(rs, columnIndex);
+            return super.getBlobAsBytes(rs, columnIndex, jdbcTypeCode, jdbcTypeName);
         }
     }
 
