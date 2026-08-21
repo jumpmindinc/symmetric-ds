@@ -248,6 +248,31 @@ class AbstractSymmetricEngineTest {
     }
 
     @Test
+    void testAzurePostgresFallenBackToGenericPostgresPlatform() throws Exception {
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        DatabaseVersion dbVersion = new DatabaseVersion();
+        dbVersion.setName(DatabaseNamesConstants.AZURE_POSTGRESQL);
+        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL95);
+        setPlatform(platform);
+        SymmetricException ex = assertThrows(SymmetricException.class,
+                () -> engine.checkForProOnlyDatabase());
+        assertTrue(ex.getMessage().contains("Azure"));
+    }
+
+    @Test
+    void testDedicatedAzurePostgresPlatform() throws Exception {
+        AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
+        when(platform.isDedicatedPlatform()).thenReturn(true);
+        when(platform.getName()).thenReturn(DatabaseNamesConstants.AZURE_POSTGRESQL);
+        DatabaseVersion dbVersion = new DatabaseVersion();
+        dbVersion.setName(DatabaseNamesConstants.AZURE_POSTGRESQL);
+        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
+        setPlatform(platform);
+        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
+    }
+
+    @Test
     void testAuroraMysqlFallenBackToGenericMysqlPlatform() throws Exception {
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         DatabaseVersion dbVersion = new DatabaseVersion();

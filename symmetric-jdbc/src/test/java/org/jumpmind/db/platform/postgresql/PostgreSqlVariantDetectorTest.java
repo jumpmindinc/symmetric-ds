@@ -63,6 +63,35 @@ class PostgreSqlVariantDetectorTest {
     }
 
     @Test
+    void testIsAzurePostgres_whenAzureExtensionsGucSucceeds_returnsTrue() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        ResultSet resultSet = mock(ResultSet.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("show azure.extensions")).thenReturn(resultSet);
+        assertTrue(PostgreSqlVariantDetector.isAzurePostgres(connection));
+    }
+
+    @Test
+    void testIsAzurePostgres_whenAzureExtensionsGucDoesNotExist_returnsFalse() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("show azure.extensions"))
+                .thenThrow(new SQLException("ERROR: unrecognized configuration parameter \"azure.extensions\""));
+        assertFalse(PostgreSqlVariantDetector.isAzurePostgres(connection));
+    }
+
+    @Test
+    void testIsAzurePostgres_whenGenericSqlExceptionOccurs_returnsFalse() throws SQLException {
+        Connection connection = mock(Connection.class);
+        Statement statement = mock(Statement.class);
+        when(connection.createStatement()).thenReturn(statement);
+        when(statement.executeQuery("show azure.extensions")).thenThrow(new SQLException("connection closed"));
+        assertFalse(PostgreSqlVariantDetector.isAzurePostgres(connection));
+    }
+
+    @Test
     void testIsCloudSqlPostgres_whenCloudSqlIamAuthenticationGucSucceeds_returnsTrue() throws SQLException {
         Connection connection = mock(Connection.class);
         Statement statement = mock(Statement.class);
