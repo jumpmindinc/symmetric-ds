@@ -152,6 +152,7 @@ class JdbcDatabasePlatformFactoryTest {
     void testDetermineDatabaseNameVersionSubprotocol_cloudSqlPostgresDetected_setsCloudSqlPostgresName() throws Exception {
         Connection connection = createNonGreenplumConnection();
         stubAuroraVersionQuery(connection, false);
+        stubAzureExtensionsQuery(connection, false);
         stubCloudSqlIamAuthenticationQuery(connection, true);
         DatabaseMetaData metaData = mock(DatabaseMetaData.class);
         DatabaseVersion nameVersion = newPostgresVersion(PostgreSqlDatabasePlatform.JDBC_SUBPROTOCOL, "PostgreSQL");
