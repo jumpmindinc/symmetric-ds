@@ -77,7 +77,8 @@ class JdbcDatabasePlatformFactoryTest {
     private void stubAzureExtensionsQuery(Connection connection, boolean isAzure) throws Exception {
         Statement statement = connection.createStatement();
         if (isAzure) {
-            when(statement.executeQuery("show azure.extensions")).thenReturn(mock(ResultSet.class));
+            ResultSet resultSet = mock(ResultSet.class);
+            when(statement.executeQuery("show azure.extensions")).thenReturn(resultSet);
         } else {
             when(statement.executeQuery("show azure.extensions"))
                     .thenThrow(new SQLException("ERROR: unrecognized configuration parameter \"azure.extensions\""));

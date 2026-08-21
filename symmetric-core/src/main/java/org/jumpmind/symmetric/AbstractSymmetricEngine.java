@@ -886,46 +886,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected void checkForProOnlyDatabase() {
         DatabaseVersion dbVersion = platform.getDatabaseVersion();
         String dbVersionName = dbVersion != null ? dbVersion.getName() : null;
-        if (DatabaseNamesConstants.AURORA_POSTGRESQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.AURORA_POSTGRESQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "AWS Aurora PostgreSQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.CLOUDSQL_POSTGRESQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.CLOUDSQL_POSTGRESQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "Google Cloud SQL for PostgreSQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.AZURE_POSTGRESQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.AZURE_POSTGRESQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "Azure Database for PostgreSQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.AURORA_MYSQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.AURORA_MYSQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "AWS Aurora MySQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.CLOUDSQL_MYSQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.CLOUDSQL_MYSQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "Google Cloud SQL for MySQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
+        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.AURORA_POSTGRESQL, dbVersionName, "AWS Aurora PostgreSQL");
+        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.AZURE_POSTGRESQL, dbVersionName, "Azure Database for PostgreSQL");
+        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL, dbVersionName, "Google Cloud SQL for PostgreSQL");
+        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.AURORA_MYSQL, dbVersionName, "AWS Aurora MySQL");
+        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.CLOUDSQL_MYSQL, dbVersionName, "Google Cloud SQL for MySQL");
         if (platform instanceof AbstractDatabasePlatform
                 && ((AbstractDatabasePlatform) platform).isDedicatedPlatform()) {
             return;
@@ -939,6 +904,15 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                                 + "Contact the SymmetricDS sales team for more information.",
                         dbVersionName);
             }
+        }
+    }
+
+    private void checkCloudDatabaseRequiresPro(String cloudDbName, String dbVersionName, String cloudDbFullName) {
+        if (cloudDbName.equalsIgnoreCase(dbVersionName) && !cloudDbName.equalsIgnoreCase(platform.getName())) {
+            throw new SymmetricException(
+                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
+                            + "%s requires SymmetricDS Pro. Contact the SymmetricDS sales team for more information.",
+                    dbVersionName, cloudDbFullName);
         }
     }
 
