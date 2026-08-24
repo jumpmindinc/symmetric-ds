@@ -20,9 +20,12 @@
  */
 package org.jumpmind.symmetric.util;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.jumpmind.properties.DefaultParameterParser;
 import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
@@ -44,5 +47,51 @@ public class DefaultParameterParserTest {
         assertNotNull(meta);
         assertTrue(meta.getDescription().length() > 0);
         assertFalse(meta.isDatabaseOverridable());
+    }
+
+    private Map<String, ParameterMetaData> parse(String propertiesText) {
+        DefaultParameterParser parser = new DefaultParameterParser(
+                new ByteArrayInputStream(propertiesText.getBytes(StandardCharsets.UTF_8)));
+        return parser.parse();
+    }
+
+    @Test
+    void parse_valueIsOnlyWhitespace_defaultValueIsEmptyString() {
+        Map<String, ParameterMetaData> metaData = parse("some.key= \n");
+        assertEquals("", metaData.get("some.key").getDefaultValue());
+    }
+
+    @Test
+    void parse_leadingWhitespaceAfterEquals_isStripped() {
+        Map<String, ParameterMetaData> metaData = parse("some.key=   actual-value\n");
+        assertEquals("actual-value", metaData.get("some.key").getDefaultValue());
+    }
+
+    @Test
+    void parse_trailingWhitespaceAfterEquals_isPreserved() {
+        Map<String, ParameterMetaData> metaData = parse("some.key=actual-value   \n");
+        assertEquals("actual-value   ", metaData.get("some.key").getDefaultValue());
+    }
+
+    @Test
+    void parse_simpleValueWithNoWhitespace_unaffected() {
+        Map<String, ParameterMetaData> metaData = parse("some.key=value\n");
+        assertEquals("value", metaData.get("some.key").getDefaultValue());
+    }
+
+    @Test
+    void parse_continuationLineWithLiteralLeadingWhitespace_isStripped() {
+        String propertiesText = "some.key=first-line \\\n"
+                + "       second-line\n";
+        Map<String, ParameterMetaData> metaData = parse(propertiesText);
+        assertEquals("first-line second-line", metaData.get("some.key").getDefaultValue());
+    }
+
+    @Test
+    void parse_continuationLineWithEscapedLeadingSpaces_preservesEscapedSpaces() {
+        String propertiesText = "some.key=first-line\\n\\u0020\\u0020\\\n"
+                + "       second-line\n";
+        Map<String, ParameterMetaData> metaData = parse(propertiesText);
+        assertEquals("first-line\n  second-line", metaData.get("some.key").getDefaultValue());
     }
 }

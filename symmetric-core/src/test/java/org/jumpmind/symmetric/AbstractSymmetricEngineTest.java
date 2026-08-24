@@ -31,22 +31,31 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.Map;
+import java.util.Properties;
 
 import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.DbHealthCheckResult;
+import org.jumpmind.symmetric.model.StartupParameter.Source;
 import org.jumpmind.symmetric.service.IContextService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.jumpmind.symmetric.util.IDatabaseHealthTracker;
+import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 class AbstractSymmetricEngineTest {
@@ -67,6 +76,61 @@ class AbstractSymmetricEngineTest {
         Field field = AbstractSymmetricEngine.class.getDeclaredField(fieldName);
         field.setAccessible(true);
         field.set(engine, value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Source> callFindKnownEnginePropertiesFileSources() throws Exception {
+        Method method = AbstractSymmetricEngine.class.getDeclaredMethod("findKnownEnginePropertiesFileSources");
+        method.setAccessible(true);
+        return (Map<String, Source>) method.invoke(engine);
+    }
+
+    @Test
+    void testFindKnownEnginePropertiesFileSources_typedPropertiesFactoryWithFile_tagsFileKeysAsEnginePropertiesFile(@TempDir File tempDir)
+            throws Exception {
+        File enginePropertiesFile = new File(tempDir, "engine.properties");
+        Properties fileContents = new Properties();
+        fileContents.setProperty("engine.name", "myengine");
+        try (FileOutputStream out = new FileOutputStream(enginePropertiesFile)) {
+            fileContents.store(out, null);
+        }
+        TypedPropertiesFactory propertiesFactory = new TypedPropertiesFactory();
+        propertiesFactory.init(enginePropertiesFile, null);
+        setField("propertiesFactory", propertiesFactory);
+        Map<String, Source> knownFileSources = callFindKnownEnginePropertiesFileSources();
+        assertEquals(Source.ENGINE_PROPERTIES_FILE, knownFileSources.get("engine.name"));
+    }
+
+    @Test
+    void testFindKnownEnginePropertiesFileSources_typedPropertiesFactoryNoFile_returnsEmptyMap() throws Exception {
+        TypedPropertiesFactory propertiesFactory = new TypedPropertiesFactory();
+        propertiesFactory.init(null, null);
+        setField("propertiesFactory", propertiesFactory);
+        assertTrue(callFindKnownEnginePropertiesFileSources().isEmpty());
+    }
+
+    @Test
+    void testFindKnownEnginePropertiesFileSources_typedPropertiesFactoryFileDoesNotExist_returnsEmptyMap(@TempDir File tempDir) throws Exception {
+        TypedPropertiesFactory propertiesFactory = new TypedPropertiesFactory();
+        propertiesFactory.init(new File(tempDir, "does-not-exist.properties"), null);
+        setField("propertiesFactory", propertiesFactory);
+        assertTrue(callFindKnownEnginePropertiesFileSources().isEmpty());
+    }
+
+    @Test
+    void testFindKnownEnginePropertiesFileSources_nonTypedPropertiesFactoryImplementation_returnsEmptyMap() throws Exception {
+        ITypedPropertiesFactory propertiesFactory = mock(ITypedPropertiesFactory.class);
+        setField("propertiesFactory", propertiesFactory);
+        assertTrue(callFindKnownEnginePropertiesFileSources().isEmpty());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void testGetSupplementalStartupParameterMetaData_noProviderRegistered_returnsEmptyMap() throws Exception {
+        Method method = AbstractSymmetricEngine.class.getDeclaredMethod("getSupplementalStartupParameterMetaData");
+        method.setAccessible(true);
+        Map<String, ParameterMetaData> metaData = (Map<String, ParameterMetaData>) method.invoke(engine);
+        assertTrue(metaData.isEmpty());
     }
 
     @Test

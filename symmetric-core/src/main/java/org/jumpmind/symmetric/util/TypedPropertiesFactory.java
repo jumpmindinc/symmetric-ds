@@ -62,6 +62,10 @@ public class TypedPropertiesFactory implements ITypedPropertiesFactory {
         this.properties = properties;
     }
 
+    public File getPropertiesFile() {
+        return propertiesFile;
+    }
+
     @Override
     public TypedProperties reload() {
         TypedProperties fileProperties = loadPropertiesFromConfigLocations();

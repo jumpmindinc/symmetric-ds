@@ -42,7 +42,7 @@ import org.springframework.core.env.PropertiesPropertySource;
 
 public class SymmetricBootPropertySetupListener implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
     public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
-        TypedProperties sysProps = new TypedProperties(System.getProperties());
+        TypedProperties sysProps = AbstractCommandLauncher.getStartupParameterService().asTypedProperties();
         boolean httpEnabled = sysProps.is(ServerConstants.HTTP_ENABLE, true);
         boolean httpsEnabled = sysProps.is(ServerConstants.HTTPS_ENABLE);
         int httpPort = sysProps.getInt(ServerConstants.HTTP_PORT, Integer.parseInt(SymmetricWebServer.DEFAULT_HTTP_PORT));

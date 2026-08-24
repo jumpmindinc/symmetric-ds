@@ -30,6 +30,7 @@ import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,6 +56,7 @@ import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlScript;
 import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.extension.IProcessInfoListener;
+import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityServiceFactory;
@@ -67,6 +69,7 @@ import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.model.DbHealthCheckResult;
 import org.jumpmind.symmetric.model.NodeHost;
+import org.jumpmind.symmetric.model.StartupParameter.Source;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.ContextConstants;
@@ -95,8 +98,11 @@ import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
+import org.jumpmind.symmetric.service.IStartupParameterMetaDataProvider;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
+import org.jumpmind.symmetric.service.impl.StartupParameterService;
 import org.jumpmind.symmetric.service.IContextService;
 import org.jumpmind.symmetric.service.IDataExtractorService;
 import org.jumpmind.symmetric.service.IDataLoaderService;
@@ -163,6 +169,7 @@ import org.jumpmind.symmetric.util.DatabaseHealthTracker;
 import org.jumpmind.symmetric.util.IDatabaseHealthTracker;
 import org.jumpmind.symmetric.util.LogUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
+import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.ExceptionUtils;
 import org.jumpmind.util.FormatUtils;
@@ -182,6 +189,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected String deploymentType;
     protected String deploymentSubType;
     protected ITypedPropertiesFactory propertiesFactory;
+    protected IStartupParameterService startupParameterService;
     protected IDatabasePlatform platform;
     protected ISecurityService securityService;
     protected ParameterService parameterService;
@@ -362,11 +370,16 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected void init() {
         ensurePropertiesFactoryIsCreated();
         ensureSecurityServiceIsCreated();
-        TypedProperties properties = this.propertiesFactory.reload();
+        this.startupParameterService = new StartupParameterService(this.propertiesFactory, findKnownEnginePropertiesFileSources(),
+                getSupplementalStartupParameterMetaData());
+        TypedProperties properties = this.startupParameterService.asTypedProperties();
         registerSymDSDriver(properties);
         initEngineNameAndLoggingContext(properties);
         this.platform = createDatabasePlatform(properties);
         initEngineParametersFromDatabase(properties);
+        if (log.isDebugEnabled()) {
+            log.debug(startupParameterService.dumpAsText());
+        }
         LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, parameterService.getEngineName());
         updatePlatformWithParametersFromDatabase();
         this.symmetricDialect = createSymmetricDialect();
@@ -427,6 +440,25 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
     }
 
+    private Map<String, Source> findKnownEnginePropertiesFileSources() {
+        if (propertiesFactory instanceof TypedPropertiesFactory typedPropertiesFactory) {
+            File enginePropertiesFile = typedPropertiesFactory.getPropertiesFile();
+            if (enginePropertiesFile != null && enginePropertiesFile.exists()) {
+                Map<String, Source> knownFileSources = new HashMap<String, Source>();
+                for (String key : new TypedProperties(enginePropertiesFile).stringPropertyNames()) {
+                    knownFileSources.put(key, Source.ENGINE_PROPERTIES_FILE);
+                }
+                return knownFileSources;
+            }
+        }
+        return Map.of();
+    }
+
+    protected Map<String, ParameterMetaData> getSupplementalStartupParameterMetaData() {
+        IStartupParameterMetaDataProvider provider = AppUtils.newInstance(IStartupParameterMetaDataProvider.class, null);
+        return provider != null ? provider.getParameterMetaData() : Map.of();
+    }
+
     protected void registerSymDSDriver(TypedProperties engineProperties) {
         try {
             Class<?> driverClass = Thread.currentThread().getContextClassLoader().loadClass("org.jumpmind.driver.Driver");
@@ -450,7 +482,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     protected IClusterService createClusterService() {
         return AppUtils.newInstance(IClusterService.class, ClusterService.class, new Object[] { parameterService, symmetricDialect, nodeService,
-                extensionService }, new Class<?>[] { IParameterService.class, ISymmetricDialect.class, INodeService.class, IExtensionService.class });
+                extensionService, startupParameterService },
+                new Class<?>[] { IParameterService.class, ISymmetricDialect.class, INodeService.class, IExtensionService.class,
+                        IStartupParameterService.class });
     }
 
     protected IDataService createDataService() {
@@ -1475,6 +1509,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     @Override
     public IParameterService getParameterService() {
         return parameterService;
+    }
+
+    @Override
+    public IStartupParameterService getStartupParameterService() {
+        return startupParameterService;
     }
 
     @Override

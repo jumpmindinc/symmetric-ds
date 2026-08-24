@@ -37,6 +37,7 @@ import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.common.LoggingConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.FormatUtils;
 import org.slf4j.Logger;
@@ -249,13 +250,13 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
      */
     @Override
     public synchronized void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isClusterLockingEnabled,
-            Object engineHolder) {
+            Object engineHolder, IStartupParameterService startupParameterService) {
         this.symmetricEngineHolder = engineHolder;
         this.isClusterLockingEnabled = isClusterLockingEnabled;
         myClusterPartitionId = clusterPartitionId;
         myServerId = serverId;
         if (this.isClusterLockingEnabled) {
-            initializeClusterCommunicationAndDiscovery(securityService);
+            initializeClusterCommunicationAndDiscovery(securityService, startupParameterService);
             startClusterHeartbeatThread();
         } else {
             log.debug("Skipped cluster cache and lock initialization, because parameter is turned off");
@@ -263,7 +264,7 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         this.isInitializationComplete = true;
     }
 
-    private void initializeClusterCommunicationAndDiscovery(ISecurityService securityService) {
+    private void initializeClusterCommunicationAndDiscovery(ISecurityService securityService, IStartupParameterService startupParameterService) {
         if (!securityService.isInitialized()) {
             securityService.init();
         }
@@ -273,8 +274,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (peerNetworkCoordinator == null) {
             peerNetworkCoordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
         }
-        int jcsPort = Integer.parseInt(System.getProperty(ServerConstants.CLUSTER_JCS_PORT, String.valueOf(1101)));
-        String discoveryMode = System.getProperty(ServerConstants.CLUSTER_PEER_DISCOVERY, ServerConstants.CLUSTER_PEER_DISCOVERY_DB);
+        int jcsPort = startupParameterService.getInt(ServerConstants.CLUSTER_JCS_PORT, 1101);
+        String discoveryMode = startupParameterService.getString(ServerConstants.CLUSTER_PEER_DISCOVERY, ServerConstants.CLUSTER_PEER_DISCOVERY_DB);
         if (peerDiscovery == null) {
             ICachePeerServerDiscoveryFactory discoveryFactory = AppUtils.newInstance(ICachePeerServerDiscoveryFactory.class,
                     CachePeerServerDiscoveryFactory.class);

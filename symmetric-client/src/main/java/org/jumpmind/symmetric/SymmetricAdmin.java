@@ -835,9 +835,10 @@ public class SymmetricAdmin extends AbstractCommandLauncher {
             prop.remove(ServerConstants.HTTPS2_ENABLE);
             prop.remove(ServerConstants.HTTP_PORT);
             prop.remove(ServerConstants.HTTPS_PORT);
-            if (StringUtils.isNotBlank(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD))) {
+            String keystorePassword = startupParameterService.getString(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD);
+            if (StringUtils.isNotBlank(keystorePassword)) {
                 ISecurityService service = createSecurityService();
-                String password = SecurityConstants.PREFIX_OBF + service.obfuscate(System.getProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD));
+                String password = SecurityConstants.PREFIX_OBF + service.obfuscate(keystorePassword);
                 prop.put(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD, password);
             }
             try (FileOutputStream out = new FileOutputStream(new File(workingDirectory, "WEB-INF/classes/symmetric-server.properties"))) {

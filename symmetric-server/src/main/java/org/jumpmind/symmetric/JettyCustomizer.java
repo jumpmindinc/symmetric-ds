@@ -55,7 +55,7 @@ public class JettyCustomizer implements WebServerFactoryCustomizer<JettyServletW
 
     @Override
     public void customize(Server server) {
-        TypedProperties sysProps = new TypedProperties(System.getProperties());
+        TypedProperties sysProps = AbstractCommandLauncher.getStartupParameterService().asTypedProperties();
         boolean httpEnabled = sysProps.is(ServerConstants.HTTP_ENABLE, true);
         boolean httpsEnabled = sysProps.is(ServerConstants.HTTPS_ENABLE, false);
         String ignoredProtocols = System.getProperty(SecurityConstants.SYSPROP_SSL_IGNORE_PROTOCOLS, "SSLv3");

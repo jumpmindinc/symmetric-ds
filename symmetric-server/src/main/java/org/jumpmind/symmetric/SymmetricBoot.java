@@ -66,7 +66,7 @@ public class SymmetricBoot extends SpringBootServletInitializer {
             @Override
             public void onStartup(ServletContext servletContext) throws ServletException {
                 servletContext.setInitParameter(WebConstants.INIT_PARAM_AUTO_START, Boolean.toString(true));
-                String singlePropertiesFile = System.getProperty(ServerConstants.SERVER_SINGLE_PROPERTIES_FILE);
+                String singlePropertiesFile = AbstractCommandLauncher.getStartupParameterService().getString(ServerConstants.SERVER_SINGLE_PROPERTIES_FILE);
                 if (StringUtils.isBlank(singlePropertiesFile)) {
                     singlePropertiesFile = env.getProperty("server.servlet.context-parameters." + WebConstants.INIT_SINGLE_SERVER_PROPERTIES_FILE);
                 }
@@ -115,7 +115,7 @@ public class SymmetricBoot extends SpringBootServletInitializer {
 
     public static ConfigurableApplicationContext run(String[] args) {
         SymmetricUtils.logNotices();
-        TypedProperties sysProps = new TypedProperties(System.getProperties());
+        TypedProperties sysProps = AbstractCommandLauncher.getStartupParameterService().asTypedProperties();
         boolean httpsEnabled = sysProps.is(ServerConstants.HTTPS_ENABLE);
         boolean https2Enabled = sysProps.is(ServerConstants.HTTPS2_ENABLE);
         boolean allowSelfSignedCerts = sysProps.is(ServerConstants.HTTPS_ALLOW_SELF_SIGNED_CERTS, true);
@@ -136,7 +136,7 @@ public class SymmetricBoot extends SpringBootServletInitializer {
 
     @Override
     protected SpringApplicationBuilder configure(SpringApplicationBuilder builder) {
-        TypedProperties sysProps = new TypedProperties(System.getProperties());
+        TypedProperties sysProps = AbstractCommandLauncher.getStartupParameterService().asTypedProperties();
         if (sysProps.is(ServerConstants.SERVER_HTTP_COOKIES_ENABLED)) {
             if (CookieHandler.getDefault() == null) {
                 CookieHandler.setDefault(new CookieManager());

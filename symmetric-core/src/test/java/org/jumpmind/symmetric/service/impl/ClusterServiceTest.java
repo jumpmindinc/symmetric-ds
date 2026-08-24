@@ -62,6 +62,7 @@ import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -77,6 +78,7 @@ class ClusterServiceTest {
     private IExtensionService extensionService;
     private ISqlTemplate sqlTemplate;
     private IDatabasePlatform platform;
+    private IStartupParameterService startupParameterService;
     private ClusterService clusterService;
     private IClusterCacheCoordinator originalPeerNetworkCoordinator;
     private boolean originalClusterLockingEnabled;
@@ -90,6 +92,7 @@ class ClusterServiceTest {
         extensionService = mock(IExtensionService.class);
         sqlTemplate = mock(ISqlTemplate.class);
         platform = mock(IDatabasePlatform.class);
+        startupParameterService = mock(IStartupParameterService.class);
         when(dialect.getPlatform()).thenReturn(platform);
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
         when(parameterService.getTablePrefix()).thenReturn("sym");
@@ -99,7 +102,7 @@ class ClusterServiceTest {
         when(parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED)).thenReturn(false);
         when(nodeService.findIdentityNodeId()).thenReturn("test-node");
         when(nodeService.findNodeHosts(anyString())).thenReturn(new ArrayList<>());
-        clusterService = new ClusterService(parameterService, dialect, nodeService, extensionService);
+        clusterService = new ClusterService(parameterService, dialect, nodeService, extensionService, startupParameterService);
         ClusterService.instanceId = "my-instance-id";
         Field coordinatorField = ClusteredCacheManager.class.getDeclaredField("peerNetworkCoordinator");
         coordinatorField.setAccessible(true);
