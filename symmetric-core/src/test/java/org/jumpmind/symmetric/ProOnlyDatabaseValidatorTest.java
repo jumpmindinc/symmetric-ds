@@ -45,17 +45,15 @@ class ProOnlyDatabaseValidatorTest {
 
     @Test
     void testOracleOnGenericPlatform() {
-        IDatabasePlatform platform = createGenericPlatformMock("Oracle");
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> new ProOnlyDatabaseValidator(platform).validate());
+        ProOnlyDatabaseValidator validator = new ProOnlyDatabaseValidator(createGenericPlatformMock("Oracle"));
+        SymmetricException ex = assertThrows(SymmetricException.class, validator::validate);
         assertTrue(ex.getMessage().contains("Oracle"));
     }
 
     @Test
     void testSqlServerOnGenericPlatform() {
-        IDatabasePlatform platform = createGenericPlatformMock("Microsoft SQL Server");
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> new ProOnlyDatabaseValidator(platform).validate());
+        ProOnlyDatabaseValidator validator = new ProOnlyDatabaseValidator(createGenericPlatformMock("Microsoft SQL Server"));
+        SymmetricException ex = assertThrows(SymmetricException.class, validator::validate);
         assertTrue(ex.getMessage().contains("Microsoft SQL Server"));
     }
 
@@ -85,8 +83,8 @@ class ProOnlyDatabaseValidatorTest {
         dbVersion.setName(DatabaseNamesConstants.AURORA_POSTGRESQL);
         when(platform.getDatabaseVersion()).thenReturn(dbVersion);
         when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL95);
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> new ProOnlyDatabaseValidator(platform).validate());
+        ProOnlyDatabaseValidator validator = new ProOnlyDatabaseValidator(platform);
+        SymmetricException ex = assertThrows(SymmetricException.class, validator::validate);
         assertTrue(ex.getMessage().contains("Aurora"));
     }
 
@@ -108,8 +106,8 @@ class ProOnlyDatabaseValidatorTest {
         dbVersion.setName(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL);
         when(platform.getDatabaseVersion()).thenReturn(dbVersion);
         when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL95);
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> new ProOnlyDatabaseValidator(platform).validate());
+        ProOnlyDatabaseValidator validator = new ProOnlyDatabaseValidator(platform);
+        SymmetricException ex = assertThrows(SymmetricException.class, validator::validate);
         assertTrue(ex.getMessage().contains("Cloud SQL"));
     }
 
@@ -120,8 +118,8 @@ class ProOnlyDatabaseValidatorTest {
         dbVersion.setName(DatabaseNamesConstants.AZURE_POSTGRESQL);
         when(platform.getDatabaseVersion()).thenReturn(dbVersion);
         when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL95);
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> new ProOnlyDatabaseValidator(platform).validate());
+        ProOnlyDatabaseValidator validator = new ProOnlyDatabaseValidator(platform);
+        SymmetricException ex = assertThrows(SymmetricException.class, validator::validate);
         assertTrue(ex.getMessage().contains("Azure"));
     }
 
@@ -154,8 +152,8 @@ class ProOnlyDatabaseValidatorTest {
         dbVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
         when(platform.getDatabaseVersion()).thenReturn(dbVersion);
         when(platform.getName()).thenReturn(DatabaseNamesConstants.MYSQL);
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> new ProOnlyDatabaseValidator(platform).validate());
+        ProOnlyDatabaseValidator validator = new ProOnlyDatabaseValidator(platform);
+        SymmetricException ex = assertThrows(SymmetricException.class, validator::validate);
         assertTrue(ex.getMessage().contains("Aurora"));
     }
 
@@ -177,8 +175,8 @@ class ProOnlyDatabaseValidatorTest {
         dbVersion.setName(DatabaseNamesConstants.CLOUDSQL_MYSQL);
         when(platform.getDatabaseVersion()).thenReturn(dbVersion);
         when(platform.getName()).thenReturn(DatabaseNamesConstants.MYSQL);
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> new ProOnlyDatabaseValidator(platform).validate());
+        ProOnlyDatabaseValidator validator = new ProOnlyDatabaseValidator(platform);
+        SymmetricException ex = assertThrows(SymmetricException.class, validator::validate);
         assertTrue(ex.getMessage().contains("Cloud SQL"));
     }
 
