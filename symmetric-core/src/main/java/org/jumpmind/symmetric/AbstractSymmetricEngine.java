@@ -44,10 +44,7 @@ import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Relation;
-import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseInfo;
-import org.jumpmind.db.platform.DatabaseNamesConstants;
-import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlResultsListener;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -771,7 +768,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 starting = true;
                 setEngineReadinessInAppHealthTracker(false);
                 symmetricDialect.verifyDatabaseIsCompatible();
-                checkForProOnlyDatabase();
+                new ProOnlyDatabaseValidator(platform).validate();
                 setup();
                 if (isConfigured()) {
                     Node node = nodeService.findIdentity();
@@ -880,39 +877,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         setEngineReadinessInAppHealthTracker(started);
         for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
             ext.started(this);
-        }
-    }
-
-    protected void checkForProOnlyDatabase() {
-        DatabaseVersion dbVersion = platform.getDatabaseVersion();
-        String dbVersionName = dbVersion != null ? dbVersion.getName() : null;
-        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.AURORA_POSTGRESQL, dbVersionName, "AWS Aurora PostgreSQL");
-        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.AZURE_POSTGRESQL, dbVersionName, "Azure Database for PostgreSQL");
-        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL, dbVersionName, "Google Cloud SQL for PostgreSQL");
-        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.AURORA_MYSQL, dbVersionName, "AWS Aurora MySQL");
-        checkCloudDatabaseRequiresPro(DatabaseNamesConstants.CLOUDSQL_MYSQL, dbVersionName, "Google Cloud SQL for MySQL");
-        if (platform instanceof AbstractDatabasePlatform
-                && ((AbstractDatabasePlatform) platform).isDedicatedPlatform()) {
-            return;
-        }
-        if (dbVersionName != null) {
-            String nameLower = dbVersionName.toLowerCase();
-            if (nameLower.startsWith(DatabaseNamesConstants.ORACLE) || nameLower.contains("sql server")) {
-                throw new SymmetricException(
-                        "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                                + "Some DB platforms, including Oracle and Microsoft SQL Server, require SymmetricDS Pro. "
-                                + "Contact the SymmetricDS sales team for more information.",
-                        dbVersionName);
-            }
-        }
-    }
-
-    private void checkCloudDatabaseRequiresPro(String cloudDbName, String dbVersionName, String cloudDbFullName) {
-        if (cloudDbName.equalsIgnoreCase(dbVersionName) && !cloudDbName.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "%s requires SymmetricDS Pro. Contact the SymmetricDS sales team for more information.",
-                    dbVersionName, cloudDbFullName);
         }
     }
 
