@@ -53,7 +53,7 @@ public class ClusterPartitionGenerator {
     private ClusterPartitionGenerator() {
     }
 
-    public synchronized static String resolve(IStartupParameterService startupParameterService) {
+    public static synchronized String resolve(IStartupParameterService startupParameterService) {
         if (clusterPartitionId == null) {
             clusterPartitionId = loadOrCreateClusterPartitionId(startupParameterService);
         }
