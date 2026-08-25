@@ -109,7 +109,7 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
         /*
          * DB2 does not return the auto-increment status via the database metadata
          */
-        String sql = "SELECT NAME, IDENTITY FROM SYSIBM.SYSCOLUMNS WHERE TBNAME=?";
+        String sql = "SELECT NAME, IDENTITY, GENERATED FROM SYSIBM.SYSCOLUMNS WHERE TBNAME=?";
         if (StringUtils.isNotBlank(metaData.getSchemaPattern())) {
             sql = sql + " AND TBCREATOR=?";
         }
@@ -129,6 +129,10 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
                     String isIdentity = rs.getString(2);
                     if (isIdentity != null && isIdentity.startsWith("Y")) {
                         column.setAutoIncrement(true);
+                        String isGenerated = rs.getString(3);
+                        if (isGenerated != null && isGenerated.startsWith("D")) {
+                            column.setGenerated(false);
+                        }
                         if (log.isDebugEnabled()) {
                             log.debug("Found identity column {} on {}", columnName,
                                     table.getName());
