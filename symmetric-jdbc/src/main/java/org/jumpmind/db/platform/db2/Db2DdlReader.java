@@ -130,9 +130,7 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
                     if (isIdentity != null && isIdentity.startsWith("Y")) {
                         column.setAutoIncrement(true);
                         String isGenerated = rs.getString(3);
-                        if (isGenerated != null && isGenerated.startsWith("D")) {
-                            column.setGenerated(false);
-                        }
+                        clearGeneratedIfIdentityByDefault(isGenerated, column);
                         if (log.isDebugEnabled()) {
                             log.debug("Found identity column {} on {}", columnName,
                                     table.getName());
@@ -145,6 +143,12 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
             JdbcSqlTemplate.close(pstmt);
         }
         log.debug("done reading additional column data");
+    }
+
+    protected void clearGeneratedIfIdentityByDefault(String generated, Column column) {
+        if (generated != null && generated.startsWith("D")) {
+            column.setGenerated(false);
+        }
     }
 
     @Override
