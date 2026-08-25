@@ -289,6 +289,8 @@ public class JdbcDatabasePlatformFactory implements IDatabasePlatformFactory {
                 nameVersion.setVersion(getGreenplumVersion(connection));
             } else if (PostgreSqlVariantDetector.isAuroraPostgres(connection)) {
                 nameVersion.setName(DatabaseNamesConstants.AURORA_POSTGRESQL);
+            } else if (PostgreSqlVariantDetector.isAzurePostgres(connection)) {
+                nameVersion.setName(DatabaseNamesConstants.AZURE_POSTGRESQL);
             } else if (PostgreSqlVariantDetector.isCloudSqlPostgres(connection)) {
                 nameVersion.setName(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL);
             } else if (metaData.getDatabaseMajorVersion() > 9 || (metaData.getDatabaseMajorVersion() == 9 && metaData.getDatabaseMinorVersion() >= 5)) {

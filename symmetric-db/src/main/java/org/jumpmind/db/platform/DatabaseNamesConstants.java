@@ -53,6 +53,7 @@ final public class DatabaseNamesConstants {
     public final static String POSTGRESQL = "postgres";
     public final static String POSTGRESQL95 = "postgres95";
     public static final String AURORA_POSTGRESQL = "aurorapostgres";
+    public static final String AZURE_POSTGRESQL = "azurepostgres";
     public static final String CLOUDSQL_POSTGRESQL = "cloudsqlpostgres";
     public final static String ASE = "ase";
     public final static String SQLANYWHERE = "sqlanywhere";

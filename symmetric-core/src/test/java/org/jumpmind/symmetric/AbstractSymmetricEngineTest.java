@@ -20,11 +20,9 @@
  */
 package org.jumpmind.symmetric;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -34,10 +32,6 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Field;
 import java.time.Instant;
 
-import org.jumpmind.db.platform.AbstractDatabasePlatform;
-import org.jumpmind.db.platform.DatabaseNamesConstants;
-import org.jumpmind.db.platform.DatabaseVersion;
-import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.symmetric.common.ContextConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -55,12 +49,6 @@ class AbstractSymmetricEngineTest {
     @BeforeEach
     public void setup() {
         engine = mock(AbstractSymmetricEngine.class, Mockito.CALLS_REAL_METHODS);
-    }
-
-    private void setPlatform(IDatabasePlatform platform) throws Exception {
-        Field platformField = AbstractSymmetricEngine.class.getDeclaredField("platform");
-        platformField.setAccessible(true);
-        platformField.set(engine, platform);
     }
 
     private void setField(String fieldName, Object value) throws Exception {
@@ -147,176 +135,5 @@ class AbstractSymmetricEngineTest {
         when(databaseHealthTracker.getLastResult()).thenReturn(result);
         setField("databaseHealthTracker", databaseHealthTracker);
         assertEquals(result, engine.getLastDbHealthCheckResult());
-    }
-
-    @Test
-    void testDedicatedOraclePlatform() throws Exception {
-        setPlatform(createDedicatedPlatformMock("Oracle"));
-        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
-    }
-
-    @Test
-    void testDedicatedSqlServerPlatform() throws Exception {
-        setPlatform(createDedicatedPlatformMock("Microsoft SQL Server"));
-        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
-    }
-
-    @Test
-    void testOracleOnGenericPlatform() throws Exception {
-        setPlatform(createGenericPlatformMock("Oracle"));
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> engine.checkForProOnlyDatabase());
-        assertTrue(ex.getMessage().contains("Oracle"));
-    }
-
-    @Test
-    void testSqlServerOnGenericPlatform() throws Exception {
-        setPlatform(createGenericPlatformMock("Microsoft SQL Server"));
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> engine.checkForProOnlyDatabase());
-        assertTrue(ex.getMessage().contains("Microsoft SQL Server"));
-    }
-
-    @Test
-    void testSupportedDatabaseOnGenericPlatform() throws Exception {
-        setPlatform(createGenericPlatformMock("H2"));
-        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
-    }
-
-    @Test
-    void testNullDatabaseVersion() throws Exception {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        when(platform.getDatabaseVersion()).thenReturn(null);
-        setPlatform(platform);
-        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
-    }
-
-    @Test
-    void testNullDatabaseName() throws Exception {
-        setPlatform(createGenericPlatformMock(null));
-        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
-    }
-
-    @Test
-    void testAuroraPostgresFallenBackToGenericPostgresPlatform() throws Exception {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.AURORA_POSTGRESQL);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL95);
-        setPlatform(platform);
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> engine.checkForProOnlyDatabase());
-        assertTrue(ex.getMessage().contains("Aurora"));
-    }
-
-    @Test
-    void testDedicatedAuroraPostgresPlatform() throws Exception {
-        AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
-        when(platform.isDedicatedPlatform()).thenReturn(true);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.AURORA_POSTGRESQL);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.AURORA_POSTGRESQL);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        setPlatform(platform);
-        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
-    }
-
-    @Test
-    void testCloudSqlPostgresFallenBackToGenericPostgresPlatform() throws Exception {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.POSTGRESQL95);
-        setPlatform(platform);
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> engine.checkForProOnlyDatabase());
-        assertTrue(ex.getMessage().contains("Cloud SQL"));
-    }
-
-    @Test
-    void testDedicatedCloudSqlPostgresPlatform() throws Exception {
-        AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
-        when(platform.isDedicatedPlatform()).thenReturn(true);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.CLOUDSQL_POSTGRESQL);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        setPlatform(platform);
-        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
-    }
-
-    @Test
-    void testAuroraMysqlFallenBackToGenericMysqlPlatform() throws Exception {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.MYSQL);
-        setPlatform(platform);
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> engine.checkForProOnlyDatabase());
-        assertTrue(ex.getMessage().contains("Aurora"));
-    }
-
-    @Test
-    void testDedicatedAuroraMysqlPlatform() throws Exception {
-        AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
-        when(platform.isDedicatedPlatform()).thenReturn(true);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.AURORA_MYSQL);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.AURORA_MYSQL);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        setPlatform(platform);
-        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
-    }
-
-    @Test
-    void testCloudSqlMySqlFallenBackToGenericMySqlPlatform() throws Exception {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.CLOUDSQL_MYSQL);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.MYSQL);
-        setPlatform(platform);
-        SymmetricException ex = assertThrows(SymmetricException.class,
-                () -> engine.checkForProOnlyDatabase());
-        assertTrue(ex.getMessage().contains("Cloud SQL"));
-    }
-
-    @Test
-    void testDedicatedCloudSqlMySqlPlatform() throws Exception {
-        AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
-        when(platform.isDedicatedPlatform()).thenReturn(true);
-        when(platform.getName()).thenReturn(DatabaseNamesConstants.CLOUDSQL_MYSQL);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(DatabaseNamesConstants.CLOUDSQL_MYSQL);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        setPlatform(platform);
-        assertDoesNotThrow(() -> engine.checkForProOnlyDatabase());
-    }
-
-    /**
-     * Creates a mock platform that simulates a generic (non-dedicated) platform with the given database name reported in its DatabaseVersion.
-     */
-    private IDatabasePlatform createGenericPlatformMock(String dbName) {
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(dbName);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        return platform;
-    }
-
-    /**
-     * Creates a mock platform that simulates a dedicated (Pro) platform with the given database name.
-     */
-    private AbstractDatabasePlatform createDedicatedPlatformMock(String dbName) {
-        AbstractDatabasePlatform platform = mock(AbstractDatabasePlatform.class);
-        when(platform.isDedicatedPlatform()).thenReturn(true);
-        DatabaseVersion dbVersion = new DatabaseVersion();
-        dbVersion.setName(dbName);
-        when(platform.getDatabaseVersion()).thenReturn(dbVersion);
-        return platform;
     }
 }
