@@ -337,7 +337,7 @@ subprojects { subproject ->
         powerMockVersion = '2.0.9'
         mysqlVersion = '8.4.0'
         servletVersion = '4.0.1'
-        springVersion = '7.0.8'
+        springVersion = '7.0.9'
         springDataVersion = '4.0.6'
         springBootVersion = '4.1.1'
         jtdsVersion = '1.3.1'
