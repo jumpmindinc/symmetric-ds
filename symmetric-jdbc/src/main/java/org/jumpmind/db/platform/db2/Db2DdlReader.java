@@ -333,12 +333,16 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
         } else if (typeName != null && typeName.endsWith("CLOB")) {
             return Types.LONGVARCHAR;
         } else if (typeName != null && typeName.endsWith("LONG VARCHAR")) {
-            return Types.CLOB;
+            return getMappedTypeForLongVarChar();
         } else if (typeName != null && typeName.endsWith("XML")) {
             return Types.SQLXML;
         } else {
             return super.mapUnknownJdbcTypeForColumn(values);
         }
+    }
+
+    protected Integer getMappedTypeForLongVarChar() {
+        return Types.LONGVARCHAR;
     }
 
     @Override
