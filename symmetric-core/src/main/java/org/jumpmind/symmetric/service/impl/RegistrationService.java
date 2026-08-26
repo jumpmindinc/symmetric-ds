@@ -521,7 +521,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         if (engine.getCacheManager().isUsingTargetExternalId(false)) {
             if (node != null) {
                 log.info("Syncing triggers for node {} using target external ID of {}", node.toString(), node.getExternalId());
-                CompletableFuture.runAsync(() -> engine.getTriggerRouterService().syncTriggers(node.getExternalId(), false)); 
+                CompletableFuture.runAsync(() -> engine.getTriggerRouterService().syncTriggers(node.getExternalId(), false));
             } else {
                 log.warn("Unable to sync triggers for target external ID because node {} was not found", nodeId);
             }

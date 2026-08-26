@@ -2024,10 +2024,10 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public boolean syncTriggers(String targetExternalId, boolean force) {
-    	if(!activeSyncTriggersNodes.add(targetExternalId)) {
-    		log.info("Sync Triggers is already running for node {}", targetExternalId);
-    		return true;
-    	}
+        if (!activeSyncTriggersNodes.add(targetExternalId)) {
+            log.info("Sync Triggers is already running for node {}", targetExternalId);
+            return true;
+        }
         if (cacheManager.isUsingTargetExternalId(false)) {
             List<Trigger> triggers = getTriggersForCurrentNode();
             List<Table> tables = new ArrayList<Table>();
@@ -2041,8 +2041,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 }
             }
             if (tables.size() > 0) {
-            		boolean successful = syncTriggers(tables, force);
-            		activeSyncTriggersNodes.remove(targetExternalId);
+                boolean successful = syncTriggers(tables, force);
+                activeSyncTriggersNodes.remove(targetExternalId);
                 return successful;
             }
         }
