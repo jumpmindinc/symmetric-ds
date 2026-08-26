@@ -2041,7 +2041,9 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 }
             }
             if (tables.size() > 0) {
-                return syncTriggers(tables, force);
+            		boolean successful = syncTriggers(tables, force);
+            		activeSyncTriggersNodes.remove(targetExternalId);
+                return successful;
             }
         }
         activeSyncTriggersNodes.remove(targetExternalId);
