@@ -112,7 +112,7 @@ class SqlExplorerTabPanelTest extends BrowserlessTest {
         queryPanel.commitButtonValue = true;
         panel.add(queryPanel, "Query1");
         panel.remove(panel.getTab("Query1"));
-        assertTrue($(NotifyDialog.class).exists());
+        assertTrue(find(NotifyDialog.class).exists());
     }
 
     @Test

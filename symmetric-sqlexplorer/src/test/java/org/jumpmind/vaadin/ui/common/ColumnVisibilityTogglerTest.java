@@ -42,7 +42,7 @@ class ColumnVisibilityTogglerTest extends BrowserlessTest {
     @Test
     void constructor_buttonIsPresent() {
         createAndAttach();
-        assertTrue($(Button.class).exists());
+        assertTrue(find(Button.class).exists());
     }
 
     @Test

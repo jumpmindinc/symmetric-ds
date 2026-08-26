@@ -78,7 +78,7 @@ class DbExportDialogTest extends BrowserlessTest {
     @Test
     void init_buttonsArePresent() {
         createAndOpen();
-        assertTrue($(Button.class).exists());
+        assertTrue(find(Button.class).exists());
     }
 
     @Test
@@ -96,7 +96,7 @@ class DbExportDialogTest extends BrowserlessTest {
     @Test
     void init_formatSelectionIsPresent() {
         createAndOpen();
-        assertTrue($(ComboBox.class).exists());
+        assertTrue(find(ComboBox.class).exists());
     }
 
     @Test
@@ -115,12 +115,12 @@ class DbExportDialogTest extends BrowserlessTest {
     void formatSelect_csvValue_disablesDataCheckbox() {
         DbExportDialog dialog = createAndOpen();
         dialog.next();
-        ComboBox<DbExportDialog.DbExportFormat> formatSelect = $(ComboBox.class).all().stream()
+        ComboBox<DbExportDialog.DbExportFormat> formatSelect = find(ComboBox.class).all().stream()
                 .filter(c -> "Format".equals(c.getLabel()))
                 .map(c -> (ComboBox<DbExportDialog.DbExportFormat>) c)
                 .findFirst().orElseThrow();
         formatSelect.setValue(DbExportDialog.DbExportFormat.CSV);
-        Checkbox dataCheckbox = $(Checkbox.class).all().stream()
+        Checkbox dataCheckbox = find(Checkbox.class).all().stream()
                 .filter(c -> "Insert Data".equals(c.getLabel()))
                 .findFirst().orElseThrow();
         assertFalse(dataCheckbox.isEnabled());
@@ -152,7 +152,7 @@ class DbExportDialogTest extends BrowserlessTest {
     void setExportButtonsEnabled_editorMode_showsEditorButtonHidesFileDownloader() throws Exception {
         DbExportDialog dialog = createAndOpen();
         dialog.next();
-        RadioButtonGroup<String> group = $(RadioButtonGroup.class).single();
+        RadioButtonGroup<String> group = find(RadioButtonGroup.class).single();
         group.setValue("Export to the SQL Editor");
         Field editorButtonField = DbExportDialog.class.getDeclaredField("exportEditorButton");
         editorButtonField.setAccessible(true);
