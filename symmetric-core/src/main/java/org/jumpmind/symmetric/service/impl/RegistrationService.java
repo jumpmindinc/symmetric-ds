@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
@@ -520,7 +521,7 @@ public class RegistrationService extends AbstractService implements IRegistratio
         if (engine.getCacheManager().isUsingTargetExternalId(false)) {
             if (node != null) {
                 log.info("Syncing triggers for node {} using target external ID of {}", node.toString(), node.getExternalId());
-                engine.getTriggerRouterService().syncTriggers(node.getExternalId(), false);
+                CompletableFuture.runAsync(() -> engine.getTriggerRouterService().syncTriggers(node.getExternalId(), false)); 
             } else {
                 log.warn("Unable to sync triggers for target external ID because node {} was not found", nodeId);
             }
