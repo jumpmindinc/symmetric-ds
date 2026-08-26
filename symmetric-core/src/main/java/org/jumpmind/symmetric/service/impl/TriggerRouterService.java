@@ -2024,12 +2024,6 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public boolean syncTriggers(String targetExternalId, boolean force) {
-    	try {
-			Thread.sleep(180000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
     	if(!activeSyncTriggersNodes.add(targetExternalId)) {
     		log.info("Sync Triggers is already running for node {}", targetExternalId);
     		return true;
