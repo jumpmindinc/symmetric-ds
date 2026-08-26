@@ -119,7 +119,7 @@ class ReadOnlyTextAreaDialogTest extends BrowserlessTest {
     @Test
     void constructor_closeButtonPresentInFooter() {
         createSimple("hello", false);
-        assertDoesNotThrow(() -> $(Button.class).all().stream()
+        assertDoesNotThrow(() -> find(Button.class).all().stream()
                 .filter(b -> "Close".equals(b.getText()))
                 .findFirst().orElseThrow());
     }

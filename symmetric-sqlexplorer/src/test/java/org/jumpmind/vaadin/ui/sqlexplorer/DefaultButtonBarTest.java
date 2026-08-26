@@ -190,24 +190,24 @@ class DefaultButtonBarTest extends BrowserlessTest {
     @Test
     void historyButton_click_opensSqlHistoryDialog() {
         fireClick(buttonBar.historyButton);
-        assertTrue($(SqlHistoryDialog.class).exists());
+        assertTrue(find(SqlHistoryDialog.class).exists());
     }
 
     @Test
     void importButton_click_opensDbImportDialog() {
         fireClick(buttonBar.importButton);
-        assertTrue($(DbImportDialog.class).exists());
+        assertTrue(find(DbImportDialog.class).exists());
     }
 
     @Test
     void exportButton_click_opensDbExportDialog() {
         fireClick(buttonBar.exportButton);
-        assertTrue($(DbExportDialog.class).exists());
+        assertTrue(find(DbExportDialog.class).exists());
     }
 
     @Test
     void fillButton_click_opensDbFillDialog() {
         fireClick(buttonBar.fillButton);
-        assertTrue($(DbFillDialog.class).exists());
+        assertTrue(find(DbFillDialog.class).exists());
     }
 }
