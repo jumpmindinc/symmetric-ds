@@ -1111,14 +1111,14 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     private void removeEngineFromAppHealthTracker() {
         IApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
-        if (appHealthTracker != null) {
+        if (appHealthTracker != null && parameterService != null) {
             appHealthTracker.stopTrackingEngine(getEngineName());
         }
     }
 
     private void setEngineReadinessInAppHealthTracker(boolean isReady) {
         IApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
-        if (appHealthTracker != null) {
+        if (appHealthTracker != null && parameterService != null) {
             appHealthTracker.setEngineReadiness(getEngineName(), isReady);
         }
     }
