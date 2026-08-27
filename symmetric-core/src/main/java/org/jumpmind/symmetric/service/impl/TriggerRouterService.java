@@ -2024,35 +2024,35 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public boolean syncTriggers(String targetExternalId, boolean force) {
-    	if (!activeSyncTriggersNodes.add(targetExternalId)) {
+        if (!activeSyncTriggersNodes.add(targetExternalId)) {
             log.info("Sync Triggers is already running for node {}", targetExternalId);
             return true;
         }
         try {
-			if (cacheManager.isUsingTargetExternalId(false)) {
-				List<Trigger> triggers = getTriggersForCurrentNode();
-	            List<Table> tables = new ArrayList<Table>();
-	            for (Trigger trigger : triggers) {
-	                if (trigger.getSourceTableName().contains("targetExternalId")) {
-	                    Table table = platform.readTableFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
-	                            FormatUtils.replace("targetExternalId", targetExternalId, trigger.getSourceTableName()));
-	                    if (table != null) {
-	                        tables.add(table);
-	                    }
-	                }
-	            }
-				if (!tables.isEmpty()) {
-					return syncTriggers(tables, force);
-				}
-			} 
-			return true;
-		} catch (Exception e) {
-			log.error("Error while Syncing Tringgers for node {}", targetExternalId);
-			e.printStackTrace();
-			return false;
-		} finally {
-			activeSyncTriggersNodes.remove(targetExternalId);
-		}
+            if (cacheManager.isUsingTargetExternalId(false)) {
+                List<Trigger> triggers = getTriggersForCurrentNode();
+                List<Table> tables = new ArrayList<Table>();
+                for (Trigger trigger : triggers) {
+                    if (trigger.getSourceTableName().contains("targetExternalId")) {
+                        Table table = platform.readTableFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
+                                FormatUtils.replace("targetExternalId", targetExternalId, trigger.getSourceTableName()));
+                        if (table != null) {
+                            tables.add(table);
+                        }
+                    }
+                }
+                if (!tables.isEmpty()) {
+                    return syncTriggers(tables, force);
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("Error while Syncing Tringgers for node {}", targetExternalId);
+            e.printStackTrace();
+            return false;
+        } finally {
+            activeSyncTriggersNodes.remove(targetExternalId);
+        }
     }
 
     public boolean syncTriggers(Table table, boolean force) {
