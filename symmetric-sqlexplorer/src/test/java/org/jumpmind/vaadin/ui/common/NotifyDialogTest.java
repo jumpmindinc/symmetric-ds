@@ -40,7 +40,7 @@ class NotifyDialogTest extends BrowserlessTest {
     }
 
     private Button findButton(String text) {
-        return $(Button.class).all().stream()
+        return find(Button.class).all().stream()
                 .filter(b -> text.equals(b.getText()))
                 .findFirst().orElseThrow();
     }
@@ -72,7 +72,7 @@ class NotifyDialogTest extends BrowserlessTest {
     @Test
     void detailsButton_hiddenWhenNoException() {
         createAndInsert("Error message", null);
-        assertFalse($(Button.class).all().stream().anyMatch(b -> "Details".equals(b.getText())));
+        assertFalse(find(Button.class).all().stream().anyMatch(b -> "Details".equals(b.getText())));
     }
 
     @Test

@@ -282,4 +282,26 @@ class MetricDefinitionFactoryTest {
         factory.initializeMetrics(service);
         assertNull(service.getUpDownCounter(METRIC_ID_DATA_ROUTED));
     }
+
+    @Test
+    void initializeMetrics_channelMetric_customChannelNotPreRegistered() {
+        MetricsManager svcManager = TestMetricsManagerFactory.create();
+        HostMetricsService service = new HostMetricsService(svcManager, false);
+        factory.initializeMetrics(service);
+        MetricAttributeList customChannelAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "my_custom_channel"));
+        assertNull(service.getUpDownCounter(METRIC_ID_DATA_ROUTED, customChannelAttrs));
+        assertNotNull(service.registerUpDownCounter(METRIC_ID_DATA_ROUTED, customChannelAttrs));
+        assertNotNull(service.getUpDownCounter(METRIC_ID_DATA_ROUTED, customChannelAttrs));
+    }
+
+    @Test
+    void initializeMetrics_longGaugeChannelMetric_customChannelNotPreRegistered() {
+        MetricsManager svcManager = TestMetricsManagerFactory.create();
+        HostMetricsService service = new HostMetricsService(svcManager, false);
+        factory.initializeMetrics(service);
+        MetricAttributeList customChannelAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "my_custom_channel"));
+        assertNull(service.getLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, customChannelAttrs));
+        assertNotNull(service.registerLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, customChannelAttrs));
+        assertNotNull(service.getLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, customChannelAttrs));
+    }
 }
