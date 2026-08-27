@@ -369,7 +369,8 @@ public class RouterServiceTest {
         IDatabasePlatform databasePlatform = mock(IDatabasePlatform.class);
         when(databasePlatform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
         when(databasePlatform.scrubSql(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(databasePlatform.getSqlTemplateDirty()).thenReturn(mock(ISqlTemplate.class));
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(databasePlatform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(parameterService.getInt(ParameterConstants.ROUTING_MAX_GAPS_TO_QUALIFY_IN_SQL, 100)).thenReturn(maxGapsToQualify);
         when(parameterService.getInt(ParameterConstants.ROUTING_DATA_READER_THRESHOLD_GAPS_TO_USE_GREATER_QUERY, 100))
