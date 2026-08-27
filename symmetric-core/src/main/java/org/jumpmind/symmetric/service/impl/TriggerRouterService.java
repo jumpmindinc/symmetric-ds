@@ -2060,31 +2060,31 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             return true;
         }
         try {
-			if (cacheManager.isUsingTargetExternalId(false)) {
-				List<Trigger> triggers = getTriggersForCurrentNode();
-				RelationsList relations = new RelationsList();
-				for (Trigger trigger : triggers) {
-					if (trigger.getSourceTableName().contains("targetExternalId")) {
-						Relation relation = platform.readRelationFromDatabase(trigger.getSourceCatalogName(),
-								trigger.getSourceSchemaName(), FormatUtils.replace("targetExternalId", targetExternalId,
-										trigger.getSourceTableName()));
-						if (relation != null) {
-							relations.add(relation);
-						}
-					}
-				}
-				if (!relations.isEmpty()) {
-					return syncTriggers(relations, force);
-				}
-			} 
-			return true;
-		} catch (Exception e) {
-			log.error("Error while Syncing Tringgers for node {}", targetExternalId);
-			e.printStackTrace();
-			return false;
-		} finally {
-			activeSyncTriggersNodes.remove(targetExternalId);
-		}
+            if (cacheManager.isUsingTargetExternalId(false)) {
+                List<Trigger> triggers = getTriggersForCurrentNode();
+                RelationsList relations = new RelationsList();
+                for (Trigger trigger : triggers) {
+                    if (trigger.getSourceTableName().contains("targetExternalId")) {
+                        Relation relation = platform.readRelationFromDatabase(trigger.getSourceCatalogName(),
+                                trigger.getSourceSchemaName(), FormatUtils.replace("targetExternalId", targetExternalId,
+                                        trigger.getSourceTableName()));
+                        if (relation != null) {
+                            relations.add(relation);
+                        }
+                    }
+                }
+                if (!relations.isEmpty()) {
+                    return syncTriggers(relations, force);
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("Error while Syncing Tringgers for node {}", targetExternalId);
+            e.printStackTrace();
+            return false;
+        } finally {
+            activeSyncTriggersNodes.remove(targetExternalId);
+        }
     }
 
     public boolean syncTriggers(Relation relation, boolean force) {
