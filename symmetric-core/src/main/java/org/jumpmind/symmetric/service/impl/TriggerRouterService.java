@@ -118,7 +118,11 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     /**
      * Cache the history for performance. History never changes and does not grow big so this should be OK.
      */
+<<<<<<< HEAD
     private Map<Integer, TriggerHistory> historyMap = Collections.synchronizedMap(new HashMap<>());
+=======
+    private Map<Integer, TriggerHistory> historyMap = Collections.synchronizedMap(new HashMap<Integer, TriggerHistory>());
+>>>>>>> 1af240d083 (SYM-7938: Avoid blocking registration batch ack for long running SyncTriggers for triggers with templete variables (#1038))
 
     public TriggerRouterService(ISymmetricEngine engine) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
@@ -2065,8 +2069,13 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                     }
                 }
             }
+<<<<<<< HEAD
             if (!relations.isEmpty()) {
                 return syncTriggers(relations, force);
+=======
+            if (tables.size() > 0) {
+                return syncTriggers(tables, force);
+>>>>>>> 1af240d083 (SYM-7938: Avoid blocking registration batch ack for long running SyncTriggers for triggers with templete variables (#1038))
             }
         }
         return true;
