@@ -80,6 +80,10 @@ abstract class AbstractMetricsService implements IMetricsService {
         return m instanceof IUpDownCounter c ? c : null;
     }
 
+    public IUpDownCounter registerUpDownCounter(String metricId, MetricAttributeList attrs) {
+        return registerUpDownCounter(metricsManager.getMetricDefinitionFactory().getDefinition(metricId), attrs);
+    }
+
     private UpDownCounter createUpDownCounterInternal(ISymMetricDefinition definition, MetricAttributeList attrs) {
         UpDownCounter counter = new UpDownCounter(definition, this.attributes, attrs);
         if (counter.isEnabled()) {
