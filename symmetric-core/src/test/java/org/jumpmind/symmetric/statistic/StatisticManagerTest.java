@@ -783,7 +783,7 @@ class StatisticManagerTest {
         IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
         IUpDownCounter counter = mock(IUpDownCounter.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
-        when(metricsService.getUpDownCounter(anyString(), any())).thenReturn(counter);
+        when(metricsService.registerUpDownCounter(anyString(), any())).thenReturn(counter);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.incrementDataSent("chan1", 5L);
         assertEquals(5L, manager.getWorkingChannelStats().get("chan1").getDataSent());

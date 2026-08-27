@@ -924,7 +924,7 @@ public class StatisticManager implements IStatisticManager {
             IEngineMetricsService svc = engine.getMetricsService();
             if (svc == null)
                 return;
-            IUpDownCounter c = svc.getUpDownCounter(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
+            IUpDownCounter c = svc.registerUpDownCounter(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
             if (c != null)
                 c.add(delta);
         } catch (Exception e) {
