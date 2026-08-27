@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.observability.metrics;
 
 import static org.jumpmind.symmetric.observability.interfaces.MetricAttributeConstants.CHANNEL;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_CREATE_TIME_MIN;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_ROUTED;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +38,7 @@ import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
 import org.jumpmind.symmetric.observability.interfaces.ISymMetric;
 import org.jumpmind.symmetric.observability.interfaces.InvalidMetricDataException;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
@@ -123,6 +125,23 @@ class AbstractMetricsServiceTest {
     void registerUpDownCounter_byUnregisteredMetricId_throwsInvalidMetricDataException() {
         MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "custom_channel"));
         assertThrows(InvalidMetricDataException.class, () -> service.registerUpDownCounter("no.such.metric", attrs));
+    }
+
+    @Test
+    void registerLongGauge_byMetricIdForUnknownChannel_createsAndReturnsIdempotentGauge() {
+        MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "custom_channel_not_in_default_contexts"));
+        assertNull(service.getLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, attrs));
+        ISymLongGauge gauge = service.registerLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, attrs);
+        assertNotNull(gauge);
+        gauge.setValue(42L);
+        assertEquals(42L, gauge.getValue());
+        assertSame(gauge, service.registerLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, attrs));
+    }
+
+    @Test
+    void registerLongGauge_byUnregisteredMetricId_throwsInvalidMetricDataException() {
+        MetricAttributeList attrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "custom_channel"));
+        assertThrows(InvalidMetricDataException.class, () -> service.registerLongGauge("no.such.metric", attrs));
     }
 
     static class MetricsServiceUnderTest extends AbstractMetricsService {
