@@ -210,11 +210,19 @@ public class MockStatisticManager implements IStatisticManager {
     }
 
     @Override
-    public void updateDataMinCreateTime(String channelId, Date minCreateTime) {
+    public void updateDataRoutedMinCreateTime(String channelId, Date minCreateTime) {
     }
 
     @Override
-    public void updateDataMaxCreateTime(String channelId, Date maxCreateTime) {
+    public void updateDataRoutedMaxCreateTime(String channelId, Date maxCreateTime) {
+    }
+
+    @Override
+    public void setDataUnroutedMinCreateTime(String channelId, Date minCreateTime) {
+    }
+
+    @Override
+    public void setDataUnroutedMaxCreateTime(String channelId, Date maxCreateTime) {
     }
 
     @Override

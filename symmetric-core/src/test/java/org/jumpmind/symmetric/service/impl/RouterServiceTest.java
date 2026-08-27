@@ -40,10 +40,13 @@ import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.Data;
+import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.NodeGroupLink;
@@ -352,5 +355,57 @@ public class RouterServiceTest {
 
     private ChannelRouterContext newContext(NodeChannel channel) {
         return new ChannelRouterContext(SOURCE_NODE_GROUP, channel, mock(ISqlTransaction.class), null);
+    }
+
+    private RouterService newRouterServiceForGapQuery(IParameterService parameterService, int maxGapsToQualify, int maxGapsBeforeGreaterThanQuery) {
+        ISymmetricEngine engine = mock(ISymmetricEngine.class);
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform databasePlatform = mock(IDatabasePlatform.class);
+        when(databasePlatform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
+        when(databasePlatform.scrubSql(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(parameterService.getInt(ParameterConstants.ROUTING_MAX_GAPS_TO_QUALIFY_IN_SQL, 100)).thenReturn(maxGapsToQualify);
+        when(parameterService.getInt(ParameterConstants.ROUTING_DATA_READER_THRESHOLD_GAPS_TO_USE_GREATER_QUERY, 100))
+                .thenReturn(maxGapsBeforeGreaterThanQuery);
+        when(symmetricDialect.getPlatform()).thenReturn(databasePlatform);
+        when(engine.getDatabasePlatform()).thenReturn(databasePlatform);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
+        when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
+        RouterService testRouterService = new RouterService(engine);
+        testRouterService.setSqlMap(new RouterServiceSqlMap(databasePlatform,
+                Collections.singletonMap("data", TableConstants.getTableName("sym", TableConstants.SYM_DATA))));
+        return testRouterService;
+    }
+
+    @Test
+    public void testBuildGapQualifiedQueryUsesGapRangeSqlWhenGapCountAtOrBelowThreshold() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
+        List<DataGap> gaps = Arrays.asList(new DataGap(1, 10), new DataGap(20, 30));
+        RouterService.GapQualifiedQuery query = testRouterService.buildGapQualifiedQuery(gaps,
+                "selectChannelDataCreateTimeRangeUsingGapsSql", "selectChannelDataCreateTimeRangeUsingStartDataId");
+        assertTrue(query.sql().contains("group by channel_id"));
+        assertTrue(query.sql().contains("data_id between ? and ?"));
+        assertEquals(4, query.args().length);
+        assertEquals(1L, query.args()[0]);
+        assertEquals(10L, query.args()[1]);
+        assertEquals(20L, query.args()[2]);
+        assertEquals(30L, query.args()[3]);
+    }
+
+    @Test
+    public void testBuildGapQualifiedQueryUsesStartIdSqlWhenGapCountExceedsThreshold() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 1);
+        List<DataGap> gaps = Arrays.asList(new DataGap(1, 10), new DataGap(20, 30));
+        RouterService.GapQualifiedQuery query = testRouterService.buildGapQualifiedQuery(gaps,
+                "selectChannelDataCreateTimeRangeUsingGapsSql", "selectChannelDataCreateTimeRangeUsingStartDataId");
+        assertTrue(query.sql().contains("data_id >= ?"));
+        assertEquals(1, query.args().length);
+        assertEquals(1L, query.args()[0]);
+    }
+
+    @Test
+    public void testFindUnroutedDataCreateTimeRangeByChannelReturnsEmptyListWhenGapsNotYetDetected() {
+        assertEquals(Collections.emptyList(), routerService.findUnroutedDataCreateTimeRangeByChannel());
     }
 }

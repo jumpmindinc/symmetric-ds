@@ -100,9 +100,13 @@ public interface IStatisticManager {
 
     public void incrementDataSentErrors(String channelId, long count);
 
-    public void updateDataMinCreateTime(String channelId, Date minCreateTime);
+    public void updateDataRoutedMinCreateTime(String channelId, Date minCreateTime);
 
-    public void updateDataMaxCreateTime(String channelId, Date maxCreateTime);
+    public void updateDataRoutedMaxCreateTime(String channelId, Date maxCreateTime);
+
+    public void setDataUnroutedMinCreateTime(String channelId, Date minCreateTime);
+
+    public void setDataUnroutedMaxCreateTime(String channelId, Date maxCreateTime);
 
     public void incrementRestart();
 

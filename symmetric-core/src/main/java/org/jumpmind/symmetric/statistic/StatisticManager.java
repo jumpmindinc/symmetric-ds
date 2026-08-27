@@ -466,23 +466,41 @@ public class StatisticManager implements IStatisticManager {
         addChannelCounter(METRIC_ID_DATA_LOADED_OUTGOING_ERRORS, channelId, count);
     }
 
-    public void updateDataMinCreateTime(String channelId, Date minCreateTime) {
+    /**
+     * Tracks the minimum create time of routed data for the {@code node_host_channel_stats} table.
+     */
+    public void updateDataRoutedMinCreateTime(String channelId, Date minCreateTime) {
         channelStatsLock.acquireUninterruptibly();
         try {
             getChannelStats(channelId).updateDataMinCreateTime(minCreateTime);
         } finally {
             channelStatsLock.release();
         }
-        setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, channelId, minCreateTime.getTime());
     }
 
-    public void updateDataMaxCreateTime(String channelId, Date maxCreateTime) {
+    /**
+     * Tracks the maximum create time of routed data for the {@code node_host_channel_stats} table.
+     */
+    public void updateDataRoutedMaxCreateTime(String channelId, Date maxCreateTime) {
         channelStatsLock.acquireUninterruptibly();
         try {
             getChannelStats(channelId).updateDataMaxCreateTime(maxCreateTime);
         } finally {
             channelStatsLock.release();
         }
+    }
+
+    /**
+     * Updates the {@code rows.create.time.min} metric gauge with the current minimum create time of unrouted data.
+     */
+    public void setDataUnroutedMinCreateTime(String channelId, Date minCreateTime) {
+        setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, channelId, minCreateTime.getTime());
+    }
+
+    /**
+     * Updates the {@code rows.create.time.max} metric gauge with the current maximum create time of unrouted data.
+     */
+    public void setDataUnroutedMaxCreateTime(String channelId, Date maxCreateTime) {
         setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MAX, channelId, maxCreateTime.getTime());
     }
 
