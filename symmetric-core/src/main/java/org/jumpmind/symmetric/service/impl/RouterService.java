@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -45,7 +46,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
-import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -390,11 +390,9 @@ public class RouterService extends AbstractService implements IRouterService, IN
         GapQualifiedQuery query = buildGapQualifiedQuery(gapDetector.getDataGaps(),
                 "selectChannelsUsingGapsSql", "selectChannelsUsingStartDataId");
         final Set<String> readyChannels = new HashSet<String>();
-        sqlTemplateDirty.query(query.sql(), new ISqlRowMapper<String>() {
-            public String mapRow(Row row) {
-                readyChannels.add(row.getString("channel_id"));
-                return null;
-            }
+        sqlTemplateDirty.query(query.sql(), (Row row) -> {
+            readyChannels.add(row.getString("channel_id"));
+            return null;
         }, query.args(), query.types());
         return readyChannels;
     }
@@ -406,12 +404,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
         }
         GapQualifiedQuery query = buildGapQualifiedQuery(dataGaps,
                 "selectChannelDataCreateTimeRangeUsingGapsSql", "selectChannelDataCreateTimeRangeUsingStartDataId");
-        return sqlTemplateDirty.query(query.sql(), new ISqlRowMapper<ChannelDataCreateTimeRange>() {
-            public ChannelDataCreateTimeRange mapRow(Row row) {
-                return new ChannelDataCreateTimeRange(row.getString("channel_id"),
-                        row.getDateTime("min_create_time"), row.getDateTime("max_create_time"));
-            }
-        }, query.args(), query.types());
+        return sqlTemplateDirty.query(query.sql(), (Row row) -> new ChannelDataCreateTimeRange(row.getString("channel_id"),
+                row.getDateTime("min_create_time"), row.getDateTime("max_create_time")), query.args(), query.types());
     }
 
     protected GapQualifiedQuery buildGapQualifiedQuery(List<DataGap> dataGaps, String gapsSqlKey, String startIdSqlKey) {
@@ -1408,5 +1402,26 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     protected record GapQualifiedQuery(String sql, Object[] args, int[] types) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof GapQualifiedQuery)) {
+                return false;
+            }
+            GapQualifiedQuery other = (GapQualifiedQuery) o;
+            return Objects.equals(sql, other.sql) && Arrays.equals(args, other.args) && Arrays.equals(types, other.types);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(sql, Arrays.hashCode(args), Arrays.hashCode(types));
+        }
+
+        @Override
+        public String toString() {
+            return "GapQualifiedQuery[sql=" + sql + ", args=" + Arrays.toString(args) + ", types=" + Arrays.toString(types) + "]";
+        }
     }
 }

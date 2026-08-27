@@ -219,10 +219,12 @@ public class MockStatisticManager implements IStatisticManager {
 
     @Override
     public void setDataUnroutedMinCreateTime(String channelId, Date minCreateTime) {
+        // no-op: this mock does not track metric gauge state
     }
 
     @Override
     public void setDataUnroutedMaxCreateTime(String channelId, Date maxCreateTime) {
+        // no-op: this mock does not track metric gauge state
     }
 
     @Override
