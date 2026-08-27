@@ -25,7 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -48,6 +51,7 @@ import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.ProcessInfo;
+import org.jumpmind.symmetric.model.TableReloadStatus;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataService;
@@ -58,6 +62,7 @@ import org.jumpmind.symmetric.service.ITransformService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
 
 class SelectFromSymDataSourceTest {
     private ISymmetricEngine engine;
@@ -151,6 +156,14 @@ class SelectFromSymDataSourceTest {
         field.set(source, mockLookup);
     }
 
+    private Logger injectMockLogger(SelectFromSymDataSource source) throws Exception {
+        Logger log = mock(Logger.class);
+        Field field = SelectFromSymDataSource.class.getDeclaredField("log");
+        field.setAccessible(true);
+        field.set(source, log);
+        return log;
+    }
+
     @Test
     void processCreateEvent_preSetupFkDrop_stripsFksKeepsIndexes() throws Exception {
         when(outgoingBatch.isLoadFlag()).thenReturn(true);
@@ -215,5 +228,44 @@ class SelectFromSymDataSourceTest {
         String xml = data.getRowData();
         assertTrue(xml.contains("foreign-key"), "Phase 2 finalize batch should keep foreign keys");
         assertTrue(xml.contains("index"), "Phase 2 finalize batch should keep indexes");
+    }
+
+    @Test
+    void processCreateEvent_loadAlreadyComplete_discardsEventAndWarns() throws Exception {
+        when(engine.getNodeId()).thenReturn("source");
+        when(outgoingBatch.getLoadId()).thenReturn(2L);
+        when(outgoingBatch.getSummary()).thenReturn("test_table");
+        TableReloadStatus completedLoad = new TableReloadStatus();
+        completedLoad.setLoadId(2);
+        completedLoad.setCompleted(true);
+        when(dataService.getTableReloadStatusByLoadIdAndSourceNodeId(2, "source")).thenReturn(completedLoad);
+        SelectFromSymDataSource source = createSource();
+        Logger log = injectMockLogger(source);
+        TriggerHistory hist = new TriggerHistory("test_table", "id", "id,name,ref_id");
+        Data data = new Data("test_table", DataEventType.CREATE, "", null, hist, "default", null, null);
+        boolean result = source.processCreateEvent(hist, "router1", data);
+        assertFalse(result, "a create event for an already-completed load must be discarded");
+        verify(log).warn(contains("Discarding create event"), any(), any(), any());
+    }
+
+    @Test
+    void processCreateEvent_loadNotComplete_isNotDiscardedByCompletedLoadGuard() throws Exception {
+        when(engine.getNodeId()).thenReturn("source");
+        when(outgoingBatch.getLoadId()).thenReturn(2L);
+        when(outgoingBatch.isLoadFlag()).thenReturn(true);
+        when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
+        TableReloadStatus inFlightLoad = new TableReloadStatus();
+        inFlightLoad.setLoadId(2);
+        inFlightLoad.setCompleted(false);
+        when(dataService.getTableReloadStatusByLoadIdAndSourceNodeId(2, "source")).thenReturn(inFlightLoad);
+        SelectFromSymDataSource source = createSource();
+        source.sourceRelation = tableWithFksAndIndexes;
+        setColumnsAccordingToTriggerHistory(source, buildTableWithFksAndIndexes());
+        Logger log = injectMockLogger(source);
+        TriggerHistory hist = new TriggerHistory("test_table", "id", "id,name,ref_id");
+        Data data = new Data("test_table", DataEventType.CREATE, "", null, hist, "default", null, null);
+        boolean result = source.processCreateEvent(hist, "router1", data);
+        assertTrue(result, "a create event for an in-flight load must be processed");
+        verify(log, never()).warn(contains("Discarding create event"), any(), any(), any());
     }
 }
