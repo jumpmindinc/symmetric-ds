@@ -40,6 +40,7 @@ import org.apache.commons.lang3.Strings;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.exception.IoException;
+import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.CsvData;
@@ -79,16 +80,17 @@ public class FileSyncZipDataWriter implements IDataWriter {
     protected IExtensionService extensionService;
     protected IConfigurationService configurationService;
     protected boolean batchInError;
+    protected ISymmetricEngine engine;
 
-    public FileSyncZipDataWriter(long maxBytesToSync, int compressionLevel, IFileSyncService fileSyncService,
-            INodeService nodeService, IStagedResource stagedResource, IExtensionService extensionService, IConfigurationService configurationService) {
+    public FileSyncZipDataWriter(long maxBytesToSync, int compressionLevel, IStagedResource stagedResource, ISymmetricEngine engine) {
+        this.engine = engine;
         this.maxBytesToSync = maxBytesToSync;
         this.compressionLevel = compressionLevel;
-        this.fileSyncService = fileSyncService;
+        this.fileSyncService = engine.getFileSyncService();
         this.stagedResource = stagedResource;
-        this.nodeService = nodeService;
-        this.extensionService = extensionService;
-        this.configurationService = configurationService;
+        this.nodeService = engine.getNodeService();
+        this.extensionService = engine.getExtensionService();
+        this.configurationService = engine.getConfigurationService();
     }
 
     public void open(DataContext context) {
@@ -289,8 +291,14 @@ public class FileSyncZipDataWriter implements IDataWriter {
                 zos.closeEntry();
             }
         } catch (IOException e) {
+            log.error(e.getMessage(), e);
             batchInError = true;
-            throw new IoException(e);
+            if (e instanceof IOException) {
+                throw new IoException(e);
+            }
+            else {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -332,7 +340,7 @@ public class FileSyncZipDataWriter implements IDataWriter {
                 break;
             }
             if (script == null) {
-                script = new BeanShellFileSyncZipScript(extensionService);
+                script = new BeanShellFileSyncZipScript(engine);
             }
         }
         return script;

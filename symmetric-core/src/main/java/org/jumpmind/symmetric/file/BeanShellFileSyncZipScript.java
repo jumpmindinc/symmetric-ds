@@ -24,6 +24,8 @@ import java.io.File;
 
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.model.FileConflictStrategy;
 import org.jumpmind.symmetric.model.FileSnapshot;
@@ -31,12 +33,17 @@ import org.jumpmind.symmetric.model.FileSnapshot.LastEventType;
 import org.jumpmind.symmetric.model.FileTrigger;
 import org.jumpmind.symmetric.model.FileTriggerRouter;
 import org.jumpmind.symmetric.service.IExtensionService;
+import org.jumpmind.symmetric.service.IParameterService;
 
 public class BeanShellFileSyncZipScript extends FileSyncZipScript {
     protected IExtensionService extensionService;
+    protected IParameterService parameterService;
+    protected ISymmetricEngine engine;
 
-    public BeanShellFileSyncZipScript(IExtensionService extensionService) {
-        this.extensionService = extensionService;
+    public BeanShellFileSyncZipScript(ISymmetricEngine engine) {
+        this.engine = engine;
+        this.extensionService = engine.getExtensionService();
+        this.parameterService = engine.getParameterService();
     }
 
     @Override
@@ -53,6 +60,8 @@ public class BeanShellFileSyncZipScript extends FileSyncZipScript {
     public void buildScriptFileSnapshot(Batch batch, FileSnapshot snapshot, FileTriggerRouter triggerRouter,
             FileTrigger fileTrigger, File file, String targetBaseDir, String targetFile) {
         LastEventType eventType = snapshot.getLastEventType();
+        long oldCrc32Checksum = snapshot.getOldCrc32Checksum();
+        long crc32Checksum = snapshot.getCrc32Checksum();
         StringBuilder command = new StringBuilder();
         command.append("targetBaseDir = \"").append(targetBaseDir).append("\";\n");
         command.append("if (targetBaseDir.startsWith(\"${androidBaseDir}\")) {                      \n");
@@ -107,7 +116,7 @@ public class BeanShellFileSyncZipScript extends FileSyncZipScript {
                             conflictStrategy == FileConflictStrategy.MANUAL) {
                         command.append("  if (targetFile.exists() && !targetFile.isDirectory()) {\n");
                         command.append("    long targetChecksum = org.apache.commons.io.FileUtils.checksumCRC32(targetFile);\n");
-                        command.append("    if (targetChecksum != " + snapshot.getOldCrc32Checksum() + "L) {\n");
+                        command.append("    if (targetChecksum != " + oldCrc32Checksum + "L) {\n");
                         if (conflictStrategy == FileConflictStrategy.MANUAL) {
                             command.append("      throw new org.jumpmind.symmetric.file.FileConflictException(targetFileName + \" was in conflict \");\n");
                         } else {
@@ -145,8 +154,36 @@ public class BeanShellFileSyncZipScript extends FileSyncZipScript {
                     command.append("      } else {\n");
                     command.append("        org.apache.commons.io.FileUtils.copyFile(sourceFile, errorFile, true);\n");
                     command.append("      }\n");
+                    command.append("      processFile = false;");
                     command.append("    }\n");
                     command.append("  }\n");
+                    if (parameterService.is(ParameterConstants.FILE_SYNC_VERIFY_TARGET)) {
+                        command.append("  if (processFile && !targetFile.isDirectory()) {\n");
+                        command.append("    long sourceVerifyValue;\n");
+                        command.append("    long targetVerifyValue;\n");
+                        boolean fileSyncVerifyUseCrc = parameterService.is(ParameterConstants.FILE_SYNC_VERIFY_USE_CRC);
+                        if (crc32Checksum < 0) {
+                            fileSyncVerifyUseCrc = false;
+                        }
+                        if (fileSyncVerifyUseCrc) {
+                            command.append("    sourceVerifyValue = " + crc32Checksum + "L;\n");
+                            command.append("    targetVerifyValue = org.apache.commons.io.FileUtils.checksumCRC32(targetFile);\n");
+                        } else {
+                            command.append("    sourceVerifyValue = " + snapshot.getFileSize() + ";\n");
+                            command.append("    targetVerifyValue = targetFile.length();\n");
+                        }
+                        command.append("    if (sourceVerifyValue != targetVerifyValue) {\n");
+                        String msg = "File \" + targetFile.getAbsolutePath() + \": ";
+                        if (fileSyncVerifyUseCrc) {
+                            msg += "CRCs do not match. Source CRC=\" + sourceVerifyValue + \", Target CRC=\" + targetVerifyValue + \"";
+                        } else {
+                            msg += "Sizes do not match. Source size=\" + sourceVerifyValue + \", Target size=\" + targetVerifyValue + \"";
+                        }
+                        command.append("      String msg = \"" + msg + "\";\n");
+                        command.append("      throw new java.io.IOException(msg);\n");
+                        command.append("    }\n");
+                        command.append("  }\n");
+                    }
                     command.append("  fileList.put(").append(targetFile)
                             .append(",\"");
                     command.append(eventType.getCode());

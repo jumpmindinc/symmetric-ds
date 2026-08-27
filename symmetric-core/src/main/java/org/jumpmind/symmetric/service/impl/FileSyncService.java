@@ -696,8 +696,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                     } else {
                         if (dataWriter == null) {
                             stagedResource = stagingManager.create(getStagingPathComponents(currentBatch));
-                            dataWriter = new FileSyncZipDataWriter(maxBytesToSync, compressionLevel, this,
-                                    engine.getNodeService(), stagedResource, engine.getExtensionService(), engine.getConfigurationService());
+                            dataWriter = new FileSyncZipDataWriter(maxBytesToSync, compressionLevel, stagedResource, engine);
                         }
                         log.debug("Extracting batch {} for filesync.", currentBatch.getNodeBatchId());
                         ((DataExtractorService) engine.getDataExtractorService()).extractOutgoingBatch(
