@@ -79,9 +79,11 @@ class DataExtractorServiceTest {
 
     static class TestableDataExtractorService extends DataExtractorService {
         AtomicInteger sendPasses = new AtomicInteger();
+
         TestableDataExtractorService(ISymmetricEngine engine) {
             super(engine);
         }
+
         @Override
         public List<ExtractRequest> getTablesForExtractByLoadId(long loadId) {
             sendPasses.incrementAndGet();
