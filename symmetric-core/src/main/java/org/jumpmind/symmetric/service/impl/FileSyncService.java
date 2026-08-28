@@ -752,8 +752,11 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                 stagedResource = null;
             }
             if (currentBatch != null) {
-                engine.getStatisticManager().incrementDataExtractedErrors(
-                        currentBatch.getChannelId(), 1);
+                if (processInfo.getStatus() == ProcessInfo.ProcessStatus.TRANSFERRING) {
+                    engine.getStatisticManager().incrementDataSentErrors(currentBatch.getChannelId(), 1);
+                } else {
+                    engine.getStatisticManager().incrementDataExtractedErrors(currentBatch.getChannelId(), 1);
+                }
                 currentBatch.setSqlMessage(ExceptionUtils.getRootMessage(e));
                 currentBatch.revertStatsOnError();
                 if (currentBatch.getStatus() != Status.IG) {
