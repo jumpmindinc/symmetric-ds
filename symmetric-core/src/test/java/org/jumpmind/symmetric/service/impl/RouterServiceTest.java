@@ -388,7 +388,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testBuildGapQualifiedQueryUsesGapRangeSqlWhenGapCountAtOrBelowThreshold() {
+    void testBuildGapQualifiedQueryUsesGapRangeSqlWhenGapCountAtOrBelowThreshold() {
         RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
         List<DataGap> gaps = Arrays.asList(new DataGap(1, 10), new DataGap(20, 30));
         RouterService.GapQualifiedQuery query = testRouterService.buildGapQualifiedQuery(gaps,
@@ -403,7 +403,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testBuildGapQualifiedQueryUsesStartIdSqlWhenGapCountExceedsThreshold() {
+    void testBuildGapQualifiedQueryUsesStartIdSqlWhenGapCountExceedsThreshold() {
         RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 1);
         List<DataGap> gaps = Arrays.asList(new DataGap(1, 10), new DataGap(20, 30));
         RouterService.GapQualifiedQuery query = testRouterService.buildGapQualifiedQuery(gaps,
@@ -426,7 +426,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testGetReadyChannelsMapsChannelIdsFromQueryResults() {
+    void testGetReadyChannelsMapsChannelIdsFromQueryResults() {
         RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
         testRouterService.gapDetector = mock(DataGapDetector.class);
         when(testRouterService.gapDetector.getDataGaps()).thenReturn(Arrays.asList(new DataGap(1, 10)));
@@ -439,7 +439,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testFindUnroutedDataCreateTimeRangeByChannelWithGapsMapsChannelDataCreateTimeRanges() {
+    void testFindUnroutedDataCreateTimeRangeByChannelWithGapsMapsChannelDataCreateTimeRanges() {
         RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
         testRouterService.gapDetector = mock(DataGapDetector.class);
         when(testRouterService.gapDetector.getDataGaps()).thenReturn(Arrays.asList(new DataGap(1, 10)));
@@ -458,7 +458,7 @@ public class RouterServiceTest {
     }
 
     @Test
-    public void testFindUnroutedDataCreateTimeRangeByChannelReturnsEmptyListWhenGapsNotYetDetected() {
+    void testFindUnroutedDataCreateTimeRangeByChannelReturnsEmptyListWhenGapsNotYetDetected() {
         assertEquals(Collections.emptyList(), routerService.findUnroutedDataCreateTimeRangeByChannel());
     }
 }
