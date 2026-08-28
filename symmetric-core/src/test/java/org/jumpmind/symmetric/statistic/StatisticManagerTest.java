@@ -57,6 +57,7 @@ import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
@@ -783,7 +784,7 @@ class StatisticManagerTest {
         IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
         IUpDownCounter counter = mock(IUpDownCounter.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
-        when(metricsService.getUpDownCounter(anyString(), any())).thenReturn(counter);
+        when(metricsService.registerUpDownCounter(anyString(), any())).thenReturn(counter);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.incrementDataSent("chan1", 5L);
         assertEquals(5L, manager.getWorkingChannelStats().get("chan1").getDataSent());
@@ -803,14 +804,16 @@ class StatisticManagerTest {
     }
 
     @Test
-    void updateDataMinCreateTime_withNonNullMetricsService_reachesGaugeNullCheck() {
+    void updateDataMinCreateTime_withNonNullMetricsGauge_invokesGaugeSetValue() {
         IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymLongGauge gauge = mock(ISymLongGauge.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
-        when(metricsService.getLongGauge(anyString(), any())).thenReturn(null);
+        when(metricsService.registerLongGauge(anyString(), any())).thenReturn(gauge);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         Date minTime = new Date();
         manager.updateDataMinCreateTime("chan1", minTime);
         assertEquals(minTime, manager.getWorkingChannelStats().get("chan1").getDataMinCreateTime());
+        verify(gauge).setValue(minTime.getTime());
     }
 
     @Test

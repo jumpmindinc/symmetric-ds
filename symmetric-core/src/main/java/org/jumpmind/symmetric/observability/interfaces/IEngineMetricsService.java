@@ -55,6 +55,8 @@ public interface IEngineMetricsService extends IMetricsService {
 
     IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition, MetricAttributeList attrs);
 
+    IUpDownCounter registerUpDownCounter(String metricId, MetricAttributeList attrs);
+
     /**
      * Returns the monotonic counter registered for {@code metricId} with no attributes. MetricDefinitionFactory must have already registered the metric.
      */

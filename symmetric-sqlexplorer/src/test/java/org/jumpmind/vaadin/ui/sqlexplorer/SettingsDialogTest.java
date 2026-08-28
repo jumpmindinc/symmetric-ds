@@ -58,13 +58,13 @@ class SettingsDialogTest extends BrowserlessTest {
     @Test
     void init_textFieldsArePresent() {
         createAndOpen();
-        assertTrue($(TextField.class).exists());
+        assertTrue(find(TextField.class).exists());
     }
 
     @Test
     void init_checkboxesArePresent() {
         createAndOpen();
-        assertTrue($(Checkbox.class).exists());
+        assertTrue(find(Checkbox.class).exists());
     }
 
     @Test
@@ -83,7 +83,7 @@ class SettingsDialogTest extends BrowserlessTest {
         settings.getProperties().put(Settings.SQL_EXPLORER_DELIMITER, ";");
         when(settingsProvider.get()).thenReturn(settings);
         createAndOpen();
-        TextField delimiterField = $(TextField.class).all().stream()
+        TextField delimiterField = find(TextField.class).all().stream()
                 .filter(f -> ";".equals(f.getValue()))
                 .findFirst()
                 .orElse(null);
@@ -97,14 +97,14 @@ class SettingsDialogTest extends BrowserlessTest {
         settings.getProperties().put(Settings.SQL_EXPLORER_SHOW_ROW_NUMBERS, "true");
         when(settingsProvider.get()).thenReturn(settings);
         createAndOpen();
-        boolean anyChecked = $(Checkbox.class).all().stream().anyMatch(Checkbox::getValue);
+        boolean anyChecked = find(Checkbox.class).all().stream().anyMatch(Checkbox::getValue);
         assertTrue(anyChecked);
     }
 
     @Test
     void saveButton_isPresentAndVisible() {
         createAndOpen();
-        Button saveButton = $(Button.class).all().stream()
+        Button saveButton = find(Button.class).all().stream()
                 .filter(b -> "Save".equals(b.getText()))
                 .findFirst()
                 .orElse(null);
@@ -115,7 +115,7 @@ class SettingsDialogTest extends BrowserlessTest {
     @Test
     void init_defaultSettingsPopulateFields() {
         createAndOpen();
-        boolean anyNonEmpty = $(TextField.class).all().stream()
+        boolean anyNonEmpty = find(TextField.class).all().stream()
                 .anyMatch(f -> !f.getValue().isEmpty());
         assertTrue(anyNonEmpty);
     }
@@ -123,7 +123,7 @@ class SettingsDialogTest extends BrowserlessTest {
     @Test
     void save_writesDelimiterValueToSettings() {
         SettingsDialog dialog = createAndOpen();
-        TextField delimiterField = $(TextField.class).all().stream()
+        TextField delimiterField = find(TextField.class).all().stream()
                 .filter(f -> "Delimiter".equals(f.getLabel()))
                 .findFirst().orElseThrow();
         delimiterField.setValue(",");

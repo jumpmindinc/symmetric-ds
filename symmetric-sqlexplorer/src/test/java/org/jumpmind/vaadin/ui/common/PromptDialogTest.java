@@ -42,7 +42,7 @@ class PromptDialogTest extends BrowserlessTest {
     }
 
     private Button findButton(String text) {
-        return $(Button.class).all().stream()
+        return find(Button.class).all().stream()
                 .filter(b -> text.equals(b.getText()))
                 .findFirst().orElseThrow();
     }
