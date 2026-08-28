@@ -44,6 +44,7 @@ import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.BatchId;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.IncomingBatchSummary;
+import org.jumpmind.symmetric.model.IncomingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.service.FilterCriterion;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IIncomingBatchService;
@@ -468,6 +469,12 @@ public class IncomingBatchService extends AbstractService implements IIncomingBa
     }
 
     @Override
+    public List<IncomingBatchSummaryByNodeBriefStats> findIncomingBatchSummaryByNodeBriefStats() {
+        return sqlTemplateDirty.query(getSql("selectIncomingBatchSummaryByNodeBriefStatsSql"),
+                new IncomingBatchSummaryByNodeBriefStatsMapper());
+    }
+
+    @Override
     public Map<String, Date> findLastUpdatedByChannel() {
         Map<String, Date> captureMap = new HashMap<String, Date>();
         LastCaptureByChannelMapper mapper = new LastCaptureByChannelMapper(captureMap);
@@ -637,6 +644,18 @@ public class IncomingBatchService extends AbstractService implements IIncomingBa
             summary.setTransferMillis(rs.getLong("total_network_millis"));
             summary.setLoadMillis(rs.getLong("total_load_millis"));
             return summary;
+        }
+    }
+
+    static class IncomingBatchSummaryByNodeBriefStatsMapper implements ISqlRowMapper<IncomingBatchSummaryByNodeBriefStats> {
+        @Override
+        public IncomingBatchSummaryByNodeBriefStats mapRow(Row row) {
+            return new IncomingBatchSummaryByNodeBriefStats(
+                    row.getString("node_id"),
+                    row.getString("status"),
+                    row.getDateTime("batch_date"),
+                    row.getLong("batches"),
+                    row.getLong("data_rows"));
         }
     }
 }

@@ -144,7 +144,7 @@ The Initial Load Extract Job processes <<EXTRACT_REQUEST>>s.  See <<Initial Load
 
 ==== Refresh Backlog Report Job
 
-The Refresh Backlog Report Job queries <<OUTGOING_BATCH>> to compute batch and row counts (by node and batch status) to update the outgoing backlog metrics gauges.
+The Refresh Backlog Report Job queries <<OUTGOING_BATCH>> and <<INCOMING_BATCH>> to compute batch and row counts (by node and batch status) to update the batch status metrics gauges.
 
 ifdef::pro[]
 Also, this job saves a snapshot of the outgoing backlog to the <<ANALYTICS_REPORT>> table, which is displayed under the Analytics tab.
