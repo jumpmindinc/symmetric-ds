@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.service;
 import java.util.List;
 import java.util.Map;
 
+import org.jumpmind.symmetric.model.ChannelDataCreateTimeRange;
 import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.DataMetaData;
 import org.jumpmind.symmetric.model.Node;
@@ -41,6 +42,8 @@ public interface IRouterService extends IService {
     public long getMaxDataIdAlreadyRouted();
 
     public long getUnroutedDataCount();
+
+    public List<ChannelDataCreateTimeRange> findUnroutedDataCreateTimeRangeByChannel();
 
     public boolean shouldDataBeRouted(SimpleRouterContext context, DataMetaData dataMetaData,
             Node node, boolean initialLoad, boolean initialLoadSelectUsed, TriggerRouter triggerRouter);

@@ -149,6 +149,11 @@ The Refresh Backlog Report Job queries <<OUTGOING_BATCH>> and <<INCOMING_BATCH>>
 ifdef::pro[]
 Also, this job saves a snapshot of the outgoing backlog to the <<ANALYTICS_REPORT>> table, which is displayed under the Analytics tab.
 
+==== Refresh Data Create Time Metrics Job
+
+The Refresh Data Create Time Metrics Job queries <<DATA>> for the oldest and most recent create time of unrouted
+rows, grouped by channel, to update the `rows.create.time.min` and `rows.create.time.max` metrics.
+
 ==== Compare Job
 
 The Compare Job processes <<COMPARE_REQUEST>>s.  If it finds uncompleted requests, it will keep the job running
