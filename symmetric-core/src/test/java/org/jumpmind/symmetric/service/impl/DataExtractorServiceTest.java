@@ -92,7 +92,7 @@ class DataExtractorServiceTest {
     }
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         engine = mock(ISymmetricEngine.class);
         when(engine.getTablePrefix()).thenReturn("sym");
         when(engine.getNodeId()).thenReturn("source");
@@ -129,7 +129,7 @@ class DataExtractorServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void selectFromSymDataSource_csvValuesAreExtracted_triggerRouterIsNotMarkedAsMissing() {
+    void selectFromSymDataSource_csvValuesAreExtracted_triggerRouterIsNotMarkedAsMissing() {
         ISqlReadCursor<Data> cursor = mock(ISqlReadCursor.class);
         TriggerHistory hist = new TriggerHistory("foo", "id", "id");
         hist.setTriggerId(AbstractFileParsingRouter.TRIGGER_ID_FILE_PARSER);
