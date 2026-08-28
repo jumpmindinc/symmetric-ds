@@ -86,7 +86,7 @@ class FileSyncServiceTest {
     }
 
     @Test
-    void sendFiles_failureDuringExtractPhase_incrementsDataExtractedErrorsOnly() throws Exception {
+    void sendFiles_failureDuringExtractPhase_incrementsDataExtractedErrorsOnly() {
         IStatisticManager statisticManager = mock(IStatisticManager.class);
         IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
         FileSyncService service = spy(buildFileSyncService(statisticManager, outgoingBatchService));
@@ -118,11 +118,14 @@ class FileSyncServiceTest {
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
-        when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
-        when(engine.getCacheManager()).thenReturn(mock(ICacheManager.class));
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
+        ICacheManager cacheManager = mock(ICacheManager.class);
+        when(engine.getCacheManager()).thenReturn(cacheManager);
         when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
         when(engine.getStatisticManager()).thenReturn(statisticManager);
-        when(engine.getConfigurationService()).thenReturn(mock(IConfigurationService.class));
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
         return new FileSyncService(engine);
     }
 }

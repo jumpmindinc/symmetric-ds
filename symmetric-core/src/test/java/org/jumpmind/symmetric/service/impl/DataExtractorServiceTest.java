@@ -160,25 +160,35 @@ public class DataExtractorServiceTest {
         when(testSymmetricDialect.getPlatform()).thenReturn(testPlatform);
         when(engine.getSymmetricDialect()).thenReturn(testSymmetricDialect);
         when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
-        when(engine.getRouterService()).thenReturn(mock(IRouterService.class));
-        when(engine.getDataService()).thenReturn(mock(IDataService.class));
-        when(engine.getConfigurationService()).thenReturn(mock(IConfigurationService.class));
-        when(engine.getTriggerRouterService()).thenReturn(mock(ITriggerRouterService.class));
+        IRouterService testRouterService = mock(IRouterService.class);
+        when(engine.getRouterService()).thenReturn(testRouterService);
+        IDataService testDataService = mock(IDataService.class);
+        when(engine.getDataService()).thenReturn(testDataService);
+        IConfigurationService testConfigurationService = mock(IConfigurationService.class);
+        when(engine.getConfigurationService()).thenReturn(testConfigurationService);
+        ITriggerRouterService testTriggerRouterService = mock(ITriggerRouterService.class);
+        when(engine.getTriggerRouterService()).thenReturn(testTriggerRouterService);
         INodeService testNodeService = mock(INodeService.class);
         Node sourceNode = new Node();
         sourceNode.setNodeId("source1");
         when(testNodeService.findIdentity()).thenReturn(sourceNode);
         when(testNodeService.findIdentityNodeId()).thenReturn("source1");
         when(engine.getNodeService()).thenReturn(testNodeService);
-        when(engine.getTransformService()).thenReturn(mock(ITransformService.class));
+        ITransformService testTransformService = mock(ITransformService.class);
+        when(engine.getTransformService()).thenReturn(testTransformService);
         when(statisticManager.newProcessInfo(any(ProcessInfoKey.class)))
                 .thenAnswer(invocation -> new ProcessInfo(invocation.getArgument(0)));
         when(engine.getStatisticManager()).thenReturn(statisticManager);
-        when(engine.getStagingManager()).thenReturn(mock(IStagingManager.class));
-        when(engine.getNodeCommunicationService()).thenReturn(mock(INodeCommunicationService.class));
-        when(engine.getClusterService()).thenReturn(mock(IClusterService.class));
-        when(engine.getSequenceService()).thenReturn(mock(ISequenceService.class));
-        when(engine.getInitialLoadService()).thenReturn(mock(IInitialLoadService.class));
+        IStagingManager testStagingManager = mock(IStagingManager.class);
+        when(engine.getStagingManager()).thenReturn(testStagingManager);
+        INodeCommunicationService testNodeCommunicationService = mock(INodeCommunicationService.class);
+        when(engine.getNodeCommunicationService()).thenReturn(testNodeCommunicationService);
+        IClusterService testClusterService = mock(IClusterService.class);
+        when(engine.getClusterService()).thenReturn(testClusterService);
+        ISequenceService testSequenceService = mock(ISequenceService.class);
+        when(engine.getSequenceService()).thenReturn(testSequenceService);
+        IInitialLoadService testInitialLoadService = mock(IInitialLoadService.class);
+        when(engine.getInitialLoadService()).thenReturn(testInitialLoadService);
         return new DataExtractorService(engine);
     }
 }
