@@ -955,7 +955,7 @@ public class StatisticManager implements IStatisticManager {
             IEngineMetricsService svc = engine.getMetricsService();
             if (svc == null)
                 return;
-            ISymDoubleGauge g = svc.getDoubleGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
+            ISymDoubleGauge g = svc.registerDoubleGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
             if (g != null)
                 g.setValue(value);
         } catch (Exception e) {

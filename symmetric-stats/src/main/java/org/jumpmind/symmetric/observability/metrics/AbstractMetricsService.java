@@ -187,6 +187,10 @@ abstract class AbstractMetricsService implements IMetricsService {
         return m instanceof ISymDoubleGauge g ? g : null;
     }
 
+    public ISymDoubleGauge registerDoubleGauge(String metricId, MetricAttributeList attrs) {
+        return registerDoubleGauge(metricsManager.getMetricDefinitionFactory().getDefinition(metricId), attrs);
+    }
+
     public ISymLongGauge registerLongGauge(String metricId, MetricAttributeList attrs) {
         return registerLongGauge(metricsManager.getMetricDefinitionFactory().getDefinition(metricId), attrs);
     }

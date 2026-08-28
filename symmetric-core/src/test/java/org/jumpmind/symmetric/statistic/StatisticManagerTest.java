@@ -796,11 +796,23 @@ class StatisticManagerTest {
         IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
         ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
-        when(metricsService.getDoubleGauge(anyString(), any())).thenReturn(gauge);
+        when(metricsService.registerDoubleGauge(anyString(), any())).thenReturn(gauge);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.setDataUnRouted("chan1", 10L);
         assertEquals(10L, manager.getWorkingChannelStats().get("chan1").getDataUnRouted());
         verify(gauge).setValue(10.0);
+    }
+
+    @Test
+    void setDataUnRouted_withZeroCount_clearsGaugeToZero() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.registerDoubleGauge(anyString(), any())).thenReturn(gauge);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.setDataUnRouted("chan1", 0L);
+        assertEquals(0L, manager.getWorkingChannelStats().get("chan1").getDataUnRouted());
+        verify(gauge).setValue(0.0);
     }
 
     @Test

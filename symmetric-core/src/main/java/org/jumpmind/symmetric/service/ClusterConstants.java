@@ -61,7 +61,7 @@ public class ClusterConstants {
     public static final String LOG_MINER = "Log Miner";
     public static final String REFRESH_ANALYTICS = "Refresh Analytics";
     public static final String REFRESH_BACKLOG_REPORT = "Refresh Backlog Report";
-    public static final String REFRESH_DATA_CREATE_TIME_METRICS = "Refresh Data Create Time Metrics";
+    public static final String REFRESH_UNROUTED_DATA_METRICS = "Refresh Unrouted Data Metrics";
     public static final String JUMPMIND_TOKEN_REFRESH = "Jumpmind Token Refresh";
     public static final String FILE_SYNC_SHARED = "FILE_SYNC_SHARED";
     public static final String TYPE_CLUSTER = "CLUSTER";

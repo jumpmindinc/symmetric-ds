@@ -50,6 +50,7 @@ import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.ChannelDataCreateTimeRange;
+import org.jumpmind.symmetric.model.ChannelDataUnroutedCount;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.Node;
@@ -460,5 +461,44 @@ public class RouterServiceTest {
     @Test
     void testFindUnroutedDataCreateTimeRangeByChannelReturnsEmptyListWhenGapsNotYetDetected() {
         assertEquals(Collections.emptyList(), routerService.findUnroutedDataCreateTimeRangeByChannel());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void stubNoArgQueryToInvokeMapper(ISqlTemplate sqlTemplate, List<Row> rows) {
+        when(sqlTemplate.query(any(), any(ISqlRowMapper.class))).thenAnswer(invocation -> {
+            ISqlRowMapper<Object> mapper = invocation.getArgument(1);
+            List<Object> results = new ArrayList<>();
+            for (Row row : rows) {
+                results.add(mapper.mapRow(row));
+            }
+            return results;
+        });
+    }
+
+    @Test
+    void testFindUnroutedDataCountByChannelMapsChannelDataUnroutedCounts() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
+        Row row = new Row(2);
+        row.put("channel_id", "chan1");
+        row.put("unrouted_count", 5L);
+        stubNoArgQueryToInvokeMapper(testRouterService.sqlTemplateDirty, Arrays.asList(row));
+        List<ChannelDataUnroutedCount> counts = testRouterService.findUnroutedDataCountByChannel();
+        assertEquals(1, counts.size());
+        assertEquals("chan1", counts.get(0).channelId());
+        assertEquals(5L, counts.get(0).count());
+    }
+
+    @Test
+    void testFindUnroutedDataCountByChannelIgnoresGapDetectorState() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
+        testRouterService.gapDetector = mock(DataGapDetector.class);
+        when(testRouterService.gapDetector.getDataGaps()).thenReturn(Collections.emptyList());
+        Row row = new Row(2);
+        row.put("channel_id", "chan1");
+        row.put("unrouted_count", 5L);
+        stubNoArgQueryToInvokeMapper(testRouterService.sqlTemplateDirty, Arrays.asList(row));
+        List<ChannelDataUnroutedCount> counts = testRouterService.findUnroutedDataCountByChannel();
+        assertEquals(1, counts.size());
+        assertEquals("chan1", counts.get(0).channelId());
     }
 }
