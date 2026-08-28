@@ -39,9 +39,11 @@ import java.util.List;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
+import org.jumpmind.symmetric.model.IncomingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.model.OutgoingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusMetricsMap;
+import org.jumpmind.symmetric.service.IIncomingBatchService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +54,7 @@ class RefreshBacklogReportJobTest {
     private ISymmetricEngine engine;
     private IParameterService parameterService;
     private IOutgoingBatchService outgoingBatchService;
+    private IIncomingBatchService incomingBatchService;
     private IEngineMetricsService metricsService;
     private INodeBatchStatusMetricsMap batchMetrics;
     private ThreadPoolTaskScheduler taskScheduler;
@@ -61,6 +64,7 @@ class RefreshBacklogReportJobTest {
         engine = mock(ISymmetricEngine.class);
         parameterService = mock(IParameterService.class);
         outgoingBatchService = mock(IOutgoingBatchService.class);
+        incomingBatchService = mock(IIncomingBatchService.class);
         metricsService = mock(IEngineMetricsService.class);
         batchMetrics = mock(INodeBatchStatusMetricsMap.class);
         taskScheduler = mock(ThreadPoolTaskScheduler.class);
@@ -68,6 +72,9 @@ class RefreshBacklogReportJobTest {
         when(parameterService.getExternalId()).thenReturn("test-node");
         when(parameterService.getInt(anyString())).thenReturn(10000);
         when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
+        when(engine.getIncomingBatchService()).thenReturn(incomingBatchService);
+        when(outgoingBatchService.findOutgoingBatchSummaryByNodeBriefStats()).thenReturn(Collections.emptyList());
+        when(incomingBatchService.findIncomingBatchSummaryByNodeBriefStats()).thenReturn(Collections.emptyList());
         when(engine.getMetricsService()).thenReturn(metricsService);
         when(metricsService.createNodeBatchStatusMetricsMap(any(), any())).thenReturn(batchMetrics);
     }
@@ -78,6 +85,10 @@ class RefreshBacklogReportJobTest {
 
     private static OutgoingBatchSummaryByNodeBriefStats row(String nodeId, String status, long batches, long rows) {
         return new OutgoingBatchSummaryByNodeBriefStats(nodeId, status, new Date(), batches, rows);
+    }
+
+    private static IncomingBatchSummaryByNodeBriefStats incomingRow(String nodeId, String status, long batches, long rows) {
+        return new IncomingBatchSummaryByNodeBriefStats(nodeId, status, new Date(), batches, rows);
     }
 
     @Test
@@ -98,59 +109,64 @@ class RefreshBacklogReportJobTest {
 
     @Test
     void doJob_callsFindOutgoingBatchSummaryByNodeBriefStats() {
-        when(outgoingBatchService.findOutgoingBatchSummaryByNodeBriefStats()).thenReturn(Collections.emptyList());
         assertDoesNotThrow(() -> newJob().doJob(false));
         verify(outgoingBatchService).findOutgoingBatchSummaryByNodeBriefStats();
     }
 
     @Test
-    void populateNodeMetrics_emptyList_noBatchAndRowCountsCalled() {
+    void doJob_callsFindIncomingBatchSummaryByNodeBriefStats() {
+        assertDoesNotThrow(() -> newJob().doJob(false));
+        verify(incomingBatchService).findIncomingBatchSummaryByNodeBriefStats();
+    }
+
+    @Test
+    void populateOutgoingNodeMetrics_emptyList_noBatchAndRowCountsCalled() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(Collections.emptyList());
+        job.populateOutgoingNodeMetrics(Collections.emptyList());
         verify(batchMetrics, never()).setBatchAndRowCounts(any(), any(), anyLong(), anyLong());
     }
 
     @Test
-    void populateNodeMetrics_blankNodeId_isSkipped() {
+    void populateOutgoingNodeMetrics_blankNodeId_isSkipped() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(row("  ", "R", 1, 10)));
+        job.populateOutgoingNodeMetrics(List.of(row("  ", "R", 1, 10)));
         verify(batchMetrics, never()).setBatchAndRowCounts(any(), any(), anyLong(), anyLong());
     }
 
     @Test
-    void populateNodeMetrics_emptyStatus_isSkipped() {
+    void populateOutgoingNodeMetrics_emptyStatus_isSkipped() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(row("node1", "", 1, 10)));
+        job.populateOutgoingNodeMetrics(List.of(row("node1", "", 1, 10)));
         verify(batchMetrics, never()).setBatchAndRowCounts(any(), any(), anyLong(), anyLong());
     }
 
     @Test
-    void populateNodeMetrics_unroutedNodeId_isSkipped() {
+    void populateOutgoingNodeMetrics_unroutedNodeId_isSkipped() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(row(Constants.UNROUTED_NODE_ID, "R", 1, 10)));
+        job.populateOutgoingNodeMetrics(List.of(row(Constants.UNROUTED_NODE_ID, "R", 1, 10)));
         verify(batchMetrics, never()).setBatchAndRowCounts(any(), any(), anyLong(), anyLong());
     }
 
     @Test
-    void populateNodeMetrics_singleEntry_flushesAtEndOfList() {
+    void populateOutgoingNodeMetrics_singleEntry_flushesAtEndOfList() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(row("node1", "R", 5, 100)));
+        job.populateOutgoingNodeMetrics(List.of(row("node1", "R", 5, 100)));
         verify(batchMetrics, times(1)).setBatchAndRowCounts("node1", "R", 5L, 100L);
     }
 
     @Test
-    void populateNodeMetrics_multipleEntriesSameNodeAndStatus_accumulates() {
+    void populateOutgoingNodeMetrics_multipleEntriesSameNodeAndStatus_accumulates() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(
+        job.populateOutgoingNodeMetrics(List.of(
                 row("node1", "R", 3, 50),
                 row("node1", "R", 2, 30)));
         verify(batchMetrics, times(1)).setBatchAndRowCounts("node1", "R", 5L, 80L);
     }
 
     @Test
-    void populateNodeMetrics_differentNodeId_flushesOnTransitionAndAtEnd() {
+    void populateOutgoingNodeMetrics_differentNodeId_flushesOnTransitionAndAtEnd() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(
+        job.populateOutgoingNodeMetrics(List.of(
                 row("node1", "R", 3, 50),
                 row("node2", "R", 2, 30)));
         verify(batchMetrics).setBatchAndRowCounts("node1", "R", 3L, 50L);
@@ -158,9 +174,9 @@ class RefreshBacklogReportJobTest {
     }
 
     @Test
-    void populateNodeMetrics_differentStatus_flushesOnTransitionAndAtEnd() {
+    void populateOutgoingNodeMetrics_differentStatus_flushesOnTransitionAndAtEnd() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(
+        job.populateOutgoingNodeMetrics(List.of(
                 row("node1", "R", 3, 50),
                 row("node1", "E", 1, 5)));
         verify(batchMetrics).setBatchAndRowCounts("node1", "R", 3L, 50L);
@@ -168,27 +184,75 @@ class RefreshBacklogReportJobTest {
     }
 
     @Test
-    void populateNodeMetrics_firstCall_initializesOutgoingBatchMetrics() {
+    void populateOutgoingNodeMetrics_firstCall_initializesOutgoingBatchMetrics() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(row("node1", "R", 1, 10)));
+        job.populateOutgoingNodeMetrics(List.of(row("node1", "R", 1, 10)));
         verify(metricsService).createNodeBatchStatusMetricsMap(any(), any());
     }
 
     @Test
-    void populateNodeMetrics_secondCall_reusesExistingMetricsMap() {
+    void populateOutgoingNodeMetrics_secondCall_reusesExistingMetricsMap() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(row("node1", "R", 1, 10)));
-        job.populateNodeMetrics(List.of(row("node2", "W", 2, 20)));
+        job.populateOutgoingNodeMetrics(List.of(row("node1", "R", 1, 10)));
+        job.populateOutgoingNodeMetrics(List.of(row("node2", "W", 2, 20)));
         verify(metricsService, times(1)).createNodeBatchStatusMetricsMap(any(), any());
     }
 
     @Test
-    void populateNodeMetrics_mixedSkippedAndValidEntries_onlyFlusheValid() {
+    void populateOutgoingNodeMetrics_mixedSkippedAndValidEntries_onlyFlusheValid() {
         RefreshBacklogReportJob job = newJob();
-        job.populateNodeMetrics(List.of(
+        job.populateOutgoingNodeMetrics(List.of(
                 row(Constants.UNROUTED_NODE_ID, "R", 1, 10),
                 row("", "R", 1, 10),
                 row("node1", "R", 4, 80)));
         verify(batchMetrics, times(1)).setBatchAndRowCounts("node1", "R", 4L, 80L);
+    }
+
+    @Test
+    void populateIncomingNodeMetrics_emptyList_noBatchAndRowCountsCalled() {
+        RefreshBacklogReportJob job = newJob();
+        job.populateIncomingNodeMetrics(Collections.emptyList());
+        verify(batchMetrics, never()).setBatchAndRowCounts(any(), any(), anyLong(), anyLong());
+    }
+
+    @Test
+    void populateIncomingNodeMetrics_singleEntry_flushesAtEndOfList() {
+        RefreshBacklogReportJob job = newJob();
+        job.populateIncomingNodeMetrics(List.of(incomingRow("node1", "OK", 5, 100)));
+        verify(batchMetrics, times(1)).setBatchAndRowCounts("node1", "OK", 5L, 100L);
+    }
+
+    @Test
+    void populateIncomingNodeMetrics_multipleEntriesSameNodeAndStatus_accumulates() {
+        RefreshBacklogReportJob job = newJob();
+        job.populateIncomingNodeMetrics(List.of(
+                incomingRow("node1", "OK", 3, 50),
+                incomingRow("node1", "OK", 2, 30)));
+        verify(batchMetrics, times(1)).setBatchAndRowCounts("node1", "OK", 5L, 80L);
+    }
+
+    @Test
+    void populateIncomingNodeMetrics_unroutedNodeId_isSkipped() {
+        RefreshBacklogReportJob job = newJob();
+        job.populateIncomingNodeMetrics(List.of(incomingRow(Constants.UNROUTED_NODE_ID, "OK", 1, 10)));
+        verify(batchMetrics, never()).setBatchAndRowCounts(any(), any(), anyLong(), anyLong());
+    }
+
+    @Test
+    void populateIncomingNodeMetrics_firstCall_initializesIncomingBatchMetrics() {
+        RefreshBacklogReportJob job = newJob();
+        job.populateIncomingNodeMetrics(List.of(incomingRow("node1", "OK", 1, 10)));
+        verify(metricsService).createNodeBatchStatusMetricsMap(any(), any());
+    }
+
+    @Test
+    void doJob_populatesBothOutgoingAndIncomingMetrics() {
+        when(outgoingBatchService.findOutgoingBatchSummaryByNodeBriefStats())
+                .thenReturn(List.of(row("node1", "R", 1, 10)));
+        when(incomingBatchService.findIncomingBatchSummaryByNodeBriefStats())
+                .thenReturn(List.of(incomingRow("node1", "OK", 2, 20)));
+        assertDoesNotThrow(() -> newJob().doJob(false));
+        verify(batchMetrics).setBatchAndRowCounts("node1", "R", 1L, 10L);
+        verify(batchMetrics).setBatchAndRowCounts("node1", "OK", 2L, 20L);
     }
 }

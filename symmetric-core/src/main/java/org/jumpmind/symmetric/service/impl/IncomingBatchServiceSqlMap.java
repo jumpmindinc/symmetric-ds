@@ -153,7 +153,11 @@ public class IncomingBatchServiceSqlMap extends AbstractSqlMap {
         putSql("whereStatusAndNodeAndChannelGroupByStatusSql",
                 " where b.status in (:STATUS_LIST) and b.node_id = ? and b.channel_id = ? group by b.status order by oldest_batch_time asc   ");
 
-   
+        putSql("selectIncomingBatchSummaryByNodeBriefStatsSql",
+                "select b.node_id, b.status, CAST(b.create_time AS DATE) as batch_date, count(*) as batches, sum(b.data_row_count) as data_rows "
+                        + " from $(incoming_batch) b "
+                        + " GROUP BY b.node_id, b.status, CAST(b.create_time AS DATE)"
+                        + " ORDER BY b.node_id, b.status, CAST(b.create_time AS DATE)");
     }
 
 }

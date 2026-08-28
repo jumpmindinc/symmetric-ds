@@ -74,7 +74,9 @@ import com.vaadin.flow.function.ValueProvider;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.KeyModifier;
 import com.vaadin.flow.component.Shortcuts;
@@ -179,7 +181,7 @@ public class TabularResultLayout extends VerticalLayout {
             menu.addItem(ACTION_UPDATE, event -> handleAction(ACTION_UPDATE));
             menu.addItem(ACTION_DELETE, event -> handleAction(ACTION_DELETE));
             if (resultRelation instanceof Table table && table.getForeignKeyCount() > 0) {
-                followToMenu = menu.addItem("Follow to", null);
+                followToMenu = menu.addItem("Follow to", (ComponentEventListener<ClickEvent<MenuItem>>) null);
                 buildFollowToMenu();
             }
             Editor<List<Object>> editor = grid.getEditor();
