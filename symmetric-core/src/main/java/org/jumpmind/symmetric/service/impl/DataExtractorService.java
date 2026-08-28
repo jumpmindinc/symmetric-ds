@@ -587,6 +587,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             Set<String> channelsProcessed = new HashSet<String>();
             long batchesSelectedAtMs = System.currentTimeMillis();
             OutgoingBatch currentBatch = null;
+            boolean isSendPhaseError = false;
             ExecutorService executor = null;
             Node sourceNode = nodeService.findIdentity();
             try {
@@ -706,6 +707,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                             writeKeepAliveAck(writer, sourceNode, streamToFileEnabled);
                         } catch (Exception e) {
                             if (transferInfo != null && transferInfo.getStatus() != ProcessStatus.OK) {
+                                isSendPhaseError = transferInfo.getStatus() == ProcessStatus.TRANSFERRING;
                                 transferInfo.setStatus(ProcessStatus.ERROR);
                             }
                             if (ExceptionUtils.is(e, BadPaddingException.class, IllegalBlockSizeException.class)) {
@@ -769,7 +771,11 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         if (currentBatch.getStatus() != Status.IG && currentBatch.getStatus() != Status.OK) {
                             currentBatch.setStatus(Status.ER);
                             currentBatch.setErrorFlag(isNewErrorStaging ? false : true);
-                            statisticManager.incrementDataExtractedErrors(currentBatch.getChannelId(), 1);
+                            if (isSendPhaseError) {
+                                statisticManager.incrementDataSentErrors(currentBatch.getChannelId(), 1);
+                            } else {
+                                statisticManager.incrementDataExtractedErrors(currentBatch.getChannelId(), 1);
+                            }
                             extractInfo.setStatus(ProcessInfo.ProcessStatus.ERROR);
                         }
                         outgoingBatchService.updateOutgoingBatch(currentBatch);

@@ -30,6 +30,7 @@ import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.BatchId;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.IncomingBatchSummary;
+import org.jumpmind.symmetric.model.IncomingBatchSummaryByNodeBriefStats;
 
 /**
  * This service provides an API to access to the incoming batch table.
@@ -92,6 +93,8 @@ public interface IIncomingBatchService {
 
     public List<IncomingBatchSummary> findIncomingBatchSummaryByNodeAndChannel(String nodeId, String channelId,
             Date sinceCreateTime, Status... statuses);
+
+    public List<IncomingBatchSummaryByNodeBriefStats> findIncomingBatchSummaryByNodeBriefStats();
 
     public Map<String, Date> findLastUpdatedByChannel();
 
