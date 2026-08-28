@@ -319,7 +319,7 @@ public class SelectFromSymDataSource extends SelectFromSource {
         if (outgoingBatch.getLoadId() > 0) {
             TableReloadStatus tableReloadStatus = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(outgoingBatch.getLoadId(), engine.getNodeId());
             if (tableReloadStatus != null && tableReloadStatus.isCompleted()) {
-                log.warn("Discarding create event (FKs/indexes) for batch {} table {} because load {} is already complete or load was cancelled",
+                log.warn("Discarding create event (FKs/indexes) for batch {} and table {}, because load {} is already complete or cancelled.",
                         outgoingBatch.getBatchId(), outgoingBatch.getSummary(), outgoingBatch.getLoadId());
                 return false;
             }
