@@ -266,20 +266,20 @@ class DataExtractorServiceTest {
     void extract_failureDuringSendPhase_incrementsDataSentErrorsOnly() throws Exception {
         IStatisticManager statisticManager = mock(IStatisticManager.class);
         IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
-        DataExtractorService service = spy(buildExtractService(statisticManager, outgoingBatchService));
+        DataExtractorService extractService = spy(buildExtractService(statisticManager, outgoingBatchService));
         OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
         batch.setBatchId(1);
         when(outgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
-        doReturn(new DataExtractorService.FutureOutgoingBatch(batch, false)).when(service)
+        doReturn(new DataExtractorService.FutureOutgoingBatch(batch, false)).when(extractService)
                 .extractBatch(any(OutgoingBatch.class), any(), any(ProcessInfo.class), any(Node.class), any(), any(), anyList());
-        doThrow(new RuntimeException("simulated send failure")).when(service)
+        doThrow(new RuntimeException("simulated send failure")).when(extractService)
                 .sendOutgoingBatch(any(ProcessInfo.class), any(Node.class), any(OutgoingBatch.class), anyBoolean(), any(), any(), any());
-        Node targetNode = new Node();
-        targetNode.setNodeId("target1");
+        Node extractTargetNode = new Node();
+        extractTargetNode.setNodeId("target1");
         ProcessInfo extractInfo = new ProcessInfo(new ProcessInfoKey("source1", "target1", null));
         List<OutgoingBatch> activeBatches = new ArrayList<OutgoingBatch>();
         activeBatches.add(batch);
-        service.extract(extractInfo, targetNode, activeBatches, mock(IDataWriter.class), null, ExtractMode.FOR_PAYLOAD_CLIENT);
+        extractService.extract(extractInfo, extractTargetNode, activeBatches, mock(IDataWriter.class), null, ExtractMode.FOR_PAYLOAD_CLIENT);
         verify(statisticManager).incrementDataSentErrors("testchannel", 1);
         verify(statisticManager, never()).incrementDataExtractedErrors(any(), anyLong());
     }
@@ -288,18 +288,18 @@ class DataExtractorServiceTest {
     void extract_failureDuringExtractPhase_incrementsDataExtractedErrorsOnly() throws Exception {
         IStatisticManager statisticManager = mock(IStatisticManager.class);
         IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
-        DataExtractorService service = spy(buildExtractService(statisticManager, outgoingBatchService));
+        DataExtractorService extractService = spy(buildExtractService(statisticManager, outgoingBatchService));
         OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
         batch.setBatchId(1);
         when(outgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
-        doThrow(new RuntimeException("simulated extract failure")).when(service)
+        doThrow(new RuntimeException("simulated extract failure")).when(extractService)
                 .extractBatch(any(OutgoingBatch.class), any(), any(ProcessInfo.class), any(Node.class), any(), any(), anyList());
-        Node targetNode = new Node();
-        targetNode.setNodeId("target1");
+        Node extractTargetNode = new Node();
+        extractTargetNode.setNodeId("target1");
         ProcessInfo extractInfo = new ProcessInfo(new ProcessInfoKey("source1", "target1", null));
         List<OutgoingBatch> activeBatches = new ArrayList<OutgoingBatch>();
         activeBatches.add(batch);
-        service.extract(extractInfo, targetNode, activeBatches, mock(IDataWriter.class), null, ExtractMode.FOR_PAYLOAD_CLIENT);
+        extractService.extract(extractInfo, extractTargetNode, activeBatches, mock(IDataWriter.class), null, ExtractMode.FOR_PAYLOAD_CLIENT);
         verify(statisticManager).incrementDataExtractedErrors("testchannel", 1);
         verify(statisticManager, never()).incrementDataSentErrors(any(), anyLong());
     }
