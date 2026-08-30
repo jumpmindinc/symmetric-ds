@@ -18,29 +18,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.io.stage;
+package org.jumpmind.symmetric.staging.compression;
 
-import java.io.File;
-import java.util.Set;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
-import org.jumpmind.symmetric.staging.api.IStagingLock;
+import org.jumpmind.symmetric.staging.api.IStreamCompressionProvider;
 
-public interface IStagingManager {
-    public IStagedResource find(Object... path);
+public class GzipStreamCompressionProvider implements IStreamCompressionProvider {
+    public static final String COMPRESSION_ID = "gzip";
 
-    public IStagedResource find(String path);
+    @Override
+    public String getCompressionId() {
+        return COMPRESSION_ID;
+    }
 
-    public IStagedResource create(Object... path);
+    @Override
+    public OutputStream wrapCompress(OutputStream raw) throws IOException {
+        return new GZIPOutputStream(raw);
+    }
 
-    public IStagedResource createScratchResource(Object... path);
-
-    public long clean(long timeToLiveInMs);
-
-    public Set<String> getResourceReferences();
-
-    public IStagingLock acquireFileLock(String serverInfo, Object... path);
-
-    public File getStagingDirectory();
-
-    public File getScratchDirectory();
+    @Override
+    public InputStream wrapDecompress(InputStream raw) throws IOException {
+        return new GZIPInputStream(raw);
+    }
 }

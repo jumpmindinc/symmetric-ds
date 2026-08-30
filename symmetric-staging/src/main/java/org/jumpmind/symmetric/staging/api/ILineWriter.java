@@ -18,29 +18,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.io.stage;
+package org.jumpmind.symmetric.staging.api;
 
-import java.io.File;
-import java.util.Set;
+import java.io.IOException;
 
-import org.jumpmind.symmetric.staging.api.IStagingLock;
+public interface ILineWriter extends AutoCloseable {
+    void writeLine(String line) throws IOException;
 
-public interface IStagingManager {
-    public IStagedResource find(Object... path);
+    void flush() throws IOException;
 
-    public IStagedResource find(String path);
-
-    public IStagedResource create(Object... path);
-
-    public IStagedResource createScratchResource(Object... path);
-
-    public long clean(long timeToLiveInMs);
-
-    public Set<String> getResourceReferences();
-
-    public IStagingLock acquireFileLock(String serverInfo, Object... path);
-
-    public File getStagingDirectory();
-
-    public File getScratchDirectory();
+    @Override
+    void close() throws IOException;
 }

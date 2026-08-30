@@ -1,0 +1,12 @@
+apply from: symAssembleDir + '/common.gradle'
+
+    description = 'Staging subsystem with pluggable storage backends and cluster-safe locking'
+
+    dependencies {
+        api project(":symmetric-util")
+        api "org.apache.commons:commons-lang3:$commonsLangVersion"
+        api "commons-io:commons-io:$commonsIoVersion"
+
+        testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
+        testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
+    }

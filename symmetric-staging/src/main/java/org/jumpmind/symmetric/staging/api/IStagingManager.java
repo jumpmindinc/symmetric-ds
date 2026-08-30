@@ -18,29 +18,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.io.stage;
+package org.jumpmind.symmetric.staging.api;
 
-import java.io.File;
 import java.util.Set;
 
-import org.jumpmind.symmetric.staging.api.IStagingLock;
-
 public interface IStagingManager {
-    public IStagedResource find(Object... path);
+    IStagedResource find(StagingKey key);
 
-    public IStagedResource find(String path);
+    IStagedResource find(Object... path);
 
-    public IStagedResource create(Object... path);
+    IStagedResource create(StagingOptions options, Object... path);
 
-    public IStagedResource createScratchResource(Object... path);
+    IStagedResource createScratchResource(StagingOptions options, Object... path);
 
-    public long clean(long timeToLiveInMs);
+    IStagingLock acquireLock(String serverInfo, long ttlMs, Object... path);
 
-    public Set<String> getResourceReferences();
+    boolean breakExpiredLock(long ttlMs, Object... path);
 
-    public IStagingLock acquireFileLock(String serverInfo, Object... path);
+    long clean(long timeToLiveMs);
 
-    public File getStagingDirectory();
+    Set<StagingKey> listResources();
 
-    public File getScratchDirectory();
+    StorageKind getStorageKind();
+
+    boolean supportsRandomAccess();
+
+    boolean isLocalStorageAvailable();
+
+    String getLocalStorageFailureReason();
+
+    boolean verifyChecksum(StagingKey key);
+
+    java.io.File getScratchDirectory();
 }

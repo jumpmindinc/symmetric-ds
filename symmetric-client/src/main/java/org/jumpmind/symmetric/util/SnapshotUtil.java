@@ -104,6 +104,7 @@ import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.service.IClusterService;
+import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.ITransformService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
@@ -123,9 +124,26 @@ public class SnapshotUtil {
     public static final String ERROR_BATCHES_SUBDIR = "batches";
 
     public static File getSnapshotDirectory(ISymmetricEngine engine) {
-        File snapshotsDir = new File(engine.getParameterService().getTempDirectory(), SNAPSHOT_DIR);
+        File snapshotsDir = new File(engine.getStagingManager().getScratchDirectory(), SNAPSHOT_DIR);
         snapshotsDir.mkdirs();
         return snapshotsDir;
+    }
+
+    /**
+     * Allocates a scratch resource for one snapshot file (local temporary location).
+     */
+    protected static File scratchFile(ISymmetricEngine engine, File tmpDir, String... relativePath) {
+        Object[] parts = new Object[relativePath.length + 2];
+        parts[0] = SNAPSHOT_DIR;
+        parts[1] = tmpDir.getName();
+        System.arraycopy(relativePath, 0, parts, 2, relativePath.length);
+        IStagedResource resource = engine.getStagingManager().createScratchResource(parts);
+        File file = resource.getFile();
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs();
+        }
+        return file;
     }
 
     public static File createSnapshot(ISymmetricEngine engine, IProgressListener listener) {
@@ -133,7 +151,7 @@ public class SnapshotUtil {
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
         String dirName = engine.getEngineName().replaceAll(" ", "-") + "-" + dateFormat.format(new Date());
         IParameterService parameterService = engine.getParameterService();
-        File tmpDir = new File(parameterService.getTempDirectory(), dirName);
+        File tmpDir = new File(new File(engine.getStagingManager().getScratchDirectory(), SNAPSHOT_DIR), dirName);
         tmpDir.mkdirs();
         log.info("Creating snapshot file in " + tmpDir.getAbsolutePath());
         int stepNumber = 0;
@@ -149,7 +167,7 @@ public class SnapshotUtil {
         }
         log.info("Exporting configuration");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        try (FileWriter fwriter = new FileWriter(new File(tmpDir, "config-export.csv"))) {
+        try (FileWriter fwriter = new FileWriter(scratchFile(engine, tmpDir, "config-export.csv"))) {
             engine.getDataExtractorService().extractConfigurationStandalone(engine.getNodeService().findIdentity(),
                     fwriter, TableConstants.getConfigTablesExcludedFromExport());
         } catch (Exception e) {
@@ -224,7 +242,7 @@ public class SnapshotUtil {
         }
         checkpoint(engine, listener, stepNumber++, totalSteps);
         log.info("Writing runtime data - nodes");
-        File exportDir = new File(tmpDir, "export");
+        File exportDir = scratchFile(engine, tmpDir, "export");
         exportDir.mkdirs();
         String tablePrefix = engine.getTablePrefix();
         DbExport export = new DbExport(engine.getDatabasePlatform());
@@ -233,11 +251,11 @@ public class SnapshotUtil {
         export.setUseReadUncommitted(true);
         int maxBatches = parameterService.getInt(ParameterConstants.SNAPSHOT_MAX_BATCHES);
         int maxNodeChannels = parameterService.getInt(ParameterConstants.SNAPSHOT_MAX_NODE_CHANNELS);
-        extract(export, new File(exportDir, "node_identity.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_IDENTITY));
-        extract(export, new File(exportDir, "node.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE));
-        extract(export, new File(exportDir, "node_security.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_SECURITY));
-        extract(export, new File(exportDir, "node_host.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST));
-        extract(export, maxNodeChannels, "", new File(exportDir, "node_channel_ctl.csv"),
+        extract(export, scratchFile(engine, tmpDir, "export", "node_identity.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_IDENTITY));
+        extract(export, scratchFile(engine, tmpDir, "export", "node.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE));
+        extract(export, scratchFile(engine, tmpDir, "export", "node_security.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_SECURITY));
+        extract(export, scratchFile(engine, tmpDir, "export", "node_host.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST));
+        extract(export, maxNodeChannels, "", scratchFile(engine, tmpDir, "export", "node_channel_ctl.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_CHANNEL_CTL));
         checkpoint(engine, listener, stepNumber++, totalSteps);
         log.info("Writing runtime data - locks");
@@ -249,10 +267,10 @@ public class SnapshotUtil {
         } catch (Exception e) {
             log.warn("Unable to add SYM_NODE_COMMUNICATION to the snapshot.", e);
         }
-        extract(export, maxNodeChannels, "", new File(exportDir, "node_communication.csv"),
+        extract(export, maxNodeChannels, "", scratchFile(engine, tmpDir, "export", "node_communication.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_COMMUNICATION));
-        extract(export, new File(exportDir, "context.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONTEXT));
-        extract(export, new File(exportDir, "lock.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_LOCK));
+        extract(export, scratchFile(engine, tmpDir, "export", "context.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONTEXT));
+        extract(export, scratchFile(engine, tmpDir, "export", "lock.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_LOCK));
         log.info("Writing runtime data - outgoing batch");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         Map<String, NodeSecurity> nodeSecurities = engine.getNodeService().findAllNodeSecurity(true);
@@ -264,19 +282,19 @@ public class SnapshotUtil {
         Object[] systemChannelIds = new String[] { Constants.CHANNEL_CONFIG, Constants.CHANNEL_SYSTEM,
                 Constants.CHANNEL_MONITOR, Constants.CHANNEL_HEARTBEAT, Constants.CHANNEL_DYNAMIC };
         extract(export, maxBatches, String.format("where status = 'OK' and channel_id not in ('%s', '%s', '%s', '%s', '%s') order by batch_id desc",
-                systemChannelIds), new File(exportDir, "outgoing_batch_ok.csv"),
+                systemChannelIds), scratchFile(engine, tmpDir, "export", "outgoing_batch_ok.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_OUTGOING_BATCH));
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, maxBatches, String.format("where status = 'OK' and channel_id in ('%s', '%s', '%s', '%s', '%s') order by batch_id desc",
-                systemChannelIds), new File(exportDir, "outgoing_batch_system_ok.csv"),
+                systemChannelIds), scratchFile(engine, tmpDir, "export", "outgoing_batch_system_ok.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_OUTGOING_BATCH));
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, maxBatches, "where status != 'OK' order by batch_id", new File(exportDir, "outgoing_batch_not_ok.csv"),
+        extract(export, maxBatches, "where status != 'OK' order by batch_id", scratchFile(engine, tmpDir, "export", "outgoing_batch_not_ok.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_OUTGOING_BATCH));
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, maxBatches, "order by start_id, end_id desc", new File(exportDir, "data_gap.csv"),
+        extract(export, maxBatches, "order by start_id, end_id desc", scratchFile(engine, tmpDir, "export", "data_gap.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA_GAP));
-        extractQuery(engine.getDatabasePlatform().getSqlTemplateDirty(), exportDir + File.separator + "outgoing_batch_summary.csv",
+        extractQuery(engine.getDatabasePlatform().getSqlTemplateDirty(), scratchFile(engine, tmpDir, "export", "outgoing_batch_summary.csv").getAbsolutePath(),
                 "select node_id, " + byChannelId + "status, count(*) batch_count, sum(data_row_count) data_row_count, sum(byte_count) byte_count, " +
                         "sum(error_flag) error_flag, min(create_time) min_create_time, sum(router_millis) router_millis, sum(extract_millis) extract_millis, " +
                         "sum(network_millis) network_millis, sum(filter_millis) filter_millis, sum(load_millis) load_millis, " +
@@ -293,17 +311,17 @@ public class SnapshotUtil {
         log.info("Writing runtime data - incoming batch");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, maxBatches, String.format("where status = 'OK' and channel_id not in ('%s', '%s', '%s', '%s', '%s') order by batch_id desc",
-                systemChannelIds), new File(exportDir, "incoming_batch_ok.csv"),
+                systemChannelIds), scratchFile(engine, tmpDir, "export", "incoming_batch_ok.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_INCOMING_BATCH));
         checkpoint(engine, listener, stepNumber++, totalSteps);
         extract(export, maxBatches, String.format("where status = 'OK' and channel_id in ('%s', '%s', '%s', '%s', '%s') order by batch_id desc",
-                systemChannelIds), new File(exportDir, "incoming_batch_system_ok.csv"),
+                systemChannelIds), scratchFile(engine, tmpDir, "export", "incoming_batch_system_ok.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_INCOMING_BATCH));
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, maxBatches, "where status != 'OK' order by create_time", new File(exportDir, "incoming_batch_not_ok.csv"),
+        extract(export, maxBatches, "where status != 'OK' order by create_time", scratchFile(engine, tmpDir, "export", "incoming_batch_not_ok.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_INCOMING_BATCH));
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extractQuery(engine.getDatabasePlatform().getSqlTemplateDirty(), exportDir + File.separator + "incoming_batch_summary.csv",
+        extractQuery(engine.getDatabasePlatform().getSqlTemplateDirty(), scratchFile(engine, tmpDir, "export", "incoming_batch_summary.csv").getAbsolutePath(),
                 "select node_id, " + byChannelId + "status, count(*) batch_count, sum(data_row_count) data_row_count, sum(byte_count) byte_count, " +
                         "sum(error_flag) error_flag, min(create_time) min_create_time, sum(router_millis) router_millis, sum(extract_millis) extract_millis, " +
                         "sum(network_millis) network_millis, sum(filter_millis) filter_millis, sum(load_millis) load_millis, " +
@@ -313,23 +331,27 @@ public class SnapshotUtil {
                         " group by node_id, " + byChannelId + "status");
         log.info("Writing runtime data - requests");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, new File(exportDir, "table_reload_request.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_RELOAD_REQUEST));
-        extract(export, new File(exportDir, "table_reload_status.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_RELOAD_STATUS));
-        extract(export, new File(exportDir, "extract_request.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_EXTRACT_REQUEST));
-        extract(export, new File(exportDir, "registration_request.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_REGISTRATION_REQUEST));
+        extract(export, scratchFile(engine, tmpDir, "export", "table_reload_request.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_TABLE_RELOAD_REQUEST));
+        extract(export, scratchFile(engine, tmpDir, "export", "table_reload_status.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_TABLE_RELOAD_STATUS));
+        extract(export, scratchFile(engine, tmpDir, "export", "extract_request.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_EXTRACT_REQUEST));
+        extract(export, scratchFile(engine, tmpDir, "export", "registration_request.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_REGISTRATION_REQUEST));
         log.info("Writing runtime data - history and stats");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, new File(exportDir, "trigger_hist.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRIGGER_HIST));
-        extract(export, 10000, "order by start_time desc", new File(exportDir, "node_host_channel_stats.csv"),
+        extract(export, scratchFile(engine, tmpDir, "export", "trigger_hist.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRIGGER_HIST));
+        extract(export, 10000, "order by start_time desc", scratchFile(engine, tmpDir, "export", "node_host_channel_stats.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_CHANNEL_STATS));
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, 10000, "order by start_time desc", new File(exportDir, "node_host_stats.csv"),
+        extract(export, 10000, "order by start_time desc", scratchFile(engine, tmpDir, "export", "node_host_stats.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_STATS));
-        extract(export, 10000, "order by start_time desc", new File(exportDir, "node_host_job_stats.csv"),
+        extract(export, 10000, "order by start_time desc", scratchFile(engine, tmpDir, "export", "node_host_job_stats.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_JOB_STATS));
         checkpoint(engine, listener, stepNumber++, totalSteps);
         if (parameterService.is(ParameterConstants.FILE_SYNC_ENABLE)) {
-            extract(export, 5000, "order by relative_dir, file_name", new File(exportDir, "file_snapshot.csv"),
+            extract(export, 5000, "order by relative_dir, file_name", scratchFile(engine, tmpDir, "export", "file_snapshot.csv"),
                     TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_SNAPSHOT));
         }
         log.info("Writing runtime data - metrics");
@@ -344,45 +366,60 @@ public class SnapshotUtil {
                 TableConstants.SYM_METRIC_STATS_INT64));
         log.info("Writing runtime data - export config");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, new File(exportDir, "channel.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CHANNEL));
-        extract(export, new File(exportDir, "conflict.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONFLICT));
-        extract(export, new File(exportDir, "extension.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_EXTENSION));
-        extract(export, new File(exportDir, "file_trigger.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_TRIGGER));
-        extract(export, new File(exportDir, "file_trigger_router.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_TRIGGER_ROUTER));
-        extract(export, new File(exportDir, "incoming_error.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_INCOMING_ERROR));
-        extract(export, new File(exportDir, "job.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_JOB));
-        extract(export, new File(exportDir, "load_filter.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_LOAD_FILTER));
-        extract(export, new File(exportDir, "node_group.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_GROUP));
-        extract(export, new File(exportDir, "node_group_channel_wnd.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_GROUP_CHANNEL_WND));
-        extract(export, new File(exportDir, "node_group_link.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_GROUP_LINK));
-        extract(export, new File(exportDir, "outgoing_error.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_OUTGOING_ERROR));
-        extract(export, new File(exportDir, "parameter.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_PARAMETER));
-        extract(export, new File(exportDir, "registration_redirect.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_REGISTRATION_REDIRECT));
-        extract(export, new File(exportDir, "router.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_ROUTER));
-        extract(export, new File(exportDir, "sequence.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_SEQUENCE));
-        extract(export, new File(exportDir, "transform_column.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRANSFORM_COLUMN));
-        extract(export, new File(exportDir, "transform_table.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRANSFORM_TABLE));
-        extract(export, new File(exportDir, "trigger.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRIGGER));
-        extract(export, new File(exportDir, "trigger_router.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRIGGER_ROUTER));
+        extract(export, scratchFile(engine, tmpDir, "export", "channel.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CHANNEL));
+        extract(export, scratchFile(engine, tmpDir, "export", "conflict.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONFLICT));
+        extract(export, scratchFile(engine, tmpDir, "export", "extension.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_EXTENSION));
+        extract(export, scratchFile(engine, tmpDir, "export", "file_trigger.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_TRIGGER));
+        extract(export, scratchFile(engine, tmpDir, "export", "file_trigger_router.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_FILE_TRIGGER_ROUTER));
+        extract(export, scratchFile(engine, tmpDir, "export", "incoming_error.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_INCOMING_ERROR));
+        extract(export, scratchFile(engine, tmpDir, "export", "job.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_JOB));
+        extract(export, scratchFile(engine, tmpDir, "export", "load_filter.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_LOAD_FILTER));
+        extract(export, scratchFile(engine, tmpDir, "export", "node_group.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_GROUP));
+        extract(export, scratchFile(engine, tmpDir, "export", "node_group_channel_wnd.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_NODE_GROUP_CHANNEL_WND));
+        extract(export, scratchFile(engine, tmpDir, "export", "node_group_link.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_NODE_GROUP_LINK));
+        extract(export, scratchFile(engine, tmpDir, "export", "outgoing_error.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_OUTGOING_ERROR));
+        extract(export, scratchFile(engine, tmpDir, "export", "parameter.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_PARAMETER));
+        extract(export, scratchFile(engine, tmpDir, "export", "registration_redirect.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_REGISTRATION_REDIRECT));
+        extract(export, scratchFile(engine, tmpDir, "export", "router.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_ROUTER));
+        extract(export, scratchFile(engine, tmpDir, "export", "sequence.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_SEQUENCE));
+        extract(export, scratchFile(engine, tmpDir, "export", "transform_column.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_TRANSFORM_COLUMN));
+        extract(export, scratchFile(engine, tmpDir, "export", "transform_table.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_TRANSFORM_TABLE));
+        extract(export, scratchFile(engine, tmpDir, "export", "trigger.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRIGGER));
+        extract(export, scratchFile(engine, tmpDir, "export", "trigger_router.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_TRIGGER_ROUTER));
         // Pro tables can be ignored if they are missing
         export.setIgnoreMissingTables(true);
         log.info("Writing runtime data - pro tables");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        extract(export, new File(exportDir, "console_event.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_EVENT));
-        extract(export, 10000, "order by start_time desc", new File(exportDir, "console_table_stats.csv"),
+        extract(export, scratchFile(engine, tmpDir, "export", "console_event.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_EVENT));
+        extract(export, 10000, "order by start_time desc", scratchFile(engine, tmpDir, "export", "console_table_stats.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_TABLE_STATS));
-        extract(export, new File(exportDir, "monitor.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_MONITOR));
-        extract(export, 10000, "order by event_time desc", new File(exportDir, "monitor_event.csv"),
+        extract(export, scratchFile(engine, tmpDir, "export", "monitor.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_MONITOR));
+        extract(export, 10000, "order by event_time desc", scratchFile(engine, tmpDir, "export", "monitor_event.csv"),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_MONITOR_EVENT));
-        extract(export, new File(exportDir, "notification.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NOTIFICATION));
-        extract(export, new File(exportDir, "compare_request.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_COMPARE_REQUEST));
-        extract(export, new File(exportDir, "compare_status.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_COMPARE_STATUS));
-        extract(export, new File(exportDir, "compare_table_status.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_COMPARE_TABLE_STATUS));
-        extract(export, new File(exportDir, "table_group.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_GROUP));
-        extract(export, new File(exportDir, "table_group_hier.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_GROUP_HIER));
-        extract(export, new File(exportDir, "console_role.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE));
-        extract(export, new File(exportDir, "console_role_privilege.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE_PRIVILEGE));
-        extract(export, new File(exportDir, "analytics_report.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_ANALYTICS_REPORT));
+        extract(export, scratchFile(engine, tmpDir, "export", "notification.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_NOTIFICATION));
+        extract(export, scratchFile(engine, tmpDir, "export", "compare_request.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_COMPARE_REQUEST));
+        extract(export, scratchFile(engine, tmpDir, "export", "compare_status.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_COMPARE_STATUS));
+        extract(export, scratchFile(engine, tmpDir, "export", "compare_table_status.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_COMPARE_TABLE_STATUS));
+        extract(export, scratchFile(engine, tmpDir, "export", "table_group.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_GROUP));
+        extract(export, scratchFile(engine, tmpDir, "export", "table_group_hier.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_TABLE_GROUP_HIER));
+        extract(export, scratchFile(engine, tmpDir, "export", "console_role.csv"), TableConstants.getTableName(tablePrefix, TableConstants.SYM_CONSOLE_ROLE));
+        extract(export, scratchFile(engine, tmpDir, "export", "console_role_privilege.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_CONSOLE_ROLE_PRIVILEGE));
+        extract(export, scratchFile(engine, tmpDir, "export", "analytics_report.csv"), TableConstants.getTableName(tablePrefix,
+                TableConstants.SYM_ANALYTICS_REPORT));
         log.info("Writing runtime data - parameters");
         checkpoint(engine, listener, stepNumber++, totalSteps);
         writeRuntimeParameters(engine, tmpDir);
@@ -390,13 +427,13 @@ public class SnapshotUtil {
         try {
             Properties props = new Properties();
             props.putAll(System.getProperties());
-            writeProperties(props, tmpDir, "system.properties");
+            writeProperties(engine, props, tmpDir, "system.properties");
         } catch (Exception e) {
             log.warn("Failed to export system information", e);
         }
         log.info("Writing runtime data - log summaries");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        File logSummaryFile = new File(tmpDir, "log-summary.csv");
+        File logSummaryFile = scratchFile(engine, tmpDir, "log-summary.csv");
         try (OutputStream outputStream = new FileOutputStream(logSummaryFile);
                 CsvWriter csvWriter = new CsvWriter(outputStream, ',', Charset.defaultCharset())) {
             csvWriter.setEscapeMode(CsvWriter.ESCAPE_MODE_DOUBLED);
@@ -423,21 +460,21 @@ public class SnapshotUtil {
             dbexport.setFormat(Format.CSV_DQUOTE);
             dbexport.setNoCreateInfo(true);
             for (String table : monTables) {
-                extract(dbexport, new File(tmpDir, "firebird-" + table + ".csv"), table);
+                extract(dbexport, scratchFile(engine, tmpDir, "firebird-" + table + ".csv"), table);
             }
         }
         if (targetDialect instanceof MySqlSymmetricDialect) {
             log.info("Writing MySQL info");
-            extractQuery(targetPlatform.getSqlTemplate(), tmpDir + File.separator + "mysql-processlist.csv",
+            extractQuery(targetPlatform.getSqlTemplate(), scratchFile(engine, tmpDir, "mysql-processlist.csv").getAbsolutePath(),
                     "show processlist");
-            extractQuery(targetPlatform.getSqlTemplate(), tmpDir + File.separator + "mysql-global-variables.csv",
+            extractQuery(targetPlatform.getSqlTemplate(), scratchFile(engine, tmpDir, "mysql-global-variables.csv").getAbsolutePath(),
                     "show global variables");
-            extractQuery(targetPlatform.getSqlTemplate(), tmpDir + File.separator + "mysql-session-variables.csv",
+            extractQuery(targetPlatform.getSqlTemplate(), scratchFile(engine, tmpDir, "mysql-session-variables.csv").getAbsolutePath(),
                     "show session variables");
         }
         checkpoint(engine, listener, stepNumber++, totalSteps);
         if (!engine.getParameterService().is(ParameterConstants.CLUSTER_LOCKING_ENABLED)) {
-            try (FileOutputStream fos = new FileOutputStream(new File(tmpDir, "sym_data_gap_cache.csv"))) {
+            try (FileOutputStream fos = new FileOutputStream(scratchFile(engine, tmpDir, "sym_data_gap_cache.csv"))) {
                 List<DataGap> gaps = engine.getRouterService().getDataGaps();
                 SimpleDateFormat dformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
                 dformat.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -454,16 +491,16 @@ public class SnapshotUtil {
         }
         log.info("Writing threads info");
         checkpoint(engine, listener, stepNumber++, totalSteps);
-        createThreadsFile(tmpDir.getPath(), false);
-        createThreadsFile(tmpDir.getPath(), true);
-        createThreadStatsFile(tmpDir.getPath());
-        createProcessInfoFile(engine, tmpDir.getPath());
+        createThreadsFile(engine, tmpDir, false);
+        createThreadsFile(engine, tmpDir, true);
+        createThreadStatsFile(engine, tmpDir);
+        createProcessInfoFile(engine, tmpDir);
         checkpoint(engine, listener, stepNumber++, totalSteps);
         try {
             log.info("Writing transactions file");
             List<Transaction> transactions = targetPlatform.getTransactions();
             if (!transactions.isEmpty()) {
-                createTransactionsFile(engine, tmpDir.getPath(), transactions);
+                createTransactionsFile(engine, tmpDir, transactions);
             }
         } catch (Throwable e) {
             log.warn("Failed to create transactions file", e);
@@ -599,7 +636,7 @@ public class SnapshotUtil {
             StringBuilder output = new StringBuilder();
             int maxFiles = engine.getParameterService().getInt(ParameterConstants.SNAPSHOT_MAX_FILES);
             printDirectoryContents(home, output, new PrintDirConfig(maxFiles, engine.getStagingManager().getStagingDirectory().getParentFile()));
-            FileUtils.write(new File(tmpDir, "directory-listing.txt"), output, Charset.defaultCharset(), false);
+            FileUtils.write(scratchFile(engine, tmpDir, "directory-listing.txt"), output, Charset.defaultCharset(), false);
         } catch (Exception ex) {
             log.warn("Failed to output the directory listing", ex);
         }
@@ -611,7 +648,7 @@ public class SnapshotUtil {
             StringBuilder output = new StringBuilder();
             int maxFiles = engine.getParameterService().getInt(ParameterConstants.SNAPSHOT_MAX_FILES);
             printDirectoryContents(engine.getStagingManager().getStagingDirectory(), output, new PrintDirConfig(maxFiles));
-            FileUtils.write(new File(tmpDir, "directory-staging.txt"), output, Charset.defaultCharset(), false);
+            FileUtils.write(scratchFile(engine, tmpDir, "directory-staging.txt"), output, Charset.defaultCharset(), false);
         } catch (Exception ex) {
             log.warn("Failed to output the directory staging", ex);
         }
@@ -745,7 +782,7 @@ public class SnapshotUtil {
             if (helper != null) {
                 runtimeProperties.putAll(helper.getRuntimeProperties());
             }
-            writeProperties(runtimeProperties, tmpDir, "runtime-stats.properties");
+            writeProperties(engine, runtimeProperties, tmpDir, "runtime-stats.properties");
         } catch (Exception e) {
             log.warn("Failed to export runtime-stats information", e);
         }
@@ -774,8 +811,8 @@ public class SnapshotUtil {
                 FileUtils.byteCountToDisplaySize(tmpDir.getUsableSpace()));
     }
 
-    protected static void writeProperties(Properties properties, File tmpDir, String fileName) {
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(new File(tmpDir, fileName)))) {
+    protected static void writeProperties(ISymmetricEngine engine, Properties properties, File tmpDir, String fileName) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(scratchFile(engine, tmpDir, fileName)))) {
             List<String> keys = new ArrayList<>();
             for (Object key : properties.keySet()) {
                 keys.add(key.toString());
@@ -792,7 +829,7 @@ public class SnapshotUtil {
 
     protected static void writeJobsStats(ISymmetricEngine engine, File tmpDir) {
         try {
-            File file = new File(tmpDir, "job-status.csv");
+            File file = scratchFile(engine, tmpDir, "job-status.csv");
             SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             IClusterService clusterService = engine.getClusterService();
             List<IJob> jobs = engine.getJobManager().getJobs();
@@ -847,8 +884,8 @@ public class SnapshotUtil {
         }
     }
 
-    public static File createThreadsFile(String parent, boolean isFiltered) {
-        File file = new File(parent, isFiltered ? "threads-filtered.txt" : "threads.txt");
+    public static File createThreadsFile(ISymmetricEngine engine, File tmpDir, boolean isFiltered) {
+        File file = scratchFile(engine, tmpDir, isFiltered ? "threads-filtered.txt" : "threads.txt");
         try (FileWriter fwriter = new FileWriter(file)) {
             ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
             long[] threadIds = threadBean.getAllThreadIds();
@@ -882,8 +919,8 @@ public class SnapshotUtil {
         return file;
     }
 
-    public static File createThreadStatsFile(String parent) {
-        File file = new File(parent, "threads-stats.csv");
+    public static File createThreadStatsFile(ISymmetricEngine engine, File tmpDir) {
+        File file = scratchFile(engine, tmpDir, "threads-stats.csv");
         try (OutputStream outputStream = new FileOutputStream(file);
                 CsvWriter csvWriter = new CsvWriter(outputStream, ',', Charset.forName("ISO-8859-1"))) {
             csvWriter.setEscapeMode(CsvWriter.ESCAPE_MODE_DOUBLED);
@@ -915,10 +952,10 @@ public class SnapshotUtil {
         return file;
     }
 
-    public static void createProcessInfoFile(ISymmetricEngine engine, String parent) {
+    public static void createProcessInfoFile(ISymmetricEngine engine, File tmpDir) {
         try {
-            File file = new File(parent, "process-info.csv");
-            File fileActive = new File(parent, "process-info-active.csv");
+            File file = scratchFile(engine, tmpDir, "process-info.csv");
+            File fileActive = scratchFile(engine, tmpDir, "process-info-active.csv");
             List<ProcessInfo> infos = engine.getStatisticManager().getProcessInfos();
             SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             try (OutputStream outputStream = new FileOutputStream(file);
@@ -953,7 +990,7 @@ public class SnapshotUtil {
         }
     }
 
-    private static File createTransactionsFile(ISymmetricEngine engine, String parent, List<Transaction> transactions) {
+    private static File createTransactionsFile(ISymmetricEngine engine, File tmpDir, List<Transaction> transactions) {
         Map<String, Transaction> transactionMap = new HashMap<>();
         for (Transaction transaction : transactions) {
             transactionMap.put(transaction.getId(), transaction);
@@ -963,7 +1000,7 @@ public class SnapshotUtil {
         for (Transaction transaction : transactions) {
             SymmetricUtils.filterTransactions(transaction, transactionMap, filteredTransactions, dbUser, false, false);
         }
-        File file = new File(parent, "transactions.csv");
+        File file = scratchFile(engine, tmpDir, "transactions.csv");
         try (OutputStream outputStream = new FileOutputStream(file);
                 CsvWriter csvWriter = new CsvWriter(outputStream, ',', Charset.forName("ISO-8859-1"))) {
             csvWriter.setEscapeMode(CsvWriter.ESCAPE_MODE_DOUBLED);
@@ -1001,13 +1038,13 @@ public class SnapshotUtil {
                     String filenameCaptured = batch.getBatchId() + "_captured.csv";
                     String whereClause = "where data_id = " + data.getDataId();
                     if (errorDir == null) {
-                        errorDir = new File(tmpDir, ERROR_BATCHES_SUBDIR);
+                        errorDir = scratchFile(engine, tmpDir, ERROR_BATCHES_SUBDIR);
                         errorDir.mkdirs();
                     }
-                    extract(export, 10000, whereClause, new File(errorDir, filenameCaptured),
+                    extract(export, 10000, whereClause, scratchFile(engine, tmpDir, ERROR_BATCHES_SUBDIR, filenameCaptured),
                             TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA));
                     // Write parsed row data to file
-                    String filenameParsed = errorDir + File.separator + batch.getBatchId() + "_parsed.csv";
+                    String filenameParsed = scratchFile(engine, tmpDir, ERROR_BATCHES_SUBDIR, batch.getBatchId() + "_parsed.csv").getAbsolutePath();
                     try (CsvWriter writer = new CsvWriter(filenameParsed)) {
                         writer.setEscapeMode(CsvWriter.ESCAPE_MODE_DOUBLED);
                         writer.writeRecord(data.getTriggerHistory().getParsedColumnNames());
@@ -1214,7 +1251,7 @@ public class SnapshotUtil {
             Properties parameters = ParametersUtil.deepCopy(effectiveParameters);
             parameters.putAll(effectiveParameters);
             ParametersUtil.redactParameters(parameters);
-            writeProperties(parameters, tmpDir, "parameters.properties");
+            writeProperties(engine, parameters, tmpDir, "parameters.properties");
         } catch (Exception e) {
             log.warn("Failed to export parameter information", e);
         }
@@ -1252,7 +1289,7 @@ public class SnapshotUtil {
                 }
             }
             ParametersUtil.redactParameters(changedParameters);
-            writeProperties(changedParameters, tmpDir, "parameters-changed.properties");
+            writeProperties(engine, changedParameters, tmpDir, "parameters-changed.properties");
         } catch (Exception e) {
             log.warn("Failed to export parameters-changed information", e);
         }

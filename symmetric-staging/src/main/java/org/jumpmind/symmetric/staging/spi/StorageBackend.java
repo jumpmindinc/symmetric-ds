@@ -18,29 +18,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.io.stage;
+package org.jumpmind.symmetric.staging.spi;
 
-import java.io.File;
-import java.util.Set;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
-import org.jumpmind.symmetric.staging.api.IStagingLock;
+import org.jumpmind.symmetric.staging.api.StagingKey;
 
-public interface IStagingManager {
-    public IStagedResource find(Object... path);
+public interface StorageBackend {
+    OutputStream rawOutput(StagingKey key, boolean append) throws IOException;
 
-    public IStagedResource find(String path);
+    InputStream rawInput(StagingKey key) throws IOException;
 
-    public IStagedResource create(Object... path);
+    boolean exists(StagingKey key);
 
-    public IStagedResource createScratchResource(Object... path);
+    boolean delete(StagingKey key);
 
-    public long clean(long timeToLiveInMs);
+    long size(StagingKey key);
 
-    public Set<String> getResourceReferences();
+    Iterable<StagingKey> list();
 
-    public IStagingLock acquireFileLock(String serverInfo, Object... path);
+    void writeSidecar(StagingKey key, String suffix, byte[] payload) throws IOException;
 
-    public File getStagingDirectory();
+    byte[] readSidecar(StagingKey key, String suffix) throws IOException;
 
-    public File getScratchDirectory();
+    boolean deleteSidecar(StagingKey key, String suffix);
+
+    LockBroker lockBroker();
 }

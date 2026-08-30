@@ -406,6 +406,19 @@ public class SecurityService implements ISecurityService {
         return cipher;
     }
 
+    @Override
+    public Cipher getStreamingCipher(int mode, byte[] iv) throws Exception {
+        initializeSecretKey();
+        if (!"AES".equalsIgnoreCase(secretKey.getAlgorithm())) {
+            throw new IllegalStateException("Streaming cipher requires an AES engine key; current key uses "
+                    + secretKey.getAlgorithm() + ". Configure security.algorithm=AES to use staging encryption.");
+        }
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        javax.crypto.spec.GCMParameterSpec spec = new javax.crypto.spec.GCMParameterSpec(128, iv);
+        cipher.init(mode, secretKey, spec);
+        return cipher;
+    }
+
     protected void initializeCipher(Cipher cipher, int mode) throws Exception {
         AlgorithmParameterSpec paramSpec = Cipher.getMaxAllowedParameterSpec(cipher.getAlgorithm());
         if (paramSpec instanceof PBEParameterSpec || cipher.getAlgorithm().startsWith("PBE")) {

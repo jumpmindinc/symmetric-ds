@@ -18,29 +18,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.io.stage;
+package org.jumpmind.symmetric.staging.api;
 
-import java.io.File;
-import java.util.Set;
+public enum EncryptionAlgorithm {
+    NONE((byte) 0x00), AES_GCM_128((byte) 0x01), AES_GCM_256((byte) 0x02), AES_GCM_128_FIPS((byte) 0x03), AES_GCM_256_FIPS((byte) 0x04);
 
-import org.jumpmind.symmetric.staging.api.IStagingLock;
+    private final byte algorithmId;
 
-public interface IStagingManager {
-    public IStagedResource find(Object... path);
+    EncryptionAlgorithm(byte algorithmId) {
+        this.algorithmId = algorithmId;
+    }
 
-    public IStagedResource find(String path);
+    public byte getAlgorithmId() {
+        return algorithmId;
+    }
 
-    public IStagedResource create(Object... path);
-
-    public IStagedResource createScratchResource(Object... path);
-
-    public long clean(long timeToLiveInMs);
-
-    public Set<String> getResourceReferences();
-
-    public IStagingLock acquireFileLock(String serverInfo, Object... path);
-
-    public File getStagingDirectory();
-
-    public File getScratchDirectory();
+    public static EncryptionAlgorithm fromAlgorithmId(byte id) {
+        for (EncryptionAlgorithm value : values()) {
+            if (value.algorithmId == id) {
+                return value;
+            }
+        }
+        throw new IllegalArgumentException("Unknown encryption algorithm id: " + id);
+    }
 }

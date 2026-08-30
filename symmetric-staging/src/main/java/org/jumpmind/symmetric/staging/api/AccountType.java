@@ -18,29 +18,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.io.stage;
+package org.jumpmind.symmetric.staging.api;
 
-import java.io.File;
-import java.util.Set;
+public enum AccountType {
+    IMPLIED, NATIVE, TOKEN, OPENID, LDAP;
 
-import org.jumpmind.symmetric.staging.api.IStagingLock;
-
-public interface IStagingManager {
-    public IStagedResource find(Object... path);
-
-    public IStagedResource find(String path);
-
-    public IStagedResource create(Object... path);
-
-    public IStagedResource createScratchResource(Object... path);
-
-    public long clean(long timeToLiveInMs);
-
-    public Set<String> getResourceReferences();
-
-    public IStagingLock acquireFileLock(String serverInfo, Object... path);
-
-    public File getStagingDirectory();
-
-    public File getScratchDirectory();
+    public static AccountType fromString(String accountType) {
+        if (accountType == null || accountType.isBlank()) {
+            return IMPLIED;
+        }
+        switch (accountType.trim().toLowerCase()) {
+            case "implied":
+                return IMPLIED;
+            case "native":
+                return NATIVE;
+            case "token":
+                return TOKEN;
+            case "openid":
+                return OPENID;
+            case "ldap":
+                return LDAP;
+            default:
+                throw new IllegalArgumentException("Unknown staging.account.type: " + accountType);
+        }
+    }
 }

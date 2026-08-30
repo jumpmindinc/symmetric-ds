@@ -18,29 +18,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.io.stage;
+package org.jumpmind.symmetric.staging.factory;
 
-import java.io.File;
-import java.util.Set;
+import org.jumpmind.symmetric.staging.api.AccountType;
+import org.jumpmind.symmetric.staging.api.IStagingAuthProvider;
 
-import org.jumpmind.symmetric.staging.api.IStagingLock;
+public class ImpliedAuthProvider implements IStagingAuthProvider {
+    @Override
+    public AccountType getAccountType() {
+        return AccountType.IMPLIED;
+    }
 
-public interface IStagingManager {
-    public IStagedResource find(Object... path);
+    @Override
+    public String getAccountKey() {
+        return null;
+    }
 
-    public IStagedResource find(String path);
-
-    public IStagedResource create(Object... path);
-
-    public IStagedResource createScratchResource(Object... path);
-
-    public long clean(long timeToLiveInMs);
-
-    public Set<String> getResourceReferences();
-
-    public IStagingLock acquireFileLock(String serverInfo, Object... path);
-
-    public File getStagingDirectory();
-
-    public File getScratchDirectory();
+    @Override
+    public String getAccountSecret() {
+        return null;
+    }
 }
