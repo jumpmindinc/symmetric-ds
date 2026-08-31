@@ -2079,8 +2079,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
             }
             return true;
         } catch (Exception e) {
-            log.error("Error while Syncing Tringgers for node {}", targetExternalId);
-            e.printStackTrace();
+            log.error("Error while Syncing Triggers for node "+ targetExternalId, e);
             return false;
         } finally {
             activeSyncTriggersNodes.remove(targetExternalId);
