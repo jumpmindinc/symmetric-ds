@@ -237,7 +237,7 @@ subprojects { subproject ->
 
         apply plugin: 'eu.kakde.gradle.sonatype-maven-central-publisher'
 
-        def licenseName = project.name.contains("-pro") ? "Commercial" : "GNU GPL version 3.0";
+        def licenseName = project.name.contains("-pro") ? "Commercial" : "GNU AGPL version 3.0";
         sonatypeCentralPublishExtension {
             groupId.set("${project.group}")
             artifactId.set("${project.name}")
