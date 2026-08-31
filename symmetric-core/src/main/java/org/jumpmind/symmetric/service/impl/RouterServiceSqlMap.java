@@ -36,9 +36,9 @@ public class RouterServiceSqlMap extends AbstractSqlMap {
                 "select channel_id, min(create_time) as min_create_time, max(create_time) as max_create_time "
                         + "from $(data) where data_id >= ? group by channel_id");
         putSql("selectChannelDataUnroutedCountSql",
-                "select d.channel_id, count(*) as unrouted_count from $(data) d "
-                        + "where exists (select 1 from $(data_gap) g where g.is_expired = 0 and d.data_id between g.start_id and g.end_id) "
-                        + "group by d.channel_id");
+                "select d.channel_id, count(*) as unrouted_count from $(data_gap) g "
+                        + "join $(data) d on d.data_id between g.start_id and g.end_id "
+                        + "where g.is_expired = 0 group by d.channel_id");
         putSql("selectDataUsingGapsSql",
                 "select $(selectDataUsingGapsSqlHint) d.data_id, d.table_name, d.event_type, d.row_data as row_data, d.pk_data as pk_data, d.old_data as old_data, "
                         + " d.create_time, d.trigger_hist_id, d.channel_id, d.transaction_id, d.source_node_id, d.external_data, d.node_list, d.is_prerouted "
