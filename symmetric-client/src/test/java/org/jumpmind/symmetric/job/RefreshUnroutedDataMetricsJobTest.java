@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -36,7 +37,11 @@ import java.util.Date;
 import java.util.List;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.ChannelDataCreateTimeRange;
+import org.jumpmind.symmetric.model.ChannelDataUnroutedCount;
+import org.jumpmind.symmetric.model.NodeChannel;
+import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRouterService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
@@ -44,10 +49,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-class RefreshDataCreateTimeMetricsJobTest {
+class RefreshUnroutedDataMetricsJobTest {
     private ISymmetricEngine engine;
     private IParameterService parameterService;
     private IRouterService routerService;
+    private IConfigurationService configurationService;
     private IStatisticManager statisticManager;
     private ThreadPoolTaskScheduler taskScheduler;
 
@@ -56,17 +62,20 @@ class RefreshDataCreateTimeMetricsJobTest {
         engine = mock(ISymmetricEngine.class);
         parameterService = mock(IParameterService.class);
         routerService = mock(IRouterService.class);
+        configurationService = mock(IConfigurationService.class);
         statisticManager = mock(IStatisticManager.class);
         taskScheduler = mock(ThreadPoolTaskScheduler.class);
         when(engine.getParameterService()).thenReturn(parameterService);
         when(parameterService.getExternalId()).thenReturn("test-node");
         when(parameterService.getInt(anyString())).thenReturn(10000);
         when(engine.getRouterService()).thenReturn(routerService);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
         when(engine.getStatisticManager()).thenReturn(statisticManager);
+        when(routerService.findUnroutedDataCreateTimeRangeByChannel()).thenReturn(Collections.emptyList());
     }
 
-    private RefreshDataCreateTimeMetricsJob newJob() {
-        return new RefreshDataCreateTimeMetricsJob(engine, taskScheduler);
+    private RefreshUnroutedDataMetricsJob newJob() {
+        return new RefreshUnroutedDataMetricsJob(engine, taskScheduler);
     }
 
     @Test
@@ -126,5 +135,36 @@ class RefreshDataCreateTimeMetricsJobTest {
         verify(statisticManager).setDataUnroutedMaxCreateTime("chan1", maxTime1);
         verify(statisticManager).setDataUnroutedMinCreateTime("chan2", minTime2);
         verify(statisticManager).setDataUnroutedMaxCreateTime("chan2", maxTime2);
+    }
+
+    @Test
+    void doJob_collectStatsUnroutedDisabled_noSetDataUnRoutedCalls() throws Exception {
+        when(parameterService.is(ParameterConstants.ROUTING_COLLECT_STATS_UNROUTED)).thenReturn(false);
+        newJob().doJob(false);
+        verify(routerService, never()).findUnroutedDataCountByChannel();
+        verify(statisticManager, never()).setDataUnRouted(any(), anyLong());
+    }
+
+    @Test
+    void doJob_collectStatsUnroutedEnabled_setsRealCountAndZeroesAbsentChannels() throws Exception {
+        when(parameterService.is(ParameterConstants.ROUTING_COLLECT_STATS_UNROUTED)).thenReturn(true);
+        when(configurationService.getNodeChannels(false)).thenReturn(
+                List.of(new NodeChannel("chan1"), new NodeChannel("chan2")));
+        when(routerService.findUnroutedDataCountByChannel())
+                .thenReturn(List.of(new ChannelDataUnroutedCount("chan1", 7L)));
+        newJob().doJob(false);
+        verify(statisticManager).setDataUnRouted("chan1", 7L);
+        verify(statisticManager).setDataUnRouted("chan2", 0L);
+    }
+
+    @Test
+    void doJob_collectStatsUnroutedEnabled_emptyResult_zeroesAllConfiguredChannels() throws Exception {
+        when(parameterService.is(ParameterConstants.ROUTING_COLLECT_STATS_UNROUTED)).thenReturn(true);
+        when(configurationService.getNodeChannels(false)).thenReturn(
+                List.of(new NodeChannel("chan1"), new NodeChannel("chan2")));
+        when(routerService.findUnroutedDataCountByChannel()).thenReturn(Collections.emptyList());
+        newJob().doJob(false);
+        verify(statisticManager).setDataUnRouted("chan1", 0L);
+        verify(statisticManager).setDataUnRouted("chan2", 0L);
     }
 }

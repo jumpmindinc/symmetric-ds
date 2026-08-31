@@ -51,6 +51,13 @@ public interface IEngineMetricsService extends IMetricsService {
      */
     ISymDoubleGauge getDoubleGauge(String metricId, MetricAttributeList attrs);
 
+    /**
+     * Registers (or returns the existing) double gauge for {@code metricId} with the given attributes. The definition must already be registered in
+     * {@code MetricDefinitionFactory}; throws {@code InvalidMetricDataException} if it is not. Never pass an inline definition — all built-in metric
+     * definitions must be declared and registered exclusively in {@code MetricDefinitionFactory}.
+     */
+    ISymDoubleGauge registerDoubleGauge(String metricId, MetricAttributeList attrs);
+
     IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition);
 
     IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition, MetricAttributeList attrs);

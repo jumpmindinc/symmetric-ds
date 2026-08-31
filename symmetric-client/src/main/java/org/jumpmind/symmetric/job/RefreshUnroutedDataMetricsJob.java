@@ -22,22 +22,28 @@ package org.jumpmind.symmetric.job;
 
 import static org.jumpmind.symmetric.job.JobDefaults.EVERY_FIFTEEN_MINUTES;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.model.ChannelDataCreateTimeRange;
+import org.jumpmind.symmetric.model.ChannelDataUnroutedCount;
+import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.service.ClusterConstants;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-public class RefreshDataCreateTimeMetricsJob extends AbstractJob {
-    public RefreshDataCreateTimeMetricsJob(ISymmetricEngine engine, ThreadPoolTaskScheduler taskScheduler) {
-        super(ClusterConstants.REFRESH_DATA_CREATE_TIME_METRICS, engine, taskScheduler);
+public class RefreshUnroutedDataMetricsJob extends AbstractJob {
+    public RefreshUnroutedDataMetricsJob(ISymmetricEngine engine, ThreadPoolTaskScheduler taskScheduler) {
+        super(ClusterConstants.REFRESH_UNROUTED_DATA_METRICS, engine, taskScheduler);
     }
 
     @Override
     public JobDefaults getDefaults() {
         return new JobDefaults()
                 .schedule(EVERY_FIFTEEN_MINUTES)
-                .description("Refresh unrouted data create time metrics");
+                .description("Refresh unrouted data create time and row count metrics");
     }
 
     @Override
@@ -56,6 +62,17 @@ public class RefreshDataCreateTimeMetricsJob extends AbstractJob {
         for (ChannelDataCreateTimeRange range : engine.getRouterService().findUnroutedDataCreateTimeRangeByChannel()) {
             statisticManager.setDataUnroutedMinCreateTime(range.channelId(), range.minCreateTime());
             statisticManager.setDataUnroutedMaxCreateTime(range.channelId(), range.maxCreateTime());
+        }
+        if (engine.getParameterService().is(ParameterConstants.ROUTING_COLLECT_STATS_UNROUTED)) {
+            refreshUnroutedDataCounts(statisticManager);
+        }
+    }
+
+    private void refreshUnroutedDataCounts(IStatisticManager statisticManager) {
+        Map<String, Long> countsByChannel = engine.getRouterService().findUnroutedDataCountByChannel().stream()
+                .collect(Collectors.toMap(ChannelDataUnroutedCount::channelId, ChannelDataUnroutedCount::count));
+        for (NodeChannel channel : engine.getConfigurationService().getNodeChannels(false)) {
+            statisticManager.setDataUnRouted(channel.getChannelId(), countsByChannel.getOrDefault(channel.getChannelId(), 0L));
         }
     }
 }
