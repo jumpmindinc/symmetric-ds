@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -190,24 +190,24 @@ class DefaultButtonBarTest extends BrowserlessTest {
     @Test
     void historyButton_click_opensSqlHistoryDialog() {
         fireClick(buttonBar.historyButton);
-        assertTrue($(SqlHistoryDialog.class).exists());
+        assertTrue(find(SqlHistoryDialog.class).exists());
     }
 
     @Test
     void importButton_click_opensDbImportDialog() {
         fireClick(buttonBar.importButton);
-        assertTrue($(DbImportDialog.class).exists());
+        assertTrue(find(DbImportDialog.class).exists());
     }
 
     @Test
     void exportButton_click_opensDbExportDialog() {
         fireClick(buttonBar.exportButton);
-        assertTrue($(DbExportDialog.class).exists());
+        assertTrue(find(DbExportDialog.class).exists());
     }
 
     @Test
     void fillButton_click_opensDbFillDialog() {
         fireClick(buttonBar.fillButton);
-        assertTrue($(DbFillDialog.class).exists());
+        assertTrue(find(DbFillDialog.class).exists());
     }
 }

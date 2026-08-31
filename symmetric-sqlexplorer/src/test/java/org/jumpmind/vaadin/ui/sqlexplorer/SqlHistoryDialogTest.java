@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -58,20 +58,20 @@ class SqlHistoryDialogTest extends BrowserlessTest {
     @Test
     void init_gridIsPresent() {
         createAndOpen();
-        assertTrue($(Grid.class).exists());
+        assertTrue(find(Grid.class).exists());
     }
 
     @Test
     void init_selectButtonIsPresent() {
         createAndOpen();
-        assertTrue($(Button.class).exists());
+        assertTrue(find(Button.class).exists());
     }
 
     @Test
     @SuppressWarnings("unchecked")
     void init_withEmptyHistory_gridIsEmpty() {
         createAndOpen();
-        assertEquals(0, $(Grid.class).single().getDataProvider().size(new Query<>()));
+        assertEquals(0, find(Grid.class).single().getDataProvider().size(new Query<>()));
     }
 
     @Test
@@ -89,13 +89,13 @@ class SqlHistoryDialogTest extends BrowserlessTest {
         settings.getSqlHistory().add(history);
         when(settingsProvider.get()).thenReturn(settings);
         createAndOpen();
-        assertTrue($(Grid.class).single().getDataProvider().size(new Query<>()) > 0);
+        assertTrue(find(Grid.class).single().getDataProvider().size(new Query<>()) > 0);
     }
 
     @Test
     void selectButton_isPresentAndEnabled() {
         createAndOpen();
-        Button selectButton = $(Button.class).all().stream()
+        Button selectButton = find(Button.class).all().stream()
                 .filter(b -> "Select".equals(b.getText()))
                 .findFirst()
                 .orElse(null);
@@ -115,7 +115,7 @@ class SqlHistoryDialogTest extends BrowserlessTest {
         }
         when(settingsProvider.get()).thenReturn(settings);
         createAndOpen();
-        assertTrue($(Grid.class).single().getDataProvider().size(new Query<>()) >= 3);
+        assertTrue(find(Grid.class).single().getDataProvider().size(new Query<>()) >= 3);
     }
 
     @Test
@@ -128,7 +128,7 @@ class SqlHistoryDialogTest extends BrowserlessTest {
         settings.getSqlHistory().add(history);
         when(settingsProvider.get()).thenReturn(settings);
         SqlHistoryDialog dialog = createAndOpen();
-        Grid<SqlHistory> grid = $(Grid.class).single();
+        Grid<SqlHistory> grid = find(Grid.class).single();
         grid.select(grid.getDataProvider()
                 .fetch(new Query<>())
                 .findFirst()

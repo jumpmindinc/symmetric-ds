@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -319,7 +319,8 @@ public class SelectFromSymDataSource extends SelectFromSource {
         if (outgoingBatch.getLoadId() > 0) {
             TableReloadStatus tableReloadStatus = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(outgoingBatch.getLoadId(), engine.getNodeId());
             if (tableReloadStatus != null && tableReloadStatus.isCompleted()) {
-                // Ignore create table (indexes and foreign keys) at end of load if it was cancelled
+                log.warn("Discarding create event (FKs/indexes) for batch {} and table {}, because load {} is already complete or cancelled.",
+                        outgoingBatch.getBatchId(), outgoingBatch.getSummary(), outgoingBatch.getLoadId());
                 return false;
             }
         }

@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -38,6 +38,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.ColumnTypes;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.IIndex;
 import org.jumpmind.db.model.IndexColumn;
@@ -1186,9 +1187,10 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
         } else if (oldData != null && applyChangesOnly) {
             /*
              * Old data isn't captured for some lob fields. When both values are null, then we always have to update because we don't know if the lob field was
-             * previously null.
+             * previously null. The mapped type is checked in addition to the target platform's isLob(), because a platform may classify a large text type as an
+             * ordinary string (SQL Server does this for varchar(max)) while the source trigger still could not capture its old value.
              */
-            boolean containsEmptyLobColumn = getPlatform().isLob(column)
+            boolean containsEmptyLobColumn = (getPlatform().isLob(column) || isClobMappedType(column))
                     && StringUtils.isBlank(oldData[targetColumnIndex]);
             needsUpdated = !Strings.CS.equals(rowData[targetColumnIndex], oldData[targetColumnIndex])
                     || data.getParsedData(CsvData.OLD_DATA) == null
@@ -1211,6 +1213,11 @@ public class DefaultDatabaseWriter extends AbstractDatabaseWriter {
             updateChangedDataIndicator(data, column, needsUpdated);
         }
         return needsUpdated;
+    }
+
+    private boolean isClobMappedType(Column column) {
+        int type = column.getMappedTypeCode();
+        return type == Types.CLOB || type == Types.NCLOB || type == Types.LONGVARCHAR || type == ColumnTypes.LONGNVARCHAR;
     }
 
     protected void updateChangedDataIndicator(CsvData data, Column column, boolean needsUpdated) {
