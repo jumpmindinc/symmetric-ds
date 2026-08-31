@@ -246,8 +246,8 @@ public class ModelComparator {
             IIndex sourceIndex = findCorrespondingIndex(sourceTable, targetIndex);
             if (sourceIndex == null) {
                 String targetIndexName = targetIndex.getName();
-                if (!platformInfo.isPersistedGeneratedColumnsSupported() && targetTable.doesIndexContainPersistedGeneratedColumn(targetIndex)) {
-                    log.debug("Skipping index {} for table {} because it contains a persisted generated column that the target platform doesn't support",
+                if (!targetTable.canCreateIndex(targetIndex, platformInfo)) {
+                    log.debug("Skipping index {} for table {} because it references a generated column that the target platform can't index",
                             targetIndexName, sourceTableName);
                     continue;
                 }

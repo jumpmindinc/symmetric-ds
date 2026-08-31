@@ -54,6 +54,7 @@ import java.util.TreeSet;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.jumpmind.db.platform.DatabaseInfo;
 
 /**
  * Represents a table in the database model.
@@ -361,6 +362,31 @@ public class Table extends Relation {
             }
         }
         return false;
+    }
+
+    public boolean doesIndexContainNonPersistedGeneratedColumn(IIndex index) {
+        for (int i = 0; i < index.getColumnCount(); i++) {
+            Column column = getColumnWithName(index.getColumn(i).getName());
+            if (column != null && column.isGenerated() && !column.isPersisted()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Determines whether an index can be created on this table for the given platform. Generated columns that the platform can't index (either because it
+     * physically stores the value differently than the source, or because it doesn't materialize the value at all) are not indexable there, unless the platform
+     * doesn't support generated columns in the first place, in which case the column is replicated as a plain column and any index is fine.
+     */
+    public boolean canCreateIndex(IIndex index, DatabaseInfo databaseInfo) {
+        if (!databaseInfo.isGeneratedColumnsSupported()) {
+            return true;
+        }
+        if (doesIndexContainPersistedGeneratedColumn(index) && !databaseInfo.isPersistedGeneratedColumnsSupported()) {
+            return false;
+        }
+        return !doesIndexContainNonPersistedGeneratedColumn(index) || databaseInfo.isNonPersistedGeneratedColumnsIndexSupported();
     }
 
     public void sortForeignKeys(final boolean caseSensitive) {

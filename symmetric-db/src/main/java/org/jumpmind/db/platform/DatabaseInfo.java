@@ -96,6 +96,8 @@ public class DatabaseInfo {
     private boolean generatedColumnsSupported = false;
     /** Whether generated columns that physically store their value (e.g. SQL Server PERSISTED) are supported. */
     private boolean persistedGeneratedColumnsSupported = false;
+    /** Whether an index can be created on a generated column that isn't persisted (e.g. a virtual/non-materialized computed column). */
+    private boolean nonPersistedGeneratedColumnsIndexSupported = false;
     /** Whether expressions can be used as default values */
     private boolean expressionsAsDefaultValuesSupported = false;
     /** Whether functional indices are supported */
@@ -529,6 +531,25 @@ public class DatabaseInfo {
      */
     public void setPersistedGeneratedColumnsSupported(boolean persistedGeneratedColumnsSupported) {
         this.persistedGeneratedColumnsSupported = persistedGeneratedColumnsSupported;
+    }
+
+    /**
+     * Determines whether the platform supports creating an index on a generated column that isn't persisted (e.g. a virtual/non-materialized computed column).
+     *
+     * @return <code>true</code> if an index can be created on a non-persisted generated column
+     */
+    public boolean isNonPersistedGeneratedColumnsIndexSupported() {
+        return nonPersistedGeneratedColumnsIndexSupported;
+    }
+
+    /**
+     * Specifies whether the platform supports creating an index on a generated column that isn't persisted.
+     *
+     * @param nonPersistedGeneratedColumnsIndexSupported
+     *            <code>true</code> if an index can be created on a non-persisted generated column
+     */
+    public void setNonPersistedGeneratedColumnsIndexSupported(boolean nonPersistedGeneratedColumnsIndexSupported) {
+        this.nonPersistedGeneratedColumnsIndexSupported = nonPersistedGeneratedColumnsIndexSupported;
     }
 
     /**
