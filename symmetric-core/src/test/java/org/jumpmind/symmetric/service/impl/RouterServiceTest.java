@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -34,16 +34,25 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.db.sql.ISqlRowMapper;
+import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
+import org.jumpmind.db.sql.Row;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Channel;
+import org.jumpmind.symmetric.model.ChannelDataCreateTimeRange;
+import org.jumpmind.symmetric.model.ChannelDataUnroutedCount;
 import org.jumpmind.symmetric.model.Data;
+import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeChannel;
 import org.jumpmind.symmetric.model.NodeGroupLink;
@@ -51,6 +60,7 @@ import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.model.Trigger;
 import org.jumpmind.symmetric.model.TriggerRouter;
 import org.jumpmind.symmetric.route.ChannelRouterContext;
+import org.jumpmind.symmetric.route.DataGapDetector;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.IGroupletService;
@@ -352,5 +362,143 @@ public class RouterServiceTest {
 
     private ChannelRouterContext newContext(NodeChannel channel) {
         return new ChannelRouterContext(SOURCE_NODE_GROUP, channel, mock(ISqlTransaction.class), null);
+    }
+
+    private RouterService newRouterServiceForGapQuery(IParameterService parameterService, int maxGapsToQualify, int maxGapsBeforeGreaterThanQuery) {
+        ISymmetricEngine engine = mock(ISymmetricEngine.class);
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform databasePlatform = mock(IDatabasePlatform.class);
+        when(databasePlatform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
+        when(databasePlatform.scrubSql(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(databasePlatform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(parameterService.getInt(ParameterConstants.ROUTING_MAX_GAPS_TO_QUALIFY_IN_SQL, 100)).thenReturn(maxGapsToQualify);
+        when(parameterService.getInt(ParameterConstants.ROUTING_DATA_READER_THRESHOLD_GAPS_TO_USE_GREATER_QUERY, 100))
+                .thenReturn(maxGapsBeforeGreaterThanQuery);
+        when(symmetricDialect.getPlatform()).thenReturn(databasePlatform);
+        when(engine.getDatabasePlatform()).thenReturn(databasePlatform);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
+        RouterService testRouterService = new RouterService(engine);
+        testRouterService.setSqlMap(new RouterServiceSqlMap(databasePlatform,
+                Collections.singletonMap("data", TableConstants.getTableName("sym", TableConstants.SYM_DATA))));
+        return testRouterService;
+    }
+
+    @Test
+    void testBuildGapQualifiedQueryUsesGapRangeSqlWhenGapCountAtOrBelowThreshold() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
+        List<DataGap> gaps = Arrays.asList(new DataGap(1, 10), new DataGap(20, 30));
+        RouterService.GapQualifiedQuery query = testRouterService.buildGapQualifiedQuery(gaps,
+                "selectChannelDataCreateTimeRangeUsingGapsSql", "selectChannelDataCreateTimeRangeUsingStartDataId");
+        assertTrue(query.sql().contains("group by channel_id"));
+        assertTrue(query.sql().contains("data_id between ? and ?"));
+        assertEquals(4, query.args().length);
+        assertEquals(1L, query.args()[0]);
+        assertEquals(10L, query.args()[1]);
+        assertEquals(20L, query.args()[2]);
+        assertEquals(30L, query.args()[3]);
+    }
+
+    @Test
+    void testBuildGapQualifiedQueryUsesStartIdSqlWhenGapCountExceedsThreshold() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 1);
+        List<DataGap> gaps = Arrays.asList(new DataGap(1, 10), new DataGap(20, 30));
+        RouterService.GapQualifiedQuery query = testRouterService.buildGapQualifiedQuery(gaps,
+                "selectChannelDataCreateTimeRangeUsingGapsSql", "selectChannelDataCreateTimeRangeUsingStartDataId");
+        assertTrue(query.sql().contains("data_id >= ?"));
+        assertEquals(1, query.args().length);
+        assertEquals(1L, query.args()[0]);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void stubQueryToInvokeMapper(ISqlTemplate sqlTemplate, List<Row> rows) {
+        when(sqlTemplate.query(any(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class))).thenAnswer(invocation -> {
+            ISqlRowMapper<Object> mapper = invocation.getArgument(1);
+            List<Object> results = new ArrayList<>();
+            for (Row row : rows) {
+                results.add(mapper.mapRow(row));
+            }
+            return results;
+        });
+    }
+
+    @Test
+    void testGetReadyChannelsMapsChannelIdsFromQueryResults() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
+        testRouterService.gapDetector = mock(DataGapDetector.class);
+        when(testRouterService.gapDetector.getDataGaps()).thenReturn(Arrays.asList(new DataGap(1, 10)));
+        stubQueryToInvokeMapper(testRouterService.sqlTemplateDirty, Arrays.asList(
+                new Row("channel_id", "chan1"),
+                new Row("channel_id", "chan2")));
+        Collection<String> readyChannels = testRouterService.getReadyChannels();
+        assertTrue(readyChannels.contains("chan1"));
+        assertTrue(readyChannels.contains("chan2"));
+    }
+
+    @Test
+    void testFindUnroutedDataCreateTimeRangeByChannelWithGapsMapsChannelDataCreateTimeRanges() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
+        testRouterService.gapDetector = mock(DataGapDetector.class);
+        when(testRouterService.gapDetector.getDataGaps()).thenReturn(Arrays.asList(new DataGap(1, 10)));
+        Date minTime = new Date(1000L);
+        Date maxTime = new Date(2000L);
+        Row row = new Row(3);
+        row.put("channel_id", "chan1");
+        row.put("min_create_time", minTime);
+        row.put("max_create_time", maxTime);
+        stubQueryToInvokeMapper(testRouterService.sqlTemplateDirty, Arrays.asList(row));
+        List<ChannelDataCreateTimeRange> ranges = testRouterService.findUnroutedDataCreateTimeRangeByChannel();
+        assertEquals(1, ranges.size());
+        assertEquals("chan1", ranges.get(0).channelId());
+        assertEquals(minTime, ranges.get(0).minCreateTime());
+        assertEquals(maxTime, ranges.get(0).maxCreateTime());
+    }
+
+    @Test
+    void testFindUnroutedDataCreateTimeRangeByChannelReturnsEmptyListWhenGapsNotYetDetected() {
+        assertEquals(Collections.emptyList(), routerService.findUnroutedDataCreateTimeRangeByChannel());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void stubNoArgQueryToInvokeMapper(ISqlTemplate sqlTemplate, List<Row> rows) {
+        when(sqlTemplate.query(any(), any(ISqlRowMapper.class))).thenAnswer(invocation -> {
+            ISqlRowMapper<Object> mapper = invocation.getArgument(1);
+            List<Object> results = new ArrayList<>();
+            for (Row row : rows) {
+                results.add(mapper.mapRow(row));
+            }
+            return results;
+        });
+    }
+
+    @Test
+    void testFindUnroutedDataCountByChannelMapsChannelDataUnroutedCounts() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
+        Row row = new Row(2);
+        row.put("channel_id", "chan1");
+        row.put("unrouted_count", 5L);
+        stubNoArgQueryToInvokeMapper(testRouterService.sqlTemplateDirty, Arrays.asList(row));
+        List<ChannelDataUnroutedCount> counts = testRouterService.findUnroutedDataCountByChannel();
+        assertEquals(1, counts.size());
+        assertEquals("chan1", counts.get(0).channelId());
+        assertEquals(5L, counts.get(0).count());
+    }
+
+    @Test
+    void testFindUnroutedDataCountByChannelIgnoresGapDetectorState() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
+        testRouterService.gapDetector = mock(DataGapDetector.class);
+        when(testRouterService.gapDetector.getDataGaps()).thenReturn(Collections.emptyList());
+        Row row = new Row(2);
+        row.put("channel_id", "chan1");
+        row.put("unrouted_count", 5L);
+        stubNoArgQueryToInvokeMapper(testRouterService.sqlTemplateDirty, Arrays.asList(row));
+        List<ChannelDataUnroutedCount> counts = testRouterService.findUnroutedDataCountByChannel();
+        assertEquals(1, counts.size());
+        assertEquals("chan1", counts.get(0).channelId());
     }
 }

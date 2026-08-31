@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -50,6 +50,13 @@ public interface IEngineMetricsService extends IMetricsService {
      * Returns the double gauge registered for {@code metricId} with the given attributes. MetricDefinitionFactory must have already registered the metric.
      */
     ISymDoubleGauge getDoubleGauge(String metricId, MetricAttributeList attrs);
+
+    /**
+     * Registers (or returns the existing) double gauge for {@code metricId} with the given attributes. The definition must already be registered in
+     * {@code MetricDefinitionFactory}; throws {@code InvalidMetricDataException} if it is not. Never pass an inline definition — all built-in metric
+     * definitions must be declared and registered exclusively in {@code MetricDefinitionFactory}.
+     */
+    ISymDoubleGauge registerDoubleGauge(String metricId, MetricAttributeList attrs);
 
     IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition);
 

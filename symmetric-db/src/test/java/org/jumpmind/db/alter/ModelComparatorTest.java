@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -148,6 +148,7 @@ public class ModelComparatorTest {
     void detectIndexChanges_suppressesAddIndexChange_forPersistedGeneratedColumn_whenPlatformLacksPersistedSupport() {
         DatabaseInfo dbInfo = new DatabaseInfo();
         dbInfo.setIndicesSupported(true);
+        dbInfo.setGeneratedColumnsSupported(true);
         ModelComparator comparator = new ModelComparator(null, dbInfo, false);
         Column col = new Column("total");
         col.setGenerated(true);
@@ -165,7 +166,62 @@ public class ModelComparatorTest {
     void detectIndexChanges_addsIndexChange_forPersistedGeneratedColumn_whenPlatformSupportsPersisted() {
         DatabaseInfo dbInfo = new DatabaseInfo();
         dbInfo.setIndicesSupported(true);
+        dbInfo.setGeneratedColumnsSupported(true);
         dbInfo.setPersistedGeneratedColumnsSupported(true);
+        ModelComparator comparator = new ModelComparator(null, dbInfo, false);
+        Column col = new Column("total");
+        col.setGenerated(true);
+        col.setPersisted(true);
+        Table source = new Table("t");
+        Table target = new Table("t", col);
+        NonUniqueIndex index = new NonUniqueIndex("idx_total");
+        index.addColumn(new IndexColumn("total"));
+        target.addIndex(index);
+        comparator.detectIndexChanges(null, source, null, target, changeList);
+        assertEquals(1, changeList.size());
+        assertTrue(changeList.get(0) instanceof AddIndexChange);
+    }
+
+    @Test
+    void detectIndexChanges_suppressesAddIndexChange_forNonPersistedGeneratedColumn_whenPlatformLacksNonPersistedIndexSupport() {
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setIndicesSupported(true);
+        dbInfo.setGeneratedColumnsSupported(true);
+        ModelComparator comparator = new ModelComparator(null, dbInfo, false);
+        Column col = new Column("total");
+        col.setGenerated(true);
+        Table source = new Table("t");
+        Table target = new Table("t", col);
+        NonUniqueIndex index = new NonUniqueIndex("idx_total");
+        index.addColumn(new IndexColumn("total"));
+        target.addIndex(index);
+        comparator.detectIndexChanges(null, source, null, target, changeList);
+        assertEquals(0, changeList.size());
+    }
+
+    @Test
+    void detectIndexChanges_addsIndexChange_forNonPersistedGeneratedColumn_whenPlatformSupportsNonPersistedIndex() {
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setIndicesSupported(true);
+        dbInfo.setGeneratedColumnsSupported(true);
+        dbInfo.setNonPersistedGeneratedColumnsIndexSupported(true);
+        ModelComparator comparator = new ModelComparator(null, dbInfo, false);
+        Column col = new Column("total");
+        col.setGenerated(true);
+        Table source = new Table("t");
+        Table target = new Table("t", col);
+        NonUniqueIndex index = new NonUniqueIndex("idx_total");
+        index.addColumn(new IndexColumn("total"));
+        target.addIndex(index);
+        comparator.detectIndexChanges(null, source, null, target, changeList);
+        assertEquals(1, changeList.size());
+        assertTrue(changeList.get(0) instanceof AddIndexChange);
+    }
+
+    @Test
+    void detectIndexChanges_addsIndexChange_forGeneratedColumn_whenPlatformDoesNotSupportGeneratedColumns() {
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setIndicesSupported(true);
         ModelComparator comparator = new ModelComparator(null, dbInfo, false);
         Column col = new Column("total");
         col.setGenerated(true);

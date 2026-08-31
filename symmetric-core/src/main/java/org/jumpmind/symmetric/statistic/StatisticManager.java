@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -466,23 +466,41 @@ public class StatisticManager implements IStatisticManager {
         addChannelCounter(METRIC_ID_DATA_LOADED_OUTGOING_ERRORS, channelId, count);
     }
 
-    public void updateDataMinCreateTime(String channelId, Date minCreateTime) {
+    /**
+     * Tracks the minimum create time of routed data for the {@code node_host_channel_stats} table.
+     */
+    public void updateDataRoutedMinCreateTime(String channelId, Date minCreateTime) {
         channelStatsLock.acquireUninterruptibly();
         try {
             getChannelStats(channelId).updateDataMinCreateTime(minCreateTime);
         } finally {
             channelStatsLock.release();
         }
-        setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, channelId, minCreateTime.getTime());
     }
 
-    public void updateDataMaxCreateTime(String channelId, Date maxCreateTime) {
+    /**
+     * Tracks the maximum create time of routed data for the {@code node_host_channel_stats} table.
+     */
+    public void updateDataRoutedMaxCreateTime(String channelId, Date maxCreateTime) {
         channelStatsLock.acquireUninterruptibly();
         try {
             getChannelStats(channelId).updateDataMaxCreateTime(maxCreateTime);
         } finally {
             channelStatsLock.release();
         }
+    }
+
+    /**
+     * Updates the {@code rows.create.time.min} metric gauge with the current minimum create time of unrouted data.
+     */
+    public void setDataUnroutedMinCreateTime(String channelId, Date minCreateTime) {
+        setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, channelId, minCreateTime.getTime());
+    }
+
+    /**
+     * Updates the {@code rows.create.time.max} metric gauge with the current maximum create time of unrouted data.
+     */
+    public void setDataUnroutedMaxCreateTime(String channelId, Date maxCreateTime) {
         setChannelLongGauge(METRIC_ID_DATA_CREATE_TIME_MAX, channelId, maxCreateTime.getTime());
     }
 
@@ -937,7 +955,7 @@ public class StatisticManager implements IStatisticManager {
             IEngineMetricsService svc = engine.getMetricsService();
             if (svc == null)
                 return;
-            ISymDoubleGauge g = svc.getDoubleGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
+            ISymDoubleGauge g = svc.registerDoubleGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
             if (g != null)
                 g.setValue(value);
         } catch (Exception e) {
@@ -950,7 +968,7 @@ public class StatisticManager implements IStatisticManager {
             IEngineMetricsService svc = engine.getMetricsService();
             if (svc == null)
                 return;
-            ISymLongGauge g = svc.getLongGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
+            ISymLongGauge g = svc.registerLongGauge(metricId, MetricAttributeList.of(new MetricAttribute(CHANNEL, channelId)));
             if (g != null)
                 g.setValue(value);
         } catch (Exception e) {

@@ -401,9 +401,8 @@ Assigning a distinct `cluster.jcs.port` per environment adds a second layer of n
 
 The `cluster.partition.id` property (also settable via `SYM_CLUSTER_PARTITION_ID`) is a cluster-scoped identity token shared by all nodes in the same environment; it is distinct from each node's own instance identity (`conf/instance.uuid`).
 Nodes that present a different cluster partition ID are detected and logged as belonging to a different cluster.
-If not configured, SymmetricDS auto-generates one on first startup and persists it in the `SYM_CONTEXT` table, so every node sharing that database converges on the same value automatically.
-It is also cached in `conf/cluster-partition.uuid` so restarts do not need to round-trip to the database to retrieve it.
-Set the property explicitly only when nodes in the same cluster point at different databases (e.g. read replicas), since auto-generation only converges nodes that share a database.
+If not configured, SymmetricDS auto-generates a random one on first startup and caches it locally in `conf/cluster-partition.uuid`.
+Because this generation is local to each node, it doesn't converge nodes that share a database — set the property explicitly (to the same value on every node) whenever more than one node should belong to the same cluster.
 
 JCS peer messages are AES-encrypted using the shared `sym.secret` key and include a SHA-512 header checksum.
 Nodes with a mismatched `cluster.partition.id` are detected and logged as unauthorized.
@@ -675,6 +674,7 @@ The following environment variables control whether a given SymmetricDS job is a
 |SYM_START_PURGE_INCOMING_JOB|start.purge.incoming.job|true
 |SYM_START_PURGE_METRIC_STATS_JOB|start.purge.metric.stats.job|true
 |SYM_START_REFRESH_BACKLOG_REPORT_JOB|start.refresh.backlog.report.job|true
+|SYM_START_REFRESH_UNROUTED_DATA_METRICS_JOB|start.refresh.unrouted.data.metrics.job|true
 |SYM_START_HEARTBEAT_JOB|start.heartbeat.job|true
 |SYM_START_SYNCTRIGGERS_JOB|start.synctriggers.job|true
 |SYM_START_SYNC_CONFIG_JOB|start.sync.config.job|true
