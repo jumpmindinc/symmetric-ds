@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -796,11 +796,23 @@ class StatisticManagerTest {
         IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
         ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
-        when(metricsService.getDoubleGauge(anyString(), any())).thenReturn(gauge);
+        when(metricsService.registerDoubleGauge(anyString(), any())).thenReturn(gauge);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.setDataUnRouted("chan1", 10L);
         assertEquals(10L, manager.getWorkingChannelStats().get("chan1").getDataUnRouted());
         verify(gauge).setValue(10.0);
+    }
+
+    @Test
+    void setDataUnRouted_withZeroCount_clearsGaugeToZero() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.registerDoubleGauge(anyString(), any())).thenReturn(gauge);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.setDataUnRouted("chan1", 0L);
+        assertEquals(0L, manager.getWorkingChannelStats().get("chan1").getDataUnRouted());
+        verify(gauge).setValue(0.0);
     }
 
     @Test

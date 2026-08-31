@@ -674,7 +674,7 @@ The following environment variables control whether a given SymmetricDS job is a
 |SYM_START_PURGE_INCOMING_JOB|start.purge.incoming.job|true
 |SYM_START_PURGE_METRIC_STATS_JOB|start.purge.metric.stats.job|true
 |SYM_START_REFRESH_BACKLOG_REPORT_JOB|start.refresh.backlog.report.job|true
-|SYM_START_REFRESH_DATA_CREATE_TIME_METRICS_JOB|start.refresh.data.create.time.metrics.job|true
+|SYM_START_REFRESH_UNROUTED_DATA_METRICS_JOB|start.refresh.unrouted.data.metrics.job|true
 |SYM_START_HEARTBEAT_JOB|start.heartbeat.job|true
 |SYM_START_SYNCTRIGGERS_JOB|start.synctriggers.job|true
 |SYM_START_SYNC_CONFIG_JOB|start.sync.config.job|true

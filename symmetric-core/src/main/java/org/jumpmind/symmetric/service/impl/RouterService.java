@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -60,6 +60,7 @@ import org.jumpmind.symmetric.io.data.ProtocolException;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.ChannelDataCreateTimeRange;
+import org.jumpmind.symmetric.model.ChannelDataUnroutedCount;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.DataMetaData;
@@ -408,6 +409,11 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 row.getDateTime("min_create_time"), row.getDateTime("max_create_time")), query.args(), query.types());
     }
 
+    public List<ChannelDataUnroutedCount> findUnroutedDataCountByChannel() {
+        return sqlTemplateDirty.query(getSql("selectChannelDataUnroutedCountSql"),
+                (Row row) -> new ChannelDataUnroutedCount(row.getString("channel_id"), row.getLong("unrouted_count")));
+    }
+
     protected GapQualifiedQuery buildGapQualifiedQuery(List<DataGap> dataGaps, String gapsSqlKey, String startIdSqlKey) {
         int dataIdSqlType = engine.getSymmetricDialect().getSqlTypeForIds();
         int numberOfGapsToQualify = parameterService.getInt(ParameterConstants.ROUTING_MAX_GAPS_TO_QUALIFY_IN_SQL, 100);
@@ -685,21 +691,6 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     context.clearDataEventsList();
                     context.incrementStat(System.currentTimeMillis() - insertTs, ChannelRouterContext.STAT_INSERT_DATA_EVENTS_MS);
                     completeBatchesAndCommit(context);
-                    if (parameterService.is(ParameterConstants.ROUTING_COLLECT_STATS_UNROUTED)) {
-                        Data lastDataProcessed = context.getLastDataProcessed();
-                        if (lastDataProcessed != null && lastDataProcessed.getDataId() > 0) {
-                            String channelId = nodeChannel.getChannelId();
-                            long queryTs = System.currentTimeMillis();
-                            long dataLeftToRoute = sqlTemplate.queryForInt(
-                                    getSql("selectUnroutedCountForChannelSql"), channelId,
-                                    lastDataProcessed.getDataId());
-                            queryTs = System.currentTimeMillis() - queryTs;
-                            if (queryTs > Constants.LONG_OPERATION_THRESHOLD) {
-                                log.warn("Unrouted query for channel {} took longer than expected. The query took {} ms.", channelId, queryTs);
-                            }
-                            engine.getStatisticManager().setDataUnRouted(channelId, dataLeftToRoute);
-                        }
-                    }
                 }
                 if (context != null) {
                     hasMaxDataRoutedByChannel.put(nodeChannel.getChannelId(), context.getCommittedDataIdCount() >= context.getChannel().getMaxDataToRoute());
