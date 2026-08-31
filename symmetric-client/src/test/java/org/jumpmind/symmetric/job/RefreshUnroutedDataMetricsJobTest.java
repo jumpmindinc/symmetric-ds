@@ -22,11 +22,13 @@ package org.jumpmind.symmetric.job;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -47,6 +49,7 @@ import org.jumpmind.symmetric.service.IRouterService;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 class RefreshUnroutedDataMetricsJobTest {
@@ -72,6 +75,7 @@ class RefreshUnroutedDataMetricsJobTest {
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(engine.getStatisticManager()).thenReturn(statisticManager);
         when(routerService.findUnroutedDataCreateTimeRangeByChannel()).thenReturn(Collections.emptyList());
+        when(configurationService.getNodeChannels(false)).thenReturn(Collections.emptyList());
     }
 
     private RefreshUnroutedDataMetricsJob newJob() {
@@ -102,8 +106,9 @@ class RefreshUnroutedDataMetricsJobTest {
     }
 
     @Test
-    void doJob_emptyList_noStatisticManagerCallsMade() throws Exception {
+    void doJob_emptyList_noConfiguredChannels_noStatisticManagerCallsMade() throws Exception {
         when(routerService.findUnroutedDataCreateTimeRangeByChannel()).thenReturn(Collections.emptyList());
+        when(configurationService.getNodeChannels(false)).thenReturn(Collections.emptyList());
         newJob().doJob(false);
         verify(statisticManager, never()).setDataUnroutedMinCreateTime(any(), any());
         verify(statisticManager, never()).setDataUnroutedMaxCreateTime(any(), any());
@@ -113,6 +118,7 @@ class RefreshUnroutedDataMetricsJobTest {
     void doJob_singleChannelRange_setsMinAndMaxCreateTime() throws Exception {
         Date minTime = new Date(1000L);
         Date maxTime = new Date(2000L);
+        when(configurationService.getNodeChannels(false)).thenReturn(List.of(new NodeChannel("chan1")));
         when(routerService.findUnroutedDataCreateTimeRangeByChannel())
                 .thenReturn(List.of(new ChannelDataCreateTimeRange("chan1", minTime, maxTime)));
         newJob().doJob(false);
@@ -126,6 +132,8 @@ class RefreshUnroutedDataMetricsJobTest {
         Date maxTime1 = new Date(2000L);
         Date minTime2 = new Date(3000L);
         Date maxTime2 = new Date(4000L);
+        when(configurationService.getNodeChannels(false)).thenReturn(
+                List.of(new NodeChannel("chan1"), new NodeChannel("chan2")));
         when(routerService.findUnroutedDataCreateTimeRangeByChannel())
                 .thenReturn(List.of(
                         new ChannelDataCreateTimeRange("chan1", minTime1, maxTime1),
@@ -135,6 +143,25 @@ class RefreshUnroutedDataMetricsJobTest {
         verify(statisticManager).setDataUnroutedMaxCreateTime("chan1", maxTime1);
         verify(statisticManager).setDataUnroutedMinCreateTime("chan2", minTime2);
         verify(statisticManager).setDataUnroutedMaxCreateTime("chan2", maxTime2);
+    }
+
+    @Test
+    void doJob_channelDrainedToZero_clearsStaleCreateTimeGauge() throws Exception {
+        Date minTime = new Date(1000L);
+        Date maxTime = new Date(2000L);
+        when(configurationService.getNodeChannels(false)).thenReturn(
+                List.of(new NodeChannel("chan1"), new NodeChannel("chan2")));
+        when(routerService.findUnroutedDataCreateTimeRangeByChannel())
+                .thenReturn(List.of(new ChannelDataCreateTimeRange("chan1", minTime, maxTime)));
+        newJob().doJob(false);
+        verify(statisticManager).setDataUnroutedMinCreateTime(eq("chan1"), eq(minTime));
+        verify(statisticManager).setDataUnroutedMaxCreateTime(eq("chan1"), eq(maxTime));
+        ArgumentCaptor<Date> minCaptor = ArgumentCaptor.forClass(Date.class);
+        ArgumentCaptor<Date> maxCaptor = ArgumentCaptor.forClass(Date.class);
+        verify(statisticManager).setDataUnroutedMinCreateTime(eq("chan2"), minCaptor.capture());
+        verify(statisticManager).setDataUnroutedMaxCreateTime(eq("chan2"), maxCaptor.capture());
+        assertNotEquals(minTime, minCaptor.getValue());
+        assertEquals(minCaptor.getValue(), maxCaptor.getValue());
     }
 
     @Test

@@ -22,6 +22,8 @@ package org.jumpmind.symmetric.job;
 
 import static org.jumpmind.symmetric.job.JobDefaults.EVERY_FIFTEEN_MINUTES;
 
+import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -59,19 +61,33 @@ public class RefreshUnroutedDataMetricsJob extends AbstractJob {
     @Override
     public void doJob(boolean force) throws Exception {
         IStatisticManager statisticManager = engine.getStatisticManager();
-        for (ChannelDataCreateTimeRange range : engine.getRouterService().findUnroutedDataCreateTimeRangeByChannel()) {
-            statisticManager.setDataUnroutedMinCreateTime(range.channelId(), range.minCreateTime());
-            statisticManager.setDataUnroutedMaxCreateTime(range.channelId(), range.maxCreateTime());
-        }
+        List<NodeChannel> nodeChannels = engine.getConfigurationService().getNodeChannels(false);
+        refreshUnroutedDataCreateTimeRange(statisticManager, nodeChannels);
         if (engine.getParameterService().is(ParameterConstants.ROUTING_COLLECT_STATS_UNROUTED)) {
-            refreshUnroutedDataCounts(statisticManager);
+            refreshUnroutedDataCounts(statisticManager, nodeChannels);
         }
     }
 
-    private void refreshUnroutedDataCounts(IStatisticManager statisticManager) {
+    private void refreshUnroutedDataCreateTimeRange(IStatisticManager statisticManager, List<NodeChannel> nodeChannels) {
+        Map<String, ChannelDataCreateTimeRange> rangesByChannel = engine.getRouterService().findUnroutedDataCreateTimeRangeByChannel()
+                .stream().collect(Collectors.toMap(ChannelDataCreateTimeRange::channelId, range -> range));
+        Date now = new Date();
+        for (NodeChannel channel : nodeChannels) {
+            ChannelDataCreateTimeRange range = rangesByChannel.get(channel.getChannelId());
+            if (range != null) {
+                statisticManager.setDataUnroutedMinCreateTime(range.channelId(), range.minCreateTime());
+                statisticManager.setDataUnroutedMaxCreateTime(range.channelId(), range.maxCreateTime());
+            } else {
+                statisticManager.setDataUnroutedMinCreateTime(channel.getChannelId(), now);
+                statisticManager.setDataUnroutedMaxCreateTime(channel.getChannelId(), now);
+            }
+        }
+    }
+
+    private void refreshUnroutedDataCounts(IStatisticManager statisticManager, List<NodeChannel> nodeChannels) {
         Map<String, Long> countsByChannel = engine.getRouterService().findUnroutedDataCountByChannel().stream()
                 .collect(Collectors.toMap(ChannelDataUnroutedCount::channelId, ChannelDataUnroutedCount::count));
-        for (NodeChannel channel : engine.getConfigurationService().getNodeChannels(false)) {
+        for (NodeChannel channel : nodeChannels) {
             statisticManager.setDataUnRouted(channel.getChannelId(), countsByChannel.getOrDefault(channel.getChannelId(), 0L));
         }
     }
