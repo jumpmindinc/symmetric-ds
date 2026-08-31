@@ -209,6 +209,8 @@ Behavior changes worth noting:
 --
 SymmetricDS 3.18 upgrades to Spring Framework 7.x, which is a major version change from Spring 6.x. The upgrade also includes:
 * Spring Boot 4.x
-* Spring Data 4.x 
+* Spring Data 4.x
 * Spring Security 7.1.x
+
+Note: Java 21 or newer is now required; See also: <<System Requirements>>.
 --
