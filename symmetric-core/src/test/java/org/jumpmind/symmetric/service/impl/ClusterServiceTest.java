@@ -460,7 +460,7 @@ class ClusterServiceTest {
     }
 
     @Test
-    void testInitInstanceId_containerized_instanceIdBlank_stillGeneratesNewId(@TempDir File tempDir) throws Exception {
+    void testInitInstanceId_containerized_instanceIdBlank_stillGeneratesNewId(@TempDir File tempDir) {
         ClusterService.instanceId = null;
         System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
         System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
