@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.jumpmind.db.platform.DatabaseInfo;
 import org.junit.jupiter.api.Test;
 
 class TableTest {
@@ -301,6 +302,77 @@ class TableTest {
     void doesIndexContainPersistedGeneratedColumn_returnsFalse_whenColumnNotInTable() {
         Table t = new Table("t", new Column("a"));
         assertFalse(t.doesIndexContainPersistedGeneratedColumn(indexOnColumns("unknown")));
+    }
+
+    @Test
+    void doesIndexContainNonPersistedGeneratedColumn_returnsFalse_forRegularColumn() {
+        Table t = new Table("t", new Column("a"));
+        assertFalse(t.doesIndexContainNonPersistedGeneratedColumn(indexOnColumns("a")));
+    }
+
+    @Test
+    void doesIndexContainNonPersistedGeneratedColumn_returnsTrue_forVirtualGeneratedColumn() {
+        Table t = new Table("t", generatedColumn("a", false));
+        assertTrue(t.doesIndexContainNonPersistedGeneratedColumn(indexOnColumns("a")));
+    }
+
+    @Test
+    void doesIndexContainNonPersistedGeneratedColumn_returnsFalse_forPersistedGeneratedColumn() {
+        Table t = new Table("t", generatedColumn("a", true));
+        assertFalse(t.doesIndexContainNonPersistedGeneratedColumn(indexOnColumns("a")));
+    }
+
+    @Test
+    void doesIndexContainNonPersistedGeneratedColumn_returnsTrue_whenMixedColumns() {
+        Table t = new Table("t", new Column("a"), generatedColumn("b", false));
+        assertTrue(t.doesIndexContainNonPersistedGeneratedColumn(indexOnColumns("a", "b")));
+    }
+
+    @Test
+    void doesIndexContainNonPersistedGeneratedColumn_returnsFalse_whenColumnNotInTable() {
+        Table t = new Table("t", new Column("a"));
+        assertFalse(t.doesIndexContainNonPersistedGeneratedColumn(indexOnColumns("unknown")));
+    }
+
+    @Test
+    void canCreateIndex_returnsTrue_whenGeneratedColumnsNotSupported() {
+        Table t = new Table("t", generatedColumn("a", true));
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        assertTrue(t.canCreateIndex(indexOnColumns("a"), dbInfo));
+    }
+
+    @Test
+    void canCreateIndex_returnsFalse_forPersistedGeneratedColumn_whenPersistedNotSupported() {
+        Table t = new Table("t", generatedColumn("a", true));
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setGeneratedColumnsSupported(true);
+        assertFalse(t.canCreateIndex(indexOnColumns("a"), dbInfo));
+    }
+
+    @Test
+    void canCreateIndex_returnsTrue_forPersistedGeneratedColumn_whenPersistedSupported() {
+        Table t = new Table("t", generatedColumn("a", true));
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setGeneratedColumnsSupported(true);
+        dbInfo.setPersistedGeneratedColumnsSupported(true);
+        assertTrue(t.canCreateIndex(indexOnColumns("a"), dbInfo));
+    }
+
+    @Test
+    void canCreateIndex_returnsFalse_forNonPersistedGeneratedColumn_whenNonPersistedIndexNotSupported() {
+        Table t = new Table("t", generatedColumn("a", false));
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setGeneratedColumnsSupported(true);
+        assertFalse(t.canCreateIndex(indexOnColumns("a"), dbInfo));
+    }
+
+    @Test
+    void canCreateIndex_returnsTrue_forNonPersistedGeneratedColumn_whenNonPersistedIndexSupported() {
+        Table t = new Table("t", generatedColumn("a", false));
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setGeneratedColumnsSupported(true);
+        dbInfo.setNonPersistedGeneratedColumnsIndexSupported(true);
+        assertTrue(t.canCreateIndex(indexOnColumns("a"), dbInfo));
     }
 
     private static IIndex indexOnColumns(String... columnNames) {
