@@ -386,13 +386,13 @@ public class Table extends Relation {
         if (!databaseInfo.isGeneratedColumnsSupported()) {
             return true;
         }
-        boolean targetLacksVirtualSupport = !databaseInfo.isNonPersistedGeneratedColumnsSupported();
+        boolean targetLacksNonPersistedSupport = !databaseInfo.isNonPersistedGeneratedColumnsSupported();
         boolean hasPersistedColumn = doesIndexContainPersistedGeneratedColumn(index)
-                || (targetLacksVirtualSupport && doesIndexContainNonPersistedGeneratedColumn(index));
+                || (targetLacksNonPersistedSupport && doesIndexContainNonPersistedGeneratedColumn(index));
         if (hasPersistedColumn && !databaseInfo.isPersistedGeneratedColumnsSupported()) {
             return false;
         }
-        boolean hasNonPersistedColumn = doesIndexContainNonPersistedGeneratedColumn(index) && !targetLacksVirtualSupport;
+        boolean hasNonPersistedColumn = doesIndexContainNonPersistedGeneratedColumn(index) && !targetLacksNonPersistedSupport;
         return !hasNonPersistedColumn || databaseInfo.isNonPersistedGeneratedColumnsIndexSupported();
     }
 
