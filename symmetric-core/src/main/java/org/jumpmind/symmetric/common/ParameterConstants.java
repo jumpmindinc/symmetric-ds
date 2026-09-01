@@ -367,6 +367,8 @@ final public class ParameterConstants {
     public static final String FILE_SYNC_COMPRESSION_LEVEL = "file.compression.level";
     public static final String FILE_SYNC_RETRY_COUNT = "file.sync.retry.count";
     public static final String FILE_SYNC_RETRY_DELAY_MS = "file.sync.retry.delay.ms";
+    public static final String FILE_SYNC_VERIFY_TARGET = "file.sync.verify.target";
+    public static final String FILE_SYNC_VERIFY_USE_CRC = "file.sync.verify.use.crc";
     public static final String BSH_LOAD_FILTER_HANDLES_MISSING_TABLES = "bsh.load.filter.handles.missing.tables";
     public static final String BSH_TRANSFORM_GLOBAL_SCRIPT = "bsh.transform.global.script";
     public static final String BSH_EXTENSION_GLOBAL_SCRIPT = "bsh.extension.global.script";
