@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -115,6 +116,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
      * Cache the history for performance. History never changes and does not grow big so this should be OK.
      */
     private Map<Integer, TriggerHistory> historyMap = Collections.synchronizedMap(new HashMap<Integer, TriggerHistory>());
+    private final Set<String> activeSyncTriggersNodes = ConcurrentHashMap.newKeySet();
 
     public TriggerRouterService(ISymmetricEngine engine) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
@@ -2022,23 +2024,34 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public boolean syncTriggers(String targetExternalId, boolean force) {
-        if (cacheManager.isUsingTargetExternalId(false)) {
-            List<Trigger> triggers = getTriggersForCurrentNode();
-            List<Table> tables = new ArrayList<Table>();
-            for (Trigger trigger : triggers) {
-                if (trigger.getSourceTableName().contains("targetExternalId")) {
-                    Table table = platform.readTableFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
-                            FormatUtils.replace("targetExternalId", targetExternalId, trigger.getSourceTableName()));
-                    if (table != null) {
-                        tables.add(table);
+        if (!activeSyncTriggersNodes.add(targetExternalId)) {
+            log.info("Sync Triggers is already running for node {}", targetExternalId);
+            return false;
+        }
+        try {
+            if (cacheManager.isUsingTargetExternalId(false)) {
+                List<Trigger> triggers = getTriggersForCurrentNode();
+                List<Table> tables = new ArrayList<Table>();
+                for (Trigger trigger : triggers) {
+                    if (trigger.getSourceTableName().contains("targetExternalId")) {
+                        Table table = platform.readTableFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
+                                FormatUtils.replace("targetExternalId", targetExternalId, trigger.getSourceTableName()));
+                        if (table != null) {
+                            tables.add(table);
+                        }
                     }
                 }
+                if (!tables.isEmpty()) {
+                    return syncTriggers(tables, force);
+                }
             }
-            if (tables.size() > 0) {
-                return syncTriggers(tables, force);
-            }
+            return true;
+        } catch (Exception e) {
+            log.error("Error while Syncing Triggers for node " + targetExternalId, e);
+            return false;
+        } finally {
+            activeSyncTriggersNodes.remove(targetExternalId);
         }
-        return true;
     }
 
     public boolean syncTriggers(Table table, boolean force) {
