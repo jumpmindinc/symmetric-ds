@@ -119,7 +119,11 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     /**
      * Cache the history for performance. History never changes and does not grow big so this should be OK.
      */
+<<<<<<< HEAD
     private Map<Integer, TriggerHistory> historyMap = Collections.synchronizedMap(new HashMap<>());
+=======
+    private Map<Integer, TriggerHistory> historyMap = Collections.synchronizedMap(new HashMap<Integer, TriggerHistory>());
+>>>>>>> f9f04ecb14 (SYM-7938: Avoid blocking registration batch ack for long running SyncTriggers for triggers with templete variables (#1040))
     private final Set<String> activeSyncTriggersNodes = ConcurrentHashMap.newKeySet();
 
     public TriggerRouterService(ISymmetricEngine engine) {
@@ -2057,11 +2061,16 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public boolean syncTriggers(String targetExternalId, boolean force) {
         if (!activeSyncTriggersNodes.add(targetExternalId)) {
             log.info("Sync Triggers is already running for node {}", targetExternalId);
+<<<<<<< HEAD
             return true;
+=======
+            return false;
+>>>>>>> f9f04ecb14 (SYM-7938: Avoid blocking registration batch ack for long running SyncTriggers for triggers with templete variables (#1040))
         }
         try {
             if (cacheManager.isUsingTargetExternalId(false)) {
                 List<Trigger> triggers = getTriggersForCurrentNode();
+<<<<<<< HEAD
                 RelationsList relations = new RelationsList();
                 for (Trigger trigger : triggers) {
                     if (trigger.getSourceTableName().contains("targetExternalId")) {
@@ -2075,6 +2084,20 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
                 }
                 if (!relations.isEmpty()) {
                     return syncTriggers(relations, force);
+=======
+                List<Table> tables = new ArrayList<Table>();
+                for (Trigger trigger : triggers) {
+                    if (trigger.getSourceTableName().contains("targetExternalId")) {
+                        Table table = platform.readTableFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
+                                FormatUtils.replace("targetExternalId", targetExternalId, trigger.getSourceTableName()));
+                        if (table != null) {
+                            tables.add(table);
+                        }
+                    }
+                }
+                if (!tables.isEmpty()) {
+                    return syncTriggers(tables, force);
+>>>>>>> f9f04ecb14 (SYM-7938: Avoid blocking registration batch ack for long running SyncTriggers for triggers with templete variables (#1040))
                 }
             }
             return true;
