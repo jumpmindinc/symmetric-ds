@@ -31,12 +31,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.lang.reflect.Field;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -55,17 +59,22 @@ import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
+import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.model.NodeHost;
 import org.jumpmind.symmetric.service.ClusterConstants;
+import org.jumpmind.symmetric.service.IClusterInstanceGenerator;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.util.AppUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedStatic;
 
 /**
  * Tests for ClusterService.
@@ -120,6 +129,8 @@ class ClusterServiceTest {
     @SuppressWarnings("unchecked")
     void clearActivePeers() throws Exception {
         ClusterService.instanceId = null;
+        System.clearProperty(SystemConstants.SYSPROP_LAUNCHER);
+        System.clearProperty(ServerConstants.CONTAINER_MODE_ENABLED);
         Field peerStatesField = ClusteredCacheManager.class.getDeclaredField("lastPeerStateMap");
         peerStatesField.setAccessible(true);
         ((Map<String, PeerState>) peerStatesField.get(ClusteredCacheManager.getInstance())).clear();
@@ -392,6 +403,74 @@ class ClusterServiceTest {
         String instanceId = ClusterService.generateInstanceId(longHost);
         String prefix = instanceId.substring(0, instanceId.length() - 37);
         assertEquals(23, prefix.length());
+    }
+
+    private void writeInstanceIdFile(File tempDir, String content) throws Exception {
+        File confDir = new File(tempDir, "conf");
+        confDir.mkdirs();
+        File instanceIdFile = new File(confDir, "instance.uuid");
+        try (FileOutputStream out = new FileOutputStream(instanceIdFile)) {
+            out.write(content.getBytes(Charset.defaultCharset()));
+        }
+    }
+
+    @Test
+    void testInitInstanceId_notContainerized_generatorReportsInvalid_generatesNewId(@TempDir File tempDir) throws Exception {
+        ClusterService.instanceId = null;
+        System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
+        writeInstanceIdFile(tempDir, "stale-hardware-instance-id");
+        IClusterInstanceGenerator generator = mock(IClusterInstanceGenerator.class);
+        when(generator.isValid("stale-hardware-instance-id")).thenReturn(false);
+        when(generator.generateInstanceId()).thenReturn("fresh-instance-id");
+        try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
+            mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
+            assertEquals("fresh-instance-id", ClusterService.initInstanceId(generator));
+        }
+        verify(generator).isValid("stale-hardware-instance-id");
+    }
+
+    @Test
+    void testInitInstanceId_notContainerized_generatorReportsValid_keepsExistingId(@TempDir File tempDir) throws Exception {
+        ClusterService.instanceId = null;
+        System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
+        writeInstanceIdFile(tempDir, "still-valid-instance-id");
+        IClusterInstanceGenerator generator = mock(IClusterInstanceGenerator.class);
+        when(generator.isValid("still-valid-instance-id")).thenReturn(true);
+        try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
+            mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
+            assertEquals("still-valid-instance-id", ClusterService.initInstanceId(generator));
+        }
+        verify(generator, never()).generateInstanceId();
+    }
+
+    @Test
+    void testInitInstanceId_containerized_generatorReportsInvalid_keepsExistingId(@TempDir File tempDir) throws Exception {
+        ClusterService.instanceId = null;
+        System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
+        System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
+        writeInstanceIdFile(tempDir, "container-instance-id");
+        IClusterInstanceGenerator generator = mock(IClusterInstanceGenerator.class);
+        when(generator.isValid(anyString())).thenReturn(false);
+        try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
+            mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
+            assertEquals("container-instance-id", ClusterService.initInstanceId(generator));
+        }
+        verify(generator, never()).isValid(anyString());
+        verify(generator, never()).generateInstanceId();
+    }
+
+    @Test
+    void testInitInstanceId_containerized_instanceIdBlank_stillGeneratesNewId(@TempDir File tempDir) {
+        ClusterService.instanceId = null;
+        System.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
+        System.setProperty(ServerConstants.CONTAINER_MODE_ENABLED, "true");
+        IClusterInstanceGenerator generator = mock(IClusterInstanceGenerator.class);
+        when(generator.generateInstanceId()).thenReturn("newly-generated-id");
+        try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
+            mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
+            assertEquals("newly-generated-id", ClusterService.initInstanceId(generator));
+        }
+        verify(generator, never()).isValid(anyString());
     }
 
     @SuppressWarnings("unchecked")
