@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.collections4.iterators.ReverseListIterator;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -192,7 +193,10 @@ public class FileSyncZipDataWriter implements IDataWriter {
                 Map<String, LastEventType> entriesByLastEventType = new HashMap<String, LastEventType>();
                 Map<String, String> entriesByLastRouterId = new HashMap<String, String>();
                 List<IFileSourceTracker> fileTrackers = extensionService.getExtensionPointList(IFileSourceTracker.class);
-                for (FileSnapshot snapshot : snapshotEvents) {
+                // Need to use the validation values from the later files (crc32, file size), so work the list backwards
+                ReverseListIterator<FileSnapshot> iterator = new ReverseListIterator<FileSnapshot>(snapshotEvents);
+                while (iterator.hasNext()) {
+                    FileSnapshot snapshot = iterator.next();
                     FileTriggerRouter triggerRouter = fileSyncService.getFileTriggerRouter(
                             snapshot.getTriggerId(), snapshot.getRouterId(), false);
                     if (triggerRouter != null) {
