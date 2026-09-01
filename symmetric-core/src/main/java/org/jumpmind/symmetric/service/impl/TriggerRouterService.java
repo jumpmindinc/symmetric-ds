@@ -2026,7 +2026,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public boolean syncTriggers(String targetExternalId, boolean force) {
         if (!activeSyncTriggersNodes.add(targetExternalId)) {
             log.info("Sync Triggers is already running for node {}", targetExternalId);
-            return true;
+            return false;
         }
         try {
             if (cacheManager.isUsingTargetExternalId(false)) {
