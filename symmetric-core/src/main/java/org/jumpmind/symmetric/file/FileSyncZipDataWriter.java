@@ -299,8 +299,7 @@ public class FileSyncZipDataWriter implements IDataWriter {
             batchInError = true;
             if (e instanceof IOException) {
                 throw new IoException(e);
-            }
-            else {
+            } else {
                 throw new RuntimeException(e);
             }
         }
