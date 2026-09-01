@@ -399,14 +399,9 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     public List<ChannelDataCreateTimeRange> findUnroutedDataCreateTimeRangeByChannel() {
-        List<DataGap> dataGaps = gapDetector.getDataGaps();
-        if (dataGaps == null || dataGaps.isEmpty()) {
-            return Collections.emptyList();
-        }
-        GapQualifiedQuery query = buildGapQualifiedQuery(dataGaps,
-                "selectChannelDataCreateTimeRangeUsingGapsSql", "selectChannelDataCreateTimeRangeUsingStartDataId");
-        return sqlTemplateDirty.query(query.sql(), (Row row) -> new ChannelDataCreateTimeRange(row.getString("channel_id"),
-                row.getDateTime("min_create_time"), row.getDateTime("max_create_time")), query.args(), query.types());
+        return sqlTemplateDirty.query(getSql("selectChannelDataCreateTimeRangeSql"),
+                (Row row) -> new ChannelDataCreateTimeRange(row.getString("channel_id"),
+                        row.getDateTime("min_create_time"), row.getDateTime("max_create_time")));
     }
 
     public List<ChannelDataUnroutedCount> findUnroutedDataCountByChannel() {
