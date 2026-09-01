@@ -378,15 +378,22 @@ public class Table extends Relation {
      * Determines whether an index can be created on this table for the given platform. Generated columns that the platform can't index (either because it
      * physically stores the value differently than the source, or because it doesn't materialize the value at all) are not indexable there, unless the platform
      * doesn't support generated columns in the first place, in which case the column is replicated as a plain column and any index is fine.
+     * <p>
+     * A platform that doesn't support non-persisted generated columns at all falls back to creating any such column as persisted instead, so a non-persisted
+     * source column is treated as persisted for this platform's indexing decision too.
      */
     public boolean canCreateIndex(IIndex index, DatabaseInfo databaseInfo) {
         if (!databaseInfo.isGeneratedColumnsSupported()) {
             return true;
         }
-        if (doesIndexContainPersistedGeneratedColumn(index) && !databaseInfo.isPersistedGeneratedColumnsSupported()) {
+        boolean targetLacksVirtualSupport = !databaseInfo.isNonPersistedGeneratedColumnsSupported();
+        boolean hasPersistedColumn = doesIndexContainPersistedGeneratedColumn(index)
+                || (targetLacksVirtualSupport && doesIndexContainNonPersistedGeneratedColumn(index));
+        if (hasPersistedColumn && !databaseInfo.isPersistedGeneratedColumnsSupported()) {
             return false;
         }
-        return !doesIndexContainNonPersistedGeneratedColumn(index) || databaseInfo.isNonPersistedGeneratedColumnsIndexSupported();
+        boolean hasNonPersistedColumn = doesIndexContainNonPersistedGeneratedColumn(index) && !targetLacksVirtualSupport;
+        return !hasNonPersistedColumn || databaseInfo.isNonPersistedGeneratedColumnsIndexSupported();
     }
 
     public void sortForeignKeys(final boolean caseSensitive) {

@@ -108,8 +108,44 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
         if (relation instanceof Table table) {
             detectAutoIncrementColumnsInUniqueIndices(table);
             readMetaDataAndPrimaryKeyConstraint(connection, table);
+            markGeneratedColumnStorageKind(connection, table, metaData.getMetaData().getDatabaseMajorVersion());
         }
         return relation;
+    }
+
+    /**
+     * Marks each of the table's generated columns as persisted (STORED) or not (VIRTUAL). VIRTUAL generated columns don't exist before PostgreSQL 18, so on
+     * older versions every generated column is necessarily STORED and no catalog query is needed; on 18+ both kinds are possible and have to be disambiguated
+     * via {@code pg_attribute.attgenerated}.
+     */
+    protected void markGeneratedColumnStorageKind(Connection connection, Table table, int databaseMajorVersion) throws SQLException {
+        if (!table.hasGeneratedColumns() || databaseMajorVersion < 12) {
+            return;
+        }
+        if (databaseMajorVersion < 18) {
+            for (Column column : table.getColumns()) {
+                if (column.isGenerated()) {
+                    column.setPersisted(true);
+                }
+            }
+            return;
+        }
+        String sql = "SELECT a.attname, a.attgenerated FROM pg_attribute a "
+                + "JOIN pg_class c ON a.attrelid = c.oid "
+                + "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                + "WHERE c.relname = ? AND n.nspname = ? AND a.attgenerated <> ''";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, table.getName());
+            ps.setString(2, table.getSchema());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Column column = table.findColumn(rs.getString(1));
+                    if (column != null) {
+                        column.setPersisted("s".equals(rs.getString(2)));
+                    }
+                }
+            }
+        }
     }
 
     /**

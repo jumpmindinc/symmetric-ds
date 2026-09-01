@@ -20,8 +20,10 @@
  */
 package org.jumpmind.symmetric.db.postgresql;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -50,6 +52,38 @@ class PostgreSqlSymmetricDialectTest {
         sqlTemplate = mock(ISqlTemplate.class);
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
         when(sqlTemplate.getDatabaseMajorVersion()).thenReturn(14);
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(platform.getDdlBuilder()).thenReturn(new PostgreSqlDdlBuilder());
+        when(platform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
+        dialect = new PostgreSqlSymmetricDialect(parameterService, platform);
+    }
+
+    @Test
+    void constructor_disablesPersistedAndNonPersistedGeneratedColumnSupport_belowVersion12() {
+        setupWithMajorVersion(11);
+        assertFalse(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
+        assertFalse(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsSupported());
+    }
+
+    @Test
+    void constructor_enablesPersistedButNotNonPersistedGeneratedColumnSupport_atVersion14() {
+        assertTrue(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
+        assertFalse(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsSupported());
+    }
+
+    @Test
+    void constructor_enablesPersistedAndNonPersistedGeneratedColumnSupport_atVersion18() {
+        setupWithMajorVersion(18);
+        assertTrue(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
+        assertTrue(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsSupported());
+    }
+
+    private void setupWithMajorVersion(int majorVersion) {
+        IParameterService parameterService = mock(ParameterService.class);
+        platform = mock(IDatabasePlatform.class);
+        sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(sqlTemplate.getDatabaseMajorVersion()).thenReturn(majorVersion);
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(platform.getDdlBuilder()).thenReturn(new PostgreSqlDdlBuilder());
         when(platform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
