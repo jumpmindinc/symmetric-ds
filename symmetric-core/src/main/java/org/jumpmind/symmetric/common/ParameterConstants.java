@@ -159,6 +159,8 @@ final public class ParameterConstants {
     public static final String INITIAL_LOAD_CONCAT_CSV_IN_SQL_ENABLED = "initial.load.concat.csv.in.sql.enabled";
     public static final String INITIAL_LOAD_USE_COLUMN_TEMPLATES_ENABLED = "initial.load.use.column.templates.enabled";
     public static final String INITIAL_LOAD_EXTRACT_THREAD_COUNT_PER_SERVER = "initial.load.extract.thread.per.server.count";
+    public static final String INITIAL_LOAD_EXTRACT_REQUEST_RECOVERY_ENABLED = "initial.load.extract.request.recovery.enabled";
+    public static final String INITIAL_LOAD_EXTRACT_REQUEST_RECOVERY_THRESHOLD_MS = "initial.load.extract.request.recovery.threshold.ms";
     public static final String INITIAL_LOAD_EXTRACT_MAX_PROCESS_TIME_MS = "initial.load.extract.max.process.time.ms";
     public static final String INITIAL_LOAD_EXTRACT_TIMEOUT_MS = "initial.load.extract.timeout.ms";
     public static final String INITIAL_LOAD_EXTRACT_USE_TWO_PASS_LOB = "initial.load.extract.use.two.pass.lob";

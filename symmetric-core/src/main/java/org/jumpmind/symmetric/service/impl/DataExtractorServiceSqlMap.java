@@ -89,9 +89,33 @@ public class DataExtractorServiceSqlMap extends AbstractSqlMap {
 
         putSql("updateOutgoingBatchesForSetupThreadSql", "update $(outgoing_batch) set thread_id = ? where load_id = ? and summary like ? and thread_id is null");
 
+        // extracted_rows / extracted_millis are reset alongside the transfer and load statistics. Leaving them behind makes a
+        // restarted request report extraction counters from the run that was interrupted, which is the misleading state this
+        // recovery path exists to clear.
         putSql("restartExtractRequest", "update $(extract_request) set last_transferred_batch_id = null, transferred_rows = 0, transferred_millis = 0, "
-                + "last_loaded_batch_id = null, loaded_rows = 0, loaded_millis = 0, parent_request_id = 0, status = ? "
+                + "last_loaded_batch_id = null, loaded_rows = 0, loaded_millis = 0, extracted_rows = 0, extracted_millis = 0, "
+                + "parent_request_id = 0, status = ? "
                 + "where request_id = ? and node_id = ?");
+
+        putSql("updateExtractRequestExtractedStats", "update $(extract_request) set extracted_rows = extracted_rows + ?, "
+                + "extracted_millis = extracted_millis + ?, last_update_time = ? where request_id = ?");
+
+        putSql("selectRequestedBatchesForExtractRequestSql",
+                "select batch_id from $(outgoing_batch) where node_id = ? and batch_id between ? and ? and status = 'RQ'");
+
+        putSql("selectDeliveredBatchesForExtractRequestSql",
+                "select batch_id from $(outgoing_batch) where node_id = ? and batch_id between ? and ? and status in ('OK','IG')");
+
+        /*
+         * A request marked OK whose range still contains RQ batches cannot have completed: MultiBatchStagingWriter.close() advances every remaining batch, so a
+         * finished extract leaves none at RQ. loaded_time is null excludes requests that legitimately finished and were loaded, and the last_update_time bound
+         * avoids racing a status write that is still in flight.
+         */
+        putSql("selectStuckExtractRequestsSql", "select * from $(extract_request) r where r.source_node_id = ? and r.status = ? "
+                + "and r.loaded_time is null and r.parent_request_id = 0 and r.last_update_time < ? "
+                + "and exists (select 1 from $(outgoing_batch) b where b.node_id = r.node_id "
+                + "and b.batch_id between r.start_batch_id and r.end_batch_id and b.status = 'RQ') "
+                + "order by r.load_id asc, r.request_id asc");
 
         putSql("cancelExtractRequests", "update $(extract_request) set status=?, last_update_time=?, loaded_time=? where load_id = ? and source_node_id = ? and (status != ? or loaded_time is null)");
 
