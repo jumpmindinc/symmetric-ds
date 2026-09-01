@@ -2,7 +2,7 @@
 
 === License Change: GNU AGPL v3
 --
-Starting with this release on September 1, 2026, Jumpmind is relicensing SymmetricDS from the GNU General Public License (GPL) v3 to the GNU Affero General Public License (AGPL) v3. For the vast majority of users, nothing changes. Running the software internally, deploying it unmodified, or contributing changes upstream all remain fully permitted, as before. The new obligation applies only to those who modify the code and offer it as a closed-source, hosted service to others. Commits merged after this release are licensed under AGPL v3. Projects with automated license-compliance tooling may need to update their policy rules to approve AGPL v3 for this repository.
+Starting with this release on September 1, 2026, Jumpmind is relicensing SymmetricDS from the GNU General Public License (GPL) v3 to the GNU Affero General Public License (AGPL) v3. For the vast majority of users, nothing changes. Commits merged after this release are licensed under AGPL v3. Projects with automated license-compliance tooling may need to update their policy rules to approve AGPL v3 for this repository.
 --
 
 ifdef::pro[]
