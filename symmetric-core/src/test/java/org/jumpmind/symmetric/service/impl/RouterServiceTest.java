@@ -393,8 +393,8 @@ public class RouterServiceTest {
         RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
         List<DataGap> gaps = Arrays.asList(new DataGap(1, 10), new DataGap(20, 30));
         RouterService.GapQualifiedQuery query = testRouterService.buildGapQualifiedQuery(gaps,
-                "selectChannelDataCreateTimeRangeUsingGapsSql", "selectChannelDataCreateTimeRangeUsingStartDataId");
-        assertTrue(query.sql().contains("group by channel_id"));
+                "selectChannelsUsingGapsSql", "selectChannelsUsingStartDataId");
+        assertTrue(query.sql().contains("distinct channel_id"));
         assertTrue(query.sql().contains("data_id between ? and ?"));
         assertEquals(4, query.args().length);
         assertEquals(1L, query.args()[0]);
@@ -408,7 +408,7 @@ public class RouterServiceTest {
         RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 1);
         List<DataGap> gaps = Arrays.asList(new DataGap(1, 10), new DataGap(20, 30));
         RouterService.GapQualifiedQuery query = testRouterService.buildGapQualifiedQuery(gaps,
-                "selectChannelDataCreateTimeRangeUsingGapsSql", "selectChannelDataCreateTimeRangeUsingStartDataId");
+                "selectChannelsUsingGapsSql", "selectChannelsUsingStartDataId");
         assertTrue(query.sql().contains("data_id >= ?"));
         assertEquals(1, query.args().length);
         assertEquals(1L, query.args()[0]);
@@ -442,15 +442,13 @@ public class RouterServiceTest {
     @Test
     void testFindUnroutedDataCreateTimeRangeByChannelWithGapsMapsChannelDataCreateTimeRanges() {
         RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
-        testRouterService.gapDetector = mock(DataGapDetector.class);
-        when(testRouterService.gapDetector.getDataGaps()).thenReturn(Arrays.asList(new DataGap(1, 10)));
         Date minTime = new Date(1000L);
         Date maxTime = new Date(2000L);
         Row row = new Row(3);
         row.put("channel_id", "chan1");
         row.put("min_create_time", minTime);
         row.put("max_create_time", maxTime);
-        stubQueryToInvokeMapper(testRouterService.sqlTemplateDirty, Arrays.asList(row));
+        stubNoArgQueryToInvokeMapper(testRouterService.sqlTemplateDirty, Arrays.asList(row));
         List<ChannelDataCreateTimeRange> ranges = testRouterService.findUnroutedDataCreateTimeRangeByChannel();
         assertEquals(1, ranges.size());
         assertEquals("chan1", ranges.get(0).channelId());
@@ -459,8 +457,18 @@ public class RouterServiceTest {
     }
 
     @Test
-    void testFindUnroutedDataCreateTimeRangeByChannelReturnsEmptyListWhenGapsNotYetDetected() {
-        assertEquals(Collections.emptyList(), routerService.findUnroutedDataCreateTimeRangeByChannel());
+    void testFindUnroutedDataCreateTimeRangeByChannelIgnoresGapDetectorState() {
+        RouterService testRouterService = newRouterServiceForGapQuery(mock(IParameterService.class), 100, 100);
+        testRouterService.gapDetector = mock(DataGapDetector.class);
+        when(testRouterService.gapDetector.getDataGaps()).thenReturn(Collections.emptyList());
+        Row row = new Row(3);
+        row.put("channel_id", "chan1");
+        row.put("min_create_time", new Date(1000L));
+        row.put("max_create_time", new Date(2000L));
+        stubNoArgQueryToInvokeMapper(testRouterService.sqlTemplateDirty, Arrays.asList(row));
+        List<ChannelDataCreateTimeRange> ranges = testRouterService.findUnroutedDataCreateTimeRangeByChannel();
+        assertEquals(1, ranges.size());
+        assertEquals("chan1", ranges.get(0).channelId());
     }
 
     @SuppressWarnings("unchecked")
