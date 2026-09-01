@@ -52,6 +52,7 @@ import static org.jumpmind.symmetric.service.ClusterConstants.WATCHDOG;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Collection;
@@ -169,20 +170,21 @@ public class ClusterService extends AbstractService implements IClusterService {
             instanceIdURL = ClusterService.class.getClassLoader().getResource("/instance.uuid");
         }
         if (instanceIdFile != null) {
-            try {
-                instanceId = IOUtils.toString(new FileInputStream(instanceIdFile), Charset.defaultCharset()).trim();
+            try (FileInputStream in = new FileInputStream(instanceIdFile)) {
+                instanceId = IOUtils.toString(in, Charset.defaultCharset()).trim();
             } catch (Exception ex) {
                 log.debug("Failed to load instance id from file '" + instanceIdFile + "'", ex);
             }
         } else if (instanceIdURL != null) {
-            try {
-                instanceId = IOUtils.toString(instanceIdURL.openStream(), Charset.defaultCharset()).trim();
+            try (InputStream in = instanceIdURL.openStream()) {
+                instanceId = IOUtils.toString(in, Charset.defaultCharset()).trim();
             } catch (Exception ex) {
                 log.debug("Failed to load instance id from classpath '" + instanceIdURL + "'", ex);
             }
         }
         boolean isInstanceIdBlank = StringUtils.isBlank(instanceId);
-        if (isInstanceIdBlank || (generator != null && !generator.isValid(instanceId))) {
+        boolean isContainerized = "true".equals(System.getProperty(ServerConstants.CONTAINER_MODE_ENABLED));
+        if (isInstanceIdBlank || (!isContainerized && generator != null && !generator.isValid(instanceId))) {
             String newInstanceId = null;
             if (generator != null) {
                 newInstanceId = generator.generateInstanceId();
@@ -199,7 +201,9 @@ public class ClusterService extends AbstractService implements IClusterService {
             if (instanceIdFile != null) {
                 try {
                     instanceIdFile.getParentFile().mkdirs();
-                    IOUtils.write(newInstanceId, new FileOutputStream(instanceIdFile), Charset.defaultCharset());
+                    try (FileOutputStream out = new FileOutputStream(instanceIdFile)) {
+                        IOUtils.write(newInstanceId, out, Charset.defaultCharset());
+                    }
                 } catch (Exception ex) {
                     throw new SymmetricException("Failed to save file '" + instanceIdFile + "' Please correct and restart this node.", ex);
                 }
