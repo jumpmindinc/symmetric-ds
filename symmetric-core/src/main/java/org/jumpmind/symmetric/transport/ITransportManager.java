@@ -29,6 +29,7 @@ import java.util.Map;
 import org.jumpmind.symmetric.model.BatchAck;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.transport.http.IHttpResumeCache;
 
 public interface ITransportManager {
     public int sendAcknowledgement(Node remote, List<IncomingBatch> list, Node local, String securityToken, String registrationUrl) throws IOException;
@@ -43,11 +44,38 @@ public interface ITransportManager {
     public IIncomingTransport getFilePullTransport(Node remote, Node local, String securityToken,
             Map<String, String> requestProperties, String registrationUrl) throws IOException;
 
+    /**
+     * Same as the 5-arg {@code getFilePullTransport}, but additionally requests a resumed pull of one specific previously-interrupted file sync batch when
+     * {@code resumeBatchId} is non-null. Implementations that don't support resume may ignore {@code resumeBatchId} and delegate to the 5-arg overload.
+     */
+    default IIncomingTransport getFilePullTransport(Node remote, Node local, String securityToken,
+            Map<String, String> requestProperties, String registrationUrl, Long resumeBatchId) throws IOException {
+        return getFilePullTransport(remote, local, securityToken, requestProperties, registrationUrl);
+    }
+
     public IOutgoingWithResponseTransport getFilePushTransport(Node remote, Node local,
             String securityToken, String registrationUrl) throws IOException;
 
     public IIncomingTransport getPullTransport(Node remote, Node local, String securityToken, Map<String, String> requestProperties, String registrationUrl)
             throws IOException;
+
+    /**
+     * Same as the 5-arg {@code getPullTransport}, but additionally requests a resumed pull of one specific previously-interrupted batch when
+     * {@code resumeBatchId} is non-null. Resume is an HTTP-specific mechanism; implementations that don't support it may ignore {@code resumeBatchId} and
+     * delegate to the 5-arg overload.
+     */
+    default IIncomingTransport getPullTransport(Node remote, Node local, String securityToken, Map<String, String> requestProperties,
+            String registrationUrl, Long resumeBatchId) throws IOException {
+        return getPullTransport(remote, local, securityToken, requestProperties, registrationUrl);
+    }
+
+    /**
+     * @return the resume cache backing this transport manager's pull requests, or {@code null} if this transport doesn't support resume (resume is
+     *         HTTP-specific)
+     */
+    default IHttpResumeCache getResumeCache() {
+        return null;
+    }
 
     public IIncomingTransport getPingTransport(Node remote, Node local, String registrationUrl) throws IOException;
 
