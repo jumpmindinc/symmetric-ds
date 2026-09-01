@@ -90,6 +90,15 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
     protected String[] dataTruncationStates;
     protected int[] objectAlreadyExistsCodes;
     protected String[] objectAlreadyExistsStates;
+    /**
+     * Cross-vendor message fragments identifying an "object already exists" failure, matched case-insensitively. Error codes cannot be shared defaults, since
+     * the same number means different things on different vendors, and only PostgreSQL populates the SQLSTATE list today. These cover platforms whose DDL
+     * builders live outside this repository -- SQL Server 1913 ("an index or statistics with name 'x' already exists"), Oracle ORA-00955 ("name is already used
+     * by an existing object"), MySQL ("Duplicate key name") -- so they get the tolerance with no per-platform change. Server-localized messages defeat message
+     * matching, so a platform that depends on this should still populate {@link #objectAlreadyExistsCodes}.
+     */
+    protected String[] objectAlreadyExistsMessageParts = { "already exists", "already an object named",
+            "is already used by an existing object", "duplicate key name", "duplicate column name" };
     protected int[] objectDoesNotExistCodes;
     protected String[] objectDoesNotExistStates;
     protected int isolationLevel;
@@ -478,15 +487,32 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                                     con.commit();
                                 }
                             } catch (SQLException ex) {
-                                boolean isDrop = statement.toLowerCase().trim().startsWith("drop");
-                                boolean isSequenceCreate = statement.toLowerCase().trim().startsWith("create sequence");
+                                String trimmed = statement.toLowerCase().trim();
+                                boolean isDrop = trimmed.startsWith("drop");
+                                boolean isSequenceCreate = trimmed.startsWith("create sequence");
+                                boolean isCreateOrAlter = trimmed.startsWith("create") || trimmed.startsWith("alter");
                                 if (resultsListener != null) {
                                     resultsListener.sqlErrored(statement, translate(statement, ex), statementCount, isDrop, isSequenceCreate);
                                 }
+                                boolean objectAlreadyExists = isCreateOrAlter && doesObjectAlreadyExist(ex);
                                 if ((isDrop && !failOnDrops) || (isSequenceCreate && !failOnSequenceCreate)) {
                                     log.debug("{}.  Failed to execute: {}", ex.getMessage(), statement);
+                                } else if (objectAlreadyExists && isTolerateObjectAlreadyExists()) {
+                                    /*
+                                     * Re-sending a table definition to a target where the object already exists is a no-op that used to fail the batch. Because
+                                     * table definitions ride the same channel as change data, one such statement stopped every batch queued behind it and all
+                                     * replication for that table with it, while the only possible effect of the statement succeeding was to create something
+                                     * that was already there.
+                                     */
+                                    log.warn("Object already exists, continuing.  Failed to execute: {} ({})", statement, ex.getMessage());
                                 } else {
                                     log.warn("{}.  Failed to execute: {}", ex.getMessage(), statement);
+                                    if (objectAlreadyExists) {
+                                        // Retrying re-issues the same DDL and fails identically, so Clear Error cannot help here.
+                                        log.warn("The statement above failed because the object already exists, so this batch will fail the same way on "
+                                                + "every retry.  Ignore the batch rather than clearing its error, or set {}=true to continue past this "
+                                                + "condition automatically.", SqlConstants.TOLERATE_OBJECT_ALREADY_EXISTS_ON_DDL);
+                                    }
                                     if (failOnError) {
                                         throw ex;
                                     }
@@ -1129,10 +1155,19 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         return truncation;
     }
 
+    /**
+     * Whether a DDL statement that failed only because the object already exists should be logged and stepped over instead of failing the script. Defaults to
+     * true: the statement is a no-op either way, and failing it stops every batch queued behind it on the same channel.
+     */
+    protected boolean isTolerateObjectAlreadyExists() {
+        return settings == null || settings.getProperties() == null
+                || settings.getProperties().is(SqlConstants.TOLERATE_OBJECT_ALREADY_EXISTS_ON_DDL, true);
+    }
+
     @Override
     public boolean doesObjectAlreadyExist(Throwable ex) {
         boolean alreadyExists = false;
-        if (objectAlreadyExistsCodes != null || objectAlreadyExistsStates != null) {
+        if (objectAlreadyExistsCodes != null || objectAlreadyExistsStates != null || objectAlreadyExistsMessageParts != null) {
             SQLException sqlEx = findSQLException(ex);
             if (sqlEx != null) {
                 if (objectAlreadyExistsCodes != null) {
@@ -1149,6 +1184,18 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                     if (sqlState != null) {
                         for (String objectAlreadyExistsState : objectAlreadyExistsStates) {
                             if (sqlState.equals(objectAlreadyExistsState)) {
+                                alreadyExists = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!alreadyExists && objectAlreadyExistsMessageParts != null) {
+                    String sqlMessage = sqlEx.getMessage();
+                    if (sqlMessage != null) {
+                        sqlMessage = sqlMessage.toLowerCase();
+                        for (String objectAlreadyExistsMessagePart : objectAlreadyExistsMessageParts) {
+                            if (objectAlreadyExistsMessagePart != null && sqlMessage.contains(objectAlreadyExistsMessagePart.toLowerCase())) {
                                 alreadyExists = true;
                                 break;
                             }
