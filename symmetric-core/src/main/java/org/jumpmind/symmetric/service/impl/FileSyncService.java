@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -688,9 +688,13 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
         engine.getOutgoingBatchService().updateOutgoingBatches(batchesToProcess);
     }
 
-    private void handleExtractionError(RuntimeException e, OutgoingBatch currentBatch) {
+    private void handleExtractionError(ProcessInfo processInfo, RuntimeException e, OutgoingBatch currentBatch) {
         if (currentBatch != null) {
-            engine.getStatisticManager().incrementDataExtractedErrors(currentBatch.getChannelId(), 1);
+            if (processInfo.getStatus() == ProcessInfo.ProcessStatus.TRANSFERRING) {
+                engine.getStatisticManager().incrementDataSentErrors(currentBatch.getChannelId(), 1);
+            } else {
+                engine.getStatisticManager().incrementDataExtractedErrors(currentBatch.getChannelId(), 1);
+            }
             currentBatch.setSqlMessage(ExceptionUtils.getRootMessage(e));
             currentBatch.revertStatsOnError();
             if (currentBatch.getStatus() != Status.IG) {
@@ -796,7 +800,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             if (stagedResource == previouslyStagedResource) { // on error, don't let the load extract be deleted.
                 stagedResource = null;
             }
-            handleExtractionError(e, currentBatch);
+            handleExtractionError(processInfo, e, currentBatch);
             throw e;
         } finally {
             if (stagedResource != null && parameterService.is(ParameterConstants.FILE_SYNC_DELETE_ZIP_FILE_AFTER_SYNC)) {
@@ -860,7 +864,7 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
             }
             markBatchesTransferring(processInfo, processedBatches);
         } catch (RuntimeException e) {
-            handleExtractionError(e, currentBatch);
+            handleExtractionError(processInfo, e, currentBatch);
             closeStagedResources(processedResources);
             throw e;
         }
@@ -894,11 +898,11 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
      * headers/status, since writing to {@code outgoingTransport} commits the response.
      */
     @Override
-    public void writeFilesForPull(FileSyncPullResult result, IOutgoingTransport outgoingTransport) {
+    public void writeFilesForPull(ProcessInfo processInfo, FileSyncPullResult result, IOutgoingTransport outgoingTransport) {
         if (result.getResumeEtag() != null) {
             writeResumedBatch(result, outgoingTransport);
         } else {
-            writeNormalBatches(result, outgoingTransport);
+            writeNormalBatches(processInfo, result, outgoingTransport);
         }
     }
 
@@ -925,14 +929,14 @@ public class FileSyncService extends AbstractOfflineDetectorService implements I
                 result.getBatches().get(0).getBatchId(), result.getBatches().get(0).getNodeId(), skipCount, result.getTotalSize());
     }
 
-    private void writeNormalBatches(FileSyncPullResult result, IOutgoingTransport outgoingTransport) {
+    private void writeNormalBatches(ProcessInfo processInfo, FileSyncPullResult result, IOutgoingTransport outgoingTransport) {
         List<OutgoingBatch> processedBatches = result.getBatches();
         List<IStagedResource> processedResources = result.getStagedResources();
         OutgoingBatch lastBatch = processedBatches.isEmpty() ? null : processedBatches.get(processedBatches.size() - 1);
         try {
             writeBatchesToStream(result, outgoingTransport, processedBatches, processedResources);
         } catch (RuntimeException e) {
-            handleExtractionError(e, lastBatch);
+            handleExtractionError(processInfo, e, lastBatch);
             throw e;
         } finally {
             closeStagedResources(processedResources);

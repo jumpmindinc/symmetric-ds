@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -29,6 +29,14 @@ public class RouterServiceSqlMap extends AbstractSqlMap {
         super(platform, replacementTokens);
         putSql("selectChannelsUsingGapsSql", "select distinct channel_id from $(data) where $(dataRange)");
         putSql("selectChannelsUsingStartDataId", "select distinct channel_id from $(data) where data_id >= ?");
+        putSql("selectChannelDataCreateTimeRangeSql",
+                "select d.channel_id, min(d.create_time) as min_create_time, max(d.create_time) as max_create_time "
+                        + "from $(data_gap) g join $(data) d on d.data_id between g.start_id and g.end_id "
+                        + "where g.is_expired = 0 group by d.channel_id");
+        putSql("selectChannelDataUnroutedCountSql",
+                "select d.channel_id, count(*) as unrouted_count from $(data_gap) g "
+                        + "join $(data) d on d.data_id between g.start_id and g.end_id "
+                        + "where g.is_expired = 0 group by d.channel_id");
         putSql("selectDataUsingGapsSql",
                 "select $(selectDataUsingGapsSqlHint) d.data_id, d.table_name, d.event_type, d.row_data as row_data, d.pk_data as pk_data, d.old_data as old_data, "
                         + " d.create_time, d.trigger_hist_id, d.channel_id, d.transaction_id, d.source_node_id, d.external_data, d.node_list, d.is_prerouted "
@@ -41,7 +49,6 @@ public class RouterServiceSqlMap extends AbstractSqlMap {
         putSql("orderByCreateTime", " order by d.create_time asc, d.data_id asc ");
         putSql("selectDistinctDataIdFromDataEventUsingGapsSql",
                 "select distinct data_id from $(data_event) where data_id >=? and data_id <= ? order by data_id asc ");
-        putSql("selectUnroutedCountForChannelSql", "select count(*) from $(data) where channel_id=? and data_id >=? ");
         putSql("selectLastDataIdRoutedUsingDataGapSql", "select max(start_id) from $(data_gap) ");
         putSql("selectOracleNextValueSql", "select nextvalue from gv$_sequences where sequence_name = ?");
     }

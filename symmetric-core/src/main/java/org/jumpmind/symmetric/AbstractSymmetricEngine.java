@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -44,10 +44,7 @@ import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Relation;
-import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseInfo;
-import org.jumpmind.db.platform.DatabaseNamesConstants;
-import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlResultsListener;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -372,7 +369,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.symmetricDialect = createSymmetricDialect();
         this.symmetricDialect.setTargetDialect(createTargetDialect());
         this.databaseHealthTracker = new DatabaseHealthTracker(() -> getSymmetricDialect().getPlatform().getSqlTemplate(), parameterService);
-        ensureMetricsServiceIsCreated();
         ensureExtensionServiceIsCreated();
         this.cacheManager = new CacheManager(this);
         this.contextService = new ContextService(parameterService, symmetricDialect);
@@ -772,7 +768,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 starting = true;
                 setEngineReadinessInAppHealthTracker(false);
                 symmetricDialect.verifyDatabaseIsCompatible();
-                checkForProOnlyDatabase();
+                new ProOnlyDatabaseValidator(platform).validate();
                 setup();
                 if (isConfigured()) {
                     Node node = nodeService.findIdentity();
@@ -835,6 +831,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     private void startNodeAndJobs(Node node, boolean startJobs) {
+        ensureMetricsServiceIsCreated();
         node = checkSystemIntegrity(node);
         isInitialized = true;
         if (node != null) {
@@ -880,57 +877,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         setEngineReadinessInAppHealthTracker(started);
         for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
             ext.started(this);
-        }
-    }
-
-    protected void checkForProOnlyDatabase() {
-        DatabaseVersion dbVersion = platform.getDatabaseVersion();
-        String dbVersionName = dbVersion != null ? dbVersion.getName() : null;
-        if (DatabaseNamesConstants.AURORA_POSTGRESQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.AURORA_POSTGRESQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "AWS Aurora PostgreSQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.CLOUDSQL_POSTGRESQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.CLOUDSQL_POSTGRESQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "Google Cloud SQL for PostgreSQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.AURORA_MYSQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.AURORA_MYSQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "AWS Aurora MySQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.CLOUDSQL_MYSQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.CLOUDSQL_MYSQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "Google Cloud SQL for MySQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (platform instanceof AbstractDatabasePlatform
-                && ((AbstractDatabasePlatform) platform).isDedicatedPlatform()) {
-            return;
-        }
-        if (dbVersionName != null) {
-            String nameLower = dbVersionName.toLowerCase();
-            if (nameLower.startsWith(DatabaseNamesConstants.ORACLE) || nameLower.contains("sql server")) {
-                throw new SymmetricException(
-                        "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                                + "Some DB platforms, including Oracle and Microsoft SQL Server, require SymmetricDS Pro. "
-                                + "Contact the SymmetricDS sales team for more information.",
-                        dbVersionName);
-            }
         }
     }
 
@@ -1165,14 +1111,14 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     private void removeEngineFromAppHealthTracker() {
         IApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
-        if (appHealthTracker != null) {
+        if (appHealthTracker != null && parameterService != null) {
             appHealthTracker.stopTrackingEngine(getEngineName());
         }
     }
 
     private void setEngineReadinessInAppHealthTracker(boolean isReady) {
         IApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
-        if (appHealthTracker != null) {
+        if (appHealthTracker != null && parameterService != null) {
             appHealthTracker.setEngineReadiness(getEngineName(), isReady);
         }
     }

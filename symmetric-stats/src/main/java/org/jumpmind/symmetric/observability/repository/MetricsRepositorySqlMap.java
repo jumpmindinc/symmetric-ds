@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -31,14 +31,14 @@ public class MetricsRepositorySqlMap extends AbstractSqlMap {
         // @formatter:off
         putSql("generateSurrogateSql",
             "INSERT INTO $(metric_key) (metric_key, metric_id, engine_name, hostname, fact_type, metric_type, enabled, create_time, last_update_time)" +
-            " SELECT (?*(COALESCE(MAX(metric_key),1)+?))/?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP FROM $(metric_key)");
+            " SELECT (?*(COALESCE(MAX(metric_key),1)+?))/?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp FROM $(metric_key)");
 
         putSql("insertMetricKeySql",
             "INSERT INTO $(metric_key) (metric_key, hostname, engine_name, metric_id, fact_type, metric_type, enabled, create_time, last_update_time)" +
-            " VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+            " VALUES (?, ?, ?, ?, ?, ?, ?, current_timestamp, current_timestamp)");
 
         putSql("updateMetricKeySql",
-            "UPDATE $(metric_key) SET metric_key=?,fact_type=?,metric_type=?,enabled=?,last_update_time=CURRENT_TIMESTAMP WHERE metric_id=? AND engine_name=? AND hostname=?");
+            "UPDATE $(metric_key) SET metric_key=?,fact_type=?,metric_type=?,enabled=?,last_update_time=current_timestamp WHERE metric_id=? AND engine_name=? AND hostname=?");
 
         putSql("selectMetricKeyByIdSql",
             "SELECT metric_key, metric_id, hostname, engine_name, fact_type, metric_type, enabled FROM $(metric_key)" +
@@ -73,12 +73,12 @@ public class MetricsRepositorySqlMap extends AbstractSqlMap {
         putSql("generateContextSurrogateSql",
             "INSERT INTO $(metric_context)" +
             " (context_id, attributes_hash, attr1_name, attr1_value, attr2_name, attr2_value, attr3_name, attr3_value, create_time)" +
-            " SELECT (?*(COALESCE(MAX(context_id),1)+?))/?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP FROM $(metric_context)");
+            " SELECT (?*(COALESCE(MAX(context_id),1)+?))/?, ?, ?, ?, ?, ?, ?, ?, current_timestamp FROM $(metric_context)");
 
         putSql("insertMetricContextSql",
             "INSERT INTO $(metric_context)" +
             " (context_id, attributes_hash, attr1_name, attr1_value, attr2_name, attr2_value, attr3_name, attr3_value, create_time)" +
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)");
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, current_timestamp)");
 
         putSql("selectMetricContextByHashSql",
             "SELECT context_id, attributes_hash, attr1_name, attr1_value, attr2_name, attr2_value, attr3_name, attr3_value" +

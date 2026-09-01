@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -64,6 +65,7 @@ import org.jumpmind.symmetric.io.stage.IStagedResource;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.io.stage.StagedResourceETag;
+import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
@@ -71,6 +73,7 @@ import org.jumpmind.symmetric.model.NodeCommunication;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.ProcessInfo;
+import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.RemoteNodeStatus;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IExtensionService;
@@ -210,7 +213,7 @@ class FileSyncServiceTest {
         when(transport.openStream()).thenReturn(out);
         ProcessInfo processInfo = new ProcessInfo();
         FileSyncPullResult result = fileSyncService.prepareFilesForPull(processInfo, targetNode, "42", matchingEtag.toJson(), "bytes=4-");
-        fileSyncService.writeFilesForPull(result, transport);
+        fileSyncService.writeFilesForPull(new ProcessInfo(), result, transport);
         assertTrue(result.isPartialContent());
         assertEquals(4L, result.getSkipCount());
         assertEquals(content.length, result.getTotalSize());
@@ -240,7 +243,7 @@ class FileSyncServiceTest {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         when(transport.openStream()).thenReturn(out);
         FileSyncPullResult result = fileSyncService.prepareFilesForPull(new ProcessInfo(), targetNode, "42", staleEtag.toJson(), "bytes=4-");
-        fileSyncService.writeFilesForPull(result, transport);
+        fileSyncService.writeFilesForPull(new ProcessInfo(), result, transport);
         assertFalse(result.isPartialContent());
         assertEquals(0L, result.getSkipCount());
         assertArrayEquals(content, out.toByteArray());
@@ -271,7 +274,7 @@ class FileSyncServiceTest {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         when(transport.openStream()).thenReturn(out);
         FileSyncPullResult result = fileSyncService.prepareFilesForPull(new ProcessInfo(), targetNode, null, null, null);
-        fileSyncService.writeFilesForPull(result, transport);
+        fileSyncService.writeFilesForPull(new ProcessInfo(), result, transport);
         assertFalse(result.isEnvelopeFormatUsed());
         assertEquals(1, result.getBatches().size());
         assertArrayEquals(zip1, out.toByteArray());
@@ -309,7 +312,7 @@ class FileSyncServiceTest {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         when(transport.openStream()).thenReturn(out);
         FileSyncPullResult result = fileSyncService.prepareFilesForPull(new ProcessInfo(), targetNode, null, null, null);
-        fileSyncService.writeFilesForPull(result, transport);
+        fileSyncService.writeFilesForPull(new ProcessInfo(), result, transport);
         assertTrue(result.isEnvelopeFormatUsed());
         assertEquals(2, result.getBatches().size());
         ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
@@ -553,5 +556,79 @@ class FileSyncServiceTest {
         verify(transportManager).getFilePullTransport(eq(remoteNode), eq(identity), any(), propsCaptor.capture(), any(), eq(12L));
         assertEquals(etag.toJson(), propsCaptor.getValue().get(WebConstants.HEADER_IF_ETAG));
         assertEquals("bytes=200-", propsCaptor.getValue().get(WebConstants.HEADER_RANGE));
+    }
+    
+    @Test
+    void sendFiles_failureDuringSendPhase_incrementsDataSentErrorsOnly() throws Exception {
+        IStatisticManager statisticManager = mock(IStatisticManager.class);
+        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
+        FileSyncService service = spy(buildFileSyncService(statisticManager, outgoingBatchService));
+        OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
+        batch.setBatchId(1);
+        List<OutgoingBatch> batchesToProcess = new ArrayList<OutgoingBatch>();
+        batchesToProcess.add(batch);
+        doReturn(batchesToProcess).when(service).getBatchesToProcess(any(Node.class));
+        IStagedResource stagedResource = mock(IStagedResource.class);
+        when(stagedResource.exists()).thenReturn(true);
+        when(stagedResource.getInputStream()).thenReturn(new ByteArrayInputStream(new byte[0]));
+        doReturn(stagedResource).when(service).getStagedResource(any(OutgoingBatch.class));
+        OutputStream failingOutputStream = mock(OutputStream.class);
+        doThrow(new IOException("simulated network failure")).when(failingOutputStream).flush();
+        IOutgoingTransport outgoingTransport = mock(IOutgoingTransport.class);
+        when(outgoingTransport.openStream()).thenReturn(failingOutputStream);
+        Node targetNode = new Node();
+        targetNode.setNodeId("target1");
+        ProcessInfo processInfo = new ProcessInfo(new ProcessInfoKey("source1", "target1", null));
+        try {
+            service.sendFiles(processInfo, targetNode, outgoingTransport);
+        } catch (RuntimeException expected) {
+            // sendFiles rethrows after recording statistics
+        }
+        verify(statisticManager).incrementDataSentErrors("testchannel", 1);
+        verify(statisticManager, never()).incrementDataExtractedErrors(any(), anyLong());
+    }
+
+    @Test
+    void sendFiles_failureDuringExtractPhase_incrementsDataExtractedErrorsOnly() {
+        IStatisticManager statisticManager = mock(IStatisticManager.class);
+        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
+        FileSyncService service = spy(buildFileSyncService(statisticManager, outgoingBatchService));
+        OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
+        batch.setBatchId(1);
+        List<OutgoingBatch> batchesToProcess = new ArrayList<OutgoingBatch>();
+        batchesToProcess.add(batch);
+        doReturn(batchesToProcess).when(service).getBatchesToProcess(any(Node.class));
+        doThrow(new RuntimeException("simulated extract failure")).when(service).getStagedResource(any(OutgoingBatch.class));
+        Node targetNode = new Node();
+        targetNode.setNodeId("target1");
+        ProcessInfo processInfo = new ProcessInfo(new ProcessInfoKey("source1", "target1", null));
+        IOutgoingTransport outgoingTransport = mock(IOutgoingTransport.class);
+        try {
+            service.sendFiles(processInfo, targetNode, outgoingTransport);
+        } catch (RuntimeException expected) {
+            // sendFiles rethrows after recording statistics
+        }
+        verify(statisticManager).incrementDataExtractedErrors("testchannel", 1);
+        verify(statisticManager, never()).incrementDataSentErrors(any(), anyLong());
+    }
+
+    private FileSyncService buildFileSyncService(IStatisticManager statisticManager, IOutgoingBatchService outgoingBatchService) {
+        ISymmetricEngine engine = mock(ISymmetricEngine.class);
+        IParameterService parameterService = mock(IParameterService.class);
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(engine.getParameterService()).thenReturn(parameterService);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
+        ICacheManager cacheManager = mock(ICacheManager.class);
+        when(engine.getCacheManager()).thenReturn(cacheManager);
+        when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
+        when(engine.getStatisticManager()).thenReturn(statisticManager);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        return new FileSyncService(engine);
     }
 }

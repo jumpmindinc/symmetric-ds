@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -281,5 +281,27 @@ class MetricDefinitionFactoryTest {
         HostMetricsService service = new HostMetricsService(svcManager, false);
         factory.initializeMetrics(service);
         assertNull(service.getUpDownCounter(METRIC_ID_DATA_ROUTED));
+    }
+
+    @Test
+    void initializeMetrics_channelMetric_customChannelNotPreRegistered() {
+        MetricsManager svcManager = TestMetricsManagerFactory.create();
+        HostMetricsService service = new HostMetricsService(svcManager, false);
+        factory.initializeMetrics(service);
+        MetricAttributeList customChannelAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "my_custom_channel"));
+        assertNull(service.getUpDownCounter(METRIC_ID_DATA_ROUTED, customChannelAttrs));
+        assertNotNull(service.registerUpDownCounter(METRIC_ID_DATA_ROUTED, customChannelAttrs));
+        assertNotNull(service.getUpDownCounter(METRIC_ID_DATA_ROUTED, customChannelAttrs));
+    }
+
+    @Test
+    void initializeMetrics_longGaugeChannelMetric_customChannelNotPreRegistered() {
+        MetricsManager svcManager = TestMetricsManagerFactory.create();
+        HostMetricsService service = new HostMetricsService(svcManager, false);
+        factory.initializeMetrics(service);
+        MetricAttributeList customChannelAttrs = MetricAttributeList.of(new MetricAttribute(CHANNEL, "my_custom_channel"));
+        assertNull(service.getLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, customChannelAttrs));
+        assertNotNull(service.registerLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, customChannelAttrs));
+        assertNotNull(service.getLongGauge(METRIC_ID_DATA_CREATE_TIME_MIN, customChannelAttrs));
     }
 }

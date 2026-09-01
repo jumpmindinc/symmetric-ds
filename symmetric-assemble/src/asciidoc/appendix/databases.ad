@@ -47,6 +47,19 @@ by database.
 |✔
 |✔
 
+|Azure PostgreSQL
+|Tested on 18.4
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+|✔
+
 |BigQuery *
 |All
 |
@@ -519,6 +532,13 @@ When locating a table, SymmetricDS uses the default catalog and schema unless th
 |
 |✔
 |select current_schema()    
+
+|Azure PostgreSQL
+|
+|
+|
+|✔
+|select current_schema()
 
 |BigQuery
 |

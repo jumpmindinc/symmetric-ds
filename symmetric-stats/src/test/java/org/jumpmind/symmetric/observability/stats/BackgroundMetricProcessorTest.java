@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -103,12 +104,38 @@ class BackgroundMetricProcessorTest {
     void processAll_withRegisteredService_callsMetricProcessing() {
         IEngineMetricsService svc = mock(IEngineMetricsService.class);
         when(svc.getEngineName()).thenReturn("test-engine");
+        when(svc.isEngineInitialized()).thenReturn(true);
+        when(svc.initWorksetsIfNeeded()).thenReturn(true);
         when(svc.getAllMetrics()).thenReturn(List.of());
         metricsManager.register(svc);
         processor.processAllMetrics();
         verify(svc).initWorksetsIfNeeded();
         verify(svc).getAllMetrics();
         verify(svc).saveCompletedIntervalStats();
+    }
+
+    @Test
+    void processAll_withUninitializedEngine_skipsProcessing() {
+        IEngineMetricsService svc = mock(IEngineMetricsService.class);
+        when(svc.getEngineName()).thenReturn("test-engine");
+        when(svc.isEngineInitialized()).thenReturn(false);
+        metricsManager.register(svc);
+        processor.processAllMetrics();
+        verify(svc, never()).initWorksetsIfNeeded();
+        verify(svc, never()).getAllMetrics();
+        verify(svc, never()).saveCompletedIntervalStats();
+    }
+
+    @Test
+    void processAll_whenWorksetsCannotInitialize_skipsProcessing() {
+        IEngineMetricsService svc = mock(IEngineMetricsService.class);
+        when(svc.getEngineName()).thenReturn("test-engine");
+        when(svc.isEngineInitialized()).thenReturn(true);
+        when(svc.initWorksetsIfNeeded()).thenReturn(false);
+        metricsManager.register(svc);
+        processor.processAllMetrics();
+        verify(svc, never()).getAllMetrics();
+        verify(svc, never()).saveCompletedIntervalStats();
     }
 
     @Test

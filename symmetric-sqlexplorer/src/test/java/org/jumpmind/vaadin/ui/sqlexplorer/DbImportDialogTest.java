@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -75,25 +75,25 @@ class DbImportDialogTest extends BrowserlessTest {
     @Test
     void init_buttonsArePresent() {
         createAndOpen();
-        assertTrue($(Button.class).exists());
+        assertTrue(find(Button.class).exists());
     }
 
     @Test
     void init_checkboxesArePresent() {
         createAndOpen();
-        assertTrue($(Checkbox.class).exists());
+        assertTrue(find(Checkbox.class).exists());
     }
 
     @Test
     void init_formatSelectionIsPresent() {
         createAndOpen();
-        assertTrue($(ComboBox.class).exists());
+        assertTrue(find(ComboBox.class).exists());
     }
 
     @Test
     void init_importButtonIsPresent() {
         createAndOpen();
-        Button importButton = $(Button.class).all().stream()
+        Button importButton = find(Button.class).all().stream()
                 .filter(b -> "Import".equals(b.getText()))
                 .findFirst()
                 .orElse(null);
@@ -115,9 +115,9 @@ class DbImportDialogTest extends BrowserlessTest {
     @SuppressWarnings("unchecked")
     void formatSelection_xml_disablesTableSelect() {
         createAndOpen();
-        ComboBox<DbImportDialog.DbImportFormat> formatSelect = $(ComboBox.class).all().get(0);
+        ComboBox<DbImportDialog.DbImportFormat> formatSelect = find(ComboBox.class).all().get(0);
         formatSelect.setValue(DbImportDialog.DbImportFormat.XML);
-        ComboBox<String> tablesSelect = $(ComboBox.class).all().stream()
+        ComboBox<String> tablesSelect = find(ComboBox.class).all().stream()
                 .filter(c -> !c.isEnabled() && c != formatSelect)
                 .findFirst()
                 .orElse(null);
@@ -129,10 +129,10 @@ class DbImportDialogTest extends BrowserlessTest {
     @SuppressWarnings("unchecked")
     void formatSelect_sqlAfterXml_enablesIgnoreConflictsCheckbox() {
         createAndOpen();
-        ComboBox<DbImportDialog.DbImportFormat> formatSelect = $(ComboBox.class).all().get(0);
+        ComboBox<DbImportDialog.DbImportFormat> formatSelect = find(ComboBox.class).all().get(0);
         formatSelect.setValue(DbImportDialog.DbImportFormat.XML);
         formatSelect.setValue(DbImportDialog.DbImportFormat.SQL);
-        Checkbox ignoreConflicts = $(Checkbox.class).all().stream()
+        Checkbox ignoreConflicts = find(Checkbox.class).all().stream()
                 .filter(c -> "Skip rows with conflicts".equals(c.getLabel()))
                 .findFirst().orElseThrow();
         assertTrue(ignoreConflicts.isEnabled());
@@ -148,7 +148,7 @@ class DbImportDialogTest extends BrowserlessTest {
     @SuppressWarnings("unchecked")
     void importButtonEnable_csvFormatWithNoTableSelected_returnsFalse() {
         DbImportDialog dialog = createAndOpen();
-        ComboBox<DbImportDialog.DbImportFormat> formatSelect = $(ComboBox.class).all().get(0);
+        ComboBox<DbImportDialog.DbImportFormat> formatSelect = find(ComboBox.class).all().get(0);
         formatSelect.setValue(DbImportDialog.DbImportFormat.CSV);
         assertFalse(dialog.importButtonEnable());
     }
@@ -156,7 +156,7 @@ class DbImportDialogTest extends BrowserlessTest {
     @Test
     void importButtonEnable_emptyCommitField_returnsFalse() {
         DbImportDialog dialog = createAndOpen();
-        TextField commitField = $(TextField.class).all().stream()
+        TextField commitField = find(TextField.class).all().stream()
                 .filter(f -> "Rows to Commit".equals(f.getLabel()))
                 .findFirst().orElseThrow();
         commitField.setValue("");

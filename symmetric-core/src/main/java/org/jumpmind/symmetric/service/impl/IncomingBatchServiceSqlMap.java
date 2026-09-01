@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -153,7 +153,11 @@ public class IncomingBatchServiceSqlMap extends AbstractSqlMap {
         putSql("whereStatusAndNodeAndChannelGroupByStatusSql",
                 " where b.status in (:STATUS_LIST) and b.node_id = ? and b.channel_id = ? group by b.status order by oldest_batch_time asc   ");
 
-   
+        putSql("selectIncomingBatchSummaryByNodeBriefStatsSql",
+                "select b.node_id, b.status, CAST(b.create_time AS DATE) as batch_date, count(*) as batches, sum(b.data_row_count) as data_rows "
+                        + " from $(incoming_batch) b "
+                        + " GROUP BY b.node_id, b.status, CAST(b.create_time AS DATE)"
+                        + " ORDER BY b.node_id, b.status, CAST(b.create_time AS DATE)");
     }
 
 }

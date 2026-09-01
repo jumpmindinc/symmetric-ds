@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -40,7 +40,7 @@ class NotifyDialogTest extends BrowserlessTest {
     }
 
     private Button findButton(String text) {
-        return $(Button.class).all().stream()
+        return find(Button.class).all().stream()
                 .filter(b -> text.equals(b.getText()))
                 .findFirst().orElseThrow();
     }
@@ -72,7 +72,7 @@ class NotifyDialogTest extends BrowserlessTest {
     @Test
     void detailsButton_hiddenWhenNoException() {
         createAndInsert("Error message", null);
-        assertFalse($(Button.class).all().stream().anyMatch(b -> "Details".equals(b.getText())));
+        assertFalse(find(Button.class).all().stream().anyMatch(b -> "Details".equals(b.getText())));
     }
 
     @Test

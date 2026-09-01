@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -63,8 +63,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.SqlTypeValue;
 import org.springframework.jdbc.core.StatementCreatorUtils;
-import org.springframework.jdbc.support.lob.DefaultLobHandler;
-import org.springframework.jdbc.support.lob.LobHandler;
 
 public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate {
     private static final Logger log = LoggerFactory.getLogger(JdbcSqlTemplate.class);
@@ -100,7 +98,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
         this.dataSource = dataSource;
         settings = settings == null ? new SqlTemplateSettings() : settings;
         this.settings = settings;
-        this.lobHandler = lobHandler == null ? new SymmetricLobHandler(new DefaultLobHandler())
+        this.lobHandler = lobHandler == null ? new SymmetricLobHandler()
                 : lobHandler;
         if (settings.getOverrideIsolationLevel() >= 0) {
             this.isolationLevel = settings.getOverrideIsolationLevel();
@@ -399,8 +397,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                         ps = con.prepareStatement(sql);
                         ps.setQueryTimeout(settings.getQueryTimeout());
                         if (types != null) {
-                            setValues(ps, args, types, getLobHandler()
-                                    .getDefaultHandler());
+                            setValues(ps, args, types, getLobHandler());
                         } else {
                             setValues(ps, args);
                         }
@@ -875,7 +872,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                 if (supportsGetGeneratedKeys) {
                     ps = conn.prepareStatement(sql, new int[] { 1 });
                 } else if (supportsReturningKeys) {
-                    ps = conn.prepareStatement(sql + " returning " + column);
+                    ps = conn.prepareStatement(sql + " returning " + SqlUtils.sanitizeIdentifier(column));
                 } else {
                     ps = conn.prepareStatement(sql);
                 }
@@ -889,7 +886,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                 }
             }
             ps.setQueryTimeout(settings.getQueryTimeout());
-            setValues(ps, args, types, lobHandler.getDefaultHandler());
+            setValues(ps, args, types, lobHandler);
             ResultSet rs = null;
             if (supportsGetGeneratedKeys) {
                 ps.execute();
@@ -915,7 +912,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                 ps.execute();
                 try {
                     st = conn.createStatement();
-                    rs = st.executeQuery(getSelectLastInsertIdSql(sequenceName));
+                    rs = st.executeQuery(getSelectLastInsertIdSql(SqlUtils.sanitizeIdentifier(sequenceName)));
                     if (rs.next()) {
                         key = rs.getLong(1);
                     }
@@ -1227,7 +1224,7 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
     }
 
     public void setValues(PreparedStatement ps, Object[] args, int[] argTypes,
-            LobHandler lobHandler) throws SQLException {
+            SymmetricLobHandler lobHandler) throws SQLException {
         for (int i = 1; i <= args.length; i++) {
             Object arg = args[i - 1];
             int argType = argTypes != null && argTypes.length >= i ? argTypes[i - 1] : SqlTypeValue.TYPE_UNKNOWN;
@@ -1236,19 +1233,19 @@ public class JdbcSqlTemplate extends AbstractSqlTemplate implements ISqlTemplate
                     if (isEmptyStringNulled && ((byte[]) arg).length == 0) {
                         ps.setBlob(i, ps.getConnection().createBlob());
                     } else {
-                        lobHandler.getLobCreator().setBlobAsBytes(ps, i, (byte[]) arg);
+                        lobHandler.setBlobAsBytes(ps, i, (byte[]) arg);
                     }
                 } else if (argType == Types.BLOB && lobHandler != null && arg instanceof String) {
                     if (isEmptyStringNulled && arg.equals("")) {
                         ps.setBlob(i, ps.getConnection().createBlob());
                     } else {
-                        lobHandler.getLobCreator().setBlobAsBytes(ps, i, arg.toString().getBytes(Charset.defaultCharset()));
+                        lobHandler.setBlobAsBytes(ps, i, arg.toString().getBytes(Charset.defaultCharset()));
                     }
                 } else if (argType == Types.CLOB && lobHandler != null) {
                     if (isEmptyStringNulled && arg != null && arg.equals("")) {
                         ps.setClob(i, ps.getConnection().createClob());
                     } else {
-                        lobHandler.getLobCreator().setClobAsString(ps, i, (String) arg);
+                        lobHandler.setClobAsString(ps, i, (String) arg);
                     }
                 } else if ((argType == Types.DECIMAL || argType == Types.NUMERIC) && arg != null) {
                     setDecimalValue(ps, i, arg, argType);

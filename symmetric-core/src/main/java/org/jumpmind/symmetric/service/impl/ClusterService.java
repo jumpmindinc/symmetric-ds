@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -52,6 +52,7 @@ import static org.jumpmind.symmetric.service.ClusterConstants.WATCHDOG;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Collection;
@@ -165,20 +166,21 @@ public class ClusterService extends AbstractService implements IClusterService {
             instanceIdURL = ClusterService.class.getClassLoader().getResource("/instance.uuid");
         }
         if (instanceIdFile != null) {
-            try {
-                instanceId = IOUtils.toString(new FileInputStream(instanceIdFile), Charset.defaultCharset()).trim();
+            try (FileInputStream in = new FileInputStream(instanceIdFile)) {
+                instanceId = IOUtils.toString(in, Charset.defaultCharset()).trim();
             } catch (Exception ex) {
                 log.debug("Failed to load instance id from file '" + instanceIdFile + "'", ex);
             }
         } else if (instanceIdURL != null) {
-            try {
-                instanceId = IOUtils.toString(instanceIdURL.openStream(), Charset.defaultCharset()).trim();
+            try (InputStream in = instanceIdURL.openStream()) {
+                instanceId = IOUtils.toString(in, Charset.defaultCharset()).trim();
             } catch (Exception ex) {
                 log.debug("Failed to load instance id from classpath '" + instanceIdURL + "'", ex);
             }
         }
         boolean isInstanceIdBlank = StringUtils.isBlank(instanceId);
-        if (isInstanceIdBlank || (generator != null && !generator.isValid(instanceId))) {
+        boolean isContainerized = "true".equals(System.getProperty(ServerConstants.CONTAINER_MODE_ENABLED));
+        if (isInstanceIdBlank || (!isContainerized && generator != null && !generator.isValid(instanceId))) {
             String newInstanceId = null;
             if (generator != null) {
                 newInstanceId = generator.generateInstanceId();
@@ -195,7 +197,9 @@ public class ClusterService extends AbstractService implements IClusterService {
             if (instanceIdFile != null) {
                 try {
                     instanceIdFile.getParentFile().mkdirs();
-                    IOUtils.write(newInstanceId, new FileOutputStream(instanceIdFile), Charset.defaultCharset());
+                    try (FileOutputStream out = new FileOutputStream(instanceIdFile)) {
+                        IOUtils.write(newInstanceId, out, Charset.defaultCharset());
+                    }
                 } catch (Exception ex) {
                     throw new SymmetricException("Failed to save file '" + instanceIdFile + "' Please correct and restart this node.", ex);
                 }

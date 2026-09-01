@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -53,6 +53,7 @@ final public class DatabaseNamesConstants {
     public final static String POSTGRESQL = "postgres";
     public final static String POSTGRESQL95 = "postgres95";
     public static final String AURORA_POSTGRESQL = "aurorapostgres";
+    public static final String AZURE_POSTGRESQL = "azurepostgres";
     public static final String CLOUDSQL_POSTGRESQL = "cloudsqlpostgres";
     public final static String ASE = "ase";
     public final static String SQLANYWHERE = "sqlanywhere";

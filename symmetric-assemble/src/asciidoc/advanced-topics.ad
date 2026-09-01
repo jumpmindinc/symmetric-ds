@@ -528,6 +528,20 @@ Examples when `$(externalId)` is set to `1`:
 $(variableName|%05d) - returns 00001
 ----
 
+All variables supported via `$(variableName)` syntax:
+
+* Any parameter name
+* `groupId` - the node group ID of the node being evaluated or loaded
+* `nodeId` - the node ID of the node being evaluated or loaded
+* `externalId` - the external ID of the node being evaluated or loaded
+* `sourceGroupId` - the node group ID of the local (source) node
+* `sourceNodeId` - the node ID of the local (source) node
+* `sourceExternalId` - the external ID of the local (source) node
+* `sourceCatalogName` - the catalog name of the source table, from the trigger
+* `sourceSchemaName` - the schema name of the source table, from the trigger
+
+Not every configuration item supports every variable in this list - see that item's own documentation for the specific subset it substitutes.
+
 === OpenTelemetry Integration
 
 SymmetricDS publishes built-in metrics through the https://opentelemetry.io[OpenTelemetry] (OTel) API, making them available to any OTel-compatible observability platform such as Prometheus (via OTLP receiver), Grafana Cloud, DataDog, Dynatrace, etc.

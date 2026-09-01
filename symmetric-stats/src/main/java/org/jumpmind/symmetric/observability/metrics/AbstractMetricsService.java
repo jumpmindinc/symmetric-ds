@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -78,6 +78,10 @@ abstract class AbstractMetricsService implements IMetricsService {
     public IUpDownCounter registerUpDownCounter(ISymMetricDefinition definition, MetricAttributeList attrs) {
         ISymMetric m = metrics.computeIfAbsent(instrumentKey(definition.id(), attrs), k -> createUpDownCounterInternal(definition, attrs));
         return m instanceof IUpDownCounter c ? c : null;
+    }
+
+    public IUpDownCounter registerUpDownCounter(String metricId, MetricAttributeList attrs) {
+        return registerUpDownCounter(metricsManager.getMetricDefinitionFactory().getDefinition(metricId), attrs);
     }
 
     private UpDownCounter createUpDownCounterInternal(ISymMetricDefinition definition, MetricAttributeList attrs) {
@@ -183,6 +187,10 @@ abstract class AbstractMetricsService implements IMetricsService {
         return m instanceof ISymDoubleGauge g ? g : null;
     }
 
+    public ISymDoubleGauge registerDoubleGauge(String metricId, MetricAttributeList attrs) {
+        return registerDoubleGauge(metricsManager.getMetricDefinitionFactory().getDefinition(metricId), attrs);
+    }
+
     public ISymLongGauge registerLongGauge(String metricId, MetricAttributeList attrs) {
         return registerLongGauge(metricsManager.getMetricDefinitionFactory().getDefinition(metricId), attrs);
     }
@@ -264,7 +272,7 @@ abstract class AbstractMetricsService implements IMetricsService {
                 metric.removeAllObservations();
                 log.debug("Closed metric {}", metric.getMetricId());
             } catch (Exception ex) {
-                log.warn("Failed to close metric " + metric.getMetricId(), ex);
+                log.warn("Failed to close metric " + metric.getMetricId() + " during shutdown! ", ex);
             }
         }
     }

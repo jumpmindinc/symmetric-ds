@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -68,6 +68,11 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     }
 
     @Override
+    public boolean isEngineInitialized() {
+        return engine != null && engine.isInitialized();
+    }
+
+    @Override
     public IStatisticManager getStatisticManager() {
         return engine.getStatisticManager();
     }
@@ -89,6 +94,10 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
      */
     @Override
     public void saveCompletedIntervalStats() {
+        if (!isEngineInitialized()) {
+            log.debug("Engine is not initialized, skipping saveCompletedIntervalStats");
+            return;
+        }
         MetricsRepository repo = getOrInitRepository();
         List<MetricIntervalStatsRecord> newlyCompleted = new ArrayList<>();
         int processedMetrics = 0;
@@ -130,6 +139,10 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
 
     @Override
     public void purgeMetricStats(boolean force) {
+        if (!isEngineInitialized()) {
+            log.debug("Engine is not initialized, skipping purgeMetricStats.");
+            return;
+        }
         MetricsRepository repo = getOrInitRepository();
         if (repo == null) {
             return;
@@ -203,7 +216,11 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
     }
 
     @Override
-    public void initWorksetsIfNeeded() {
+    public boolean initWorksetsIfNeeded() {
+        if (!isEngineInitialized()) {
+            log.debug("Engine is not initialized, skipping initWorksetsIfNeeded");
+            return false;
+        }
         if (!worksetsInitialized) {
             MetricsRepository repo = repository.get();
             if (repo != null) {
@@ -211,6 +228,7 @@ public class EngineMetricsService extends AbstractMetricsService implements IEng
                 worksetsInitialized = true;
             }
         }
+        return true;
     }
 
     /**

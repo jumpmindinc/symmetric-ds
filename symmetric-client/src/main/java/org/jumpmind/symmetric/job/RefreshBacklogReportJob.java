@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -21,13 +21,18 @@
 package org.jumpmind.symmetric.job;
 
 import static org.jumpmind.symmetric.job.JobDefaults.EVERY_FIFTEEN_MINUTES;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_BATCHES_INCOMING;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_BATCHES_OUTGOING;
+import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_INCOMING;
 import static org.jumpmind.symmetric.observability.interfaces.SymMetricConstants.METRIC_ID_DATA_OUTGOING;
 
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.ToLongFunction;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.Constants;
+import org.jumpmind.symmetric.model.IncomingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.model.OutgoingBatchSummaryByNodeBriefStats;
 import org.jumpmind.symmetric.observability.interfaces.INodeBatchStatusMetricsMap;
 import org.jumpmind.symmetric.service.ClusterConstants;
@@ -37,6 +42,7 @@ import io.micrometer.common.util.StringUtils;
 
 public class RefreshBacklogReportJob extends AbstractJob {
     private INodeBatchStatusMetricsMap outgoingBatchMetrics;
+    private INodeBatchStatusMetricsMap incomingBatchMetrics;
 
     public RefreshBacklogReportJob(ISymmetricEngine engine, ThreadPoolTaskScheduler taskScheduler) {
         super(ClusterConstants.REFRESH_BACKLOG_REPORT, engine, taskScheduler);
@@ -61,27 +67,47 @@ public class RefreshBacklogReportJob extends AbstractJob {
 
     @Override
     public void doJob(boolean force) throws Exception {
-        List<OutgoingBatchSummaryByNodeBriefStats> stats = engine.getOutgoingBatchService().findOutgoingBatchSummaryByNodeBriefStats();
-        populateNodeMetrics(stats);
+        List<OutgoingBatchSummaryByNodeBriefStats> outgoingStats = engine.getOutgoingBatchService().findOutgoingBatchSummaryByNodeBriefStats();
+        populateOutgoingNodeMetrics(outgoingStats);
+        List<IncomingBatchSummaryByNodeBriefStats> incomingStats = engine.getIncomingBatchService().findIncomingBatchSummaryByNodeBriefStats();
+        populateIncomingNodeMetrics(incomingStats);
     }
 
-    protected void populateNodeMetrics(List<OutgoingBatchSummaryByNodeBriefStats> stats) {
+    protected void populateOutgoingNodeMetrics(List<OutgoingBatchSummaryByNodeBriefStats> stats) {
         if (outgoingBatchMetrics == null) {
             outgoingBatchMetrics = engine.getMetricsService()
                     .createNodeBatchStatusMetricsMap(METRIC_ID_BATCHES_OUTGOING, METRIC_ID_DATA_OUTGOING);
         }
+        accumulateAndSetMetrics(stats, outgoingBatchMetrics, OutgoingBatchSummaryByNodeBriefStats::nodeId,
+                OutgoingBatchSummaryByNodeBriefStats::status, OutgoingBatchSummaryByNodeBriefStats::batchCount,
+                OutgoingBatchSummaryByNodeBriefStats::dataRows);
+    }
+
+    protected void populateIncomingNodeMetrics(List<IncomingBatchSummaryByNodeBriefStats> stats) {
+        if (incomingBatchMetrics == null) {
+            incomingBatchMetrics = engine.getMetricsService()
+                    .createNodeBatchStatusMetricsMap(METRIC_ID_BATCHES_INCOMING, METRIC_ID_DATA_INCOMING);
+        }
+        accumulateAndSetMetrics(stats, incomingBatchMetrics, IncomingBatchSummaryByNodeBriefStats::nodeId,
+                IncomingBatchSummaryByNodeBriefStats::status, IncomingBatchSummaryByNodeBriefStats::batchCount,
+                IncomingBatchSummaryByNodeBriefStats::dataRows);
+    }
+
+    private <T> void accumulateAndSetMetrics(List<T> stats, INodeBatchStatusMetricsMap metricsMap,
+            Function<T, String> nodeIdOf, Function<T, String> statusOf,
+            ToLongFunction<T> batchCountOf, ToLongFunction<T> dataRowsOf) {
         // Results are ORDER BY node_id, status, batch_date — accumulate totals per (node_id, status) group - in one pass!
         NodeBatchGroup current = null;
         long processedEntriesCount = 0;
         long currentEntriesCount = 0;
-        for (OutgoingBatchSummaryByNodeBriefStats row : stats) {
-            String entryNodeId = row.nodeId();
-            String entryStatus = row.status();
+        for (T row : stats) {
+            String entryNodeId = nodeIdOf.apply(row);
+            String entryStatus = statusOf.apply(row);
             if (StringUtils.isBlank(entryNodeId) || StringUtils.isBlank(entryStatus) || Constants.UNROUTED_NODE_ID.equals(entryNodeId)) {
                 continue;
             }
             if (current != null && (!entryNodeId.equals(current.nodeId()) || !entryStatus.equals(current.batchStatus()))) {
-                outgoingBatchMetrics.setBatchAndRowCounts(current.nodeId(), current.batchStatus(), current.totalBatches(), current.totalDataRows());
+                metricsMap.setBatchAndRowCounts(current.nodeId(), current.batchStatus(), current.totalBatches(), current.totalDataRows());
                 if (log.isDebugEnabled()) {
                     log.debug("Recorded backlog observation. Node={}, Batch.status={}, batches={}, rows={}, entries={}",
                             entryNodeId, entryStatus, current.totalBatches(), current.totalDataRows(), currentEntriesCount);
@@ -92,12 +118,12 @@ public class RefreshBacklogReportJob extends AbstractJob {
             if (current == null) {
                 current = new NodeBatchGroup(entryNodeId, entryStatus, 0, 0);
             }
-            current = current.accumulate(row.batchCount(), row.dataRows());
+            current = current.accumulate(batchCountOf.applyAsLong(row), dataRowsOf.applyAsLong(row));
             processedEntriesCount++;
             currentEntriesCount++;
         }
         if (current != null) {
-            outgoingBatchMetrics.setBatchAndRowCounts(current.nodeId(), current.batchStatus(), current.totalBatches(), current.totalDataRows());
+            metricsMap.setBatchAndRowCounts(current.nodeId(), current.batchStatus(), current.totalBatches(), current.totalDataRows());
         }
         log.info("Processed {} node-batch-date entries to populate metrics.", processedEntriesCount);
     }

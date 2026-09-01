@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -112,7 +112,7 @@ class SqlExplorerTabPanelTest extends BrowserlessTest {
         queryPanel.commitButtonValue = true;
         panel.add(queryPanel, "Query1");
         panel.remove(panel.getTab("Query1"));
-        assertTrue($(NotifyDialog.class).exists());
+        assertTrue(find(NotifyDialog.class).exists());
     }
 
     @Test
