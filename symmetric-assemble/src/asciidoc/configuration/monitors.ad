@@ -91,7 +91,7 @@ be compared to a threshold value.
 
 |jobTrending|Largest percentage by which a job's most recent runtime has exceeded its previous peak runtime. This only applies to jobs that record statistics in the <<NODE_HOST_JOB_STATS>> table (see jobError monitor above). This will only take effect for a particular job when the <<NODE_HOST_JOB_STATS>> table contains a sufficient amount of statistics for that job (10 or 100 rows, depending on the job). |✔
 
-|connectionPool|Value of 0 or 1 indicating whether all connections in the database connection pool are in use.|✔
+|connectionPool|Percentage of connections in the database connection pool that are in use. This insight is only compatible with `db.pool.type=dbcp2`.|✔
 
 |connectionReset|Value of 0 or 1 indicating whether or not a "connection reset" error has occurred recently. The duration in the past during which this insight checks for "connection reset" errors is determined by the purge.log.summary.retention.minutes parameter, which defaults to 60 minutes. |✔
 
