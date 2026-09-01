@@ -88,7 +88,7 @@ public class FileSyncPullUriHandler extends AbstractUriHandler {
             } else {
                 res.setContentType("application/zip");
                 res.addHeader("Content-Disposition", "attachment; filename=\"file-sync.zip\"");
-                engine.getFileSyncService().writeFilesForPull(result, outgoingTransport);
+                engine.getFileSyncService().writeFilesForPull(processInfo, result, outgoingTransport);
             }
             processInfo.setStatus(ProcessStatus.OK);
         } catch (RuntimeException ex) {

@@ -557,7 +557,7 @@ class FileSyncServiceTest {
         assertEquals(etag.toJson(), propsCaptor.getValue().get(WebConstants.HEADER_IF_ETAG));
         assertEquals("bytes=200-", propsCaptor.getValue().get(WebConstants.HEADER_RANGE));
     }
-    
+
     @Test
     void sendFiles_failureDuringSendPhase_incrementsDataSentErrorsOnly() throws Exception {
         IStatisticManager statisticManager = mock(IStatisticManager.class);

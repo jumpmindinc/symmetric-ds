@@ -98,7 +98,7 @@ public interface IFileSyncService {
      * <p>
      * This phase decides whether to resume one specific, previously-interrupted batch (when {@code batchIdParam} is non-blank), extracts/stages whichever
      * batches will be sent, and computes the envelope/partial-content decisions - it performs no network writes. Pass the result to
-     * {@link #writeFilesForPull(FileSyncPullResult, IOutgoingTransport)} to actually stream the bytes.
+     * {@link #writeFilesForPull(ProcessInfo, FileSyncPullResult, IOutgoingTransport)} to actually stream the bytes.
      * {@link #sendFiles(ProcessInfo, Node, IOutgoingTransport)} remains unchanged for the push path, which has no equivalent resume mechanism.
      */
     public FileSyncPullResult prepareFilesForPull(ProcessInfo processInfo, Node targetNode, String batchIdParam,
@@ -110,7 +110,7 @@ public interface IFileSyncService {
      * batches loaded, cleaning up staged resources) once the write completes. Must be called only after the caller has finished setting response
      * headers/status.
      */
-    public void writeFilesForPull(FileSyncPullResult result, IOutgoingTransport outgoingTransport);
+    public void writeFilesForPull(ProcessInfo processInfo, FileSyncPullResult result, IOutgoingTransport outgoingTransport);
 
     public void acknowledgeFiles(OutgoingBatch outgoingBatch);
 
