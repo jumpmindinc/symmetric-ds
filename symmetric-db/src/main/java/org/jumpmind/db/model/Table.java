@@ -390,8 +390,7 @@ public class Table extends Relation {
         }
         boolean indexHasPersistedGeneratedColumn = doesIndexContainPersistedGeneratedColumn(index);
         boolean indexHasNonPersistedGeneratedColumn = doesIndexContainNonPersistedGeneratedColumn(index);
-        boolean targetSupportsNonPersistedGeneratedColumns = databaseInfo.isNonPersistedGeneratedColumnsSupported();
-        if (!targetSupportsNonPersistedGeneratedColumns) {
+        if (!databaseInfo.isNonPersistedGeneratedColumnsSupported()) {
             // a non-persisted source column is still created as persisted on this platform, so treat it as persisted here too
             indexHasPersistedGeneratedColumn = indexHasPersistedGeneratedColumn || indexHasNonPersistedGeneratedColumn;
             indexHasNonPersistedGeneratedColumn = false;
