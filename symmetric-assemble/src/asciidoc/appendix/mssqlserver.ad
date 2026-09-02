@@ -115,6 +115,9 @@ if it's not already enabled, which requires ALTER TABLE permission.
 [source, SQL]
 alter table mytable enable change_tracking;
 
+==== Known Limitations
+* When using Log Miner, SQL Server Change Tracking does not store row values in its change table; it only records the row's primary key and the type of change (insert, update, or delete). As a result, only the current value of a row is captured, not the value it held at the time of the change. If a row is updated multiple times before SymmetricDS reads the changes, or is later updated again before the change is captured, the intermediate values are lost and only the most recent value is synchronized. This is a limitation of SQL Server Change Tracking.
+
 .Supported Data Types
 |===
 |Data Type|Supported?
