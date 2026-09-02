@@ -67,6 +67,7 @@ class PostgreSqlSymmetricDialectTest {
 
     @Test
     void constructor_enablesPersistedButNotNonPersistedGeneratedColumnSupport_atVersion14() {
+        setupWithMajorVersion(14);
         assertTrue(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
         assertFalse(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsSupported());
     }
