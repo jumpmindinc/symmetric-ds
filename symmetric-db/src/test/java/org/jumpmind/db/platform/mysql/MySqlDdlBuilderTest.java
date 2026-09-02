@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.sql.Types;
 
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.IndexColumn;
+import org.jumpmind.db.model.NonUniqueIndex;
 import org.jumpmind.db.model.PlatformColumn;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
@@ -73,5 +75,62 @@ public class MySqlDdlBuilderTest {
         assertTrue(sqlType.contains("'ACTIVE'") && sqlType.contains("'INACTIVE'"),
                 "Expected enum values sourced via the MySQL-family PlatformColumn even though it was tagged '"
                         + DatabaseNamesConstants.AURORA_MYSQL + "' instead of the literal '" + DatabaseNamesConstants.MYSQL + "'");
+    }
+
+    @Test
+    void testWriteGeneratedColumn_persisted_emitsStoredKeyword() {
+        MySqlDdlBuilder ddlBuilder = new MySqlDdlBuilder();
+        ddlBuilder.getDatabaseInfo().setGeneratedColumnsSupported(true);
+        String ddl = ddlBuilder.createTable(buildTableWithComputedColumn(true));
+        assertTrue(ddl.contains(" AS (a + b) STORED"), "Expected persisted generated column to be written as STORED");
+        assertFalse(ddl.contains("VIRTUAL"), "Persisted generated column should not be written as VIRTUAL");
+    }
+
+    @Test
+    void testWriteGeneratedColumn_nonPersisted_emitsVirtualKeyword() {
+        MySqlDdlBuilder ddlBuilder = new MySqlDdlBuilder();
+        ddlBuilder.getDatabaseInfo().setGeneratedColumnsSupported(true);
+        String ddl = ddlBuilder.createTable(buildTableWithComputedColumn(false));
+        assertTrue(ddl.contains(" AS (a + b) VIRTUAL"), "Expected non-persisted generated column to be written as VIRTUAL");
+        assertFalse(ddl.contains("STORED"), "Non-persisted generated column should not be written as STORED");
+    }
+
+    @Test
+    void testWriteGeneratedColumn_indexRetained_whenPersistedGeneratedColumnsSupported() {
+        MySqlDdlBuilder ddlBuilder = new MySqlDdlBuilder();
+        ddlBuilder.getDatabaseInfo().setGeneratedColumnsSupported(true);
+        ddlBuilder.getDatabaseInfo().setPersistedGeneratedColumnsSupported(true);
+        Table table = buildTableWithComputedColumn(true);
+        NonUniqueIndex index = new NonUniqueIndex("idx_computed");
+        index.addColumn(new IndexColumn("total"));
+        table.addIndex(index);
+        String ddl = ddlBuilder.createTable(table);
+        assertTrue(ddl.contains("idx_computed"), "Expected index on persisted generated column to be created");
+    }
+
+    @Test
+    void testWriteGeneratedColumn_indexSkipped_forNonPersistedColumn() {
+        MySqlDdlBuilder ddlBuilder = new MySqlDdlBuilder();
+        ddlBuilder.getDatabaseInfo().setGeneratedColumnsSupported(true);
+        ddlBuilder.getDatabaseInfo().setPersistedGeneratedColumnsSupported(true);
+        Table table = buildTableWithComputedColumn(false);
+        NonUniqueIndex index = new NonUniqueIndex("idx_computed");
+        index.addColumn(new IndexColumn("total"));
+        table.addIndex(index);
+        String ddl = ddlBuilder.createTable(table);
+        assertFalse(ddl.contains("idx_computed"), "Index on a non-persisted (VIRTUAL) generated column should be skipped");
+    }
+
+    private Table buildTableWithComputedColumn(boolean persisted) {
+        Column idCol = new Column("id", true, Types.INTEGER, 0, 0);
+        Column aCol = new Column("a", false, Types.INTEGER, 0, 0);
+        Column bCol = new Column("b", false, Types.INTEGER, 0, 0);
+        Column computedCol = new Column("total");
+        computedCol.setMappedTypeCode(Types.INTEGER);
+        computedCol.setGenerated(true);
+        computedCol.setPersisted(persisted);
+        computedCol.setDefaultValue("(a + b)");
+        computedCol.addPlatformColumn(new PlatformColumn(DatabaseNamesConstants.MYSQL, "INTEGER", null));
+        return new Table("test_computed", idCol, aCol, bCol, computedCol);
     }
 }
