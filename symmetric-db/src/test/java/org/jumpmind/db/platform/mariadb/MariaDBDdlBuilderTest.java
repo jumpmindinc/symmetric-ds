@@ -33,7 +33,7 @@ import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.junit.jupiter.api.Test;
 
-public class MariaDBDdlBuilderTest {
+class MariaDBDdlBuilderTest {
     @Test
     void testWriteGeneratedColumn_persisted_emitsPersistentKeyword() {
         MariaDBDdlBuilder ddlBuilder = new MariaDBDdlBuilder();
