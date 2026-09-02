@@ -220,8 +220,12 @@ public class MySqlDdlBuilder extends AbstractDdlBuilder {
             } else {
                 ddl.append(" AS ").append(definition);
             }
-            ddl.append(column.isPersisted() ? " STORED" : " VIRTUAL");
+            ddl.append(column.isPersisted() ? " " + getPersistedGeneratedColumnKeyword() : " VIRTUAL");
         }
+    }
+
+    protected String getPersistedGeneratedColumnKeyword() {
+        return "STORED";
     }
 
     @Override
