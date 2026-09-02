@@ -48,6 +48,11 @@ public class MariaDBDatabasePlatform extends MySqlDatabasePlatform {
     }
 
     @Override
+    protected MariaDBDdlBuilder createDdlBuilder() {
+        return new MariaDBDdlBuilder();
+    }
+
+    @Override
     public String getClassName() {
         return MariaDBDatabasePlatform.class.getName();
     }
