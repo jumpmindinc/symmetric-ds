@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -1263,7 +1264,7 @@ class PostgreSqlDdlReaderTest {
         PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
         ddlReader.markGeneratedColumnStorageKind(connection, table, 14);
         assertTrue(generatedColumn.isPersisted());
-        verify(connection, Mockito.never()).prepareStatement(ArgumentMatchers.anyString());
+        verify(connection, never()).prepareStatement(ArgumentMatchers.anyString());
     }
 
     @Test
@@ -1275,7 +1276,7 @@ class PostgreSqlDdlReaderTest {
         PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
         ddlReader.markGeneratedColumnStorageKind(connection, table, 11);
         assertFalse(generatedColumn.isPersisted());
-        verify(connection, Mockito.never()).prepareStatement(ArgumentMatchers.anyString());
+        verify(connection, never()).prepareStatement(ArgumentMatchers.anyString());
     }
 
     @Test
@@ -1284,7 +1285,7 @@ class PostgreSqlDdlReaderTest {
         Connection connection = mock(Connection.class);
         PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
         ddlReader.markGeneratedColumnStorageKind(connection, table, 18);
-        verify(connection, Mockito.never()).prepareStatement(ArgumentMatchers.anyString());
+        verify(connection, never()).prepareStatement(ArgumentMatchers.anyString());
     }
 
     @Test
