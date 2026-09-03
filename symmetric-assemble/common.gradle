@@ -331,7 +331,7 @@ subprojects { subproject ->
         guavaVersion = '33.2.0-android'
         junitVersion = '5.13.3'
         spotBugsVersion = '4.8.5'
-        logbackVersion = '1.5.32'
+        logbackVersion = '1.5.38'
         slf4jVersion = '2.0.17'
         mockitoVersion = '5.11.0'
         powerMockVersion = '2.0.9'
@@ -346,7 +346,7 @@ subprojects { subproject ->
         jnaVersion = '5.14.0'
         jettyVersion = '12.1.12'
         websocketVersion = '2.2.0'
-        openTelemetryVersion = '1.61.0'
+        openTelemetryVersion = '1.62.0'
         env = System.getenv()
     }
 
