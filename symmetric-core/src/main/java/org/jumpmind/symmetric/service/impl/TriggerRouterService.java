@@ -119,7 +119,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     /**
      * Cache the history for performance. History never changes and does not grow big so this should be OK.
      */
-    private Map<Integer, TriggerHistory> historyMap = Collections.synchronizedMap(new HashMap<>());
+    private Map<Integer, TriggerHistory> historyMap = Collections.synchronizedMap(new HashMap<Integer, TriggerHistory>());
     private final Set<String> activeSyncTriggersNodes = ConcurrentHashMap.newKeySet();
 
     public TriggerRouterService(ISymmetricEngine engine) {
@@ -2057,7 +2057,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     public boolean syncTriggers(String targetExternalId, boolean force) {
         if (!activeSyncTriggersNodes.add(targetExternalId)) {
             log.info("Sync Triggers is already running for node {}", targetExternalId);
-            return true;
+            return false;
         }
         try {
             if (cacheManager.isUsingTargetExternalId(false)) {

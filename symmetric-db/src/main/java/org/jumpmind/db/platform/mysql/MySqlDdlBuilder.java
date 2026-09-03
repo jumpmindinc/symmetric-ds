@@ -211,6 +211,24 @@ public class MySqlDdlBuilder extends AbstractDdlBuilder {
     }
 
     @Override
+    protected void writeGeneratedColumn(Table table, Column column, StringBuilder ddl) {
+        writeColumnTypeDefaultRequired(table, column, ddl);
+        String definition = getDefinitionForGeneratedColumn(table, column);
+        if (StringUtils.isNotBlank(definition)) {
+            if (!(definition.startsWith("(") && definition.endsWith(")"))) {
+                ddl.append(" AS ").append("(").append(definition).append(")");
+            } else {
+                ddl.append(" AS ").append(definition);
+            }
+            ddl.append(column.isPersisted() ? " " + getPersistedGeneratedColumnKeyword() : " VIRTUAL");
+        }
+    }
+
+    protected String getPersistedGeneratedColumnKeyword() {
+        return "STORED";
+    }
+
+    @Override
     protected void writeColumnDefaultValueStmt(Table table, Column column, StringBuilder ddl) {
         super.writeColumnDefaultValueStmt(table, column, ddl);
         if (column.getParsedDefaultValue() == null

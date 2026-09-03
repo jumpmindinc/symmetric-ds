@@ -29,12 +29,10 @@ public class RouterServiceSqlMap extends AbstractSqlMap {
         super(platform, replacementTokens);
         putSql("selectChannelsUsingGapsSql", "select distinct channel_id from $(data) where $(dataRange)");
         putSql("selectChannelsUsingStartDataId", "select distinct channel_id from $(data) where data_id >= ?");
-        putSql("selectChannelDataCreateTimeRangeUsingGapsSql",
-                "select channel_id, min(create_time) as min_create_time, max(create_time) as max_create_time "
-                        + "from $(data) where $(dataRange) group by channel_id");
-        putSql("selectChannelDataCreateTimeRangeUsingStartDataId",
-                "select channel_id, min(create_time) as min_create_time, max(create_time) as max_create_time "
-                        + "from $(data) where data_id >= ? group by channel_id");
+        putSql("selectChannelDataCreateTimeRangeSql",
+                "select d.channel_id, min(d.create_time) as min_create_time, max(d.create_time) as max_create_time "
+                        + "from $(data_gap) g join $(data) d on d.data_id between g.start_id and g.end_id "
+                        + "where g.is_expired = 0 group by d.channel_id");
         putSql("selectChannelDataUnroutedCountSql",
                 "select d.channel_id, count(*) as unrouted_count from $(data_gap) g "
                         + "join $(data) d on d.data_id between g.start_id and g.end_id "
