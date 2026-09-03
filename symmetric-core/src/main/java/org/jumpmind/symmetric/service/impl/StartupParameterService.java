@@ -71,8 +71,8 @@ public class StartupParameterService implements IStartupParameterService {
     private static final Map<String, String> ENV_VAR_NAMES_BY_PARAMETER = reverse(ServerConstants.JVM_IMPORT_ENV_VARS);
     private static final StartupParameterService INSTANCE = new StartupParameterService();
     private final Map<String, EngineParameters> parametersByEngine = new ConcurrentHashMap<>();
-    private volatile TypedProperties jvmProperties = new TypedProperties(System.getProperties());
-    private volatile Map<String, String> environmentVariables = System.getenv();
+    private final TypedProperties jvmProperties = new TypedProperties(System.getProperties());
+    private final Map<String, String> environmentVariables = System.getenv();
 
     private StartupParameterService() {
     }
@@ -137,7 +137,7 @@ public class StartupParameterService implements IStartupParameterService {
         String defaultValue = metaData != null ? substituteTokensInDefault(engineParameters, key, metaData.getDefaultValue()) : null;
         Type type = inferType(metaData, Objects.toString(rawValue, defaultValue));
         Source source = determineSource(engineParameters, key, rawValue, defaultValue);
-        boolean isSensitive = isSensitive(engineParameters, key, metaData);
+        boolean isSensitive = isSensitive(key, metaData);
         return new StartupParameter(engineParameters.engineName, key, type, rawValue, defaultValue, source, isSensitive);
     }
 
@@ -219,7 +219,7 @@ public class StartupParameterService implements IStartupParameterService {
         return Type.STRING;
     }
 
-    private boolean isSensitive(EngineParameters engineParameters, String key, ParameterMetaData metaData) {
+    private boolean isSensitive(String key, ParameterMetaData metaData) {
         if (SENSITIVE_SYSTEM_PROPERTY_KEYS.contains(key) || ArrayUtils.contains(ParameterConstants.REDACTED_PROPERTIES, key)) {
             return true;
         }

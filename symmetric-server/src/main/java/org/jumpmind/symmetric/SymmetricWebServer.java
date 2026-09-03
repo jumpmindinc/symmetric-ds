@@ -113,8 +113,8 @@ public class SymmetricWebServer {
         log.info("About to start {} web server on {}:{}:{} with context path {}", name, host == null ? "default" : host,
                 port, protocolName, webHome);
         setSystemProperty(SystemConstants.SYSPROP_STANDALONE_WEB, Boolean.toString(true));
-        setSystemProperty(ServerConstants.HTTP_ENABLE, Boolean.valueOf(httpEnabled).toString());
-        setSystemProperty(ServerConstants.HTTPS_ENABLE, Boolean.valueOf(httpsEnabled).toString());
+        setSystemProperty(ServerConstants.HTTP_ENABLE, Boolean.toString(httpEnabled));
+        setSystemProperty(ServerConstants.HTTPS_ENABLE, Boolean.toString(httpsEnabled));
         setSystemProperty(ServerConstants.HTTP_PORT, Integer.toString(httpPort));
         setSystemProperty(ServerConstants.HTTPS_PORT, Integer.toString(httpsPort));
         setSystemProperty(ServerConstants.SERVER_CONNECTION_IDLE_TIMEOUT, Integer.toString(maxIdleTime));
