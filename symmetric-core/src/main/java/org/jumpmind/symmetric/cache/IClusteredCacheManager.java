@@ -25,6 +25,7 @@ import java.util.Set;
 
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 
 public interface IClusteredCacheManager {
     record PeerState(boolean alive, long lastAliveMs) {
@@ -69,7 +70,8 @@ public interface IClusteredCacheManager {
     /**
      * Start network communication with peers in cluster (if configured) and begin heartbeat message broadcasts + discovery without database dependency.
      */
-    void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isClusterLockingEnabled, Object engineHolder);
+    void initialize(ISecurityService securityService, String clusterPartitionId, String serverId, boolean isClusterLockingEnabled, Object engineHolder,
+            IStartupParameterService startupParameterService);
 
     /**
      * The cluster.lock.enabled value this node actually started JCS peer-awareness with, resolved once from file/environment configuration before any engine

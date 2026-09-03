@@ -79,6 +79,7 @@ import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.model.NodeHost;
+import org.jumpmind.symmetric.cache.ClusterPartitionGenerator;
 import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.service.IClusterInstanceGenerator;
@@ -86,6 +87,7 @@ import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,13 +106,15 @@ public class ClusterService extends AbstractService implements IClusterService {
     protected static String instanceId = null;
     protected INodeService nodeService;
     protected IExtensionService extensionService;
+    protected IStartupParameterService startupParameterService;
     protected Map<String, Lock> lockCache = new ConcurrentHashMap<String, Lock>();
 
     public ClusterService(IParameterService parameterService, ISymmetricDialect dialect, INodeService nodeService,
-            IExtensionService extensionService) {
+            IExtensionService extensionService, IStartupParameterService startupParameterService) {
         super(parameterService, dialect);
         this.nodeService = nodeService;
         this.extensionService = extensionService;
+        this.startupParameterService = startupParameterService;
         setSqlMap(new ClusterServiceSqlMap(symmetricDialect.getPlatform(), createSqlReplacementTokens()));
         initCache();
     }
@@ -518,25 +522,7 @@ public class ClusterService extends AbstractService implements IClusterService {
     @Override
     public String getServerId() {
         if (StringUtils.isBlank(serverId)) {
-            serverId = parameterService.getString(ServerConstants.CLUSTER_SERVER_ID);
-            if (StringUtils.isBlank(serverId)) {
-                // JBoss uses this system property to identify a server in a
-                // cluster
-                serverId = System.getProperty("bind.address", null);
-            }
-            if (StringUtils.isBlank(serverId)) {
-                // JBoss uses this system property to identify a server in a
-                // cluster
-                serverId = System.getProperty("jboss.bind.address", null);
-            }
-            if (StringUtils.isBlank(serverId)) {
-                try {
-                    serverId = AppUtils.getHostName();
-                } catch (Exception ex) {
-                    serverId = "unknown";
-                }
-            }
-            serverId = StringUtils.left(serverId, 255);
+            serverId = ClusterPartitionGenerator.resolveServerId(startupParameterService);
             log.info("This node picked a server id of {}", serverId);
         }
         return serverId;
