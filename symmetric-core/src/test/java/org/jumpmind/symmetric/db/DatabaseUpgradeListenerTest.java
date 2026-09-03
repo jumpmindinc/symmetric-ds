@@ -37,7 +37,7 @@ import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class DatabaseUpgradeListenerTest {
+class DatabaseUpgradeListenerTest {
     private DatabaseUpgradeListener listener;
     private ISqlTemplate sqlTemplate;
     private Database currentModel;
