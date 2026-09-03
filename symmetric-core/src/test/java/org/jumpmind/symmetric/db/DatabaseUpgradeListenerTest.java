@@ -164,34 +164,6 @@ class DatabaseUpgradeListenerTest {
     }
 
     @Test
-    void testDropForeignKeyConstraintDueToUpgrade_TableExists_QueriesConstraintNameAndDropsIt() {
-        when(sqlTemplate.queryForString(anyString())).thenReturn("sym_fk_test_table");
-        Table table = currentModel.findTable("sym_test_table");
-        boolean result = listener.dropForeignKeyConstraintDueToUpgrade(table, sqlTemplate);
-        assertTrue(result, "An existing table's foreign key should be dropped");
-        verify(sqlTemplate, times(1)).update("alter table sym_test_table drop constraint sym_fk_test_table");
-    }
-
-    @Test
-    void testDropFkFromTables_AllTablesExist_ActsOnEachAndReturnsTrue() {
-        when(sqlTemplate.queryForString(anyString())).thenReturn("sym_fk_test_table");
-        String[] tableNames = { "sym_test_table", "sym_second_table" };
-        boolean result = listener.dropFkFromTables(tableNames, currentModel, sqlTemplate);
-        assertTrue(result, "Dropping foreign keys from all existing tables should succeed");
-        verify(sqlTemplate, times(1)).update("alter table sym_test_table drop constraint sym_fk_test_table");
-        verify(sqlTemplate, times(1)).update("alter table sym_second_table drop constraint sym_fk_test_table");
-    }
-
-    @Test
-    void testDropFkFromTables_OneTableMissing_SkipsItAndReturnsTrue() {
-        when(sqlTemplate.queryForString(anyString())).thenReturn("sym_fk_test_table");
-        String[] tableNames = { "sym_test_table", "sym_missing_table" };
-        boolean result = listener.dropFkFromTables(tableNames, currentModel, sqlTemplate);
-        assertTrue(result, "A missing table should be skipped without affecting the overall result");
-        verify(sqlTemplate, times(1)).update("alter table sym_test_table drop constraint sym_fk_test_table");
-    }
-
-    @Test
     void testDeleteFromTableDueToUpgrade_TableExists_DeletesAndReturnsTrue() {
         Table table = currentModel.findTable("sym_test_table");
         boolean result = listener.deleteFromTableDueToUpgrade(table, sqlTemplate);

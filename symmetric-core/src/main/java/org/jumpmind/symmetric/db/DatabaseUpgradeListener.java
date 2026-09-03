@@ -213,31 +213,6 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         return false;
     }
 
-    protected boolean dropForeignKeyConstraintDueToUpgrade(Table table, ISqlTemplate sqlTemplate) {
-        if (table == null) {
-            return false;
-        }
-        try {
-            String constraintName = sqlTemplate.queryForString(
-                    "select name from sysobjects where xtype = 'F' and parent_obj = object_id('" + table.getName() + "')");
-            return dropConstraintFromTable(table, constraintName, sqlTemplate);
-        } catch (Exception e) {
-            log.warn("Unable to find foreign key constraint for table {} during upgrade process because: {}", table.getName(), e.getMessage());
-        }
-        return false;
-    }
-
-    protected boolean dropFkFromTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate) {
-        boolean success = true;
-        for (String tableName : tableNames) {
-            Table table = currentModel.findTable(tableName);
-            if (table != null) {
-                success &= dropForeignKeyConstraintDueToUpgrade(table, sqlTemplate);
-            }
-        }
-        return success;
-    }
-
     protected boolean dropConstraintFromTable(Table table, String constraintName, ISqlTemplate sqlTemplate) {
         if (table == null) {
             return false;
