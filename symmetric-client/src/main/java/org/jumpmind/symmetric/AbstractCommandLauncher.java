@@ -51,7 +51,6 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
 import org.jumpmind.symmetric.model.StartupParameter.Source;
-import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.service.impl.StartupParameterService;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
 import org.jumpmind.symmetric.util.LogSummaryAppenderUtils;
@@ -82,7 +81,6 @@ public abstract class AbstractCommandLauncher {
     protected File propertiesFile;
     protected ISymmetricEngine engine;
     protected IDatabasePlatform platform;
-    protected static IStartupParameterService startupParameterService;
     private static boolean serverPropertiesInitialized = false;
     private boolean isContainerEnabled = false;
     static {
@@ -98,10 +96,6 @@ public abstract class AbstractCommandLauncher {
         DEFAULT_SERVER_PROPERTIES = System.getProperty(SystemConstants.SYSPROP_SERVER_PROPERTIES_PATH, symHome + "/conf/symmetric-server.properties");
         log = LoggerFactory.getLogger(AbstractCommandLauncher.class);
         initFromServerProperties();
-    }
-
-    public static IStartupParameterService getStartupParameterService() {
-        return startupParameterService;
     }
 
     public AbstractCommandLauncher(String app, String argSyntax, String messageKeyPrefix) {
@@ -120,12 +114,12 @@ public abstract class AbstractCommandLauncher {
             File serverPropertiesFile = new File(DEFAULT_SERVER_PROPERTIES);
             if (!serverPropertiesFile.exists()) {
                 log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". File does not exist.");
-                startupParameterService = new StartupParameterService(new TypedProperties());
+                StartupParameterService.getInstance().registerGlobal(new TypedProperties(), new HashMap<String, Source>());
                 return;
             }
             if (!serverPropertiesFile.isFile()) {
                 log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". Object is not a file.");
-                startupParameterService = new StartupParameterService(new TypedProperties());
+                StartupParameterService.getInstance().registerGlobal(new TypedProperties(), new HashMap<String, Source>());
                 return;
             }
             TypedProperties serverProperties = new TypedProperties(serverPropertiesFile);
@@ -135,8 +129,7 @@ public abstract class AbstractCommandLauncher {
             for (String key : keysFromServerPropertiesFile) {
                 knownFileSources.put(key, Source.SYMMETRIC_SERVER_PROPERTIES);
             }
-            startupParameterService = new StartupParameterService(serverProperties, new TypedProperties(System.getProperties()), System.getenv(),
-                    knownFileSources);
+            StartupParameterService.getInstance().registerGlobal(serverProperties, knownFileSources);
             serverPropertiesInitialized = true;
         }
     }
@@ -261,12 +254,12 @@ public abstract class AbstractCommandLauncher {
         if (line.hasOption(OPTION_KEYSTORE_PASSWORD)) {
             System.setProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD,
                     line.getOptionValue(OPTION_KEYSTORE_PASSWORD));
-            startupParameterService.refreshSystemProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD);
+            StartupParameterService.getInstance().refreshSystemProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD);
         }
         if (line.hasOption(OPTION_KEYSTORE_TYPE)) {
             System.setProperty(SystemConstants.SYSPROP_KEYSTORE_TYPE,
                     line.getOptionValue(OPTION_KEYSTORE_TYPE));
-            startupParameterService.refreshSystemProperty(SystemConstants.SYSPROP_KEYSTORE_TYPE);
+            StartupParameterService.getInstance().refreshSystemProperty(SystemConstants.SYSPROP_KEYSTORE_TYPE);
         }
         if (line.hasOption(OPTION_JCE_PROVIDER)) {
             Provider provider = (Provider) Class.forName(line.getOptionValue(OPTION_JCE_PROVIDER))

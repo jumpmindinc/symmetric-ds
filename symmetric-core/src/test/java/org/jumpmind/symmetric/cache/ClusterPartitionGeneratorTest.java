@@ -79,13 +79,19 @@ public class ClusterPartitionGeneratorTest {
         Field f = ClusterPartitionGenerator.class.getDeclaredField("clusterPartitionId");
         f.setAccessible(true);
         f.set(null, null);
+        StartupParameterService.getInstance().unregisterEngine(IStartupParameterService.GLOBAL_ENGINE_NAME);
+    }
+
+    private IStartupParameterService registerGlobalStartupParameters(TypedProperties merged) {
+        StartupParameterService.getInstance().registerGlobal(merged, Map.of());
+        return StartupParameterService.getInstance();
     }
 
     @Test
     public void resolveWithStartupParameterService_configuredValue_usesConfiguredValue() {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_PARTITION_ID, "configured-partition-id");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         assertEquals("configured-partition-id", ClusterPartitionGenerator.resolve(startupParameterService));
     }
 
@@ -93,7 +99,7 @@ public class ClusterPartitionGeneratorTest {
     public void resolveWithStartupParameterService_configuredValueLongerThanMax_isTruncated() {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_PARTITION_ID, "a".repeat(100));
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         assertEquals(MAX_CONFIGURED_ID_LENGTH, ClusterPartitionGenerator.resolve(startupParameterService).length());
     }
 
@@ -107,7 +113,7 @@ public class ClusterPartitionGeneratorTest {
         }
         TypedProperties merged = new TypedProperties();
         merged.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
             mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
             assertEquals("existing-file-partition-id", ClusterPartitionGenerator.resolve(startupParameterService));
@@ -118,7 +124,7 @@ public class ClusterPartitionGeneratorTest {
     public void resolveWithStartupParameterService_launcherModeNoExistingFile_generatesAndPersistsNewId(@TempDir File tempDir) throws Exception {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
             mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
             String id = ClusterPartitionGenerator.resolve(startupParameterService);
@@ -132,7 +138,7 @@ public class ClusterPartitionGeneratorTest {
     public void resolveWithStartupParameterService_noCachedValueAnywhere_generatesRandomUuidWithAutoMarker(@TempDir File tempDir) throws Exception {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(SystemConstants.SYSPROP_LAUNCHER, "true");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
             mocked.when(AppUtils::getSymHome).thenReturn(tempDir.getAbsolutePath());
             String id = ClusterPartitionGenerator.resolve(startupParameterService);
@@ -146,7 +152,7 @@ public class ClusterPartitionGeneratorTest {
 
     @Test
     public void resolveWithStartupParameterService_calledTwice_onlyResolvesOnceAndReturnsSameValue() {
-        IStartupParameterService startupParameterService = new StartupParameterService(new TypedProperties(), new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(new TypedProperties());
         String first = ClusterPartitionGenerator.resolve(startupParameterService);
         String second = ClusterPartitionGenerator.resolve(startupParameterService);
         assertEquals(first, second);
@@ -156,11 +162,11 @@ public class ClusterPartitionGeneratorTest {
     public void resolveWithStartupParameterService_calledTwiceWithDifferentConfiguredValues_ignoresSecondValue() {
         TypedProperties firstMerged = new TypedProperties();
         firstMerged.setProperty(ServerConstants.CLUSTER_PARTITION_ID, "first-value");
-        IStartupParameterService firstStartupParameterService = new StartupParameterService(firstMerged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService firstStartupParameterService = registerGlobalStartupParameters(firstMerged);
         String first = ClusterPartitionGenerator.resolve(firstStartupParameterService);
         TypedProperties secondMerged = new TypedProperties();
         secondMerged.setProperty(ServerConstants.CLUSTER_PARTITION_ID, "second-value");
-        IStartupParameterService secondStartupParameterService = new StartupParameterService(secondMerged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService secondStartupParameterService = registerGlobalStartupParameters(secondMerged);
         String second = ClusterPartitionGenerator.resolve(secondStartupParameterService);
         assertEquals(first, second);
         assertEquals("first-value", second);
@@ -231,7 +237,7 @@ public class ClusterPartitionGeneratorTest {
     public void resolveServerIdWithStartupParameterService_configuredValue_usesConfiguredValue() {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_SERVER_ID, "configured-server-id");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         assertEquals("configured-server-id", ClusterPartitionGenerator.resolveServerId(startupParameterService));
     }
 
@@ -240,13 +246,13 @@ public class ClusterPartitionGeneratorTest {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_SERVER_ID, "");
         merged.setProperty("bind.address", "10.0.0.1");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         assertEquals("10.0.0.1", ClusterPartitionGenerator.resolveServerId(startupParameterService));
     }
 
     @Test
     public void resolveServerIdWithStartupParameterService_noConfiguration_fallsBackToDefaultHostnameToken() {
-        IStartupParameterService startupParameterService = new StartupParameterService(new TypedProperties(), new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(new TypedProperties());
         assertEquals(AppUtils.getHostName(), ClusterPartitionGenerator.resolveServerId(startupParameterService));
     }
 
@@ -254,7 +260,7 @@ public class ClusterPartitionGeneratorTest {
     public void resolveServerIdWithStartupParameterService_configuredValueLongerThanMax_isTruncated() {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_SERVER_ID, "a".repeat(300));
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         assertEquals(MAX_SERVER_ID_LENGTH, ClusterPartitionGenerator.resolveServerId(startupParameterService).length());
     }
 
@@ -263,7 +269,7 @@ public class ClusterPartitionGeneratorTest {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_SERVER_ID, "configured-server-id");
         merged.setProperty("bind.address", "10.0.0.1");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         assertEquals("configured-server-id", ClusterPartitionGenerator.resolveServerId(startupParameterService));
     }
 
@@ -273,7 +279,7 @@ public class ClusterPartitionGeneratorTest {
         merged.setProperty(ServerConstants.CLUSTER_SERVER_ID, "");
         merged.setProperty("bind.address", "10.0.0.1");
         merged.setProperty("jboss.bind.address", "10.0.0.2");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         assertEquals("10.0.0.1", ClusterPartitionGenerator.resolveServerId(startupParameterService));
     }
 
@@ -282,7 +288,7 @@ public class ClusterPartitionGeneratorTest {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_SERVER_ID, "");
         merged.setProperty("jboss.bind.address", "10.0.0.2");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         assertEquals("10.0.0.2", ClusterPartitionGenerator.resolveServerId(startupParameterService));
     }
 
@@ -290,7 +296,7 @@ public class ClusterPartitionGeneratorTest {
     public void resolveServerIdWithStartupParameterService_allConfigurationBlank_fallsBackToRealHostname() {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_SERVER_ID, "");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         assertEquals(AppUtils.getHostName(), ClusterPartitionGenerator.resolveServerId(startupParameterService));
     }
 
@@ -298,7 +304,7 @@ public class ClusterPartitionGeneratorTest {
     public void resolveServerIdWithStartupParameterService_hostnameLookupThrows_fallsBackToUnknown() {
         TypedProperties merged = new TypedProperties();
         merged.setProperty(ServerConstants.CLUSTER_SERVER_ID, "");
-        IStartupParameterService startupParameterService = new StartupParameterService(merged, new TypedProperties(), Map.of(), Map.of());
+        IStartupParameterService startupParameterService = registerGlobalStartupParameters(merged);
         try (MockedStatic<AppUtils> mocked = mockStatic(AppUtils.class)) {
             mocked.when(AppUtils::getHostName).thenThrow(new RuntimeException("no hostname available"));
             assertEquals("unknown", ClusterPartitionGenerator.resolveServerId(startupParameterService));

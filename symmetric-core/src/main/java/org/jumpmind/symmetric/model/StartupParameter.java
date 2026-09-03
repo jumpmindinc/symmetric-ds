@@ -28,9 +28,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A parameter resolved before a database connection exists (JVM system property, environment variable, or a properties file), along with its inferred type,
- * default value, and where it was resolved from.
+ * default value, where it was resolved from, which engine it belongs to (or {@code StartupParameterService.GLOBAL_ENGINE_NAME} for process-wide parameters),
+ * and whether its value is sensitive and should be masked when displayed.
  */
-public record StartupParameter(String name, Type type, String rawValue, String defaultValue, Source source) {
+public record StartupParameter(String engineName, String name, Type type, String rawValue, String defaultValue, Source source, boolean isSensitive) {
 
     private static final Logger log = LoggerFactory.getLogger(StartupParameter.class);
     public enum Type {

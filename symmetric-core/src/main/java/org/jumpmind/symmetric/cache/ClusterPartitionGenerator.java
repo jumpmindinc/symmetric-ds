@@ -70,14 +70,14 @@ public class ClusterPartitionGenerator {
     }
 
     public static String resolveServerId(IStartupParameterService startupParameterService) {
-        String id = startupParameterService.getString(ServerConstants.CLUSTER_SERVER_ID);
+        String id = startupParameterService.getGlobalString(ServerConstants.CLUSTER_SERVER_ID);
         if (StringUtils.isBlank(id)) {
             // JBoss uses this system property to identify a server in a cluster
-            id = startupParameterService.getString("bind.address");
+            id = startupParameterService.getGlobalString("bind.address");
         }
         if (StringUtils.isBlank(id)) {
             // JBoss uses this system property to identify a server in a cluster
-            id = startupParameterService.getString("jboss.bind.address");
+            id = startupParameterService.getGlobalString("jboss.bind.address");
         }
         if (StringUtils.isBlank(id)) {
             try {
@@ -130,11 +130,11 @@ public class ClusterPartitionGenerator {
     }
 
     private static String readConfiguredPartitionId(IStartupParameterService startupParameterService) {
-        return startupParameterService.getString(ServerConstants.CLUSTER_PARTITION_ID);
+        return startupParameterService.getGlobalString(ServerConstants.CLUSTER_PARTITION_ID);
     }
 
     private static File getClusterPartitionIdFile(IStartupParameterService startupParameterService) {
-        return startupParameterService.is(SystemConstants.SYSPROP_LAUNCHER, false)
+        return startupParameterService.isGlobal(SystemConstants.SYSPROP_LAUNCHER, false)
                 ? new File(AppUtils.getSymHome() + "/conf/cluster-partition.uuid")
                 : null;
     }

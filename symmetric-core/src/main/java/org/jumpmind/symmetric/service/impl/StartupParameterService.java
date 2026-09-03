@@ -50,9 +50,13 @@ import org.slf4j.LoggerFactory;
  * Consolidates resolution of parameters needed before a database connection exists. Wraps the existing precedence logic in
  * {@link org.jumpmind.symmetric.util.TypedPropertiesFactory} (files < environment variables < JVM system properties) rather than replacing it, and records
  * which layer won for each parameter so that resolution isn't silently re-derived by multiple classes.
+ * <p>
+ * A single JVM-wide instance ({@link #getInstance()}) holds one resolved parameter set per registered engine name, plus one under {@link #GLOBAL_ENGINE_NAME}
+ * for parameters resolved before any specific engine exists. This avoids the divergence that comes from multiple independent instances each taking their own
+ * snapshot of JVM system properties/environment variables at different points in time.
  */
 public class StartupParameterService implements IStartupParameterService {
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+    protected static final Logger log = LoggerFactory.getLogger(StartupParameterService.class);
     /**
      * "options" isn't a real system property; it's the value of the SYM_OPTIONS environment variable (set by setenv/setenv.bat) collected as a single composite
      * key by {@link TypedProperties#collectFrom}. By default it embeds "-Djavax.net.ssl.keyStorePassword=...", so it must be treated as sensitive.
@@ -65,40 +69,16 @@ public class StartupParameterService implements IStartupParameterService {
             SecurityConstants.ALIAS_SYM_SECRET_KEY,
             SYM_OPTIONS_PARAMETER_KEY);
     private static final Map<String, String> ENV_VAR_NAMES_BY_PARAMETER = reverse(ServerConstants.JVM_IMPORT_ENV_VARS);
-    private final Map<String, StartupParameter> parameters = new ConcurrentHashMap<>();
-    private final Map<String, Source> knownFileSources;
-    private final Map<String, ParameterMetaData> parameterMetaData;
-    private ITypedPropertiesFactory propertiesFactory;
-    private TypedProperties mergedProperties;
-    private TypedProperties jvmProperties;
-    private Map<String, String> environmentVariables;
+    private static final StartupParameterService INSTANCE = new StartupParameterService();
+    private final Map<String, EngineParameters> parametersByEngine = new ConcurrentHashMap<>();
+    private volatile TypedProperties jvmProperties = new TypedProperties(System.getProperties());
+    private volatile Map<String, String> environmentVariables = System.getenv();
 
-    public StartupParameterService(TypedProperties mergedProperties, TypedProperties jvmProperties,
-            Map<String, String> environmentVariables, Map<String, Source> knownFileSources) {
-        this(mergedProperties, jvmProperties, environmentVariables, knownFileSources, Map.of());
+    private StartupParameterService() {
     }
 
-    public StartupParameterService(TypedProperties mergedProperties, TypedProperties jvmProperties,
-            Map<String, String> environmentVariables, Map<String, Source> knownFileSources,
-            Map<String, ParameterMetaData> supplementalParameterMetaData) {
-        this.mergedProperties = mergedProperties;
-        this.jvmProperties = jvmProperties;
-        this.environmentVariables = environmentVariables;
-        this.knownFileSources = knownFileSources;
-        this.parameterMetaData = mergeParameterMetaData(supplementalParameterMetaData);
-        TypedPropertiesFactory.replaceSystemAndEnvironmentVariables(this.mergedProperties);
-        resolveAll();
-    }
-
-    public StartupParameterService(TypedProperties mergedProperties) {
-        this(mergedProperties, new TypedProperties(System.getProperties()), System.getenv(), Map.of());
-    }
-
-    public StartupParameterService(ITypedPropertiesFactory propertiesFactory, Map<String, Source> knownFileSources,
-            Map<String, ParameterMetaData> supplementalParameterMetaData) {
-        this(propertiesFactory.reload(), new TypedProperties(System.getProperties()), System.getenv(), knownFileSources,
-                supplementalParameterMetaData);
-        this.propertiesFactory = propertiesFactory;
+    public static IStartupParameterService getInstance() {
+        return INSTANCE;
     }
 
     private static Map<String, ParameterMetaData> mergeParameterMetaData(Map<String, ParameterMetaData> supplementalParameterMetaData) {
@@ -118,32 +98,51 @@ public class StartupParameterService implements IStartupParameterService {
         return result;
     }
 
-    private void resolveAll() {
-        for (String key : mergedProperties.stringPropertyNames()) {
-            StartupParameter parameter = resolve(key);
-            if (isTrackable(parameter)) {
-                parameters.put(key, parameter);
-            }
+    @Override
+    public TypedProperties registerEngine(ITypedPropertiesFactory propertiesFactory, Map<String, Source> knownFileSources,
+            Map<String, ParameterMetaData> supplementalParameterMetaData) {
+        TypedProperties mergedProperties = propertiesFactory.reload();
+        TypedPropertiesFactory.replaceSystemAndEnvironmentVariables(mergedProperties);
+        String engineName = mergedProperties.get(ParameterConstants.ENGINE_NAME);
+        EngineParameters engineParameters = new EngineParameters(engineName, mergedProperties, knownFileSources,
+                mergeParameterMetaData(supplementalParameterMetaData), propertiesFactory);
+        resolveAll(engineParameters);
+        parametersByEngine.put(engineName, engineParameters);
+        return asTypedProperties(engineParameters);
+    }
+
+    @Override
+    public void registerGlobal(TypedProperties mergedProperties, Map<String, Source> knownFileSources) {
+        TypedPropertiesFactory.replaceSystemAndEnvironmentVariables(mergedProperties);
+        EngineParameters engineParameters = new EngineParameters(GLOBAL_ENGINE_NAME, mergedProperties, knownFileSources,
+                ParameterConstants.getParameterMetaData(), null);
+        resolveAll(engineParameters);
+        parametersByEngine.put(GLOBAL_ENGINE_NAME, engineParameters);
+    }
+
+    @Override
+    public void unregisterEngine(String engineName) {
+        parametersByEngine.remove(engineName);
+    }
+
+    private void resolveAll(EngineParameters engineParameters) {
+        for (String key : engineParameters.mergedProperties.stringPropertyNames()) {
+            engineParameters.parameters.put(key, resolve(engineParameters, key));
         }
     }
 
-    private boolean isTrackable(StartupParameter parameter) {
-        ParameterMetaData metaData = parameterMetaData.get(parameter.name());
-        boolean isRuntimeParameter = metaData != null && metaData.isDatabaseOverridable();
-        return !isRuntimeParameter || parameter.source() != Source.DEFAULT;
-    }
-
-    private StartupParameter resolve(String key) {
-        String rawValue = resolveRawValue(key);
-        ParameterMetaData metaData = parameterMetaData.get(key);
-        String defaultValue = metaData != null ? substituteTokensInDefault(key, metaData.getDefaultValue()) : null;
+    private StartupParameter resolve(EngineParameters engineParameters, String key) {
+        String rawValue = resolveRawValue(engineParameters, key);
+        ParameterMetaData metaData = engineParameters.parameterMetaData.get(key);
+        String defaultValue = metaData != null ? substituteTokensInDefault(engineParameters, key, metaData.getDefaultValue()) : null;
         Type type = inferType(metaData, Objects.toString(rawValue, defaultValue));
-        Source source = determineSource(key, rawValue, defaultValue);
-        return new StartupParameter(key, type, rawValue, defaultValue, source);
+        Source source = determineSource(engineParameters, key, rawValue, defaultValue);
+        boolean isSensitive = isSensitive(engineParameters, key, metaData);
+        return new StartupParameter(engineParameters.engineName, key, type, rawValue, defaultValue, source, isSensitive);
     }
 
-    private String resolveRawValue(String key) {
-        String rawValue = mergedProperties.getProperty(key);
+    private String resolveRawValue(EngineParameters engineParameters, String key) {
+        String rawValue = engineParameters.mergedProperties.getProperty(key);
         if (rawValue != null) {
             return rawValue;
         }
@@ -154,17 +153,17 @@ public class StartupParameterService implements IStartupParameterService {
         return environmentVariables.get(findEnvVarName(key));
     }
 
-    private String substituteTokensInDefault(String key, String defaultValue) {
+    private String substituteTokensInDefault(EngineParameters engineParameters, String key, String defaultValue) {
         if (defaultValue == null || !defaultValue.contains("$(")) {
             return defaultValue;
         }
-        TypedProperties copiedProperties = mergedProperties.copy();
+        TypedProperties copiedProperties = engineParameters.mergedProperties.copy();
         copiedProperties.setProperty(key, defaultValue);
         TypedPropertiesFactory.replaceSystemAndEnvironmentVariables(copiedProperties);
         return copiedProperties.getProperty(key);
     }
 
-    private Source determineSource(String key, String rawValue, String defaultValue) {
+    private Source determineSource(EngineParameters engineParameters, String key, String rawValue, String defaultValue) {
         if (rawValue == null) {
             return Source.DEFAULT;
         }
@@ -178,7 +177,7 @@ public class StartupParameterService implements IStartupParameterService {
         if (rawValue.equals(defaultValue)) {
             return Source.DEFAULT;
         }
-        Source knownSource = knownFileSources.get(key);
+        Source knownSource = engineParameters.knownFileSources.get(key);
         return knownSource != null ? knownSource : Source.SYMMETRIC_PROPERTIES_FILE;
     }
 
@@ -220,28 +219,34 @@ public class StartupParameterService implements IStartupParameterService {
         return Type.STRING;
     }
 
-    private boolean isSensitive(String key) {
+    private boolean isSensitive(EngineParameters engineParameters, String key, ParameterMetaData metaData) {
         if (SENSITIVE_SYSTEM_PROPERTY_KEYS.contains(key) || ArrayUtils.contains(ParameterConstants.REDACTED_PROPERTIES, key)) {
             return true;
         }
-        ParameterMetaData metaData = parameterMetaData.get(key);
         return metaData != null && metaData.isEncryptedType();
     }
 
-    @Override
-    public String getString(String key) {
-        return getString(key, null);
+    private boolean isNoisyDefaultedDatabaseParameter(EngineParameters engineParameters, StartupParameter parameter) {
+        ParameterMetaData metaData = engineParameters.parameterMetaData.get(parameter.name());
+        boolean isDatabaseParameter = metaData != null && metaData.isDatabaseOverridable();
+        return isDatabaseParameter && parameter.source() == Source.DEFAULT;
     }
 
     @Override
-    public String getString(String key, String defaultValue) {
-        String value = getParameter(key).asString();
+    public String getString(String engineName, String key) {
+        return getString(engineName, key, null);
+    }
+
+    @Override
+    public String getString(String engineName, String key, String defaultValue) {
+        StartupParameter parameter = getParameter(engineName, key);
+        String value = parameter != null ? parameter.asString() : null;
         return StringUtils.defaultIfBlank(value, defaultValue);
     }
 
     @Override
-    public int getInt(String key, int defaultValue) {
-        String value = getString(key, null);
+    public int getInt(String engineName, String key, int defaultValue) {
+        String value = getString(engineName, key, null);
         if (value == null) {
             return defaultValue;
         }
@@ -254,8 +259,8 @@ public class StartupParameterService implements IStartupParameterService {
     }
 
     @Override
-    public boolean is(String key, boolean defaultValue) {
-        String value = getString(key, null);
+    public boolean is(String engineName, String key, boolean defaultValue) {
+        String value = getString(engineName, key, null);
         if (value == null) {
             return defaultValue;
         }
@@ -264,8 +269,8 @@ public class StartupParameterService implements IStartupParameterService {
     }
 
     @Override
-    public double getDouble(String key, double defaultValue) {
-        String value = getString(key, null);
+    public double getDouble(String engineName, String key, double defaultValue) {
+        String value = getString(engineName, key, null);
         if (value == null) {
             return defaultValue;
         }
@@ -278,42 +283,56 @@ public class StartupParameterService implements IStartupParameterService {
     }
 
     @Override
-    public StartupParameter getParameter(String key) {
-        StartupParameter parameter = parameters.get(key);
+    public StartupParameter getParameter(String engineName, String key) {
+        EngineParameters engineParameters = parametersByEngine.get(engineName);
+        if (engineParameters == null) {
+            return null;
+        }
+        StartupParameter parameter = engineParameters.parameters.get(key);
         if (parameter != null) {
             return parameter;
         }
-        parameter = resolve(key);
-        if (isTrackable(parameter)) {
-            parameters.put(key, parameter);
-        }
+        parameter = resolve(engineParameters, key);
+        engineParameters.parameters.put(key, parameter);
         return parameter;
     }
 
     @Override
-    public Map<String, StartupParameter> getAllParameters() {
-        return Collections.unmodifiableMap(new TreeMap<>(parameters));
+    public Map<String, StartupParameter> getAllParameters(String engineName) {
+        EngineParameters engineParameters = parametersByEngine.get(engineName);
+        if (engineParameters == null) {
+            return Collections.emptyMap();
+        }
+        return Collections.unmodifiableMap(new TreeMap<>(engineParameters.parameters));
     }
 
     @Override
-    public TypedProperties asTypedProperties() {
+    public TypedProperties asTypedProperties(String engineName) {
+        EngineParameters engineParameters = parametersByEngine.get(engineName);
+        if (engineParameters == null) {
+            return jvmProperties.copy();
+        }
+        return asTypedProperties(engineParameters);
+    }
+
+    private TypedProperties asTypedProperties(EngineParameters engineParameters) {
         TypedProperties combinedProperties = jvmProperties.copy();
-        combinedProperties.putAll(mergedProperties);
+        combinedProperties.putAll(engineParameters.mergedProperties);
         return combinedProperties;
     }
 
     @Override
-    public synchronized boolean refresh() {
-        if (propertiesFactory == null) {
+    public synchronized boolean refresh(String engineName) {
+        EngineParameters engineParameters = parametersByEngine.get(engineName);
+        if (engineParameters == null || engineParameters.propertiesFactory == null) {
             return false;
         }
-        TypedProperties reloadedProperties = propertiesFactory.reload();
-        boolean isChanged = !reloadedProperties.equals(mergedProperties);
-        this.mergedProperties = reloadedProperties;
-        this.jvmProperties = new TypedProperties(System.getProperties());
-        this.environmentVariables = System.getenv();
-        parameters.clear();
-        resolveAll();
+        TypedProperties reloadedProperties = engineParameters.propertiesFactory.reload();
+        TypedPropertiesFactory.replaceSystemAndEnvironmentVariables(reloadedProperties);
+        boolean isChanged = !reloadedProperties.equals(engineParameters.mergedProperties);
+        engineParameters.mergedProperties = reloadedProperties;
+        engineParameters.parameters.clear();
+        resolveAll(engineParameters);
         return isChanged;
     }
 
@@ -321,24 +340,104 @@ public class StartupParameterService implements IStartupParameterService {
     public synchronized void refreshSystemProperty(String key) {
         String value = System.getProperty(key);
         jvmProperties.setProperty(key, value);
-        mergedProperties.setProperty(key, value);
-        parameters.put(key, resolve(key));
+        for (EngineParameters engineParameters : parametersByEngine.values()) {
+            engineParameters.mergedProperties.setProperty(key, value);
+            engineParameters.parameters.put(key, resolve(engineParameters, key));
+        }
     }
 
     @Override
-    public String dumpAsText() {
+    public String dumpAsText(String engineName) {
         StringBuilder text = new StringBuilder("Startup Parameters:").append(System.lineSeparator());
-        for (Entry<String, StartupParameter> entry : getAllParameters().entrySet()) {
+        EngineParameters engineParameters = parametersByEngine.get(engineName);
+        if (engineParameters == null) {
+            return text.toString();
+        }
+        for (Entry<String, StartupParameter> entry : getAllParameters(engineName).entrySet()) {
             String key = entry.getKey();
             StartupParameter parameter = entry.getValue();
-            boolean isSensitive = isSensitive(key);
-            String value = isSensitive ? ParameterConstants.REDACTED : parameter.asString();
-            String defaultValue = isSensitive ? ParameterConstants.REDACTED : parameter.defaultValue();
+            if (isNoisyDefaultedDatabaseParameter(engineParameters, parameter)) {
+                continue;
+            }
+            String value = parameter.isSensitive() ? ParameterConstants.REDACTED : parameter.asString();
+            String defaultValue = parameter.isSensitive() ? ParameterConstants.REDACTED : parameter.defaultValue();
             text.append(key).append('=').append(value)
                     .append(" [source=").append(parameter.source())
                     .append(", default=").append(defaultValue)
                     .append(']').append(System.lineSeparator());
         }
         return text.toString();
+    }
+
+    @Override
+    public String getGlobalString(String key) {
+        return getString(GLOBAL_ENGINE_NAME, key);
+    }
+
+    @Override
+    public String getGlobalString(String key, String defaultValue) {
+        return getString(GLOBAL_ENGINE_NAME, key, defaultValue);
+    }
+
+    @Override
+    public int getGlobalInt(String key, int defaultValue) {
+        return getInt(GLOBAL_ENGINE_NAME, key, defaultValue);
+    }
+
+    @Override
+    public boolean isGlobal(String key, boolean defaultValue) {
+        return is(GLOBAL_ENGINE_NAME, key, defaultValue);
+    }
+
+    @Override
+    public double getGlobalDouble(String key, double defaultValue) {
+        return getDouble(GLOBAL_ENGINE_NAME, key, defaultValue);
+    }
+
+    @Override
+    public StartupParameter getGlobalParameter(String key) {
+        return getParameter(GLOBAL_ENGINE_NAME, key);
+    }
+
+    @Override
+    public Map<String, StartupParameter> getGlobalParameters() {
+        return getAllParameters(GLOBAL_ENGINE_NAME);
+    }
+
+    @Override
+    public TypedProperties getGlobalTypedProperties() {
+        return asTypedProperties(GLOBAL_ENGINE_NAME);
+    }
+
+    @Override
+    public boolean refreshGlobal() {
+        return refresh(GLOBAL_ENGINE_NAME);
+    }
+
+    @Override
+    public String dumpGlobalAsText() {
+        return dumpAsText(GLOBAL_ENGINE_NAME);
+    }
+
+    /**
+     * Everything needed to resolve one engine's (or the global bucket's) parameters, other than the JVM/environment snapshot, which is shared across every
+     * engine so that a single {@link #refreshSystemProperty(String)} call keeps them all consistent with each other.
+     */
+    private static final class EngineParameters {
+        private final String engineName;
+        private final Map<String, StartupParameter> parameters = new ConcurrentHashMap<>();
+        private final Map<String, Source> knownFileSources;
+        private final Map<String, ParameterMetaData> parameterMetaData;
+        private final ITypedPropertiesFactory propertiesFactory;
+        private TypedProperties mergedProperties;
+
+        private EngineParameters(String engineName, TypedProperties mergedProperties, Map<String, Source> knownFileSources,
+                Map<String, ParameterMetaData> parameterMetaData, ITypedPropertiesFactory propertiesFactory) {
+            this.engineName = engineName;
+            this.mergedProperties = mergedProperties;
+            this.knownFileSources = knownFileSources;
+            this.parameterMetaData = parameterMetaData;
+            this.propertiesFactory = propertiesFactory;
+        }
     }
 }

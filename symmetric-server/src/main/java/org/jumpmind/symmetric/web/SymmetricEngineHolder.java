@@ -54,7 +54,6 @@ import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
-import org.jumpmind.symmetric.AbstractCommandLauncher;
 import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.IApplicationHealthTracker;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -82,6 +81,7 @@ import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
+import org.jumpmind.symmetric.service.impl.StartupParameterService;
 import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
@@ -172,14 +172,14 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
         boolean isClusterLockingEnabled = false;
         try {
             ccManager = ClusteredCacheManager.getInstance();
-            String clusterPartitionId = ClusterPartitionGenerator.resolve(AbstractCommandLauncher.getStartupParameterService());
+            String clusterPartitionId = ClusterPartitionGenerator.resolve(StartupParameterService.getInstance());
             String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
             isClusterLockingEnabled = ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties);
             log.debug("Resolved cluster settings. clusterPartitionId={}, serverId={}, {}={} (raw property value='{}')", clusterPartitionId, serverId,
                     ParameterConstants.CLUSTER_LOCKING_ENABLED, isClusterLockingEnabled,
                     coreServerProperties.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED));
             ccManager.initialize(securityService, clusterPartitionId, serverId, isClusterLockingEnabled, this,
-                    AbstractCommandLauncher.getStartupParameterService());
+                    StartupParameterService.getInstance());
             ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);
         } catch (Exception ex) {
             if (isClusterLockingEnabled) {

@@ -274,8 +274,8 @@ public class ClusteredCacheManager implements IClusteredCacheManager {
         if (peerNetworkCoordinator == null) {
             peerNetworkCoordinator = AppUtils.newInstance(IClusterCacheCoordinator.class, JcsTcpCacheCoordinator.class);
         }
-        int jcsPort = startupParameterService.getInt(ServerConstants.CLUSTER_JCS_PORT, 1101);
-        String discoveryMode = startupParameterService.getString(ServerConstants.CLUSTER_PEER_DISCOVERY, ServerConstants.CLUSTER_PEER_DISCOVERY_DB);
+        int jcsPort = startupParameterService.getGlobalInt(ServerConstants.CLUSTER_JCS_PORT, 1101);
+        String discoveryMode = startupParameterService.getGlobalString(ServerConstants.CLUSTER_PEER_DISCOVERY, ServerConstants.CLUSTER_PEER_DISCOVERY_DB);
         if (peerDiscovery == null) {
             ICachePeerServerDiscoveryFactory discoveryFactory = AppUtils.newInstance(ICachePeerServerDiscoveryFactory.class,
                     CachePeerServerDiscoveryFactory.class);
