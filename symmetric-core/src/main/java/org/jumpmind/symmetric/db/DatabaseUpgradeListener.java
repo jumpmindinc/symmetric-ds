@@ -81,20 +81,21 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     @Override
     public String beforeUpgrade(ISymmetricDialect symmetricDialect, String tablePrefix, Database currentModel, Database desiredModel)
             throws IOException {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sqlScript = new StringBuilder();
         ISqlTemplate sqlTemplate = engine.getSqlTemplate();
+        boolean success = true;
         isUpgradeFromPre38 = isUpgradeFromPre38(tablePrefix, currentModel, desiredModel);
         if (isUpgradeFromPre38) {
-            beforeUpgradeFromPre3_8(tablePrefix, currentModel, sqlTemplate);
+            success &= beforeUpgradeFromPre3_8(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         if (isUpgradeFromPre310(tablePrefix, currentModel, desiredModel)) {
-            beforeUpgradeFromPre3_10(tablePrefix, currentModel, sqlTemplate);
+            success &= beforeUpgradeFromPre3_10(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         if (isUpgradeFromPre311(tablePrefix, currentModel, desiredModel)) {
-            beforeUpgradeFromPre3_11(tablePrefix);
+            success &= beforeUpgradeFromPre3_11(tablePrefix);
         }
         if (isUpgradeFromPre312(tablePrefix, currentModel, desiredModel)) {
-            beforeUpgradeFromPre3_12(tablePrefix, currentModel, sqlTemplate);
+            success &= beforeUpgradeFromPre3_12(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         if (isUpgradeFromPre3125(tablePrefix, currentModel, desiredModel)) {
             isUpgradeFromPre3125 = true;
@@ -105,32 +106,39 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
             isUpgradeFromPre315 = true;
         }
         if (isUpgradeFromPre315) {
-            beforeUpgradeFromPre3_15(tablePrefix, currentModel, sqlTemplate);
+            success &= beforeUpgradeFromPre3_15(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         isUpgradeFromPre316 = isUpgradeFromPre316(tablePrefix, currentModel);
         if (isUpgradeFromPre316) {
-            beforeUpgradeFromPre3_16(tablePrefix, currentModel, sqlTemplate);
+            success &= beforeUpgradeFromPre3_16(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         isUpgradeFromPre317 = isUpgradeFromPre317(tablePrefix, currentModel);
         if (isUpgradeFromPre317) {
-            beforeUpgradeFromPre3_17(tablePrefix, currentModel, sqlTemplate);
+            success &= beforeUpgradeFromPre3_17(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         // Leave this last in the sequence of steps to make sure to capture any DML changes done before this
         if (engine.getParameterService().is(ParameterConstants.AUTO_SYNC_TRIGGERS) &&
                 currentModel.getTableCount() > 0 && currentModel.findTable(tablePrefix + "_" + TableConstants.SYM_TRIGGER_HIST) != null) {
             dropSymTriggersIfNecessary(currentModel, desiredModel);
         }
-        return sb.toString();
+        if (success) {
+            log.debug("All before-upgrade steps succeeded; SQL script= \n{}", sqlScript);
+        } else {
+            log.warn("One or more upgrade steps failed; SQL script attempted=\n{}", sqlScript);
+        }
+        return ""; // No command left for the caller to execute.
     }
 
-    protected boolean dropTableDueToUpgrade(Table table, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean dropTableDueToUpgrade(Table table, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         if (table == null) {
             return false;
         }
         dropTriggers(currentModel, table.getName());
+        String sql = "drop table " + table.getName();
+        sqlScript.append(sql).append(";\n");
         try {
             log.info("Per upgrade process, dropping table: {}", table.getName());
-            sqlTemplate.update("drop table " + table.getName());
+            sqlTemplate.update(sql);
             return true;
         } catch (Exception e) {
             log.warn("Unable to drop table {} during upgrade process because: {}", table.getName(), e.getMessage());
@@ -138,24 +146,26 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         return false;
     }
 
-    protected boolean dropTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean dropTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         boolean success = true;
         for (String tableName : tableNames) {
             Table table = currentModel.findTable(tableName);
             if (table != null) {
-                success &= dropTableDueToUpgrade(table, currentModel, sqlTemplate);
+                success &= dropTableDueToUpgrade(table, currentModel, sqlTemplate, sqlScript);
             }
         }
         return success;
     }
 
-    protected boolean truncateTableDueToUpgrade(Table table, ISqlTemplate sqlTemplate) {
+    protected boolean truncateTableDueToUpgrade(Table table, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         if (table == null) {
             return false;
         }
+        String sql = "truncate table " + table.getName();
+        sqlScript.append(sql).append(";\n");
         try {
             log.info("Per upgrade process, truncating table: {}", table.getName());
-            sqlTemplate.update("truncate table " + table.getName());
+            sqlTemplate.update(sql);
             return true;
         } catch (Exception e) {
             log.warn("Unable to truncate table {} during upgrade process because: {}", table.getName(), e.getMessage());
@@ -163,49 +173,52 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         return false;
     }
 
-    protected boolean truncateTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean truncateTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         boolean success = true;
         for (String tableName : tableNames) {
             Table table = currentModel.findTable(tableName);
             if (table != null) {
-                success &= truncateTableDueToUpgrade(table, sqlTemplate);
+                success &= truncateTableDueToUpgrade(table, sqlTemplate, sqlScript);
             }
         }
         return success;
     }
 
-    protected boolean dropPrimaryKeyConstraintDueToUpgrade(Table table, ISqlTemplate sqlTemplate) {
+    protected boolean dropPrimaryKeyConstraintDueToUpgrade(Table table, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         if (table == null) {
             return false;
         }
+        String sql = "select name from sysobjects where xtype = 'PK' and parent_obj = object_id('" + table.getName() + "')";
+        sqlScript.append(sql).append(";\n");
         try {
-            String constraintName = sqlTemplate.queryForString(
-                    "select name from sysobjects where xtype = 'PK' and parent_obj = object_id('" + table.getName() + "')");
-            return dropConstraintFromTable(table, constraintName, sqlTemplate);
+            String constraintName = sqlTemplate.queryForString(sql);
+            return dropConstraintFromTable(table, constraintName, sqlTemplate, sqlScript);
         } catch (Exception e) {
             log.warn("Unable to find primary key constraint for table {} during upgrade process because: {}", table.getName(), e.getMessage());
         }
         return false;
     }
 
-    protected boolean dropPkFromTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean dropPkFromTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         boolean success = true;
         for (String tableName : tableNames) {
             Table table = currentModel.findTable(tableName);
             if (table != null) {
-                success &= dropPrimaryKeyConstraintDueToUpgrade(table, sqlTemplate);
+                success &= dropPrimaryKeyConstraintDueToUpgrade(table, sqlTemplate, sqlScript);
             }
         }
         return success;
     }
 
-    protected boolean dropIndexFromTable(Table table, String indexName, ISqlTemplate sqlTemplate) {
+    protected boolean dropIndexFromTable(Table table, String indexName, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         if (table == null) {
             return false;
         }
         log.info("Per upgrade process, dropping index {} from table: {}", indexName, table.getName());
+        String sql = "drop index " + table.getName() + "." + indexName;
+        sqlScript.append(sql).append(";\n");
         try {
-            sqlTemplate.update("drop index " + table.getName() + "." + indexName);
+            sqlTemplate.update(sql);
             return true;
         } catch (Exception e) {
             log.warn("Unable to drop index {} from table {} during upgrade process because: {}", indexName, table.getName(), e.getMessage());
@@ -213,13 +226,15 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         return false;
     }
 
-    protected boolean dropConstraintFromTable(Table table, String constraintName, ISqlTemplate sqlTemplate) {
+    protected boolean dropConstraintFromTable(Table table, String constraintName, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         if (table == null) {
             return false;
         }
         log.info("Per upgrade process, dropping constraint {} from table: {}", constraintName, table.getName());
+        String sql = "alter table " + table.getName() + " drop constraint " + constraintName;
+        sqlScript.append(sql).append(";\n");
         try {
-            sqlTemplate.update("alter table " + table.getName() + " drop constraint " + constraintName);
+            sqlTemplate.update(sql);
             return true;
         } catch (Exception e) {
             log.warn("Unable to drop constraint {} from table {} during upgrade process because: {}", constraintName, table.getName(), e.getMessage());
@@ -227,13 +242,15 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         return false;
     }
 
-    protected boolean deleteFromTableDueToUpgrade(Table table, ISqlTemplate sqlTemplate) {
+    protected boolean deleteFromTableDueToUpgrade(Table table, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         if (table == null) {
             return false;
         }
+        String sql = "delete from " + table.getName();
+        sqlScript.append(sql).append(";\n");
         try {
             log.info("Per upgrade process, deleting from table: {}", table.getName());
-            sqlTemplate.update("delete from " + table.getName());
+            sqlTemplate.update(sql);
             return true;
         } catch (Exception e) {
             log.warn("Unable to delete from table {} during upgrade process because: {}", table.getName(), e.getMessage());
@@ -241,12 +258,12 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         return false;
     }
 
-    protected boolean deleteFromTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean deleteFromTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         boolean success = true;
         for (String tableName : tableNames) {
             Table table = currentModel.findTable(tableName);
             if (table != null) {
-                success &= deleteFromTableDueToUpgrade(table, sqlTemplate);
+                success &= deleteFromTableDueToUpgrade(table, sqlTemplate, sqlScript);
             }
         }
         return success;
@@ -554,54 +571,75 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         }
     }
 
-    protected void beforeUpgradeFromPre3_8(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean beforeUpgradeFromPre3_8(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
+        boolean success = true;
         Table transformTable = currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRANSFORM_TABLE));
         if (transformTable != null && transformTable.findColumn("update_action") != null) {
-            sqlTemplate.update("update " + TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRANSFORM_TABLE)
-                    + " set update_action = 'UPD_ROW' where update_action is null");
+            String sql = "update " + TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRANSFORM_TABLE)
+                    + " set update_action = 'UPD_ROW' where update_action is null";
+            sqlScript.append(sql).append(";\n");
+            try {
+                sqlTemplate.update(sql);
+            } catch (Exception e) {
+                log.warn("Unable to fix transform_table update_action during upgrade process because: {}", e.getMessage());
+                success = false;
+            }
         }
         String[] tableNames = { TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA_GAP),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_COMMUNICATION) };
-        deleteFromTables(tableNames, currentModel, sqlTemplate);
+        success &= deleteFromTables(tableNames, currentModel, sqlTemplate, sqlScript);
+        return success;
     }
 
-    protected void beforeUpgradeFromPre3_10(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean beforeUpgradeFromPre3_10(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
+        boolean success = true;
         if (engine.getDatabasePlatform().getName().equals(DatabaseNamesConstants.ASE)) {
-            dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_IDENTITY)),
-                    tablePrefix + "_fk_ident_2_node", sqlTemplate);
-            dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_SECURITY)),
-                    tablePrefix + "_fk_sec_2_node", sqlTemplate);
+            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_IDENTITY)),
+                    tablePrefix + "_fk_ident_2_node", sqlTemplate, sqlScript);
+            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_SECURITY)),
+                    tablePrefix + "_fk_sec_2_node", sqlTemplate, sqlScript);
         }
+        return success;
     }
 
-    protected void beforeUpgradeFromPre3_11(String tablePrefix) {
+    protected boolean beforeUpgradeFromPre3_11(String tablePrefix) {
         if (shouldFixDataEvent311(tablePrefix)) {
             fixDataEvent311(tablePrefix);
         }
+        return true;
     }
 
-    protected void beforeUpgradeFromPre3_12(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean beforeUpgradeFromPre3_12(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
+        boolean success = true;
         if (engine.getParameterService().isRegistrationServer()) {
             log.info("Before upgrade, fixing router_type");
-            sqlTemplate.update("update " + TableConstants.getTableName(tablePrefix, TableConstants.SYM_ROUTER)
-                    + " set router_type = 'default' where router_type is null");
+            String sql = "update " + TableConstants.getTableName(tablePrefix, TableConstants.SYM_ROUTER)
+                    + " set router_type = 'default' where router_type is null";
+            sqlScript.append(sql).append(";\n");
+            try {
+                sqlTemplate.update(sql);
+            } catch (Exception e) {
+                log.warn("Unable to fix router_type during upgrade process because: {}", e.getMessage());
+                success = false;
+            }
         }
         /*
          * Workarounds for missing features (bugs) in ddl-utils
          */
         String name = engine.getDatabasePlatform().getName();
         if (name.equals(DatabaseNamesConstants.ORACLE) || name.equals(DatabaseNamesConstants.ORACLE122) || name.equals(DatabaseNamesConstants.ORACLE23)) {
-            dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA)),
-                    TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA) + "_pk", sqlTemplate);
+            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA)),
+                    TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA) + "_pk", sqlTemplate, sqlScript);
         }
         if (name.equals(DatabaseNamesConstants.ASE)) {
-            dropIndexFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA)),
-                    tablePrefix + "_idx_d_channel_id", sqlTemplate);
-            dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRIGGER_ROUTER)),
-                    tablePrefix + "_fk_tr_2_rtr", sqlTemplate);
-            dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_TRIGGER_ROUTER)),
-                    tablePrefix + "_fk_ftr_2_rtr", sqlTemplate);
+            success &= dropIndexFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA)),
+                    tablePrefix + "_idx_d_channel_id", sqlTemplate, sqlScript);
+            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRIGGER_ROUTER)),
+                    tablePrefix + "_fk_tr_2_rtr", sqlTemplate, sqlScript);
+            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_TRIGGER_ROUTER)),
+                    tablePrefix + "_fk_ftr_2_rtr", sqlTemplate, sqlScript);
         }
+        return success;
     }
 
     // Informix cannot create sym_trigger with LONGVARCHAR columns (ticket 0002748), so always downgrade
@@ -622,7 +660,8 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         }
     }
 
-    protected void beforeUpgradeFromPre3_15(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean beforeUpgradeFromPre3_15(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
+        boolean success = true;
         String name = engine.getDatabasePlatform().getName();
         String[] pre315TableNames = { TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_RELOAD_REQUEST),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_GROUP_CHANNEL_WND),
@@ -631,21 +670,22 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_STATS),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_REGISTRATION_REQUEST) };
         if (name.contains(DatabaseNamesConstants.MSSQL)) {
-            dropPkFromTables(pre315TableNames, currentModel, sqlTemplate);
+            success &= dropPkFromTables(pre315TableNames, currentModel, sqlTemplate, sqlScript);
         }
         if (name.equals(DatabaseNamesConstants.ORACLE) || name.equals(DatabaseNamesConstants.ORACLE122) || name.equals(DatabaseNamesConstants.ORACLE23)) {
-            truncateTables(pre315TableNames, currentModel, sqlTemplate);
+            success &= truncateTables(pre315TableNames, currentModel, sqlTemplate, sqlScript);
         }
+        return success;
     }
 
-    protected void beforeUpgradeFromPre3_16(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean beforeUpgradeFromPre3_16(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         String[] tableNames = { TableConstants.getTableName(tablePrefix, TableConstants.SYM_DESIGN_DIAGRAM),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_DIAGRAM_GROUP) };
-        dropTables(tableNames, currentModel, sqlTemplate);
+        return dropTables(tableNames, currentModel, sqlTemplate, sqlScript);
     }
 
-    protected void beforeUpgradeFromPre3_17(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate) {
+    protected boolean beforeUpgradeFromPre3_17(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         String[] tableNames = { TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_CHANNEL_CTL) };
-        dropTables(tableNames, currentModel, sqlTemplate);
+        return dropTables(tableNames, currentModel, sqlTemplate, sqlScript);
     }
 }
