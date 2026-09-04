@@ -134,6 +134,7 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
                 + "JOIN pg_class c ON a.attrelid = c.oid "
                 + "JOIN pg_namespace n ON n.oid = c.relnamespace "
                 + "WHERE c.relname = ? AND n.nspname = ? AND a.attgenerated <> ''";
+        long startTimeMs = System.currentTimeMillis();
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, table.getName());
             ps.setString(2, table.getSchema());
@@ -145,6 +146,10 @@ public class PostgreSqlDdlReader extends AbstractJdbcDdlReader {
                     }
                 }
             }
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Queried pg_attribute for generated columns. Table={}; Duration={} ms", table.getFullyQualifiedName(),
+                    System.currentTimeMillis() - startTimeMs);
         }
     }
 
