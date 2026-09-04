@@ -121,6 +121,21 @@ public class MySqlDdlBuilderTest {
         assertFalse(ddl.contains("idx_computed"), "Index on a non-persisted (VIRTUAL) generated column should be skipped");
     }
 
+    @Test
+    void testWriteGeneratedColumn_indexRetained_whenNonPersistedGeneratedColumnsIndexSupported() {
+        MySqlDdlBuilder ddlBuilder = new MySqlDdlBuilder();
+        ddlBuilder.getDatabaseInfo().setGeneratedColumnsSupported(true);
+        ddlBuilder.getDatabaseInfo().setPersistedGeneratedColumnsSupported(true);
+        ddlBuilder.getDatabaseInfo().setNonPersistedGeneratedColumnsIndexSupported(true);
+        Table table = buildTableWithComputedColumn(false);
+        NonUniqueIndex index = new NonUniqueIndex("idx_computed");
+        index.addColumn(new IndexColumn("total"));
+        table.addIndex(index);
+        String ddl = ddlBuilder.createTable(table);
+        assertTrue(ddl.contains("idx_computed"), "Expected index on non-persisted (VIRTUAL) generated column to be created "
+                + "when the platform supports indexing non-persisted generated columns");
+    }
+
     private Table buildTableWithComputedColumn(boolean persisted) {
         Column idCol = new Column("id", true, Types.INTEGER, 0, 0);
         Column aCol = new Column("a", false, Types.INTEGER, 0, 0);
