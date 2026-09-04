@@ -362,9 +362,13 @@ public class PostgreSqlDdlBuilder extends AbstractDdlBuilder {
         String definition = getDefinitionForGeneratedColumn(table, column);
         if (!StringUtils.isBlank(definition)) {
             if (!(definition.startsWith("(") && definition.endsWith(")"))) {
-                ddl.append(" GENERATED ALWAYS AS ").append("(").append(definition).append(") STORED");
+                definition = "(" + definition + ")";
+            }
+            ddl.append(" GENERATED ALWAYS AS ").append(definition);
+            if (!column.isPersisted() && databaseInfo.isNonPersistedGeneratedColumnsSupported()) {
+                ddl.append(" VIRTUAL");
             } else {
-                ddl.append(" GENERATED ALWAYS AS ").append(definition).append(" STORED");
+                ddl.append(" STORED");
             }
         }
     }

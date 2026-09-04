@@ -82,6 +82,8 @@ public class PostgreSqlSymmetricDialect extends AbstractSymmetricDialect impleme
             }
         }
         platform.getDatabaseInfo().setGeneratedColumnsSupported(databaseMajorVersion >= 12);
+        platform.getDatabaseInfo().setPersistedGeneratedColumnsSupported(databaseMajorVersion >= 12);
+        platform.getDatabaseInfo().setNonPersistedGeneratedColumnsSupported(databaseMajorVersion >= 18);
         platform.getDatabaseInfo().setTriggersCreateOrReplaceSupported(versionSupportsReplaceTriggers);
         sharedTriggersDisabledFunction = this.parameterService.getTablePrefix() + "_triggers_disabled";
         sharedNodeDisabledFunction = this.parameterService.getTablePrefix() + "_node_disabled";

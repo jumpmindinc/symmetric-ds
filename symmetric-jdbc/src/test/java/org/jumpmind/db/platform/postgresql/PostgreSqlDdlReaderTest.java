@@ -22,9 +22,12 @@ package org.jumpmind.db.platform.postgresql;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.Connection;
@@ -1250,6 +1253,60 @@ class PostgreSqlDdlReaderTest {
         assertEquals(index2, result);
         assertNull(ddlReader.findIndex("dne", indices));
         assertNull(ddlReader.findIndex("index2", Collections.emptyList()));
+    }
+
+    @Test
+    void testMarkGeneratedColumnStorageKind_marksAllGeneratedColumnsPersisted_belowVersion18_withoutQuerying() throws Exception {
+        Column generatedColumn = new Column("total");
+        generatedColumn.setGenerated(true);
+        Table table = new Table("test_table", generatedColumn);
+        Connection connection = mock(Connection.class);
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        ddlReader.markGeneratedColumnStorageKind(connection, table, 14);
+        assertTrue(generatedColumn.isPersisted());
+        verify(connection, never()).prepareStatement(ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void testMarkGeneratedColumnStorageKind_doesNothing_belowVersion12() throws Exception {
+        Column generatedColumn = new Column("total");
+        generatedColumn.setGenerated(true);
+        Table table = new Table("test_table", generatedColumn);
+        Connection connection = mock(Connection.class);
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        ddlReader.markGeneratedColumnStorageKind(connection, table, 11);
+        assertFalse(generatedColumn.isPersisted());
+        verify(connection, never()).prepareStatement(ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void testMarkGeneratedColumnStorageKind_doesNothing_whenTableHasNoGeneratedColumns() throws Exception {
+        Table table = new Table("test_table", new Column("a"));
+        Connection connection = mock(Connection.class);
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        ddlReader.markGeneratedColumnStorageKind(connection, table, 18);
+        verify(connection, never()).prepareStatement(ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void testMarkGeneratedColumnStorageKind_disambiguatesStoredAndVirtual_atVersion18() throws Exception {
+        Column storedColumn = new Column("stored_col");
+        storedColumn.setGenerated(true);
+        Column virtualColumn = new Column("virtual_col");
+        virtualColumn.setGenerated(true);
+        Table table = new Table("test_table", storedColumn, virtualColumn);
+        Connection connection = mock(Connection.class);
+        PreparedStatement ps = mock(PreparedStatement.class);
+        ResultSet rs = mock(ResultSet.class);
+        when(connection.prepareStatement(ArgumentMatchers.anyString())).thenReturn(ps);
+        when(ps.executeQuery()).thenReturn(rs);
+        when(rs.next()).thenReturn(true).thenReturn(true).thenReturn(false);
+        when(rs.getString(1)).thenReturn("stored_col").thenReturn("virtual_col");
+        when(rs.getString(2)).thenReturn("s").thenReturn("v");
+        PostgreSqlDdlReader ddlReader = new PostgreSqlDdlReader(platform);
+        ddlReader.markGeneratedColumnStorageKind(connection, table, 18);
+        assertTrue(storedColumn.isPersisted());
+        assertFalse(virtualColumn.isPersisted());
     }
 
     protected String getResultSetSchemaName() {
