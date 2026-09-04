@@ -54,10 +54,17 @@ class MariaDBSymmetricDialectTest {
     }
 
     @Test
-    void constructor_neverEnablesNonPersistedGeneratedColumnsIndexSupport() {
-        IDatabasePlatform platform = createPlatform("10.6.12-MariaDB");
+    void constructor_disablesNonPersistedGeneratedColumnsIndexSupport_belowVersion1023() {
+        IDatabasePlatform platform = createPlatform("10.2.2-MariaDB");
         new MariaDBSymmetricDialect(createParameterService(), platform);
         assertFalse(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsIndexSupported());
+    }
+
+    @Test
+    void constructor_enablesNonPersistedGeneratedColumnsIndexSupport_atVersion1023() {
+        IDatabasePlatform platform = createPlatform("10.2.3-MariaDB");
+        new MariaDBSymmetricDialect(createParameterService(), platform);
+        assertTrue(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsIndexSupported());
     }
 
     private IParameterService createParameterService() {
