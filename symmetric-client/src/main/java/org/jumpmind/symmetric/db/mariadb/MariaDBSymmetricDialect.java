@@ -35,6 +35,7 @@ public class MariaDBSymmetricDialect extends MySqlSymmetricDialect {
         super(parameterService, platform);
         platform.getDatabaseInfo().setGeneratedColumnsSupported(!Version.isOlderThanVersion(getProductVersion(), "5.2"));
         platform.getDatabaseInfo().setPersistedGeneratedColumnsSupported(!Version.isOlderThanVersion(getProductVersion(), "5.2"));
+        platform.getDatabaseInfo().setNonPersistedGeneratedColumnsIndexSupported(false);
         platform.getDatabaseInfo().setExpressionsAsDefaultValuesSupported(false);
     }
 

@@ -54,10 +54,17 @@ class MySqlSymmetricDialectTest {
     }
 
     @Test
-    void constructor_neverEnablesNonPersistedGeneratedColumnsIndexSupport() {
-        IDatabasePlatform platform = createPlatform("8.0.0");
+    void constructor_disablesNonPersistedGeneratedColumnsIndexSupport_belowVersion578() {
+        IDatabasePlatform platform = createPlatform("5.7.7");
         new MySqlSymmetricDialect(createParameterService(), platform);
         assertFalse(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsIndexSupported());
+    }
+
+    @Test
+    void constructor_enablesNonPersistedGeneratedColumnsIndexSupport_atVersion578() {
+        IDatabasePlatform platform = createPlatform("5.7.8");
+        new MySqlSymmetricDialect(createParameterService(), platform);
+        assertTrue(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsIndexSupported());
     }
 
     private IParameterService createParameterService() {

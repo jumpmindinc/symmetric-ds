@@ -101,6 +101,7 @@ public class MySqlSymmetricDialect extends AbstractSymmetricDialect implements I
         this.triggerTemplate = new MySqlTriggerTemplate(this, isConvertZeroDateToNull, characterSet);
         platform.getDatabaseInfo().setGeneratedColumnsSupported(!Version.isOlderThanVersion(version, "5.7.0"));
         platform.getDatabaseInfo().setPersistedGeneratedColumnsSupported(!Version.isOlderThanVersion(version, "5.7.0"));
+        platform.getDatabaseInfo().setNonPersistedGeneratedColumnsIndexSupported(!Version.isOlderThanVersion(version, "5.7.8"));
         platform.getDatabaseInfo().setExpressionsAsDefaultValuesSupported(!Version.isOlderThanVersion(version, "8.0.13"));
     }
 
