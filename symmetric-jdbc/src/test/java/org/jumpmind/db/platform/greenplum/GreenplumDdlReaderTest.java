@@ -38,7 +38,6 @@ import java.sql.Types;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.ForeignKey;
@@ -52,10 +51,10 @@ import org.jumpmind.db.model.Trigger.TriggerType;
 import org.jumpmind.db.model.UniqueIndex;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.postgresql.PostgreSqlDatabasePlatform;
+import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.Row;
-import org.jumpmind.db.platform.postgresql.PostgreSqlDdlBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

@@ -46,8 +46,8 @@ class GreenplumDdlBuilderTest {
 
     @Test
     void testConstructor_disablesTriggerSupport() {
-        assertFalse(ddlBuilder.getDatabaseInfo().isTriggersSupported());
         assertTrue(new PostgreSqlDdlBuilder().getDatabaseInfo().isTriggersSupported());
+        assertFalse(ddlBuilder.getDatabaseInfo().isTriggersSupported());
     }
 
     @Test
