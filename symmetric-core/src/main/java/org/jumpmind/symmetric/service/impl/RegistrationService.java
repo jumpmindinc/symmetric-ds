@@ -77,6 +77,7 @@ import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.RegistrationFailedException;
 import org.jumpmind.symmetric.service.RegistrationNotOpenException;
 import org.jumpmind.symmetric.service.RegistrationRedirectException;
+import org.jumpmind.symmetric.service.impl.RegistrationAttemptTracker.RegistrationAttempt;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.transport.ConnectionDuplicateException;
 import org.jumpmind.symmetric.transport.ConnectionRejectedException;
@@ -328,7 +329,9 @@ public class RegistrationService extends AbstractService implements IRegistratio
             String remoteAddress, OutputStream out, String userId, String password, boolean isRequestedRegistration)
             throws IOException {
         String registrationKey = buildRegistrationKey(nodePriorToRegistration);
-        if (!registrationAttempts.start(registrationKey, getMaxTimeBetweenRegistrationAttemptsMs())) {
+        long maxAttemptAgeMs = getMaxTimeBetweenRegistrationAttemptsMs();
+        logAbandonedRegistrationAttempts(registrationAttempts.clearAbandoned(maxAttemptAgeMs, System.currentTimeMillis()));
+        if (!registrationAttempts.start(registrationKey, maxAttemptAgeMs)) {
             log.info("Skipping registration of node {} because another registration for it is already in progress", nodePriorToRegistration);
             return false;
         }
@@ -336,6 +339,13 @@ public class RegistrationService extends AbstractService implements IRegistratio
             return registerNodeExclusively(nodePriorToRegistration, remoteHost, remoteAddress, out, userId, password, isRequestedRegistration);
         } finally {
             registrationAttempts.finish(registrationKey);
+        }
+    }
+
+    private void logAbandonedRegistrationAttempts(List<RegistrationAttempt> abandonedAttempts) {
+        for (RegistrationAttempt abandonedAttempt : abandonedAttempts) {
+            log.warn("Registration of node {} started at {} never finished and is no longer considered in progress",
+                    abandonedAttempt.registrationKey(), new Date(abandonedAttempt.attemptTimeMs()));
         }
     }
 
@@ -636,9 +646,9 @@ public class RegistrationService extends AbstractService implements IRegistratio
             return false;
         }
         try {
-            long sinceLastAttemptMs = System.currentTimeMillis() - lastReRegistrationTimeMs;
-            if (sinceLastAttemptMs < getMaxTimeBetweenRegistrationAttemptsMs()) {
-                log.debug("Skipping re-registration ({}) because the last attempt was {} ms ago", reason, sinceLastAttemptMs);
+            if (isWithinReRegistrationRetryInterval()) {
+                log.debug("Skipping re-registration ({}) because the last attempt was {} ms ago", reason,
+                        System.currentTimeMillis() - lastReRegistrationTimeMs);
                 return false;
             }
             lastReRegistrationTimeMs = System.currentTimeMillis();
@@ -652,6 +662,10 @@ public class RegistrationService extends AbstractService implements IRegistratio
         } finally {
             reRegistrationLock.unlock();
         }
+    }
+
+    private boolean isWithinReRegistrationRetryInterval() {
+        return System.currentTimeMillis() - lastReRegistrationTimeMs < getMaxTimeBetweenRegistrationAttemptsMs();
     }
 
     @Override
