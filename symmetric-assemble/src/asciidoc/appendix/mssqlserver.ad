@@ -115,6 +115,9 @@ if it's not already enabled, which requires ALTER TABLE permission.
 [source, SQL]
 alter table mytable enable change_tracking;
 
+==== Known Limitations
+When using Log Miner mode of SymmetricDS with Microsoft SQL Server, the Change Tracking feature is used to facilitate transfer of change events from the database to SymmetricDS. This SQL Server feature has limitations to be aware of. Change Tracking does not store row values in its change table; it only records the row's primary key and the type of change (insert, update, or delete). Because of this, old or intermediate row values cannot be retrieved. If a row is changed multiple times between runs of Log Miner, Change Tracking reports only a single net change event for that row rather than one event per change. For example, if a row is inserted and then updated, only one event is reported for it, and SymmetricDS reads that event as an update. This means the insert will be lost if the trigger's Sync on Update setting is disabled.
+
 .Supported Data Types
 |===
 |Data Type|Supported?

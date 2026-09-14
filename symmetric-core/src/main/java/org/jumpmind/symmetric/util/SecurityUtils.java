@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 
 public class SecurityUtils {
     private static final Pattern SAFE_IDENTIFIER_PATTERN = Pattern.compile("^[a-zA-Z0-9._\\-]+$");
+    private static final Pattern SAFE_EXTERNAL_ID_PATTERN = Pattern.compile("^[a-zA-Z0-9._\\- ]+$");
     private static final String REPLACE_LOG_WHITESPACE_CHARS = "[\\n\\r\\t]";
     private static final String REPLACE_NULL_IN_LOGS = "null";
 
@@ -77,6 +78,9 @@ public class SecurityUtils {
         if (input == null || input.isEmpty()) {
             throw new IllegalArgumentException("ExternalId must not be null or empty");
         }
-        return sanitizeInternalIdentifier(input);
+        if (!SAFE_EXTERNAL_ID_PATTERN.matcher(input).matches()) {
+            throw new IllegalArgumentException("ExternalId contains invalid characters: " + sanitizeForLogging(input));
+        }
+        return input;
     }
 }

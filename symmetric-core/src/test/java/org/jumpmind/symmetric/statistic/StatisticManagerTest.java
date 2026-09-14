@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -57,6 +57,7 @@ import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.observability.interfaces.ISymDoubleGauge;
+import org.jumpmind.symmetric.observability.interfaces.ISymLongGauge;
 import org.jumpmind.symmetric.observability.interfaces.IUpDownCounter;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
@@ -521,10 +522,10 @@ class StatisticManagerTest {
     }
 
     @Test
-    void updateDataMaxCreateTime_updatesChannelStats() {
+    void updateDataRoutedMaxCreateTime_updatesChannelStats() {
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         Date maxTime = new Date();
-        manager.updateDataMaxCreateTime("chan1", maxTime);
+        manager.updateDataRoutedMaxCreateTime("chan1", maxTime);
         assertEquals(maxTime, manager.getWorkingChannelStats().get("chan1").getDataMaxCreateTime());
     }
 
@@ -783,7 +784,7 @@ class StatisticManagerTest {
         IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
         IUpDownCounter counter = mock(IUpDownCounter.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
-        when(metricsService.getUpDownCounter(anyString(), any())).thenReturn(counter);
+        when(metricsService.registerUpDownCounter(anyString(), any())).thenReturn(counter);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.incrementDataSent("chan1", 5L);
         assertEquals(5L, manager.getWorkingChannelStats().get("chan1").getDataSent());
@@ -795,7 +796,7 @@ class StatisticManagerTest {
         IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
         ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
-        when(metricsService.getDoubleGauge(anyString(), any())).thenReturn(gauge);
+        when(metricsService.registerDoubleGauge(anyString(), any())).thenReturn(gauge);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         manager.setDataUnRouted("chan1", 10L);
         assertEquals(10L, manager.getWorkingChannelStats().get("chan1").getDataUnRouted());
@@ -803,14 +804,78 @@ class StatisticManagerTest {
     }
 
     @Test
-    void updateDataMinCreateTime_withNonNullMetricsService_reachesGaugeNullCheck() {
+    void setDataUnRouted_withZeroCount_clearsGaugeToZero() {
         IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymDoubleGauge gauge = mock(ISymDoubleGauge.class);
         when(engine.getMetricsService()).thenReturn(metricsService);
-        when(metricsService.getLongGauge(anyString(), any())).thenReturn(null);
+        when(metricsService.registerDoubleGauge(anyString(), any())).thenReturn(gauge);
+        when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
+        manager.setDataUnRouted("chan1", 0L);
+        assertEquals(0L, manager.getWorkingChannelStats().get("chan1").getDataUnRouted());
+        verify(gauge).setValue(0.0);
+    }
+
+    @Test
+    void updateDataRoutedMinCreateTime_withNonNullMetricsGauge_doesNotInvokeGauge() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymLongGauge gauge = mock(ISymLongGauge.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.registerLongGauge(anyString(), any())).thenReturn(gauge);
         when(nodeService.getCachedIdentity()).thenReturn(node("node1"));
         Date minTime = new Date();
-        manager.updateDataMinCreateTime("chan1", minTime);
+        manager.updateDataRoutedMinCreateTime("chan1", minTime);
         assertEquals(minTime, manager.getWorkingChannelStats().get("chan1").getDataMinCreateTime());
+        verify(gauge, never()).setValue(anyLong());
+    }
+
+    @Test
+    void setDataUnRoutedMinCreateTime_withNonNullMetricsGauge_invokesGaugeSetValue() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymLongGauge gauge = mock(ISymLongGauge.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.registerLongGauge(anyString(), any())).thenReturn(gauge);
+        Date minTime = new Date();
+        manager.setDataUnroutedMinCreateTime("chan1", minTime);
+        verify(gauge).setValue(minTime.getTime());
+    }
+
+    @Test
+    void setDataUnRoutedMaxCreateTime_withNonNullMetricsGauge_invokesGaugeSetValue() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymLongGauge gauge = mock(ISymLongGauge.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.registerLongGauge(anyString(), any())).thenReturn(gauge);
+        Date maxTime = new Date();
+        manager.setDataUnroutedMaxCreateTime("chan1", maxTime);
+        verify(gauge).setValue(maxTime.getTime());
+    }
+
+    @Test
+    void setDataUnRoutedMinCreateTime_calledTwice_bothValuesReachGauge() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymLongGauge gauge = mock(ISymLongGauge.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.registerLongGauge(anyString(), any())).thenReturn(gauge);
+        Date earlierTime = new Date(1000L);
+        Date laterTime = new Date(2000L);
+        manager.setDataUnroutedMinCreateTime("chan1", earlierTime);
+        manager.setDataUnroutedMinCreateTime("chan1", laterTime);
+        verify(gauge).setValue(earlierTime.getTime());
+        verify(gauge).setValue(laterTime.getTime());
+    }
+
+    @Test
+    void setDataUnRoutedMaxCreateTime_calledTwice_bothValuesReachGauge() {
+        IEngineMetricsService metricsService = mock(IEngineMetricsService.class);
+        ISymLongGauge gauge = mock(ISymLongGauge.class);
+        when(engine.getMetricsService()).thenReturn(metricsService);
+        when(metricsService.registerLongGauge(anyString(), any())).thenReturn(gauge);
+        Date laterTime = new Date(2000L);
+        Date earlierTime = new Date(1000L);
+        manager.setDataUnroutedMaxCreateTime("chan1", laterTime);
+        manager.setDataUnroutedMaxCreateTime("chan1", earlierTime);
+        verify(gauge).setValue(laterTime.getTime());
+        verify(gauge).setValue(earlierTime.getTime());
     }
 
     @Test

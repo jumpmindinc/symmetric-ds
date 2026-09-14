@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -51,6 +51,7 @@ public class DefaultParameterParser {
     private static final String DATABASE_OVERRIDABLE = "DatabaseOverridable:";
     private static final String TAGS = "Tags:";
     private static final String TYPE = "Type:";
+    private static final String PROPERTIES_WHITESPACE_CHARS = " \t\f";
     private String propertiesFilePath;
     private InputStream inputStream;
     final Logger log = LoggerFactory.getLogger(getClass());
@@ -80,6 +81,7 @@ public class DefaultParameterParser {
                 if (extraLine) {
                     extraLine = false;
                     if (currentMetaData != null) {
+                        line = stripLeadingPropertiesWhitespace(line);
                         if (line.endsWith("\\")) {
                             extraLine = true;
                             line = line.substring(0, line.length() - 1);
@@ -112,7 +114,7 @@ public class DefaultParameterParser {
                     }
                 } else if (!line.trim().startsWith(COMMENT) && line.contains("=")) {
                     String key = line.substring(0, line.indexOf("="));
-                    String defaultValue = line.substring(line.indexOf("=") + 1);
+                    String defaultValue = stripLeadingPropertiesWhitespace(line.substring(line.indexOf("=") + 1));
                     currentMetaData.setKey(key);
                     if (defaultValue.endsWith("\\")) {
                         extraLine = true;
@@ -133,6 +135,18 @@ public class DefaultParameterParser {
             log.error("", e);
         }
         return metaData;
+    }
+
+    /**
+     * Strips leading space, tab, and form feed characters, matching the whitespace {@link java.util.Properties#load} discards immediately after the key/value
+     * separator and at the start of each continuation line, so that a parsed default value matches what actually gets loaded at runtime.
+     */
+    private static String stripLeadingPropertiesWhitespace(String value) {
+        int start = 0;
+        while (start < value.length() && PROPERTIES_WHITESPACE_CHARS.indexOf(value.charAt(start)) >= 0) {
+            start++;
+        }
+        return value.substring(start);
     }
 
     public static void main(String[] args) throws Exception {

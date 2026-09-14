@@ -52,7 +52,24 @@ STATUS!=:OLD_STATUS
 * :SOURCE_CATALOG
 ====
 
-. Consider a table that needs to be routed to only nodes in the target group whose STORE_ID column matches the external id of a node. 
+[TIP]
+.The value side of the expression also supports `$(variableName)` syntax
+====
+This includes substring and format-string modifiers - see <<Variables>> for the full syntax reference. This router supports `groupId`, `nodeId`,
+and `externalId` (evaluated per node being matched against), `sourceGroupId`, `sourceNodeId`, and `sourceExternalId` (the local/source node), and
+any parameter.
+====
+
+. Consider a table that needs to be routed to nodes whose STORE_ID matches the first 5 characters of the target node's external id.
+
+.Router Expression
+
+----
+STORE_ID=$(externalId:0:5)
+----
+
+
+. Consider a table that needs to be routed to only nodes in the target group whose STORE_ID column matches the external id of a node.
 
 .Router Expression
 

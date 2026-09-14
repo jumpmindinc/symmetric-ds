@@ -152,8 +152,8 @@ making it a low maintenance system.
 === License
 
 ifndef::pro[]
-SymmetricDS is free software licensed under the GNU General Public License (GPL) version 3.0.
-See http://www.gnu.org/licenses/gpl.html for the full text of the license.
+SymmetricDS is free software licensed under the GNU Affero General Public License (AGPL) version 3.0.
+See http://www.gnu.org/licenses/agpl.html for the full text of the license.
 This project includes software developed by JumpMind (http://www.jumpmind.com/) and a community of multiple contributors.
 SymmetricDS is licensed to JumpMind as the copyright holder under one or more Contributor License Agreements.
 SymmetricDS and the SymmetricDS logos are trademarks of JumpMind.

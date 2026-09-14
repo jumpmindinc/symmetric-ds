@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -20,10 +20,10 @@
  */
 package org.jumpmind.db.model;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
@@ -185,5 +185,94 @@ class SchemaObjectTest {
     void testGetQualifiedName_schemaAndName() {
         Table t = new Table(null, "dbo", "orders");
         assertEquals("dbo.orders", t.getQualifiedName());
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_whitespaceCatalogAndSchema() {
+        assertEquals("orders", SchemaObject.getFullyQualifiedName("  ", "\t", "orders"));
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_emptyCatalogAndSchema() {
+        assertEquals("orders", SchemaObject.getFullyQualifiedName("", "", "orders"));
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_nullObjectName() {
+        assertEquals("null", SchemaObject.getFullyQualifiedName(null, null, null));
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_nullObjectName_withQuote() {
+        assertEquals("\"null\"", SchemaObject.getFullyQualifiedName(null, null, null, "\"", ".", "."));
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_nullObjectName_withCatalogAndSchema() {
+        assertEquals("mydb.dbo.null", SchemaObject.getFullyQualifiedName("mydb", "dbo", null));
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_customQuoteChar() {
+        String fqn = SchemaObject.getFullyQualifiedName("mydb", "dbo", "orders", "`", ".", ".");
+        assertEquals("`mydb`.`dbo`.`orders`", fqn);
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_emptyQuoteString() {
+        String fqn = SchemaObject.getFullyQualifiedName("mydb", "dbo", "orders", "", ".", ".");
+        assertEquals("mydb.dbo.orders", fqn);
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_customSeparators() {
+        String fqn = SchemaObject.getFullyQualifiedName("mydb", "dbo", "orders", null, "::", "->");
+        assertEquals("mydb::dbo->orders", fqn);
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_customSeparatorsAndQuote() {
+        String fqn = SchemaObject.getFullyQualifiedName("mydb", "dbo", "orders", "\"", "::", "->");
+        assertEquals("\"mydb\"::\"dbo\"->\"orders\"", fqn);
+    }
+
+    @Test
+    void testGetFullyQualifiedName_static_longNameExceedsAnyCapacityEstimate() {
+        String longCatalog = "c".repeat(500);
+        String longSchema = "s".repeat(500);
+        String longName = "t".repeat(2000);
+        String expected = longCatalog + "." + longSchema + "." + longName;
+        assertEquals(expected, SchemaObject.getFullyQualifiedName(longCatalog, longSchema, longName));
+    }
+
+    @Test
+    void testGetFullyQualifiedPrefix_static_whitespaceCatalogAndSchema() {
+        assertEquals("", SchemaObject.getFullyQualifiedPrefix("  ", "\t"));
+    }
+
+    @Test
+    void testGetFullyQualifiedPrefix_static_withQuoteAndCustomSeparators() {
+        String prefix = SchemaObject.getFullyQualifiedPrefix("mydb", "dbo", "\"", "::", "->");
+        assertEquals("\"mydb\"::\"dbo\"->", prefix);
+    }
+
+    @Test
+    void testGetFullyQualifiedPrefix_stringBuilder_appendsToExistingContent() {
+        StringBuilder sb = new StringBuilder("prefix:");
+        String result = SchemaObject.getFullyQualifiedPrefix(sb, "mydb", "dbo", null, ".", ".");
+        assertEquals("prefix:mydb.dbo.", result);
+        assertEquals("prefix:mydb.dbo.", sb.toString());
+    }
+
+    @Test
+    void testGetQualifiedPrefix_instance_withQuote() {
+        Table t = new Table("mydb", "dbo", "orders");
+        assertEquals("\"mydb\".\"dbo\".", t.getQualifiedPrefix("\"", ".", "."));
+    }
+
+    @Test
+    void testGetQualifiedName_instance_noQualifiersWithQuote() {
+        Table t = new Table("orders");
+        assertEquals("\"orders\"", t.getQualifiedName("\"", ".", "."));
     }
 }

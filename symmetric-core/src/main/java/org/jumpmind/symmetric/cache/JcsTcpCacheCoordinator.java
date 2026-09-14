@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -99,9 +99,17 @@ public class JcsTcpCacheCoordinator implements IClusterCacheCoordinator {
         }
     }
 
+    /**
+     * Reflects the underlying JCS manager's own initialized state, not just whether this coordinator still holds a reference to it. Apache Commons JCS's
+     * CompositeCacheManager is a JVM-wide singleton that registers its own JVM shutdown hook the first time it's initialized; that hook can call
+     * jcsManager.shutDown() independently of (and concurrently with) this coordinator's own stop(), which would clear jcsManager's own isInitialized flag
+     * without nulling out our reference to it. Checking jcsManager.isInitialized() as well lets callers detect that condition instead of trusting a peer cache
+     * read that's silently backed by an already-disposed manager.
+     */
     @Override
     public boolean isInitialized() {
-        return jcsManager != null;
+        CompositeCacheManager manager = jcsManager;
+        return manager != null && manager.isInitialized();
     }
 
     public ClusterMessageConverter getConverter() {

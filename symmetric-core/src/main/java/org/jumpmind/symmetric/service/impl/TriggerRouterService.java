@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -118,7 +119,8 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     /**
      * Cache the history for performance. History never changes and does not grow big so this should be OK.
      */
-    private Map<Integer, TriggerHistory> historyMap = Collections.synchronizedMap(new HashMap<>());
+    private Map<Integer, TriggerHistory> historyMap = Collections.synchronizedMap(new HashMap<Integer, TriggerHistory>());
+    private final Set<String> activeSyncTriggersNodes = ConcurrentHashMap.newKeySet();
 
     public TriggerRouterService(ISymmetricEngine engine) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
@@ -1883,6 +1885,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         if (StringUtils.isNotBlank(triggerName)) {
             try {
                 symmetricDialect.removeTrigger(sqlBuffer, catalog, schema, triggerName, tableName);
+                statisticManager.incrementTriggersRemovedCount(1);
             } catch (SqlException e) {
                 log.error("Error while dropping trigger {} for table {}: {}", triggerName, tableName, e.getMessage());
             } catch (Throwable e) {
@@ -2052,23 +2055,35 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
     }
 
     public boolean syncTriggers(String targetExternalId, boolean force) {
-        if (cacheManager.isUsingTargetExternalId(false)) {
-            List<Trigger> triggers = getTriggersForCurrentNode();
-            RelationsList relations = new RelationsList();
-            for (Trigger trigger : triggers) {
-                if (trigger.getSourceTableName().contains("targetExternalId")) {
-                    Relation relation = platform.readRelationFromDatabase(trigger.getSourceCatalogName(), trigger.getSourceSchemaName(),
-                            FormatUtils.replace("targetExternalId", targetExternalId, trigger.getSourceTableName()));
-                    if (relation != null) {
-                        relations.add(relation);
+        if (!activeSyncTriggersNodes.add(targetExternalId)) {
+            log.info("Sync Triggers is already running for node {}", targetExternalId);
+            return false;
+        }
+        try {
+            if (cacheManager.isUsingTargetExternalId(false)) {
+                List<Trigger> triggers = getTriggersForCurrentNode();
+                RelationsList relations = new RelationsList();
+                for (Trigger trigger : triggers) {
+                    if (trigger.getSourceTableName().contains("targetExternalId")) {
+                        Relation relation = platform.readRelationFromDatabase(trigger.getSourceCatalogName(),
+                                trigger.getSourceSchemaName(), FormatUtils.replace("targetExternalId", targetExternalId,
+                                        trigger.getSourceTableName()));
+                        if (relation != null) {
+                            relations.add(relation);
+                        }
                     }
                 }
+                if (!relations.isEmpty()) {
+                    return syncTriggers(relations, force);
+                }
             }
-            if (!relations.isEmpty()) {
-                return syncTriggers(relations, force);
-            }
+            return true;
+        } catch (Exception e) {
+            log.error("Error while Syncing Triggers for node " + targetExternalId, e);
+            return false;
+        } finally {
+            activeSyncTriggersNodes.remove(targetExternalId);
         }
-        return true;
     }
 
     public boolean syncTriggers(Relation relation, boolean force) {
@@ -2266,7 +2281,7 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         List<TriggerRelationSupportingInfo> infoList = new ArrayList<>();
         int maxTriggerNameLength = symmetricDialect.getMaxTriggerNameLength();
         for (Relation relation : relations) {
-            Relation modifiedRelation = hasPrimaryKey(trigger, relation) ? relation : platform.makeAllColumnsPrimaryKeys(relation);
+            Relation modifiedRelation = getFilteredRelationFromExcludeAndIncludeColumns(relation, trigger);
             TriggerHistory latestHistory = getLatestHistoryForTriggerRelation(trigger, modifiedRelation, activeTriggerHistories);
             String insertTriggerName = resolveTriggerName(trigger, modifiedRelation, DataEventType.INSERT,
                     maxTriggerNameLength, activeTriggerHistories, latestHistory, triggerNamesGeneratedThisSession);
@@ -2280,13 +2295,26 @@ public class TriggerRouterService extends AbstractService implements ITriggerRou
         return infoList;
     }
 
-    private boolean hasPrimaryKey(Trigger trigger, Relation relation) {
-        for (Column column : trigger.filterExcludedAndIncludedColumns(relation.getColumns())) {
-            if (column.isPrimaryKey()) {
-                return true;
+    protected Relation getFilteredRelationFromExcludeAndIncludeColumns(Relation relation, Trigger trigger) {
+        boolean foundPk = false;
+        Relation modifiedRelation = relation;
+        Column[] columns = trigger.filterExcludedAndIncludedColumns(relation.getColumns());
+        for (Column column : columns) {
+            foundPk |= column.isPrimaryKey();
+            if (foundPk) {
+                break;
             }
         }
-        return false;
+        if (!foundPk) {
+            String[] columnNames = new String[columns.length];
+            for (int i = 0; i < columns.length; i++) {
+                Column column = columns[i];
+                columnNames[i] = column.getName();
+            }
+            modifiedRelation = modifiedRelation.copyAndFilterColumns(columnNames, null, false, false);
+            modifiedRelation = platform.makeAllColumnsPrimaryKeys(modifiedRelation);
+        }
+        return modifiedRelation;
     }
 
     private TriggerHistory getLatestHistoryForTriggerRelation(Trigger trigger, Relation relation, List<TriggerHistory> activeTriggerHistories) {

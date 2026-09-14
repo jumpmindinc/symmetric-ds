@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -79,6 +79,7 @@ import org.jumpmind.symmetric.service.RegistrationNotOpenException;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.transport.IIncomingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
+import org.jumpmind.symmetric.transport.SyncDisabledException;
 import org.jumpmind.symmetric.web.WebConstants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -383,6 +384,7 @@ public class InternalTransportManagerTest {
         NodeChannels nodeChannels = new NodeChannels();
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(nodeChannels);
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
         doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
         IIncomingTransport transport = manager.getPullTransport(remoteNode, localNode, "token", null, "http://reg");
         assertNotNull(transport);
@@ -394,12 +396,54 @@ public class InternalTransportManagerTest {
         NodeChannels nodeChannels = new NodeChannels();
         when(engine.getConfigurationService()).thenReturn(configurationService);
         when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(nodeChannels);
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
         doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
         Map<String, String> requestProperties = new HashMap<String, String>();
         requestProperties.put(WebConstants.CHANNEL_QUEUE, "custom-queue");
         IIncomingTransport transport = manager.getPullTransport(remoteNode, localNode, "token", requestProperties, "http://reg");
         assertNotNull(transport);
         assertEquals("custom-queue", nodeChannels.getChannelQueue());
+    }
+
+    @Test
+    void testGetPullTransport_throwsSyncDisabledExceptionWhenTargetNodeIsDisabled() {
+        Node disabledNode = mock(Node.class);
+        when(disabledNode.isSyncEnabled()).thenReturn(false);
+        when(nodeService.findNode(anyString(), eq(true))).thenReturn(disabledNode);
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
+        assertThrows(SyncDisabledException.class,
+                () -> manager.getPullTransport(remoteNode, localNode, "token", null, "http://reg"));
+        verify(manager, never()).runAtClient(anyString(), any(), any(), any());
+    }
+
+    @Test
+    void testGetPullTransport_proceedsWhenRegistrationOpenDespiteSyncDisabled() throws IOException {
+        Node disabledNode = mock(Node.class);
+        when(disabledNode.isSyncEnabled()).thenReturn(false);
+        when(nodeService.findNode(anyString(), eq(true))).thenReturn(disabledNode);
+        NodeSecurity nodeSecurity = new NodeSecurity();
+        nodeSecurity.setRegistrationEnabled(true);
+        when(nodeService.findNodeSecurity(anyString(), eq(true))).thenReturn(nodeSecurity);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(new NodeChannels());
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
+        IIncomingTransport transport = manager.getPullTransport(remoteNode, localNode, "token", null, "http://reg");
+        assertNotNull(transport);
+    }
+
+    @Test
+    void testGetPullTransport_proceedsWhenTargetNodeIsEnabled() throws IOException {
+        Node enabledNode = mock(Node.class);
+        when(enabledNode.isSyncEnabled()).thenReturn(true);
+        when(nodeService.findNode(anyString(), eq(true))).thenReturn(enabledNode);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(new NodeChannels());
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
+        IIncomingTransport transport = manager.getPullTransport(remoteNode, localNode, "token", null, "http://reg");
+        assertNotNull(transport);
     }
 
     @Test
@@ -410,6 +454,45 @@ public class InternalTransportManagerTest {
         IOutgoingWithResponseTransport transport = manager.getPushTransport(remoteNode, localNode, "token", "http://reg");
         assertNotNull(transport);
         assertInstanceOf(InternalOutgoingWithResponseTransport.class, transport);
+    }
+
+    @Test
+    void testGetPushTransport_throwsSyncDisabledExceptionWhenTargetNodeIsDisabled() {
+        Node disabledNode = mock(Node.class);
+        when(disabledNode.isSyncEnabled()).thenReturn(false);
+        when(nodeService.findNode(anyString(), eq(true))).thenReturn(disabledNode);
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
+        assertThrows(SyncDisabledException.class,
+                () -> manager.getPushTransport(remoteNode, localNode, "token", "http://reg"));
+        verify(manager, never()).runAtClient(anyString(), any(), any(), any());
+    }
+
+    @Test
+    void testGetPushTransport_proceedsWhenRegistrationOpenDespiteSyncDisabled() throws IOException {
+        Node disabledNode = mock(Node.class);
+        when(disabledNode.isSyncEnabled()).thenReturn(false);
+        when(nodeService.findNode(anyString(), eq(true))).thenReturn(disabledNode);
+        NodeSecurity nodeSecurity = new NodeSecurity();
+        nodeSecurity.setRegistrationEnabled(true);
+        when(nodeService.findNodeSecurity(anyString(), eq(true))).thenReturn(nodeSecurity);
+        when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(new NodeChannels());
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
+        IOutgoingWithResponseTransport transport = manager.getPushTransport(remoteNode, localNode, "token", "http://reg");
+        assertNotNull(transport);
+    }
+
+    @Test
+    void testGetPushTransport_proceedsWhenTargetNodeIsEnabled() throws IOException {
+        Node enabledNode = mock(Node.class);
+        when(enabledNode.isSyncEnabled()).thenReturn(true);
+        when(nodeService.findNode(anyString(), eq(true))).thenReturn(enabledNode);
+        when(configurationService.getSuspendIgnoreChannelLists(anyString())).thenReturn(new NodeChannels());
+        doReturn(targetEngine).when(manager).getTargetEngine(anyString());
+        doNothing().when(manager).runAtClient(anyString(), any(), any(), any());
+        IOutgoingWithResponseTransport transport = manager.getPushTransport(remoteNode, localNode, "token", "http://reg");
+        assertNotNull(transport);
     }
 
     @Test

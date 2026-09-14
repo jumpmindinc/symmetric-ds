@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -143,6 +143,9 @@ public class NodeConcurrencyInterceptor implements IInterceptor {
         if (status == ReservationStatus.DUPLICATE) {
             log.debug("Node {} is already connected", nodeId);
             ServletUtils.sendError(resp, WebConstants.SC_ALREADY_CONNECTED);
+        } else if (status == ReservationStatus.NOT_READY) {
+            log.debug("Node {} rejected because this node is not ready", nodeId);
+            ServletUtils.sendError(resp, WebConstants.SC_SERVICE_NOT_READY);
         } else if (status == ReservationStatus.NOT_FOUND) {
             log.debug("Node {} has no reservation here", nodeId);
             ServletUtils.sendError(resp, WebConstants.SC_NO_RESERVATION);

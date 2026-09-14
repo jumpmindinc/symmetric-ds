@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -253,7 +253,7 @@ public class JdbcSqlTransaction implements ISqlTransaction {
                     st = c.prepareStatement(sql);
                     st.setQueryTimeout(jdbcSqlTemplate.getSettings().getQueryTimeout());
                     if (args != null) {
-                        jdbcSqlTemplate.setValues(st, args, types, jdbcSqlTemplate.getLobHandler().getDefaultHandler());
+                        jdbcSqlTemplate.setValues(st, args, types, jdbcSqlTemplate.getLobHandler());
                     }
                     st.setFetchSize(jdbcSqlTemplate.getSettings().getFetchSize());
                     long startTime = System.currentTimeMillis();
@@ -314,7 +314,7 @@ public class JdbcSqlTransaction implements ISqlTransaction {
                 ResultSet rs = null;
                 try {
                     stmt = con.prepareStatement(sql);
-                    jdbcSqlTemplate.setValues(stmt, args, types, jdbcSqlTemplate.getLobHandler().getDefaultHandler());
+                    jdbcSqlTemplate.setValues(stmt, args, types, jdbcSqlTemplate.getLobHandler());
                     return executePreparedUpdate(stmt, sql, args, types);
                 } catch (SQLException e) {
                     throw logSqlBuilder.logSqlAfterException(log, sql, args, e);
@@ -424,7 +424,7 @@ public class JdbcSqlTransaction implements ISqlTransaction {
         int rowsUpdated = 0;
         try {
             if (args != null) {
-                jdbcSqlTemplate.setValues(pstmt, args, argTypes, jdbcSqlTemplate.getLobHandler().getDefaultHandler());
+                jdbcSqlTemplate.setValues(pstmt, args, argTypes, jdbcSqlTemplate.getLobHandler());
             }
             if (inBatchMode) {
                 if (marker == null) {

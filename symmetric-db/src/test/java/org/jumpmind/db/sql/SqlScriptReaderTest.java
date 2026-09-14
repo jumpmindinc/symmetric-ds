@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -87,7 +87,7 @@ public class SqlScriptReaderTest {
         SqlScriptReader reader = new SqlScriptReader(new InputStreamReader(getClass().getResourceAsStream("/test-script-1.sql")));
         reader.setStripOutComments(false);
         String nextStatement = reader.readSqlStatement();
-        assertEquals(956, nextStatement.indexOf("select * from"));
+        assertEquals(972, nextStatement.indexOf("select * from"));
         assertEquals("select * from test", reader.readSqlStatement());
         assertEquals("insert into test (one, two, three) values('1','1','2')", reader.readSqlStatement());
         assertEquals(20, reader.readSqlStatement().indexOf("delete from test where one='1'"));

@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -45,7 +46,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
-import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
 import org.jumpmind.symmetric.ISymmetricEngine;
@@ -59,6 +59,8 @@ import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.ProtocolException;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Channel;
+import org.jumpmind.symmetric.model.ChannelDataCreateTimeRange;
+import org.jumpmind.symmetric.model.ChannelDataUnroutedCount;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.DataGap;
 import org.jumpmind.symmetric.model.DataMetaData;
@@ -386,7 +388,28 @@ public class RouterService extends AbstractService implements IRouterService, IN
     }
 
     protected Set<String> getReadyChannels() {
-        List<DataGap> dataGaps = gapDetector.getDataGaps();
+        GapQualifiedQuery query = buildGapQualifiedQuery(gapDetector.getDataGaps(),
+                "selectChannelsUsingGapsSql", "selectChannelsUsingStartDataId");
+        final Set<String> readyChannels = new HashSet<String>();
+        sqlTemplateDirty.query(query.sql(), (Row row) -> {
+            readyChannels.add(row.getString("channel_id"));
+            return null;
+        }, query.args(), query.types());
+        return readyChannels;
+    }
+
+    public List<ChannelDataCreateTimeRange> findUnroutedDataCreateTimeRangeByChannel() {
+        return sqlTemplateDirty.query(getSql("selectChannelDataCreateTimeRangeSql"),
+                (Row row) -> new ChannelDataCreateTimeRange(row.getString("channel_id"),
+                        row.getDateTime("min_create_time"), row.getDateTime("max_create_time")));
+    }
+
+    public List<ChannelDataUnroutedCount> findUnroutedDataCountByChannel() {
+        return sqlTemplateDirty.query(getSql("selectChannelDataUnroutedCountSql"),
+                (Row row) -> new ChannelDataUnroutedCount(row.getString("channel_id"), row.getLong("unrouted_count")));
+    }
+
+    protected GapQualifiedQuery buildGapQualifiedQuery(List<DataGap> dataGaps, String gapsSqlKey, String startIdSqlKey) {
         int dataIdSqlType = engine.getSymmetricDialect().getSqlTypeForIds();
         int numberOfGapsToQualify = parameterService.getInt(ParameterConstants.ROUTING_MAX_GAPS_TO_QUALIFY_IN_SQL, 100);
         int maxGapsBeforeGreaterThanQuery = parameterService.getInt(
@@ -395,11 +418,11 @@ public class RouterService extends AbstractService implements IRouterService, IN
         Object[] args;
         int[] types;
         if (maxGapsBeforeGreaterThanQuery > 0 && dataGaps.size() > maxGapsBeforeGreaterThanQuery) {
-            sql = getSql("selectChannelsUsingStartDataId");
+            sql = getSql(startIdSqlKey);
             args = new Object[] { dataGaps.get(0).getStartId() };
             types = new int[] { dataIdSqlType };
         } else {
-            sql = qualifyUsingDataGaps(dataGaps, numberOfGapsToQualify, getSql("selectChannelsUsingGapsSql"));
+            sql = qualifyUsingDataGaps(dataGaps, numberOfGapsToQualify, getSql(gapsSqlKey));
             int numberOfArgs = 2 * (numberOfGapsToQualify < dataGaps.size() ? numberOfGapsToQualify : dataGaps.size());
             args = new Object[numberOfArgs];
             types = new int[numberOfArgs];
@@ -415,14 +438,7 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 types[i * 2 + 1] = dataIdSqlType;
             }
         }
-        final Set<String> readyChannels = new HashSet<String>();
-        sqlTemplateDirty.query(sql, new ISqlRowMapper<String>() {
-            public String mapRow(Row row) {
-                readyChannels.add(row.getString("channel_id"));
-                return null;
-            }
-        }, args, types);
-        return readyChannels;
+        return new GapQualifiedQuery(sql, args, types);
     }
 
     protected String qualifyUsingDataGaps(List<DataGap> dataGaps, int numberOfGapsToQualify,
@@ -670,21 +686,6 @@ public class RouterService extends AbstractService implements IRouterService, IN
                     context.clearDataEventsList();
                     context.incrementStat(System.currentTimeMillis() - insertTs, ChannelRouterContext.STAT_INSERT_DATA_EVENTS_MS);
                     completeBatchesAndCommit(context);
-                    if (parameterService.is(ParameterConstants.ROUTING_COLLECT_STATS_UNROUTED)) {
-                        Data lastDataProcessed = context.getLastDataProcessed();
-                        if (lastDataProcessed != null && lastDataProcessed.getDataId() > 0) {
-                            String channelId = nodeChannel.getChannelId();
-                            long queryTs = System.currentTimeMillis();
-                            long dataLeftToRoute = sqlTemplate.queryForInt(
-                                    getSql("selectUnroutedCountForChannelSql"), channelId,
-                                    lastDataProcessed.getDataId());
-                            queryTs = System.currentTimeMillis() - queryTs;
-                            if (queryTs > Constants.LONG_OPERATION_THRESHOLD) {
-                                log.warn("Unrouted query for channel {} took longer than expected. The query took {} ms.", channelId, queryTs);
-                            }
-                            engine.getStatisticManager().setDataUnRouted(channelId, dataLeftToRoute);
-                        }
-                    }
                 }
                 if (context != null) {
                     hasMaxDataRoutedByChannel.put(nodeChannel.getChannelId(), context.getCommittedDataIdCount() >= context.getChannel().getMaxDataToRoute());
@@ -772,6 +773,50 @@ public class RouterService extends AbstractService implements IRouterService, IN
         nodes = engine.getGroupletService().getTargetEnabled(triggerRouter, nodes);
         context.incrementStat(System.currentTimeMillis() - ts, ChannelRouterContext.STAT_LOOKUP_AVAILABLE_NODES_MS);
         return nodes;
+    }
+
+    protected Collection<String> findNodeIdsFromNodeList(Data data, TriggerRouter triggerRouter, ChannelRouterContext context) {
+        List<String> targetNodeIds = Arrays.asList(data.getNodeList().split(","));
+        Collection<String> nodeIds = CollectionUtils.intersection(targetNodeIds, toNodeIds(findAvailableNodes(triggerRouter, context)));
+        Collection<String> missingNodeIds = CollectionUtils.subtract(targetNodeIds, nodeIds);
+        if (isNodeCacheRefreshNeeded(missingNodeIds, triggerRouter, context.getChannel())) {
+            engine.getNodeService().flushNodeGroupCache();
+            context.getAvailableNodes().remove(triggerRouter);
+            nodeIds = CollectionUtils.intersection(targetNodeIds, toNodeIds(findAvailableNodes(triggerRouter, context)));
+        }
+        if (nodeIds.isEmpty() && log.isDebugEnabled()) {
+            log.debug(
+                    "None of the target nodes specified in the data.node_list field ({}) were qualified nodes. Data id {} for table '{}' will not be routed using the {} router",
+                    new Object[] { data.getNodeList(), data.getDataId(), data.getTableName(), triggerRouter.getRouter().getRouterId() });
+        }
+        return nodeIds;
+    }
+
+    /**
+     * Tells whether refreshing the node cache can resolve any of the missing nodes, which is only true for a node the cache has not seen yet as an enabled
+     * member of the router's target node group. Any other missing node stays unresolved after a refresh, so refreshing would re-read every enabled node on
+     * EVERY data row (expensive!) for nothing. A router whose node group link is gone, a node the channel ignores, and a node a grouplet excludes are all
+     * unresolvable for the same reason: rebuilding the available nodes re-applies those filters from caches that a node cache refresh does not touch. This
+     * method must therefore mirror every filter in findAvailableNodes.
+     */
+    protected boolean isNodeCacheRefreshNeeded(Collection<String> missingNodeIds, TriggerRouter triggerRouter, NodeChannel channel) {
+        NodeGroupLink routerLink = triggerRouter.getRouter().getNodeGroupLink();
+        if (engine.getConfigurationService().getNodeGroupLinkFor(routerLink.getSourceNodeGroupId(), routerLink.getTargetNodeGroupId(), false) == null) {
+            return false;
+        }
+        String targetNodeGroupId = routerLink.getTargetNodeGroupId();
+        for (String missingNodeId : missingNodeIds) {
+            if (channel.isIgnoreEnabled(missingNodeId)) {
+                continue;
+            }
+            Node missingNode = engine.getNodeService().findNode(missingNodeId);
+            if (missingNode != null && missingNode.isSyncEnabled()
+                    && StringUtils.equals(targetNodeGroupId, missingNode.getNodeGroupId())
+                    && engine.getGroupletService().isTargetEnabled(triggerRouter, missingNode)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected IDataToRouteReader createReader(ChannelRouterContext context) {
@@ -888,10 +933,10 @@ public class RouterService extends AbstractService implements IRouterService, IN
                                 statisticManager.incrementDataEventInserted(channelId, statsDataEventCount);
                                 statsDataEventCount = 0;
                                 if (minCreateTime != null) {
-                                    statisticManager.updateDataMinCreateTime(channelId, minCreateTime);
+                                    statisticManager.updateDataRoutedMinCreateTime(channelId, minCreateTime);
                                 }
                                 if (maxCreateTime != null) {
-                                    statisticManager.updateDataMaxCreateTime(channelId, maxCreateTime);
+                                    statisticManager.updateDataRoutedMaxCreateTime(channelId, maxCreateTime);
                                 }
                             }
                         }
@@ -942,10 +987,10 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 statisticManager.incrementDataEventInserted(channelId, statsDataEventCount);
             }
             if (minCreateTime != null) {
-                statisticManager.updateDataMinCreateTime(channelId, minCreateTime);
+                statisticManager.updateDataRoutedMinCreateTime(channelId, minCreateTime);
             }
             if (maxCreateTime != null) {
-                statisticManager.updateDataMaxCreateTime(channelId, maxCreateTime);
+                statisticManager.updateDataRoutedMaxCreateTime(channelId, maxCreateTime);
             }
         }
         context.incrementStat(totalDataCount, ChannelRouterContext.STAT_DATA_ROUTED_COUNT);
@@ -969,22 +1014,8 @@ public class RouterService extends AbstractService implements IRouterService, IN
                 DataMetaData dataMetaData = new DataMetaData(data, relation, router, context.getChannel());
                 Collection<String> nodeIds = null;
                 if (triggerRouter.isRouted(data.getDataEventType())) {
-                    String targetNodeIds = data.getNodeList();
-                    if (StringUtils.isNotBlank(targetNodeIds)) {
-                        List<String> targetNodeIdsList = Arrays.asList(targetNodeIds.split(","));
-                        nodeIds = CollectionUtils.intersection(targetNodeIdsList, toNodeIds(findAvailableNodes(triggerRouter, context)));
-                        if (targetNodeIdsList.size() > nodeIds.size()) {
-                            // Missing some nodes from the cache
-                            // Clear cache and try again
-                            engine.getNodeService().flushNodeGroupCache();
-                            context.getAvailableNodes().remove(triggerRouter);
-                            nodeIds = CollectionUtils.intersection(targetNodeIdsList, toNodeIds(findAvailableNodes(triggerRouter, context)));
-                        }
-                        if (nodeIds.size() == 0 && log.isDebugEnabled()) {
-                            log.debug(
-                                    "None of the target nodes specified in the data.node_list field ({}) were qualified nodes. Data id {} for table '{}' will not be routed using the {} router",
-                                    new Object[] { targetNodeIds, data.getDataId(), data.getTableName(), router.getRouterId() });
-                        }
+                    if (StringUtils.isNotBlank(data.getNodeList())) {
+                        nodeIds = findNodeIdsFromNodeList(data, triggerRouter, context);
                     } else if (data.getTriggerHistory().getLastTriggerBuildReason() == TriggerReBuildReason.TRIGGER_HIST_MISSING && !doesColumnCountMatchValues(
                             dataMetaData, data)) {
                         Integer triggerHistId = data.getTriggerHistory().getTriggerHistoryId();
@@ -1354,5 +1385,29 @@ public class RouterService extends AbstractService implements IRouterService, IN
             }
         }
         return true;
+    }
+
+    protected record GapQualifiedQuery(String sql, Object[] args, int[] types) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (!(o instanceof GapQualifiedQuery)) {
+                return false;
+            }
+            GapQualifiedQuery other = (GapQualifiedQuery) o;
+            return Objects.equals(sql, other.sql) && Arrays.equals(args, other.args) && Arrays.equals(types, other.types);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(sql, Arrays.hashCode(args), Arrays.hashCode(types));
+        }
+
+        @Override
+        public String toString() {
+            return "GapQualifiedQuery[sql=" + sql + ", args=" + Arrays.toString(args) + ", types=" + Arrays.toString(types) + "]";
+        }
     }
 }

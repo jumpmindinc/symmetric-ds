@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -30,6 +30,7 @@ import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,10 +45,7 @@ import org.apache.commons.lang3.Strings;
 import org.jumpmind.db.io.DatabaseXmlUtil;
 import org.jumpmind.db.model.Database;
 import org.jumpmind.db.model.Relation;
-import org.jumpmind.db.platform.AbstractDatabasePlatform;
 import org.jumpmind.db.platform.DatabaseInfo;
-import org.jumpmind.db.platform.DatabaseNamesConstants;
-import org.jumpmind.db.platform.DatabaseVersion;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlResultsListener;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -55,17 +53,19 @@ import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.SqlScript;
 import org.jumpmind.db.sql.SqlScriptReader;
 import org.jumpmind.extension.IProcessInfoListener;
+import org.jumpmind.properties.DefaultParameterParser.ParameterMetaData;
 import org.jumpmind.properties.TypedProperties;
 import org.jumpmind.security.ISecurityService;
 import org.jumpmind.security.SecurityServiceFactory;
 import org.jumpmind.security.SecurityServiceFactory.SecurityServiceType;
 import org.jumpmind.symmetric.cache.CacheManager;
-import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ClusteredEngineState;
 import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
+import org.jumpmind.symmetric.model.DbHealthCheckResult;
 import org.jumpmind.symmetric.model.NodeHost;
+import org.jumpmind.symmetric.model.StartupParameter.Source;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.ContextConstants;
@@ -94,8 +94,10 @@ import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IAcknowledgeService;
 import org.jumpmind.symmetric.service.IBandwidthService;
+import org.jumpmind.symmetric.service.IStartupParameterMetaDataProvider;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.service.IContextService;
 import org.jumpmind.symmetric.service.IDataExtractorService;
 import org.jumpmind.symmetric.service.IDataLoaderService;
@@ -158,8 +160,11 @@ import org.jumpmind.symmetric.transport.ConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.IConcurrentConnectionManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
+import org.jumpmind.symmetric.util.DatabaseHealthTracker;
+import org.jumpmind.symmetric.util.IDatabaseHealthTracker;
 import org.jumpmind.symmetric.util.LogUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
+import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.ExceptionUtils;
 import org.jumpmind.util.FormatUtils;
@@ -183,6 +188,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected ISecurityService securityService;
     protected ParameterService parameterService;
     protected ISymmetricDialect symmetricDialect;
+    protected IDatabaseHealthTracker databaseHealthTracker;
     protected INodeService nodeService;
     protected IConfigurationService configurationService;
     protected IBandwidthService bandwidthService;
@@ -222,6 +228,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected IEngineMetricsService metricsService;
     protected ICacheManager cacheManager;
     protected IClusteredCacheManager clusteredCacheManager;
+    protected IStartupParameterService startupParameterService;
     protected Date lastRestartTime = null;
 
     abstract protected ITypedPropertiesFactory createTypedPropertiesFactory();
@@ -291,8 +298,8 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         return engineName;
     }
 
-    private void initEngineParametersFromDatabase(TypedProperties engineProperties) {
-        this.parameterService = new ParameterService(this.platform, propertiesFactory,
+    private void initEngineParametersFromDatabase(String engineName, TypedProperties engineProperties) {
+        this.parameterService = new ParameterService(this.startupParameterService, engineName, this.platform, propertiesFactory,
                 engineProperties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX, "sym"));
         Relation paramTable = this.platform.readRelationFromDatabase(null, null,
                 TableConstants.getTableName(engineProperties.get(ParameterConstants.RUNTIME_CONFIG_TABLE_PREFIX), TableConstants.SYM_PARAMETER));
@@ -358,16 +365,23 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     protected void init() {
         ensurePropertiesFactoryIsCreated();
         ensureSecurityServiceIsCreated();
-        TypedProperties properties = this.propertiesFactory.reload();
+        ServiceRegistry serviceRegistry = ServiceRegistry.getInstance();
+        this.startupParameterService = serviceRegistry.getStartupParameterService();
+        this.clusteredCacheManager = serviceRegistry.getClusteredCacheManager();
+        TypedProperties properties = this.startupParameterService.registerEngine(this.propertiesFactory,
+                findKnownEnginePropertiesFileSources(), getSupplementalStartupParameterMetaData());
         registerSymDSDriver(properties);
-        initEngineNameAndLoggingContext(properties);
+        String engineName = initEngineNameAndLoggingContext(properties);
         this.platform = createDatabasePlatform(properties);
-        initEngineParametersFromDatabase(properties);
+        initEngineParametersFromDatabase(engineName, properties);
+        if (log.isDebugEnabled()) {
+            log.debug(this.startupParameterService.dumpAsText(engineName));
+        }
         LogUtils.setTreadLogContext(LoggingConstants.CONTEXT_ENGINE, parameterService.getEngineName());
         updatePlatformWithParametersFromDatabase();
         this.symmetricDialect = createSymmetricDialect();
         this.symmetricDialect.setTargetDialect(createTargetDialect());
-        ensureMetricsServiceIsCreated();
+        this.databaseHealthTracker = new DatabaseHealthTracker(() -> getSymmetricDialect().getPlatform().getSqlTemplate(), parameterService);
         ensureExtensionServiceIsCreated();
         this.cacheManager = new CacheManager(this);
         this.contextService = new ContextService(parameterService, symmetricDialect);
@@ -379,12 +393,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         this.dataService = createDataService();
         this.clusterService = createClusterService();
         this.securityService.validateKeystoreIntegrity();
-        this.clusteredCacheManager = ClusteredCacheManager.getInstance();
         this.clusteredCacheManager.registerEngine(this, ClusteredEngineState.STARTING);
         this.statisticService = new StatisticService(parameterService, symmetricDialect);
         this.statisticManager = createStatisticManager();
         this.concurrentConnectionManager = new ConcurrentConnectionManager(parameterService,
-                metricsService);
+                metricsService, databaseHealthTracker);
         this.purgeService = new PurgeService(parameterService, symmetricDialect, clusterService, dataService, sequenceService,
                 statisticManager, extensionService, contextService);
         this.transformService = new TransformService(this, symmetricDialect);
@@ -423,6 +436,25 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         }
     }
 
+    private Map<String, Source> findKnownEnginePropertiesFileSources() {
+        if (propertiesFactory instanceof TypedPropertiesFactory typedPropertiesFactory) {
+            File enginePropertiesFile = typedPropertiesFactory.getPropertiesFile();
+            if (enginePropertiesFile != null && enginePropertiesFile.exists()) {
+                Map<String, Source> knownFileSources = new HashMap<String, Source>();
+                for (String key : new TypedProperties(enginePropertiesFile).stringPropertyNames()) {
+                    knownFileSources.put(key, Source.ENGINE_PROPERTIES_FILE);
+                }
+                return knownFileSources;
+            }
+        }
+        return Map.of();
+    }
+
+    protected Map<String, ParameterMetaData> getSupplementalStartupParameterMetaData() {
+        IStartupParameterMetaDataProvider provider = AppUtils.newInstance(IStartupParameterMetaDataProvider.class, null);
+        return provider != null ? provider.getParameterMetaData() : Map.of();
+    }
+
     protected void registerSymDSDriver(TypedProperties engineProperties) {
         try {
             Class<?> driverClass = Thread.currentThread().getContextClassLoader().loadClass("org.jumpmind.driver.Driver");
@@ -446,7 +478,9 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     protected IClusterService createClusterService() {
         return AppUtils.newInstance(IClusterService.class, ClusterService.class, new Object[] { parameterService, symmetricDialect, nodeService,
-                extensionService }, new Class<?>[] { IParameterService.class, ISymmetricDialect.class, INodeService.class, IExtensionService.class });
+                extensionService, this.startupParameterService, this.clusteredCacheManager },
+                new Class<?>[] { IParameterService.class, ISymmetricDialect.class, INodeService.class, IExtensionService.class,
+                        IStartupParameterService.class, IClusteredCacheManager.class });
     }
 
     protected IDataService createDataService() {
@@ -767,7 +801,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
                 starting = true;
                 setEngineReadinessInAppHealthTracker(false);
                 symmetricDialect.verifyDatabaseIsCompatible();
-                checkForProOnlyDatabase();
+                new ProOnlyDatabaseValidator(platform).validate();
                 setup();
                 if (isConfigured()) {
                     Node node = nodeService.findIdentity();
@@ -830,6 +864,7 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     private void startNodeAndJobs(Node node, boolean startJobs) {
+        ensureMetricsServiceIsCreated();
         node = checkSystemIntegrity(node);
         isInitialized = true;
         if (node != null) {
@@ -875,57 +910,6 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         setEngineReadinessInAppHealthTracker(started);
         for (ISymmetricEngineLifecycle ext : extensionService.getExtensionPointList(ISymmetricEngineLifecycle.class)) {
             ext.started(this);
-        }
-    }
-
-    protected void checkForProOnlyDatabase() {
-        DatabaseVersion dbVersion = platform.getDatabaseVersion();
-        String dbVersionName = dbVersion != null ? dbVersion.getName() : null;
-        if (DatabaseNamesConstants.AURORA_POSTGRESQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.AURORA_POSTGRESQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "AWS Aurora PostgreSQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.CLOUDSQL_POSTGRESQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.CLOUDSQL_POSTGRESQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "Google Cloud SQL for PostgreSQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.AURORA_MYSQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.AURORA_MYSQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "AWS Aurora MySQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (DatabaseNamesConstants.CLOUDSQL_MYSQL.equalsIgnoreCase(dbVersionName)
-                && !DatabaseNamesConstants.CLOUDSQL_MYSQL.equalsIgnoreCase(platform.getName())) {
-            throw new SymmetricException(
-                    "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                            + "Google Cloud SQL for MySQL requires SymmetricDS Pro. "
-                            + "Contact the SymmetricDS sales team for more information.",
-                    dbVersionName);
-        }
-        if (platform instanceof AbstractDatabasePlatform
-                && ((AbstractDatabasePlatform) platform).isDedicatedPlatform()) {
-            return;
-        }
-        if (dbVersionName != null) {
-            String nameLower = dbVersionName.toLowerCase();
-            if (nameLower.startsWith(DatabaseNamesConstants.ORACLE) || nameLower.contains("sql server")) {
-                throw new SymmetricException(
-                        "The detected database platform '%s' is not supported in SymmetricDS open source. "
-                                + "Some DB platforms, including Oracle and Microsoft SQL Server, require SymmetricDS Pro. "
-                                + "Contact the SymmetricDS sales team for more information.",
-                        dbVersionName);
-            }
         }
     }
 
@@ -1160,14 +1144,14 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
 
     private void removeEngineFromAppHealthTracker() {
         IApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
-        if (appHealthTracker != null) {
+        if (appHealthTracker != null && parameterService != null) {
             appHealthTracker.stopTrackingEngine(getEngineName());
         }
     }
 
     private void setEngineReadinessInAppHealthTracker(boolean isReady) {
         IApplicationHealthTracker appHealthTracker = ApplicationHealthTracker.getTracker();
-        if (appHealthTracker != null) {
+        if (appHealthTracker != null && parameterService != null) {
             appHealthTracker.setEngineReadiness(getEngineName(), isReady);
         }
     }
@@ -1239,8 +1223,10 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
         removeMeFromMap(registeredEnginesByUrl);
         if (parameterService != null) {
             parameterService.setDatabaseHasBeenInitialized(false);
-            if (getEngineName() != null) {
-                registeredEnginesByName.remove(getEngineName());
+            String engineName = getEngineName();
+            if (engineName != null) {
+                registeredEnginesByName.remove(engineName);
+                this.startupParameterService.unregisterEngine(engineName);
             }
             if (getSyncUrl() != null) {
                 registeredEnginesByUrl.remove(getSyncUrl());
@@ -1448,6 +1434,16 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     }
 
     @Override
+    public boolean isRuntimeDbHealthy() {
+        return databaseHealthTracker == null || databaseHealthTracker.isRuntimeDbHealthy();
+    }
+
+    @Override
+    public DbHealthCheckResult getLastDbHealthCheckResult() {
+        return databaseHealthTracker == null ? null : databaseHealthTracker.getLastResult();
+    }
+
+    @Override
     public boolean isInitialized() {
         return isInitialized;
     }
@@ -1460,6 +1456,11 @@ abstract public class AbstractSymmetricEngine implements ISymmetricEngine {
     @Override
     public IParameterService getParameterService() {
         return parameterService;
+    }
+
+    @Override
+    public IStartupParameterService getStartupParameterService() {
+        return this.startupParameterService;
     }
 
     @Override

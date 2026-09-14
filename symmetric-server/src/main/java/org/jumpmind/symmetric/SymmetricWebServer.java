@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -90,7 +90,7 @@ public class SymmetricWebServer {
             Class.forName(AbstractCommandLauncher.class.getName());
         } catch (ClassNotFoundException e) {
         }
-        TypedProperties serverProperties = new TypedProperties(System.getProperties());
+        TypedProperties serverProperties = ServiceRegistry.getInstance().getStartupParameterService().getGlobalTypedProperties();
         httpEnabled = serverProperties.is(ServerConstants.HTTP_ENABLE, true);
         httpsEnabled = serverProperties.is(ServerConstants.HTTPS_ENABLE, false);
         https2Enabled = serverProperties.is(ServerConstants.HTTPS2_ENABLE, false);
@@ -111,12 +111,12 @@ public class SymmetricWebServer {
         int port = httpEnabled ? httpPort : httpsPort;
         log.info("About to start {} web server on {}:{}:{} with context path {}", name, host == null ? "default" : host,
                 port, protocolName, webHome);
-        System.setProperty(SystemConstants.SYSPROP_STANDALONE_WEB, Boolean.toString(true));
-        System.setProperty(ServerConstants.HTTP_ENABLE, Boolean.valueOf(httpEnabled).toString());
-        System.setProperty(ServerConstants.HTTPS_ENABLE, Boolean.valueOf(httpsEnabled).toString());
-        System.setProperty(ServerConstants.HTTP_PORT, Integer.toString(httpPort));
-        System.setProperty(ServerConstants.HTTPS_PORT, Integer.toString(httpsPort));
-        System.setProperty(ServerConstants.SERVER_CONNECTION_IDLE_TIMEOUT, Integer.toString(maxIdleTime));
+        setSystemProperty(SystemConstants.SYSPROP_STANDALONE_WEB, Boolean.toString(true));
+        setSystemProperty(ServerConstants.HTTP_ENABLE, Boolean.toString(httpEnabled));
+        setSystemProperty(ServerConstants.HTTPS_ENABLE, Boolean.toString(httpsEnabled));
+        setSystemProperty(ServerConstants.HTTP_PORT, Integer.toString(httpPort));
+        setSystemProperty(ServerConstants.HTTPS_PORT, Integer.toString(httpsPort));
+        setSystemProperty(ServerConstants.SERVER_CONNECTION_IDLE_TIMEOUT, Integer.toString(maxIdleTime));
         setSystemPropertyIfNotNull(ServerConstants.HOST_BIND_NAME, host);
         setSystemPropertyIfNotNull(ServerConstants.SERVER_SERVLET_CONTEXT_PATH, webHome);
         setSystemPropertyIfNotNull(ServerConstants.SERVER_SINGLE_PROPERTIES_FILE, propertiesFile);
@@ -125,9 +125,14 @@ public class SymmetricWebServer {
         return this;
     }
 
+    protected void setSystemProperty(String property, String value) {
+        System.setProperty(property, value);
+        ServiceRegistry.getInstance().getStartupParameterService().refreshSystemProperty(property);
+    }
+
     protected void setSystemPropertyIfNotNull(String property, String value) {
         if (value != null) {
-            System.setProperty(property, value);
+            setSystemProperty(property, value);
         }
     }
 

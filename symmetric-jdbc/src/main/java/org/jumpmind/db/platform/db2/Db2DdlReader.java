@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -109,7 +109,7 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
         /*
          * DB2 does not return the auto-increment status via the database metadata
          */
-        String sql = "SELECT NAME, IDENTITY FROM SYSIBM.SYSCOLUMNS WHERE TBNAME=?";
+        String sql = "SELECT NAME, IDENTITY, GENERATED FROM SYSIBM.SYSCOLUMNS WHERE TBNAME=?";
         if (StringUtils.isNotBlank(metaData.getSchemaPattern())) {
             sql = sql + " AND TBCREATOR=?";
         }
@@ -129,6 +129,8 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
                     String isIdentity = rs.getString(2);
                     if (isIdentity != null && isIdentity.startsWith("Y")) {
                         column.setAutoIncrement(true);
+                        String isGenerated = rs.getString(3);
+                        clearGeneratedIfIdentityByDefault(isGenerated, column);
                         if (log.isDebugEnabled()) {
                             log.debug("Found identity column {} on {}", columnName,
                                     table.getName());
@@ -141,6 +143,12 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
             JdbcSqlTemplate.close(pstmt);
         }
         log.debug("done reading additional column data");
+    }
+
+    protected void clearGeneratedIfIdentityByDefault(String generated, Column column) {
+        if (generated != null && generated.startsWith("D")) {
+            column.setGenerated(false);
+        }
     }
 
     @Override
@@ -325,12 +333,16 @@ public class Db2DdlReader extends AbstractJdbcDdlReader {
         } else if (typeName != null && typeName.endsWith("CLOB")) {
             return Types.LONGVARCHAR;
         } else if (typeName != null && typeName.endsWith("LONG VARCHAR")) {
-            return Types.CLOB;
+            return getMappedTypeForLongVarChar();
         } else if (typeName != null && typeName.endsWith("XML")) {
             return Types.SQLXML;
         } else {
             return super.mapUnknownJdbcTypeForColumn(values);
         }
+    }
+
+    protected Integer getMappedTypeForLongVarChar() {
+        return Types.LONGVARCHAR;
     }
 
     @Override

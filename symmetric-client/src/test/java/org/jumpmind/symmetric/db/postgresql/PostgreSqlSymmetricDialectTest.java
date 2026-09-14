@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -20,8 +20,10 @@
  */
 package org.jumpmind.symmetric.db.postgresql;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -50,6 +52,39 @@ class PostgreSqlSymmetricDialectTest {
         sqlTemplate = mock(ISqlTemplate.class);
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
         when(sqlTemplate.getDatabaseMajorVersion()).thenReturn(14);
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        when(platform.getDdlBuilder()).thenReturn(new PostgreSqlDdlBuilder());
+        when(platform.getDatabaseInfo()).thenReturn(new DatabaseInfo());
+        dialect = new PostgreSqlSymmetricDialect(parameterService, platform);
+    }
+
+    @Test
+    void constructor_disablesPersistedAndNonPersistedGeneratedColumnSupport_belowVersion12() {
+        setupWithMajorVersion(11);
+        assertFalse(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
+        assertFalse(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsSupported());
+    }
+
+    @Test
+    void constructor_enablesPersistedButNotNonPersistedGeneratedColumnSupport_atVersion14() {
+        setupWithMajorVersion(14);
+        assertTrue(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
+        assertFalse(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsSupported());
+    }
+
+    @Test
+    void constructor_enablesPersistedAndNonPersistedGeneratedColumnSupport_atVersion18() {
+        setupWithMajorVersion(18);
+        assertTrue(platform.getDatabaseInfo().isPersistedGeneratedColumnsSupported());
+        assertTrue(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsSupported());
+    }
+
+    private void setupWithMajorVersion(int majorVersion) {
+        IParameterService parameterService = mock(ParameterService.class);
+        platform = mock(IDatabasePlatform.class);
+        sqlTemplate = mock(ISqlTemplate.class);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(sqlTemplate.getDatabaseMajorVersion()).thenReturn(majorVersion);
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(platform.getDdlBuilder()).thenReturn(new PostgreSqlDdlBuilder());
         when(platform.getDatabaseInfo()).thenReturn(new DatabaseInfo());

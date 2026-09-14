@@ -26,4 +26,12 @@ image::images/manage/rest-api.png[]
 
 |Readwrite|Read-write users can access all methods, including post, put, and get.
 
-|===            
+|===
+
+==== Default Rest Key
+
+As an alternative to creating a key through the console, a default REST API key can be configured as a startup parameter. This is useful for recovering access to a remote node with an inaccessible web console, or for granting REST access automatically on a new or containerized install without any manual console setup.
+
+Set the `rest.api.default.key` parameter (or the `SYM_REST_API_DEFAULT_KEY` environment variable) to a value that is at least 32 characters long. Shorter or blank values are ignored and have no effect, meaning the REST API will behave as if no default key were configured. This parameter only takes effect after the engine is deployed and started.
+
+The default key grants the same full read-write access as a read-write console-managed key. Like any other REST API key, it only works when `rest.api.enable` (or `SYM_REST_API_ENABLE`) is set to `true`.

@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -39,6 +39,7 @@ import org.jumpmind.symmetric.config.IParameterSaveFilter;
 import org.jumpmind.symmetric.model.DatabaseParameter;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.service.impl.IParameterAuditor.AuditedProperties;
 
 /**
@@ -47,6 +48,7 @@ import org.jumpmind.symmetric.service.impl.IParameterAuditor.AuditedProperties;
 public class ParameterService extends AbstractParameterService implements IParameterService {
     String tablePrefix;
     private ITypedPropertiesFactory factory;
+    private IStartupParameterService startupParameterService;
     private ParameterServiceSqlMap sql;
     private ISqlTemplate sqlTemplate;
     private Date lastUpdateTime;
@@ -59,6 +61,13 @@ public class ParameterService extends AbstractParameterService implements IParam
         this.sql = new ParameterServiceSqlMap(platform, tablePrefix);
         this.sqlTemplate = platform.getSqlTemplate();
         this.auditors = List.of(new ClusteredExtractJobParameterAuditor());
+    }
+
+    public ParameterService(IStartupParameterService startupParameterService, String engineName, IDatabasePlatform platform,
+            ITypedPropertiesFactory factory, String tablePrefix) {
+        this(platform, factory, tablePrefix);
+        this.startupParameterService = startupParameterService;
+        this.engineName = engineName;
     }
 
     @Override
@@ -189,7 +198,8 @@ public class ParameterService extends AbstractParameterService implements IParam
 
     @Override
     protected TypedProperties rereadApplicationParameters() {
-        TypedProperties currentProperties = this.factory.reload();
+        TypedProperties currentProperties = startupParameterService != null ? startupParameterService.asTypedProperties(engineName)
+                : this.factory.reload();
         currentProperties.putAll(rereadDatabaseParameters(currentProperties));
         rereadOfflineNodeParameters();
         for (IParameterAuditor auditor : auditors) {

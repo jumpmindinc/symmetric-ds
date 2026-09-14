@@ -24,7 +24,7 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation "org.apache.derby:derbytools:$derbyVersion"
         testImplementation "org.hsqldb:hsqldb:$hsqldbVersion"
         testImplementation "org.xerial:sqlite-jdbc:$sqliteVersion"
-        testImplementation "org.jumpmind.symmetric.module:db2jcc:9.7"
+        testImplementation "com.ibm.db2:jcc:12.1.5.0"
         // Pinned to Jaybird 5.0.12 - v6 deadlocks the Firebird integration tests (background
 		// cleanup helper holds the connection lock, hanging the connection health check).
         testImplementation "org.firebirdsql.jdbc:jaybird:5.0.12.java11"

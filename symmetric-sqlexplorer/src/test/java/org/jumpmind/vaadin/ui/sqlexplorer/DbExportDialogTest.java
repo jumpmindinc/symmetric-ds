@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -78,7 +78,7 @@ class DbExportDialogTest extends BrowserlessTest {
     @Test
     void init_buttonsArePresent() {
         createAndOpen();
-        assertTrue($(Button.class).exists());
+        assertTrue(find(Button.class).exists());
     }
 
     @Test
@@ -96,7 +96,7 @@ class DbExportDialogTest extends BrowserlessTest {
     @Test
     void init_formatSelectionIsPresent() {
         createAndOpen();
-        assertTrue($(ComboBox.class).exists());
+        assertTrue(find(ComboBox.class).exists());
     }
 
     @Test
@@ -115,12 +115,12 @@ class DbExportDialogTest extends BrowserlessTest {
     void formatSelect_csvValue_disablesDataCheckbox() {
         DbExportDialog dialog = createAndOpen();
         dialog.next();
-        ComboBox<DbExportDialog.DbExportFormat> formatSelect = $(ComboBox.class).all().stream()
+        ComboBox<DbExportDialog.DbExportFormat> formatSelect = find(ComboBox.class).all().stream()
                 .filter(c -> "Format".equals(c.getLabel()))
                 .map(c -> (ComboBox<DbExportDialog.DbExportFormat>) c)
                 .findFirst().orElseThrow();
         formatSelect.setValue(DbExportDialog.DbExportFormat.CSV);
-        Checkbox dataCheckbox = $(Checkbox.class).all().stream()
+        Checkbox dataCheckbox = find(Checkbox.class).all().stream()
                 .filter(c -> "Insert Data".equals(c.getLabel()))
                 .findFirst().orElseThrow();
         assertFalse(dataCheckbox.isEnabled());
@@ -152,7 +152,7 @@ class DbExportDialogTest extends BrowserlessTest {
     void setExportButtonsEnabled_editorMode_showsEditorButtonHidesFileDownloader() throws Exception {
         DbExportDialog dialog = createAndOpen();
         dialog.next();
-        RadioButtonGroup<String> group = $(RadioButtonGroup.class).single();
+        RadioButtonGroup<String> group = find(RadioButtonGroup.class).single();
         group.setValue("Export to the SQL Editor");
         Field editorButtonField = DbExportDialog.class.getDeclaredField("exportEditorButton");
         editorButtonField.setAccessible(true);

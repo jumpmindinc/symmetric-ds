@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -23,13 +23,21 @@ package org.jumpmind.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import ch.qos.logback.classic.LoggerContext;
+import java.io.File;
+
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
+
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 class LogbackHelperTest {
     private static final String TEST_LOGGER = "org.jumpmind.test.LogbackHelperTest";
@@ -166,5 +174,41 @@ class LogbackHelperTest {
     @Test
     void testGetRootLevel() {
         assertNotNull(helper.getRootLevel());
+    }
+
+    @Test
+    void logNonExistentLoggingConfigurations_missingLogbackXmlWarnsAndDoesNotThrow() {
+        Assumptions.assumeFalse(new File(AppUtils.getSymHome() + "/conf/logback.xml").exists());
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        ListAppender<ILoggingEvent> captured = new ListAppender<>();
+        captured.setContext(context);
+        captured.start();
+        context.getLogger(LogbackHelper.class).addAppender(captured);
+        try {
+            assertDoesNotThrow(() -> helper.initialize(false));
+            assertTrue(captured.list.stream().anyMatch(event -> event.getLevel() == ch.qos.logback.classic.Level.WARN
+                    && event.getFormattedMessage().contains("logback.xml")),
+                    "a missing conf/logback.xml should log a warning naming the expected file");
+        } finally {
+            context.getLogger(LogbackHelper.class).detachAppender(captured);
+        }
+    }
+
+    @Test
+    void logNonExistentLoggingConfigurations_missingLogbackDebugXmlWarnsWithDebugFilename() {
+        Assumptions.assumeFalse(new File(AppUtils.getSymHome() + "/conf/logback-debug.xml").exists());
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        ListAppender<ILoggingEvent> captured = new ListAppender<>();
+        captured.setContext(context);
+        captured.start();
+        context.getLogger(LogbackHelper.class).addAppender(captured);
+        try {
+            assertDoesNotThrow(() -> helper.initialize(true));
+            assertTrue(captured.list.stream().anyMatch(event -> event.getLevel() == ch.qos.logback.classic.Level.WARN
+                    && event.getFormattedMessage().contains("logback-debug.xml")),
+                    "a missing conf/logback-debug.xml should log a warning naming the debug file");
+        } finally {
+            context.getLogger(LogbackHelper.class).detachAppender(captured);
+        }
     }
 }

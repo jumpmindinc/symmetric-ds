@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -67,6 +67,7 @@ public class MonitorConstants {
     public static final String JVM_OOM_MONITOR = "jvmOutOfMemoryMonitor";
     public static final String DB_PERFORMANCE = "dbPerformance";
     public static final String CONNECTION_POOL_METRICS = "connectionPoolMetrics";
+    public static final String MULTI_HOMED_MAX_BATCH_TO_SEND = "multiHomedMaxBatchToSend";
 
     public static Map<String, String> getMonitorTypesByVersion() {
         Map<String, String> map = new HashMap<String, String>();
@@ -88,7 +89,7 @@ public class MonitorConstants {
         for (String name : new String[] { POSTGRES_WAL, JVM_OOM_MONITOR }) {
             map.put(name, "3.16.5");
         }
-        for (String name : new String[] { DB_PERFORMANCE, CONNECTION_POOL_METRICS }) {
+        for (String name : new String[] { DB_PERFORMANCE, CONNECTION_POOL_METRICS, MULTI_HOMED_MAX_BATCH_TO_SEND }) {
             map.put(name, "3.18.0");
         }
         return map;

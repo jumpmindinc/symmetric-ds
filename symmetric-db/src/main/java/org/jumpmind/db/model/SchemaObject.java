@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -137,12 +137,30 @@ public abstract class SchemaObject implements Serializable, Comparable<SchemaObj
 
     public static String getFullyQualifiedName(String catalogName, String schemaName, String objectName,
             String quoteString, String catalogSeparator, String schemaSeparator) {
-        if (quoteString == null) {
-            quoteString = "";
+        boolean hasCatalog = StringUtils.isNotBlank(catalogName);
+        boolean hasSchema = StringUtils.isNotBlank(schemaName);
+        if (objectName != null && (quoteString == null || quoteString.isEmpty())) {
+            if (hasCatalog && hasSchema) {
+                return catalogName + catalogSeparator + schemaName + schemaSeparator + objectName;
+            } else if (hasSchema) {
+                return schemaName + schemaSeparator + objectName;
+            } else if (hasCatalog) {
+                return catalogName + catalogSeparator + objectName;
+            }
+            return objectName;
         }
-        StringBuilder sb = new StringBuilder();
-        getFullyQualifiedPrefix(sb, catalogName, schemaName, quoteString, catalogSeparator, schemaSeparator);
-        sb.append(quoteString).append(objectName).append(quoteString);
+        String quote = quoteString == null ? "" : quoteString;
+        int catalogLength = hasCatalog ? catalogName.length() : 0;
+        int schemaLength = hasSchema ? schemaName.length() : 0;
+        int objectNameLength = objectName == null ? 4 : objectName.length();
+        StringBuilder sb = new StringBuilder(catalogLength + schemaLength + objectNameLength + 6 * quote.length() + 8);
+        if (hasCatalog) {
+            sb.append(quote).append(catalogName).append(quote).append(catalogSeparator);
+        }
+        if (hasSchema) {
+            sb.append(quote).append(schemaName).append(quote).append(schemaSeparator);
+        }
+        sb.append(quote).append(objectName).append(quote);
         return sb.toString();
     }
 

@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -35,6 +35,7 @@ import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.job.IJobManager;
+import org.jumpmind.symmetric.model.DbHealthCheckResult;
 import org.jumpmind.symmetric.model.NodeStatus;
 import org.jumpmind.symmetric.model.RemoteNodeStatuses;
 import org.jumpmind.symmetric.observability.interfaces.IEngineMetricsService;
@@ -58,6 +59,7 @@ import org.jumpmind.symmetric.service.IOfflinePullService;
 import org.jumpmind.symmetric.service.IOfflinePushService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.service.IPullService;
 import org.jumpmind.symmetric.service.IPurgeService;
 import org.jumpmind.symmetric.service.IPushService;
@@ -214,6 +216,18 @@ public interface ISymmetricEngine {
      */
     public boolean isStarted();
 
+    /**
+     * Check that a connection to the runtime database can be established. Acts as a circuit breaker during database outages.
+     *
+     * @return true if the runtime database is considered healthy
+     */
+    public boolean isRuntimeDbHealthy();
+
+    /**
+     * @return the outcome of the most recent runtime database connection test, or null if no test has run yet
+     */
+    public DbHealthCheckResult getLastDbHealthCheckResult();
+
     public boolean isInitialized();
 
     /**
@@ -239,6 +253,8 @@ public interface ISymmetricEngine {
     public IConfigurationService getConfigurationService();
 
     public IParameterService getParameterService();
+
+    public IStartupParameterService getStartupParameterService();
 
     public INodeService getNodeService();
 

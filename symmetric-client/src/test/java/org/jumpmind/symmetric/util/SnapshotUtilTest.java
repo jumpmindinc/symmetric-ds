@@ -1,18 +1,26 @@
 package org.jumpmind.symmetric.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Properties;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class SnapshotUtilTest {
+    @TempDir
+    Path tempDir;
     private File logDir;
     private File stagingDir;
     private File tmpDir;
@@ -41,5 +49,49 @@ public class SnapshotUtilTest {
         assertEquals("1 GB", properties.getProperty("log.directory.space.usable"));
         assertEquals("1 MB", properties.getProperty("staging.directory.space.usable"));
         assertEquals("-512 bytes", properties.getProperty("temp.directory.space.usable"));
+    }
+
+    @Test
+    void writeLoggingConfigFiles_noConfigFilesPresentDoesNotThrow() {
+        File snapshotDir = tempDir.resolve("snapshot").toFile();
+        snapshotDir.mkdirs();
+        assertDoesNotThrow(() -> SnapshotUtil.writeLoggingConfigFiles(snapshotDir));
+    }
+
+    @Test
+    void writeLoggingConfigFile_existingConfigsAreCopiedIntoSnapshot() throws IOException {
+        File confDir = tempDir.resolve("conf").toFile();
+        File snapshotDir = tempDir.resolve("snapshot").toFile();
+        confDir.mkdirs();
+        snapshotDir.mkdirs();
+        Files.writeString(confDir.toPath().resolve("logback.xml"), "<configuration/>");
+        Files.writeString(confDir.toPath().resolve("log4j2.xml.deprecated"), "<Configuration/>");
+        SnapshotUtil.writeLoggingConfigFile(snapshotDir, new File(confDir, "logback.xml").getAbsolutePath());
+        SnapshotUtil.writeLoggingConfigFile(snapshotDir, new File(confDir, "log4j2.xml.deprecated").getAbsolutePath());
+        assertTrue(new File(snapshotDir, "logback.xml").exists(), "the live logging config should be in the snapshot");
+        assertTrue(new File(snapshotDir, "log4j2.xml.deprecated").exists(),
+                "the retired pre-upgrade config should be included so support can compare source and result of conversion");
+    }
+
+    @Test
+    void writeLoggingConfigFile_missingConfigDoesNotThrowOrCreateStrayFiles() {
+        File confDir = tempDir.resolve("conf").toFile();
+        File snapshotDir = tempDir.resolve("snapshot").toFile();
+        confDir.mkdirs();
+        snapshotDir.mkdirs();
+        assertDoesNotThrow(() -> SnapshotUtil.writeLoggingConfigFile(snapshotDir, new File(confDir, "logback.xml").getAbsolutePath()));
+        assertEquals(0, snapshotDir.list().length, "nothing should be copied when no logging configs exist");
+    }
+
+    @Test
+    void writeLoggingConfigFile_copyFailsLogsWarningInsteadOfThrowing() throws IOException {
+        File confDir = tempDir.resolve("conf").toFile();
+        File snapshotDir = tempDir.resolve("snapshot").toFile();
+        confDir.mkdirs();
+        snapshotDir.mkdirs();
+        File notActuallyAFile = new File(confDir, "logback.xml");
+        notActuallyAFile.mkdirs();
+        assertDoesNotThrow(() -> SnapshotUtil.writeLoggingConfigFile(snapshotDir, notActuallyAFile.getAbsolutePath()));
+        assertEquals(0, snapshotDir.list().length, "a failed copy should not leave a partial file behind");
     }
 }

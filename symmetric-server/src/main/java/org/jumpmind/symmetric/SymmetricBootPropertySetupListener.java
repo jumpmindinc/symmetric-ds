@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -42,7 +42,7 @@ import org.springframework.core.env.PropertiesPropertySource;
 
 public class SymmetricBootPropertySetupListener implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
     public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
-        TypedProperties sysProps = new TypedProperties(System.getProperties());
+        TypedProperties sysProps = ServiceRegistry.getInstance().getStartupParameterService().getGlobalTypedProperties();
         boolean httpEnabled = sysProps.is(ServerConstants.HTTP_ENABLE, true);
         boolean httpsEnabled = sysProps.is(ServerConstants.HTTPS_ENABLE);
         int httpPort = sysProps.getInt(ServerConstants.HTTP_PORT, Integer.parseInt(SymmetricWebServer.DEFAULT_HTTP_PORT));

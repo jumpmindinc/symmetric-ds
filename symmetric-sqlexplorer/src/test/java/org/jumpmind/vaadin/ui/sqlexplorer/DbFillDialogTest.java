@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -76,19 +76,19 @@ class DbFillDialogTest extends BrowserlessTest {
     @Test
     void init_buttonsArePresent() {
         createAndOpen();
-        assertTrue($(Button.class).exists());
+        assertTrue(find(Button.class).exists());
     }
 
     @Test
     void init_tableSelectionIsPresent() {
         createAndOpen();
-        assertTrue($(Grid.class).exists());
+        assertTrue(find(Grid.class).exists());
     }
 
     @Test
     void init_nextButtonIsPresentAndDisabled() {
         createAndOpen();
-        Button nextButton = $(Button.class).all().stream()
+        Button nextButton = find(Button.class).all().stream()
                 .filter(b -> "Next".equals(b.getText()))
                 .findFirst()
                 .orElse(null);
@@ -110,7 +110,7 @@ class DbFillDialogTest extends BrowserlessTest {
     @Test
     void init_cancelButtonIsPresent() {
         createAndOpen();
-        Button cancelButton = $(Button.class).all().stream()
+        Button cancelButton = find(Button.class).all().stream()
                 .filter(b -> "Close".equals(b.getText()))
                 .findFirst()
                 .orElse(null);
@@ -152,7 +152,7 @@ class DbFillDialogTest extends BrowserlessTest {
         Field fillButtonField = DbFillDialog.class.getDeclaredField("fillButton");
         fillButtonField.setAccessible(true);
         assertFalse(((Button) fillButtonField.get(dialog)).isVisible());
-        Button nextButton = $(Button.class).all().stream()
+        Button nextButton = find(Button.class).all().stream()
                 .filter(b -> "Next".equals(b.getText()))
                 .findFirst().orElseThrow();
         assertTrue(nextButton.isVisible());

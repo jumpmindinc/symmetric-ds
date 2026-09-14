@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -38,7 +38,7 @@ final public class ParameterConstants {
     public static final String REDACTED = "***REDACTED***";
     public static final String[] REDACTED_PROPERTIES = new String[] { "db.password", "target.db.password", "smtp.password", "redshift.bulk.load.s3.access.key",
             "redshift.bulk.load.s3.secret.key", "opensearch.load.aws.access.key", "opensearch.load.aws.secret.key", "cloud.bulk.load.s3.access.key",
-            "cloud.bulk.load.s3.secret.key", "cloud.bulk.load.azure.sas.token", "registration.secret", "file.sync.s3.secret.key" };
+            "cloud.bulk.load.s3.secret.key", "cloud.bulk.load.azure.sas.token", "registration.secret", "file.sync.s3.secret.key", "rest.api.default.key" };
 
     private ParameterConstants() {
     }
@@ -73,6 +73,7 @@ final public class ParameterConstants {
     public static final String START_OFFLINE_PUSH_JOB = "start.offline.push.job";
     public static final String START_REFRESH_CACHE_JOB = "start.refresh.cache.job";
     public static final String START_REFRESH_BACKLOG_REPORT_JOB = "start.refresh.backlog.report.job";
+    public static final String START_REFRESH_UNROUTED_DATA_METRICS_JOB = "start.refresh.unrouted.data.metrics.job";
     public static final String START_FILE_SYNC_TRACKER_JOB = "start.file.sync.tracker.job";
     public static final String START_FILE_SYNC_PUSH_JOB = "start.file.sync.push.job";
     public static final String START_FILE_SYNC_PULL_JOB = "start.file.sync.pull.job";
@@ -291,6 +292,9 @@ final public class ParameterConstants {
     public static final String DB_METADATA_IGNORE_CASE = "db.metadata.ignore.case";
     public static final String DB_NATIVE_EXTRACTOR = "db.native.extractor";
     public static final String DB_QUERY_TIMEOUT_SECS = "db.sql.query.timeout.seconds";
+    public static final String DB_HEALTH_CHECK_ENABLED = "db.health.check.enabled";
+    public static final String DB_HEALTH_CHECK_FAILURE_THRESHOLD = "db.health.check.failure.threshold";
+    public static final String DB_HEALTH_CHECK_RETRY_SECONDS = "db.health.check.retry.seconds";
     public static final String DB_FETCH_SIZE = "db.jdbc.streaming.results.fetch.size";
     public static final String DB_DELIMITED_IDENTIFIER_MODE = "db.delimited.identifier.mode";
     public static final String TARGET_DB_DELIMITED_IDENTIFIER_MODE = "target.db.delimited.identifier.mode";
@@ -365,6 +369,8 @@ final public class ParameterConstants {
     public static final String FILE_SYNC_COMPRESSION_LEVEL = "file.compression.level";
     public static final String FILE_SYNC_RETRY_COUNT = "file.sync.retry.count";
     public static final String FILE_SYNC_RETRY_DELAY_MS = "file.sync.retry.delay.ms";
+    public static final String FILE_SYNC_VERIFY_TARGET = "file.sync.verify.target";
+    public static final String FILE_SYNC_VERIFY_USE_CRC = "file.sync.verify.use.crc";
     public static final String BSH_LOAD_FILTER_HANDLES_MISSING_TABLES = "bsh.load.filter.handles.missing.tables";
     public static final String BSH_TRANSFORM_GLOBAL_SCRIPT = "bsh.transform.global.script";
     public static final String BSH_EXTENSION_GLOBAL_SCRIPT = "bsh.extension.global.script";
@@ -472,19 +478,19 @@ final public class ParameterConstants {
     public static final String SHOW_PIPELINES_VIEW = "console.show.pipelines.view";
     public final static String TRIGGER_CAPTURE_DDL_SEND_TABLE = "trigger.capture.ddl.send.table";
     // Collections of parameters:
-    public static final String DB_POOL_URL = "db.url";
-    public static final String DB_POOL_USER = "db.user";
     public static final String[] STARTUP_DB_OBJECTS_SETUP_PARAMS = new String[] {
             TRIGGER_CAPTURE_DDL_CHANGES,
             POSTGRES_TRIGGER_CAPTURE_TRUNCATE,
             TRIGGER_CAPTURE_DDL_CHECK_TRIGGER_HIST,
             TRIGGER_CAPTURE_DDL_DELIMITER,
-            DB_POOL_USER,
-            DB_POOL_URL,
-            LOAD_ONLY_PROPERTY_PREFIX + DB_POOL_URL };
+            "db.url", "db.user", // See DataSourceProperties class
+            LOAD_ONLY_PROPERTY_PREFIX + "db.url", LOAD_ONLY_PROPERTY_PREFIX + "db.user",
+            "mssql.use.ntypes.for.sync" // See ConsoleConstants class
+    };
     public static final String[] ALL_JDBC_PARAMS = new String[] { DB_FETCH_SIZE, DB_QUERY_TIMEOUT_SECS, JDBC_EXECUTE_BATCH_SIZE, JDBC_ISOLATION_LEVEL,
             JDBC_READ_STRINGS_AS_BYTES, TREAT_BINARY_AS_LOB_ENABLED, LOG_SLOW_SQL_THRESHOLD_MILLIS, LOG_SQL_PARAMETERS_INLINE,
-            INCLUDE_ROWIDENTIFIER_AS_COLUMN };
+            INCLUDE_ROWIDENTIFIER_AS_COLUMN
+    };
 
     public static Map<String, ParameterMetaData> getParameterMetaData() {
         return parameterMetaData;

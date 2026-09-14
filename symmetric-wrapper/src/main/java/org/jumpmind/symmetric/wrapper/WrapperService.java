@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -399,6 +399,10 @@ public abstract class WrapperService {
         ArrayList<String> cmd = new ArrayList<String>();
         String quote = isQuotedArguments ? getWrapperCommandQuote() : "";
         cmd.add(quote + config.getJavaCommand() + quote);
+        if (Platform.isWindows()) {
+            cmd.add("-Xms16m");
+            cmd.add("-Xmx64m");
+        }
         String tmpDir = System.getProperty("java.io.tmpdir");
         if (tmpDir != null && tmpDir.endsWith("\\")) {
             tmpDir = tmpDir.substring(0, tmpDir.length() - 1);

@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -71,6 +71,7 @@ import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.jumpmind.symmetric.transport.ServiceNotReadyException;
+import org.jumpmind.symmetric.transport.SyncDisabledException;
 import org.jumpmind.symmetric.transport.TransportUtils;
 import org.jumpmind.symmetric.web.WebConstants;
 import org.jumpmind.util.AppUtils;
@@ -124,6 +125,10 @@ public class InternalTransportManager extends AbstractTransportManager implement
 
     public IIncomingTransport getPullTransport(Node remote, final Node local, String securityToken,
             Map<String, String> requestProperties, String registrationUrl) throws IOException {
+        ISymmetricEngine targetEngine = getTargetEngine(remote.getSyncUrl());
+        if (targetEngine != null) {
+            checkSyncEnabled(targetEngine, local.getNodeId());
+        }
         final PipedOutputStream respOs = new PipedOutputStream();
         final PipedInputStream respIs = new PipedInputStream(respOs);
         final NodeChannels suspendIgnoreChannels = symmetricEngine.getConfigurationService()
@@ -244,6 +249,7 @@ public class InternalTransportManager extends AbstractTransportManager implement
         ISymmetricEngine targetEngine = getTargetEngine(remote.getSyncUrl());
         NodeChannels remoteNodeChannels = null;
         if (targetEngine != null) {
+            checkSyncEnabled(targetEngine, local.getNodeId());
             remoteNodeChannels = targetEngine.getConfigurationService().getSuspendIgnoreChannelLists(local.getNodeId());
         }
         final PipedOutputStream pushOs = new PipedOutputStream();
@@ -485,6 +491,20 @@ public class InternalTransportManager extends AbstractTransportManager implement
                     "Could not find the engine reference for the following url: " + url);
         } else {
             return engine;
+        }
+    }
+
+    protected void checkSyncEnabled(ISymmetricEngine targetEngine, String nodeId) {
+        INodeService targetNodeService = targetEngine.getNodeService();
+        Node targetNode = targetNodeService.findNode(nodeId, true);
+        if (targetNode == null) {
+            targetNode = targetNodeService.findNode(nodeId, false);
+        }
+        if (targetNode != null && !targetNode.isSyncEnabled()) {
+            NodeSecurity targetNodeSecurity = targetNodeService.findNodeSecurity(nodeId, true);
+            if (targetNodeSecurity == null || !targetNodeSecurity.isRegistrationEnabled()) {
+                throw new SyncDisabledException();
+            }
         }
     }
 

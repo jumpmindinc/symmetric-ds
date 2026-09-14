@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -52,6 +52,7 @@ import static org.jumpmind.symmetric.service.ClusterConstants.WATCHDOG;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Collection;
@@ -78,13 +79,14 @@ import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.Lock;
 import org.jumpmind.symmetric.model.NodeHost;
-import org.jumpmind.symmetric.cache.ClusteredCacheManager;
+import org.jumpmind.symmetric.cache.ClusterPartitionGenerator;
 import org.jumpmind.symmetric.cache.IClusteredCacheManager;
 import org.jumpmind.symmetric.service.IClusterInstanceGenerator;
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IExtensionService;
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,31 +105,36 @@ public class ClusterService extends AbstractService implements IClusterService {
     protected static String instanceId = null;
     protected INodeService nodeService;
     protected IExtensionService extensionService;
+    protected IStartupParameterService startupParameterService;
+    protected IClusteredCacheManager clusteredCacheManager;
     protected Map<String, Lock> lockCache = new ConcurrentHashMap<String, Lock>();
 
     public ClusterService(IParameterService parameterService, ISymmetricDialect dialect, INodeService nodeService,
-            IExtensionService extensionService) {
+            IExtensionService extensionService, IStartupParameterService startupParameterService, IClusteredCacheManager clusteredCacheManager) {
         super(parameterService, dialect);
         this.nodeService = nodeService;
         this.extensionService = extensionService;
+        this.startupParameterService = startupParameterService;
+        this.clusteredCacheManager = clusteredCacheManager;
         setSqlMap(new ClusterServiceSqlMap(symmetricDialect.getPlatform(), createSqlReplacementTokens()));
         initCache();
     }
 
     @Override
     public void init() {
-        if (parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED) && !isClusteringEnabled()) {
-            log.warn("Cluster lock is only available in SymmetricDS Pro.  Remove {} from engine properties or install SymmetricDS PRO license.",
+        boolean clusterLockingParameterValue = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
+        if (clusterLockingParameterValue && !isClusteringEnabled()
+                && StringUtils.isBlank(parameterService.getString(ParameterConstants.REGISTRATION_URL))) {
+            log.warn("Cluster lock is only available in SymmetricDS PRO. Remove {} from engine properties or install SymmetricDS PRO license.",
                     ParameterConstants.CLUSTER_LOCKING_ENABLED);
         }
-        boolean startedWithClusterLockingEnabled = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
-        boolean liveParameterValue = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
-        if (startedWithClusterLockingEnabled != liveParameterValue) {
+        boolean startedWithClusterLockingEnabled = clusteredCacheManager.isClusterLockingEnabled();
+        if (startedWithClusterLockingEnabled != clusterLockingParameterValue) {
             log.warn("{} is set to {} in the database (or environment/engine properties merged by IParameterService), but this node actually started "
                     + " with value={} because {} is resolved once from file/environment configuration before any node starts and is not "
-                    + "database-overridable. Update the file/environment configuration to match and restart to take effect; changing the database value "
-                    + "alone will have no effect.",
-                    ParameterConstants.CLUSTER_LOCKING_ENABLED, liveParameterValue, startedWithClusterLockingEnabled,
+                    + "database-overridable. Update the file/environment configuration to match and restart to take effect; "
+                    + "Setting this parameter in database is no longer supported.",
+                    ParameterConstants.CLUSTER_LOCKING_ENABLED, clusterLockingParameterValue, startedWithClusterLockingEnabled,
                     ParameterConstants.CLUSTER_LOCKING_ENABLED);
         }
         initInstanceId();
@@ -164,20 +171,21 @@ public class ClusterService extends AbstractService implements IClusterService {
             instanceIdURL = ClusterService.class.getClassLoader().getResource("/instance.uuid");
         }
         if (instanceIdFile != null) {
-            try {
-                instanceId = IOUtils.toString(new FileInputStream(instanceIdFile), Charset.defaultCharset()).trim();
+            try (FileInputStream in = new FileInputStream(instanceIdFile)) {
+                instanceId = IOUtils.toString(in, Charset.defaultCharset()).trim();
             } catch (Exception ex) {
                 log.debug("Failed to load instance id from file '" + instanceIdFile + "'", ex);
             }
         } else if (instanceIdURL != null) {
-            try {
-                instanceId = IOUtils.toString(instanceIdURL.openStream(), Charset.defaultCharset()).trim();
+            try (InputStream in = instanceIdURL.openStream()) {
+                instanceId = IOUtils.toString(in, Charset.defaultCharset()).trim();
             } catch (Exception ex) {
                 log.debug("Failed to load instance id from classpath '" + instanceIdURL + "'", ex);
             }
         }
         boolean isInstanceIdBlank = StringUtils.isBlank(instanceId);
-        if (isInstanceIdBlank || (generator != null && !generator.isValid(instanceId))) {
+        boolean isContainerized = "true".equals(System.getProperty(ServerConstants.CONTAINER_MODE_ENABLED));
+        if (isInstanceIdBlank || (!isContainerized && generator != null && !generator.isValid(instanceId))) {
             String newInstanceId = null;
             if (generator != null) {
                 newInstanceId = generator.generateInstanceId();
@@ -194,7 +202,9 @@ public class ClusterService extends AbstractService implements IClusterService {
             if (instanceIdFile != null) {
                 try {
                     instanceIdFile.getParentFile().mkdirs();
-                    IOUtils.write(newInstanceId, new FileOutputStream(instanceIdFile), Charset.defaultCharset());
+                    try (FileOutputStream out = new FileOutputStream(instanceIdFile)) {
+                        IOUtils.write(newInstanceId, out, Charset.defaultCharset());
+                    }
                 } catch (Exception ex) {
                     throw new SymmetricException("Failed to save file '" + instanceIdFile + "' Please correct and restart this node.", ex);
                 }
@@ -513,25 +523,7 @@ public class ClusterService extends AbstractService implements IClusterService {
     @Override
     public String getServerId() {
         if (StringUtils.isBlank(serverId)) {
-            serverId = parameterService.getString(ServerConstants.CLUSTER_SERVER_ID);
-            if (StringUtils.isBlank(serverId)) {
-                // JBoss uses this system property to identify a server in a
-                // cluster
-                serverId = System.getProperty("bind.address", null);
-            }
-            if (StringUtils.isBlank(serverId)) {
-                // JBoss uses this system property to identify a server in a
-                // cluster
-                serverId = System.getProperty("jboss.bind.address", null);
-            }
-            if (StringUtils.isBlank(serverId)) {
-                try {
-                    serverId = AppUtils.getHostName();
-                } catch (Exception ex) {
-                    serverId = "unknown";
-                }
-            }
-            serverId = StringUtils.left(serverId, 255);
+            serverId = ClusterPartitionGenerator.resolveServerId(startupParameterService);
             log.info("This node picked a server id of {}", serverId);
         }
         return serverId;
@@ -689,7 +681,7 @@ public class ClusterService extends AbstractService implements IClusterService {
         if (lockingServerId == null || getServerId().equals(lockingServerId)) {
             return false;
         }
-        IClusteredCacheManager cacheManager = ClusteredCacheManager.getInstance();
+        IClusteredCacheManager cacheManager = clusteredCacheManager;
         Set<String> active = cacheManager.getActiveServerIds();
         if (!active.isEmpty()) {
             return !active.contains(lockingServerId);
@@ -709,7 +701,7 @@ public class ClusterService extends AbstractService implements IClusterService {
         long obsoleteThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_OBSOLETE_MS);
         List<NodeHost> nodeHosts = nodeService.findNodeHosts(nodeId);
         if (nodeHosts != null) {
-            IClusteredCacheManager cacheManager = ClusteredCacheManager.getInstance();
+            IClusteredCacheManager cacheManager = clusteredCacheManager;
             for (NodeHost nodeHost : nodeHosts) {
                 if (nodeHost != null && isOwnerStale(nodeHost, obsoleteThresholdMs)) {
                     String hostName = nodeHost.getHostName();
@@ -736,7 +728,7 @@ public class ClusterService extends AbstractService implements IClusterService {
             return true;
         }
         if (lockingServerId != null && !getServerId().equals(lockingServerId)) {
-            boolean isNew = ClusteredCacheManager.getInstance().recordPeerOffline(lockingServerId);
+            boolean isNew = clusteredCacheManager.recordPeerOffline(lockingServerId);
             if (isNew) {
                 long staleThresholdMs = parameterService.getLong(ParameterConstants.CLUSTER_PEER_STALE_MS,
                         ServerConstants.CLUSTER_PEER_STALE_DEFAULT_MS);

@@ -3,12 +3,12 @@
 @REM license agreements.  See the NOTICE file distributed
 @REM with this work for additional information regarding
 @REM copyright ownership.  JumpMind Inc licenses this file
-@REM to you under the GNU General Public License, version 3.0 (GPLv3)
+@REM to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
 @REM (the "License"); you may not use this file except in compliance
 @REM with the License.
 @REM
-@REM You should have received a copy of the GNU General Public License,
-@REM version 3.0 (GPLv3) along with this library; if not, see
+@REM You should have received a copy of the GNU Affero General Public License,
+@REM version 3.0 (AGPLv3) along with this library; if not, see
 @REM <http://www.gnu.org/licenses/>.
 @REM
 @REM Unless required by applicable law or agreed to in writing,

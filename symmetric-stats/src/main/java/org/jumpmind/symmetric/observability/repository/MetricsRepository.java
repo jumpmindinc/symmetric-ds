@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -828,12 +828,12 @@ public class MetricsRepository extends AbstractService {
     static class DoubleStatsSqlRowMapper implements ISqlRowMapper<ISymIntervalStats> {
         @Override
         public ISymIntervalStats mapRow(Row row) {
-            java.sql.Timestamp startTimestamp = (java.sql.Timestamp) row.get("interval_start_time");
+            java.sql.Timestamp startTimestamp = row.getTimestamp("interval_start_time");
             long intervalStart = startTimestamp != null ? startTimestamp.getTime() : 0L;
             long intervalEnd = row.getLong("interval_end_millis");
-            double avg = rowDouble(row, "avg"); // The time-weighted average
-            double min = rowDouble(row, "min");
-            double max = rowDouble(row, "max");
+            double avg = rowDouble(row, "avg_value"); // The time-weighted average
+            double min = rowDouble(row, "min_value");
+            double max = rowDouble(row, "max_value");
             double stdDev = rowDouble(row, "std_dev");
             int observationCount = row.getInt("observation_count");
             double mean = rowDouble(row, "mean");

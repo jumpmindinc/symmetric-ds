@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.db;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
-import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.ext.ISymmetricEngineAware;
@@ -66,7 +65,7 @@ public class SoftwareUpgradeListener implements ISoftwareUpgradeListener, ISymme
             }
         }
         if (Version.isOlderThanVersion(databaseVersion, "3.18.0")) {
-            boolean startupValue = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
+            boolean startupValue = engine.getClusteredCacheManager().isClusterLockingEnabled();
             boolean oldDbValue = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
             parameterService.saveParameter(ParameterConstants.CLUSTER_LOCKING_ENABLED, startupValue, "upgrade");
             if (oldDbValue != startupValue) {

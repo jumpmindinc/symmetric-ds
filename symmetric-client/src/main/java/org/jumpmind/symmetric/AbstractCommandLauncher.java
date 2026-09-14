@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -27,6 +27,10 @@ import java.io.PrintWriter;
 import java.security.Provider;
 import java.security.Security;
 import java.sql.Connection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import javax.sql.DataSource;
 
@@ -46,6 +50,8 @@ import org.jumpmind.security.SecurityConstants;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
+import org.jumpmind.symmetric.model.StartupParameter.Source;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.transport.TransportManagerFactory;
 import org.jumpmind.symmetric.util.LogSummaryAppenderUtils;
 import org.jumpmind.symmetric.util.PropertiesUtil;
@@ -105,18 +111,26 @@ public abstract class AbstractCommandLauncher {
 
     protected static void initFromServerProperties() {
         if (!serverPropertiesInitialized) {
+            IStartupParameterService startupParameterService = ServiceRegistry.getInstance().getStartupParameterService();
             File serverPropertiesFile = new File(DEFAULT_SERVER_PROPERTIES);
             if (!serverPropertiesFile.exists()) {
                 log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". File does not exist.");
+                startupParameterService.registerGlobal(new TypedProperties(), new HashMap<String, Source>());
                 return;
             }
             if (!serverPropertiesFile.isFile()) {
                 log.debug("Failed to load " + DEFAULT_SERVER_PROPERTIES + ". Object is not a file.");
+                startupParameterService.registerGlobal(new TypedProperties(), new HashMap<String, Source>());
                 return;
             }
             TypedProperties serverProperties = new TypedProperties(serverPropertiesFile);
+            Set<String> keysFromServerPropertiesFile = new HashSet<String>(serverProperties.stringPropertyNames());
             TypedPropertiesFactory.mergeAndOverrideWithJvmAndEnvironmentVariables(serverProperties, false);
-            System.getProperties().putAll(serverProperties);
+            Map<String, Source> knownFileSources = new HashMap<String, Source>();
+            for (String key : keysFromServerPropertiesFile) {
+                knownFileSources.put(key, Source.SYMMETRIC_SERVER_PROPERTIES);
+            }
+            startupParameterService.registerGlobal(serverProperties, knownFileSources);
             serverPropertiesInitialized = true;
         }
     }
@@ -238,13 +252,16 @@ public abstract class AbstractCommandLauncher {
     }
 
     protected void configureCrypto(CommandLine line) throws Exception {
+        IStartupParameterService startupParameterService = ServiceRegistry.getInstance().getStartupParameterService();
         if (line.hasOption(OPTION_KEYSTORE_PASSWORD)) {
             System.setProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD,
                     line.getOptionValue(OPTION_KEYSTORE_PASSWORD));
+            startupParameterService.refreshSystemProperty(SecurityConstants.SYSPROP_KEYSTORE_PASSWORD);
         }
         if (line.hasOption(OPTION_KEYSTORE_TYPE)) {
             System.setProperty(SystemConstants.SYSPROP_KEYSTORE_TYPE,
                     line.getOptionValue(OPTION_KEYSTORE_TYPE));
+            startupParameterService.refreshSystemProperty(SystemConstants.SYSPROP_KEYSTORE_TYPE);
         }
         if (line.hasOption(OPTION_JCE_PROVIDER)) {
             Provider provider = (Provider) Class.forName(line.getOptionValue(OPTION_JCE_PROVIDER))

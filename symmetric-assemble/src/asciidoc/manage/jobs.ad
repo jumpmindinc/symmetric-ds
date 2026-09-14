@@ -144,10 +144,18 @@ The Initial Load Extract Job processes <<EXTRACT_REQUEST>>s.  See <<Initial Load
 
 ==== Refresh Backlog Report Job
 
-The Refresh Backlog Report Job queries <<OUTGOING_BATCH>> to compute batch and row counts (by node and batch status) to update the outgoing backlog metrics gauges.
+The Refresh Backlog Report Job queries <<OUTGOING_BATCH>> and <<INCOMING_BATCH>> to compute batch and row counts (by node and batch status) to update the batch status metrics gauges.
 
 ifdef::pro[]
 Also, this job saves a snapshot of the outgoing backlog to the <<ANALYTICS_REPORT>> table, which is displayed under the Analytics tab.
+
+==== Refresh Unrouted Data Metrics Job
+
+The Refresh Unrouted Data Metrics Job queries <<DATA>> for the oldest and most recent create time of unrouted
+rows, grouped by channel, to update the `rows.create.time.min` and `rows.create.time.max` metrics.
+
+When `routing.collect.stats.unrouted` is enabled, this job also counts unrouted rows per channel to update the
+`rows.unrouted.channel.count` metric and the `sym_node_host_channel_stats.data_unrouted` column.
 
 ==== Compare Job
 

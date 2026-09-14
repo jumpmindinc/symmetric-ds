@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -46,12 +46,13 @@ class DataSourceFactoryTest {
     void createWithDefault() {
         TypedProperties properties = buildH2Properties();
         DataSource ds = DataSourceFactory.create(properties);
-        assertInstanceOf(ResettableBasicDataSource.class, ds);
+        assertInstanceOf(HikariDataSource.class, ds);
     }
 
     @Test
     void createAppliesPoolProperties() {
         TypedProperties properties = buildH2Properties();
+        properties.setProperty(DataSourceProperties.DB_POOL_TYPE, Dbcp2Builder.TYPE);
         properties.setProperty(DataSourceProperties.DB_POOL_INITIAL_SIZE, "3");
         properties.setProperty(DataSourceProperties.DB_POOL_MAX_ACTIVE, "15");
         properties.setProperty(DataSourceProperties.DB_POOL_MAX_IDLE, "5");

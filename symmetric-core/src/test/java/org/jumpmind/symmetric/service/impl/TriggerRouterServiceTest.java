@@ -4,11 +4,15 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -20,8 +24,12 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
+import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.IIndex;
+import org.jumpmind.db.model.IndexColumn;
 import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
+import org.jumpmind.db.model.UniqueIndex;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -50,6 +58,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 
 public class TriggerRouterServiceTest {
@@ -658,5 +667,111 @@ public class TriggerRouterServiceTest {
             Relation r = invocation.getArgument(0);
             return r.getCatalog() + "." + r.getSchema() + "." + r.getName();
         }).when(spy).getFullyQualifiedName(ArgumentMatchers.any(Relation.class));
+    }
+
+    private Trigger newTrigger(String triggerId, String tableName) {
+        Trigger trigger = new Trigger();
+        trigger.setTriggerId(triggerId);
+        trigger.setSourceTableName(tableName);
+        return trigger;
+    }
+
+    @Test
+    void testGetFilteredRelationFromExcludeAndIncludeColumns_noPrimaryKey_synthesizesPrimaryKeys() {
+        TriggerRouterService service = buildService();
+        Trigger trigger = newTrigger("test_table", "test_table");
+        Table sourceTable = new Table("test_table");
+        sourceTable.addColumn(new Column("col1"));
+        sourceTable.addColumn(new Column("col2"));
+        Table allColumnsPkTable = new Table("test_table");
+        Column pk1 = new Column("col1");
+        pk1.setPrimaryKey(true);
+        Column pk2 = new Column("col2");
+        pk2.setPrimaryKey(true);
+        allColumnsPkTable.addColumn(pk1);
+        allColumnsPkTable.addColumn(pk2);
+        when(platform.makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class))).thenReturn(allColumnsPkTable);
+        Relation result = service.getFilteredRelationFromExcludeAndIncludeColumns(sourceTable, trigger);
+        // A table with no primary key among the synced columns gets a synthetic key, and that result is returned.
+        verify(platform, times(1)).makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class));
+        assertSame(allColumnsPkTable, result);
+    }
+
+    @Test
+    void testGetFilteredRelationFromExcludeAndIncludeColumns_withPrimaryKey_doesNotSynthesizePrimaryKeys() {
+        TriggerRouterService service = buildService();
+        Trigger trigger = newTrigger("test_table", "test_table");
+        Table sourceTable = new Table("test_table");
+        Column idColumn = new Column("id");
+        idColumn.setPrimaryKey(true);
+        sourceTable.addColumn(idColumn);
+        sourceTable.addColumn(new Column("name"));
+        Relation result = service.getFilteredRelationFromExcludeAndIncludeColumns(sourceTable, trigger);
+        // A real primary key is present among the synced columns, so no synthetic key is generated and the relation is unchanged.
+        verify(platform, never()).makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class));
+        assertSame(sourceTable, result);
+    }
+
+    private Table buildTableWithUniqueIndexOnExcludedColumn() {
+        Table sourceTable = new Table("test_table");
+        sourceTable.addColumn(new Column("id"));
+        sourceTable.addColumn(new Column("status"));
+        UniqueIndex uniqueIndex = new UniqueIndex("status_uidx");
+        uniqueIndex.addColumn(new IndexColumn("status"));
+        sourceTable.addIndex(uniqueIndex);
+        return sourceTable;
+    }
+
+    @Test
+    void testGetFilteredRelationFromExcludeAndIncludeColumns_excludedUniqueIndexColumn_filtersColumnsBeforeSynthesizingPk() {
+        TriggerRouterService service = buildService();
+        Trigger trigger = newTrigger("test_table", "test_table");
+        trigger.setExcludedColumnNames("status");
+        Table sourceTable = buildTableWithUniqueIndexOnExcludedColumn();
+        Table synthesized = new Table("test_table");
+        Column synthesizedPk = new Column("id");
+        synthesizedPk.setPrimaryKey(true);
+        synthesized.addColumn(synthesizedPk);
+        ArgumentCaptor<Relation> captor = ArgumentCaptor.forClass(Relation.class);
+        when(platform.makeAllColumnsPrimaryKeys(captor.capture())).thenReturn(synthesized);
+        service.getFilteredRelationFromExcludeAndIncludeColumns(sourceTable, trigger);
+        verify(platform, times(1)).makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class));
+        Table passedToSynthesis = (Table) captor.getValue();
+        assertNotNull(passedToSynthesis.getColumnWithName("id"));
+        assertNull(passedToSynthesis.getColumnWithName("status"));
+        assertEquals(0, passedToSynthesis.getUniqueIndices().length);
+    }
+
+    @Test
+    void testGetFilteredRelationFromExcludeAndIncludeColumns_excludedUniqueIndexColumn_producesNonBlankPrimaryKey() {
+        TriggerRouterService service = buildService();
+        Trigger trigger = newTrigger("test_table", "test_table");
+        trigger.setExcludedColumnNames("status");
+        Table sourceTable = buildTableWithUniqueIndexOnExcludedColumn();
+        when(platform.makeAllColumnsPrimaryKeys(ArgumentMatchers.any(Relation.class))).thenAnswer(invocation -> {
+            Table passed = (Table) invocation.getArgument(0);
+            Table result = passed.copy();
+            IIndex[] uniqueIndices = result.getUniqueIndices();
+            if (uniqueIndices != null && uniqueIndices.length > 0) {
+                for (IndexColumn indexColumn : uniqueIndices[0].getColumns()) {
+                    Column column = result.getColumnWithName(indexColumn.getName());
+                    if (column != null) {
+                        column.setPrimaryKey(true);
+                    }
+                }
+            } else {
+                for (Column column : result.getColumns()) {
+                    column.setPrimaryKey(true);
+                }
+                result.setMadeAllColumnsPrimaryKey(true);
+            }
+            return result;
+        });
+        Table resultTable = (Table) service.getFilteredRelationFromExcludeAndIncludeColumns(sourceTable, trigger);
+        Column[] pkColumns = trigger.filterExcludedAndIncludedColumns(trigger.getSyncKeysColumnsForTable(resultTable));
+        String pkColumnNames = Table.getCommaDeliminatedColumns(pkColumns);
+        assertFalse(pkColumnNames.isEmpty());
+        assertEquals(1, pkColumns.length);
+        assertEquals("id", pkColumns[0].getName());
     }
 }

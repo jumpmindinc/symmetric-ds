@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -74,7 +74,9 @@ import com.vaadin.flow.function.ValueProvider;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.ClickEvent;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ComponentEventListener;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.KeyModifier;
 import com.vaadin.flow.component.Shortcuts;
@@ -179,7 +181,7 @@ public class TabularResultLayout extends VerticalLayout {
             menu.addItem(ACTION_UPDATE, event -> handleAction(ACTION_UPDATE));
             menu.addItem(ACTION_DELETE, event -> handleAction(ACTION_DELETE));
             if (resultRelation instanceof Table table && table.getForeignKeyCount() > 0) {
-                followToMenu = menu.addItem("Follow to", null);
+                followToMenu = menu.addItem("Follow to", (ComponentEventListener<ClickEvent<MenuItem>>) null);
                 buildFollowToMenu();
             }
             Editor<List<Object>> editor = grid.getEditor();

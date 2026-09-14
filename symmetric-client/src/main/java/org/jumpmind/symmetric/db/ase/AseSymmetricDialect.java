@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -39,6 +39,7 @@ import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.JdbcSqlTemplate;
 import org.jumpmind.db.sql.JdbcSqlTransaction;
 import org.jumpmind.db.sql.SqlException;
+import org.jumpmind.db.sql.SqlUtils;
 import org.jumpmind.db.util.BinaryEncoding;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -197,8 +198,8 @@ public class AseSymmetricDialect extends AbstractSymmetricDialect implements ISy
     @Override
     public void removeTrigger(StringBuilder sqlBuffer, final String catalogName, String schemaName,
             final String triggerName, String tableName, ISqlTransaction transaction) {
-        schemaName = schemaName == null ? "" : (schemaName + ".");
-        final String sql = "drop trigger " + schemaName + triggerName;
+        schemaName = schemaName == null ? "" : (SqlUtils.sanitizeIdentifier(schemaName) + ".");
+        final String sql = "drop trigger " + schemaName + SqlUtils.sanitizeIdentifier(triggerName);
         logSql(sql, sqlBuffer);
         if (parameterService.is(ParameterConstants.AUTO_SYNC_TRIGGERS) && sqlBuffer == null) {
             if (log.isInfoEnabled()) {

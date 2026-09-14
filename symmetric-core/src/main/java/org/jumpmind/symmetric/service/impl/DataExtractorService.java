@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.service.impl;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.jumpmind.symmetric.common.Constants.LOG_PROCESS_SUMMARY_THRESHOLD;
 
-import org.jumpmind.db.platform.IDatabasePlatform;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -60,7 +59,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipException;
-import org.jumpmind.db.model.Relation;
+
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 
@@ -69,8 +68,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DdlBuilderFactory;
+import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.IDdlBuilder;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
@@ -205,6 +206,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
     private IClusterService clusterService;
     private Map<String, BatchLock> locks = new ConcurrentHashMap<String, BatchLock>();
     private CustomizableThreadFactory threadPoolFactory;
+    private final Set<Long> deferredConstraintsSentForLoads;
     private long backOffCount;
 
     public DataExtractorService(ISymmetricEngine engine) {
@@ -223,6 +225,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         this.clusterService = engine.getClusterService();
         this.sequenceService = engine.getSequenceService();
         this.initialLoadService = engine.getInitialLoadService();
+        this.deferredConstraintsSentForLoads = ConcurrentHashMap.newKeySet();
         setSqlMap(new DataExtractorServiceSqlMap(symmetricDialect.getPlatform(),
                 createSqlReplacementTokens()));
     }
@@ -587,6 +590,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             Set<String> channelsProcessed = new HashSet<String>();
             long batchesSelectedAtMs = System.currentTimeMillis();
             OutgoingBatch currentBatch = null;
+            boolean isSendPhaseError = false;
             ExecutorService executor = null;
             Node sourceNode = nodeService.findIdentity();
             try {
@@ -706,6 +710,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                             writeKeepAliveAck(writer, sourceNode, streamToFileEnabled);
                         } catch (Exception e) {
                             if (transferInfo != null && transferInfo.getStatus() != ProcessStatus.OK) {
+                                isSendPhaseError = transferInfo.getStatus() == ProcessStatus.TRANSFERRING;
                                 transferInfo.setStatus(ProcessStatus.ERROR);
                             }
                             if (ExceptionUtils.is(e, BadPaddingException.class, IllegalBlockSizeException.class)) {
@@ -769,7 +774,11 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                         if (currentBatch.getStatus() != Status.IG && currentBatch.getStatus() != Status.OK) {
                             currentBatch.setStatus(Status.ER);
                             currentBatch.setErrorFlag(isNewErrorStaging ? false : true);
-                            statisticManager.incrementDataExtractedErrors(currentBatch.getChannelId(), 1);
+                            if (isSendPhaseError) {
+                                statisticManager.incrementDataSentErrors(currentBatch.getChannelId(), 1);
+                            } else {
+                                statisticManager.incrementDataExtractedErrors(currentBatch.getChannelId(), 1);
+                            }
                             extractInfo.setStatus(ProcessInfo.ProcessStatus.ERROR);
                         }
                         outgoingBatchService.updateOutgoingBatch(currentBatch);
@@ -1557,13 +1566,19 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         TableReloadStatus status = dataService.updateTableReloadStatusDataLoaded(transaction,
                 outgoingBatch.getLoadId(), engine.getNodeId(), outgoingBatch.getBatchId(), 1, outgoingBatch.isBulkLoaderFlag());
         if (status != null && (status.isCancelled() || status.isCompleted())) {
-            if (status.isFullLoad()) {
-                log.info("Initial load ended for node {}, load ID {}", outgoingBatch.getNodeId(), status.getLoadId());
-                nodeService.setInitialLoadEnded(transaction, outgoingBatch.getNodeId());
-            } else {
-                log.info("Partial load ended for node {}, load ID {}", outgoingBatch.getNodeId(), status.getLoadId());
-                nodeService.setPartialLoadEnded(transaction, outgoingBatch.getNodeId());
-            }
+            handleLoadTerminated(transaction, status, outgoingBatch.getNodeId());
+        }
+    }
+
+    protected void handleLoadTerminated(ISqlTransaction transaction, TableReloadStatus status, String nodeId) {
+        log.debug("Removing loadID from Set deferredConstraintsSentForLoads in order to prevent accumulation");
+        deferredConstraintsSentForLoads.remove((long) status.getLoadId());
+        if (status.isFullLoad()) {
+            log.info("Initial load ended for node {}, load ID {}", nodeId, status.getLoadId());
+            nodeService.setInitialLoadEnded(transaction, nodeId);
+        } else {
+            log.info("Partial load ended for node {}, load ID {}", nodeId, status.getLoadId());
+            nodeService.setPartialLoadEnded(transaction, nodeId);
         }
     }
 
@@ -2205,6 +2220,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             if (incompleteExtractRequestsCount > 0) {
                 log.info("Skipped sending deferred constraints for load {} because {} export thread(s) are not done yet",
                         loadId, incompleteExtractRequestsCount);
+                return;
+            }
+            if (!deferredConstraintsSentForLoads.add(loadId)) {
+                log.debug("Deferred constraints for load {} were already sent by another extract thread", loadId);
                 return;
             }
         }

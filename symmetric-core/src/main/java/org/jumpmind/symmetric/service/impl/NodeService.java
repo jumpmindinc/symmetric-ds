@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -41,7 +41,6 @@ import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.db.sql.mapper.StringMapper;
 import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
@@ -263,7 +262,7 @@ public class NodeService extends AbstractService implements INodeService {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
         }
         nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId(),
-                ClusteredCacheManager.getInstance().getClusterPartitionId());
+                engine.getClusteredCacheManager().getClusterPartitionId());
         log.debug("Updating NodeHost for current node: nodeId={}, hostname={}, ip={}, partition={}",
                 nodeHostForCurrentNode.getNodeId(), nodeHostForCurrentNode.getHostName(),
                 nodeHostForCurrentNode.getIpAddress(), nodeHostForCurrentNode.getClusterPartitionId());
@@ -276,7 +275,7 @@ public class NodeService extends AbstractService implements INodeService {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
         }
         nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId(),
-                ClusteredCacheManager.getInstance().getClusterPartitionId());
+                engine.getClusteredCacheManager().getClusterPartitionId());
         updateNodeHost(transaction, nodeHostForCurrentNode);
     }
 

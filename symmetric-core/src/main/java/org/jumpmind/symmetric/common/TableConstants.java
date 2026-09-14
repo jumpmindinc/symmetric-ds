@@ -3,12 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
- * to you under the GNU General Public License, version 3.0 (GPLv3)
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -100,6 +100,7 @@ public class TableConstants {
     public static final String SYM_METRIC_STATS_FLOAT64 = "metric_stats_float64";
     public static final String SYM_METRIC_STATS_INT64 = "metric_stats_int64";
     public static final String SYM_METRIC_CONTEXT = "metric_context";
+    public static final String SYM_PERF_TEST = "perf_test";
     protected static boolean hasConsoleSchema = TableConstants.class.getResourceAsStream("/console-schema.xml") != null;
     /**
      * Historical list of decommissioned SymmetricDS tables. Used to filter configuration files produced by older versions. See getRemovedConfigTables:
@@ -133,7 +134,8 @@ public class TableConstants {
         Set<String> tables = new HashSet<String>();
         addPrefixToTableNames(tables, tablePrefix, SYM_CONSOLE_EVENT, SYM_CONSOLE_USER, SYM_CONSOLE_USER_HIST, SYM_CONSOLE_USER_PREFERENCE,
                 SYM_CONSOLE_ROLE, SYM_CONSOLE_ROLE_PRIVILEGE, SYM_CONSOLE_TABLE_STATS, SYM_TABLE_GROUP, SYM_TABLE_GROUP_HIER,
-                SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS, SYM_COMPARE_TABLE_STATUS, SYM_MONITOR, SYM_MONITOR_EVENT, SYM_NOTIFICATION, SYM_ANALYTICS_REPORT);
+                SYM_COMPARE_REQUEST, SYM_COMPARE_STATUS, SYM_COMPARE_TABLE_STATUS, SYM_MONITOR, SYM_MONITOR_EVENT, SYM_NOTIFICATION, SYM_ANALYTICS_REPORT,
+                SYM_PERF_TEST);
         return tables;
     }
 
