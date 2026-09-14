@@ -363,22 +363,8 @@ public class RegistrationService extends AbstractService implements IRegistratio
     protected boolean registerNodeExclusively(Node nodePriorToRegistration, String remoteHost,
             String remoteAddress, OutputStream out, String userId, String password, boolean isRequestedRegistration)
             throws IOException {
-        if (parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)) {
-            NodeGroupLink link = configurationService.getNodeGroupLinkFor(parameterService.getNodeGroupId(), nodePriorToRegistration.getNodeGroupId(), false);
-            if (link != null && link.getDataEventAction() == NodeGroupLinkAction.P) {
-                String nodeId = StringUtils.isBlank(nodePriorToRegistration.getNodeId()) ? extensionService.getExtensionPoint(INodeIdCreator.class)
-                        .selectNodeId(
-                                nodePriorToRegistration, remoteHost, remoteAddress) : nodePriorToRegistration.getNodeId();
-                NodeSecurity nodeSecurity = nodeService.findNodeSecurity(nodeId);
-                if (nodeSecurity != null && nodeSecurity.isRegistrationEnabled() && nodeSecurity.getRegistrationTime() != null) {
-                    // Make sure sync URL is set before skipping this registration request
-                    Node node = nodeService.findNode(nodeId);
-                    if (node != null && node.getSyncUrl() != null && node.getSyncUrl().length() > 0) {
-                        log.debug("Pull of registration from {} is being ignored because group link is push", nodePriorToRegistration);
-                        return true;
-                    }
-                }
-            }
+        if (isRegistrationPushedToNode(nodePriorToRegistration, remoteHost, remoteAddress)) {
+            return true;
         }
         Node processedNode = processRegistration(nodePriorToRegistration, remoteHost,
                 remoteAddress, userId, password, isRequestedRegistration);
@@ -389,6 +375,29 @@ public class RegistrationService extends AbstractService implements IRegistratio
             extractConfiguration(out, processedNode);
         }
         return processedNode.isSyncEnabled();
+    }
+
+    protected boolean isRegistrationPushedToNode(Node nodePriorToRegistration, String remoteHost, String remoteAddress) {
+        if (!parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)) {
+            return false;
+        }
+        NodeGroupLink link = configurationService.getNodeGroupLinkFor(parameterService.getNodeGroupId(), nodePriorToRegistration.getNodeGroupId(), false);
+        if (link == null || link.getDataEventAction() != NodeGroupLinkAction.P) {
+            return false;
+        }
+        String nodeId = StringUtils.isBlank(nodePriorToRegistration.getNodeId())
+                ? extensionService.getExtensionPoint(INodeIdCreator.class).selectNodeId(nodePriorToRegistration, remoteHost, remoteAddress)
+                : nodePriorToRegistration.getNodeId();
+        NodeSecurity nodeSecurity = nodeService.findNodeSecurity(nodeId);
+        if (nodeSecurity == null || !nodeSecurity.isRegistrationEnabled() || nodeSecurity.getRegistrationTime() == null) {
+            return false;
+        }
+        Node node = nodeService.findNode(nodeId);
+        boolean hasSyncUrl = node != null && StringUtils.isNotBlank(node.getSyncUrl());
+        if (hasSyncUrl) {
+            log.debug("Pull of registration from {} is being ignored because group link is push", nodePriorToRegistration);
+        }
+        return hasSyncUrl;
     }
 
     @Override

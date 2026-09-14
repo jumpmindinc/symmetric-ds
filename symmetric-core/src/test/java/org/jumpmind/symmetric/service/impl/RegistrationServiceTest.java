@@ -466,6 +466,57 @@ class RegistrationServiceTest {
     }
 
     @Test
+    void isRegistrationPushedToNodeIsFalseWhenPushConfigNotAllowed() {
+        when(parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)).thenReturn(false);
+        assertFalse(service.isRegistrationPushedToNode(buildClientNode(), null, null));
+        verify(configurationService, never()).getNodeGroupLinkFor(anyString(), anyString(), anyBoolean());
+    }
+
+    @Test
+    void isRegistrationPushedToNodeIsFalseWhenGroupLinkIsPull() {
+        when(parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)).thenReturn(true);
+        when(parameterService.getNodeGroupId()).thenReturn(TEST_SERVER_GROUP);
+        NodeGroupLink pullLink = new NodeGroupLink(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME);
+        pullLink.setDataEventAction(NodeGroupLinkAction.W);
+        when(configurationService.getNodeGroupLinkFor(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME, false)).thenReturn(pullLink);
+        assertFalse(service.isRegistrationPushedToNode(buildClientNode(), null, null));
+        verify(nodeService, never()).findNodeSecurity(anyString());
+    }
+
+    @Test
+    void isRegistrationPushedToNodeIsFalseWhenRegistrationNotPending() {
+        setupPushLinkForClient();
+        NodeSecurity openSecurity = buildClientSecurity();
+        openSecurity.setRegistrationTime(null);
+        when(nodeService.findNodeSecurity(TEST_CLIENT_EXTERNAL_ID)).thenReturn(openSecurity);
+        assertFalse(service.isRegistrationPushedToNode(buildClientNode(), null, null));
+    }
+
+    @Test
+    void isRegistrationPushedToNodeIsFalseWhenNodeHasNoSyncUrl() {
+        setupPushLinkForClient();
+        NodeSecurity pendingSecurity = buildClientSecurity();
+        pendingSecurity.setRegistrationTime(new Date());
+        when(nodeService.findNodeSecurity(TEST_CLIENT_EXTERNAL_ID)).thenReturn(pendingSecurity);
+        Node clientNode = buildClientNode();
+        clientNode.setSyncUrl("");
+        when(nodeService.findNode(TEST_CLIENT_EXTERNAL_ID)).thenReturn(clientNode);
+        assertFalse(service.isRegistrationPushedToNode(clientNode, null, null));
+    }
+
+    @Test
+    void isRegistrationPushedToNodeIsTrueWhenPushLinkAndPendingRegistrationWithSyncUrl() {
+        setupPushLinkForClient();
+        NodeSecurity pendingSecurity = buildClientSecurity();
+        pendingSecurity.setRegistrationTime(new Date());
+        when(nodeService.findNodeSecurity(TEST_CLIENT_EXTERNAL_ID)).thenReturn(pendingSecurity);
+        Node clientNode = buildClientNode();
+        clientNode.setSyncUrl("http://client/sync");
+        when(nodeService.findNode(TEST_CLIENT_EXTERNAL_ID)).thenReturn(clientNode);
+        assertTrue(service.isRegistrationPushedToNode(clientNode, null, null));
+    }
+
+    @Test
     void registerNodeExtractsConfigurationWhenSyncEnabled() throws IOException {
         setupHappyPath();
         Node node = buildClientNode();
@@ -823,6 +874,14 @@ class RegistrationServiceTest {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.ER);
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
         assertFalse(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
+    private void setupPushLinkForClient() {
+        when(parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)).thenReturn(true);
+        when(parameterService.getNodeGroupId()).thenReturn(TEST_SERVER_GROUP);
+        NodeGroupLink pushLink = new NodeGroupLink(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME);
+        pushLink.setDataEventAction(NodeGroupLinkAction.P);
+        when(configurationService.getNodeGroupLinkFor(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME, false)).thenReturn(pushLink);
     }
 
     private void setupOpenRegistrationFor(String nodeId) {
