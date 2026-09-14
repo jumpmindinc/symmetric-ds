@@ -142,6 +142,8 @@ class FileIncomingTransportTest {
         FileIncomingTransport transport = new FileIncomingTransport(remoteNode, localNode, "unused", null, null);
         transport.complete(true);
         transport.complete(false);
+        assertNull(transport.incomingFile);
+        assertTrue(transport.isOpen());
     }
 
     @Test

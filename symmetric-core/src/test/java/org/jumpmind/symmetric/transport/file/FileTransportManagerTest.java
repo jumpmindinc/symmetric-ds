@@ -58,7 +58,8 @@ class FileTransportManagerTest {
     void setUp() {
         engine = mock(ISymmetricEngine.class);
         parameterService = mock(IParameterService.class);
-        when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
         when(engine.getParameterService()).thenReturn(parameterService);
         transportManager = new FileTransportManager(engine);
         remoteNode = new Node("node2", "store");
