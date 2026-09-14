@@ -27,4 +27,27 @@ apply from: symAssembleDir + '/common.gradle'
         testImplementation project(path: ':symmetric-jdbc', configuration: 'testArtifacts')
         testImplementation project(':symmetric-jdbc').sourceSets.test.output
         testImplementation project(':symmetric-jdbc').sourceSets.main.output
+
+        testImplementation ("com.datastax.cassandra:cassandra-driver-core:3.11.5") {
+            exclude group: 'org.slf4j'
+            exclude group: 'com.google.guava'
+            exclude group: 'io.netty'
+            exclude group: 'com.fasterxml.jackson.core'
+        }
+        testImplementation ("org.apache.kafka:kafka-clients:4.1.1") {
+            exclude group: 'log4j'
+            exclude group: 'org.slf4j'
+        }
+        testImplementation ("io.confluent:kafka-avro-serializer:8.1.1") {
+            exclude group: 'com.fasterxml.jackson.core'
+            exclude group: 'com.fasterxml.jackson.dataformat'
+            exclude group: 'com.fasterxml.jackson.databind'
+            exclude group: 'log4j'
+            exclude group: 'org.slf4j'
+            exclude group: 'io.netty'
+        }
+        testImplementation ("org.apache.avro:avro:1.12.1") {
+            exclude group: 'log4j'
+            exclude group: 'org.slf4j'
+        }
     }
