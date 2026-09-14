@@ -385,7 +385,8 @@ class ConfigurationChangedDatabaseWriterFilterTest {
         Batch batch = new Batch(BatchType.LOAD, 1L, null, null, "sourceNode", nodeId, false);
         context.setBatch(batch);
         when(parameterService.is(ParameterConstants.TRIGGER_CREATE_BEFORE_INITIAL_LOAD)).thenReturn(triggerCreateBeforeInitialLoad);
-        when(engine.getRegistrationService()).thenReturn(mock(IRegistrationService.class));
+        IRegistrationService registrationService = mock(IRegistrationService.class);
+        when(engine.getRegistrationService()).thenReturn(registrationService);
         Table nodeSecurityTable = newNodeSecurityTable();
         CsvData updateData = new CsvData(DataEventType.UPDATE);
         updateData.putParsedData(CsvData.ROW_DATA,
