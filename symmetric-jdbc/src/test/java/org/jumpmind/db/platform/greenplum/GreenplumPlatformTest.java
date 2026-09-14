@@ -21,15 +21,55 @@
 package org.jumpmind.db.platform.greenplum;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 
+import javax.sql.DataSource;
+
+import org.jumpmind.db.platform.DatabaseNamesConstants;
+import org.jumpmind.db.sql.SqlTemplateSettings;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class GreenplumPlatformTest {
+    private GreenplumPlatform platform;
+
+    @BeforeEach
+    void setUp() {
+        DataSource dataSourceMock = mock(DataSource.class);
+        platform = new GreenplumPlatform(dataSourceMock, new SqlTemplateSettings());
+    }
+
     @Test
     void testGetClassName() {
-        GreenplumPlatform platform = mock(GreenplumPlatform.class, CALLS_REAL_METHODS);
-        assertEquals(GreenplumPlatform.class.getName(), platform.getClassName());
+        GreenplumPlatform mockedPlatform = mock(GreenplumPlatform.class, CALLS_REAL_METHODS);
+        assertEquals(GreenplumPlatform.class.getName(), mockedPlatform.getClassName());
+    }
+
+    @Test
+    void testGetName() {
+        assertEquals(DatabaseNamesConstants.GREENPLUM, platform.getName());
+    }
+
+    @Test
+    void testCreateDdlBuilder() {
+        assertInstanceOf(GreenplumDdlBuilder.class, platform.createDdlBuilder());
+    }
+
+    @Test
+    void testCreateDdlReader() {
+        assertInstanceOf(GreenplumDdlReader.class, platform.createDdlReader());
+    }
+
+    @Test
+    void testCreateSqlTemplate() {
+        assertInstanceOf(GreenplumJdbcSqlTemplate.class, platform.createSqlTemplate());
+    }
+
+    @Test
+    void testDetectionQueries() {
+        assertEquals("select count(*) from information_schema.tables where table_name = 'gp_id'", GreenplumPlatform.SQL_GET_GREENPLUM_COUNT);
+        assertEquals("select productversion from gp_version_at_initdb", GreenplumPlatform.SQL_GET_GREENPLUM_VERSION);
     }
 }

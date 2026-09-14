@@ -1,10 +1,18 @@
 package org.jumpmind.symmetric.db;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.jumpmind.db.DbTestUtils;
 import org.jumpmind.db.model.Column;
@@ -106,7 +114,7 @@ class AbstractTriggerTemplateTest {
         // System.out.println("EXPECTED> " + expectedPkJoin);
         // System.out.println("RESULT==> " + triggerDdl);
         assertNotNull(triggerDdl);
-        assertTrue(triggerDdl.equals(expectedPkJoin));
+        assertEquals(expectedPkJoin, triggerDdl);
     }
 
     @Test
@@ -127,7 +135,7 @@ class AbstractTriggerTemplateTest {
         // System.out.println("EXPECTED> " + expectedPkJoin);
         // System.out.println("RESULT==> " + triggerDdl);
         assertNotNull(triggerDdl);
-        assertTrue(triggerDdl.equals(expectedPkJoin));
+        assertEquals(expectedPkJoin, triggerDdl);
     }
 
     @Test
@@ -148,7 +156,7 @@ class AbstractTriggerTemplateTest {
         // System.out.println("EXPECTED> " + expectedPkJoin);
         // System.out.println("RESULT==> " + triggerDdl);
         assertNotNull(triggerDdl);
-        assertTrue(triggerDdl.equals(expectedPkJoin));
+        assertEquals(expectedPkJoin, triggerDdl);
     }
 
     @Test
@@ -170,7 +178,41 @@ class AbstractTriggerTemplateTest {
         // System.out.println("EXPECTED> " + expectedPkJoin);
         // System.out.println("RESULT==> " + triggerDdl);
         assertNotNull(triggerDdl);
-        assertTrue(triggerDdl.equals(expectedPkJoin));
+        assertEquals(expectedPkJoin, triggerDdl);
+    }
+
+    @Test
+    void testToHashedValueIsStableUnderConcurrentCallers() throws Exception {
+        int callerCount = 16;
+        int expectedHash = new WrapperAbstractTriggerTemplate(symmetricDialect).toHashedValue();
+        assertNotEquals(0, expectedHash);
+        ExecutorService executor = Executors.newFixedThreadPool(callerCount);
+        try {
+            for (int attempt = 0; attempt < 50; attempt++) {
+                WrapperAbstractTriggerTemplate sharedTemplate = new WrapperAbstractTriggerTemplate(symmetricDialect);
+                CyclicBarrier startTogether = new CyclicBarrier(callerCount);
+                List<Future<Integer>> hashes = new ArrayList<Future<Integer>>();
+                for (int caller = 0; caller < callerCount; caller++) {
+                    hashes.add(executor.submit((Callable<Integer>) () -> {
+                        startTogether.await();
+                        return sharedTemplate.toHashedValue();
+                    }));
+                }
+                for (Future<Integer> hash : hashes) {
+                    assertEquals(expectedHash, hash.get());
+                }
+                assertEquals(expectedHash, sharedTemplate.toHashedValue());
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void testToHashedValueCoversSqlTemplates() {
+        WrapperAbstractTriggerTemplate changedTemplate = new WrapperAbstractTriggerTemplate(symmetricDialect);
+        changedTemplate.putSqlTemplate("insertTriggerTemplate", "create trigger changed");
+        assertNotEquals(new WrapperAbstractTriggerTemplate(symmetricDialect).toHashedValue(), changedTemplate.toHashedValue());
     }
 
     public static class WrapperAbstractTriggerTemplate extends AbstractTriggerTemplate {
