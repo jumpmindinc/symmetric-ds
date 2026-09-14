@@ -1,5 +1,6 @@
 package org.jumpmind.symmetric.load;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -152,7 +153,7 @@ class JavaDatabaseWriterFilterTest {
     void testExecuteScripts_swallowsErrorWhenNotFailOnError() throws Exception {
         when(extensionService.getCompiledClass(anyString())).thenThrow(new RuntimeException("compile failed"));
         Set<String> scripts = new HashSet<String>(Arrays.asList("bad script"));
-        filter.executeScripts(context, "key", scripts, false);
+        assertDoesNotThrow(() -> filter.executeScripts(context, "key", scripts, false));
     }
 
     @Test

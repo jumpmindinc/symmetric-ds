@@ -1,5 +1,6 @@
 package org.jumpmind.symmetric.load;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -186,7 +187,7 @@ class SQLDatabaseWriterFilterTest {
     void testExecuteScripts_swallowsErrorWhenNotFailOnError() {
         when(transaction.query(anyString(), eq(SQLDatabaseWriterFilter.lookupColumnRowMapper), any())).thenThrow(new RuntimeException("boom"));
         Set<String> scripts = new HashSet<String>(Arrays.asList("select 1"));
-        filter.executeScripts(context, "key", scripts, false);
+        assertDoesNotThrow(() -> filter.executeScripts(context, "key", scripts, false));
     }
 
     @Test
@@ -231,7 +232,7 @@ class SQLDatabaseWriterFilterTest {
     void testProcessError_doesNotThrowWhenNotFailOnError() {
         LoadFilter loadFilter = newLoadFilter();
         loadFilter.setFailOnError(false);
-        filter.processError(loadFilter, table, new RuntimeException("boom"));
+        assertDoesNotThrow(() -> filter.processError(loadFilter, table, new RuntimeException("boom")));
     }
 
     // Defect pinned, not endorsed: processError formats "N/A" for a null filter but then

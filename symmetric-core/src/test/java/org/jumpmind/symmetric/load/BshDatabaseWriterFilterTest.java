@@ -1,5 +1,6 @@
 package org.jumpmind.symmetric.load;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -143,12 +144,12 @@ class BshDatabaseWriterFilterTest {
     @Test
     void testExecuteScripts_withValidScript() {
         Set<String> scripts = new HashSet<String>(Arrays.asList("1 + 1;"));
-        filter.executeScripts(context, "key", scripts, true);
+        assertDoesNotThrow(() -> filter.executeScripts(context, "key", scripts, true));
     }
 
     @Test
     void testExecuteScripts_withNullScripts() {
-        filter.executeScripts(context, "key", null, false);
+        assertDoesNotThrow(() -> filter.executeScripts(context, "key", null, false));
     }
 
     @Test
@@ -160,7 +161,7 @@ class BshDatabaseWriterFilterTest {
     @Test
     void testExecuteScripts_swallowsParseExceptionWhenNotFailOnError() {
         Set<String> scripts = new HashSet<String>(Arrays.asList("this is not valid bsh {{{"));
-        filter.executeScripts(context, "key", scripts, false);
+        assertDoesNotThrow(() -> filter.executeScripts(context, "key", scripts, false));
     }
 
     @Test
@@ -180,7 +181,7 @@ class BshDatabaseWriterFilterTest {
     @Test
     void testExecuteScripts_swallowsTargetExceptionWhenNotFailOnError() {
         Set<String> scripts = new HashSet<String>(Arrays.asList("throw new RuntimeException(\"boom\");"));
-        filter.executeScripts(context, "key", scripts, false);
+        assertDoesNotThrow(() -> filter.executeScripts(context, "key", scripts, false));
     }
 
     @Test
@@ -202,7 +203,7 @@ class BshDatabaseWriterFilterTest {
     void testProcessError_doesNotThrowWhenNotFailOnError() {
         LoadFilter loadFilter = newLoadFilter();
         loadFilter.setFailOnError(false);
-        filter.processError(loadFilter, table, new RuntimeException("boom"));
+        assertDoesNotThrow(() -> filter.processError(loadFilter, table, new RuntimeException("boom")));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package org.jumpmind.symmetric.load;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -89,7 +90,7 @@ class DynamicDatabaseWriterFilterTest {
 
     @Test
     void testEarlyCommit_doesNothing() {
-        filter.earlyCommit(context);
+        assertDoesNotThrow(() -> filter.earlyCommit(context));
     }
 
     @Test
