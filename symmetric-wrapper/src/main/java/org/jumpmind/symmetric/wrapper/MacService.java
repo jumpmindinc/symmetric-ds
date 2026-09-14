@@ -52,35 +52,35 @@ public class MacService extends UnixService {
         }
     }
 
-    private ArrayList<String> getLaunchDaemonLoadCommand() {
+    protected ArrayList<String> getLaunchDaemonLoadCommand() {
         return getLaunchDaemonCmd(
                 LAUNCH_DAEMON_LOAD_COMMAND,
                 "-w",
                 LAUNCH_DAEMON_DIR + "/" + getLaunchDaemonsFileName(config.getName()));
     }
 
-    private ArrayList<String> getLaunchDaemonStopCmd() {
+    protected ArrayList<String> getLaunchDaemonStopCmd() {
         return getLaunchDaemonCmd(
                 LAUNCH_DAEMON_STOP_COMMAND,
                 null,
                 getLaunchDaemonsName(config.getName()));
     }
 
-    private ArrayList<String> getLaunchDaemonUnloadCmd() {
+    protected ArrayList<String> getLaunchDaemonUnloadCmd() {
         return getLaunchDaemonCmd(
                 LAUNCH_DAEMON_UNLOAD_COMMAND,
                 "-w",
                 LAUNCH_DAEMON_DIR + "/" + getLaunchDaemonsFileName(config.getName()));
     }
 
-    private ArrayList<String> getLaunchDaemonStartCmd() {
+    protected ArrayList<String> getLaunchDaemonStartCmd() {
         return getLaunchDaemonCmd(
                 LAUNCH_DAEMON_START_COMMAND,
                 null,
                 getLaunchDaemonsName(config.getName()));
     }
 
-    private ArrayList<String> getLaunchDaemonCmd(String command, String override, String option) {
+    protected ArrayList<String> getLaunchDaemonCmd(String command, String override, String option) {
         ArrayList<String> cmdList = new ArrayList<String>();
         cmdList.add("launchctl");
         cmdList.add(command);
@@ -111,11 +111,11 @@ public class MacService extends UnixService {
         return new File(LAUNCH_DAEMON_DIR, getLaunchDaemonsFileName(config.getName())).exists();
     }
 
-    private String getLaunchDaemonsFileName(String wrapperName) {
+    protected String getLaunchDaemonsFileName(String wrapperName) {
         return getLaunchDaemonsName(wrapperName) + LAUNCH_DAEMON_NAME_SUFFIX;
     }
 
-    private String getLaunchDaemonsName(String wrapperName) {
+    protected String getLaunchDaemonsName(String wrapperName) {
         return LAUNCH_DAEMON_NAME_PREFIX + wrapperName;
     }
 
@@ -198,7 +198,7 @@ public class MacService extends UnixService {
         return ret;
     }
 
-    private ArrayList<String> getPsCommand(int pid) {
+    protected ArrayList<String> getPsCommand(int pid) {
         ArrayList<String> cmdList = new ArrayList<String>();
         cmdList.add("/bin/ps");
         cmdList.add("-p");
