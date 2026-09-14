@@ -63,6 +63,7 @@ class CompressionResponseStreamTest {
 
             @Override
             public void setWriteListener(WriteListener writeListener) {
+                // no-op: tests write synchronously and never need async write notifications
             }
         });
     }

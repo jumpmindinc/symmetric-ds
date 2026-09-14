@@ -52,6 +52,7 @@ class CompressionServletResponseWrapperTest {
         when(origResponse.getOutputStream()).thenReturn(new ServletOutputStream() {
             @Override
             public void write(int b) {
+                // no-op: these tests only verify wrapper behavior, not the bytes written
             }
 
             @Override
@@ -61,6 +62,7 @@ class CompressionServletResponseWrapperTest {
 
             @Override
             public void setWriteListener(WriteListener writeListener) {
+                // no-op: tests write synchronously and never need async write notifications
             }
         });
     }
