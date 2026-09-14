@@ -41,7 +41,6 @@ import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
-import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataExtractorService;
 import org.jumpmind.symmetric.service.INodeService;
@@ -72,7 +71,7 @@ class PullUriHandlerTest {
     private PullUriHandler handler;
 
     @BeforeEach
-    void setUp() throws IOException {
+    void setUp() {
         IParameterService parameterService = mock(IParameterService.class);
         IConfigurationService configurationService = mock(IConfigurationService.class);
         IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);

@@ -33,8 +33,8 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class RegistrationAttemptTracker {
     public record RegistrationAttempt(String registrationKey, long attemptTimeMs) {
-        public boolean isOlderThan(long maxAgeMs, long nowMs) {
-            return nowMs - attemptTimeMs > maxAgeMs;
+        public boolean isExpired(long maxAgeMs, long nowMs) {
+            return nowMs - attemptTimeMs >= maxAgeMs;
         }
     }
 
@@ -66,7 +66,7 @@ public class RegistrationAttemptTracker {
         Iterator<Map.Entry<String, RegistrationAttempt>> iterator = attempts.entrySet().iterator();
         while (iterator.hasNext()) {
             RegistrationAttempt attempt = iterator.next().getValue();
-            if (attempt.isOlderThan(maxAgeMs, nowMs)) {
+            if (attempt.isExpired(maxAgeMs, nowMs)) {
                 iterator.remove();
                 abandoned.add(attempt);
             }

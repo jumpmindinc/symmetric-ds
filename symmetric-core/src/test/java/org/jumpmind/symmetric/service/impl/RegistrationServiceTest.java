@@ -255,7 +255,6 @@ class RegistrationServiceTest {
         blockConfigurationExtract(extractStarted, releaseExtract);
         Future<Boolean> abandonedRegistration = executor.submit(() -> registerClient(TEST_CLIENT_NODE_ID));
         assertTrue(extractStarted.await(WAIT_SECONDS, TimeUnit.SECONDS));
-        Thread.sleep(5);
         releaseExtract.countDown();
         assertTrue(registerClient(TEST_CLIENT_NODE_ID));
         assertTrue(abandonedRegistration.get(WAIT_SECONDS, TimeUnit.SECONDS));

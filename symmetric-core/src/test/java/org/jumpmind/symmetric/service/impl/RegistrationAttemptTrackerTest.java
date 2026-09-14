@@ -66,18 +66,18 @@ class RegistrationAttemptTrackerTest {
     }
 
     @Test
-    void startClearsAbandonedAttemptOlderThanMaxAge() {
+    void startClearsAbandonedAttemptThatReachedMaxAge() {
         tracker.start(NODE_KEY, MAX_AGE_MS, START_TIME_MS);
-        assertFalse(tracker.start(NODE_KEY, MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS));
-        assertTrue(tracker.start(NODE_KEY, MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS + 1));
+        assertFalse(tracker.start(NODE_KEY, MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS - 1));
+        assertTrue(tracker.start(NODE_KEY, MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS));
         assertEquals(1, tracker.size());
     }
 
     @Test
     void clearAbandonedReturnsOnlyExpiredAttempts() {
         tracker.start(NODE_KEY, MAX_AGE_MS, START_TIME_MS);
-        tracker.start(OTHER_NODE_KEY, MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS);
-        List<RegistrationAttempt> abandoned = tracker.clearAbandoned(MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS + 1);
+        tracker.start(OTHER_NODE_KEY, MAX_AGE_MS, START_TIME_MS + 1);
+        List<RegistrationAttempt> abandoned = tracker.clearAbandoned(MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS);
         assertEquals(1, abandoned.size());
         assertEquals(NODE_KEY, abandoned.get(0).registrationKey());
         assertEquals(START_TIME_MS, abandoned.get(0).attemptTimeMs());
@@ -86,9 +86,15 @@ class RegistrationAttemptTrackerTest {
     }
 
     @Test
-    void attemptIsOlderThanMaxAgeOnlyAfterMaxAgeElapsed() {
+    void attemptExpiresOnceMaxAgeIsReached() {
         RegistrationAttempt attempt = new RegistrationAttempt(NODE_KEY, START_TIME_MS);
-        assertFalse(attempt.isOlderThan(MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS));
-        assertTrue(attempt.isOlderThan(MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS + 1));
+        assertFalse(attempt.isExpired(MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS - 1));
+        assertTrue(attempt.isExpired(MAX_AGE_MS, START_TIME_MS + MAX_AGE_MS));
+    }
+
+    @Test
+    void attemptExpiresImmediatelyWhenMaxAgeIsZero() {
+        RegistrationAttempt attempt = new RegistrationAttempt(NODE_KEY, START_TIME_MS);
+        assertTrue(attempt.isExpired(0, START_TIME_MS));
     }
 }
