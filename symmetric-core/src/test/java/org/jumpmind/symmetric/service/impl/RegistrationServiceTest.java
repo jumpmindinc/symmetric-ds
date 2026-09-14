@@ -30,8 +30,11 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -40,17 +43,24 @@ import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
+import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -65,6 +75,8 @@ import org.jumpmind.symmetric.model.NodeGroupLinkAction;
 import org.jumpmind.symmetric.model.NodeSecurity;
 import org.jumpmind.symmetric.model.RegistrationRequest;
 import org.jumpmind.symmetric.model.RegistrationRequest.RegistrationStatus;
+import org.jumpmind.symmetric.model.RemoteNodeStatus;
+import org.jumpmind.symmetric.model.RemoteNodeStatus.Status;
 import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.security.INodePasswordFilter;
 import org.jumpmind.symmetric.service.IConfigurationService;
@@ -82,6 +94,7 @@ import org.jumpmind.symmetric.service.RegistrationRedirectException;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
 import org.jumpmind.symmetric.transport.ITransportManager;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -91,6 +104,11 @@ class RegistrationServiceTest {
     private static final String TEST_SERVER_GROUP = "server-group";
     private static final String TEST_CLIENT_GROUP_NAME = "client";
     private static final String TEST_CLIENT_EXTERNAL_ID = "client-001";
+    private static final String TEST_CLIENT_NODE_ID = "client-001-2";
+    private static final String TEST_OTHER_CLIENT_NODE_ID = "client-001-3";
+    private static final String TEST_REMOTE_HOST = "client-host";
+    private static final String TEST_REMOTE_ADDRESS = "10.0.0.5";
+    private static final long WAIT_SECONDS = 10;
     private ISymmetricEngine engine;
     private RegistrationService service;
     private ISqlTemplate sqlTemplate;
@@ -105,6 +123,8 @@ class RegistrationServiceTest {
     private ITriggerRouterService triggerRouterService;
     private IDataExtractorService dataExtractorService;
     private IInitialLoadService initialLoadService;
+    private IDataLoaderService dataLoaderService;
+    private ExecutorService executor;
 
     @BeforeEach
     void setUp() {
@@ -136,7 +156,8 @@ class RegistrationServiceTest {
         when(engine.getNodeService()).thenReturn(nodeService);
         when(engine.getDataExtractorService()).thenReturn(dataExtractorService);
         when(engine.getDataService()).thenReturn(mock(IDataService.class));
-        when(engine.getDataLoaderService()).thenReturn(mock(IDataLoaderService.class));
+        dataLoaderService = mock(IDataLoaderService.class);
+        when(engine.getDataLoaderService()).thenReturn(dataLoaderService);
         when(engine.getTransportManager()).thenReturn(transportManager);
         when(engine.getStatisticManager()).thenReturn(mock(IStatisticManager.class));
         when(engine.getConfigurationService()).thenReturn(configurationService);
@@ -160,6 +181,176 @@ class RegistrationServiceTest {
         when(sqlTemplate.query(anyString(), any(ISqlRowMapper.class), any(Object[].class), any(int[].class)))
                 .thenReturn(Collections.emptyList());
         service = new RegistrationService(engine);
+        executor = Executors.newFixedThreadPool(2);
+    }
+
+    @AfterEach
+    void tearDown() {
+        executor.shutdownNow();
+    }
+
+    @Test
+    void registerNodeSkipsSecondRegistrationWhileFirstOneIsInProgress() throws Exception {
+        setupOpenRegistrationFor(TEST_CLIENT_NODE_ID);
+        CountDownLatch extractStarted = new CountDownLatch(1);
+        CountDownLatch releaseExtract = new CountDownLatch(1);
+        blockConfigurationExtract(extractStarted, releaseExtract);
+        Future<Boolean> firstRegistration = executor.submit(() -> registerClient(TEST_CLIENT_NODE_ID));
+        assertTrue(extractStarted.await(WAIT_SECONDS, TimeUnit.SECONDS));
+        boolean secondRegistration = registerClient(TEST_CLIENT_NODE_ID);
+        releaseExtract.countDown();
+        assertFalse(secondRegistration);
+        assertTrue(firstRegistration.get(WAIT_SECONDS, TimeUnit.SECONDS));
+        verify(nodeService, times(1)).save(any(Node.class));
+        verify(dataExtractorService, times(1)).extractConfigurationStandalone(any(Node.class), any(Writer.class), any(String[].class));
+    }
+
+    @Test
+    void registerNodeAllowsConcurrentRegistrationOfDifferentNodes() throws Exception {
+        setupOpenRegistrationFor(TEST_CLIENT_NODE_ID);
+        setupOpenRegistrationFor(TEST_OTHER_CLIENT_NODE_ID);
+        CountDownLatch extractStarted = new CountDownLatch(1);
+        CountDownLatch releaseExtract = new CountDownLatch(1);
+        blockConfigurationExtract(extractStarted, releaseExtract);
+        Future<Boolean> firstRegistration = executor.submit(() -> registerClient(TEST_CLIENT_NODE_ID));
+        assertTrue(extractStarted.await(WAIT_SECONDS, TimeUnit.SECONDS));
+        Future<Boolean> otherRegistration = executor.submit(() -> registerClient(TEST_OTHER_CLIENT_NODE_ID));
+        releaseExtract.countDown();
+        assertTrue(firstRegistration.get(WAIT_SECONDS, TimeUnit.SECONDS));
+        assertTrue(otherRegistration.get(WAIT_SECONDS, TimeUnit.SECONDS));
+        verify(nodeService, times(2)).save(any(Node.class));
+    }
+
+    @Test
+    void registerNodeAllowsRegistrationAgainAfterPreviousOneCompletes() throws IOException {
+        setupOpenRegistrationFor(TEST_CLIENT_NODE_ID);
+        assertTrue(registerClient(TEST_CLIENT_NODE_ID));
+        assertTrue(registerClient(TEST_CLIENT_NODE_ID));
+        verify(nodeService, times(2)).save(any(Node.class));
+    }
+
+    @Test
+    void registerNodeReleasesInProgressMarkerWhenRegistrationFails() throws IOException {
+        setupOpenRegistrationFor(TEST_CLIENT_NODE_ID);
+        doAnswer(invocation -> {
+            throw new IOException("client went away");
+        }).when(dataExtractorService).extractConfigurationStandalone(any(Node.class), any(Writer.class), any(String[].class));
+        boolean failed = false;
+        try {
+            registerClient(TEST_CLIENT_NODE_ID);
+        } catch (IOException ex) {
+            failed = true;
+        }
+        assertTrue(failed);
+        doAnswer(invocation -> null).when(dataExtractorService).extractConfigurationStandalone(any(Node.class), any(Writer.class), any(String[].class));
+        assertTrue(registerClient(TEST_CLIENT_NODE_ID));
+    }
+
+    @Test
+    void registerNodeClearsAbandonedAttemptOlderThanRetryInterval() throws Exception {
+        setupOpenRegistrationFor(TEST_CLIENT_NODE_ID);
+        when(parameterService.getInt(ParameterConstants.REGISTRATION_MAX_TIME_BETWEEN_RETRIES, 30)).thenReturn(0);
+        CountDownLatch extractStarted = new CountDownLatch(1);
+        CountDownLatch releaseExtract = new CountDownLatch(1);
+        blockConfigurationExtract(extractStarted, releaseExtract);
+        Future<Boolean> abandonedRegistration = executor.submit(() -> registerClient(TEST_CLIENT_NODE_ID));
+        assertTrue(extractStarted.await(WAIT_SECONDS, TimeUnit.SECONDS));
+        Thread.sleep(5);
+        releaseExtract.countDown();
+        assertTrue(registerClient(TEST_CLIENT_NODE_ID));
+        assertTrue(abandonedRegistration.get(WAIT_SECONDS, TimeUnit.SECONDS));
+        verify(nodeService, times(2)).save(any(Node.class));
+    }
+
+    @Test
+    void buildRegistrationKeyUsesNodeIdWhenPresent() {
+        assertEquals(TEST_CLIENT_NODE_ID, service.buildRegistrationKey(buildClientNodeWithId(TEST_CLIENT_NODE_ID)));
+    }
+
+    @Test
+    void buildRegistrationKeyFallsBackToGroupAndExternalIdWhenNodeIdMissing() {
+        assertEquals(TEST_CLIENT_GROUP_NAME + ":" + TEST_CLIENT_EXTERNAL_ID, service.buildRegistrationKey(buildClientNodeWithId(null)));
+    }
+
+    @Test
+    void saveRegistrationRequestIgnoresDuplicateKeyFromConcurrentInsert() {
+        when(sqlTemplate.update(argThat(this::isInsertStatement), any(Object[].class), any(int[].class)))
+                .thenThrow(new UniqueKeyException("duplicate key (client, 11498, 2026-09-10 12:30:16.55)"));
+        service.saveRegistrationRequest(buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.OK));
+        verify(sqlTemplate, times(1)).update(argThat(this::isInsertStatement), any(Object[].class), any(int[].class));
+    }
+
+    @Test
+    void reRegisterWithServerRunsOnceWhenCalledConcurrently() throws Exception {
+        CountDownLatch pullStarted = new CountDownLatch(1);
+        CountDownLatch releasePull = new CountDownLatch(1);
+        blockRegistrationPull(pullStarted, releasePull, Status.DATA_PROCESSED);
+        Future<Boolean> firstAttempt = executor.submit(() -> service.reRegisterWithServer("first"));
+        assertTrue(pullStarted.await(WAIT_SECONDS, TimeUnit.SECONDS));
+        assertTrue(service.isRegistrationInProgress());
+        assertFalse(service.reRegisterWithServer("second"));
+        releasePull.countDown();
+        assertTrue(firstAttempt.get(WAIT_SECONDS, TimeUnit.SECONDS));
+        assertFalse(service.isRegistrationInProgress());
+        verify(dataLoaderService, times(1)).loadDataFromPull(isNull(), (String) isNull());
+    }
+
+    @Test
+    void reRegisterWithServerSkipsSecondAttemptWithinRetryInterval() throws IOException {
+        stubRegistrationPull(Status.DATA_PROCESSED);
+        assertTrue(service.reRegisterWithServer("first"));
+        assertFalse(service.reRegisterWithServer("second"));
+        verify(dataLoaderService, times(1)).loadDataFromPull(isNull(), (String) isNull());
+    }
+
+    @Test
+    void reRegisterWithServerRunsAgainAfterRetryIntervalElapsed() throws IOException {
+        when(parameterService.getInt(ParameterConstants.REGISTRATION_MAX_TIME_BETWEEN_RETRIES, 30)).thenReturn(0);
+        stubRegistrationPull(Status.DATA_PROCESSED);
+        assertTrue(service.reRegisterWithServer("first"));
+        assertTrue(service.reRegisterWithServer("second"));
+        verify(dataLoaderService, times(2)).loadDataFromPull(isNull(), (String) isNull());
+    }
+
+    @Test
+    void reRegisterWithServerReturnsFalseAndReleasesLockWhenPullFails() throws IOException {
+        when(parameterService.getInt(ParameterConstants.REGISTRATION_MAX_TIME_BETWEEN_RETRIES, 30)).thenReturn(0);
+        doThrow(new IOException("server unreachable")).when(dataLoaderService).loadDataFromPull(isNull(), (String) isNull());
+        assertFalse(service.reRegisterWithServer("first"));
+        assertFalse(service.isRegistrationInProgress());
+        stubRegistrationPull(Status.DATA_PROCESSED);
+        assertTrue(service.reRegisterWithServer("second"));
+    }
+
+    @Test
+    void reRegisterWithServerReturnsFalseWhenServerDidNotSendRegistration() throws IOException {
+        stubRegistrationPull(Status.NO_DATA);
+        assertFalse(service.reRegisterWithServer("first"));
+    }
+
+    @Test
+    void removeIdentityForReRegistrationDeletesIdentityOnce() {
+        when(nodeService.findIdentity(false)).thenReturn(buildClientNodeWithId(TEST_CLIENT_NODE_ID), (Node) null);
+        Node remote = buildIdentityNode();
+        assertTrue(service.removeIdentityForReRegistration(remote, "push"));
+        assertFalse(service.removeIdentityForReRegistration(remote, "push"));
+        verify(nodeService, times(1)).deleteIdentity();
+        verify(nodeService, times(1)).deleteNodeSecurity(TEST_CLIENT_NODE_ID);
+        verify(nodeService, times(1)).deleteNode(TEST_CLIENT_NODE_ID, TEST_SERVER_NODE_ID, false);
+    }
+
+    @Test
+    void removeIdentityForReRegistrationIsSkippedWhileReRegistering() throws Exception {
+        when(nodeService.findIdentity(false)).thenReturn(buildClientNodeWithId(TEST_CLIENT_NODE_ID));
+        CountDownLatch pullStarted = new CountDownLatch(1);
+        CountDownLatch releasePull = new CountDownLatch(1);
+        blockRegistrationPull(pullStarted, releasePull, Status.DATA_PROCESSED);
+        Future<Boolean> registration = executor.submit(() -> service.reRegisterWithServer("pull"));
+        assertTrue(pullStarted.await(WAIT_SECONDS, TimeUnit.SECONDS));
+        assertFalse(service.removeIdentityForReRegistration(buildIdentityNode(), "push"));
+        releasePull.countDown();
+        assertTrue(registration.get(WAIT_SECONDS, TimeUnit.SECONDS));
+        verify(nodeService, never()).deleteIdentity();
     }
 
     @Test
@@ -633,6 +824,63 @@ class RegistrationServiceTest {
         RegistrationRequest prior = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.ER);
         RegistrationRequest request = buildRequest(TEST_CLIENT_GROUP_NAME, TEST_CLIENT_EXTERNAL_ID, RegistrationStatus.RJ);
         assertFalse(service.isPriorRequestSupersededByNew(prior, request));
+    }
+
+    private void setupOpenRegistrationFor(String nodeId) {
+        when(nodeService.findIdentity()).thenReturn(buildIdentityNode());
+        when(nodeService.findIdentityNodeId()).thenReturn(TEST_SERVER_NODE_ID);
+        when(nodeService.findNodeSecurity(TEST_SERVER_NODE_ID)).thenReturn(new NodeSecurity());
+        when(nodeService.isRegistrationServer()).thenReturn(true);
+        when(configurationService.getNodeGroupLinkFor(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME, false))
+                .thenReturn(new NodeGroupLink(TEST_SERVER_GROUP, TEST_CLIENT_GROUP_NAME));
+        NodeSecurity clientSecurity = buildClientSecurity();
+        clientSecurity.setNodeId(nodeId);
+        clientSecurity.setCreatedAtNodeId(TEST_SERVER_NODE_ID);
+        when(nodeService.findNode(nodeId)).thenReturn(buildClientNodeWithId(nodeId));
+        when(nodeService.findNodeSecurity(nodeId)).thenReturn(clientSecurity);
+    }
+
+    private boolean registerClient(String nodeId) throws IOException {
+        return service.registerNode(buildClientNodeWithId(nodeId), TEST_REMOTE_HOST, TEST_REMOTE_ADDRESS, new ByteArrayOutputStream(), null, null, false);
+    }
+
+    private void blockConfigurationExtract(CountDownLatch extractStarted, CountDownLatch releaseExtract) {
+        doAnswer(invocation -> {
+            extractStarted.countDown();
+            assertTrue(releaseExtract.await(WAIT_SECONDS, TimeUnit.SECONDS));
+            return null;
+        }).when(dataExtractorService).extractConfigurationStandalone(any(Node.class), any(Writer.class), any(String[].class));
+    }
+
+    private void stubRegistrationPull(Status status) throws IOException {
+        doReturn(buildRemoteNodeStatus(status)).when(dataLoaderService).loadDataFromPull(isNull(), (String) isNull());
+    }
+
+    private void blockRegistrationPull(CountDownLatch pullStarted, CountDownLatch releasePull, Status status) throws IOException {
+        doAnswer(invocation -> {
+            pullStarted.countDown();
+            assertTrue(releasePull.await(WAIT_SECONDS, TimeUnit.SECONDS));
+            return buildRemoteNodeStatus(status);
+        }).when(dataLoaderService).loadDataFromPull(isNull(), (String) isNull());
+    }
+
+    private RemoteNodeStatus buildRemoteNodeStatus(Status status) {
+        RemoteNodeStatus remoteNodeStatus = new RemoteNodeStatus(null, null, Collections.emptyMap());
+        remoteNodeStatus.setStatus(status);
+        return remoteNodeStatus;
+    }
+
+    private Node buildClientNodeWithId(String nodeId) {
+        Node node = new Node();
+        node.setNodeId(nodeId);
+        node.setNodeGroupId(TEST_CLIENT_GROUP_NAME);
+        node.setExternalId(TEST_CLIENT_EXTERNAL_ID);
+        node.setSyncUrl("http://client/sync");
+        return node;
+    }
+
+    private boolean isInsertStatement(String sql) {
+        return sql != null && sql.trim().startsWith("insert");
     }
 
     private void setupHappyPath() {

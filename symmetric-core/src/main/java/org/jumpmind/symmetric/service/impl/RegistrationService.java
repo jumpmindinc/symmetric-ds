@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.lang3.StringUtils;
@@ -42,6 +43,7 @@ import org.apache.commons.lang3.time.DateUtils;
 import org.jumpmind.db.sql.ISqlRowMapper;
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.db.sql.Row;
+import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.db.sql.mapper.StringMapper;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
@@ -104,6 +106,9 @@ public class RegistrationService extends AbstractService implements IRegistratio
     private IExtensionService extensionService;
     private ISymmetricEngine engine;
     private boolean allowClientRegistration = true;
+    private final RegistrationAttemptTracker registrationAttempts = new RegistrationAttemptTracker();
+    private final ReentrantLock reRegistrationLock = new ReentrantLock();
+    private volatile long lastReRegistrationTimeMs;
 
     public RegistrationService(ISymmetricEngine engine) {
         super(engine.getParameterService(), engine.getSymmetricDialect());
@@ -322,6 +327,32 @@ public class RegistrationService extends AbstractService implements IRegistratio
     public boolean registerNode(Node nodePriorToRegistration, String remoteHost,
             String remoteAddress, OutputStream out, String userId, String password, boolean isRequestedRegistration)
             throws IOException {
+        String registrationKey = buildRegistrationKey(nodePriorToRegistration);
+        if (!registrationAttempts.start(registrationKey, getMaxTimeBetweenRegistrationAttemptsMs())) {
+            log.info("Skipping registration of node {} because another registration for it is already in progress", nodePriorToRegistration);
+            return false;
+        }
+        try {
+            return registerNodeExclusively(nodePriorToRegistration, remoteHost, remoteAddress, out, userId, password, isRequestedRegistration);
+        } finally {
+            registrationAttempts.finish(registrationKey);
+        }
+    }
+
+    protected long getMaxTimeBetweenRegistrationAttemptsMs() {
+        return parameterService.getInt(ParameterConstants.REGISTRATION_MAX_TIME_BETWEEN_RETRIES, 30) * DateUtils.MILLIS_PER_SECOND;
+    }
+
+    protected String buildRegistrationKey(Node node) {
+        if (StringUtils.isNotBlank(node.getNodeId())) {
+            return node.getNodeId();
+        }
+        return node.getNodeGroupId() + ":" + node.getExternalId();
+    }
+
+    protected boolean registerNodeExclusively(Node nodePriorToRegistration, String remoteHost,
+            String remoteAddress, OutputStream out, String userId, String password, boolean isRequestedRegistration)
+            throws IOException {
         if (parameterService.is(ParameterConstants.REGISTRATION_PUSH_CONFIG_ALLOWED)) {
             NodeGroupLink link = configurationService.getNodeGroupLinkFor(parameterService.getNodeGroupId(), nodePriorToRegistration.getNodeGroupId(), false);
             if (link != null && link.getDataEventAction() == NodeGroupLinkAction.P) {
@@ -434,14 +465,20 @@ public class RegistrationService extends AbstractService implements IRegistratio
     private int insertRegistrationRequestIntoDatabase(RegistrationRequest request) {
         String externalId = StringUtils.defaultIfEmpty(request.getExternalId(), "");
         String nodeGroupId = StringUtils.defaultIfEmpty(request.getNodeGroupId(), "");
-        return sqlTemplate.update(
-                getSql("insertRegistrationRequestSql"),
-                new Object[] { request.getLastUpdateBy(), request.getLastUpdateTime(),
-                        request.getRegisteredNodeId(), request.getStatus().name(), nodeGroupId,
-                        externalId, request.getIpAddress(), request.getHostName(),
-                        request.getErrorMessage(), request.getCreateTime() }, new int[] { Types.VARCHAR, Types.TIMESTAMP,
-                                Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
-                                Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP });
+        try {
+            return sqlTemplate.update(
+                    getSql("insertRegistrationRequestSql"),
+                    new Object[] { request.getLastUpdateBy(), request.getLastUpdateTime(),
+                            request.getRegisteredNodeId(), request.getStatus().name(), nodeGroupId,
+                            externalId, request.getIpAddress(), request.getHostName(),
+                            request.getErrorMessage(), request.getCreateTime() }, new int[] { Types.VARCHAR, Types.TIMESTAMP,
+                                    Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                                    Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.TIMESTAMP });
+        } catch (UniqueKeyException ex) {
+            log.info("Registration request for {}:{} from host {} was already recorded by a concurrent registration attempt, skipping duplicate audit row",
+                    nodeGroupId, externalId, request.getHostName());
+            return 0;
+        }
     }
 
     private int updateIncompleteRegistrationRequestInDatabase(RegistrationRequest request) {
@@ -590,6 +627,58 @@ public class RegistrationService extends AbstractService implements IRegistratio
                     parameterService.getString(ParameterConstants.REGISTRATION_NUMBER_OF_ATTEMPTS)));
         }
         return registered != wasRegistered;
+    }
+
+    @Override
+    public boolean reRegisterWithServer(String reason) {
+        if (!reRegistrationLock.tryLock()) {
+            log.debug("Skipping re-registration ({}) because another thread is already registering", reason);
+            return false;
+        }
+        try {
+            long sinceLastAttemptMs = System.currentTimeMillis() - lastReRegistrationTimeMs;
+            if (sinceLastAttemptMs < getMaxTimeBetweenRegistrationAttemptsMs()) {
+                log.debug("Skipping re-registration ({}) because the last attempt was {} ms ago", reason, sinceLastAttemptMs);
+                return false;
+            }
+            lastReRegistrationTimeMs = System.currentTimeMillis();
+            log.warn("Node information missing on the server ({}).  Attempting to re-register with {}", reason, parameterService.getRegistrationUrl());
+            boolean registered = dataLoaderService.loadDataFromPull(null, (String) null).getStatus() == Status.DATA_PROCESSED;
+            nodeService.findIdentity(false);
+            return registered;
+        } catch (IOException ex) {
+            log.warn("Re-registration ({}) failed: {}", reason, ex.getMessage());
+            return false;
+        } finally {
+            reRegistrationLock.unlock();
+        }
+    }
+
+    @Override
+    public boolean removeIdentityForReRegistration(Node remote, String reason) {
+        if (!reRegistrationLock.tryLock()) {
+            log.debug("Not removing identity ({}) because a registration is already in progress", reason);
+            return false;
+        }
+        try {
+            Node identity = nodeService.findIdentity(false);
+            if (identity == null) {
+                log.debug("Identity was already removed ({})", reason);
+                return false;
+            }
+            log.info("Removing identity of node {} because registration is required ({})", identity.getNodeId(), reason);
+            nodeService.deleteIdentity();
+            nodeService.deleteNodeSecurity(identity.getNodeId());
+            nodeService.deleteNode(identity.getNodeId(), remote.getNodeId(), false);
+            return true;
+        } finally {
+            reRegistrationLock.unlock();
+        }
+    }
+
+    @Override
+    public boolean isRegistrationInProgress() {
+        return reRegistrationLock.isLocked();
     }
 
     @Override
