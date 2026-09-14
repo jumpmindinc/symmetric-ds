@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.jumpmind.db.model.Table;
@@ -128,8 +127,9 @@ class BshDatabaseWriterFilterTest {
         LoadFilter loadFilter = newLoadFilter();
         loadFilter.setBeforeWriteScript("this is not valid bsh {{{");
         loadFilter.setFailOnError(true);
+        List<LoadFilter> loadFilters = Arrays.asList(loadFilter);
         assertThrows(SymmetricException.class,
-                () -> filter.processLoadFilters(context, table, data, null, WriteMethod.BEFORE_WRITE, Arrays.asList(loadFilter)));
+                () -> filter.processLoadFilters(context, table, data, null, WriteMethod.BEFORE_WRITE, loadFilters));
     }
 
     @Test
@@ -196,7 +196,8 @@ class BshDatabaseWriterFilterTest {
     void testProcessError_throwsWhenFailOnError() {
         LoadFilter loadFilter = newLoadFilter();
         loadFilter.setFailOnError(true);
-        assertThrows(SymmetricException.class, () -> filter.processError(loadFilter, table, new RuntimeException("boom")));
+        RuntimeException error = new RuntimeException("boom");
+        assertThrows(SymmetricException.class, () -> filter.processError(loadFilter, table, error));
     }
 
     @Test

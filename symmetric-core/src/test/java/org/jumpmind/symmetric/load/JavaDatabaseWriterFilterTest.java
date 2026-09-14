@@ -55,7 +55,7 @@ class JavaDatabaseWriterFilterTest {
     }
 
     @Test
-    void testProcessLoadFilters_beforeWriteReturnsTrue() throws Exception {
+    void testProcessLoadFilters_beforeWriteReturnsTrue() {
         LoadFilter loadFilter = newLoadFilter();
         loadFilter.setBeforeWriteScript("return true;");
         when(compiledFilter.execute(context, table, data, null)).thenReturn(true);
@@ -64,7 +64,7 @@ class JavaDatabaseWriterFilterTest {
     }
 
     @Test
-    void testProcessLoadFilters_beforeWriteReturnsFalse() throws Exception {
+    void testProcessLoadFilters_beforeWriteReturnsFalse() {
         LoadFilter loadFilter = newLoadFilter();
         loadFilter.setBeforeWriteScript("return false;");
         when(compiledFilter.execute(context, table, data, null)).thenReturn(false);
@@ -73,7 +73,7 @@ class JavaDatabaseWriterFilterTest {
     }
 
     @Test
-    void testProcessLoadFilters_afterWrite() throws Exception {
+    void testProcessLoadFilters_afterWrite() {
         LoadFilter loadFilter = newLoadFilter();
         loadFilter.setAfterWriteScript("return false;");
         when(compiledFilter.execute(context, table, data, null)).thenReturn(false);
@@ -82,7 +82,7 @@ class JavaDatabaseWriterFilterTest {
     }
 
     @Test
-    void testProcessLoadFilters_handleError() throws Exception {
+    void testProcessLoadFilters_handleError() {
         LoadFilter loadFilter = newLoadFilter();
         loadFilter.setHandleErrorScript("return false;");
         Exception error = new Exception("boom");
@@ -115,8 +115,9 @@ class JavaDatabaseWriterFilterTest {
         loadFilter.setBeforeWriteScript("invalid(");
         loadFilter.setFailOnError(true);
         when(extensionService.getCompiledClass(anyString())).thenThrow(new RuntimeException("compile failed"));
+        List<LoadFilter> loadFilters = Arrays.asList(loadFilter);
         assertThrows(SymmetricException.class,
-                () -> filter.processLoadFilters(context, table, data, null, WriteMethod.BEFORE_WRITE, Arrays.asList(loadFilter)));
+                () -> filter.processLoadFilters(context, table, data, null, WriteMethod.BEFORE_WRITE, loadFilters));
     }
 
     @Test

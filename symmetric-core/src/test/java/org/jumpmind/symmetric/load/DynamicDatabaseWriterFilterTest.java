@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -171,15 +172,15 @@ class DynamicDatabaseWriterFilterTest {
 
     @Test
     void testGetDatabaseWriterFilters_createsFilterPerType() {
-        Map<LoadFilterType, Map<String, List<LoadFilter>>> byType = new HashMap<LoadFilterType, Map<String, List<LoadFilter>>>();
+        Map<LoadFilterType, Map<String, List<LoadFilter>>> byType = new EnumMap<LoadFilterType, Map<String, List<LoadFilter>>>(LoadFilterType.class);
         byType.put(LoadFilterType.BSH, new HashMap<String, List<LoadFilter>>());
         byType.put(LoadFilterType.JAVA, new HashMap<String, List<LoadFilter>>());
         byType.put(LoadFilterType.SQL, new HashMap<String, List<LoadFilter>>());
         List<DynamicDatabaseWriterFilter> filters = DynamicDatabaseWriterFilter.getDatabaseWriterFilters(engine, byType);
         assertEquals(3, filters.size());
-        assertTrue(filters.stream().anyMatch(f -> f instanceof BshDatabaseWriterFilter));
-        assertTrue(filters.stream().anyMatch(f -> f instanceof JavaDatabaseWriterFilter));
-        assertTrue(filters.stream().anyMatch(f -> f instanceof SQLDatabaseWriterFilter));
+        assertTrue(filters.stream().anyMatch(BshDatabaseWriterFilter.class::isInstance));
+        assertTrue(filters.stream().anyMatch(JavaDatabaseWriterFilter.class::isInstance));
+        assertTrue(filters.stream().anyMatch(SQLDatabaseWriterFilter.class::isInstance));
     }
 
     @Test

@@ -124,8 +124,9 @@ class SQLDatabaseWriterFilterTest {
         loadFilter.setBeforeWriteScript("select 0");
         loadFilter.setFailOnError(true);
         when(transaction.query(anyString(), eq(SQLDatabaseWriterFilter.lookupColumnRowMapper), any())).thenThrow(new RuntimeException("boom"));
+        List<LoadFilter> loadFilters = Arrays.asList(loadFilter);
         assertThrows(SymmetricException.class,
-                () -> filter.processLoadFilters(context, table, data, null, WriteMethod.BEFORE_WRITE, Arrays.asList(loadFilter)));
+                () -> filter.processLoadFilters(context, table, data, null, WriteMethod.BEFORE_WRITE, loadFilters));
     }
 
     @Test
@@ -225,7 +226,8 @@ class SQLDatabaseWriterFilterTest {
     void testProcessError_throwsWhenFailOnError() {
         LoadFilter loadFilter = newLoadFilter();
         loadFilter.setFailOnError(true);
-        assertThrows(SymmetricException.class, () -> filter.processError(loadFilter, table, new RuntimeException("boom")));
+        RuntimeException error = new RuntimeException("boom");
+        assertThrows(SymmetricException.class, () -> filter.processError(loadFilter, table, error));
     }
 
     @Test
@@ -239,7 +241,8 @@ class SQLDatabaseWriterFilterTest {
     // unconditionally calls currentFilter.isFailOnError(), so a null filter NPEs instead of a graceful no-op.
     @Test
     void testProcessError_withNullFilterThrowsNpe() {
-        assertThrows(NullPointerException.class, () -> filter.processError(null, table, new RuntimeException("boom")));
+        RuntimeException error = new RuntimeException("boom");
+        assertThrows(NullPointerException.class, () -> filter.processError(null, table, error));
     }
 
     @Test
