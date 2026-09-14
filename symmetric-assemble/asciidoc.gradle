@@ -48,6 +48,23 @@ task unzipProJar(type: Copy) {
 		into outputDir2
 }
 
+<<<<<<< HEAD
+=======
+task generateReleaseNotesActual(type: JavaExec) {
+	dependsOn unzipProJar
+	mainClass = 'org.jumpmind.db.io.ReleaseNotesGenerator'
+	classpath = configurations.generateReleaseNotesDependencies
+	args = [
+		symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-default.properties",
+		symAssembleDir + '/build/docJars/core-' + latestPreviousVersion + "/symmetric-schema.xml",
+		symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/symmetric-console-default.properties",
+		symAssembleDir + '/build/docJars/pro-' + latestPreviousVersion + "/console-schema.xml",
+		symAssembleDir + '/src/asciidoc/generated/release-notes.ad',
+		majorMinorVersion,
+		"https://jumpmind.atlassian.net"
+	]
+}
+>>>>>>> 76e1df088b (SYM-8064: Derive doc version from majorMinorVersion to support 4-number releases (#1084))
 
 task generateReleaseNotes {
 	dependsOn unzipProJar
@@ -176,7 +193,7 @@ task generateDocs(type: Copy) {
 		from ("$buildDir/src/asciidoc/html5/generated") { include "release-notes.html" }
         filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: [
             'appVersion': version,
-            'appMajorVersion': version.substring(0, version.lastIndexOf(".")),
+            'appMajorVersion': majorMinorVersion,
             'buildTime': new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss').format(new java.util.Date()),
             'buildYear': new java.text.SimpleDateFormat('yyyy').format(new java.util.Date()),
             'scmVersion' : scmVersion
@@ -187,7 +204,7 @@ task generateDocs(type: Copy) {
         from ("$buildDir/src/asciidoc/html5") { include "user-guide.html" }
         filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: [
             'appVersion': version,
-            'appMajorVersion': version.substring(0, version.lastIndexOf(".")),
+            'appMajorVersion': majorMinorVersion,
             'buildTime': new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss').format(new java.util.Date()),
             'buildYear': new java.text.SimpleDateFormat('yyyy').format(new java.util.Date()),
             'scmVersion' : scmVersion
@@ -199,7 +216,7 @@ task generateDocs(type: Copy) {
             from ("$buildDir/src/asciidoc/html5/tutorials") { include "tutorials.html" }
             filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: [
                 'appVersion': version,
-                'appMajorVersion': version.substring(0, version.lastIndexOf(".")),
+                'appMajorVersion': majorMinorVersion,
                 'buildTime': new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss').format(new java.util.Date()),
                 'buildYear': new java.text.SimpleDateFormat('yyyy').format(new java.util.Date()),
                 'scmVersion' : scmVersion
@@ -211,7 +228,7 @@ task generateDocs(type: Copy) {
         from ("$buildDir/src/asciidoc/html5/operations") { include "operations.html" }
         filter(org.apache.tools.ant.filters.ReplaceTokens, tokens: [
             'appVersion': version,
-            'appMajorVersion': version.substring(0, version.lastIndexOf(".")),
+            'appMajorVersion': majorMinorVersion,
             'buildTime': new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss').format(new java.util.Date()),
             'buildYear': new java.text.SimpleDateFormat('yyyy').format(new java.util.Date()),
             'scmVersion' : scmVersion
