@@ -30,7 +30,7 @@ import org.jumpmind.symmetric.service.impl.RegistrationAttemptTracker.Registrati
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class RegistrationAttemptTrackerTest {
+class RegistrationAttemptTrackerTest {
     private static final String NODE_KEY = "11498-2";
     private static final String OTHER_NODE_KEY = "11498-3";
     private static final long MAX_AGE_MS = 30000;

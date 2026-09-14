@@ -1,8 +1,8 @@
 package org.jumpmind.symmetric.service.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -19,12 +19,12 @@ import org.jumpmind.symmetric.service.IRegistrationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class PullServiceTest {
+class PullServiceTest {
     protected PullService pullService;
     private IRegistrationService registrationService;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
         IParameterService parameterService = mock(IParameterService.class);
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
@@ -38,7 +38,7 @@ public class PullServiceTest {
     }
 
     @Test
-    public void testFilterForDefaultQueueWhileRegisteringKeepsAllQueuesWhenNotRegistering() {
+    void testFilterForDefaultQueueWhileRegisteringKeepsAllQueuesWhenNotRegistering() {
         when(registrationService.isRegistrationInProgress()).thenReturn(false);
         List<NodeCommunication> nodes = Arrays.asList(buildNodeCommunication("default"), buildNodeCommunication("reload"));
         List<NodeCommunication> filtered = pullService.filterForDefaultQueueWhileRegistering(nodes);
@@ -46,7 +46,7 @@ public class PullServiceTest {
     }
 
     @Test
-    public void testFilterForDefaultQueueWhileRegisteringKeepsOnlyDefaultQueue() {
+    void testFilterForDefaultQueueWhileRegisteringKeepsOnlyDefaultQueue() {
         when(registrationService.isRegistrationInProgress()).thenReturn(true);
         List<NodeCommunication> nodes = Arrays.asList(buildNodeCommunication("reload"), buildNodeCommunication("default"), buildNodeCommunication("system"));
         List<NodeCommunication> filtered = pullService.filterForDefaultQueueWhileRegistering(nodes);
@@ -62,7 +62,7 @@ public class PullServiceTest {
     }
 
     @Test
-    public void testIsAllowedToPull() {
+    void testIsAllowedToPull() {
         NodeSecurity nodeSecurity = null;
         assertFalse(pullService.isAllowedToPull(nodeSecurity, "current_node"));
         nodeSecurity = new NodeSecurity();

@@ -55,7 +55,7 @@ import org.junit.jupiter.api.Test;
 
 import jakarta.servlet.http.HttpServletResponse;
 
-public class PullUriHandlerTest {
+class PullUriHandlerTest {
     private static final String SERVER_NODE_ID = "server";
     private static final String CLIENT_NODE_ID = "client-1";
     private static final String REMOTE_HOST = "client-host";
