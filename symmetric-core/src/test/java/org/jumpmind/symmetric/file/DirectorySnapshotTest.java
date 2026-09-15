@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
+import java.util.Collections;
 
 import org.jumpmind.symmetric.model.FileSnapshot;
 import org.jumpmind.symmetric.model.FileSnapshot.LastEventType;
@@ -15,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-public class DirectorySnapshotTest {
+class DirectorySnapshotTest {
     // File snapshotDirectory = new File("target/snapshots");
     static File testDirectory = new File("target/test");
     static File sourceDirectory = new File(testDirectory, "source");
@@ -26,7 +27,7 @@ public class DirectorySnapshotTest {
     static FileTriggerRouter fileTriggerRouter1 = new FileTriggerRouter();
 
     @BeforeAll
-    public static void setupBeforeAll() {
+    static void setupBeforeAll() {
         FileTrigger dummyFileTrigger1 = new FileTrigger(sourceDirectory.getPath(), false, "*", "");
         dummyFileTrigger1.setTriggerId("dummyFileTrigger1");
         Router dummyRouter1 = new Router();
@@ -40,7 +41,7 @@ public class DirectorySnapshotTest {
      */
     @ParameterizedTest
     @ValueSource(strings = { "C", "M" })
-    public void testDiff_FileNotInTarget_AcceptChange(String lastEventTypeCode) {
+    void testDiff_FileNotInTarget_AcceptChange(String lastEventTypeCode) {
         // Arrange
         LastEventType lastEventType = LastEventType.fromCode(lastEventTypeCode);
         DirectorySnapshot sourceDir = new DirectorySnapshot(fileTriggerRouter1);
@@ -58,7 +59,7 @@ public class DirectorySnapshotTest {
      * A delete in the source snapshot; The target directory snapshot (which is missing this file) must ignore this change.
      */
     @Test
-    public void testDiff_FileNotInTarget_DropDeleteChange() {
+    void testDiff_FileNotInTarget_DropDeleteChange() {
         // Arrange
         DirectorySnapshot sourceDir = new DirectorySnapshot(fileTriggerRouter1);
         sourceDir.add(new FileSnapshot(fileTriggerRouter1, fileInSource1, LastEventType.DELETE, false));
@@ -74,7 +75,7 @@ public class DirectorySnapshotTest {
      */
     @ParameterizedTest
     @ValueSource(strings = { "C", "M", "D" })
-    public void testDiff_FileIsInTarget_NoRealChange(String lastEventTypeCode) {
+    void testDiff_FileIsInTarget_NoRealChange(String lastEventTypeCode) {
         // Arrange
         LastEventType lastEventType = LastEventType.fromCode(lastEventTypeCode);
         DirectorySnapshot sourceDir = new DirectorySnapshot(fileTriggerRouter1);
@@ -92,7 +93,7 @@ public class DirectorySnapshotTest {
      * File CREATEd in the source snapshot; The target directory snapshot (which has same file as MODIFY, but different size) must flip both to MODIFIED.
      */
     @Test
-    public void testDiff_SameFileIsInTarget_CreateFlipsToModify() {
+    void testDiff_SameFileIsInTarget_CreateFlipsToModify() {
         // Arrange
         DirectorySnapshot sourceDir = new DirectorySnapshot(fileTriggerRouter1);
         FileSnapshot sourceFileShapshot = new FileSnapshot(fileTriggerRouter1, fileInSource1, LastEventType.CREATE, false);
@@ -115,7 +116,7 @@ public class DirectorySnapshotTest {
      */
     @ParameterizedTest
     @ValueSource(strings = { "C", "M" })
-    public void testDiff_FileIsInTarget_NoChange(String lastEventTypeCode) {
+    void testDiff_FileIsInTarget_NoChange(String lastEventTypeCode) {
         // Arrange
         LastEventType lastEventType = LastEventType.fromCode(lastEventTypeCode);
         DirectorySnapshot sourceDir = new DirectorySnapshot(fileTriggerRouter1);
@@ -133,7 +134,7 @@ public class DirectorySnapshotTest {
      * Source snapshot is empty; The target directory snapshot (which has file change as DELETE) must report no differences.
      */
     @Test
-    public void testDiff_FileIsInTargetAs_NoDeleteChange() {
+    void testDiff_FileIsInTargetAs_NoDeleteChange() {
         // Arrange
         LastEventType lastEventType = LastEventType.DELETE;
         DirectorySnapshot sourceDir = new DirectorySnapshot(fileTriggerRouter1);
@@ -149,7 +150,7 @@ public class DirectorySnapshotTest {
      * Source and target have lots of files with same names and only 5 differences in ModifiedTime. Time the diff() method!
      */
     @Test
-    public void testDiff_LotsOfFilesAndFewChanges() {
+    void testDiff_LotsOfFilesAndFewChanges() {
         // Arrange
         int maxIterations = 100;
         int iteration = 1;
@@ -180,5 +181,67 @@ public class DirectorySnapshotTest {
         long runTimeMs = System.currentTimeMillis() - startTime;
         assertTrue(50 > runTimeMs);
         // System.out.println("testDiff_LotsOfFilesAndFewChanges done; Runtime ms=" + (runTimeMs));
+    }
+
+    @Test
+    void testGetFileTriggerRouter() {
+        assertEquals(fileTriggerRouter1, new DirectorySnapshot(fileTriggerRouter1).getFileTriggerRouter());
+    }
+
+    @Test
+    void testConstructor_withExistingSnapshotCopiesEntries() {
+        FileSnapshot file = new FileSnapshot(fileTriggerRouter1, fileInSource1, LastEventType.CREATE, false);
+        DirectorySnapshot snapshot = new DirectorySnapshot(fileTriggerRouter1, Collections.singletonList(file));
+        assertEquals(1, snapshot.size());
+        assertEquals(file, snapshot.get(0));
+    }
+
+    @Test
+    void testConstructor_withoutSnapshotIsEmpty() {
+        assertTrue(new DirectorySnapshot(fileTriggerRouter1).isEmpty());
+    }
+
+    @Test
+    void testMerge_replacesCreateWithIncomingCreate() {
+        DirectorySnapshot base = new DirectorySnapshot(fileTriggerRouter1);
+        base.add(newSnapshot(fileInSource1, LastEventType.CREATE));
+        DirectorySnapshot incoming = new DirectorySnapshot(fileTriggerRouter1);
+        incoming.add(newSnapshot(fileInSource1, LastEventType.CREATE));
+        base.merge(incoming);
+        assertEquals(1, base.size());
+        assertEquals(LastEventType.CREATE, base.get(0).getLastEventType());
+    }
+
+    @Test
+    void testMerge_appliesIncomingModify() {
+        DirectorySnapshot base = new DirectorySnapshot(fileTriggerRouter1);
+        base.add(newSnapshot(fileInSource1, LastEventType.MODIFY));
+        DirectorySnapshot incoming = new DirectorySnapshot(fileTriggerRouter1);
+        incoming.add(newSnapshot(fileInSource1, LastEventType.MODIFY));
+        base.merge(incoming);
+        assertEquals(1, base.size());
+        assertEquals(LastEventType.MODIFY, base.get(0).getLastEventType());
+    }
+
+    @Test
+    void testMerge_dropsEntryWhenIncomingIsDelete() {
+        DirectorySnapshot base = new DirectorySnapshot(fileTriggerRouter1);
+        base.add(newSnapshot(fileInSource1, LastEventType.MODIFY));
+        DirectorySnapshot incoming = new DirectorySnapshot(fileTriggerRouter1);
+        incoming.add(newSnapshot(fileInSource1, LastEventType.DELETE));
+        base.merge(incoming);
+        assertTrue(base.isEmpty());
+    }
+
+    @Test
+    void testMerge_leavesUnrelatedEntriesAlone() {
+        DirectorySnapshot base = new DirectorySnapshot(fileTriggerRouter1);
+        base.add(newSnapshot(fileInSource1, LastEventType.CREATE));
+        base.merge(new DirectorySnapshot(fileTriggerRouter1));
+        assertEquals(1, base.size());
+    }
+
+    private static FileSnapshot newSnapshot(File file, LastEventType lastEventType) {
+        return new FileSnapshot(fileTriggerRouter1, file, lastEventType, false);
     }
 }
