@@ -352,8 +352,8 @@ class WrapperServiceTest {
     private String captureOut(Runnable runnable) {
         PrintStream originalOut = System.out;
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
-        try {
-            System.setOut(new PrintStream(captured));
+        try (PrintStream capturedOut = new PrintStream(captured)) {
+            System.setOut(capturedOut);
             runnable.run();
         } finally {
             System.setOut(originalOut);
@@ -385,10 +385,12 @@ class WrapperServiceTest {
 
         @Override
         public void install() {
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public void uninstall() {
+            throw new UnsupportedOperationException();
         }
 
         @Override

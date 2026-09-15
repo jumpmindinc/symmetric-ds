@@ -133,7 +133,7 @@ class WrapperLogHandlerTest {
         handler.setErrorManager(errorManagerMock);
         handler.setFormatter(new Formatter() {
             @Override
-            public String format(LogRecord record) {
+            public String format(LogRecord logRecord) {
                 throw new IllegalStateException("bad pattern");
             }
         });
@@ -178,8 +178,8 @@ class WrapperLogHandlerTest {
         handler = new WrapperLogHandler(logFile.toString(), maxByteCount, maxLogCount);
         handler.setFormatter(new Formatter() {
             @Override
-            public String format(LogRecord record) {
-                return record.getMessage();
+            public String format(LogRecord logRecord) {
+                return logRecord.getMessage();
             }
         });
     }

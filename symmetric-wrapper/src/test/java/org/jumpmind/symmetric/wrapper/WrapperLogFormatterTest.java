@@ -50,23 +50,23 @@ class WrapperLogFormatterTest {
 
     @Test
     void testFormat_withParameters_usesFirstParameterAsSource() {
-        LogRecord record = newRecord(Level.INFO, "Server started");
-        record.setParameters(new Object[] { "java" });
-        assertEquals(timestamp() + " [INFO   ] [java   ] Server started" + NEWLINE, formatter.format(record));
+        LogRecord logRecord = newRecord(Level.INFO, "Server started");
+        logRecord.setParameters(new Object[] { "java" });
+        assertEquals(timestamp() + " [INFO   ] [java   ] Server started" + NEWLINE, formatter.format(logRecord));
     }
 
     @Test
     void testFormat_withEmptyParameters_usesWrapperAsSource() {
-        LogRecord record = newRecord(Level.INFO, "Server started");
-        record.setParameters(new Object[0]);
-        assertEquals(timestamp() + " [INFO   ] [wrapper] Server started" + NEWLINE, formatter.format(record));
+        LogRecord logRecord = newRecord(Level.INFO, "Server started");
+        logRecord.setParameters(new Object[0]);
+        assertEquals(timestamp() + " [INFO   ] [wrapper] Server started" + NEWLINE, formatter.format(logRecord));
     }
 
     @Test
     void testFormat_withNonStringParameter_usesToString() {
-        LogRecord record = newRecord(Level.INFO, "Server started");
-        record.setParameters(new Object[] { Integer.valueOf(12) });
-        assertEquals(timestamp() + " [INFO   ] [12     ] Server started" + NEWLINE, formatter.format(record));
+        LogRecord logRecord = newRecord(Level.INFO, "Server started");
+        logRecord.setParameters(new Object[] { Integer.valueOf(12) });
+        assertEquals(timestamp() + " [INFO   ] [12     ] Server started" + NEWLINE, formatter.format(logRecord));
     }
 
     @Test
@@ -81,9 +81,9 @@ class WrapperLogFormatterTest {
 
     @Test
     void testFormat_doesNotTruncateLongSourceNames() {
-        LogRecord record = newRecord(Level.SEVERE, "Boom");
-        record.setParameters(new Object[] { "a-very-long-source" });
-        assertTrue(formatter.format(record).contains("[a-very-long-source]"));
+        LogRecord logRecord = newRecord(Level.SEVERE, "Boom");
+        logRecord.setParameters(new Object[] { "a-very-long-source" });
+        assertTrue(formatter.format(logRecord).contains("[a-very-long-source]"));
     }
 
     @Test
@@ -92,9 +92,9 @@ class WrapperLogFormatterTest {
     }
 
     private LogRecord newRecord(Level level, String message) {
-        LogRecord record = new LogRecord(level, message);
-        record.setInstant(Instant.ofEpochMilli(MILLIS));
-        return record;
+        LogRecord logRecord = new LogRecord(level, message);
+        logRecord.setInstant(Instant.ofEpochMilli(MILLIS));
+        return logRecord;
     }
 
     private String timestamp() {

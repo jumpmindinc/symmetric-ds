@@ -195,13 +195,13 @@ class WrapperConfigTest {
     @Test
     void testGetLogFileMaxSize_withNonNumericValue() throws Exception {
         WrapperConfig config = newConfig("wrapper.logfile.maxsize=big");
-        assertThrows(NumberFormatException.class, () -> config.getLogFileMaxSize());
+        assertThrows(NumberFormatException.class, config::getLogFileMaxSize);
     }
 
     @Test
     void testGetLogFileMaxFiles_withNonNumericValue() throws Exception {
         WrapperConfig config = newConfig("wrapper.logfile.maxfiles=many");
-        assertThrows(NumberFormatException.class, () -> config.getLogFileMaxFiles());
+        assertThrows(NumberFormatException.class, config::getLogFileMaxFiles);
     }
 
     @Test

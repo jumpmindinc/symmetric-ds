@@ -90,8 +90,8 @@ class WrapperTest {
     void testPrintUsage() {
         PrintStream originalOut = System.out;
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
-        try {
-            System.setOut(new PrintStream(captured));
+        try (PrintStream capturedOut = new PrintStream(captured)) {
+            System.setOut(capturedOut);
             Wrapper.printUsage();
         } finally {
             System.setOut(originalOut);
