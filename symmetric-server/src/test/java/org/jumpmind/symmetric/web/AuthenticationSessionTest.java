@@ -21,7 +21,7 @@
 package org.jumpmind.symmetric.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -88,17 +88,17 @@ class AuthenticationSessionTest {
 
     @Test
     void testEquals_withDifferentId() {
-        assertFalse(session.equals(new AuthenticationSession("session-2")));
+        assertNotEquals(new AuthenticationSession("session-2"), session);
     }
 
     @Test
     void testEquals_withOtherType() {
-        assertFalse(session.equals("session-1"));
+        assertNotEquals("session-1", session);
     }
 
     @Test
     void testEquals_withNull() {
-        assertFalse(session.equals(null));
+        assertNotEquals(null, session);
     }
 
     @Test
