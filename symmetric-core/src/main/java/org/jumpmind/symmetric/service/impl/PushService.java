@@ -246,21 +246,22 @@ public class PushService extends AbstractOfflineDetectorService implements IPush
             processInfo.setStatus(ProcessStatus.ERROR);
             fireOffline(ex, remote, status);
             if (isRegistrationRequired(ex)) {
-                if (identity.getNodeId().equals(remote.getCreatedAtNodeId())) {
-                    log.info("Re-opening registration for {} because registration is required", remote);
-                    registrationService.reOpenRegistration(remote.getNodeId());
-                } else if (!parameterService.isRegistrationServer() && parameterService.isRemoteNodeRegistrationServer(remote)) {
-                    log.info("Removing identity because registration is required");
-                    nodeService.deleteIdentity();
-                    nodeService.deleteNodeSecurity(identity.getNodeId());
-                    nodeService.deleteNode(identity.getNodeId(), remote.getNodeId(), false);
-                }
+                handleRegistrationRequired(identity, remote);
             }
         } finally {
             try {
                 transport.close();
             } catch (Exception e) {
             }
+        }
+    }
+
+    protected void handleRegistrationRequired(Node identity, Node remote) {
+        if (identity.getNodeId().equals(remote.getCreatedAtNodeId())) {
+            log.info("Re-opening registration for {} because registration is required", remote);
+            registrationService.reOpenRegistration(remote.getNodeId());
+        } else if (!parameterService.isRegistrationServer() && parameterService.isRemoteNodeRegistrationServer(remote)) {
+            registrationService.removeIdentityForReRegistration(remote, "push to " + remote.getNodeId());
         }
     }
 
