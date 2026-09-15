@@ -48,8 +48,6 @@ task unzipProJar(type: Copy) {
 		into outputDir2
 }
 
-<<<<<<< HEAD
-=======
 task generateReleaseNotesActual(type: JavaExec) {
 	dependsOn unzipProJar
 	mainClass = 'org.jumpmind.db.io.ReleaseNotesGenerator'
@@ -64,7 +62,6 @@ task generateReleaseNotesActual(type: JavaExec) {
 		"https://jumpmind.atlassian.net"
 	]
 }
->>>>>>> 76e1df088b (SYM-8064: Derive doc version from majorMinorVersion to support 4-number releases (#1084))
 
 task generateReleaseNotes {
 	dependsOn unzipProJar
