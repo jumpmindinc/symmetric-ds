@@ -70,7 +70,8 @@ class FileSyncZipDataWriterTest {
         configurationService = mock(IConfigurationService.class);
         when(engine.getFileSyncService()).thenReturn(fileSyncService);
         when(engine.getNodeService()).thenReturn(nodeService);
-        when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(engine.getExtensionService()).thenReturn(extensionService);
         when(engine.getConfigurationService()).thenReturn(configurationService);
         Channel channel = new Channel();
         channel.setReloadFlag(false);

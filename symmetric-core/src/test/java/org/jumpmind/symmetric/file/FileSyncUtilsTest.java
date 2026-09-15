@@ -20,8 +20,9 @@
  */
 package org.jumpmind.symmetric.file;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
 import org.junit.jupiter.api.Test;
