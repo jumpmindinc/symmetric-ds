@@ -7,6 +7,38 @@ Concurrency parameters scale together and should be sized against available CPU 
 - For high-throughput sync workloads, set `db.pool.min.idle` equal to `db.pool.max.active`, trading idle-connection overhead for eliminating connection-creation latency during bursts. HikariCP is the default pool (`db.pool.type=hikari`), so this guidance — which comes from HikariCP's own documentation — applies out of the box. Customers are adviced to test `db.pool.type=hikari` in a non-production environment. Apache DBCP2 remains available as a fully supported alternative via `db.pool.type=dbcp2` for deployments that were relying on its specific behavior. During an upgrade, the parameter `db.pool.type=dbcp2` will remain unchanged.
 - There is no universal JVM heap preset. Heap needs scale with channel count and batch size, and are already partly self-protecting via `routing.peek.ahead.memory.threshold.percent`, which caps how much of the heap the routing reader's peek-ahead queue may consume before it disperses non-active transactions to avoid an out-of-memory error. Rather than guessing a static `-Xmx`, enable the `cpu`, `memory`, `loadAverage`, `connectionPool`, `fileHandles`, and `jvmOutOfMemory` <<Monitors>>, size heap and cores from what they show under real load, and re-check after any change to thread-count or batch-size parameters.
 
+=== Sizing the Database Connection Pool
+
+Each endpoint's database connection pool must be large enough to cover every concurrent consumer of that pool, but not so large that it exceeds what the database server itself can accept — a limit that is easy to cross when several endpoints and multiple applications share one database server.
+
+ifdef::pro[]
+
+The Deploy Wizard's connection pool availability check (see <<Endpoint Overview>>) validates the connection pool size before deployment by opening the configured number of connections against each endpoint's database. The pool size it tests, and later deploys with, is driven by the below parameters:
+
+endif::pro[]
+
+ifndef::pro[]
+
+The pool size is driven by the below parameters:
+
+endif::pro[]
+
+- `db.pool.max.active` and `db.pool.min.idle` size the primary connection pool; for an endpoint with a separate runtime database (log-based, time-based, or write-only capture), `target.db.pool.max.active` and `target.db.pool.min.idle` size the application-side pool instead. See <<Parameter List>> for the full description of each, including the pool-type-specific (HikariCP vs. DBCP2) semantics covered under <<CPU and Memory Sizing>>.
+
+ifdef::pro[]
+
+- The number of connections actually drawn from that pool at once depends on the concurrency parameters described under <<CPU and Memory Sizing>> (`http.concurrent.workers.max`, `routing.thread.per.server.count`, `pull.thread.per.server.count`, `push.thread.per.server.count`), plus `initial.load.extract.thread.per.server.count`, which adds one connection per concurrent initial-load extraction thread, and `compare.thread.per.server.count`, which does the same for the Compare & Repair feature. Each of these is a candidate for a concurrent connection, so raising any of them without a corresponding increase to the pool size(s) above narrows the same headroom the connection pool availability check is meant to catch.
+
+endif::pro[]
+
+ifndef::pro[]
+
+- The number of connections actually drawn from that pool at once depends on the concurrency parameters described under <<CPU and Memory Sizing>> (`http.concurrent.workers.max`, `routing.thread.per.server.count`, `pull.thread.per.server.count`, `push.thread.per.server.count`), plus `initial.load.extract.thread.per.server.count`, which adds one connection per concurrent initial-load extraction thread. Each of these is a candidate for a concurrent connection, so raising any of them without a corresponding increase to the pool size(s) above narrows the available headroom.
+
+endif::pro[]
+
+- The `sync.triggers.thread.count.per.server` parameter controls how many connections SymmetricDS uses concurrently while synchronizing triggers, which doesn't happen as frequently as routing, push, or pull. Size it for how quickly trigger sync should complete rather than folding it into the pool's steady-state concurrency budget.
+
 === Staging Area Placement and Sizing
 
 The <<Staging Area>> writes extraction and load payloads to disk once `stream.to.file.threshold.bytes` is exceeded, specifically to stop large syncs from holding a database connection or JVM heap open for the duration of a network transfer.
