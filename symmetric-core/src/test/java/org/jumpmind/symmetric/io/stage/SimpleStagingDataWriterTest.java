@@ -114,7 +114,8 @@ class SimpleStagingDataWriterTest {
 
     @Test
     void testProcess_rejectsLinesOutsideOfABatch() {
-        assertThrows(ProtocolException.class, () -> process("insert,1,orphan\n" + batchProtocol(1)));
+        String protocol = "insert,1,orphan\n" + batchProtocol(1);
+        assertThrows(ProtocolException.class, () -> process(protocol));
     }
 
     @Test

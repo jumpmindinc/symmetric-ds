@@ -21,7 +21,6 @@
 package org.jumpmind.symmetric.io.stage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -113,17 +112,17 @@ class PerfResultTest {
     @Test
     void testEquals_withSameInstance() {
         PerfResult result = new PerfResult("write");
-        assertTrue(result.equals(result));
+        assertEquals(result, result);
     }
 
     @Test
     void testEquals_withNull() {
-        assertFalse(new PerfResult("write").equals(null));
+        assertNotEquals(null, new PerfResult("write"));
     }
 
     @Test
     void testEquals_withOtherType() {
-        assertFalse(new PerfResult("write").equals("write"));
+        assertNotEquals("write", new PerfResult("write"));
     }
 
     @Test
