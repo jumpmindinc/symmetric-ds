@@ -27,6 +27,7 @@ import org.jumpmind.symmetric.db.AbstractSymmetricDialect;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.DataMetaData;
+import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.route.SimpleRouterContext;
 import org.jumpmind.util.Context;
@@ -34,13 +35,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.when;
 
-public class XmlPublisherDataRouterTest {
+class XmlPublisherDataRouterTest {
     private static final String TABLE_NAME = "TEST_XML_PUBLISHER";
     private static final String INSERT_XML = "<batch xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" id=\"1\" binary=\"BASE64\" time=\"test\">" +
             "<row entity=\"" + TABLE_NAME + "\" dml=\"I\"><data key=\"ID\">1</data><data key=\"DATA\">new inserted data</data></row></batch>";
@@ -53,11 +58,8 @@ public class XmlPublisherDataRouterTest {
     private Table table;
     private Output output;
 
-    public XmlPublisherDataRouterTest() {
-    }
-
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         ISymmetricEngine engine = mock(ISymmetricEngine.class);
         when(engine.getSymmetricDialect()).thenReturn(mock(AbstractSymmetricDialect.class));
         when(engine.getSymmetricDialect().getBinaryEncoding()).thenReturn(BinaryEncoding.BASE64);
@@ -78,7 +80,7 @@ public class XmlPublisherDataRouterTest {
     }
 
     @Test
-    public void testPublishInsertAsXml() {
+    void testPublishInsertAsXml() {
         Data data = new Data();
         data.setDataEventType(DataEventType.INSERT);
         data.setRowData("1,new inserted data");
@@ -90,7 +92,7 @@ public class XmlPublisherDataRouterTest {
     }
 
     @Test
-    public void testPublishUpdateAsXml() {
+    void testPublishUpdateAsXml() {
         Data data = new Data();
         data.setDataEventType(DataEventType.UPDATE);
         data.setRowData("2,updated data");
@@ -102,7 +104,7 @@ public class XmlPublisherDataRouterTest {
     }
 
     @Test
-    public void testPublishDeleteAsXml() {
+    void testPublishDeleteAsXml() {
         Data data = new Data();
         data.setDataEventType(DataEventType.DELETE);
         data.setOldData("3,old deleted data");
@@ -111,6 +113,71 @@ public class XmlPublisherDataRouterTest {
         router.routeToNodes(context, new DataMetaData(data, table, null, null), null, false, false, null);
         router.contextCommitted(context);
         assertEquals(DELETE_XML, output.toString().trim());
+    }
+
+    @Test
+    void testIsConfigurable() {
+        assertTrue(router.isConfigurable());
+    }
+
+    @Test
+    void testIsDmlOnly() {
+        assertTrue(router.isDmlOnly());
+    }
+
+    @Test
+    void testRouteToNodes_returnsNoNodes() {
+        assertTrue(router.routeToNodes(context, new DataMetaData(newInsert(), table, null, null), null, false, false, null).isEmpty());
+    }
+
+    @Test
+    void testRouteToNodes_skipsTableNotInPublishList() {
+        Set<String> relationNames = new HashSet<String>();
+        relationNames.add("SOME_OTHER_TABLE");
+        router.setRelationNamesToPublishAsGroup(relationNames);
+        router.routeToNodes(context, new DataMetaData(newInsert(), table, null, null), null, false, false, null);
+        router.contextCommitted(context);
+        assertNull(output.toString());
+    }
+
+    @Test
+    void testRouteToNodes_publishesTableInPublishList() {
+        Set<String> relationNames = new HashSet<String>();
+        relationNames.add(TABLE_NAME);
+        router.setRelationNamesToPublishAsGroup(relationNames);
+        router.routeToNodes(context, new DataMetaData(newInsert(), table, null, null), null, false, false, null);
+        router.contextCommitted(context);
+        assertEquals(INSERT_XML, output.toString().trim());
+    }
+
+    @Test
+    void testContextCommitted_publishesNothingWhenNoDataRouted() {
+        router.contextCommitted(context);
+        assertNull(output.toString());
+    }
+
+    @Test
+    void testCompleteBatch_publishesWhenOnePerBatchEnabled() {
+        router.setOnePerBatch(true);
+        router.routeToNodes(context, new DataMetaData(newInsert(), table, null, null), null, false, false, null);
+        router.completeBatch(context, new OutgoingBatch());
+        assertEquals(INSERT_XML, output.toString().trim());
+    }
+
+    @Test
+    void testCompleteBatch_publishesNothingWhenOnePerBatchDisabled() {
+        router.routeToNodes(context, new DataMetaData(newInsert(), table, null, null), null, false, false, null);
+        router.completeBatch(context, new OutgoingBatch());
+        assertNull(output.toString());
+    }
+
+    private Data newInsert() {
+        Data data = new Data();
+        data.setDataEventType(DataEventType.INSERT);
+        data.setRowData("1,new inserted data");
+        data.setTriggerHistory(new TriggerHistory(TABLE_NAME, "ID", "ID,DATA"));
+        data.setTableName(TABLE_NAME);
+        return data;
     }
 
     static class Output implements IPublisher {
