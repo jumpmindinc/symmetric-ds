@@ -1,0 +1,306 @@
+/**
+ * Licensed to JumpMind Inc under one or more contributor
+ * license agreements.  See the NOTICE file distributed
+ * with this work for additional information regarding
+ * copyright ownership.  JumpMind Inc licenses this file
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
+ * (the "License"); you may not use this file except in compliance
+ * with the License.
+ *
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.jumpmind.db.platform.nuodb;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jumpmind.db.alter.AddColumnChange;
+import org.jumpmind.db.alter.AddPrimaryKeyChange;
+import org.jumpmind.db.alter.ColumnDataTypeChange;
+import org.jumpmind.db.alter.CopyColumnValueChange;
+import org.jumpmind.db.alter.RemoveColumnChange;
+import org.jumpmind.db.alter.TableChange;
+import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Database;
+import org.jumpmind.db.model.ForeignKey;
+import org.jumpmind.db.model.IndexColumn;
+import org.jumpmind.db.model.NonUniqueIndex;
+import org.jumpmind.db.model.PlatformColumn;
+import org.jumpmind.db.model.Reference;
+import org.jumpmind.db.model.Table;
+import org.jumpmind.db.platform.DatabaseNamesConstants;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+class NuoDbDdlBuilderTest {
+    private NuoDbDdlBuilder ddlBuilder;
+
+    @BeforeEach
+    void setUp() {
+        ddlBuilder = new NuoDbDdlBuilder();
+        ddlBuilder.setDelimitedIdentifierModeOn(false);
+    }
+
+    @Test
+    void testConstructor_configuresDatabaseInfo() {
+        assertEquals("DOUBLE", ddlBuilder.getDatabaseInfo().getNativeType(Types.FLOAT));
+        assertEquals("BOOLEAN", ddlBuilder.getDatabaseInfo().getNativeType(Types.BIT));
+        assertEquals("TEXT", ddlBuilder.getDatabaseInfo().getNativeType(Types.CLOB));
+        assertTrue(ddlBuilder.getDatabaseInfo().hasSize(Types.TIMESTAMP));
+        assertEquals(9, ddlBuilder.getDatabaseInfo().getMaxSize("TIMESTAMP"));
+        assertEquals(254, ddlBuilder.getDatabaseInfo().getDefaultSize(Types.VARCHAR));
+        assertEquals(128, ddlBuilder.getDatabaseInfo().getMaxTableNameLength());
+        assertFalse(ddlBuilder.getDatabaseInfo().isNonBlankCharColumnSpacePadded());
+        assertFalse(ddlBuilder.getDatabaseInfo().isEmptyStringNulled());
+        assertTrue(ddlBuilder.getDatabaseInfo().isNonPKIdentityColumnsSupported());
+    }
+
+    @Test
+    void testGetFullyQualifiedTableNameShorten() {
+        assertEquals("MY_TABLE", ddlBuilder.getFullyQualifiedTableNameShorten(new Table("MY_TABLE")));
+    }
+
+    @Test
+    void testAreColumnSizesTheSame_decimalWithWidenedTargetSameScale_returnsTrue() {
+        Column sourceColumn = new Column("AMOUNT", false, Types.DECIMAL, 8, 2);
+        Column targetColumn = new Column("AMOUNT", false, Types.DECIMAL, 18, 2);
+        assertTrue(ddlBuilder.areColumnSizesTheSame(sourceColumn, targetColumn));
+    }
+
+    @Test
+    void testAreColumnSizesTheSame_decimalWithDifferentScale_returnsFalse() {
+        Column sourceColumn = new Column("AMOUNT", false, Types.DECIMAL, 8, 2);
+        Column targetColumn = new Column("AMOUNT", false, Types.DECIMAL, 18, 4);
+        assertFalse(ddlBuilder.areColumnSizesTheSame(sourceColumn, targetColumn));
+    }
+
+    @Test
+    void testAreColumnSizesTheSame_nonDecimalColumns_fallsBackToSuper() {
+        Column sourceColumn = new Column("NAME", false, Types.VARCHAR, 50, 0);
+        Column targetColumn = new Column("NAME", false, Types.VARCHAR, 50, 0);
+        assertTrue(ddlBuilder.areColumnSizesTheSame(sourceColumn, targetColumn));
+    }
+
+    @Test
+    void testDropTable_writesDropTableIfExists() {
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.dropTable(new Table("MY_TABLE"), ddl, false, false);
+        assertTrue(ddl.toString().startsWith("DROP TABLE IF EXISTS MY_TABLE"));
+    }
+
+    @Test
+    void testWriteColumnAutoIncrementStmt_writesGeneratedByDefaultClause() {
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.writeColumnAutoIncrementStmt(new Table("MY_TABLE"), new Column("ID"), ddl);
+        assertEquals("GENERATED BY DEFAULT AS IDENTITY", ddl.toString());
+    }
+
+    @Test
+    void testGetSelectLastIdentityValues_returnsLastInsertIdQuery() {
+        assertEquals("SELECT LAST_INSERT_ID() FROM SYSTEM.DUAL", ddlBuilder.getSelectLastIdentityValues(new Table("MY_TABLE")));
+    }
+
+    @Test
+    void testProcessTableStructureChanges_removesAndAppliesRecognizedChanges() {
+        Column oldCol = new Column("OLD_COL", false, Types.INTEGER, 0, 0);
+        Column srcCol = new Column("SRC_COL", false, Types.INTEGER, 0, 0);
+        Column tgtCol = new Column("TGT_COL", false, Types.INTEGER, 0, 0);
+        Column pkCol = new Column("PK_COL", false, Types.INTEGER, 0, 0);
+        Table table = new Table("MY_TABLE", oldCol, srcCol, tgtCol, pkCol);
+        Database currentModel = new Database();
+        currentModel.addTable(table);
+        Column newCol = new Column("NEW_COL", false, Types.INTEGER, 0, 0);
+        List<TableChange> changes = new ArrayList<>();
+        changes.add(new RemoveColumnChange(table, oldCol));
+        changes.add(new CopyColumnValueChange(table, srcCol, tgtCol));
+        changes.add(new AddPrimaryKeyChange(table, new Column[] { pkCol }));
+        changes.add(new AddColumnChange(table, newCol, null, null));
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.processTableStructureChanges(currentModel, currentModel, table, table, changes, ddl);
+        assertTrue(changes.isEmpty());
+        assertTrue(ddl.toString().contains("DROP COLUMN"));
+        assertTrue(ddl.toString().contains("OLD_COL"));
+        assertTrue(ddl.toString().contains("ADD COLUMN"));
+        assertTrue(ddl.toString().contains("NEW_COL"));
+    }
+
+    @Test
+    void testProcessTableStructureChanges_columnChange_collectsIntoModifyColumnStatement() {
+        Column column = new Column("AMOUNT", false, Types.INTEGER, 0, 0);
+        Table table = new Table("MY_TABLE", column);
+        Database currentModel = new Database();
+        currentModel.addTable(table);
+        List<TableChange> changes = new ArrayList<>();
+        changes.add(new ColumnDataTypeChange(table, column, Types.BIGINT));
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.processTableStructureChanges(currentModel, currentModel, table, table, changes, ddl);
+        assertTrue(changes.isEmpty());
+        assertTrue(ddl.toString().contains("MODIFY COLUMN"));
+        assertTrue(ddl.toString().contains("AMOUNT"));
+    }
+
+    @Test
+    void testWriteExternalForeignKeyCreateStmt_writesAddConstraintClause() {
+        Column localColumn = new Column("PARENT_ID", false, Types.INTEGER, 0, 0);
+        Table table = new Table("CHILD", localColumn);
+        ForeignKey key = new ForeignKey("FK_CHILD_PARENT");
+        key.setForeignTableName("PARENT");
+        Reference ref = new Reference();
+        ref.setLocalColumnName("PARENT_ID");
+        ref.setForeignColumnName("ID");
+        key.addReference(ref);
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.writeExternalForeignKeyCreateStmt(new Database(), table, key, ddl);
+        assertTrue(ddl.toString().contains("ADD CONSTRAINT"));
+        assertTrue(ddl.toString().contains("FK_CHILD_PARENT"));
+        assertTrue(ddl.toString().contains("FOREIGN KEY (PARENT_ID)"));
+        assertTrue(ddl.toString().contains("REFERENCES PARENT (ID)"));
+    }
+
+    @Test
+    void testWriteExternalForeignKeyCreateStmt_withoutForeignTableName_writesNothing() {
+        Table table = new Table("CHILD");
+        ForeignKey key = new ForeignKey("FK_CHILD_PARENT");
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.writeExternalForeignKeyCreateStmt(new Database(), table, key, ddl);
+        assertEquals(0, ddl.length());
+    }
+
+    @Test
+    void testWriteExternalForeignKeyDropStmt_writesDropConstraintClause() {
+        Table table = new Table("CHILD");
+        ForeignKey key = new ForeignKey("FK_CHILD_PARENT");
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.writeExternalForeignKeyDropStmt(table, key, ddl);
+        assertTrue(ddl.toString().contains("DROP CONSTRAINT"));
+        assertTrue(ddl.toString().contains("FK_CHILD_PARENT"));
+    }
+
+    @Test
+    void testWriteExternalIndexDropStmt_writesDropIndexIfExists() {
+        Table table = new Table("MY_TABLE");
+        NonUniqueIndex index = new NonUniqueIndex("IDX_TEST");
+        index.addColumn(new IndexColumn("COL1"));
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.writeExternalIndexDropStmt(table, index, ddl);
+        assertTrue(ddl.toString().contains("DROP INDEX IDX_TEST"));
+        assertTrue(ddl.toString().contains("IF EXISTS"));
+    }
+
+    @Test
+    void testProcessChange_addColumnChange_writesAddColumnAndAppliesChange() {
+        Table table = new Table("MY_TABLE", new Column("ID", true, Types.INTEGER, 0, 0));
+        Database currentModel = new Database();
+        currentModel.addTable(table);
+        Column newColumn = new Column("NEW_COL", false, Types.INTEGER, 0, 0);
+        AddColumnChange change = new AddColumnChange(table, newColumn, null, null);
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.processChange(currentModel, currentModel, change, ddl);
+        assertTrue(ddl.toString().contains("ADD COLUMN"));
+        assertTrue(ddl.toString().contains("NEW_COL"));
+        assertNotNull(table.getColumnWithName("NEW_COL"));
+    }
+
+    @Test
+    void testProcessChange_removeColumnChange_writesDropColumnAndAppliesChange() {
+        Column column = new Column("OLD_COL", false, Types.INTEGER, 0, 0);
+        Table table = new Table("MY_TABLE", column);
+        Database currentModel = new Database();
+        currentModel.addTable(table);
+        RemoveColumnChange change = new RemoveColumnChange(table, column);
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.processChange(currentModel, currentModel, change, ddl);
+        assertTrue(ddl.toString().contains("DROP COLUMN"));
+        assertTrue(ddl.toString().contains("OLD_COL"));
+    }
+
+    @Test
+    void testProcessChange_columnDataTypeChange_writesAlterColumnTypeAndAppliesChange() {
+        Column column = new Column("AMOUNT", false, Types.INTEGER, 0, 0);
+        Table table = new Table("MY_TABLE", column);
+        Database currentModel = new Database();
+        currentModel.addTable(table);
+        ColumnDataTypeChange change = new ColumnDataTypeChange(table, column, Types.BIGINT);
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.processChange(currentModel, currentModel, change, ddl);
+        assertTrue(ddl.toString().contains("ALTER COLUMN"));
+        assertTrue(ddl.toString().contains("AMOUNT"));
+        assertEquals(Types.BIGINT, column.getMappedTypeCode());
+    }
+
+    @Test
+    void testProcessColumnChange_autoIncrementColumn_suppressesAutoIncrementClauseButRestoresFlag() {
+        Column sourceColumn = new Column("ID", false, Types.INTEGER, 0, 0);
+        Column targetColumn = new Column("ID", false, Types.INTEGER, 0, 0);
+        targetColumn.setAutoIncrement(true);
+        Table sourceTable = new Table("MY_TABLE", sourceColumn);
+        Table targetTable = new Table("MY_TABLE", targetColumn);
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.processColumnChange(sourceTable, targetTable, sourceColumn, targetColumn, ddl);
+        assertTrue(ddl.toString().contains("MODIFY COLUMN"));
+        assertFalse(ddl.toString().contains("GENERATED BY DEFAULT AS IDENTITY"));
+        assertTrue(targetColumn.isAutoIncrement());
+    }
+
+    @Test
+    void testWriteColumnNullableStmt_writesNothing() {
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.writeColumnNullableStmt(ddl);
+        assertEquals(0, ddl.length());
+    }
+
+    @Test
+    void testWriteCascadeAttributesForForeignKey_writesNothing() {
+        StringBuilder ddl = new StringBuilder();
+        ddlBuilder.writeCascadeAttributesForForeignKey(new ForeignKey(), ddl);
+        assertEquals(0, ddl.length());
+    }
+
+    @Test
+    void testGetSqlType_nonEnumColumn_returnsNativeType() {
+        Column column = new Column("AMOUNT", false, Types.INTEGER, 0, 0);
+        assertEquals("INTEGER", ddlBuilder.getSqlType(column));
+    }
+
+    @Test
+    void testGetSqlType_enumWithValues_appendsQuotedEnumList() {
+        Column column = new Column("STATUS", false, Types.CHAR, 10, 0);
+        column.setJdbcTypeName("ENUM");
+        PlatformColumn platformColumn = new PlatformColumn(DatabaseNamesConstants.NUODB, "ENUM", null);
+        platformColumn.setEnumValues(new String[] { "ACTIVE", "INACTIVE" });
+        column.addPlatformColumn(platformColumn);
+        assertEquals("ENUM('ACTIVE','INACTIVE')", ddlBuilder.getSqlType(column));
+    }
+
+    @Test
+    void testGetSqlType_enumWithPlatformColumnButNoEnumValues_returnsBaseSqlType() {
+        Column column = new Column("STATUS", false, Types.CHAR, 10, 0);
+        column.setJdbcTypeName("ENUM");
+        PlatformColumn platformColumn = new PlatformColumn(DatabaseNamesConstants.NUODB, "ENUM", null);
+        column.addPlatformColumn(platformColumn);
+        assertFalse(ddlBuilder.getSqlType(column).contains("'"));
+    }
+
+    @Test
+    void testGetSqlType_enumWithoutPlatformColumns_throwsNullPointerException() {
+        Column column = new Column("STATUS", false, Types.CHAR, 10, 0);
+        column.setJdbcTypeName("ENUM");
+        assertThrows(NullPointerException.class, () -> ddlBuilder.getSqlType(column));
+    }
+}
