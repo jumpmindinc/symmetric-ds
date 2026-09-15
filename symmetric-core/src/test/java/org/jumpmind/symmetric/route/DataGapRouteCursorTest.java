@@ -77,13 +77,13 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
 @RunWith(MockitoJUnitRunner.class)
-public class DataGapRouteCursorTest {
+class DataGapRouteCursorTest {
     protected IParameterService parameterService;
     protected ISqlTemplate sqlTemplate;
     protected NodeChannel nodeChannel;
 
     @BeforeEach
-    public void setUp() throws Exception {
+    void setUp() throws Exception {
         sqlTemplate = mock(ISqlTemplate.class);
         ISqlRowMapper<Data> mapper = any();
         when(sqlTemplate.queryForCursor((String) any(), mapper, (Object[]) any(), (int[]) any())).thenReturn(new ListReadCursor());
@@ -129,7 +129,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testOrderBy() throws Exception {
+    void testOrderBy() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(0, Long.MAX_VALUE));
         IDataGapRouteCursor cursor = buildCursor(dataGaps, false);
@@ -140,7 +140,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testOrderByNatural() throws Exception {
+    void testOrderByNatural() throws Exception {
         when(parameterService.is(ParameterConstants.ROUTING_DATA_READER_ORDER_BY_DATA_ID_ENABLED, true)).thenReturn(false);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(0, Long.MAX_VALUE));
@@ -152,7 +152,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testMemoryOrderById() throws Exception {
+    void testMemoryOrderById() throws Exception {
         when(parameterService.is(ParameterConstants.ROUTING_DATA_READER_INTO_MEMORY_ENABLED, false)).thenReturn(true);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(0, Long.MAX_VALUE));
@@ -175,7 +175,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testChannelFlags() throws Exception {
+    void testChannelFlags() throws Exception {
         nodeChannel.setUsePkDataToRoute(false);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(0, Long.MAX_VALUE));
@@ -193,7 +193,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testExceptionAndRetry() throws Exception {
+    void testExceptionAndRetry() throws Exception {
         ISqlRowMapper<Data> mapper = any();
         when(sqlTemplate.queryForCursor((String) any(), mapper, (Object[]) any(), (int[]) any())).then(new Answer<ISqlReadCursor<Data>>() {
             int count = 0;
@@ -215,7 +215,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testQueryGreaterThan() throws Exception {
+    void testQueryGreaterThan() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(1, 3));
         dataGaps.add(new DataGap(5, 5));
@@ -229,7 +229,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testQueryMergeFinalGaps() throws Exception {
+    void testQueryMergeFinalGaps() throws Exception {
         when(parameterService.getInt(eq(ParameterConstants.ROUTING_DATA_READER_THRESHOLD_GAPS_TO_USE_GREATER_QUERY), anyInt())).thenReturn(0);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(1, 3));
@@ -244,7 +244,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testQueryMultipleOneGapOver() throws Exception {
+    void testQueryMultipleOneGapOver() throws Exception {
         when(parameterService.is(ParameterConstants.ROUTING_DATA_READER_USE_MULTIPLE_QUERIES)).thenReturn(true);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(1, 3));
@@ -264,7 +264,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testQueryMultipleThreeGapsOver() throws Exception {
+    void testQueryMultipleThreeGapsOver() throws Exception {
         when(parameterService.is(ParameterConstants.ROUTING_DATA_READER_USE_MULTIPLE_QUERIES)).thenReturn(true);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(1, 3));
@@ -286,7 +286,7 @@ public class DataGapRouteCursorTest {
     }
 
     @Test
-    public void testQueryMultipleThreeQueries() throws Exception {
+    void testQueryMultipleThreeQueries() throws Exception {
         when(parameterService.is(ParameterConstants.ROUTING_DATA_READER_USE_MULTIPLE_QUERIES)).thenReturn(true);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(1, 3));
