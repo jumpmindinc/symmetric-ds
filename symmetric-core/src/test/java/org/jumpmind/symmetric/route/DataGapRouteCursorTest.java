@@ -83,7 +83,7 @@ class DataGapRouteCursorTest {
     protected NodeChannel nodeChannel;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         sqlTemplate = mock(ISqlTemplate.class);
         ISqlRowMapper<Data> mapper = any();
         when(sqlTemplate.queryForCursor((String) any(), mapper, (Object[]) any(), (int[]) any())).thenReturn(new ListReadCursor());

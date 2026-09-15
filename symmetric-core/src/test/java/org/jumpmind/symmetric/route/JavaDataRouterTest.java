@@ -56,7 +56,8 @@ class JavaDataRouterTest {
     void setUp() {
         engine = mock(ISymmetricEngine.class);
         extensionService = mock(IExtensionService.class);
-        when(engine.getSymmetricDialect()).thenReturn(mock(ISymmetricDialect.class));
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getExtensionService()).thenReturn(extensionService);
         router = new JavaDataRouter(engine);
         context = new SimpleRouterContext();
