@@ -147,11 +147,11 @@ class JavaDataRouterTest {
     }
 
     private ISymmetricEngine newEngine(IExtensionService extensionService) {
-        ISymmetricEngine engine = mock(ISymmetricEngine.class);
+        ISymmetricEngine mockedEngine = mock(ISymmetricEngine.class);
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         when(engine.getExtensionService()).thenReturn(extensionService);
-        return engine;
+        return mockedEngine;
     }
 
     private Router newConfiguredRouter() {
