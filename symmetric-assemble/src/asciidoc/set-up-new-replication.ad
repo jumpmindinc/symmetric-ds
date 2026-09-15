@@ -240,6 +240,8 @@ image::images/wizard-deploy/PermissionsDialog.png[]
 
 Both the application database and the runtime database will go through a permissions check. When each endpoint completes its permissions check, the results will show up as either passed or failed. Click the icon to the right of each result to view more details about how each permissions check went. For more information about the specific permissions that each endpoint type requires, find the endpoint type under the <<Database Notes>> appendix.
 
+Alongside the permissions check, the Deploy Wizard also runs a connection pool availability check for each endpoint, confirming that its database can actually handle as many connections as the endpoint will use once deployed. If an endpoint has a separate runtime database, each database is checked separately. The number of connections tested can be adjusted directly from the Permissions dialog. See <<Sizing the Database Connection Pool>> for guidance on choosing an appropriate pool size.
+
 --
 
 The Deploy Wizard will run a performance test on any local trigger-based endpoints that pass their permissions check. After 5 seconds, the test will be complete and the performance column will contain either a green or a red icon. A green icon indicates that the endpoint has a good enough connection to be deployed locally, while a red icon indicates that it's recommended to deploy the endpoint remotely. Click the icon to view the test results, including an overall score out of 10.
