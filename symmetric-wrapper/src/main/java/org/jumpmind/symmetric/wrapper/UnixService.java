@@ -111,7 +111,7 @@ public class UnixService extends WrapperService {
         runServiceCommand(getSystemdCommand(SYSTEMD_SCRIPT_ENABLE, config.getName()));
     }
 
-    private String getSystemdScriptFile() {
+    protected String getSystemdScriptFile() {
         // original implementation for systemd installed under /lib/systemd, so this is for backwards compatibility
         String fileName = SYSTEMD_INSTALL_DIR + "/" + config.getName() + ".service";
         if (!new File(fileName).exists()) {
@@ -121,7 +121,7 @@ public class UnixService extends WrapperService {
         return fileName;
     }
 
-    private String getInitdRunFile() {
+    protected String getInitdRunFile() {
         return INITD_DIR + "/" + config.getName();
     }
 
@@ -298,7 +298,7 @@ public class UnixService extends WrapperService {
         CLibrary.INSTANCE.kill(pid, isTerminate ? 9 : 1);
     }
 
-    private ArrayList<String> getServiceCommand(String command) {
+    protected ArrayList<String> getServiceCommand(String command) {
         ArrayList<String> s = new ArrayList<String>();
         String runFile = getInitdRunFile();
         s.add(runFile);
@@ -306,7 +306,7 @@ public class UnixService extends WrapperService {
         return s;
     }
 
-    private ArrayList<String> getSystemdCommand(String command, String serviceName) {
+    protected ArrayList<String> getSystemdCommand(String command, String serviceName) {
         ArrayList<String> s = new ArrayList<String>();
         s.add("systemctl");
         s.add(command);
