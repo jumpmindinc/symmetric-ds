@@ -85,6 +85,7 @@ public class PullService extends AbstractOfflineDetectorService implements IPull
                         int availableThreads = nodeCommunicationService.getAvailableThreads(CommunicationType.PULL);
                         boolean m2mLoadInProgress = configurationService.isMasterToMaster() && nodeService.isDataLoadStarted();
                         nodes = filterForReadyQueues(nodes);
+                        nodes = filterForDefaultQueueWhileRegistering(nodes);
                         for (NodeCommunication nodeCommunication : nodes) {
                             NodeSecurity nodeSecurity = nodeService.findNodeSecurity(nodeCommunication.getNodeId(), true);
                             boolean meetsMinimumTime = true;
@@ -131,6 +132,22 @@ public class PullService extends AbstractOfflineDetectorService implements IPull
                 if (nodeCommunication.getQueue().equals(Constants.QUEUE_DEFAULT) || readyQueues.contains(nodeCommunication.getQueue())) {
                     filteredNodes.add(nodeCommunication);
                 }
+            }
+        }
+        return filteredNodes;
+    }
+
+    protected List<NodeCommunication> filterForDefaultQueueWhileRegistering(List<NodeCommunication> nodes) {
+        if (!registrationService.isRegistrationInProgress()) {
+            return nodes;
+        }
+        List<NodeCommunication> filteredNodes = new ArrayList<NodeCommunication>();
+        for (NodeCommunication nodeCommunication : nodes) {
+            if (Constants.QUEUE_DEFAULT.equals(nodeCommunication.getQueue())) {
+                filteredNodes.add(nodeCommunication);
+            } else {
+                log.debug("Not pulling from {} on queue {} while a registration is in progress", nodeCommunication.getNodeId(),
+                        nodeCommunication.getQueue());
             }
         }
         return filteredNodes;

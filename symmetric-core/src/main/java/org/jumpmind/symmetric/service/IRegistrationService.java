@@ -120,6 +120,19 @@ public interface IRegistrationService {
      */
     public boolean attemptToRegisterWithServer(int maxNumberOfAttempts);
 
+    /**
+     * Re-register with the registration server after it answered that registration is required. Only one thread registers at a time and attempts are spaced by
+     * registration.max.time.between.retries; other callers return false immediately.
+     */
+    public boolean reRegisterWithServer(String reason);
+
+    /**
+     * Remove this node's identity so the next pull cycle registers again. Skipped when another thread is already re-registering or the identity is gone.
+     */
+    public boolean removeIdentityForReRegistration(Node remote, String reason);
+
+    public boolean isRegistrationInProgress();
+
     public List<RegistrationRequest> getRegistrationRequests(boolean includeNodesWithOpenRegistrations, boolean includeRejects);
 
     public RegistrationRequest getLatestRegistrationRequest(String nodeGroupId, String externalId);
