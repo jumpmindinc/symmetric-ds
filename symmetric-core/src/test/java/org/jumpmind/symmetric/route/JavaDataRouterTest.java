@@ -54,18 +54,12 @@ class JavaDataRouterTest {
 
     @BeforeEach
     void setUp() {
-        engine = mock(ISymmetricEngine.class);
         extensionService = mock(IExtensionService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
-        when(engine.getExtensionService()).thenReturn(extensionService);
+        engine = newEngine(extensionService);
         router = new JavaDataRouter(engine);
         context = new SimpleRouterContext();
-        Router configuredRouter = new Router();
-        configuredRouter.setRouterId("java-router");
-        configuredRouter.setRouterExpression("return null;");
         dataMetaData = mock(DataMetaData.class);
-        when(dataMetaData.getRouter()).thenReturn(configuredRouter);
+        when(dataMetaData.getRouter()).thenReturn(newConfiguredRouter());
         nodes = new HashSet<>(Collections.singletonList(new Node("store-1", "store")));
     }
 
@@ -150,5 +144,20 @@ class JavaDataRouterTest {
         when(extensionService.getCompiledClass(anyString())).thenReturn(compiled);
         when(compiled.routeToNodes(context, dataMetaData, noNodes, false, false, (TriggerRouter) null)).thenReturn(new HashSet<String>());
         assertTrue(router.routeToNodes(context, dataMetaData, noNodes, false, false, null).isEmpty());
+    }
+
+    private ISymmetricEngine newEngine(IExtensionService extensionService) {
+        ISymmetricEngine engine = mock(ISymmetricEngine.class);
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
+        when(engine.getExtensionService()).thenReturn(extensionService);
+        return engine;
+    }
+
+    private Router newConfiguredRouter() {
+        Router configuredRouter = new Router();
+        configuredRouter.setRouterId("java-router");
+        configuredRouter.setRouterExpression("return null;");
+        return configuredRouter;
     }
 }
