@@ -24,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -118,7 +117,7 @@ class SqliteJdbcSqlTemplateTest {
         ResultSet resultSetMock = mock(ResultSet.class);
         when(resultSetMock.getString(1)).thenReturn("2020-01-02 10:15:30.000");
         Date date = sqlTemplate.getObjectFromResultSet(resultSetMock, Date.class);
-        assertEquals(new Timestamp(date.getTime()).toString(), "2020-01-02 10:15:30.0");
+        assertEquals("2020-01-02 10:15:30.0", new Timestamp(date.getTime()).toString());
     }
 
     @Test
@@ -180,7 +179,7 @@ class SqliteJdbcSqlTemplateTest {
         Object[] args = new Object[] { Timestamp.valueOf("2020-01-02 10:15:30") };
         sqlTemplate.setValues(preparedStatementMock, args);
         assertEquals("2020-01-02 10:15:30.000", args[0]);
-        verify(preparedStatementMock).setString(eq(1), eq("2020-01-02 10:15:30.000"));
+        verify(preparedStatementMock).setString(1, "2020-01-02 10:15:30.000");
     }
 
     @Test
