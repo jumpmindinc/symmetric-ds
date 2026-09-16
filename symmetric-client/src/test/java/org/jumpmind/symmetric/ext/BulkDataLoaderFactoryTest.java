@@ -60,7 +60,8 @@ class BulkDataLoaderFactoryTest {
         engine = mock(ISymmetricEngine.class);
         when(engine.getParameterService()).thenReturn(parameterService);
         ISymmetricDialect targetDialect = mock(ISymmetricDialect.class);
-        when(targetDialect.getPlatform()).thenReturn(mock(IDatabasePlatform.class));
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(targetDialect.getPlatform()).thenReturn(platform);
         when(engine.getTargetDialect()).thenReturn(targetDialect);
         factory = new BulkDataLoaderFactory();
         factory.setSymmetricEngine(engine);
