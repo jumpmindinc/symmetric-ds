@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
@@ -89,10 +90,12 @@ class InternalOutgoingTransportTest {
     }
 
     @Test
-    void testClose_setsOpenFalseAndClosesWriter() {
-        InternalOutgoingTransport transport = new InternalOutgoingTransport(new BufferedWriter(new StringWriter()));
+    void testClose_setsOpenFalseAndClosesWriter() throws IOException {
+        BufferedWriter writer = mock(BufferedWriter.class);
+        InternalOutgoingTransport transport = new InternalOutgoingTransport(writer);
         transport.close();
         assertFalse(transport.isOpen());
+        verify(writer).close();
     }
 
     @Test
