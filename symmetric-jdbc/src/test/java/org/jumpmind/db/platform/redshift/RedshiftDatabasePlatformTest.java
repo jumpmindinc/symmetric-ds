@@ -41,7 +41,6 @@ import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 class RedshiftDatabasePlatformTest {
     private DataSource dataSourceMock;
