@@ -83,19 +83,19 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
             throws IOException {
         StringBuilder sqlScript = new StringBuilder();
         ISqlTemplate sqlTemplate = engine.getSqlTemplate();
-        boolean success = true;
+        boolean isSuccessful = true;
         if (isUpgradeFromPre3_8(tablePrefix, currentModel, desiredModel)) {
             isUpgradeFromPre38 = true;
-            success &= beforeUpgradeFromPre3_8(tablePrefix, currentModel, sqlTemplate, sqlScript);
+            isSuccessful &= beforeUpgradeFromPre3_8(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         if (isUpgradeFromPre3_10(tablePrefix, currentModel)) {
-            success &= beforeUpgradeFromPre3_10(tablePrefix, currentModel, sqlTemplate, sqlScript);
+            isSuccessful &= beforeUpgradeFromPre3_10(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         if (isUpgradeFromPre3_11(tablePrefix, currentModel)) {
-            success &= beforeUpgradeFromPre3_11(tablePrefix);
+            isSuccessful &= beforeUpgradeFromPre3_11(tablePrefix);
         }
         if (isUpgradeFromPre3_12(tablePrefix, currentModel)) {
-            success &= beforeUpgradeFromPre3_12(tablePrefix, currentModel, sqlTemplate, sqlScript);
+            isSuccessful &= beforeUpgradeFromPre3_12(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         if (isUpgradeFromPre3_12_5(tablePrefix, currentModel)) {
             isUpgradeFromPre3125 = true;
@@ -104,22 +104,22 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         fixInformixTriggerLongVarcharColumns(tablePrefix, desiredModel);
         if (isUpgradeFromPre3_15(tablePrefix, currentModel)) {
             isUpgradeFromPre315 = true;
-            success &= beforeUpgradeFromPre3_15(tablePrefix, currentModel, sqlTemplate, sqlScript);
+            isSuccessful &= beforeUpgradeFromPre3_15(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         if (isUpgradeFromPre3_16(tablePrefix, currentModel)) {
             isUpgradeFromPre316 = true;
-            success &= beforeUpgradeFromPre3_16(tablePrefix, currentModel, sqlTemplate, sqlScript);
+            isSuccessful &= beforeUpgradeFromPre3_16(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         if (isUpgradeFromPre3_17(tablePrefix, currentModel)) {
             isUpgradeFromPre317 = true;
-            success &= beforeUpgradeFromPre3_17(tablePrefix, currentModel, sqlTemplate, sqlScript);
+            isSuccessful &= beforeUpgradeFromPre3_17(tablePrefix, currentModel, sqlTemplate, sqlScript);
         }
         // Leave this last in the sequence of steps to make sure to capture any DML changes done before this
         if (engine.getParameterService().is(ParameterConstants.AUTO_SYNC_TRIGGERS) &&
                 currentModel.getTableCount() > 0 && currentModel.findTable(tablePrefix + "_" + TableConstants.SYM_TRIGGER_HIST) != null) {
             dropSymTriggersIfNecessary(currentModel, desiredModel);
         }
-        if (success) {
+        if (isSuccessful) {
             log.debug("All before-upgrade steps succeeded; SQL script= \n{}", sqlScript);
         } else {
             log.warn("One or more upgrade steps failed; SQL script attempted=\n{}", sqlScript);
@@ -145,14 +145,14 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     }
 
     protected boolean dropTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
-        boolean success = true;
+        boolean isSuccessful = true;
         for (String tableName : tableNames) {
             Table table = currentModel.findTable(tableName);
             if (table != null) {
-                success &= dropTableDueToUpgrade(table, currentModel, sqlTemplate, sqlScript);
+                isSuccessful &= dropTableDueToUpgrade(table, currentModel, sqlTemplate, sqlScript);
             }
         }
-        return success;
+        return isSuccessful;
     }
 
     protected boolean truncateTableDueToUpgrade(Table table, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
@@ -172,17 +172,17 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     }
 
     protected boolean truncateTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
-        boolean success = true;
+        boolean isSuccessful = true;
         for (String tableName : tableNames) {
             Table table = currentModel.findTable(tableName);
             if (table != null) {
-                success &= truncateTableDueToUpgrade(table, sqlTemplate, sqlScript);
+                isSuccessful &= truncateTableDueToUpgrade(table, sqlTemplate, sqlScript);
             }
         }
-        return success;
+        return isSuccessful;
     }
 
-    protected boolean dropPrimaryKeyConstraintDueToUpgrade(Table table, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
+    protected boolean dropMsSqlPrimaryKeyConstraintDueToUpgrade(Table table, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
         if (table == null) {
             return false;
         }
@@ -197,15 +197,15 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
         return false;
     }
 
-    protected boolean dropPkFromTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
-        boolean success = true;
+    protected boolean dropMsSqlPrimaryKeyFromTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
+        boolean isSuccessful = true;
         for (String tableName : tableNames) {
             Table table = currentModel.findTable(tableName);
             if (table != null) {
-                success &= dropPrimaryKeyConstraintDueToUpgrade(table, sqlTemplate, sqlScript);
+                isSuccessful &= dropMsSqlPrimaryKeyConstraintDueToUpgrade(table, sqlTemplate, sqlScript);
             }
         }
-        return success;
+        return isSuccessful;
     }
 
     protected boolean dropIndexFromTable(Table table, String indexName, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
@@ -261,14 +261,14 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     }
 
     protected boolean deleteFromTables(String[] tableNames, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
-        boolean success = true;
+        boolean isSuccessful = true;
         for (String tableName : tableNames) {
             Table table = currentModel.findTable(tableName);
             if (table != null) {
-                success &= deleteFromTableDueToUpgrade(table, sqlTemplate, sqlScript);
+                isSuccessful &= deleteFromTableDueToUpgrade(table, sqlTemplate, sqlScript);
             }
         }
-        return success;
+        return isSuccessful;
     }
 
     protected void dropSymTriggersIfNecessary(Database currentModel, Database desiredModel) {
@@ -424,8 +424,8 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     }
 
     protected boolean shouldFixDataEvent3_11(String tablePrefix) {
-        boolean shouldFix = engine.getParameterService().is("upgrade.force.fix.data.event");
-        if (!shouldFix && !engine.getParameterService().is("upgrade.skip.fix.data.event")) {
+        boolean isFixNeeded = engine.getParameterService().is("upgrade.force.fix.data.event");
+        if (!isFixNeeded && !engine.getParameterService().is("upgrade.skip.fix.data.event")) {
             HashSet<String> set = new HashSet<String>();
             String sql = "select t.trigger_id, r.target_node_group_id from " + tablePrefix + "_trigger t inner join " + tablePrefix +
                     "_trigger_router tr on tr.trigger_id = t.trigger_id inner join " + tablePrefix +
@@ -434,13 +434,13 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
             for (Row row : rows) {
                 String key = row.getString("trigger_id") + "-" + row.getString("target_node_group_id");
                 if (set.contains(key)) {
-                    shouldFix = true;
+                    isFixNeeded = true;
                     break;
                 }
                 set.add(key);
             }
         }
-        return shouldFix;
+        return isFixNeeded;
     }
 
     protected boolean fixDataEvent3_11(String tablePrefix) {
@@ -575,7 +575,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     }
 
     protected boolean beforeUpgradeFromPre3_8(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
-        boolean success = true;
+        boolean isSuccessful = true;
         Table transformTable = currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRANSFORM_TABLE));
         if (transformTable != null && transformTable.findColumn("update_action") != null) {
             String sql = "update " + TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRANSFORM_TABLE)
@@ -585,24 +585,24 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 sqlTemplate.update(sql);
             } catch (Exception e) {
                 log.warn("Unable to fix transform_table update_action during upgrade process because: {}", e.getMessage());
-                success = false;
+                isSuccessful = false;
             }
         }
         String[] tableNames = { TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA_GAP),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_COMMUNICATION) };
-        success &= deleteFromTables(tableNames, currentModel, sqlTemplate, sqlScript);
-        return success;
+        isSuccessful &= deleteFromTables(tableNames, currentModel, sqlTemplate, sqlScript);
+        return isSuccessful;
     }
 
     protected boolean beforeUpgradeFromPre3_10(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
-        boolean success = true;
+        boolean isSuccessful = true;
         if (engine.getDatabasePlatform().getName().equals(DatabaseNamesConstants.ASE)) {
-            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_IDENTITY)),
+            isSuccessful &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_IDENTITY)),
                     tablePrefix + "_fk_ident_2_node", sqlTemplate, sqlScript);
-            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_SECURITY)),
+            isSuccessful &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_SECURITY)),
                     tablePrefix + "_fk_sec_2_node", sqlTemplate, sqlScript);
         }
-        return success;
+        return isSuccessful;
     }
 
     protected boolean beforeUpgradeFromPre3_11(String tablePrefix) {
@@ -613,7 +613,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     }
 
     protected boolean beforeUpgradeFromPre3_12(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
-        boolean success = true;
+        boolean isSuccessful = true;
         if (engine.getParameterService().isRegistrationServer()) {
             log.info("Before upgrade, fixing router_type");
             String sql = "update " + TableConstants.getTableName(tablePrefix, TableConstants.SYM_ROUTER)
@@ -623,7 +623,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 sqlTemplate.update(sql);
             } catch (Exception e) {
                 log.warn("Unable to fix router_type during upgrade process because: {}", e.getMessage());
-                success = false;
+                isSuccessful = false;
             }
         }
         /*
@@ -631,18 +631,18 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
          */
         String name = engine.getDatabasePlatform().getName();
         if (name.equals(DatabaseNamesConstants.ORACLE) || name.equals(DatabaseNamesConstants.ORACLE122) || name.equals(DatabaseNamesConstants.ORACLE23)) {
-            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA)),
+            isSuccessful &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA)),
                     TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA) + "_pk", sqlTemplate, sqlScript);
         }
         if (name.equals(DatabaseNamesConstants.ASE)) {
-            success &= dropIndexFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA)),
+            isSuccessful &= dropIndexFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_DATA)),
                     tablePrefix + "_idx_d_channel_id", sqlTemplate, sqlScript);
-            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRIGGER_ROUTER)),
+            isSuccessful &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_TRIGGER_ROUTER)),
                     tablePrefix + "_fk_tr_2_rtr", sqlTemplate, sqlScript);
-            success &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_TRIGGER_ROUTER)),
+            isSuccessful &= dropConstraintFromTable(currentModel.findTable(TableConstants.getTableName(tablePrefix, TableConstants.SYM_FILE_TRIGGER_ROUTER)),
                     tablePrefix + "_fk_ftr_2_rtr", sqlTemplate, sqlScript);
         }
-        return success;
+        return isSuccessful;
     }
 
     // Informix cannot create sym_trigger with LONGVARCHAR columns (ticket 0002748), so always downgrade
@@ -664,7 +664,7 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
     }
 
     protected boolean beforeUpgradeFromPre3_15(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
-        boolean success = true;
+        boolean isSuccessful = true;
         String name = engine.getDatabasePlatform().getName();
         String[] pre315TableNames = { TableConstants.getTableName(tablePrefix, TableConstants.SYM_TABLE_RELOAD_REQUEST),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_GROUP_CHANNEL_WND),
@@ -673,12 +673,12 @@ public class DatabaseUpgradeListener implements IDatabaseUpgradeListener, ISymme
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_NODE_HOST_STATS),
                 TableConstants.getTableName(tablePrefix, TableConstants.SYM_REGISTRATION_REQUEST) };
         if (name.contains(DatabaseNamesConstants.MSSQL)) {
-            success &= dropPkFromTables(pre315TableNames, currentModel, sqlTemplate, sqlScript);
+            isSuccessful &= dropMsSqlPrimaryKeyFromTables(pre315TableNames, currentModel, sqlTemplate, sqlScript);
         }
         if (name.equals(DatabaseNamesConstants.ORACLE) || name.equals(DatabaseNamesConstants.ORACLE122) || name.equals(DatabaseNamesConstants.ORACLE23)) {
-            success &= truncateTables(pre315TableNames, currentModel, sqlTemplate, sqlScript);
+            isSuccessful &= truncateTables(pre315TableNames, currentModel, sqlTemplate, sqlScript);
         }
-        return success;
+        return isSuccessful;
     }
 
     protected boolean beforeUpgradeFromPre3_16(String tablePrefix, Database currentModel, ISqlTemplate sqlTemplate, StringBuilder sqlScript) {
