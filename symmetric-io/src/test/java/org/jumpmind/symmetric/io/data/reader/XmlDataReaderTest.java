@@ -30,9 +30,9 @@ import org.jumpmind.symmetric.io.data.CsvData;
 import org.jumpmind.symmetric.io.data.DataProcessor;
 import org.junit.jupiter.api.Test;
 
-public class XmlDataReaderTest {
+class XmlDataReaderTest {
     @Test
-    public void testNilDataElement() {
+    void testNilDataElement() {
         XmlDataReader reader = new XmlDataReader(getClass().getResourceAsStream("xmldatareadertest1.xml"));
         TestableDataWriter writer = new TestableDataWriter();
         DataProcessor processor = new DataProcessor(reader, writer, "test");
