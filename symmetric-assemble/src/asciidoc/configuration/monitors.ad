@@ -55,7 +55,7 @@ be compared to a threshold value.
 
 |postgresWal|Size in MB of the backlog of PostgreSQL Write-Ahead Logging (WAL) changes that haven't yet been mined by the PostgreSQL log miner.|
 
-|emptyTargetNodeGroup|Number of node group links whose target node group has no enabled nodes (and source includes the current node), which is a misconfiguration that is known to degrade performance the of the Routing job.|
+|emptyTargetNodeGroup|Number of node group links whose target node group has no enabled nodes (and source includes the current node), whether those nodes were removed, disabled, or never registered, which is a misconfiguration that is known to degrade the performance of the Routing job.|
 
 |jvmOutOfMemoryMonitor|Number of times a java.lang.OutOfMemoryError appears in the wrapper.log file within the last 24 hours.|
 
