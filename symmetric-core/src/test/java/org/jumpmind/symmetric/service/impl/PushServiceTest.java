@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.service.impl;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -392,5 +393,48 @@ class PushServiceTest {
         RemoteNodeStatus status = new RemoteNodeStatus("node2", Constants.QUEUE_DEFAULT, Collections.emptyMap());
         pushService.execute(nc, status);
         verify(processInfo).setStatus(ProcessStatus.OK);
+    }
+
+    @Test
+    void handleRegistrationRequiredReopensRegistrationForNodeCreatedByMe() {
+        Node identity = newNode("node1", "group1");
+        Node remote = newNode("server", "server");
+        remote.setCreatedAtNodeId("node1");
+        pushService.handleRegistrationRequired(identity, remote);
+        verify(registrationService).reOpenRegistration("server");
+        verify(registrationService, never()).removeIdentityForReRegistration(any(Node.class), anyString());
+    }
+
+    @Test
+    void handleRegistrationRequiredRemovesIdentityThroughRegistrationServiceWhenRemoteIsRegistrationServer() {
+        Node identity = newNode("node1", "group1");
+        Node remote = newNode("server", "server");
+        when(parameterService.isRegistrationServer()).thenReturn(false);
+        when(parameterService.isRemoteNodeRegistrationServer(remote)).thenReturn(true);
+        pushService.handleRegistrationRequired(identity, remote);
+        verify(registrationService).removeIdentityForReRegistration(remote, "push to server");
+        verify(nodeService, never()).deleteIdentity();
+        verify(registrationService, never()).reOpenRegistration(anyString());
+    }
+
+    @Test
+    void handleRegistrationRequiredDoesNothingForOtherRemoteNodes() {
+        Node identity = newNode("node1", "group1");
+        Node remote = newNode("server", "server");
+        when(parameterService.isRegistrationServer()).thenReturn(false);
+        when(parameterService.isRemoteNodeRegistrationServer(remote)).thenReturn(false);
+        pushService.handleRegistrationRequired(identity, remote);
+        verify(registrationService, never()).removeIdentityForReRegistration(any(Node.class), anyString());
+        verify(registrationService, never()).reOpenRegistration(anyString());
+    }
+
+    @Test
+    void handleRegistrationRequiredDoesNothingWhenIAmTheRegistrationServer() {
+        Node identity = newNode("node1", "group1");
+        Node remote = newNode("server", "server");
+        when(parameterService.isRegistrationServer()).thenReturn(true);
+        when(parameterService.isRemoteNodeRegistrationServer(remote)).thenReturn(true);
+        pushService.handleRegistrationRequired(identity, remote);
+        verify(registrationService, never()).removeIdentityForReRegistration(any(Node.class), anyString());
     }
 }
