@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -94,7 +95,7 @@ class RedshiftDatabasePlatformTest {
 
     @Test
     void testGetDefaultSchema_queriesCurrentSchemaWhenNotCached() {
-        RedshiftDatabasePlatform spyPlatform = Mockito.spy(platform);
+        RedshiftDatabasePlatform spyPlatform = spy(platform);
         ISqlTemplate sqlTemplateMock = mock(ISqlTemplate.class);
         when(sqlTemplateMock.queryForObject("select current_schema()", String.class)).thenReturn("analytics");
         when(spyPlatform.getSqlTemplate()).thenReturn(sqlTemplateMock);
@@ -103,7 +104,7 @@ class RedshiftDatabasePlatformTest {
 
     @Test
     void testGetDefaultSchema_cachesValueAfterFirstLookup() {
-        RedshiftDatabasePlatform spyPlatform = Mockito.spy(platform);
+        RedshiftDatabasePlatform spyPlatform = spy(platform);
         ISqlTemplate sqlTemplateMock = mock(ISqlTemplate.class);
         when(sqlTemplateMock.queryForObject("select current_schema()", String.class)).thenReturn("analytics");
         when(spyPlatform.getSqlTemplate()).thenReturn(sqlTemplateMock);
