@@ -36,23 +36,20 @@ import static org.junit.Assert.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class XmlPublisherFilterTest {
+class XmlPublisherFilterTest {
     private static final String TABLE_TEST = "TEST_XML_PUBLISHER";
     private static final String TEST_SIMPLE_TRANSFORM_RESULTS = "<batch xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" id=\"12\" binary=\"BASE64\" nodeid=\"54321\" batchid=\"1111\" time=\"test\"><row entity=\"TEST_XML_PUBLISHER\" dml=\"I\"><data key=\"ID1\">1</data><data key=\"ID2\">2</data><data key=\"DATA1\">test embedding an &amp;</data><data key=\"DATA2\">3</data><data key=\"DATA3\" xsi:nil=\"true\" /></row></batch>";
     private DataContext context;
     private Table table;
 
-    public XmlPublisherFilterTest() {
-    }
-
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         context = new DataContext(new Batch(BatchType.LOAD, 1111, "default", BinaryEncoding.BASE64, "54321", "00000", false));
         table = Table.buildTable(TABLE_TEST, new String[] { "ID1", "ID2" }, new String[] { "ID1", "ID2", "DATA1", "DATA2", "DATA3" });
     }
 
     @Test
-    public void testSimpleTransform() {
+    void testSimpleTransform() {
         XmlPublisherDatabaseWriterFilter filter = new XmlPublisherDatabaseWriterFilter();
         filter.setTimeStringGenerator(new XmlPublisherDatabaseWriterFilter.ITimeGenerator() {
             public String getTime() {

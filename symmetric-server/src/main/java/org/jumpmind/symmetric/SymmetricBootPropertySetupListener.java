@@ -61,7 +61,7 @@ public class SymmetricBootPropertySetupListener implements ApplicationListener<A
                 SymmetricWebServer.DEFAULT_MAX_IDLE_TIME));
         bootProps.put("server.servlet.jsp.init-parameters.listings", sysProps.is(ServerConstants.SERVER_ALLOW_DIR_LISTING));
         bootProps.put("server.servlet.session.cookie.http-only", Boolean.toString(true));
-        bootProps.put("spring.web.resources.static-locations", "classpath:[/META-INF/resources/,/resources/,/static/],file:" +
+        bootProps.put("spring.web.resources.static-locations", "classpath:/META-INF/resources/,classpath:/resources/,classpath:/static/,file:" +
                 sysProps.get(SystemConstants.SYSPROP_WEB_DIR, "web"));
         if (sysProps.is(ServerConstants.HTTPS_NEED_CLIENT_AUTH)) {
             bootProps.put("server.ssl.client-auth", "need");

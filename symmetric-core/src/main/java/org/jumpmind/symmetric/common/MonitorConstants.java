@@ -68,6 +68,7 @@ public class MonitorConstants {
     public static final String DB_PERFORMANCE = "dbPerformance";
     public static final String CONNECTION_POOL_METRICS = "connectionPoolMetrics";
     public static final String MULTI_HOMED_MAX_BATCH_TO_SEND = "multiHomedMaxBatchToSend";
+    public static final String EMPTY_TARGET_NODE_GROUP = "emptyTargetNodeGroup";
 
     public static Map<String, String> getMonitorTypesByVersion() {
         Map<String, String> map = new HashMap<String, String>();
@@ -92,6 +93,7 @@ public class MonitorConstants {
         for (String name : new String[] { DB_PERFORMANCE, CONNECTION_POOL_METRICS, MULTI_HOMED_MAX_BATCH_TO_SEND }) {
             map.put(name, "3.18.0");
         }
+        map.put(EMPTY_TARGET_NODE_GROUP, "3.18.1");
         return map;
     }
 }
