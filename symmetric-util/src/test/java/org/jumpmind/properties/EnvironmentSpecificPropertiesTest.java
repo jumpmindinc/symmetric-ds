@@ -53,6 +53,7 @@ class EnvironmentSpecificPropertiesTest {
         try {
             FileUtils.deleteDirectory(tempDir.toFile());
         } catch (Exception e) {
+            // Best-effort cleanup; a locked file on Windows should not fail the test.
         }
     }
 
@@ -92,14 +93,16 @@ class EnvironmentSpecificPropertiesTest {
     void testLoad_inputStreamThrowsNotImplementedException() throws Exception {
         URL fileUrl = writeProperties("key=value\n");
         EnvironmentSpecificProperties props = new EnvironmentSpecificProperties(fileUrl, null);
-        assertThrows(NotImplementedException.class, () -> props.load(new ByteArrayInputStream(new byte[0])));
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(new byte[0]);
+        assertThrows(NotImplementedException.class, () -> props.load(inputStream));
     }
 
     @Test
     void testLoad_readerThrowsNotImplementedException() throws Exception {
         URL fileUrl = writeProperties("key=value\n");
         EnvironmentSpecificProperties props = new EnvironmentSpecificProperties(fileUrl, null);
-        assertThrows(NotImplementedException.class, () -> props.load(new StringReader("")));
+        StringReader reader = new StringReader("");
+        assertThrows(NotImplementedException.class, () -> props.load(reader));
     }
 
     @Test
