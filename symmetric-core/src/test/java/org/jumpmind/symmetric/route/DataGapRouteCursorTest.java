@@ -77,7 +77,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 
 @RunWith(MockitoJUnitRunner.class)
-class DataGapRouteCursorTest {
+public class DataGapRouteCursorTest {
     protected IParameterService parameterService;
     protected ISqlTemplate sqlTemplate;
     protected NodeChannel nodeChannel;
