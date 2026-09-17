@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -63,19 +64,11 @@ class AbstractServiceTest {
 
     @BeforeEach
     void setUp() {
-        IParameterService parameterService = mock(IParameterService.class);
-        symmetricDialect = mock(ISymmetricDialect.class);
-        targetDialect = mock(ISymmetricDialect.class);
         platform = mock(IDatabasePlatform.class);
         targetPlatform = mock(IDatabasePlatform.class);
-        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        IParameterService parameterService = mock(IParameterService.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(symmetricDialect.getTargetDialect()).thenReturn(targetDialect);
-        when(targetDialect.getPlatform()).thenReturn(targetPlatform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
-        service = new TestService(parameterService, symmetricDialect);
+        service = new TestService(parameterService, newSymmetricDialect());
     }
 
     @Test
@@ -167,7 +160,7 @@ class AbstractServiceTest {
 
     @Test
     void testClose_withNullTransactionIsHarmless() {
-        service.close(null);
+        assertDoesNotThrow(() -> service.close(null));
     }
 
     @Test
@@ -182,7 +175,7 @@ class AbstractServiceTest {
 
     @Test
     void testAssertNotNull_withAValue() {
-        service.assertNotNull("value", "should not be reported");
+        assertDoesNotThrow(() -> service.assertNotNull("value", "should not be reported"));
     }
 
     @Test
@@ -366,6 +359,18 @@ class AbstractServiceTest {
     @Test
     void testBuildBatchOrderBy_withADescendingDirection() {
         assertEquals(" order by batch_id desc", service.buildBatchOrderBy("batchId", "DESCENDING"));
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        symmetricDialect = mock(ISymmetricDialect.class);
+        targetDialect = mock(ISymmetricDialect.class);
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(symmetricDialect.getTargetDialect()).thenReturn(targetDialect);
+        when(targetDialect.getPlatform()).thenReturn(targetPlatform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        return symmetricDialect;
     }
 
     private String whereFor(FilterCriterion criterion) {

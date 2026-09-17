@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,8 +36,8 @@ import static org.mockito.Mockito.when;
 
 import java.sql.Timestamp;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,27 +69,17 @@ class LoadFilterServiceTest {
 
     @BeforeEach
     void setUp() {
-        ISymmetricEngine engine = mock(ISymmetricEngine.class);
         parameterService = mock(IParameterService.class);
         configurationService = mock(IConfigurationService.class);
         cacheManager = mock(ICacheManager.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
         sqlTemplate = mock(ISqlTemplate.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(engine.getParameterService()).thenReturn(parameterService);
-        when(engine.getConfigurationService()).thenReturn(configurationService);
-        when(engine.getCacheManager()).thenReturn(cacheManager);
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
-        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
-        loadFilterService = new LoadFilterService(engine, symmetricDialect);
+        loadFilterService = new LoadFilterService(newMockedEngine(), newSymmetricDialect());
     }
 
     @Test
     void testFindLoadFiltersFor_returnsTheEntryForTheRequestedLink() {
-        Map<LoadFilterType, Map<String, List<LoadFilter>>> byType = new HashMap<LoadFilterType, Map<String, List<LoadFilter>>>();
+        Map<LoadFilterType, Map<String, List<LoadFilter>>> byType = new EnumMap<LoadFilterType, Map<String, List<LoadFilter>>>(LoadFilterType.class);
         Map<NodeGroupLink, Map<LoadFilterType, Map<String, List<LoadFilter>>>> cached = new HashMap<NodeGroupLink, Map<LoadFilterType, Map<String, List<LoadFilter>>>>();
         cached.put(CORP_TO_STORE, byType);
         when(cacheManager.findLoadFilters(CORP_TO_STORE, true)).thenReturn(cached);
@@ -165,7 +156,9 @@ class LoadFilterServiceTest {
 
     @Test
     void testLoadFilterMapper_withAnUnknownFilterTypeThrows() {
-        assertThrows(IllegalArgumentException.class, () -> loadFilterService.new LoadFilterMapper().mapRow(newLoadFilterRow("groovy")));
+        Row row = newLoadFilterRow("groovy");
+        LoadFilterService.LoadFilterMapper mapper = loadFilterService.new LoadFilterMapper();
+        assertThrows(IllegalArgumentException.class, () -> mapper.mapRow(row));
     }
 
     @Test
@@ -218,7 +211,7 @@ class LoadFilterServiceTest {
     void testSaveLoadFilter_stampsTheLastUpdateTime() {
         LoadFilterNodeGroupLink loadFilter = newLoadFilter("filter-1", "CORP", "PUBLIC", "ITEM", LoadFilterType.BSH);
         loadFilterService.saveLoadFilter(loadFilter);
-        assertTrue(loadFilter.getLastUpdateTime() != null);
+        assertNotNull(loadFilter.getLastUpdateTime());
     }
 
     @Test
@@ -241,6 +234,24 @@ class LoadFilterServiceTest {
     void testGetLoadFilterNodeGroupLinks_readsThroughTheTemplate() {
         stubLoadFilters(newLoadFilter("filter-1", "CORP", "PUBLIC", "ITEM", LoadFilterType.BSH));
         assertEquals(1, loadFilterService.getLoadFilterNodeGroupLinks().size());
+    }
+
+    private ISymmetricEngine newMockedEngine() {
+        ISymmetricEngine engine = mock(ISymmetricEngine.class);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        when(engine.getCacheManager()).thenReturn(cacheManager);
+        return engine;
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
+        return symmetricDialect;
     }
 
     private void stubLoadFilters(LoadFilterNodeGroupLink... loadFilters) {

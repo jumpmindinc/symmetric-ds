@@ -70,32 +70,13 @@ class FileSyncExtractorServiceTest {
 
     @BeforeEach
     void setUp() {
-        ISymmetricEngine engine = mock(ISymmetricEngine.class);
         parameterService = mock(IParameterService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
-        when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(engine.getTablePrefix()).thenReturn("sym");
-        when(engine.getParameterService()).thenReturn(parameterService);
-        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
-        when(engine.getDatabasePlatform()).thenReturn(platform);
-        when(symmetricDialect.getName()).thenReturn("H2");
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(symmetricDialect.getSqlReplacementTokens()).thenReturn(new HashMap<String, String>());
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
         fileSyncService = mock(IFileSyncService.class);
         stagingManager = mock(IStagingManager.class);
         configurationService = mock(IConfigurationService.class);
         nodeCommunicationService = mock(INodeCommunicationService.class);
-        when(engine.getFileSyncService()).thenReturn(fileSyncService);
-        when(engine.getNodeService()).thenReturn(mock(INodeService.class));
-        when(engine.getStagingManager()).thenReturn(stagingManager);
-        when(engine.getConfigurationService()).thenReturn(configurationService);
-        when(engine.getNodeCommunicationService()).thenReturn(nodeCommunicationService);
-        when(engine.getExtensionService()).thenReturn(mock(IExtensionService.class));
-        fileSyncExtractorService = new FileSyncExtractorService(engine);
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        fileSyncExtractorService = new FileSyncExtractorService(newMockedEngine());
     }
 
     @Test
@@ -150,8 +131,10 @@ class FileSyncExtractorServiceTest {
 
     @Test
     void testExtractOutgoingBatch_withFileSyncDisabledReturnsNothing() {
-        assertNull(fileSyncExtractorService.extractOutgoingBatch(null, new Node("store-001", "store"), mock(IDataWriter.class),
-                new OutgoingBatch("store-001", "filesync", OutgoingBatch.Status.NE), false, false, ExtractMode.FOR_SYM_CLIENT, null));
+        IDataWriter dataWriter = mock(IDataWriter.class);
+        OutgoingBatch batch = new OutgoingBatch("store-001", "filesync", OutgoingBatch.Status.NE);
+        assertNull(fileSyncExtractorService.extractOutgoingBatch(null, new Node("store-001", "store"), dataWriter, batch, false, false,
+                ExtractMode.FOR_SYM_CLIENT, null));
     }
 
     @Test
@@ -161,7 +144,8 @@ class FileSyncExtractorServiceTest {
         Channel channel = new Channel("default", 1);
         channel.setFileSyncFlag(false);
         when(configurationService.getChannel("default")).thenReturn(channel);
-        assertNull(fileSyncExtractorService.extractOutgoingBatch(null, new Node("store-001", "store"), mock(IDataWriter.class), batch, false, false,
+        IDataWriter dataWriter = mock(IDataWriter.class);
+        assertNull(fileSyncExtractorService.extractOutgoingBatch(null, new Node("store-001", "store"), dataWriter, batch, false, false,
                 ExtractMode.FOR_SYM_CLIENT, null));
     }
 
@@ -188,6 +172,31 @@ class FileSyncExtractorServiceTest {
         when(nodeCommunicationService.getAvailableThreads(CommunicationType.FILE_XTRCT)).thenReturn(0);
         fileSyncExtractorService.queue("store-001", "default", new RemoteNodeStatuses(null));
         verify(nodeCommunicationService, never()).execute(any(NodeCommunication.class), any(), eq(fileSyncExtractorService));
+    }
+
+    private ISymmetricEngine newMockedEngine() {
+        ISymmetricEngine engine = mock(ISymmetricEngine.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        INodeService nodeService = mock(INodeService.class);
+        IExtensionService extensionService = mock(IExtensionService.class);
+        when(symmetricDialect.getName()).thenReturn("H2");
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(symmetricDialect.getSqlReplacementTokens()).thenReturn(new HashMap<String, String>());
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        when(engine.getTablePrefix()).thenReturn("sym");
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
+        when(engine.getDatabasePlatform()).thenReturn(platform);
+        when(engine.getFileSyncService()).thenReturn(fileSyncService);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        when(engine.getStagingManager()).thenReturn(stagingManager);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        when(engine.getNodeCommunicationService()).thenReturn(nodeCommunicationService);
+        when(engine.getExtensionService()).thenReturn(extensionService);
+        return engine;
     }
 
     private void enableFileSync() {

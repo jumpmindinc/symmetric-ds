@@ -21,7 +21,7 @@
 package org.jumpmind.symmetric.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
@@ -63,17 +63,11 @@ class SequenceServiceTest {
 
     @BeforeEach
     void setUp() {
-        parameterService = mock(IParameterService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
         sqlTemplate = mock(ISqlTemplate.class);
-        when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
-        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
         transaction = mock(ISqlTransaction.class);
-        sequenceService = new SequenceService(parameterService, symmetricDialect);
+        parameterService = mock(IParameterService.class);
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        sequenceService = new SequenceService(parameterService, newSymmetricDialect());
     }
 
     @Test
@@ -288,7 +282,17 @@ class SequenceServiceTest {
         stubSequenceLookup(Collections.singletonList(newSequence(100, 1, 1, 9999999999L, false, 1)));
         stubUpdateCount(1);
         sequenceService.tryToGetNextVal(transaction, SEQUENCE_NAME, 1);
-        assertFalse(sequenceService.nextValFromCache(transaction, SEQUENCE_NAME) == 0L);
+        assertNotEquals(0L, sequenceService.nextValFromCache(transaction, SEQUENCE_NAME));
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
+        return symmetricDialect;
     }
 
     private void reserveARangeOfFive() {

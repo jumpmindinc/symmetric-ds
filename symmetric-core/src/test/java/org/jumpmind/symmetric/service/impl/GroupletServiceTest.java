@@ -74,24 +74,13 @@ class GroupletServiceTest {
 
     @BeforeEach
     void setUp() {
-        ISymmetricEngine engine = mock(ISymmetricEngine.class);
         parameterService = mock(IParameterService.class);
         nodeService = mock(INodeService.class);
         cacheManager = mock(ICacheManager.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
         sqlTemplate = mock(ISqlTemplate.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(engine.getParameterService()).thenReturn(parameterService);
-        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
-        when(engine.getNodeService()).thenReturn(nodeService);
-        when(engine.getCacheManager()).thenReturn(cacheManager);
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
-        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
         triggerRouter = newTriggerRouter();
-        groupletService = new GroupletService(engine);
+        groupletService = new GroupletService(newMockedEngine());
     }
 
     @Test
@@ -319,6 +308,26 @@ class GroupletServiceTest {
         row.put("last_update_by", "system");
         row.put("last_update_time", Timestamp.valueOf("2024-01-02 03:04:05"));
         assertEquals(GroupletLinkPolicy.E, new GroupletService.GroupletMapper(null).mapRow(row).getGroupletLinkPolicy());
+    }
+
+    private ISymmetricEngine newMockedEngine() {
+        ISymmetricDialect symmetricDialect = newSymmetricDialect();
+        ISymmetricEngine engine = mock(ISymmetricEngine.class);
+        when(engine.getParameterService()).thenReturn(parameterService);
+        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        when(engine.getCacheManager()).thenReturn(cacheManager);
+        return engine;
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
+        return symmetricDialect;
     }
 
     private void enableGrouplets() {

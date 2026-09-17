@@ -73,20 +73,14 @@ class AbstractOfflineDetectorServiceTest {
     @BeforeEach
     void setUp() {
         parameterService = mock(IParameterService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
         extensionService = mock(IExtensionService.class);
         listener = mock(IOfflineClientListener.class);
         when(extensionService.getExtensionPointList(IOfflineClientListener.class)).thenReturn(Collections.singletonList(listener));
         remoteNode = new Node("store-001", "store");
         remoteNode.setSyncUrl("http://localhost:31415/sync/store-001");
         status = new RemoteNodeStatus("store-001", "default", null);
-        service = new TestOfflineDetectorService(parameterService, symmetricDialect, extensionService);
+        service = new TestOfflineDetectorService(parameterService, newSymmetricDialect(), extensionService);
     }
 
     @Test
@@ -303,6 +297,16 @@ class AbstractOfflineDetectorServiceTest {
         when(extensionService.getExtensionPointList(IOfflineClientListener.class)).thenReturn(null);
         service.fireOffline(new ConnectException(), remoteNode, status);
         assertEquals(Status.OFFLINE, status.getStatus());
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        return symmetricDialect;
     }
 
     private static class TestOfflineDetectorService extends AbstractOfflineDetectorService {

@@ -50,18 +50,11 @@ class ContextServiceTest {
 
     @BeforeEach
     void setUp() {
-        IParameterService parameterService = mock(IParameterService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
         sqlTemplate = mock(ISqlTemplate.class);
-        ISqlTemplate sqlTemplateDirty = mock(ISqlTemplate.class);
-        when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
-        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
         transaction = mock(ISqlTransaction.class);
-        contextService = new ContextService(parameterService, symmetricDialect);
+        IParameterService parameterService = mock(IParameterService.class);
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        contextService = new ContextService(parameterService, newSymmetricDialect());
     }
 
     @Test
@@ -179,6 +172,16 @@ class ContextServiceTest {
     @Test
     void testGetSql_resolvesTheTablePrefix() {
         assertEquals("select context_value from sym_context where name = ?", contextService.getSql("selectSql"));
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
+        return symmetricDialect;
     }
 
     private void stubStoredValue(String value) {

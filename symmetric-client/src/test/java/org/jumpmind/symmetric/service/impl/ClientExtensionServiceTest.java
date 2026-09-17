@@ -50,19 +50,13 @@ class ClientExtensionServiceTest {
 
     @BeforeEach
     void setUp() {
-        engine = mock(ISymmetricEngine.class);
         IParameterService parameterService = mock(IParameterService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(parameterService.getNodeGroupId()).thenReturn("store");
+        ISymmetricDialect symmetricDialect = newSymmetricDialect();
+        engine = mock(ISymmetricEngine.class);
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
-        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
         springContext = mock(ApplicationContext.class);
         when(springContext.getBeansOfType(IExtensionPoint.class)).thenReturn(Collections.<String, IExtensionPoint> emptyMap());
     }
@@ -101,7 +95,8 @@ class ClientExtensionServiceTest {
 
     @Test
     void testRefresh_ignoresAParentBeanFactoryThatCannotBeListed() {
-        when(springContext.getParentBeanFactory()).thenReturn(mock(BeanFactory.class));
+        BeanFactory parentFactory = mock(BeanFactory.class);
+        when(springContext.getParentBeanFactory()).thenReturn(parentFactory);
         ClientExtensionService extensionService = new ClientExtensionService(engine, springContext);
         extensionService.refresh();
         assertTrue(extensionService.getExtensionPointMetaData().isEmpty());
@@ -116,6 +111,17 @@ class ClientExtensionServiceTest {
         extensionService.setSpringContext(springContext);
         extensionService.refresh();
         assertEquals(1, extensionService.getExtensionPointList(ITestExtensionPoint.class).size());
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
+        return symmetricDialect;
     }
 
     private interface ITestExtensionPoint extends IExtensionPoint {

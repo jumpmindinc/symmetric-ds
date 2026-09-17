@@ -59,17 +59,11 @@ class StatisticServiceTest {
 
     @BeforeEach
     void setUp() {
-        IParameterService parameterService = mock(IParameterService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
         sqlTemplate = mock(ISqlTemplate.class);
         sqlTemplateDirty = mock(ISqlTemplate.class);
+        IParameterService parameterService = mock(IParameterService.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
-        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
-        statisticService = new StatisticService(parameterService, symmetricDialect);
+        statisticService = new StatisticService(parameterService, newSymmetricDialect());
     }
 
     @Test
@@ -154,7 +148,8 @@ class StatisticServiceTest {
     @Test
     void testJobStatsMapper_withAMissingColumn() {
         Row row = new Row("node_id", "store-001");
-        assertThrows(ColumnNotFoundException.class, () -> statisticService.new JobStatsMapper().mapRow(row));
+        StatisticService.JobStatsMapper mapper = statisticService.new JobStatsMapper();
+        assertThrows(ColumnNotFoundException.class, () -> mapper.mapRow(row));
     }
 
     @Test
@@ -204,6 +199,16 @@ class StatisticServiceTest {
         TreeMap<Date, HostStats> byPeriod = statisticService.getHostStatsForPeriod(START_TIME, END_TIME, "store-001", 5);
         assertEquals(1, byPeriod.size());
         assertEquals(0L, byPeriod.firstEntry().getValue().getRestarted());
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
+        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
+        return symmetricDialect;
     }
 
     private Row newChannelStatsRow(boolean withHostAndChannel) {

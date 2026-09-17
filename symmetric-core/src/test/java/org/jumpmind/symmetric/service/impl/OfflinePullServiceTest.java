@@ -33,7 +33,6 @@ import static org.mockito.Mockito.when;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
@@ -66,22 +65,16 @@ class OfflinePullServiceTest {
 
     @BeforeEach
     void setUp() {
-        IParameterService parameterService = mock(IParameterService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
-        when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
         nodeService = mock(INodeService.class);
         clusterService = mock(IClusterService.class);
         nodeCommunicationService = mock(INodeCommunicationService.class);
         dataLoaderService = mock(IDataLoaderService.class);
         transportManager = mock(ITransportManager.class);
+        IParameterService parameterService = mock(IParameterService.class);
         IConfigurationService configurationService = mock(IConfigurationService.class);
         IExtensionService extensionService = mock(IExtensionService.class);
-        offlinePullService = new OfflinePullService(parameterService, symmetricDialect, nodeService, dataLoaderService, clusterService,
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        offlinePullService = new OfflinePullService(parameterService, newSymmetricDialect(), nodeService, dataLoaderService, clusterService,
                 nodeCommunicationService, configurationService, extensionService, transportManager);
     }
 
@@ -166,6 +159,16 @@ class OfflinePullServiceTest {
         FileIncomingFilter filter = new FileIncomingFilter("csv");
         assertFalse(filter.accept(new File("/tmp"), "batch-1.zip"));
         assertFalse(filter.accept(new File("/tmp"), "csv"));
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        return symmetricDialect;
     }
 
     private void stubSyncEnabledIdentity() {

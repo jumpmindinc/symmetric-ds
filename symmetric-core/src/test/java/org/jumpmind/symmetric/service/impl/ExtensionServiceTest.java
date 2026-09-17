@@ -62,19 +62,14 @@ class ExtensionServiceTest {
 
     @BeforeEach
     void setUp() {
-        engine = mock(ISymmetricEngine.class);
-        parameterService = mock(IParameterService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
         sqlTemplate = mock(ISqlTemplate.class);
+        parameterService = mock(IParameterService.class);
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(parameterService.getNodeGroupId()).thenReturn("store");
+        ISymmetricDialect symmetricDialect = newSymmetricDialect();
+        engine = mock(ISymmetricEngine.class);
         when(engine.getParameterService()).thenReturn(parameterService);
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
-        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
         extensionService = new ExtensionService(engine);
         extensionService.refresh();
     }
@@ -296,6 +291,16 @@ class ExtensionServiceTest {
         extension.setExtensionText("println 'hello'");
         extensionService.registerExtension(extension);
         assertTrue(extensionService.getExtensionPointMetaData().isEmpty());
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        when(platform.scrubSql(anyString())).thenAnswer(returnsFirstArg());
+        return symmetricDialect;
     }
 
     private Extension newExtension(String extensionId) {

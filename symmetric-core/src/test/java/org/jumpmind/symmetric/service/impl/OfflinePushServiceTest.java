@@ -71,27 +71,19 @@ class OfflinePushServiceTest {
 
     @BeforeEach
     void setUp() {
-        IParameterService parameterService = mock(IParameterService.class);
-        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
-        IDatabasePlatform platform = mock(IDatabasePlatform.class);
-        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
-        when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
         nodeService = mock(INodeService.class);
         clusterService = mock(IClusterService.class);
         nodeCommunicationService = mock(INodeCommunicationService.class);
         dataExtractorService = mock(IDataExtractorService.class);
         transportManager = mock(ITransportManager.class);
+        processInfo = new ProcessInfo();
+        IParameterService parameterService = mock(IParameterService.class);
         IAcknowledgeService acknowledgeService = mock(IAcknowledgeService.class);
-        IStatisticManager statisticManager = mock(IStatisticManager.class);
         IConfigurationService configurationService = mock(IConfigurationService.class);
         IExtensionService extensionService = mock(IExtensionService.class);
-        processInfo = new ProcessInfo();
-        when(statisticManager.newProcessInfo(any(ProcessInfoKey.class))).thenReturn(processInfo);
-        offlinePushService = new OfflinePushService(parameterService, symmetricDialect, dataExtractorService, acknowledgeService, transportManager,
-                nodeService, clusterService, nodeCommunicationService, statisticManager, configurationService, extensionService);
+        when(parameterService.getTablePrefix()).thenReturn("sym");
+        offlinePushService = new OfflinePushService(parameterService, newSymmetricDialect(), dataExtractorService, acknowledgeService, transportManager,
+                nodeService, clusterService, nodeCommunicationService, newStatisticManager(), configurationService, extensionService);
     }
 
     @Test
@@ -160,6 +152,22 @@ class OfflinePushServiceTest {
         when(transportManager.getPushTransport(any(Node.class), any(Node.class), eq(null), eq(null))).thenThrow(new IOException("no such dir"));
         offlinePushService.execute(newNodeCommunicationFor(new Node("store-002", "store")), new RemoteNodeStatus("store-002", "default", null));
         assertEquals(ProcessStatus.ERROR, processInfo.getStatus());
+    }
+
+    private ISymmetricDialect newSymmetricDialect() {
+        ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
+        IDatabasePlatform platform = mock(IDatabasePlatform.class);
+        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
+        when(symmetricDialect.getPlatform()).thenReturn(platform);
+        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
+        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplate);
+        return symmetricDialect;
+    }
+
+    private IStatisticManager newStatisticManager() {
+        IStatisticManager statisticManager = mock(IStatisticManager.class);
+        when(statisticManager.newProcessInfo(any(ProcessInfoKey.class))).thenReturn(processInfo);
+        return statisticManager;
     }
 
     private FileOutgoingTransport stubPushTransport() throws IOException {
