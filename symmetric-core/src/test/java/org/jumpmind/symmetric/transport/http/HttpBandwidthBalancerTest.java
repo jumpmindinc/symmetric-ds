@@ -20,9 +20,9 @@
  */
 package org.jumpmind.symmetric.transport.http;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -76,7 +76,7 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testGetSampleSize_withValidValue() throws Exception {
+    void testGetSampleSize_withValidValue() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put(HttpBandwidthUrlSelector.PARAM_SAMPLE_SIZE, "500");
@@ -84,7 +84,7 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testGetSampleSize_withInvalidValueReturnsDefault() throws Exception {
+    void testGetSampleSize_withInvalidValueReturnsDefault() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put(HttpBandwidthUrlSelector.PARAM_SAMPLE_SIZE, "not-a-number");
@@ -92,13 +92,13 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testGetSampleSize_withMissingValueReturnsDefault() throws Exception {
+    void testGetSampleSize_withMissingValueReturnsDefault() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         assertEquals(1000L, ext.getSampleSize(new HashMap<>()));
     }
 
     @Test
-    void testGetMaxSampleDuration_withValidValue() throws Exception {
+    void testGetMaxSampleDuration_withValidValue() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put(HttpBandwidthUrlSelector.PARAM_MAX_SAMPLE_DURATION, "5000");
@@ -106,7 +106,7 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testGetMaxSampleDuration_withInvalidValueReturnsDefault() throws Exception {
+    void testGetMaxSampleDuration_withInvalidValueReturnsDefault() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put(HttpBandwidthUrlSelector.PARAM_MAX_SAMPLE_DURATION, "not-a-number");
@@ -114,13 +114,13 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testGetMaxSampleDuration_withMissingValueReturnsDefault() throws Exception {
+    void testGetMaxSampleDuration_withMissingValueReturnsDefault() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         assertEquals(2000L, ext.getMaxSampleDuration(new HashMap<>()));
     }
 
     @Test
-    void testGetSampleTTL_withValidValue() throws Exception {
+    void testGetSampleTTL_withValidValue() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put(HttpBandwidthUrlSelector.PARAM_SAMPLE_TTL, "5000");
@@ -128,7 +128,7 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testGetSampleTTL_withInvalidValueReturnsDefault() throws Exception {
+    void testGetSampleTTL_withInvalidValueReturnsDefault() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put(HttpBandwidthUrlSelector.PARAM_SAMPLE_TTL, "not-a-number");
@@ -136,13 +136,13 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testGetSampleTTL_withMissingValueReturnsDefault() throws Exception {
+    void testGetSampleTTL_withMissingValueReturnsDefault() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         assertEquals(60000L, ext.getSampleTTL(new HashMap<>()));
     }
 
     @Test
-    void testIsInitialLoadOnly_withTrueValueIsCaseInsensitive() throws Exception {
+    void testIsInitialLoadOnly_withTrueValueIsCaseInsensitive() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put(HttpBandwidthUrlSelector.PARAM_PRELOAD_ONLY, "TRUE");
@@ -150,7 +150,7 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testIsInitialLoadOnly_withFalseValue() throws Exception {
+    void testIsInitialLoadOnly_withFalseValue() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put(HttpBandwidthUrlSelector.PARAM_PRELOAD_ONLY, "false");
@@ -158,13 +158,13 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testIsInitialLoadOnly_withMissingValueReturnsFalse() throws Exception {
+    void testIsInitialLoadOnly_withMissingValueReturnsFalse() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         assertFalse(ext.isInitialLoadOnly(new HashMap<>()));
     }
 
     @Test
-    void testGetUrls_parsesNumericKeysOnly() throws Exception {
+    void testGetUrls_parsesNumericKeysOnly() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put("2", "http://second.example.com");
@@ -183,7 +183,7 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testGetUrls_withNoNumericKeysReturnsEmptyList() throws Exception {
+    void testGetUrls_withNoNumericKeysReturnsEmptyList() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         Map<String, String> params = new HashMap<>();
         params.put(HttpBandwidthUrlSelector.PARAM_PRELOAD_ONLY, "true");
@@ -213,21 +213,21 @@ class HttpBandwidthBalancerTest {
     }
 
     @Test
-    void testSetDefaultSampleSize_appliesToGetSampleSize() throws Exception {
+    void testSetDefaultSampleSize_appliesToGetSampleSize() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         ext.setDefaultSampleSize(5000);
         assertEquals(5000L, ext.getSampleSize(new HashMap<>()));
     }
 
     @Test
-    void testSetDefaultSampleTTL_appliesToGetSampleTTL() throws Exception {
+    void testSetDefaultSampleTTL_appliesToGetSampleTTL() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         ext.setDefaultSampleTTL(5000);
         assertEquals(5000L, ext.getSampleTTL(new HashMap<>()));
     }
 
     @Test
-    void testSetDefaultMaxSampleDuration_appliesToGetMaxSampleDuration() throws Exception {
+    void testSetDefaultMaxSampleDuration_appliesToGetMaxSampleDuration() {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         ext.setDefaultMaxSampleDuration(5000);
         assertEquals(5000L, ext.getMaxSampleDuration(new HashMap<>()));

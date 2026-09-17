@@ -206,7 +206,7 @@ class HttpTransportManagerTest {
         when(remoteNode.requires13Compatiblity()).thenReturn(false);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         manager.writeAcknowledgement(out, remoteNode, List.of(batch), localNode, "token");
-        assertTrue(out.toString(StandardCharsets.UTF_8).length() > 0);
+        assertFalse(out.toString(StandardCharsets.UTF_8).isEmpty());
     }
 
     @Test
