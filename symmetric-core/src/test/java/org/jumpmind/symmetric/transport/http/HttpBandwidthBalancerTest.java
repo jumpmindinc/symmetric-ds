@@ -22,8 +22,11 @@ package org.jumpmind.symmetric.transport.http;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,34 +34,35 @@ import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IBandwidthService;
 import org.jumpmind.symmetric.service.impl.BandwidthService;
 import org.jumpmind.symmetric.service.impl.MockNodeService;
+import org.jumpmind.symmetric.transport.http.HttpBandwidthUrlSelector.SyncUrl;
 import org.junit.jupiter.api.Test;
 
-public class HttpBandwidthBalancerTest {
+class HttpBandwidthBalancerTest {
     @Test
-    public void testUriParsing() throws Exception {
-        URI uri = new URI(
-                "ext://plugin/?1=http://rgn.com/sync&2=http://rgn2.com/sync&sampleBytes=1000&sampleTTL=200&initialLoadOnly=true");
+    void testResolveUrl_returnsUriStringWhenNotExtProtocol() throws Exception {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
-        Map<String, String> params = ext.getParameters(uri);
-        assertEquals("http://rgn.com/sync", params.get("1"));
-        assertEquals("http://rgn2.com/sync", params.get("2"));
-        assertEquals("1000", params.get("sampleBytes"));
-        assertEquals("200", params.get("sampleTTL"));
-        assertEquals("true", params.get("initialLoadOnly"));
+        URI uri = new URI("http://plain.example.com/sync");
+        assertEquals(uri.toString(), ext.resolveUrl(uri));
     }
 
     @Test
-    public void testResolveUrl() throws Exception {
+    void testResolveUrl_sortsByBandwidthWhenInitialLoadNotCompleted() throws Exception {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(false);
         URI uri = new URI("ext://balancer?10=100&100=50&"
                 + HttpBandwidthUrlSelector.PARAM_PRELOAD_ONLY + "=true");
         assertEquals("50", ext.resolveUrl(uri));
-        ext = getMockBandwidthBalancer(true);
+    }
+
+    @Test
+    void testResolveUrl_sortsByListOrderWhenInitialLoadCompleted() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        URI uri = new URI("ext://balancer?10=100&100=50&"
+                + HttpBandwidthUrlSelector.PARAM_PRELOAD_ONLY + "=true");
         assertEquals("100", ext.resolveUrl(uri));
     }
 
     @Test
-    public void testSampleTTL() throws Exception {
+    void testResolveUrl_cachesUrlsAndSampleWithinTTL() throws Exception {
         HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
         URI uri = new URI("ext://balancer?1=100&2=1&" + HttpBandwidthUrlSelector.PARAM_SAMPLE_TTL
                 + "=1000");
@@ -71,7 +75,165 @@ public class HttpBandwidthBalancerTest {
         assertNotSame(ts, ext.lastSampleTs);
     }
 
-    protected HttpBandwidthUrlSelector getMockBandwidthBalancer(final boolean dataLoadCompleted) {
+    @Test
+    void testGetSampleSize_withValidValue() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put(HttpBandwidthUrlSelector.PARAM_SAMPLE_SIZE, "500");
+        assertEquals(500L, ext.getSampleSize(params));
+    }
+
+    @Test
+    void testGetSampleSize_withInvalidValueReturnsDefault() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put(HttpBandwidthUrlSelector.PARAM_SAMPLE_SIZE, "not-a-number");
+        assertEquals(1000L, ext.getSampleSize(params));
+    }
+
+    @Test
+    void testGetSampleSize_withMissingValueReturnsDefault() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        assertEquals(1000L, ext.getSampleSize(new HashMap<>()));
+    }
+
+    @Test
+    void testGetMaxSampleDuration_withValidValue() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put(HttpBandwidthUrlSelector.PARAM_MAX_SAMPLE_DURATION, "5000");
+        assertEquals(5000L, ext.getMaxSampleDuration(params));
+    }
+
+    @Test
+    void testGetMaxSampleDuration_withInvalidValueReturnsDefault() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put(HttpBandwidthUrlSelector.PARAM_MAX_SAMPLE_DURATION, "not-a-number");
+        assertEquals(2000L, ext.getMaxSampleDuration(params));
+    }
+
+    @Test
+    void testGetMaxSampleDuration_withMissingValueReturnsDefault() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        assertEquals(2000L, ext.getMaxSampleDuration(new HashMap<>()));
+    }
+
+    @Test
+    void testGetSampleTTL_withValidValue() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put(HttpBandwidthUrlSelector.PARAM_SAMPLE_TTL, "5000");
+        assertEquals(5000L, ext.getSampleTTL(params));
+    }
+
+    @Test
+    void testGetSampleTTL_withInvalidValueReturnsDefault() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put(HttpBandwidthUrlSelector.PARAM_SAMPLE_TTL, "not-a-number");
+        assertEquals(60000L, ext.getSampleTTL(params));
+    }
+
+    @Test
+    void testGetSampleTTL_withMissingValueReturnsDefault() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        assertEquals(60000L, ext.getSampleTTL(new HashMap<>()));
+    }
+
+    @Test
+    void testIsInitialLoadOnly_withTrueValueIsCaseInsensitive() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put(HttpBandwidthUrlSelector.PARAM_PRELOAD_ONLY, "TRUE");
+        assertTrue(ext.isInitialLoadOnly(params));
+    }
+
+    @Test
+    void testIsInitialLoadOnly_withFalseValue() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put(HttpBandwidthUrlSelector.PARAM_PRELOAD_ONLY, "false");
+        assertFalse(ext.isInitialLoadOnly(params));
+    }
+
+    @Test
+    void testIsInitialLoadOnly_withMissingValueReturnsFalse() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        assertFalse(ext.isInitialLoadOnly(new HashMap<>()));
+    }
+
+    @Test
+    void testGetUrls_parsesNumericKeysOnly() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put("2", "http://second.example.com");
+        params.put("1", "http://first.example.com");
+        params.put(HttpBandwidthUrlSelector.PARAM_PRELOAD_ONLY, "true");
+        List<SyncUrl> urls = ext.getUrls(params);
+        assertEquals(2, urls.size());
+        for (SyncUrl syncUrl : urls) {
+            if (syncUrl.order == 1) {
+                assertEquals("http://first.example.com", syncUrl.url);
+            } else {
+                assertEquals(2, syncUrl.order);
+                assertEquals("http://second.example.com", syncUrl.url);
+            }
+        }
+    }
+
+    @Test
+    void testGetUrls_withNoNumericKeysReturnsEmptyList() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = new HashMap<>();
+        params.put(HttpBandwidthUrlSelector.PARAM_PRELOAD_ONLY, "true");
+        assertTrue(ext.getUrls(params).isEmpty());
+    }
+
+    @Test
+    void testGetParameters_parsesQueryString() throws Exception {
+        URI uri = new URI(
+                "ext://plugin/?1=http://rgn.com/sync&2=http://rgn2.com/sync&sampleBytes=1000&sampleTTL=200&initialLoadOnly=true");
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = ext.getParameters(uri);
+        assertEquals("http://rgn.com/sync", params.get("1"));
+        assertEquals("http://rgn2.com/sync", params.get("2"));
+        assertEquals("1000", params.get("sampleBytes"));
+        assertEquals("200", params.get("sampleTTL"));
+        assertEquals("true", params.get("initialLoadOnly"));
+    }
+
+    @Test
+    void testGetParameters_ignoresParamsWithoutValue() throws Exception {
+        URI uri = new URI("ext://plugin/?flag&1=http://rgn.com/sync");
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        Map<String, String> params = ext.getParameters(uri);
+        assertEquals(1, params.size());
+        assertEquals("http://rgn.com/sync", params.get("1"));
+    }
+
+    @Test
+    void testSetDefaultSampleSize_appliesToGetSampleSize() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        ext.setDefaultSampleSize(5000);
+        assertEquals(5000L, ext.getSampleSize(new HashMap<>()));
+    }
+
+    @Test
+    void testSetDefaultSampleTTL_appliesToGetSampleTTL() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        ext.setDefaultSampleTTL(5000);
+        assertEquals(5000L, ext.getSampleTTL(new HashMap<>()));
+    }
+
+    @Test
+    void testSetDefaultMaxSampleDuration_appliesToGetMaxSampleDuration() throws Exception {
+        HttpBandwidthUrlSelector ext = getMockBandwidthBalancer(true);
+        ext.setDefaultMaxSampleDuration(5000);
+        assertEquals(5000L, ext.getMaxSampleDuration(new HashMap<>()));
+    }
+
+    private HttpBandwidthUrlSelector getMockBandwidthBalancer(final boolean dataLoadCompleted) {
         HttpBandwidthUrlSelector ext = new HttpBandwidthUrlSelector(
                 new MockNodeService() {
                     @Override
