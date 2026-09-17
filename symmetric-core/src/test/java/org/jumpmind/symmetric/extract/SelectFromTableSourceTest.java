@@ -171,8 +171,8 @@ class SelectFromTableSourceTest {
         Batch batch = buildBatch();
         TriggerHistory triggerHistory = new TriggerHistory("test_table", "id", "id,name");
         SelectFromTableEvent event = new SelectFromTableEvent(targetNode, buildTriggerRouter(), triggerHistory, null);
-        assertThrows(SymmetricException.class,
-                () -> new SelectFromTableSource(engine, batch, new ArrayList<>(List.of(event))));
+        List<SelectFromTableEvent> events = new ArrayList<>(List.of(event));
+        assertThrows(SymmetricException.class, () -> new SelectFromTableSource(engine, batch, events));
     }
 
     @Test
@@ -606,7 +606,7 @@ class SelectFromTableSourceTest {
     }
 
     @Test
-    void testCreateCursor_defaultMapping_usesCsvValue() throws Exception {
+    void testCreateCursor_defaultMapping_usesCsvValue() {
         SelectFromTableSource source = createSourceWithDataDrivenEvent();
         source.sourceRelation = buildTable("test_table", "id", "name");
         SelectFromTableOptions options = new SelectFromTableOptions().triggerHistory(new TriggerHistory("test_table", "id", "id,name"))
@@ -619,7 +619,7 @@ class SelectFromTableSourceTest {
     }
 
     @Test
-    void testCreateCursor_selectedAsCsv_withCommaCountBelowExpected_throwsSymmetricException() throws Exception {
+    void testCreateCursor_selectedAsCsv_withCommaCountBelowExpected_throwsSymmetricException() {
         SelectFromTableSource source = createSourceWithDataDrivenEvent();
         source.sourceRelation = buildTable("test_table", "id", "name");
         SelectFromTableOptions options = new SelectFromTableOptions().triggerHistory(new TriggerHistory("test_table", "id", "id,name"))
@@ -630,7 +630,7 @@ class SelectFromTableSourceTest {
     }
 
     @Test
-    void testCreateCursor_objectValuesWillNeedEscaped_usesPlatformCsvStringValue() throws Exception {
+    void testCreateCursor_objectValuesWillNeedEscaped_usesPlatformCsvStringValue() {
         SelectFromTableSource source = createSourceWithDataDrivenEvent();
         source.sourceRelation = buildTable("test_table", "id", "name");
         when(platform.getCsvStringValue(any(), any(), any(), any())).thenReturn("escaped-csv");
@@ -643,7 +643,7 @@ class SelectFromTableSourceTest {
     }
 
     @Test
-    void testCreateCursor_checkRowLengthExceeded_returnsSqlEventTypeRowWithoutThrowing() throws Exception {
+    void testCreateCursor_checkRowLengthExceeded_returnsSqlEventTypeRowWithoutThrowing() {
         SelectFromTableSource source = createSourceWithDataDrivenEvent();
         Table table = buildTable("test_table", "id");
         table.getColumnWithName("id").setPrimaryKey(true);
@@ -723,7 +723,8 @@ class SelectFromTableSourceTest {
     private ISqlTemplate stubStartNewCursorDependencies() {
         when(parameterService.getTablePrefix()).thenReturn("sym");
         when(symmetricDialect.getParameterService()).thenReturn(parameterService);
-        when(symmetricDialect.getTriggerTemplate()).thenReturn(mock(AbstractTriggerTemplate.class));
+        AbstractTriggerTemplate triggerTemplate = mock(AbstractTriggerTemplate.class);
+        when(symmetricDialect.getTriggerTemplate()).thenReturn(triggerTemplate);
         when(configurationService.getChannel(any())).thenReturn(new Channel());
         when(extensionService.getExtensionPointList(IRelationReloadVariableFilter.class))
                 .thenReturn(Collections.<IRelationReloadVariableFilter> emptyList());

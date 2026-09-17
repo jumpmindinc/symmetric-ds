@@ -176,7 +176,7 @@ class SelectFromSymDataSourceTest {
     }
 
     @Test
-    void testNext_firstCall_obtainsCursorFromDataService() throws Exception {
+    void testNext_firstCall_obtainsCursorFromDataService() {
         SelectFromSymDataSource source = createSource();
         ISqlReadCursor<Data> cursor = newCursorMock();
         when(dataService.selectDataFor(anyLong(), anyString(), anyBoolean())).thenReturn(cursor);
@@ -186,7 +186,7 @@ class SelectFromSymDataSourceTest {
     }
 
     @Test
-    void testNext_whenCursorExhausted_closesCursorAndReturnsNull() throws Exception {
+    void testNext_whenCursorExhausted_closesCursorAndReturnsNull() {
         SelectFromSymDataSource source = createSource();
         ISqlReadCursor<Data> cursor = newCursorMock();
         when(dataService.selectDataFor(anyLong(), anyString(), anyBoolean())).thenReturn(cursor);
@@ -331,7 +331,7 @@ class SelectFromSymDataSourceTest {
     }
 
     @Test
-    void testNext_withFileParserRouterEvent_buildsSyntheticTriggerRouterAndProcessesEvent() throws Exception {
+    void testNext_withFileParserRouterEvent_buildsSyntheticTriggerRouterAndProcessesEvent() {
         SelectFromSymDataSource source = createSource();
         TriggerHistory triggerHistory = new TriggerHistory("test_table", "id", "id,name");
         triggerHistory.setTriggerHistoryId(70);
@@ -563,7 +563,7 @@ class SelectFromSymDataSourceTest {
     }
 
     @Test
-    void testProcessReloadEvent_whenReloadSourceReturnsNull_returnsEmptyData() throws Exception {
+    void testProcessReloadEvent_whenReloadSourceReturnsNull_returnsEmptyData() {
         TestableSelectFromSymDataSource source = createTestableSource();
         TriggerRouter triggerRouter = buildTriggerRouter(true);
         TriggerHistory triggerHistory = new TriggerHistory("test_table", "id", "id,name");
@@ -581,9 +581,10 @@ class SelectFromSymDataSourceTest {
     }
 
     @Test
-    void testCreateSelectFromTableSource_returnsNewSelectFromTableSource() throws Exception {
-        when(engine.getNodeService()).thenReturn(mock(INodeService.class));
-        when(engine.getNodeService().findNode("target", true)).thenReturn(targetNode);
+    void testCreateSelectFromTableSource_returnsNewSelectFromTableSource() {
+        INodeService nodeService = mock(INodeService.class);
+        when(engine.getNodeService()).thenReturn(nodeService);
+        when(nodeService.findNode("target", true)).thenReturn(targetNode);
         when(engine.getRouterService().getRouters()).thenReturn(new HashMap<>());
         SelectFromSymDataSource source = createSource();
         TriggerHistory triggerHistory = new TriggerHistory("test_table", "id", "id,name");

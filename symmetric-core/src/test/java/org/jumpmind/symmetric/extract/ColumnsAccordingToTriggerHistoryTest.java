@@ -22,7 +22,7 @@ package org.jumpmind.symmetric.extract;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -443,13 +443,13 @@ class ColumnsAccordingToTriggerHistoryTest {
         assertEquals(key1, key1);
         assertEquals(key1, key2);
         assertEquals(key1.hashCode(), key2.hashCode());
-        assertFalse(key1.equals(differentRouter));
-        assertFalse(key1.equals(differentHistoryId));
-        assertFalse(key1.equals(differentSetTargetTableName));
-        assertFalse(key1.equals(nullRouter));
-        assertFalse(nullRouter.equals(key1));
-        assertFalse(key1.equals(null));
-        assertFalse(key1.equals("not a cache key"));
+        assertNotEquals(key1, differentRouter);
+        assertNotEquals(key1, differentHistoryId);
+        assertNotEquals(key1, differentSetTargetTableName);
+        assertNotEquals(key1, nullRouter);
+        assertNotEquals(nullRouter, key1);
+        assertNotEquals(key1, null);
+        assertNotEquals(key1, "not a cache key");
     }
 
     private Table buildTable(String name, String... columnNames) {

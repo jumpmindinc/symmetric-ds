@@ -324,7 +324,8 @@ class MultiBatchStagingWriterTest {
         OutgoingBatch fromDatabase = createBatch(1);
         fromDatabase.setStatus(Status.OK);
         when(outgoingBatchService.findOutgoingBatch(1L, "target")).thenReturn(fromDatabase);
-        assertThrows(CancellationException.class, () -> writer.checkSend(new Statistics()));
+        Statistics statistics = new Statistics();
+        assertThrows(CancellationException.class, () -> writer.checkSend(statistics));
         verify(outgoingBatchService, never()).updateOutgoingBatch(any(OutgoingBatch.class));
     }
 
@@ -496,8 +497,9 @@ class MultiBatchStagingWriterTest {
         BufferedWriter bufferedWriter = mock(BufferedWriter.class);
         when(childResource.getWriter(anyLong())).thenReturn(bufferedWriter);
         when(stagingManager.create(any(), any(), any())).thenReturn(childResource);
+        Statistics statistics = new Statistics();
         assertThrows(RuntimeException.class,
-                () -> writer.checkSendChildRequests(writer.outgoingBatch, parentResource, new Statistics()));
+                () -> writer.checkSendChildRequests(writer.outgoingBatch, parentResource, statistics));
         verify(childResource).close();
         verify(parentResource).close();
     }

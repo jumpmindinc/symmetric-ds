@@ -158,6 +158,7 @@ class SelectFromSourceTest {
 
         @Override
         public void close() {
+            throw new UnsupportedOperationException();
         }
     }
 }
