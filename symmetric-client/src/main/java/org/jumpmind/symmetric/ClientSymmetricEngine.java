@@ -83,6 +83,7 @@ import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SnapshotUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.util.AppUtils;
+import org.jumpmind.db.util.IPooledDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -368,6 +369,9 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
                 dataSource = DataSourceFactory.create(properties, SecurityServiceFactory.create(SecurityServiceType.CLIENT, properties));
             }
         }
+        if (dataSource != null) {
+            logConnectionPoolSize(dataSource, properties);
+        }
         if (waitOnAvailableDatabase && dataSource != null) {
             waitForAvailableDatabase(dataSource);
         }
@@ -553,4 +557,12 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             return true;
         }
     }
+    
+	private static void logConnectionPoolSize(DataSource dataSource, TypedProperties properties) {
+		int concurrentWorkersMax = properties.getInt(ParameterConstants.CONCURRENT_WORKERS, 20);
+		int effectivePoolSize = IPooledDataSource.of(dataSource).getMaxTotal();
+		if((concurrentWorkersMax * 2) > effectivePoolSize) {
+			log.warn("Configured http.concurrent.workers.max is {}, the effective connection pool size of the database is {}", concurrentWorkersMax, effectivePoolSize);
+		}
+	}
 }
