@@ -21,8 +21,7 @@
 package org.jumpmind.db.platform.sqlanywhere;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -32,43 +31,32 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
-import org.jumpmind.db.platform.DatabaseNamesConstants;
 import org.jumpmind.db.sql.SqlTemplateSettings;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class SqlAnywhere12DatabasePlatformTest {
-    private SqlAnywhere12DatabasePlatform platform;
+class SqlAnywhereJdbcSqlTemplateTest {
+    private SqlAnywhereJdbcSqlTemplate sqlTemplate;
 
     @BeforeEach
     void setUp() throws SQLException {
-        platform = new SqlAnywhere12DatabasePlatform(newDataSourceMock(), new SqlTemplateSettings());
+        sqlTemplate = new SqlAnywhereJdbcSqlTemplate(newDataSourceMock(), new SqlTemplateSettings(), null,
+                new SqlAnywhereDdlBuilder().getDatabaseInfo());
     }
 
     @Test
-    void testGetClassName() {
-        SqlAnywhere12DatabasePlatform mockedPlatform = mock(SqlAnywhere12DatabasePlatform.class, CALLS_REAL_METHODS);
-        assertEquals(SqlAnywhere12DatabasePlatform.class.getName(), mockedPlatform.getClassName());
+    void testSupportsGetGeneratedKeys() {
+        assertFalse(sqlTemplate.supportsGetGeneratedKeys());
     }
 
     @Test
-    void testGetClassName_differsFromSuperclass() {
-        assertEquals(SqlAnywhere12DatabasePlatform.class.getName(), platform.getClassName());
+    void testGetSelectLastInsertIdSql() {
+        assertEquals("select @@identity", sqlTemplate.getSelectLastInsertIdSql("sym_data_seq"));
     }
 
     @Test
-    void testExtendsSqlAnywhereDatabasePlatform() {
-        assertInstanceOf(SqlAnywhereDatabasePlatform.class, platform);
-    }
-
-    @Test
-    void testGetName_inheritsSqlAnywhere() {
-        assertEquals(DatabaseNamesConstants.SQLANYWHERE, platform.getName());
-    }
-
-    @Test
-    void testCreateDdlBuilder_inheritsSqlAnywhereBuilder() {
-        assertInstanceOf(SqlAnywhereDdlBuilder.class, platform.createDdlBuilder());
+    void testGetSelectLastInsertIdSql_ignoresSequenceName() {
+        assertEquals(sqlTemplate.getSelectLastInsertIdSql("a"), sqlTemplate.getSelectLastInsertIdSql("b"));
     }
 
     private DataSource newDataSourceMock() throws SQLException {
