@@ -28,6 +28,20 @@ import java.sql.SQLException;
 
 class SqlExceptionTest {
     @Test
+    void testConstructor_noArg_createsExceptionWithNullMessageAndCause() {
+        SqlException ex = new SqlException();
+        assertNull(ex.getMessage());
+        assertNull(ex.getCause());
+    }
+
+    @Test
+    void testConstructor_withCauseOnly_wrapsCause() {
+        Throwable cause = new RuntimeException("boom");
+        SqlException ex = new SqlException(cause);
+        assertSame(cause, ex.getCause());
+    }
+
+    @Test
     void testGetRootCause_returnsItselfWithNoCause() {
         SqlException ex = new SqlException("boom");
         assertSame(ex, ex.getRootCause());
@@ -46,6 +60,18 @@ class SqlExceptionTest {
         Throwable middle = new RuntimeException("middle", inner);
         SqlException ex = new SqlException("outer", middle);
         assertSame(inner, ex.getRootCause());
+    }
+
+    @Test
+    void testGetRootCause_withSelfReferencingCause_returnsWithoutInfiniteLoop() {
+        Throwable selfCaused = new RuntimeException("self") {
+            @Override
+            public synchronized Throwable getCause() {
+                return this;
+            }
+        };
+        SqlException ex = new SqlException(selfCaused);
+        assertSame(selfCaused, ex.getRootCause());
     }
 
     @Test
