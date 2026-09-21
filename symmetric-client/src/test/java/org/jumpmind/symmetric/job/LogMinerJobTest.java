@@ -61,7 +61,7 @@ class LogMinerJobTest {
     }
 
     @Test
-    void testDoJob_withNoLogMinerServiceExtension_doesNothing() throws Exception {
+    void testDoJob_withNoLogMinerServiceExtension_doesNothing() {
         when(extensionService.getExtensionPoint(ILogMinerService.class)).thenReturn(null);
         assertDoesNotThrow(() -> logMinerJob.doJob(false));
     }
