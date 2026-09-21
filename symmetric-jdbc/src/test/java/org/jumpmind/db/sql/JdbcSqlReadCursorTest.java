@@ -115,7 +115,8 @@ class JdbcSqlReadCursorTest {
     void testConstructor_withConnectionHandler_callsBeforeOnConnection() throws SQLException {
         Statement statementMock = mock(Statement.class);
         when(connectionMock.createStatement(anyInt(), anyInt())).thenReturn(statementMock);
-        when(statementMock.executeQuery("select 1")).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(statementMock.executeQuery("select 1")).thenReturn(resultSetMock);
         IConnectionHandler handlerMock = mock(IConnectionHandler.class);
         JdbcSqlReadCursor<Row> cursor = new JdbcSqlReadCursor<>(sqlTemplateMock, row -> row, "select 1", null, null, handlerMock, false);
         verify(handlerMock).before(connectionMock);
@@ -127,7 +128,8 @@ class JdbcSqlReadCursorTest {
         when(connectionMock.getTransactionIsolation()).thenReturn(Connection.TRANSACTION_READ_UNCOMMITTED);
         Statement statementMock = mock(Statement.class);
         when(connectionMock.createStatement(anyInt(), anyInt())).thenReturn(statementMock);
-        when(statementMock.executeQuery("select 1")).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(statementMock.executeQuery("select 1")).thenReturn(resultSetMock);
         JdbcSqlReadCursor<Row> cursor = new JdbcSqlReadCursor<>(sqlTemplateMock, row -> row, "select 1", null, null, null, false);
         verify(connectionMock).setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
         cursor.close();
@@ -137,7 +139,8 @@ class JdbcSqlReadCursorTest {
     void testConstructor_whenIsolationLevelMatches_doesNotSetIsolationLevel() throws SQLException {
         Statement statementMock = mock(Statement.class);
         when(connectionMock.createStatement(anyInt(), anyInt())).thenReturn(statementMock);
-        when(statementMock.executeQuery("select 1")).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(statementMock.executeQuery("select 1")).thenReturn(resultSetMock);
         JdbcSqlReadCursor<Row> cursor = new JdbcSqlReadCursor<>(sqlTemplateMock, row -> row, "select 1", null, null, null, false);
         verify(connectionMock, never()).setTransactionIsolation(anyInt());
         cursor.close();
@@ -148,7 +151,8 @@ class JdbcSqlReadCursorTest {
         when(sqlTemplateMock.isRequiresAutoCommitFalseToSetFetchSize()).thenReturn(true);
         Statement statementMock = mock(Statement.class);
         when(connectionMock.createStatement(anyInt(), anyInt())).thenReturn(statementMock);
-        when(statementMock.executeQuery("select 1")).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(statementMock.executeQuery("select 1")).thenReturn(resultSetMock);
         JdbcSqlReadCursor<Row> cursor = new JdbcSqlReadCursor<>(sqlTemplateMock, row -> row, "select 1", null, null, null, false);
         verify(connectionMock).setAutoCommit(false);
         cursor.close();
@@ -158,7 +162,8 @@ class JdbcSqlReadCursorTest {
     void testConstructor_whenNotRequiresAutoCommitFalse_doesNotChangeAutoCommit() throws SQLException {
         Statement statementMock = mock(Statement.class);
         when(connectionMock.createStatement(anyInt(), anyInt())).thenReturn(statementMock);
-        when(statementMock.executeQuery("select 1")).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(statementMock.executeQuery("select 1")).thenReturn(resultSetMock);
         JdbcSqlReadCursor<Row> cursor = new JdbcSqlReadCursor<>(sqlTemplateMock, row -> row, "select 1", null, null, null, false);
         verify(connectionMock, never()).setAutoCommit(false);
         cursor.close();
@@ -199,7 +204,7 @@ class JdbcSqlReadCursorTest {
     }
 
     @Test
-    void testConstructor_whenNonSQLExceptionOccurs_translatesAndThrows() throws SQLException {
+    void testConstructor_whenNonSQLExceptionOccurs_translatesAndThrows() {
         when(sqlTemplateMock.getSettings()).thenThrow(new IoException("boom"));
         SqlException translated = new SqlException("translated");
         when(sqlTemplateMock.translate(anyString(), any(Throwable.class))).thenReturn(translated);
@@ -284,7 +289,8 @@ class JdbcSqlReadCursorTest {
     void testClose_withoutConnectionHandler_doesNotThrow() throws SQLException {
         Statement statementMock = mock(Statement.class);
         when(connectionMock.createStatement(anyInt(), anyInt())).thenReturn(statementMock);
-        when(statementMock.executeQuery("select 1")).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(statementMock.executeQuery("select 1")).thenReturn(resultSetMock);
         JdbcSqlReadCursor<Row> cursor = new JdbcSqlReadCursor<>(sqlTemplateMock, row -> row, "select 1", null, null, null, false);
         assertDoesNotThrow(cursor::close);
     }

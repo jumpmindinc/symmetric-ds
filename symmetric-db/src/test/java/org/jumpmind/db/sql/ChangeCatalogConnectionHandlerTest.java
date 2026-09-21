@@ -20,6 +20,7 @@
  */
 package org.jumpmind.db.sql;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -87,6 +88,6 @@ class ChangeCatalogConnectionHandlerTest {
         doThrow(new SQLException("boom")).when(connectionMock).setCatalog("cat1");
         ChangeCatalogConnectionHandler handler = new ChangeCatalogConnectionHandler("cat2");
         handler.before(connectionMock);
-        handler.after(connectionMock);
+        assertDoesNotThrow(() -> handler.after(connectionMock));
     }
 }

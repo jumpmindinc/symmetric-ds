@@ -32,8 +32,8 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.jumpmind.db.platform.DatabaseInfo;
 import org.jumpmind.db.sql.DmlStatement.DmlType;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -328,7 +328,8 @@ public class DmlStatementTest {
     void testGetValueArrayMap_forUnsupportedType_throwsUnsupportedOperationException() {
         Column[] keys = new Column[] { keyColumn("id", Types.INTEGER) };
         DmlStatement dml = buildDml(DmlType.WHERE, keys, null);
-        assertThrows(UnsupportedOperationException.class, () -> dml.getValueArray(Map.of("id", 1)));
+        Map<String, Object> params = Map.of("id", 1);
+        assertThrows(UnsupportedOperationException.class, () -> dml.getValueArray(params));
     }
 
     @Test

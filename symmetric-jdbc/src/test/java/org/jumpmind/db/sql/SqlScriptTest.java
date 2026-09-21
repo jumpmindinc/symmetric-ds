@@ -27,7 +27,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -39,7 +42,6 @@ import static org.mockito.Mockito.when;
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.platform.JdbcDatabasePlatformFactory;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -59,7 +61,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testConstructor_urlWithFailOnErrorFlag_propagatesFailOnErrorAndDefaultDelimiter() throws Exception {
+    void testConstructor_urlWithFailOnErrorFlag_propagatesFailOnErrorAndDefaultDelimiter() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         SqlScript script = new SqlScript(getClass().getResource("sqlscript-simple.sql"), sqlTemplate, false);
         script.execute();
@@ -70,7 +72,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testConstructor_urlWithCustomDelimiter_usesGivenDelimiterInsteadOfSemicolon() throws Exception {
+    void testConstructor_urlWithCustomDelimiter_usesGivenDelimiterInsteadOfSemicolon() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         List<String> statements = new ArrayList<>();
         when(sqlTemplate.update(anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), anyInt(), any(), any(ISqlStatementSource.class)))
@@ -81,7 +83,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testConstructor_urlFullOverload_propagatesFailOnErrorDelimiterAndReplacementTokens() throws Exception {
+    void testConstructor_urlFullOverload_propagatesFailOnErrorDelimiterAndReplacementTokens() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         List<String> statements = new ArrayList<>();
         ArgumentCaptor<Boolean> failOnErrorCaptor = ArgumentCaptor.forClass(Boolean.class);
@@ -94,7 +96,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testConstructor_stringWithReplacementTokens_defaultsFailOnDropAndFailOnSequenceCreateToTrue() throws Exception {
+    void testConstructor_stringWithReplacementTokens_defaultsFailOnDropAndFailOnSequenceCreateToTrue() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         List<String> statements = new ArrayList<>();
         ArgumentCaptor<Boolean> failOnDropCaptor = ArgumentCaptor.forClass(Boolean.class);
@@ -109,7 +111,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testConstructor_stringWithExplicitFailOnDropAndSequenceCreate_propagatesBothFlags() throws Exception {
+    void testConstructor_stringWithExplicitFailOnDropAndSequenceCreate_propagatesBothFlags() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         SqlScript script = new SqlScript("select 1;", sqlTemplate, true, false, false, ";", null);
         script.execute();
@@ -121,7 +123,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testConstructor_stringWithTriggersContainJavaTrue_treatsTriggerBodyAsSingleStatementWhenRead() throws Exception {
+    void testConstructor_stringWithTriggersContainJavaTrue_treatsTriggerBodyAsSingleStatementWhenRead() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         List<String> statements = new ArrayList<>();
         when(sqlTemplate.update(anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), anyInt(), any(), any(ISqlStatementSource.class)))
@@ -134,7 +136,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testConstructor_readerOverload_defaultsFailOnDropAndFailOnSequenceCreateToTrue() throws Exception {
+    void testConstructor_readerOverload_defaultsFailOnDropAndFailOnSequenceCreateToTrue() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         SqlScript script = new SqlScript(new StringReader("select 1;"), sqlTemplate, true, ";", null);
         script.execute();
@@ -146,7 +148,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testExecute_withAutoCommitFalseAndFailOnDropFalse_overridesAutoCommitToTrue() throws Exception {
+    void testExecute_withAutoCommitFalseAndFailOnDropFalse_overridesAutoCommitToTrue() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         SqlScript script = new SqlScript("select 1;", sqlTemplate, true, false, true, ";", null);
         script.execute(false);
@@ -156,7 +158,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testExecute_withAllFlagsTrueAndAutoCommitFalse_keepsAutoCommitFalse() throws Exception {
+    void testExecute_withAllFlagsTrueAndAutoCommitFalse_keepsAutoCommitFalse() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         SqlScript script = new SqlScript("select 1;", sqlTemplate, true, true, true, ";", null);
         script.execute(false);
@@ -166,7 +168,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testExecute_whenSqlTemplateThrows_stillClosesScriptReader() throws Exception {
+    void testExecute_whenSqlTemplateThrows_stillClosesScriptReader() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         when(sqlTemplate.update(anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), anyInt(), any(), any()))
                 .thenThrow(new SqlException("boom"));
@@ -190,7 +192,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testSetLineDeliminator_changesDelimiterUsedByUnderlyingReader() throws Exception {
+    void testSetLineDeliminator_changesDelimiterUsedByUnderlyingReader() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         List<String> statements = new ArrayList<>();
         when(sqlTemplate.update(anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), anyInt(), any(), any(ISqlStatementSource.class)))
@@ -204,7 +206,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testSetListener_passesListenerToSqlTemplateUpdate() throws Exception {
+    void testSetListener_passesListenerToSqlTemplateUpdate() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         ISqlResultsListener listener = mock(ISqlResultsListener.class);
         SqlScript script = new SqlScript("select 1;", sqlTemplate, true, true, true, ";", null);
@@ -214,7 +216,7 @@ public class SqlScriptTest {
     }
 
     @Test
-    void testSetCommitRate_updatesCommitRateUsedByUpdate() throws Exception {
+    void testSetCommitRate_updatesCommitRateUsedByUpdate() {
         ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
         SqlScript script = new SqlScript("select 1;", sqlTemplate, true, true, true, ";", null);
         script.setCommitRate(5);

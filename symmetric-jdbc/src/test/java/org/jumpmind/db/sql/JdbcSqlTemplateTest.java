@@ -176,7 +176,8 @@ class JdbcSqlTemplateTest {
         JdbcSqlTemplate template = createTemplate();
         Statement stmtMock = mock(Statement.class);
         when(connectionMock.createStatement(anyInt(), anyInt())).thenReturn(stmtMock);
-        when(stmtMock.executeQuery("select 1")).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(stmtMock.executeQuery("select 1")).thenReturn(resultSetMock);
         ISqlReadCursor<Row> cursor = template.queryForCursor("select 1", row -> row, null, null);
         assertNotNull(cursor);
         cursor.close();
@@ -187,7 +188,8 @@ class JdbcSqlTemplateTest {
         JdbcSqlTemplate template = createTemplate();
         Statement stmtMock = mock(Statement.class);
         when(connectionMock.createStatement(anyInt(), anyInt())).thenReturn(stmtMock);
-        when(stmtMock.executeQuery("select 1")).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(stmtMock.executeQuery("select 1")).thenReturn(resultSetMock);
         IConnectionHandler handlerMock = mock(IConnectionHandler.class);
         ISqlReadCursor<Row> cursor = template.queryForCursor("select 1", row -> row, handlerMock, null, null);
         verify(handlerMock).before(connectionMock);
@@ -199,7 +201,8 @@ class JdbcSqlTemplateTest {
         JdbcSqlTemplate template = createTemplate();
         Statement stmtMock = mock(Statement.class);
         when(connectionMock.createStatement(anyInt(), anyInt())).thenReturn(stmtMock);
-        when(stmtMock.executeQuery("select 1")).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(stmtMock.executeQuery("select 1")).thenReturn(resultSetMock);
         ISqlReadCursor<Row> cursor = template.queryForCursor("select 1", row -> row, true);
         assertNotNull(cursor);
         cursor.close();
@@ -210,7 +213,8 @@ class JdbcSqlTemplateTest {
         JdbcSqlTemplate template = createTemplate();
         PreparedStatement pstmtMock = mock(PreparedStatement.class);
         when(connectionMock.prepareStatement(eq("select ?"), anyInt(), anyInt())).thenReturn(pstmtMock);
-        when(pstmtMock.executeQuery()).thenReturn(mock(ResultSet.class));
+        ResultSet resultSetMock = mock(ResultSet.class);
+        when(pstmtMock.executeQuery()).thenReturn(resultSetMock);
         IConnectionHandler handlerMock = mock(IConnectionHandler.class);
         ISqlReadCursor<Row> cursor = template.queryForCursor("select ?", row -> row, handlerMock,
                 new Object[] { 1 }, new int[] { Types.INTEGER }, true);
@@ -943,6 +947,7 @@ class JdbcSqlTemplateTest {
 
             @Override
             public void close() {
+                // no-op: this test double never needs to release resources
             }
         };
         when(clobMock.getCharacterStream()).thenReturn(throwingReader);
@@ -1307,7 +1312,8 @@ class JdbcSqlTemplateTest {
 
     @Test
     void testGetSelectLastInsertIdSql_throwsUnsupportedOperationException() {
-        assertThrows(UnsupportedOperationException.class, () -> createTemplate().getSelectLastInsertIdSql("my_seq"));
+        JdbcSqlTemplate template = createTemplate();
+        assertThrows(UnsupportedOperationException.class, () -> template.getSelectLastInsertIdSql("my_seq"));
     }
 
     @Test

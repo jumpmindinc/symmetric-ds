@@ -522,6 +522,7 @@ class AbstractSqlTemplateTest {
 
         @Override
         public void testConnection() {
+            // no-op: this test stub never needs to verify connectivity
         }
 
         @Override
