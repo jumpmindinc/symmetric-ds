@@ -1,19 +1,49 @@
+/**
+ * Licensed to JumpMind Inc under one or more contributor
+ * license agreements.  See the NOTICE file distributed
+ * with this work for additional information regarding
+ * copyright ownership.  JumpMind Inc licenses this file
+ * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
+ * (the "License"); you may not use this file except in compliance
+ * with the License.
+ *
+ * You should have received a copy of the GNU Affero General Public License,
+ * version 3.0 (AGPLv3) along with this library; if not, see
+ * <http://www.gnu.org/licenses/>.
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.jumpmind.symmetric.job;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.symmetric.ISymmetricEngine;
+import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.model.JobDefinition;
@@ -206,5 +236,283 @@ class JobManagerTest {
         when(job.getDeprecatedStartParameter()).thenReturn(null);
         when(job.getJobDefinition()).thenReturn(def);
         assertFalse(jobManager.isAutoStartConfigured(job));
+    }
+
+    @Test
+    void testGetCustomJobDefinitions_filtersNullEntries() {
+        JobDefinition validJob = new JobDefinition();
+        validJob.setJobName("ValidJob");
+        List<JobDefinition> rows = Arrays.asList(validJob, null);
+        when(sqlTemplate.query(anyString(), any(JobMapper.class))).thenReturn(rows);
+        List<JobDefinition> result = jobManager.getCustomJobDefinitions();
+        assertEquals(1, result.size());
+        assertEquals("ValidJob", result.get(0).getJobName());
+    }
+
+    @Test
+    void testIsStarted_initiallyFalse() {
+        assertFalse(jobManager.isStarted());
+    }
+
+    @Test
+    void testGetJob_returnsMatchingJobIgnoringCase() throws Exception {
+        IJob job = mock(IJob.class);
+        when(job.getName()).thenReturn("PushJob");
+        setJobs(Arrays.asList(job));
+        assertEquals(job, jobManager.getJob("pushjob"));
+    }
+
+    @Test
+    void testGetJob_returnsNullWhenNotFound() throws Exception {
+        setJobs(Collections.emptyList());
+        assertNull(jobManager.getJob("missing"));
+    }
+
+    @Test
+    void testIsJobApplicableToNodeGroup_emptyNodeGroupId_returnsTrue() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setNodeGroupId("");
+        when(job.getJobDefinition()).thenReturn(def);
+        assertTrue(jobManager.isJobApplicableToNodeGroup(job));
+    }
+
+    @Test
+    void testIsJobApplicableToNodeGroup_allNodeGroupId_returnsTrue() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setNodeGroupId("ALL");
+        when(job.getJobDefinition()).thenReturn(def);
+        assertTrue(jobManager.isJobApplicableToNodeGroup(job));
+    }
+
+    @Test
+    void testIsJobApplicableToNodeGroup_matchingNodeGroupId_returnsTrue() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setNodeGroupId("test-group");
+        when(job.getJobDefinition()).thenReturn(def);
+        assertTrue(jobManager.isJobApplicableToNodeGroup(job));
+    }
+
+    @Test
+    void testIsJobApplicableToNodeGroup_nonMatchingNodeGroupId_returnsFalse() {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setNodeGroupId("other-group");
+        when(job.getJobDefinition()).thenReturn(def);
+        assertFalse(jobManager.isJobApplicableToNodeGroup(job));
+    }
+
+    @Test
+    void testStartJobs_startsAutoStartApplicableJobs() throws Exception {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setJobName(ClusterConstants.PUSH);
+        def.setNodeGroupId("test-group");
+        def.setDefaultAutomaticStartup(true);
+        when(job.getJobDefinition()).thenReturn(def);
+        when(job.getDeprecatedStartParameter()).thenReturn(null);
+        setJobs(Arrays.asList(job));
+        jobManager.startJobs();
+        verify(job, times(1)).start();
+        assertTrue(jobManager.isStarted());
+    }
+
+    @Test
+    void testStartJobs_skipsJobsNotConfiguredForAutoStart() throws Exception {
+        IJob job = mock(IJob.class);
+        JobDefinition def = new JobDefinition();
+        def.setJobName(ClusterConstants.PUSH);
+        def.setNodeGroupId("test-group");
+        def.setDefaultAutomaticStartup(false);
+        when(job.getJobDefinition()).thenReturn(def);
+        when(job.getDeprecatedStartParameter()).thenReturn(null);
+        setJobs(Arrays.asList(job));
+        jobManager.startJobs();
+        verify(job, never()).start();
+        assertTrue(jobManager.isStarted());
+    }
+
+    @Test
+    void testStopJobs_stopsAllJobsAndSetsStartedFalse() throws Exception {
+        IJob job1 = mock(IJob.class);
+        IJob job2 = mock(IJob.class);
+        setJobs(Arrays.asList(job1, job2));
+        jobManager.stopJobs();
+        verify(job1, times(1)).stop();
+        verify(job2, times(1)).stop();
+        assertFalse(jobManager.isStarted());
+    }
+
+    @Test
+    void testStopJobs_withNullJobs_doesNotThrow() {
+        jobManager.stopJobs();
+        assertFalse(jobManager.isStarted());
+    }
+
+    @Test
+    void testDestroy_stopsJobsAndShutsDownScheduler() throws Exception {
+        IJob job = mock(IJob.class);
+        setJobs(Arrays.asList(job));
+        jobManager.destroy();
+        verify(job, times(1)).stop();
+        assertFalse(jobManager.isStarted());
+    }
+
+    @Test
+    void testGetJobs_withNullJobs_returnsEmptyList() {
+        assertTrue(jobManager.getJobs().isEmpty());
+    }
+
+    @Test
+    void testGetJobs_sortsStartedJobsFirstThenByJobTypeDescending() throws Exception {
+        IJob jobA = mock(IJob.class);
+        JobDefinition defA = new JobDefinition();
+        defA.setJobType(JobType.BSH);
+        when(jobA.isStarted()).thenReturn(false);
+        when(jobA.getJobDefinition()).thenReturn(defA);
+        IJob jobB = mock(IJob.class);
+        JobDefinition defB = new JobDefinition();
+        defB.setJobType(JobType.SQL);
+        when(jobB.isStarted()).thenReturn(true);
+        when(jobB.getJobDefinition()).thenReturn(defB);
+        IJob jobC = mock(IJob.class);
+        JobDefinition defC = new JobDefinition();
+        defC.setJobType(JobType.JAVA);
+        when(jobC.isStarted()).thenReturn(false);
+        when(jobC.getJobDefinition()).thenReturn(defC);
+        setJobs(Arrays.asList(jobA, jobB, jobC));
+        List<IJob> sorted = jobManager.getJobs();
+        assertEquals(Arrays.asList(jobB, jobC, jobA), sorted);
+    }
+
+    @Test
+    void testRestartJob_notFound_doesNothing() throws Exception {
+        setJobs(Collections.emptyList());
+        jobManager.restartJob("missing");
+        assertNull(jobManager.getJob("missing"));
+    }
+
+    @Test
+    void testRestartJob_existingJob_stopsAndRestartsWhenApplicable() throws Exception {
+        IJob job = mock(IJob.class);
+        when(job.getName()).thenReturn("PushJob");
+        JobDefinition def = new JobDefinition();
+        def.setJobName(ClusterConstants.PUSH);
+        def.setNodeGroupId("test-group");
+        def.setDefaultAutomaticStartup(true);
+        when(job.getJobDefinition()).thenReturn(def);
+        when(job.getDeprecatedStartParameter()).thenReturn(null);
+        setJobs(Arrays.asList(job));
+        jobManager.restartJob("PushJob");
+        verify(job, times(1)).stop();
+        verify(job, times(1)).start();
+    }
+
+    @Test
+    void testRestartJob_withAbstractJobInstance_appliesDefaultsBeforeRestart() throws Exception {
+        AbstractJob job = mock(AbstractJob.class);
+        when(job.getName()).thenReturn("BshJob");
+        JobDefinition def = new JobDefinition();
+        def.setJobName("BshJob");
+        def.setNodeGroupId("test-group");
+        when(job.getJobDefinition()).thenReturn(def);
+        when(job.getDeprecatedStartParameter()).thenReturn(null);
+        when(job.getDefaults()).thenReturn(new JobDefaults().enabled(true));
+        setJobs(Arrays.asList((IJob) job));
+        jobManager.restartJob("BshJob");
+        assertTrue(def.isDefaultAutomaticStartup());
+        verify(job, times(1)).stop();
+        verify(job, times(1)).start();
+    }
+
+    @Test
+    void testSaveJobAsCopy_appendsSuffixWhenNameExists() throws Exception {
+        IJob existingJob = mock(IJob.class);
+        when(existingJob.getName()).thenReturn("MyJob");
+        setJobs(Arrays.asList(existingJob));
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        JobDefinition job = new JobDefinition();
+        job.setJobName("MyJob");
+        job.setJobType(JobType.SQL);
+        job.setJobExpression("SELECT 1");
+        job.setDefaultSchedule("1000");
+        job.setNodeGroupId("test-group");
+        jobManager.saveJobAsCopy(job);
+        assertEquals("MyJob_2", job.getJobName());
+    }
+
+    @Test
+    void testSaveJobAsCopy_keepsNameWhenNoConflict() throws Exception {
+        setJobs(Collections.emptyList());
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        JobDefinition job = new JobDefinition();
+        job.setJobName("UniqueJob");
+        job.setJobType(JobType.SQL);
+        jobManager.saveJobAsCopy(job);
+        assertEquals("UniqueJob", job.getJobName());
+    }
+
+    @Test
+    void testRenameJob_removesOldJobAndSavesNewDefinition() throws Exception {
+        IJob oldJob = mock(IJob.class);
+        when(oldJob.getName()).thenReturn("OldJob");
+        JobDefinition oldDef = new JobDefinition();
+        oldDef.setClustered(false);
+        when(oldJob.getJobDefinition()).thenReturn(oldDef);
+        setJobs(Arrays.asList(oldJob));
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        JobDefinition newJob = new JobDefinition();
+        newJob.setJobName("NewJob");
+        newJob.setJobType(JobType.SQL);
+        newJob.setNodeGroupId("test-group");
+        jobManager.renameJob("OldJob", newJob);
+        verify(sqlTemplate, times(2)).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void testRemoveJob_removesClusterLockWhenJobIsClustered() throws Exception {
+        IJob job = mock(IJob.class);
+        when(job.getName()).thenReturn("ClusteredJob");
+        JobDefinition def = new JobDefinition();
+        def.setClustered(true);
+        when(job.getJobDefinition()).thenReturn(def);
+        setJobs(Arrays.asList(job));
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        jobManager.removeJob("ClusteredJob");
+        verify(clusterService, times(1)).removeLock("ClusteredJob");
+    }
+
+    @Test
+    void testRemoveJob_doesNotRemoveLockWhenJobIsNotClustered() throws Exception {
+        IJob job = mock(IJob.class);
+        when(job.getName()).thenReturn("SimpleJob");
+        JobDefinition def = new JobDefinition();
+        def.setClustered(false);
+        when(job.getJobDefinition()).thenReturn(def);
+        setJobs(Arrays.asList(job));
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        jobManager.removeJob("SimpleJob");
+        verify(clusterService, never()).removeLock(anyString());
+    }
+
+    @Test
+    void testRemoveJob_throwsExceptionWhenDeleteFails() throws Exception {
+        setJobs(Collections.emptyList());
+        when(sqlTemplate.update(anyString(), any(Object[].class))).thenReturn(0);
+        assertThrows(SymmetricException.class, () -> jobManager.removeJob("NoSuchJob"));
+    }
+
+    @Test
+    void testRemoveAllJobs_executesDeleteAllJobsSql() {
+        jobManager.removeAllJobs();
+        verify(sqlTemplate, times(1)).update(anyString());
+    }
+
+    private void setJobs(List<IJob> jobs) throws Exception {
+        Field field = JobManager.class.getDeclaredField("jobs");
+        field.setAccessible(true);
+        field.set(jobManager, jobs);
     }
 }
