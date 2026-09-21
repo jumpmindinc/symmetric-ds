@@ -22,6 +22,7 @@ package org.jumpmind.db.sql;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -47,6 +48,25 @@ import org.junit.jupiter.api.Test;
 class SymmetricLobHandlerTest {
     private static final byte[] BYTES = "hello".getBytes();
     private static final String STRING = "hello";
+
+    @Test
+    void testConstructor_noArg_defaultsToPlain() throws SQLException {
+        PreparedStatement ps = mock(PreparedStatement.class);
+        new SymmetricLobHandler().setBlobAsBytes(ps, 1, BYTES);
+        verify(ps).setBytes(1, BYTES);
+    }
+
+    @Test
+    void testConstructor_withNullLobHandling_defaultsToPlain() throws SQLException {
+        PreparedStatement ps = mock(PreparedStatement.class);
+        new SymmetricLobHandler(null).setBlobAsBytes(ps, 1, BYTES);
+        verify(ps).setBytes(1, BYTES);
+    }
+
+    @Test
+    void testNeedsAutoCommitFalseForBlob_alwaysReturnsFalse() {
+        assertFalse(new SymmetricLobHandler().needsAutoCommitFalseForBlob(0, null));
+    }
 
     @Test
     void testSetBlobAsBytesPlainUsesSetBytes() throws SQLException {
