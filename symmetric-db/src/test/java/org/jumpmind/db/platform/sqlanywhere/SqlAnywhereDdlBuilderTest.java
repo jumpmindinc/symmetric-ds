@@ -137,8 +137,8 @@ class SqlAnywhereDdlBuilderTest {
     @Test
     void testCreateTables_writesNullForOptionalColumns() {
         String sql = ddlBuilder.createTables(databaseWithItemTable(), false);
-        assertTrue(sql.contains("NOT NULL"));
-        assertTrue(sql.contains("NULL"));
+        assertTrue(sql.contains("\"name\" VARCHAR(100) NULL"), sql);
+        assertTrue(sql.contains("\"id\" INT NOT NULL"), sql);
     }
 
     @Test
