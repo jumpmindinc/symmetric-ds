@@ -561,6 +561,7 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
 	private static void logConnectionPoolSize(DataSource dataSource, TypedProperties properties) {
 		int concurrentWorkersMax = properties.getInt(ParameterConstants.CONCURRENT_WORKERS, 20);
 		int effectivePoolSize = IPooledDataSource.of(dataSource).getMaxTotal();
+		log.info("DB connection pool size = {}", effectivePoolSize);
 		if((concurrentWorkersMax * 2) > effectivePoolSize) {
 			log.warn("Configured http.concurrent.workers.max is {}, the effective connection pool size of the database is {}", concurrentWorkersMax, effectivePoolSize);
 		}
