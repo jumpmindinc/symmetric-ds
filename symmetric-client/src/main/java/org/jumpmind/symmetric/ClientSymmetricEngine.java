@@ -557,14 +557,15 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
             return true;
         }
     }
-    
-	private static void logConnectionPoolSize(DataSource dataSource, TypedProperties properties) {
-		int concurrentWorkersMax = properties.getInt(ParameterConstants.CONCURRENT_WORKERS, 20);
-		int effectivePoolSize = IPooledDataSource.of(dataSource).getMaxTotal();
-		if((concurrentWorkersMax * 2) > effectivePoolSize) {
-			log.warn("Configured {} is {}, the effective connection pool size of the database is {}", ParameterConstants.CONCURRENT_WORKERS, concurrentWorkersMax, effectivePoolSize);
-		}else {
-			log.info("DB connection pool size = {}", effectivePoolSize);
-		}
-	}
+
+    private static void logConnectionPoolSize(DataSource dataSource, TypedProperties properties) {
+        int concurrentWorkersMax = properties.getInt(ParameterConstants.CONCURRENT_WORKERS, 20);
+        int effectivePoolSize = IPooledDataSource.of(dataSource).getMaxTotal();
+        if ((concurrentWorkersMax * 2) > effectivePoolSize) {
+            log.warn("Configured {} is {}, the effective connection pool size of the database is {}", ParameterConstants.CONCURRENT_WORKERS,
+                    concurrentWorkersMax, effectivePoolSize);
+        } else {
+            log.info("DB connection pool size = {}", effectivePoolSize);
+        }
+    }
 }
