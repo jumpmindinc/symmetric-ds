@@ -26,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.sql.Types;
 
 import org.jumpmind.db.model.Column;
-import org.jumpmind.db.sql.DmlStatement;
 import org.jumpmind.db.sql.DmlStatement.DmlType;
 import org.jumpmind.db.sql.DmlStatementOptions;
 import org.junit.jupiter.api.BeforeEach;

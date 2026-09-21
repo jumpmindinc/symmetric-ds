@@ -22,6 +22,7 @@ package org.jumpmind.db.platform.sqlanywhere;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Types;
@@ -256,7 +257,7 @@ class SqlAnywhereDdlBuilderTest {
 
     @Test
     void testCreateUniqueIdentifier_isDistinctPerCall() {
-        assertFalse(ddlBuilder.createUniqueIdentifier().equals(ddlBuilder.createUniqueIdentifier()));
+        assertNotEquals(ddlBuilder.createUniqueIdentifier(), ddlBuilder.createUniqueIdentifier());
     }
 
     private Database databaseWithItemTable() {
