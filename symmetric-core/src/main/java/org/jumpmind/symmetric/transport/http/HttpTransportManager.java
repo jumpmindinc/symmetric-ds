@@ -27,10 +27,16 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.CookieStore;
+import java.net.HttpCookie;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +49,7 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.model.BatchId;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
@@ -67,6 +74,8 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     protected boolean useHeaderSecurityToken;
     protected boolean useSessionAuth;
     protected int backOffPostCount;
+    protected boolean clearBusyAffinityCookieEnabled;
+    protected String affinityCookieName;
 
     public HttpTransportManager() {
     }
@@ -76,6 +85,8 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
         this.engine = engine;
         useHeaderSecurityToken = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN);
         useSessionAuth = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_SESSION_AUTH);
+        clearBusyAffinityCookieEnabled = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_CLEAR_BUSY_AFFINITY_COOKIE, false);
+        affinityCookieName = engine.getParameterService().getString(ServerConstants.SERVER_COOKIE_NAME);
     }
 
     public int sendCopyRequest(Node local) throws IOException {
@@ -243,6 +254,29 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     public void clearSession(HttpConnection conn) {
         if (useSessionAuth) {
             sessionIdByUri.remove(getUri(conn));
+        }
+    }
+
+    public void handleServiceBusy(HttpConnection conn) {
+        if (!clearBusyAffinityCookieEnabled || affinityCookieName == null) {
+            return;
+        }
+        CookieHandler handler = CookieHandler.getDefault();
+        if (!(handler instanceof CookieManager)) {
+            return;
+        }
+        URI uri;
+        try {
+            uri = conn.getURL().toURI();
+        } catch (URISyntaxException e) {
+            return;
+        }
+        CookieStore store = ((CookieManager) handler).getCookieStore();
+        for (HttpCookie cookie : new ArrayList<HttpCookie>(store.get(uri))) {
+            if (affinityCookieName.equals(cookie.getName())) {
+                store.remove(uri, cookie);
+                log.info("Cleared load balancer affinity cookie '{}' for {} after SC_SERVICE_BUSY", affinityCookieName, uri.getHost());
+            }
         }
     }
 

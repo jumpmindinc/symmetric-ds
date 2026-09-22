@@ -137,6 +137,8 @@ public class HttpIncomingTransport implements IIncomingTransport {
             case WebConstants.SYNC_DISABLED:
                 throw new SyncDisabledException();
             case WebConstants.SC_SERVICE_BUSY:
+                httpTransportManager.clearSession(connection);
+                httpTransportManager.handleServiceBusy(connection);
                 throw new ConnectionRejectedException();
             case WebConstants.SC_ALREADY_CONNECTED:
                 throw new ConnectionDuplicateException();

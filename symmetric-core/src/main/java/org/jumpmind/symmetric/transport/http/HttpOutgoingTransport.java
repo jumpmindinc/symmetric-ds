@@ -258,6 +258,8 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
     private void analyzeResponseCode(int code) {
         httpTransportManager.checkResponseCode(connection, code);
         if (WebConstants.SC_SERVICE_BUSY == code) {
+        	httpTransportManager.clearSession(connection);
+            httpTransportManager.handleServiceBusy(connection);
             throw new ConnectionRejectedException();
         } else if (WebConstants.SC_SERVICE_UNAVAILABLE == code) {
             throw new ServiceUnavailableException();
