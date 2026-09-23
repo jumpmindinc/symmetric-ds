@@ -392,9 +392,12 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
      * than once for the same batches: each call only sees what earlier calls left behind, so a local list can be applied before the combined remote and local
      * list is available.
      *
-     * @return the batches that were removed
+     * @return the batches that were removed, empty when there was nothing to filter
      */
-    private List<OutgoingBatch> filterSuspendedAndIgnoredBatches(OutgoingBatches batches, NodeChannels suspendIgnoreChannelsList) {
+    List<OutgoingBatch> filterSuspendedAndIgnoredBatches(OutgoingBatches batches, NodeChannels suspendIgnoreChannelsList) {
+        if (batches == null || !batches.containsBatches() || suspendIgnoreChannelsList == null) {
+            return Collections.emptyList();
+        }
         long ts = System.currentTimeMillis();
         List<OutgoingBatch> ignoredBatches = batches.filterIgnoredBatches(suspendIgnoreChannelsList);
         long duration = System.currentTimeMillis() - ts;
@@ -412,7 +415,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             duration = System.currentTimeMillis() - ts;
             logQueryDuration("Updated {} ignored outgoing batches in {} ms", ignoredBatches.size(), duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
         }
-        if (suspendIgnoreChannelsList != null && !suspendIgnoreChannelsList.getSuspendChannels().isEmpty()) {
+        if (!suspendIgnoreChannelsList.getSuspendChannels().isEmpty()) {
             ts = System.currentTimeMillis();
             List<OutgoingBatch> suspendedBatches = batches.filterSuspendedBatches(suspendIgnoreChannelsList);
             duration = System.currentTimeMillis() - ts;

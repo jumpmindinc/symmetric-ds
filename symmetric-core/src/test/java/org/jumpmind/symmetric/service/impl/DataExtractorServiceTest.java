@@ -22,6 +22,7 @@ package org.jumpmind.symmetric.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -97,6 +98,7 @@ class DataExtractorServiceTest {
     private static final long LOAD_ID = 7929;
     private static final String EXTRACT_TARGET_NODE_ID = "target1";
     private static final String EXTRACT_CHANNEL = "testchannel";
+    private static final String EXTRACT_SECOND_CHANNEL = "othertestchannel";
     private static final String EXTRACT_QUEUE = "default";
     protected ISymmetricEngine engine;
     private IParameterService parameterService;
@@ -484,6 +486,64 @@ class DataExtractorServiceTest {
         verify(routerService).routeData(true);
     }
 
+    @Test
+    void filterSuspendedAndIgnoredBatches_nothingIsSuspendedOrIgnored_returnsNoRemovedBatches() {
+        OutgoingBatches batches = batchesOn(EXTRACT_CHANNEL);
+        List<OutgoingBatch> removed = service.filterSuspendedAndIgnoredBatches(batches, new NodeChannels());
+        assertTrue(removed.isEmpty(), "no batch should be reported as removed");
+        assertEquals(1, batches.getBatches().size(), "the batch should survive");
+    }
+
+    @Test
+    void filterSuspendedAndIgnoredBatches_channelIsIgnored_returnsTheIgnoredBatch() {
+        OutgoingBatches batches = batchesOn(EXTRACT_CHANNEL);
+        OutgoingBatch ignored = batches.getBatches().get(0);
+        List<OutgoingBatch> removed = service.filterSuspendedAndIgnoredBatches(batches, ignoring(EXTRACT_CHANNEL));
+        assertEquals(1, removed.size(), "the ignored batch should be reported as removed");
+        assertSame(ignored, removed.get(0), "the reported batch should be the ignored one");
+        assertTrue(batches.getBatches().isEmpty(), "the ignored batch should no longer be pending");
+    }
+
+    @Test
+    void filterSuspendedAndIgnoredBatches_channelIsSuspended_returnsTheSuspendedBatch() {
+        OutgoingBatches batches = batchesOn(EXTRACT_CHANNEL);
+        OutgoingBatch suspended = batches.getBatches().get(0);
+        List<OutgoingBatch> removed = service.filterSuspendedAndIgnoredBatches(batches, suspending(EXTRACT_CHANNEL));
+        assertEquals(1, removed.size(), "the suspended batch should be reported as removed");
+        assertSame(suspended, removed.get(0), "the reported batch should be the suspended one");
+        assertTrue(batches.getBatches().isEmpty(), "the suspended batch should no longer be pending");
+    }
+
+    @Test
+    void filterSuspendedAndIgnoredBatches_oneChannelIgnoredAndAnotherSuspended_returnsBothBatches() {
+        OutgoingBatches batches = batchesOn(EXTRACT_CHANNEL, EXTRACT_SECOND_CHANNEL);
+        List<OutgoingBatch> pending = new ArrayList<OutgoingBatch>(batches.getBatches());
+        NodeChannels nodeChannels = ignoring(EXTRACT_CHANNEL);
+        nodeChannels.addSuspendChannels(EXTRACT_TARGET_NODE_ID, EXTRACT_SECOND_CHANNEL);
+        List<OutgoingBatch> removed = service.filterSuspendedAndIgnoredBatches(batches, nodeChannels);
+        assertEquals(2, removed.size(), "both the ignored and the suspended batch should be reported as removed");
+        assertTrue(removed.containsAll(pending), "the reported batches should be the ignored and the suspended one");
+        assertTrue(batches.getBatches().isEmpty(), "neither batch should remain pending");
+    }
+
+    @Test
+    void filterSuspendedAndIgnoredBatches_batchesAreNull_returnsNoRemovedBatches() {
+        assertTrue(service.filterSuspendedAndIgnoredBatches(null, new NodeChannels()).isEmpty(), "a missing batch list should remove nothing");
+    }
+
+    @Test
+    void filterSuspendedAndIgnoredBatches_suspendIgnoreListIsNull_returnsNoRemovedBatches() {
+        OutgoingBatches batches = batchesOn(EXTRACT_CHANNEL);
+        assertTrue(service.filterSuspendedAndIgnoredBatches(batches, null).isEmpty(), "a missing suspend and ignore list should remove nothing");
+        assertEquals(1, batches.getBatches().size(), "the batch should survive");
+    }
+
+    @Test
+    void filterSuspendedAndIgnoredBatches_thereAreNoBatches_returnsNoRemovedBatches() {
+        OutgoingBatches batches = new OutgoingBatches(new ArrayList<OutgoingBatch>());
+        assertTrue(service.filterSuspendedAndIgnoredBatches(batches, ignoring(EXTRACT_CHANNEL)).isEmpty(), "an empty batch list should remove nothing");
+    }
+
     private Node extractTarget() {
         Node node = new Node();
         node.setNodeId(EXTRACT_TARGET_NODE_ID);
@@ -491,9 +551,13 @@ class DataExtractorServiceTest {
         return node;
     }
 
-    private OutgoingBatches batchesOn(String channelId) {
+    private OutgoingBatches batchesOn(String... channelIds) {
         List<OutgoingBatch> batches = new ArrayList<OutgoingBatch>();
-        batches.add(new OutgoingBatch(EXTRACT_TARGET_NODE_ID, channelId, Status.NE));
+        for (String channelId : channelIds) {
+            OutgoingBatch batch = new OutgoingBatch(EXTRACT_TARGET_NODE_ID, channelId, Status.NE);
+            batch.setBatchId(batches.size() + 1);
+            batches.add(batch);
+        }
         return new OutgoingBatches(batches);
     }
 
