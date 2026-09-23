@@ -73,6 +73,7 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
     private int streamOutputChunkSize = 30720;
     private boolean fileUpload = false;
     private Map<String, String> requestProperties;
+    private boolean reservationHeld = false;
 
     public HttpOutgoingTransport(HttpTransportManager httpTransportManager, URL url, int httpTimeout, int httpConnectTimeout, boolean useCompression,
             int compressionStrategy, int compressionLevel, String nodeId,
@@ -105,6 +106,10 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
         closeWriter(true);
         closeOutputStream(true);
         closeReader();
+        if (reservationHeld) {
+            httpTransportManager.endPushReservation(url);
+            reservationHeld = false;
+        }
         if (connection != null) {
             connection.disconnect();
             connection = null;
@@ -186,6 +191,8 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
             connection.setRequestProperty(WebConstants.CHANNEL_QUEUE, queue);
             analyzeResponseCode(connection.getResponseCode());
             httpTransportManager.updateSession(connection);
+            httpTransportManager.beginPushReservation(url);
+            reservationHeld = true;
         } catch (IOException ex) {
             throw new IoException(ex);
         }
@@ -258,7 +265,6 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
     private void analyzeResponseCode(int code) {
         httpTransportManager.checkResponseCode(connection, code);
         if (WebConstants.SC_SERVICE_BUSY == code) {
-        	httpTransportManager.clearSession(connection);
             httpTransportManager.handleServiceBusy(connection);
             throw new ConnectionRejectedException();
         } else if (WebConstants.SC_SERVICE_UNAVAILABLE == code) {
