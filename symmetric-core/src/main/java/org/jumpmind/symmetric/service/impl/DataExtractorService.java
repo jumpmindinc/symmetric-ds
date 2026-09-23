@@ -62,13 +62,13 @@ import java.util.zip.ZipException;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
-import javax.management.relation.Relation;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.jumpmind.db.model.Column;
+import org.jumpmind.db.model.Relation;
 import org.jumpmind.db.model.Table;
 import org.jumpmind.db.platform.DdlBuilderFactory;
 import org.jumpmind.db.platform.IDatabasePlatform;
@@ -508,24 +508,24 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             IOutgoingTransport transport) {
         routeDataIfRequiredBeforeExtract();
         OutgoingBatches batches = loadPendingBatches(extractInfo, targetNode, queue, transport);
-        if (batches == null || batches.containsBatches()) {
+        if (batches == null || !batches.containsBatches()) {
             log.debug("No batches to extract for targetNode={}", targetNode.getNodeId());
             return Collections.emptyList();
         }
         List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, configurationService.getSuspendIgnoreChannelLists(), queue, targetNode);
         if (activeBatches.isEmpty()) {
-            log.debug("No active batches (after stage 1 of filtering) to extract for targetNode={}", targetNode.getNodeId());
+            log.debug("The local suspend and ignore list left no batches to extract for targetNode={}", targetNode.getNodeId());
             return Collections.emptyList();
         }
         /*
-         * The remote list of channels to suspend and batches to ignore arrives via transport connection reservation. So reservation is requested is local
-         * filter returned something to send. Asking earlier abandons a reservation on the target whenever the local list empties the batches.
+         * The remote list of channels to suspend and batches to ignore arrives via a transport connection reservation, so the reservation is only requested if
+         * the local filter returned something to send. Asking earlier would abandon a reservation on the target whenever the local list empties the batches.
          */
         NodeChannels nodeChannels = transport.getSuspendIgnoreChannelLists(configurationService, queue, targetNode);
         filterSuspendedAndIgnoredBatches(batches, nodeChannels);
         activeBatches = batches.getBatches();
         if (activeBatches.isEmpty()) {
-            log.debug("No active batches (after stage 2 of filtering using server-supplied list) to extract for targetNode={}", targetNode.getNodeId());
+            log.debug("The suspend and ignore list from the target left no batches to extract for targetNode={}", targetNode.getNodeId());
             return Collections.emptyList();
         }
         BufferedWriter writer = transport.openWriter();
