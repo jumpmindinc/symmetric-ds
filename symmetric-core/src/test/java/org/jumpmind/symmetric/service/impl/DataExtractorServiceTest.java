@@ -21,6 +21,7 @@
 package org.jumpmind.symmetric.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -36,6 +37,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.BufferedWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -63,7 +66,9 @@ import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.ExtractRequest;
 import org.jumpmind.symmetric.model.Node;
+import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.OutgoingBatch;
+import org.jumpmind.symmetric.model.OutgoingBatches;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
 import org.jumpmind.symmetric.model.TableReloadRequest;
@@ -84,22 +89,32 @@ import org.jumpmind.symmetric.service.ITransformService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.impl.DataExtractorService.ExtractMode;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
+import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class DataExtractorServiceTest {
     private static final long LOAD_ID = 7929;
+    private static final String EXTRACT_TARGET_NODE_ID = "target1";
+    private static final String EXTRACT_CHANNEL = "testchannel";
+    private static final String EXTRACT_QUEUE = "default";
     protected ISymmetricEngine engine;
     private IParameterService parameterService;
     private ISqlTemplate sqlTemplate;
     private ISqlTemplate sqlTemplateDirty;
     private IDataService dataService;
     private INodeService nodeService;
+    private IConfigurationService configurationService;
+    private IOutgoingBatchService outgoingBatchService;
+    private IRouterService routerService;
+    private IInitialLoadService initialLoadService;
     private TestableDataExtractorService service;
     private Node targetNode;
 
     static class TestableDataExtractorService extends DataExtractorService {
         AtomicInteger sendPasses = new AtomicInteger();
+        OutgoingBatches pendingBatches;
+        List<OutgoingBatch> batchesHandedToExtract;
 
         TestableDataExtractorService(ISymmetricEngine engine) {
             super(engine);
@@ -109,6 +124,18 @@ class DataExtractorServiceTest {
         public List<ExtractRequest> getTablesForExtractByLoadId(long loadId) {
             sendPasses.incrementAndGet();
             return Collections.emptyList();
+        }
+
+        @Override
+        protected OutgoingBatches loadPendingBatches(ProcessInfo extractInfo, Node targetNode, String queue, IOutgoingTransport transport) {
+            return pendingBatches;
+        }
+
+        @Override
+        protected List<OutgoingBatch> extract(ProcessInfo extractInfo, Node targetNode, List<OutgoingBatch> activeBatches, IDataWriter dataWriter,
+                BufferedWriter writer, ExtractMode mode) {
+            batchesHandedToExtract = activeBatches;
+            return activeBatches;
         }
     }
 
@@ -139,6 +166,15 @@ class DataExtractorServiceTest {
         when(engine.getDataService()).thenReturn(dataService);
         nodeService = mock(INodeService.class);
         when(engine.getNodeService()).thenReturn(nodeService);
+        configurationService = mock(IConfigurationService.class);
+        when(engine.getConfigurationService()).thenReturn(configurationService);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        outgoingBatchService = mock(IOutgoingBatchService.class);
+        when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
+        routerService = mock(IRouterService.class);
+        when(engine.getRouterService()).thenReturn(routerService);
+        initialLoadService = mock(IInitialLoadService.class);
+        when(engine.getInitialLoadService()).thenReturn(initialLoadService);
         service = new TestableDataExtractorService(engine);
         targetNode = new Node();
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
@@ -348,5 +384,128 @@ class DataExtractorServiceTest {
         IInitialLoadService testInitialLoadService = mock(IInitialLoadService.class);
         when(engine.getInitialLoadService()).thenReturn(testInitialLoadService);
         return new DataExtractorService(engine);
+    }
+
+    @Test
+    void extract_localSuspendListRemovesEveryBatch_neverAsksTransportForReservation() throws Exception {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(suspending(EXTRACT_CHANNEL));
+        List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertTrue(extracted.isEmpty(), "nothing should be extracted when the local list suspends the channel");
+        verify(transport, never()).getSuspendIgnoreChannelLists(any(), any(), any());
+        verify(transport, never()).openWriter();
+    }
+
+    @Test
+    void extract_noPendingBatches_neverAsksTransportForReservation() throws Exception {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        service.pendingBatches = new OutgoingBatches(new ArrayList<OutgoingBatch>());
+        List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertTrue(extracted.isEmpty(), "nothing should be extracted when there are no pending batches");
+        verify(transport, never()).getSuspendIgnoreChannelLists(any(), any(), any());
+    }
+
+    @Test
+    void extract_localIgnoreListRemovesEveryBatch_marksBatchIgnoredWithoutReservation() throws Exception {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        OutgoingBatch batch = new OutgoingBatch(EXTRACT_TARGET_NODE_ID, EXTRACT_CHANNEL, Status.NE);
+        service.pendingBatches = new OutgoingBatches(new ArrayList<OutgoingBatch>(Collections.singletonList(batch)));
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(ignoring(EXTRACT_CHANNEL));
+        service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertEquals(Status.OK, batch.getStatus(), "an ignored batch should be completed rather than left pending");
+        assertEquals(1, batch.getIgnoreCount(), "the ignore count should be incremented once");
+        verify(outgoingBatchService).updateOutgoingBatches(anyList());
+        verify(transport, never()).getSuspendIgnoreChannelLists(any(), any(), any());
+    }
+
+    @Test
+    void extract_remoteSuspendListRemovesEveryBatch_takesReservationButWritesNothing() throws Exception {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
+        when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(suspending(EXTRACT_CHANNEL));
+        List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertTrue(extracted.isEmpty(), "nothing should be extracted when the remote list suspends the channel");
+        verify(transport).getSuspendIgnoreChannelLists(any(), any(), any());
+        verify(transport, never()).openWriter();
+    }
+
+    @Test
+    void extract_batchesSurviveBothFilters_takesReservationAndExtracts() throws Exception {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
+        when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(new NodeChannels());
+        when(transport.openWriter()).thenReturn(new BufferedWriter(new StringWriter()));
+        List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertEquals(1, extracted.size(), "the surviving batch should be extracted");
+        assertEquals(1, service.batchesHandedToExtract.size(), "the surviving batch should be handed to the extractor");
+        verify(transport).getSuspendIgnoreChannelLists(any(), any(), any());
+        verify(transport).openWriter();
+    }
+
+    @Test
+    void isRoutingJobStarted_startRouteJob38IsBlank_fallsBackToStartRouteJob() {
+        when(parameterService.getString(ParameterConstants.START_ROUTE_JOB_38)).thenReturn(null);
+        when(parameterService.is(ParameterConstants.START_ROUTE_JOB)).thenReturn(true);
+        assertTrue(service.isRoutingJobStarted(), "the legacy parameter should decide when the 3.8 parameter is blank");
+    }
+
+    @Test
+    void isRoutingJobStarted_startRouteJob38IsSet_ignoresStartRouteJob() {
+        when(parameterService.getString(ParameterConstants.START_ROUTE_JOB_38)).thenReturn("false");
+        when(parameterService.is(ParameterConstants.START_ROUTE_JOB)).thenReturn(true);
+        when(parameterService.is(ParameterConstants.START_ROUTE_JOB_38)).thenReturn(false);
+        assertFalse(service.isRoutingJobStarted(), "the 3.8 parameter should win when it is set");
+    }
+
+    @Test
+    void routeDataIfRequiredBeforeExtract_routingJobIsStarted_doesNotRoute() {
+        when(parameterService.is(ParameterConstants.START_ROUTE_JOB)).thenReturn(true);
+        when(parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT)).thenReturn(true);
+        service.routeDataIfRequiredBeforeExtract();
+        verify(routerService, never()).routeData(anyBoolean());
+        verify(initialLoadService, never()).queueLoads(anyBoolean());
+    }
+
+    @Test
+    void routeDataIfRequiredBeforeExtract_routeOnExtractIsDisabled_doesNotRoute() {
+        when(parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT)).thenReturn(false);
+        service.routeDataIfRequiredBeforeExtract();
+        verify(routerService, never()).routeData(anyBoolean());
+        verify(initialLoadService, never()).queueLoads(anyBoolean());
+    }
+
+    @Test
+    void routeDataIfRequiredBeforeExtract_routingJobIsOffAndRouteOnExtractIsEnabled_routes() {
+        when(parameterService.is(ParameterConstants.START_ROUTE_JOB)).thenReturn(false);
+        when(parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT)).thenReturn(true);
+        service.routeDataIfRequiredBeforeExtract();
+        verify(initialLoadService).queueLoads(true);
+        verify(routerService).routeData(true);
+    }
+
+    private Node extractTarget() {
+        Node node = new Node();
+        node.setNodeId(EXTRACT_TARGET_NODE_ID);
+        node.setSymmetricVersion("3.18.0");
+        return node;
+    }
+
+    private OutgoingBatches batchesOn(String channelId) {
+        List<OutgoingBatch> batches = new ArrayList<OutgoingBatch>();
+        batches.add(new OutgoingBatch(EXTRACT_TARGET_NODE_ID, channelId, Status.NE));
+        return new OutgoingBatches(batches);
+    }
+
+    private NodeChannels suspending(String channelId) {
+        NodeChannels nodeChannels = new NodeChannels();
+        nodeChannels.addSuspendChannels(EXTRACT_TARGET_NODE_ID, channelId);
+        return nodeChannels;
+    }
+
+    private NodeChannels ignoring(String channelId) {
+        NodeChannels nodeChannels = new NodeChannels();
+        nodeChannels.addIgnoreChannels(EXTRACT_TARGET_NODE_ID, channelId);
+        return nodeChannels;
     }
 }

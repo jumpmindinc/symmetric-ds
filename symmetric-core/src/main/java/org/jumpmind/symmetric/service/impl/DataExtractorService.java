@@ -350,33 +350,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             duration = System.currentTimeMillis() - ts;
             logQueryDuration("Filter for channel took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
         }
-        // We now have either our local suspend/ignore list, or the combined
-        // remote send/ignore list and our local list (along with a
-        // reservation, if we go this far...)
-        // Now, we need to skip the suspended channels and ignore the
-        // ignored ones by ultimately setting the status to ignored and
-        // updating them.
-        ts = System.currentTimeMillis();
-        List<OutgoingBatch> ignoredBatches = batches.filterIgnoredBatches(suspendIgnoreChannelsList);
-        duration = System.currentTimeMillis() - ts;
-        logQueryDuration("Filter ignored batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
-        // Finally, update the ignored outgoing batches such that they
-        // will be skipped in the future.
-        ts = System.currentTimeMillis();
-        for (OutgoingBatch batch : ignoredBatches) {
-            batch.setStatus(OutgoingBatch.Status.OK);
-            batch.incrementIgnoreCount();
-            if (log.isDebugEnabled()) {
-                log.debug("Batch {} is being ignored", batch.getBatchId());
-            }
-        }
-        outgoingBatchService.updateOutgoingBatches(ignoredBatches);
-        duration = System.currentTimeMillis() - ts;
-        logQueryDuration("Update ignored outgoing batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
-        ts = System.currentTimeMillis();
-        batches.filterSuspendedBatches(suspendIgnoreChannelsList);
-        duration = System.currentTimeMillis() - ts;
-        logQueryDuration("Filter suspended batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
+        filterSuspendedAndIgnoredBatches(batches, suspendIgnoreChannelsList);
         // Defer non-load batches because an initial load has higher priority in maintaining data integrity.
         if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true)
                 && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
@@ -413,11 +387,54 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return batches.getBatches();
     }
 
+    /**
+     * Removes the batches on channels the target has suspended or ignored, completing the ignored ones so that they are not offered again. Safe to call more
+     * than once for the same batches: each call only sees what earlier calls left behind, so a local list can be applied before the combined remote and local
+     * list is available.
+     *
+     * @return the batches that were removed
+     */
+    private List<OutgoingBatch> filterSuspendedAndIgnoredBatches(OutgoingBatches batches, NodeChannels suspendIgnoreChannelsList) {
+        long ts = System.currentTimeMillis();
+        List<OutgoingBatch> ignoredBatches = batches.filterIgnoredBatches(suspendIgnoreChannelsList);
+        long duration = System.currentTimeMillis() - ts;
+        logQueryDuration("Filter ignored batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
+        ts = System.currentTimeMillis();
+        for (OutgoingBatch batch : ignoredBatches) {
+            batch.setStatus(OutgoingBatch.Status.OK);
+            batch.incrementIgnoreCount();
+            if (log.isDebugEnabled()) {
+                log.debug("Batch {} is being ignored", batch.getBatchId());
+            }
+        }
+        if (!ignoredBatches.isEmpty()) {
+            outgoingBatchService.updateOutgoingBatches(ignoredBatches);
+            duration = System.currentTimeMillis() - ts;
+            logQueryDuration("Updated {} ignored outgoing batches in {} ms", ignoredBatches.size(), duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
+        }
+        if (suspendIgnoreChannelsList != null && !suspendIgnoreChannelsList.getSuspendChannels().isEmpty()) {
+            ts = System.currentTimeMillis();
+            List<OutgoingBatch> suspendedBatches = batches.filterSuspendedBatches(suspendIgnoreChannelsList);
+            duration = System.currentTimeMillis() - ts;
+            logQueryDuration("Filtering of {} suspended batches took {} ms", suspendedBatches.size(), duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
+            ignoredBatches.addAll(suspendedBatches);
+        }
+        return ignoredBatches;
+    }
+
     private void logQueryDuration(String message, long duration, long maxDuration) {
         if (duration > maxDuration) {
             log.info(message, duration);
         } else {
             log.debug(message, duration);
+        }
+    }
+
+    private void logQueryDuration(String message, Object arg, long duration, long maxDuration) {
+        if (duration > maxDuration) {
+            log.info(message, arg, duration);
+        } else {
+            log.debug(message, arg, duration);
         }
     }
 
@@ -465,27 +482,41 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         return extract(extractInfo, targetNode, null, transport);
     }
 
-    @Override
-    public List<OutgoingBatch> extract(ProcessInfo extractInfo, Node targetNode, String queue,
-            IOutgoingTransport transport) {
-        /*
-         * make sure that data is routed before extracting if the route job is not configured to start automatically
-         */
-        String startRouteJob = parameterService.getString(ParameterConstants.START_ROUTE_JOB_38);
-        boolean startRoutingJob = false;
-        if (StringUtils.isBlank(startRouteJob)) {
-            startRoutingJob = parameterService.is(ParameterConstants.START_ROUTE_JOB);
-        } else {
-            startRoutingJob = parameterService.is(ParameterConstants.START_ROUTE_JOB_38);
-        }
-        if (!startRoutingJob && parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT)) {
+    /**
+     * Data is only routed here when the routing job is not configured to start automatically, otherwise the job has already done it.
+     */
+    protected void routeDataIfRequiredBeforeExtract() {
+        if (!isRoutingJobStarted() && parameterService.is(ParameterConstants.ROUTE_ON_EXTRACT)) {
             initialLoadService.queueLoads(true);
             routerService.routeData(true);
         }
+    }
+
+    protected boolean isRoutingJobStarted() {
+        String startRouteJob = parameterService.getString(ParameterConstants.START_ROUTE_JOB_38);
+        if (StringUtils.isBlank(startRouteJob)) {
+            return parameterService.is(ParameterConstants.START_ROUTE_JOB);
+        }
+        return parameterService.is(ParameterConstants.START_ROUTE_JOB_38);
+    }
+
+    @Override
+    public List<OutgoingBatch> extract(ProcessInfo extractInfo, Node targetNode, String queue,
+            IOutgoingTransport transport) {
+        routeDataIfRequiredBeforeExtract();
         OutgoingBatches batches = loadPendingBatches(extractInfo, targetNode, queue, transport);
         if (batches != null && batches.containsBatches()) {
+            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, configurationService.getSuspendIgnoreChannelLists(), queue, targetNode);
+            if (activeBatches.isEmpty()) {
+                return Collections.emptyList();
+            }
+            /*
+             * The remote suspend and ignore list rides on a transport connection reservation, so it is only asked for once the local list has left something
+             * worth sending. Asking earlier abandons a reservation on the target whenever the local list empties the batches.
+             */
             NodeChannels nodeChannels = transport.getSuspendIgnoreChannelLists(configurationService, queue, targetNode);
-            List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, nodeChannels, queue, targetNode);
+            filterSuspendedAndIgnoredBatches(batches, nodeChannels);
+            activeBatches = batches.getBatches();
             if (activeBatches.size() > 0) {
                 BufferedWriter writer = transport.openWriter();
                 IDataWriter dataWriter = new ProtocolDataWriter(nodeService.findIdentityNodeId(),
