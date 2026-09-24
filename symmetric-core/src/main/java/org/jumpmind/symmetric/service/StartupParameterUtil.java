@@ -18,7 +18,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.symmetric.service.impl;
+package org.jumpmind.symmetric.service;
+
+import java.util.Objects;
 
 import org.jumpmind.symmetric.common.ServerConstants;
 
@@ -28,7 +30,17 @@ public class StartupParameterUtil {
     private StartupParameterUtil() {
     }
 
+    /**
+     * Returns the environment variable that overrides the given parameter. For example, {@code db.pool.max.active} becomes {@code SYM_DB_POOL_MAX_ACTIVE}.
+     *
+     * @param param
+     *            the parameter name, as it appears in a properties file
+     * @return the name of the equivalent environment variable
+     * @throws NullPointerException
+     *             if {@code param} is null
+     */
     public static String getEquivalentEnvVarNameForParam(String param) {
+        Objects.requireNonNull(param, "Parameter cannot be null");
         return ENV_VAR_PREFIX + param.toUpperCase().replace('.', '_');
     }
 }
