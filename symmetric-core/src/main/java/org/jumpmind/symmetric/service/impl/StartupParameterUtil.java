@@ -32,4 +32,3 @@ public class StartupParameterUtil {
         return ENV_VAR_PREFIX + param.toUpperCase().replace('.', '_');
     }
 }
-
