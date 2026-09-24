@@ -189,11 +189,6 @@ public class StartupParameterService implements IStartupParameterService {
         return ServerConstants.SYM_ENV_PREFIX + key.toUpperCase().replace('.', '_');
     }
 
-    @Override
-    public String getEquivalentEnvVarNameForParam(String parameterName) {
-        return ServerConstants.SYM_ENV_PREFIX + parameterName.toUpperCase().replace('.', '_');
-    }
-
     private Type inferType(ParameterMetaData metaData, String value) {
         if (metaData != null) {
             if (metaData.isBooleanType()) {
