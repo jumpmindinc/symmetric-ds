@@ -51,7 +51,6 @@ import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
 import org.jumpmind.symmetric.common.Constants;
 import org.jumpmind.symmetric.common.ParameterConstants;
-import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.model.BatchId;
 import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
@@ -77,8 +76,7 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
 	protected boolean useHeaderSecurityToken;
 	protected boolean useSessionAuth;
 	protected int backOffPostCount;
-	protected String affinityCookieName;
-	protected Map<String, AtomicInteger> outstandingPushReservationsByUri = new ConcurrentHashMap<String, AtomicInteger>();
+	protected Map<URI, AtomicInteger> outstandingReservationsByUri = new ConcurrentHashMap<URI, AtomicInteger>();
 
 	public HttpTransportManager() {
 	}
@@ -89,7 +87,6 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
 		useHeaderSecurityToken = engine.getParameterService()
 				.is(ParameterConstants.TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN);
 		useSessionAuth = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_SESSION_AUTH);
-		affinityCookieName = engine.getParameterService().getString(ServerConstants.SERVER_COOKIE_NAME);
 	}
 
 	public int sendCopyRequest(Node local) throws IOException {
@@ -268,57 +265,65 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
 		}
 	}
 
-	public void beginPushReservation(URL url) {
-		outstandingPushReservationsByUri.computeIfAbsent(getUri(url), key -> new AtomicInteger()).incrementAndGet();
+	public void beginReservation(URL url) {
+		outstandingReservationsByUri.computeIfAbsent(getAffinityURI(url), key -> new AtomicInteger()).incrementAndGet();
 	}
 
-	public void endPushReservation(URL url) {
-		String uri = getUri(url);
-		AtomicInteger count = outstandingPushReservationsByUri.get(uri);
+	public void endReservation(URL url) {
+		URI uri = getAffinityURI(url);
+		AtomicInteger count = outstandingReservationsByUri.get(uri);
 		if (count != null && count.decrementAndGet() <= 0) {
-			outstandingPushReservationsByUri.remove(uri);
+			outstandingReservationsByUri.remove(uri);
 		}
 	}
 
 	public void handleServiceBusy(HttpConnection conn) {
 		boolean clearBusyAffinityCookieEnabled = engine.getParameterService()
 				.is(ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, false);
-		if (clearBusyAffinityCookieEnabled && !affinityCookieName.isBlank()) {
+		if (clearBusyAffinityCookieEnabled) {
 			clearReservationCookieForUri(conn);
 		} else {
-			log.debug("Not clearing load balancer affinity cookie for {} because {} = {}", getUri(conn), ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, clearBusyAffinityCookieEnabled);
+			log.debug("Not clearing load balancer affinity cookies for {} because {} = {}", getUri(conn), ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, clearBusyAffinityCookieEnabled);
 		}
 	}
-	
+
 	public void clearReservationCookieForUri(HttpConnection conn) {
-		AtomicInteger outstandingReservations = outstandingPushReservationsByUri.get(getUri(conn));
+		AtomicInteger outstandingReservations = outstandingReservationsByUri.get(getAffinityURI(conn.getURL()));
 		if (outstandingReservations != null && outstandingReservations.get() > 0) {
 			log.debug(
-					"Not clearing load balancer affinity cookie for {} because {} push reservation(s) are outstanding",
+					"Not clearing load balancer affinity cookies for {} because {} reservation(s) are outstanding",
 					getUri(conn), outstandingReservations.get());
 			return;
 		}
 		CookieHandler handler = CookieHandler.getDefault();
 		if (!(handler instanceof CookieManager)) {
-			log.debug("Not clearing load balancer affinity cookie for {} because no CookieManager is installed (server.http.cookies.enabled may be false)",
+			log.debug("Not clearing load balancer affinity cookies for {} because no CookieManager is installed (server.http.cookies.enabled may be false)",
 					getUri(conn));
 			return;
 		}
-		URI uri;
-		try {
-			URL url = conn.getURL();
-			uri = new URI(url.getProtocol(), null, url.getHost(), url.getPort(), "/", null, null);
-		} catch (URISyntaxException e) {
-			log.debug("Not clearing load balancer affinity cookie because a URI could not be built for {}", conn.getURL(), e);
+		URI uri = getAffinityURI(conn.getURL());
+		if(uri == null) {
+			log.debug("Not clearing load balancer affinity cookies for {} because uri could not be built", conn.getURL());
 			return;
 		}
 		CookieStore store = ((CookieManager) handler).getCookieStore();
+		int cookieCount = 0;
 		for (HttpCookie cookie : new ArrayList<HttpCookie>(store.get(uri))) {
-			if (affinityCookieName.equals(cookie.getName())) {
-				store.remove(uri, cookie);
-				log.info("Cleared load balancer affinity cookie '{}' for {} after SC_SERVICE_BUSY", affinityCookieName,
-						uri.getHost());
+			store.remove(uri, cookie);
+			if(log.isDebugEnabled()) {
+				log.debug("Cleared cookie '{}' for {} after SC_SERVICE_BUSY", cookie.getName(), uri.getHost());
 			}
+			cookieCount++;
+		}
+		log.info("Cleared {} cookies for {} after SC_SERVICE_BUSY", cookieCount, uri.getHost());
+	}
+	
+	private URI getAffinityURI(URL url) {
+		try {
+			return new URI(url.getProtocol(), null, url.getHost(), url.getPort(), "/", null, null);
+		} catch (URISyntaxException e) {
+			log.debug("URI could not be built for {}", url, e);
+			return null;
 		}
 	}
 

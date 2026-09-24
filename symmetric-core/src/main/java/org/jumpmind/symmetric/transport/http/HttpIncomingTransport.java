@@ -58,6 +58,7 @@ public class HttpIncomingTransport implements IIncomingTransport {
     private String nodeId;
     private String securityToken;
     private Map<String, String> requestProperties;
+    private boolean reservationHeld = false;
 
     public HttpIncomingTransport(HttpTransportManager httpTransportManager, HttpConnection connection, IParameterService parameterService) {
         this.httpTransportManager = httpTransportManager;
@@ -86,6 +87,10 @@ public class HttpIncomingTransport implements IIncomingTransport {
 
     @Override
     public void close() {
+        if (reservationHeld) {
+            httpTransportManager.endReservation(connection.getURL());
+            reservationHeld = false;
+        }
         if (connection != null) {
             try {
                 connection.close();
@@ -155,6 +160,8 @@ public class HttpIncomingTransport implements IIncomingTransport {
                 throw new NoContentException();
             case WebConstants.SC_OK:
                 httpTransportManager.updateSession(connection);
+                httpTransportManager.beginReservation(connection.getURL());
+                reservationHeld = true;
                 is = HttpTransportManager.getInputStreamFrom(connection);
                 return is;
             default:

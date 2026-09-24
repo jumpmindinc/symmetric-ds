@@ -107,7 +107,7 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
         closeOutputStream(true);
         closeReader();
         if (reservationHeld) {
-            httpTransportManager.endPushReservation(url);
+            httpTransportManager.endReservation(url);
             reservationHeld = false;
         }
         if (connection != null) {
@@ -191,7 +191,7 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
             connection.setRequestProperty(WebConstants.CHANNEL_QUEUE, queue);
             analyzeResponseCode(connection.getResponseCode());
             httpTransportManager.updateSession(connection);
-            httpTransportManager.beginPushReservation(url);
+            httpTransportManager.beginReservation(url);
             reservationHeld = true;
         } catch (IOException ex) {
             throw new IoException(ex);
