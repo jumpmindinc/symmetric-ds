@@ -345,43 +345,10 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             duration = System.currentTimeMillis() - ts;
             logQueryDuration("Filter for channel took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
         }
-<<<<<<< HEAD
-        // We now have either our local suspend/ignore list, or the combined
-        // remote send/ignore list and our local list (along with a
-        // reservation, if we go this far...)
-        // Now, we need to skip the suspended channels and ignore the
-        // ignored ones by ultimately setting the status to ignored and
-        // updating them.
-        ts = System.currentTimeMillis();
-        List<OutgoingBatch> ignoredBatches = batches.filterIgnoredBatches(suspendIgnoreChannelsList);
-        duration = System.currentTimeMillis() - ts;
-        logQueryDuration("Filter ignored batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
-        // Finally, update the ignored outgoing batches such that they
-        // will be skipped in the future.
-        ts = System.currentTimeMillis();
-        for (OutgoingBatch batch : ignoredBatches) {
-            batch.setStatus(OutgoingBatch.Status.OK);
-            batch.incrementIgnoreCount();
-            if (log.isDebugEnabled()) {
-                log.debug("Batch {} is being ignored", batch.getBatchId());
-            }
-        }
-        outgoingBatchService.updateOutgoingBatches(ignoredBatches);
-        duration = System.currentTimeMillis() - ts;
-        logQueryDuration("Update ignored outgoing batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
-        ts = System.currentTimeMillis();
-        batches.filterSuspendedBatches(suspendIgnoreChannelsList);
-        duration = System.currentTimeMillis() - ts;
-        logQueryDuration("Filter suspended batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
+        filterSuspendedAndIgnoredBatches(batches, suspendIgnoreChannelsList);
         // Remove non-load batches so that an initial load finishes before
         // any other batches are loaded.
         if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true) && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
-=======
-        filterSuspendedAndIgnoredBatches(batches, suspendIgnoreChannelsList);
-        // Defer non-load batches because an initial load has higher priority in maintaining data integrity.
-        if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true)
-                && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
->>>>>>> de9dabf580 (SYM-8099: Skip reservation process, when filtered list of batches is empty (#1137))
             if (batches.containsLoadBatches()) {
                 if (!(parameterService.is(ParameterConstants.INITIAL_LOAD_UNBLOCK_CHANNELS_ON_ERROR, true) && batches.containsBatchesInError())) {
                     batches.removeNonLoadBatches();
