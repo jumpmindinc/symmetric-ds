@@ -65,8 +65,8 @@ public class VoltDbJdbcSqlTemplate extends JdbcSqlTemplate {
     protected void setTinyIntValue(PreparedStatement ps, int i, Object arg, int argType)
             throws SQLException {
         if (arg instanceof Integer) {
-            Integer integer = (Integer) arg;
-            super.setTinyIntValue(ps, i, integer.byteValue(), argType); // VoltDB wants a byte.
+            int integer = (Integer) arg;
+            super.setTinyIntValue(ps, i, (byte) integer, argType); // VoltDB wants a byte.
         } else {
             super.setTinyIntValue(ps, i, arg, argType);
         }

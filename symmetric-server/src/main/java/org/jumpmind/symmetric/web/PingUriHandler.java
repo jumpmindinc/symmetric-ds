@@ -46,7 +46,7 @@ public class PingUriHandler extends AbstractUriHandler {
 
     public void bandwidthTest(HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
         res.setContentType("text/plain");
-        Long start = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
         long end = start + 5000;
         while (System.currentTimeMillis() < end) {
             res.getWriter().write(StringEscapeUtils.escapeHtml4(RandomStringUtils.secure().nextAlphabetic(600)));

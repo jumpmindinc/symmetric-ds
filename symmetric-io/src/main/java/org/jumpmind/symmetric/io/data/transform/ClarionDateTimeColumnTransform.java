@@ -60,7 +60,7 @@ public class ClarionDateTimeColumnTransform implements ISingleNewAndOldValueColu
 
     public String convertClarionDate(String clarionDate, String clarionTime) {
         if (clarionDate != null && !StringUtils.isEmpty(clarionDate)) {
-            Integer date = Integer.parseInt(clarionDate);
+            int date = Integer.parseInt(clarionDate);
             Calendar cal = Calendar.getInstance();
             cal.set(1800, Calendar.DECEMBER, 28, 0, 0, 0);
             cal.add(Calendar.DATE, date);
