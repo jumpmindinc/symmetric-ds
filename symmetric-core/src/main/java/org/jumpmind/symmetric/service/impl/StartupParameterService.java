@@ -181,12 +181,17 @@ public class StartupParameterService implements IStartupParameterService {
         return knownSource != null ? knownSource : Source.SYMMETRIC_PROPERTIES_FILE;
     }
 
-    public static String findEnvVarName(String key) {
+    private String findEnvVarName(String key) {
         String explicit = ENV_VAR_NAMES_BY_PARAMETER.get(key);
         if (explicit != null) {
             return explicit;
         }
         return ServerConstants.SYM_ENV_PREFIX + key.toUpperCase().replace('.', '_');
+    }
+
+    @Override
+    public String getEquivalentEnvVarNameForParam(String parameterName) {
+        return ServerConstants.SYM_ENV_PREFIX + parameterName.toUpperCase().replace('.', '_');
     }
 
     private Type inferType(ParameterMetaData metaData, String value) {

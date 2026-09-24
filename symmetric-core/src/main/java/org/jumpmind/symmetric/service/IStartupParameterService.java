@@ -73,6 +73,8 @@ public interface IStartupParameterService {
 
     StartupParameter getParameter(String engineName, String key);
 
+    String getEquivalentEnvVarNameForParam(String parameterName);
+
     Map<String, StartupParameter> getAllParameters(String engineName);
 
     /**
