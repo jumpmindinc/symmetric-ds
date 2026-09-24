@@ -42,7 +42,7 @@ import org.jumpmind.symmetric.model.StartupParameter;
 import org.jumpmind.symmetric.model.StartupParameter.Source;
 import org.jumpmind.symmetric.model.StartupParameter.Type;
 import org.jumpmind.symmetric.service.IStartupParameterService;
-import org.jumpmind.symmetric.service.StartupParameterUtil;
+import org.jumpmind.symmetric.service.StartupParameterUtils;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -187,7 +187,7 @@ public class StartupParameterService implements IStartupParameterService {
         if (explicit != null) {
             return explicit;
         }
-        return StartupParameterUtil.getEquivalentEnvVarNameForParam(key);
+        return StartupParameterUtils.getEquivalentEnvVarNameForParam(key);
     }
 
     private Type inferType(ParameterMetaData metaData, String value) {

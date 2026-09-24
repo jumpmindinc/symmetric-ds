@@ -24,10 +24,10 @@ import java.util.Objects;
 
 import org.jumpmind.symmetric.common.ServerConstants;
 
-public class StartupParameterUtil {
+public class StartupParameterUtils {
     private static final String ENV_VAR_PREFIX = ServerConstants.SYM_ENV_PREFIX;
 
-    private StartupParameterUtil() {
+    private StartupParameterUtils() {
     }
 
     /**
