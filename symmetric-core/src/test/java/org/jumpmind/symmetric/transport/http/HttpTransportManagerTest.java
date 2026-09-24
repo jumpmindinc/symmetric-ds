@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -40,6 +41,10 @@ import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -68,6 +73,7 @@ import org.jumpmind.symmetric.transport.IHttpConnectionHandler;
 import org.jumpmind.symmetric.transport.IIncomingTransport;
 import org.jumpmind.symmetric.transport.IOutgoingWithResponseTransport;
 import org.jumpmind.symmetric.web.WebConstants;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -81,9 +87,12 @@ class HttpTransportManagerTest {
     private IParameterService ps;
     private IExtensionService extensionService;
     private HttpConnection connMock;
+    private CookieHandler originalCookieHandler;
 
     @BeforeEach
     void setUp() throws Exception {
+        originalCookieHandler = CookieHandler.getDefault();
+        CookieHandler.setDefault(null);
         engine = mock(ISymmetricEngine.class);
         remoteNode = mock(Node.class);
         localNode = mock(Node.class);
@@ -107,6 +116,11 @@ class HttpTransportManagerTest {
         connMock = mock(HttpConnection.class);
         doReturn(connMock).when(manager).createGetConnectionFor(any(URL.class), anyString(), anyString());
         doReturn(connMock).when(manager).createGetConnectionFor(any(URL.class));
+    }
+
+    @AfterEach
+    void tearDown() {
+        CookieHandler.setDefault(originalCookieHandler);
     }
 
     @Test
@@ -375,6 +389,112 @@ class HttpTransportManagerTest {
         sessionManager.sessionIdByUri.put(sessionManager.getUri(conn), "sess-1");
         sessionManager.clearSession(conn);
         assertFalse(sessionManager.sessionIdByUri.isEmpty());
+    }
+
+    @Test
+    void testBeginReservation_incrementsCountForUri() throws Exception {
+        URL url = URI.create("http://node.example.com/sync/push?nodeId=1").toURL();
+        manager.beginReservation(url);
+        assertEquals(1, manager.outstandingReservationsByUri.size());
+        manager.beginReservation(url);
+        assertEquals(2, manager.outstandingReservationsByUri.values().iterator().next().get());
+    }
+
+    @Test
+    void testBeginReservation_pushAndPullUrlsToSameHostShareCount() throws Exception {
+        URL pushUrl = URI.create("http://node.example.com/sync/push?nodeId=1").toURL();
+        URL pullUrl = URI.create("http://node.example.com/sync/pull?nodeId=1").toURL();
+        manager.beginReservation(pushUrl);
+        manager.beginReservation(pullUrl);
+        assertEquals(1, manager.outstandingReservationsByUri.size());
+        assertEquals(2, manager.outstandingReservationsByUri.values().iterator().next().get());
+    }
+
+    @Test
+    void testEndReservation_decrementsAndRemovesEntryWhenCountReachesZero() throws Exception {
+        URL url = URI.create("http://node.example.com/sync/push").toURL();
+        manager.beginReservation(url);
+        manager.beginReservation(url);
+        manager.endReservation(url);
+        assertEquals(1, manager.outstandingReservationsByUri.values().iterator().next().get());
+        manager.endReservation(url);
+        assertTrue(manager.outstandingReservationsByUri.isEmpty());
+    }
+
+    @Test
+    void testEndReservation_withNoExistingEntry_doesNotThrow() throws Exception {
+        URL url = URI.create("http://node.example.com/sync/push").toURL();
+        assertDoesNotThrow(() -> manager.endReservation(url));
+        assertTrue(manager.outstandingReservationsByUri.isEmpty());
+    }
+
+    @Test
+    void testHandleServiceBusy_whenDisabled_doesNotDelegateToClearReservationCookieForUri() throws Exception {
+        when(ps.is(ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, false)).thenReturn(false);
+        HttpConnection conn = mock(HttpConnection.class);
+        when(conn.getURL()).thenReturn(URI.create("http://node.example.com/sync/push").toURL());
+        manager.handleServiceBusy(conn);
+        verify(manager, never()).clearReservationCookieForUri(conn);
+    }
+
+    @Test
+    void testHandleServiceBusy_whenEnabled_delegatesToClearReservationCookieForUri() {
+        when(ps.is(ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, false)).thenReturn(true);
+        HttpConnection conn = mock(HttpConnection.class);
+        doNothing().when(manager).clearReservationCookieForUri(conn);
+        manager.handleServiceBusy(conn);
+        verify(manager).clearReservationCookieForUri(conn);
+    }
+
+    @Test
+    void testClearReservationCookieForUri_withOutstandingReservation_leavesCookiesIntact() throws Exception {
+        CookieManager cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+        CookieHandler.setDefault(cookieManager);
+        URI targetUri = URI.create("http://node.example.com/");
+        cookieManager.getCookieStore().add(targetUri, new HttpCookie("JSESSIONID", "abc"));
+        URL url = URI.create("http://node.example.com/sync/push").toURL();
+        manager.beginReservation(url);
+        HttpConnection conn = mock(HttpConnection.class);
+        when(conn.getURL()).thenReturn(url);
+        manager.clearReservationCookieForUri(conn);
+        assertEquals(1, cookieManager.getCookieStore().get(targetUri).size());
+    }
+
+    @Test
+    void testClearReservationCookieForUri_withNoCookieManagerInstalled_doesNotThrow() throws Exception {
+        HttpConnection conn = mock(HttpConnection.class);
+        when(conn.getURL()).thenReturn(URI.create("http://node.example.com/sync/push").toURL());
+        assertDoesNotThrow(() -> manager.clearReservationCookieForUri(conn));
+    }
+
+    @Test
+    void testClearReservationCookieForUri_withCookieManagerInstalled_clearsAllCookiesForHostOnly() throws Exception {
+        CookieManager cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+        CookieHandler.setDefault(cookieManager);
+        URI targetUri = URI.create("http://node.example.com/");
+        URI otherUri = URI.create("http://other.example.com/");
+        cookieManager.getCookieStore().add(targetUri, new HttpCookie("JSESSIONID", "abc"));
+        cookieManager.getCookieStore().add(targetUri, new HttpCookie("WAFCOOKIE", "xyz"));
+        cookieManager.getCookieStore().add(otherUri, new HttpCookie("OTHERHOSTCOOKIE", "other"));
+        HttpConnection conn = mock(HttpConnection.class);
+        when(conn.getURL()).thenReturn(URI.create("http://node.example.com/sync/push").toURL());
+        manager.clearReservationCookieForUri(conn);
+        assertTrue(cookieManager.getCookieStore().get(targetUri).isEmpty());
+        assertEquals(1, cookieManager.getCookieStore().get(otherUri).size());
+    }
+
+    @Test
+    void testClearReservationCookieForUri_withSameNamedCookieOnDifferentHost_alsoRemovesIt() throws Exception {
+        CookieManager cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+        CookieHandler.setDefault(cookieManager);
+        URI targetUri = URI.create("http://node.example.com/");
+        URI otherUri = URI.create("http://other.example.com/");
+        cookieManager.getCookieStore().add(targetUri, new HttpCookie("JSESSIONID", "abc"));
+        cookieManager.getCookieStore().add(otherUri, new HttpCookie("JSESSIONID", "other"));
+        HttpConnection conn = mock(HttpConnection.class);
+        when(conn.getURL()).thenReturn(URI.create("http://node.example.com/sync/push").toURL());
+        manager.clearReservationCookieForUri(conn);
+        assertTrue(cookieManager.getCookieStore().get(otherUri).isEmpty());
     }
 
     @Test
