@@ -303,11 +303,11 @@ class DataExtractorServiceTest {
     @Test
     void extract_failureDuringSendPhase_incrementsDataSentErrorsOnly() throws Exception {
         IStatisticManager statisticManager = mock(IStatisticManager.class);
-        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
-        DataExtractorService extractService = spy(buildExtractService(statisticManager, outgoingBatchService));
+        IOutgoingBatchService mockOutgoingBatchService = mock(IOutgoingBatchService.class);
+        DataExtractorService extractService = spy(buildExtractService(statisticManager, mockOutgoingBatchService));
         OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
         batch.setBatchId(1);
-        when(outgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
+        when(mockOutgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
         doReturn(new DataExtractorService.FutureOutgoingBatch(batch, false)).when(extractService)
                 .extractBatch(any(OutgoingBatch.class), any(), any(ProcessInfo.class), any(Node.class), any(), any(), anyList());
         doThrow(new RuntimeException("simulated send failure")).when(extractService)
@@ -325,11 +325,11 @@ class DataExtractorServiceTest {
     @Test
     void extract_failureDuringExtractPhase_incrementsDataExtractedErrorsOnly() throws Exception {
         IStatisticManager statisticManager = mock(IStatisticManager.class);
-        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
-        DataExtractorService extractService = spy(buildExtractService(statisticManager, outgoingBatchService));
+        IOutgoingBatchService mockOutgoingBatchService = mock(IOutgoingBatchService.class);
+        DataExtractorService extractService = spy(buildExtractService(statisticManager, mockOutgoingBatchService));
         OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
         batch.setBatchId(1);
-        when(outgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
+        when(mockOutgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
         doThrow(new RuntimeException("simulated extract failure")).when(extractService)
                 .extractBatch(any(OutgoingBatch.class), any(), any(ProcessInfo.class), any(Node.class), any(), any(), anyList());
         Node extractTargetNode = new Node();
@@ -342,7 +342,7 @@ class DataExtractorServiceTest {
         verify(statisticManager, never()).incrementDataSentErrors(any(), anyLong());
     }
 
-    private DataExtractorService buildExtractService(IStatisticManager statisticManager, IOutgoingBatchService outgoingBatchService) {
+    private DataExtractorService buildExtractService(IStatisticManager statisticManager, IOutgoingBatchService mockOutgoingBatchService) {
         IParameterService testParameterService = mock(IParameterService.class);
         when(testParameterService.getTablePrefix()).thenReturn("sym");
         when(testParameterService.getEngineName()).thenReturn("Test");
@@ -355,7 +355,7 @@ class DataExtractorServiceTest {
         ISymmetricDialect testSymmetricDialect = mock(ISymmetricDialect.class);
         when(testSymmetricDialect.getPlatform()).thenReturn(testPlatform);
         when(engine.getSymmetricDialect()).thenReturn(testSymmetricDialect);
-        when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
+        when(engine.getOutgoingBatchService()).thenReturn(mockOutgoingBatchService);
         IRouterService testRouterService = mock(IRouterService.class);
         when(engine.getRouterService()).thenReturn(testRouterService);
         IDataService testDataService = mock(IDataService.class);
@@ -389,7 +389,7 @@ class DataExtractorServiceTest {
     }
 
     @Test
-    void extract_localSuspendListRemovesEveryBatch_neverAsksTransportForReservation() throws Exception {
+    void extract_localSuspendListRemovesEveryBatch_neverAsksTransportForReservation() {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
         when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(suspending(EXTRACT_CHANNEL));
@@ -400,7 +400,7 @@ class DataExtractorServiceTest {
     }
 
     @Test
-    void extract_noPendingBatches_neverAsksTransportForReservation() throws Exception {
+    void extract_noPendingBatches_neverAsksTransportForReservation() {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         service.pendingBatches = new OutgoingBatches(new ArrayList<OutgoingBatch>());
         List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
@@ -409,7 +409,7 @@ class DataExtractorServiceTest {
     }
 
     @Test
-    void extract_localIgnoreListRemovesEveryBatch_marksBatchIgnoredWithoutReservation() throws Exception {
+    void extract_localIgnoreListRemovesEveryBatch_marksBatchIgnoredWithoutReservation() {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         OutgoingBatch batch = new OutgoingBatch(EXTRACT_TARGET_NODE_ID, EXTRACT_CHANNEL, Status.NE);
         service.pendingBatches = new OutgoingBatches(new ArrayList<OutgoingBatch>(Collections.singletonList(batch)));
@@ -422,7 +422,7 @@ class DataExtractorServiceTest {
     }
 
     @Test
-    void extract_remoteSuspendListRemovesEveryBatch_takesReservationButWritesNothing() throws Exception {
+    void extract_remoteSuspendListRemovesEveryBatch_takesReservationButWritesNothing() {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
         when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(suspending(EXTRACT_CHANNEL));
@@ -433,7 +433,7 @@ class DataExtractorServiceTest {
     }
 
     @Test
-    void extract_batchesSurviveBothFilters_takesReservationAndExtracts() throws Exception {
+    void extract_batchesSurviveBothFilters_takesReservationAndExtracts() {
         IOutgoingTransport transport = mock(IOutgoingTransport.class);
         service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
         when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(new NodeChannels());
