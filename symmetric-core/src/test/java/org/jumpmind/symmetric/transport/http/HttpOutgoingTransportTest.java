@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -287,6 +288,81 @@ class HttpOutgoingTransportTest {
         assertEquals(Collections.singleton("otherNode"), ignoreChannels.getByChannelId("chanE"));
         verify(connection).setRequestMethod("HEAD");
         verify(connection).close();
+    }
+
+    @Test
+    void testRequestReservation_onSuccess_beginsReservationForTargetUrl() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("");
+        when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        verify(manager).beginReservation(url);
+    }
+
+    @Test
+    void testRequestReservation_onServiceBusy_doesNotBeginReservation() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
+        assertThrows(ConnectionRejectedException.class,
+                () -> transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode));
+        verify(manager, never()).beginReservation(any());
+    }
+
+    @Test
+    void testClose_afterSuccessfulReservation_endsReservationForTargetUrl() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("");
+        when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        transport.close();
+        verify(manager).endReservation(url);
+    }
+
+    @Test
+    void testClose_withoutReservation_doesNotEndReservation() throws Exception {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        when(connection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+        transport.openStream();
+        transport.close();
+        verify(manager, never()).endReservation(any());
+    }
+
+    @Test
+    void testClose_calledTwiceAfterReservation_endsReservationOnlyOnce() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("");
+        when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        transport.close();
+        transport.close();
+        verify(manager, times(1)).endReservation(url);
+    }
+
+    @Test
+    void testReadResponse_withServiceBusy_handlesServiceBusy() throws Exception {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        when(connection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+        transport.openStream();
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
+        assertThrows(ConnectionRejectedException.class, transport::readResponse);
+        verify(manager).handleServiceBusy(connection);
     }
 
     @Test

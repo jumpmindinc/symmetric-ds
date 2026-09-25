@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -192,6 +193,62 @@ class HttpIncomingTransportTest {
         when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
         HttpIncomingTransport transport = newTransport();
         assertThrows(ConnectionRejectedException.class, transport::openStream);
+    }
+
+    @Test
+    void testOpenStream_withServiceBusy_handlesServiceBusy() throws Exception {
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
+        HttpIncomingTransport transport = newTransport();
+        assertThrows(ConnectionRejectedException.class, transport::openStream);
+        verify(httpTransportManager).handleServiceBusy(connection);
+    }
+
+    @Test
+    void testOpenStream_withServiceBusy_doesNotBeginReservation() throws Exception {
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
+        HttpIncomingTransport transport = newTransport();
+        assertThrows(ConnectionRejectedException.class, transport::openStream);
+        verify(httpTransportManager, never()).beginReservation(any());
+    }
+
+    @Test
+    void testOpenStream_onSuccess_beginsReservationForConnectionUrl() throws Exception {
+        stubSuccessfulResponse();
+        URL url = URI.create("http://node.example.com/sync/pull").toURL();
+        when(connection.getURL()).thenReturn(url);
+        HttpIncomingTransport transport = newTransport();
+        transport.openStream();
+        verify(httpTransportManager).beginReservation(url);
+    }
+
+    @Test
+    void testClose_afterSuccessfulOpenStream_endsReservationForConnectionUrl() throws Exception {
+        stubSuccessfulResponse();
+        URL url = URI.create("http://node.example.com/sync/pull").toURL();
+        when(connection.getURL()).thenReturn(url);
+        HttpIncomingTransport transport = newTransport();
+        transport.openStream();
+        transport.close();
+        verify(httpTransportManager).endReservation(url);
+    }
+
+    @Test
+    void testClose_withoutOpenStream_doesNotEndReservation() {
+        HttpIncomingTransport transport = newTransport();
+        transport.close();
+        verify(httpTransportManager, never()).endReservation(any());
+    }
+
+    @Test
+    void testClose_calledTwiceAfterSuccessfulOpenStream_endsReservationOnlyOnce() throws Exception {
+        stubSuccessfulResponse();
+        URL url = URI.create("http://node.example.com/sync/pull").toURL();
+        when(connection.getURL()).thenReturn(url);
+        HttpIncomingTransport transport = newTransport();
+        transport.openStream();
+        transport.close();
+        transport.close();
+        verify(httpTransportManager, times(1)).endReservation(url);
     }
 
     @Test
