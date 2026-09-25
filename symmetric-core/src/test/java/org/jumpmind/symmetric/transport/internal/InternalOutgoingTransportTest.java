@@ -80,6 +80,12 @@ class InternalOutgoingTransportTest {
     }
 
     @Test
+    void isReservationRequired_suspendIgnoreListIsAlreadyAtHand_returnsFalse() throws UnsupportedEncodingException {
+        InternalOutgoingTransport transport = new InternalOutgoingTransport(new ByteArrayOutputStream(), new NodeChannels(), "UTF-8");
+        assertFalse(transport.isReservationRequired());
+    }
+
+    @Test
     void testConstructor_withBufferedWriter() {
         BufferedWriter writer = new BufferedWriter(new StringWriter());
         InternalOutgoingTransport transport = new InternalOutgoingTransport(writer);
