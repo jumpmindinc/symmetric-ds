@@ -35,7 +35,9 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -125,10 +127,22 @@ class DriverTest {
     // non-lowercased url, so an uppercase "SYMDS:" prefix is never stripped. The unchanged url is
     // then handed to DriverManager.getConnection(), which re-enters this same Driver's connect()
     // because its prefix check is case-insensitive, recursing without bound until the stack overflows.
+    // Every other registered driver is deregistered for the test: DriverManager.getConnection() calls
+    // connect() on every registered driver (not just ones whose acceptsURL matches) until one succeeds,
+    // and a third-party driver throwing something other than SQLException for this malformed url (e.g.
+    // PatternSyntaxException) would abort the recursion early — observed as an environment-dependent
+    // flake (passed locally, failed in CI) since driver registration order/contents vary by environment.
     @Test
-    void testConnect_withUppercaseSymdsUrl_doesNotStripPrefixAndOverflowsStack() {
-        assertThrows(StackOverflowError.class,
-                () -> driver.connect("JDBC:SYMDS:h2:mem:driverTestUppercase;DB_CLOSE_DELAY=-1", new Properties()));
+    void testConnect_withUppercaseSymdsUrl_doesNotStripPrefixAndOverflowsStack() throws SQLException {
+        List<java.sql.Driver> otherDrivers = deregisterOtherDrivers();
+        try {
+            assertThrows(StackOverflowError.class,
+                    () -> driver.connect("JDBC:SYMDS:h2:mem:driverTestUppercase;DB_CLOSE_DELAY=-1", new Properties()));
+        } finally {
+            for (java.sql.Driver otherDriver : otherDrivers) {
+                DriverManager.registerDriver(otherDriver);
+            }
+        }
     }
 
     @Test
@@ -213,5 +227,20 @@ class DriverTest {
             }
         }
         return count;
+    }
+
+    private List<java.sql.Driver> deregisterOtherDrivers() throws SQLException {
+        List<java.sql.Driver> otherDrivers = new ArrayList<>();
+        Enumeration<java.sql.Driver> drivers = DriverManager.getDrivers();
+        while (drivers.hasMoreElements()) {
+            java.sql.Driver registeredDriver = drivers.nextElement();
+            if (!(registeredDriver instanceof Driver)) {
+                otherDrivers.add(registeredDriver);
+            }
+        }
+        for (java.sql.Driver otherDriver : otherDrivers) {
+            DriverManager.deregisterDriver(otherDriver);
+        }
+        return otherDrivers;
     }
 }
