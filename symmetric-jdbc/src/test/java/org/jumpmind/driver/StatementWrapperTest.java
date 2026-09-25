@@ -62,28 +62,22 @@ class StatementWrapperTest {
 
     @Test
     void testConstructor_singleArg_createsWorkingWrapper() throws SQLException {
-        StatementWrapper singleArgWrapper = new StatementWrapper(wrappedMock);
-        try {
+        try (StatementWrapper singleArgWrapper = new StatementWrapper(wrappedMock)) {
             assertInstanceOf(StatementWrapper.class, singleArgWrapper);
-        } finally {
-            singleArgWrapper.close();
         }
     }
 
     @Test
     void testConstructor_singleArg_delegatesIsClosed() throws SQLException {
         when(wrappedMock.isClosed()).thenReturn(true);
-        StatementWrapper singleArgWrapper = new StatementWrapper(wrappedMock);
-        try {
+        try (StatementWrapper singleArgWrapper = new StatementWrapper(wrappedMock)) {
             assertTrue(singleArgWrapper.isClosed());
-        } finally {
-            singleArgWrapper.close();
         }
     }
 
     @Test
     void testClose_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("close"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("close")).thenReturn(notIntercepted());
         statementWrapper.close();
         verify(wrappedMock).close();
         verify(interceptorMock).postExecute(eq("close"), isNull(), anyLong(), anyLong());
@@ -91,7 +85,7 @@ class StatementWrapperTest {
 
     @Test
     void testClose_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("close"))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("close")).thenReturn(intercepted(null));
         statementWrapper.close();
         verify(wrappedMock, never()).close();
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong());
@@ -100,7 +94,7 @@ class StatementWrapperTest {
     @Test
     void testGetConnection_delegatesToWrapped() throws SQLException {
         Connection canned = mock(Connection.class);
-        when(interceptorMock.preExecute(eq("getConnection"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getConnection")).thenReturn(notIntercepted());
         when(wrappedMock.getConnection()).thenReturn(canned);
         when(interceptorMock.postExecute(eq("getConnection"), eq(canned), anyLong(), anyLong())).thenReturn(notIntercepted());
         Connection result = statementWrapper.getConnection();
@@ -111,7 +105,7 @@ class StatementWrapperTest {
     @Test
     void testGetConnection_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         Connection interceptValue = mock(Connection.class);
-        when(interceptorMock.preExecute(eq("getConnection"))).thenReturn(intercepted(interceptValue));
+        when(interceptorMock.preExecute("getConnection")).thenReturn(intercepted(interceptValue));
         Connection result = statementWrapper.getConnection();
         assertSame(interceptValue, result);
         verify(wrappedMock, never()).getConnection();
@@ -121,7 +115,7 @@ class StatementWrapperTest {
     void testGetConnection_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         Connection wrappedValue = mock(Connection.class);
         Connection postValue = mock(Connection.class);
-        when(interceptorMock.preExecute(eq("getConnection"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getConnection")).thenReturn(notIntercepted());
         when(wrappedMock.getConnection()).thenReturn(wrappedValue);
         when(interceptorMock.postExecute(eq("getConnection"), eq(wrappedValue), anyLong(), anyLong())).thenReturn(intercepted(postValue));
         Connection result = statementWrapper.getConnection();
@@ -130,7 +124,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteStringInt_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("execute", SELECT_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(notIntercepted());
         when(wrappedMock.execute(SELECT_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(true);
         when(interceptorMock.postExecute(eq("execute"), eq(true), anyLong(), anyLong(), eq(SELECT_SQL), eq(Statement.RETURN_GENERATED_KEYS)))
                 .thenReturn(notIntercepted());
@@ -141,7 +135,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteStringInt_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("execute", SELECT_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(intercepted(false));
         boolean result = statementWrapper.execute(SELECT_SQL, Statement.RETURN_GENERATED_KEYS);
         assertFalse(result);
         verify(wrappedMock, never()).execute(anyString(), anyInt());
@@ -149,7 +143,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteStringInt_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("execute", SELECT_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(notIntercepted());
         when(wrappedMock.execute(SELECT_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(true);
         when(interceptorMock.postExecute(eq("execute"), eq(true), anyLong(), anyLong(), eq(SELECT_SQL), eq(Statement.RETURN_GENERATED_KEYS)))
                 .thenReturn(intercepted(false));
@@ -159,7 +153,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteString_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("execute", SELECT_SQL)).thenReturn(notIntercepted());
         when(wrappedMock.execute(SELECT_SQL)).thenReturn(true);
         when(interceptorMock.postExecute(eq("execute"), eq(true), anyLong(), anyLong(), eq(SELECT_SQL))).thenReturn(notIntercepted());
         boolean result = statementWrapper.execute(SELECT_SQL);
@@ -169,7 +163,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteString_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("execute", SELECT_SQL)).thenReturn(intercepted(false));
         boolean result = statementWrapper.execute(SELECT_SQL);
         assertFalse(result);
         verify(wrappedMock, never()).execute(anyString());
@@ -177,7 +171,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteString_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("execute", SELECT_SQL)).thenReturn(notIntercepted());
         when(wrappedMock.execute(SELECT_SQL)).thenReturn(true);
         when(interceptorMock.postExecute(eq("execute"), eq(true), anyLong(), anyLong(), eq(SELECT_SQL))).thenReturn(intercepted(false));
         boolean result = statementWrapper.execute(SELECT_SQL);
@@ -187,7 +181,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteStringArray_delegatesToWrapped() throws SQLException {
         String[] columns = new String[] { "id" };
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL), eq(columns))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("execute", SELECT_SQL, columns)).thenReturn(notIntercepted());
         when(wrappedMock.execute(SELECT_SQL, columns)).thenReturn(true);
         when(interceptorMock.postExecute(eq("execute"), eq(true), anyLong(), anyLong(), eq(SELECT_SQL), eq(columns))).thenReturn(notIntercepted());
         boolean result = statementWrapper.execute(SELECT_SQL, columns);
@@ -198,7 +192,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteStringArray_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         String[] columns = new String[] { "id" };
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL), eq(columns))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("execute", SELECT_SQL, columns)).thenReturn(intercepted(false));
         boolean result = statementWrapper.execute(SELECT_SQL, columns);
         assertFalse(result);
         verify(wrappedMock, never()).execute(anyString(), any(String[].class));
@@ -207,7 +201,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteStringArray_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         String[] columns = new String[] { "id" };
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL), eq(columns))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("execute", SELECT_SQL, columns)).thenReturn(notIntercepted());
         when(wrappedMock.execute(SELECT_SQL, columns)).thenReturn(true);
         when(interceptorMock.postExecute(eq("execute"), eq(true), anyLong(), anyLong(), eq(SELECT_SQL), eq(columns))).thenReturn(intercepted(false));
         boolean result = statementWrapper.execute(SELECT_SQL, columns);
@@ -217,7 +211,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteIntArray_delegatesToWrapped() throws SQLException {
         int[] columns = new int[] { 1 };
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL), eq(columns))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("execute", SELECT_SQL, columns)).thenReturn(notIntercepted());
         when(wrappedMock.execute(SELECT_SQL, columns)).thenReturn(true);
         when(interceptorMock.postExecute(eq("execute"), eq(true), anyLong(), anyLong(), eq(SELECT_SQL), eq(columns))).thenReturn(notIntercepted());
         boolean result = statementWrapper.execute(SELECT_SQL, columns);
@@ -228,7 +222,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteIntArray_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         int[] columns = new int[] { 1 };
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL), eq(columns))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("execute", SELECT_SQL, columns)).thenReturn(intercepted(false));
         boolean result = statementWrapper.execute(SELECT_SQL, columns);
         assertFalse(result);
         verify(wrappedMock, never()).execute(anyString(), any(int[].class));
@@ -237,7 +231,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteIntArray_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         int[] columns = new int[] { 1 };
-        when(interceptorMock.preExecute(eq("execute"), eq(SELECT_SQL), eq(columns))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("execute", SELECT_SQL, columns)).thenReturn(notIntercepted());
         when(wrappedMock.execute(SELECT_SQL, columns)).thenReturn(true);
         when(interceptorMock.postExecute(eq("execute"), eq(true), anyLong(), anyLong(), eq(SELECT_SQL), eq(columns))).thenReturn(intercepted(false));
         boolean result = statementWrapper.execute(SELECT_SQL, columns);
@@ -246,7 +240,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsClosed_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("isClosed"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("isClosed")).thenReturn(notIntercepted());
         when(wrappedMock.isClosed()).thenReturn(true);
         when(interceptorMock.postExecute(eq("isClosed"), eq(true), anyLong(), anyLong())).thenReturn(notIntercepted());
         boolean result = statementWrapper.isClosed();
@@ -256,7 +250,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsClosed_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("isClosed"))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("isClosed")).thenReturn(intercepted(false));
         boolean result = statementWrapper.isClosed();
         assertFalse(result);
         verify(wrappedMock, never()).isClosed();
@@ -264,7 +258,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsClosed_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("isClosed"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("isClosed")).thenReturn(notIntercepted());
         when(wrappedMock.isClosed()).thenReturn(true);
         when(interceptorMock.postExecute(eq("isClosed"), eq(true), anyLong(), anyLong())).thenReturn(intercepted(false));
         boolean result = statementWrapper.isClosed();
@@ -274,7 +268,7 @@ class StatementWrapperTest {
     @Test
     void testGetWarnings_delegatesToWrapped() throws SQLException {
         SQLWarning canned = mock(SQLWarning.class);
-        when(interceptorMock.preExecute(eq("getWarnings"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getWarnings")).thenReturn(notIntercepted());
         when(wrappedMock.getWarnings()).thenReturn(canned);
         when(interceptorMock.postExecute(eq("getWarnings"), eq(canned), anyLong(), anyLong())).thenReturn(notIntercepted());
         SQLWarning result = statementWrapper.getWarnings();
@@ -285,7 +279,7 @@ class StatementWrapperTest {
     @Test
     void testGetWarnings_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         SQLWarning interceptValue = mock(SQLWarning.class);
-        when(interceptorMock.preExecute(eq("getWarnings"))).thenReturn(intercepted(interceptValue));
+        when(interceptorMock.preExecute("getWarnings")).thenReturn(intercepted(interceptValue));
         SQLWarning result = statementWrapper.getWarnings();
         assertSame(interceptValue, result);
         verify(wrappedMock, never()).getWarnings();
@@ -295,7 +289,7 @@ class StatementWrapperTest {
     void testGetWarnings_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         SQLWarning wrappedValue = mock(SQLWarning.class);
         SQLWarning postValue = mock(SQLWarning.class);
-        when(interceptorMock.preExecute(eq("getWarnings"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getWarnings")).thenReturn(notIntercepted());
         when(wrappedMock.getWarnings()).thenReturn(wrappedValue);
         when(interceptorMock.postExecute(eq("getWarnings"), eq(wrappedValue), anyLong(), anyLong())).thenReturn(intercepted(postValue));
         SQLWarning result = statementWrapper.getWarnings();
@@ -304,7 +298,7 @@ class StatementWrapperTest {
 
     @Test
     void testClearWarnings_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("clearWarnings"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("clearWarnings")).thenReturn(notIntercepted());
         statementWrapper.clearWarnings();
         verify(wrappedMock).clearWarnings();
         verify(interceptorMock).postExecute(eq("clearWarnings"), isNull(), anyLong(), anyLong());
@@ -312,7 +306,7 @@ class StatementWrapperTest {
 
     @Test
     void testClearWarnings_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("clearWarnings"))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("clearWarnings")).thenReturn(intercepted(null));
         statementWrapper.clearWarnings();
         verify(wrappedMock, never()).clearWarnings();
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong());
@@ -321,7 +315,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteQuery_delegatesToWrapped() throws SQLException {
         ResultSet canned = mock(ResultSet.class);
-        when(interceptorMock.preExecute(eq("executeQuery"), eq(SELECT_SQL))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeQuery", SELECT_SQL)).thenReturn(notIntercepted());
         when(wrappedMock.executeQuery(SELECT_SQL)).thenReturn(canned);
         when(interceptorMock.postExecute(eq("executeQuery"), eq(canned), anyLong(), anyLong(), eq(SELECT_SQL))).thenReturn(notIntercepted());
         ResultSet result = statementWrapper.executeQuery(SELECT_SQL);
@@ -332,7 +326,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteQuery_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         ResultSet interceptValue = mock(ResultSet.class);
-        when(interceptorMock.preExecute(eq("executeQuery"), eq(SELECT_SQL))).thenReturn(intercepted(interceptValue));
+        when(interceptorMock.preExecute("executeQuery", SELECT_SQL)).thenReturn(intercepted(interceptValue));
         ResultSet result = statementWrapper.executeQuery(SELECT_SQL);
         assertSame(interceptValue, result);
         verify(wrappedMock, never()).executeQuery(anyString());
@@ -342,7 +336,7 @@ class StatementWrapperTest {
     void testExecuteQuery_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         ResultSet wrappedValue = mock(ResultSet.class);
         ResultSet postValue = mock(ResultSet.class);
-        when(interceptorMock.preExecute(eq("executeQuery"), eq(SELECT_SQL))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeQuery", SELECT_SQL)).thenReturn(notIntercepted());
         when(wrappedMock.executeQuery(SELECT_SQL)).thenReturn(wrappedValue);
         when(interceptorMock.postExecute(eq("executeQuery"), eq(wrappedValue), anyLong(), anyLong(), eq(SELECT_SQL))).thenReturn(intercepted(postValue));
         ResultSet result = statementWrapper.executeQuery(SELECT_SQL);
@@ -351,7 +345,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteUpdateStringInt_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(notIntercepted());
         when(wrappedMock.executeUpdate(UPDATE_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(5);
         when(interceptorMock.postExecute(eq("executeUpdate"), eq(5), anyLong(), anyLong(), eq(UPDATE_SQL), eq(Statement.RETURN_GENERATED_KEYS)))
                 .thenReturn(notIntercepted());
@@ -362,7 +356,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteUpdateStringInt_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(intercepted(99));
         int result = statementWrapper.executeUpdate(UPDATE_SQL, Statement.RETURN_GENERATED_KEYS);
         assertEquals(99, result);
         verify(wrappedMock, never()).executeUpdate(anyString(), anyInt());
@@ -370,7 +364,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteUpdateStringInt_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(notIntercepted());
         when(wrappedMock.executeUpdate(UPDATE_SQL, Statement.RETURN_GENERATED_KEYS)).thenReturn(5);
         when(interceptorMock.postExecute(eq("executeUpdate"), eq(5), anyLong(), anyLong(), eq(UPDATE_SQL), eq(Statement.RETURN_GENERATED_KEYS)))
                 .thenReturn(intercepted(42));
@@ -381,7 +375,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteUpdateIntArray_delegatesToWrapped() throws SQLException {
         int[] columns = new int[] { 1 };
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL), eq(columns))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL, columns)).thenReturn(notIntercepted());
         when(wrappedMock.executeUpdate(UPDATE_SQL, columns)).thenReturn(5);
         when(interceptorMock.postExecute(eq("executeUpdate"), eq(5), anyLong(), anyLong(), eq(UPDATE_SQL), eq(columns))).thenReturn(notIntercepted());
         int result = statementWrapper.executeUpdate(UPDATE_SQL, columns);
@@ -392,7 +386,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteUpdateIntArray_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         int[] columns = new int[] { 1 };
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL), eq(columns))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL, columns)).thenReturn(intercepted(99));
         int result = statementWrapper.executeUpdate(UPDATE_SQL, columns);
         assertEquals(99, result);
         verify(wrappedMock, never()).executeUpdate(anyString(), any(int[].class));
@@ -401,7 +395,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteUpdateIntArray_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         int[] columns = new int[] { 1 };
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL), eq(columns))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL, columns)).thenReturn(notIntercepted());
         when(wrappedMock.executeUpdate(UPDATE_SQL, columns)).thenReturn(5);
         when(interceptorMock.postExecute(eq("executeUpdate"), eq(5), anyLong(), anyLong(), eq(UPDATE_SQL), eq(columns))).thenReturn(intercepted(42));
         int result = statementWrapper.executeUpdate(UPDATE_SQL, columns);
@@ -411,7 +405,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteUpdateStringArray_delegatesToWrapped() throws SQLException {
         String[] columns = new String[] { "id" };
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL), eq(columns))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL, columns)).thenReturn(notIntercepted());
         when(wrappedMock.executeUpdate(UPDATE_SQL, columns)).thenReturn(5);
         when(interceptorMock.postExecute(eq("executeUpdate"), eq(5), anyLong(), anyLong(), eq(UPDATE_SQL), eq(columns))).thenReturn(notIntercepted());
         int result = statementWrapper.executeUpdate(UPDATE_SQL, columns);
@@ -422,7 +416,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteUpdateStringArray_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         String[] columns = new String[] { "id" };
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL), eq(columns))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL, columns)).thenReturn(intercepted(99));
         int result = statementWrapper.executeUpdate(UPDATE_SQL, columns);
         assertEquals(99, result);
         verify(wrappedMock, never()).executeUpdate(anyString(), any(String[].class));
@@ -431,7 +425,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteUpdateStringArray_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         String[] columns = new String[] { "id" };
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL), eq(columns))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL, columns)).thenReturn(notIntercepted());
         when(wrappedMock.executeUpdate(UPDATE_SQL, columns)).thenReturn(5);
         when(interceptorMock.postExecute(eq("executeUpdate"), eq(5), anyLong(), anyLong(), eq(UPDATE_SQL), eq(columns))).thenReturn(intercepted(42));
         int result = statementWrapper.executeUpdate(UPDATE_SQL, columns);
@@ -440,7 +434,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteUpdateString_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL)).thenReturn(notIntercepted());
         when(wrappedMock.executeUpdate(UPDATE_SQL)).thenReturn(5);
         when(interceptorMock.postExecute(eq("executeUpdate"), eq(5), anyLong(), anyLong(), eq(UPDATE_SQL))).thenReturn(notIntercepted());
         int result = statementWrapper.executeUpdate(UPDATE_SQL);
@@ -450,7 +444,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteUpdateString_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL)).thenReturn(intercepted(99));
         int result = statementWrapper.executeUpdate(UPDATE_SQL);
         assertEquals(99, result);
         verify(wrappedMock, never()).executeUpdate(anyString());
@@ -458,7 +452,7 @@ class StatementWrapperTest {
 
     @Test
     void testExecuteUpdateString_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("executeUpdate"), eq(UPDATE_SQL))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeUpdate", UPDATE_SQL)).thenReturn(notIntercepted());
         when(wrappedMock.executeUpdate(UPDATE_SQL)).thenReturn(5);
         when(interceptorMock.postExecute(eq("executeUpdate"), eq(5), anyLong(), anyLong(), eq(UPDATE_SQL))).thenReturn(intercepted(42));
         int result = statementWrapper.executeUpdate(UPDATE_SQL);
@@ -467,7 +461,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMaxFieldSize_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMaxFieldSize"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getMaxFieldSize")).thenReturn(notIntercepted());
         when(wrappedMock.getMaxFieldSize()).thenReturn(64);
         when(interceptorMock.postExecute(eq("getMaxFieldSize"), eq(64), anyLong(), anyLong())).thenReturn(notIntercepted());
         int result = statementWrapper.getMaxFieldSize();
@@ -477,7 +471,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMaxFieldSize_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMaxFieldSize"))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("getMaxFieldSize")).thenReturn(intercepted(99));
         int result = statementWrapper.getMaxFieldSize();
         assertEquals(99, result);
         verify(wrappedMock, never()).getMaxFieldSize();
@@ -485,7 +479,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMaxFieldSize_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMaxFieldSize"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getMaxFieldSize")).thenReturn(notIntercepted());
         when(wrappedMock.getMaxFieldSize()).thenReturn(64);
         when(interceptorMock.postExecute(eq("getMaxFieldSize"), eq(64), anyLong(), anyLong())).thenReturn(intercepted(42));
         int result = statementWrapper.getMaxFieldSize();
@@ -494,7 +488,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetMaxFieldSize_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("setMaxFieldSize"), eq(100))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("setMaxFieldSize", 100)).thenReturn(notIntercepted());
         statementWrapper.setMaxFieldSize(100);
         verify(wrappedMock).setMaxFieldSize(100);
         verify(interceptorMock).postExecute(eq("setMaxFieldSize"), isNull(), anyLong(), anyLong(), eq(100));
@@ -502,7 +496,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetMaxFieldSize_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("setMaxFieldSize"), eq(100))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("setMaxFieldSize", 100)).thenReturn(intercepted(null));
         statementWrapper.setMaxFieldSize(100);
         verify(wrappedMock, never()).setMaxFieldSize(anyInt());
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong(), any());
@@ -510,7 +504,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMaxRows_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMaxRows"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getMaxRows")).thenReturn(notIntercepted());
         when(wrappedMock.getMaxRows()).thenReturn(100);
         when(interceptorMock.postExecute(eq("getMaxRows"), eq(100), anyLong(), anyLong())).thenReturn(notIntercepted());
         int result = statementWrapper.getMaxRows();
@@ -520,7 +514,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMaxRows_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMaxRows"))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("getMaxRows")).thenReturn(intercepted(99));
         int result = statementWrapper.getMaxRows();
         assertEquals(99, result);
         verify(wrappedMock, never()).getMaxRows();
@@ -528,7 +522,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMaxRows_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMaxRows"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getMaxRows")).thenReturn(notIntercepted());
         when(wrappedMock.getMaxRows()).thenReturn(100);
         when(interceptorMock.postExecute(eq("getMaxRows"), eq(100), anyLong(), anyLong())).thenReturn(intercepted(42));
         int result = statementWrapper.getMaxRows();
@@ -537,7 +531,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetMaxRows_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("setMaxRows"), eq(50))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("setMaxRows", 50)).thenReturn(notIntercepted());
         statementWrapper.setMaxRows(50);
         verify(wrappedMock).setMaxRows(50);
         verify(interceptorMock).postExecute(eq("setMaxRows"), isNull(), anyLong(), anyLong(), eq(50));
@@ -545,7 +539,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetMaxRows_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("setMaxRows"), eq(50))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("setMaxRows", 50)).thenReturn(intercepted(null));
         statementWrapper.setMaxRows(50);
         verify(wrappedMock, never()).setMaxRows(anyInt());
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong(), any());
@@ -553,7 +547,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetEscapeProcessing_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("setEscapeProcessing"), eq(true))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("setEscapeProcessing", true)).thenReturn(notIntercepted());
         statementWrapper.setEscapeProcessing(true);
         verify(wrappedMock).setEscapeProcessing(true);
         verify(interceptorMock).postExecute(eq("setEscapeProcessing"), isNull(), anyLong(), anyLong(), eq(true));
@@ -561,7 +555,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetEscapeProcessing_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("setEscapeProcessing"), eq(true))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("setEscapeProcessing", true)).thenReturn(intercepted(null));
         statementWrapper.setEscapeProcessing(true);
         verify(wrappedMock, never()).setEscapeProcessing(anyBoolean());
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong(), any());
@@ -569,7 +563,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetQueryTimeout_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getQueryTimeout"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getQueryTimeout")).thenReturn(notIntercepted());
         when(wrappedMock.getQueryTimeout()).thenReturn(30);
         when(interceptorMock.postExecute(eq("getQueryTimeout"), eq(30), anyLong(), anyLong())).thenReturn(notIntercepted());
         int result = statementWrapper.getQueryTimeout();
@@ -579,7 +573,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetQueryTimeout_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getQueryTimeout"))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("getQueryTimeout")).thenReturn(intercepted(99));
         int result = statementWrapper.getQueryTimeout();
         assertEquals(99, result);
         verify(wrappedMock, never()).getQueryTimeout();
@@ -587,7 +581,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetQueryTimeout_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getQueryTimeout"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getQueryTimeout")).thenReturn(notIntercepted());
         when(wrappedMock.getQueryTimeout()).thenReturn(30);
         when(interceptorMock.postExecute(eq("getQueryTimeout"), eq(30), anyLong(), anyLong())).thenReturn(intercepted(42));
         int result = statementWrapper.getQueryTimeout();
@@ -596,7 +590,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetQueryTimeout_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("setQueryTimeout"), eq(30))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("setQueryTimeout", 30)).thenReturn(notIntercepted());
         statementWrapper.setQueryTimeout(30);
         verify(wrappedMock).setQueryTimeout(30);
         verify(interceptorMock).postExecute(eq("setQueryTimeout"), isNull(), anyLong(), anyLong(), eq(30));
@@ -604,7 +598,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetQueryTimeout_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("setQueryTimeout"), eq(30))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("setQueryTimeout", 30)).thenReturn(intercepted(null));
         statementWrapper.setQueryTimeout(30);
         verify(wrappedMock, never()).setQueryTimeout(anyInt());
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong(), any());
@@ -612,7 +606,7 @@ class StatementWrapperTest {
 
     @Test
     void testCancel_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("cancel"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("cancel")).thenReturn(notIntercepted());
         statementWrapper.cancel();
         verify(wrappedMock).cancel();
         verify(interceptorMock).postExecute(eq("cancel"), isNull(), anyLong(), anyLong());
@@ -620,7 +614,7 @@ class StatementWrapperTest {
 
     @Test
     void testCancel_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("cancel"))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("cancel")).thenReturn(intercepted(null));
         statementWrapper.cancel();
         verify(wrappedMock, never()).cancel();
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong());
@@ -628,7 +622,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetCursorName_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("setCursorName"), eq("cursor1"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("setCursorName", "cursor1")).thenReturn(notIntercepted());
         statementWrapper.setCursorName("cursor1");
         verify(wrappedMock).setCursorName("cursor1");
         verify(interceptorMock).postExecute(eq("setCursorName"), isNull(), anyLong(), anyLong(), eq("cursor1"));
@@ -636,7 +630,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetCursorName_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("setCursorName"), eq("cursor1"))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("setCursorName", "cursor1")).thenReturn(intercepted(null));
         statementWrapper.setCursorName("cursor1");
         verify(wrappedMock, never()).setCursorName(anyString());
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong(), any());
@@ -645,7 +639,7 @@ class StatementWrapperTest {
     @Test
     void testGetResultSet_delegatesToWrapped() throws SQLException {
         ResultSet canned = mock(ResultSet.class);
-        when(interceptorMock.preExecute(eq("getResultSet"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getResultSet")).thenReturn(notIntercepted());
         when(wrappedMock.getResultSet()).thenReturn(canned);
         when(interceptorMock.postExecute(eq("getResultSet"), eq(canned), anyLong(), anyLong())).thenReturn(notIntercepted());
         ResultSet result = statementWrapper.getResultSet();
@@ -656,7 +650,7 @@ class StatementWrapperTest {
     @Test
     void testGetResultSet_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         ResultSet interceptValue = mock(ResultSet.class);
-        when(interceptorMock.preExecute(eq("getResultSet"))).thenReturn(intercepted(interceptValue));
+        when(interceptorMock.preExecute("getResultSet")).thenReturn(intercepted(interceptValue));
         ResultSet result = statementWrapper.getResultSet();
         assertSame(interceptValue, result);
         verify(wrappedMock, never()).getResultSet();
@@ -666,7 +660,7 @@ class StatementWrapperTest {
     void testGetResultSet_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         ResultSet wrappedValue = mock(ResultSet.class);
         ResultSet postValue = mock(ResultSet.class);
-        when(interceptorMock.preExecute(eq("getResultSet"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getResultSet")).thenReturn(notIntercepted());
         when(wrappedMock.getResultSet()).thenReturn(wrappedValue);
         when(interceptorMock.postExecute(eq("getResultSet"), eq(wrappedValue), anyLong(), anyLong())).thenReturn(intercepted(postValue));
         ResultSet result = statementWrapper.getResultSet();
@@ -675,7 +669,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetUpdateCount_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getUpdateCount"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getUpdateCount")).thenReturn(notIntercepted());
         when(wrappedMock.getUpdateCount()).thenReturn(5);
         when(interceptorMock.postExecute(eq("getUpdateCount"), eq(5), anyLong(), anyLong())).thenReturn(notIntercepted());
         int result = statementWrapper.getUpdateCount();
@@ -685,7 +679,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetUpdateCount_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getUpdateCount"))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("getUpdateCount")).thenReturn(intercepted(99));
         int result = statementWrapper.getUpdateCount();
         assertEquals(99, result);
         verify(wrappedMock, never()).getUpdateCount();
@@ -693,7 +687,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetUpdateCount_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getUpdateCount"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getUpdateCount")).thenReturn(notIntercepted());
         when(wrappedMock.getUpdateCount()).thenReturn(5);
         when(interceptorMock.postExecute(eq("getUpdateCount"), eq(5), anyLong(), anyLong())).thenReturn(intercepted(42));
         int result = statementWrapper.getUpdateCount();
@@ -702,7 +696,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMoreResultsWithInt_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMoreResults"), eq(Statement.KEEP_CURRENT_RESULT))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getMoreResults", Statement.KEEP_CURRENT_RESULT)).thenReturn(notIntercepted());
         when(wrappedMock.getMoreResults(Statement.KEEP_CURRENT_RESULT)).thenReturn(true);
         when(interceptorMock.postExecute(eq("getMoreResults"), eq(true), anyLong(), anyLong(), eq(Statement.KEEP_CURRENT_RESULT)))
                 .thenReturn(notIntercepted());
@@ -713,7 +707,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMoreResultsWithInt_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMoreResults"), eq(Statement.KEEP_CURRENT_RESULT))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("getMoreResults", Statement.KEEP_CURRENT_RESULT)).thenReturn(intercepted(false));
         boolean result = statementWrapper.getMoreResults(Statement.KEEP_CURRENT_RESULT);
         assertFalse(result);
         verify(wrappedMock, never()).getMoreResults(anyInt());
@@ -721,7 +715,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMoreResultsWithInt_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMoreResults"), eq(Statement.KEEP_CURRENT_RESULT))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getMoreResults", Statement.KEEP_CURRENT_RESULT)).thenReturn(notIntercepted());
         when(wrappedMock.getMoreResults(Statement.KEEP_CURRENT_RESULT)).thenReturn(true);
         when(interceptorMock.postExecute(eq("getMoreResults"), eq(true), anyLong(), anyLong(), eq(Statement.KEEP_CURRENT_RESULT)))
                 .thenReturn(intercepted(false));
@@ -731,7 +725,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMoreResults_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMoreResults"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getMoreResults")).thenReturn(notIntercepted());
         when(wrappedMock.getMoreResults()).thenReturn(true);
         when(interceptorMock.postExecute(eq("getMoreResults"), eq(true), anyLong(), anyLong())).thenReturn(notIntercepted());
         boolean result = statementWrapper.getMoreResults();
@@ -741,7 +735,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMoreResults_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMoreResults"))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("getMoreResults")).thenReturn(intercepted(false));
         boolean result = statementWrapper.getMoreResults();
         assertFalse(result);
         verify(wrappedMock, never()).getMoreResults();
@@ -749,7 +743,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetMoreResults_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getMoreResults"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getMoreResults")).thenReturn(notIntercepted());
         when(wrappedMock.getMoreResults()).thenReturn(true);
         when(interceptorMock.postExecute(eq("getMoreResults"), eq(true), anyLong(), anyLong())).thenReturn(intercepted(false));
         boolean result = statementWrapper.getMoreResults();
@@ -758,7 +752,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetFetchDirection_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("setFetchDirection"), eq(ResultSet.FETCH_FORWARD))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("setFetchDirection", ResultSet.FETCH_FORWARD)).thenReturn(notIntercepted());
         statementWrapper.setFetchDirection(ResultSet.FETCH_FORWARD);
         verify(wrappedMock).setFetchDirection(ResultSet.FETCH_FORWARD);
         verify(interceptorMock).postExecute(eq("setFetchDirection"), isNull(), anyLong(), anyLong(), eq(ResultSet.FETCH_FORWARD));
@@ -766,7 +760,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetFetchDirection_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("setFetchDirection"), eq(ResultSet.FETCH_FORWARD))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("setFetchDirection", ResultSet.FETCH_FORWARD)).thenReturn(intercepted(null));
         statementWrapper.setFetchDirection(ResultSet.FETCH_FORWARD);
         verify(wrappedMock, never()).setFetchDirection(anyInt());
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong(), any());
@@ -774,7 +768,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetFetchDirection_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getFetchDirection"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getFetchDirection")).thenReturn(notIntercepted());
         when(wrappedMock.getFetchDirection()).thenReturn(ResultSet.FETCH_FORWARD);
         when(interceptorMock.postExecute(eq("getFetchDirection"), eq(ResultSet.FETCH_FORWARD), anyLong(), anyLong())).thenReturn(notIntercepted());
         int result = statementWrapper.getFetchDirection();
@@ -784,7 +778,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetFetchDirection_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getFetchDirection"))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("getFetchDirection")).thenReturn(intercepted(99));
         int result = statementWrapper.getFetchDirection();
         assertEquals(99, result);
         verify(wrappedMock, never()).getFetchDirection();
@@ -792,7 +786,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetFetchDirection_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getFetchDirection"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getFetchDirection")).thenReturn(notIntercepted());
         when(wrappedMock.getFetchDirection()).thenReturn(ResultSet.FETCH_FORWARD);
         when(interceptorMock.postExecute(eq("getFetchDirection"), eq(ResultSet.FETCH_FORWARD), anyLong(), anyLong())).thenReturn(intercepted(42));
         int result = statementWrapper.getFetchDirection();
@@ -801,7 +795,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetFetchSize_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("setFetchSize"), eq(10))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("setFetchSize", 10)).thenReturn(notIntercepted());
         statementWrapper.setFetchSize(10);
         verify(wrappedMock).setFetchSize(10);
         verify(interceptorMock).postExecute(eq("setFetchSize"), isNull(), anyLong(), anyLong(), eq(10));
@@ -809,7 +803,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetFetchSize_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("setFetchSize"), eq(10))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("setFetchSize", 10)).thenReturn(intercepted(null));
         statementWrapper.setFetchSize(10);
         verify(wrappedMock, never()).setFetchSize(anyInt());
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong(), any());
@@ -817,7 +811,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetFetchSize_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getFetchSize"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getFetchSize")).thenReturn(notIntercepted());
         when(wrappedMock.getFetchSize()).thenReturn(50);
         when(interceptorMock.postExecute(eq("getFetchSize"), eq(50), anyLong(), anyLong())).thenReturn(notIntercepted());
         int result = statementWrapper.getFetchSize();
@@ -827,7 +821,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetFetchSize_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getFetchSize"))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("getFetchSize")).thenReturn(intercepted(99));
         int result = statementWrapper.getFetchSize();
         assertEquals(99, result);
         verify(wrappedMock, never()).getFetchSize();
@@ -835,7 +829,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetFetchSize_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getFetchSize"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getFetchSize")).thenReturn(notIntercepted());
         when(wrappedMock.getFetchSize()).thenReturn(50);
         when(interceptorMock.postExecute(eq("getFetchSize"), eq(50), anyLong(), anyLong())).thenReturn(intercepted(42));
         int result = statementWrapper.getFetchSize();
@@ -844,7 +838,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetResultSetConcurrency_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getResultSetConcurrency"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getResultSetConcurrency")).thenReturn(notIntercepted());
         when(wrappedMock.getResultSetConcurrency()).thenReturn(ResultSet.CONCUR_UPDATABLE);
         when(interceptorMock.postExecute(eq("getResultSetConcurrency"), eq(ResultSet.CONCUR_UPDATABLE), anyLong(), anyLong()))
                 .thenReturn(notIntercepted());
@@ -855,7 +849,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetResultSetConcurrency_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getResultSetConcurrency"))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("getResultSetConcurrency")).thenReturn(intercepted(99));
         int result = statementWrapper.getResultSetConcurrency();
         assertEquals(99, result);
         verify(wrappedMock, never()).getResultSetConcurrency();
@@ -863,7 +857,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetResultSetConcurrency_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getResultSetConcurrency"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getResultSetConcurrency")).thenReturn(notIntercepted());
         when(wrappedMock.getResultSetConcurrency()).thenReturn(ResultSet.CONCUR_UPDATABLE);
         when(interceptorMock.postExecute(eq("getResultSetConcurrency"), eq(ResultSet.CONCUR_UPDATABLE), anyLong(), anyLong()))
                 .thenReturn(intercepted(42));
@@ -873,7 +867,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetResultSetType_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getResultSetType"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getResultSetType")).thenReturn(notIntercepted());
         when(wrappedMock.getResultSetType()).thenReturn(ResultSet.TYPE_SCROLL_INSENSITIVE);
         when(interceptorMock.postExecute(eq("getResultSetType"), eq(ResultSet.TYPE_SCROLL_INSENSITIVE), anyLong(), anyLong()))
                 .thenReturn(notIntercepted());
@@ -884,7 +878,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetResultSetType_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getResultSetType"))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("getResultSetType")).thenReturn(intercepted(99));
         int result = statementWrapper.getResultSetType();
         assertEquals(99, result);
         verify(wrappedMock, never()).getResultSetType();
@@ -892,7 +886,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetResultSetType_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getResultSetType"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getResultSetType")).thenReturn(notIntercepted());
         when(wrappedMock.getResultSetType()).thenReturn(ResultSet.TYPE_SCROLL_INSENSITIVE);
         when(interceptorMock.postExecute(eq("getResultSetType"), eq(ResultSet.TYPE_SCROLL_INSENSITIVE), anyLong(), anyLong()))
                 .thenReturn(intercepted(42));
@@ -903,7 +897,7 @@ class StatementWrapperTest {
     @Test
     void testAddBatch_delegatesToWrapped() throws SQLException {
         String sql = "insert into x values (1)";
-        when(interceptorMock.preExecute(eq("addBatch"), eq(sql))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("addBatch", sql)).thenReturn(notIntercepted());
         statementWrapper.addBatch(sql);
         verify(wrappedMock).addBatch(sql);
         verify(interceptorMock).postExecute(eq("addBatch"), isNull(), anyLong(), anyLong(), eq(sql));
@@ -912,7 +906,7 @@ class StatementWrapperTest {
     @Test
     void testAddBatch_shortCircuitsWhenPreIntercepted() throws SQLException {
         String sql = "insert into x values (1)";
-        when(interceptorMock.preExecute(eq("addBatch"), eq(sql))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("addBatch", sql)).thenReturn(intercepted(null));
         statementWrapper.addBatch(sql);
         verify(wrappedMock, never()).addBatch(anyString());
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong(), any());
@@ -920,7 +914,7 @@ class StatementWrapperTest {
 
     @Test
     void testClearBatch_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("clearBatch"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("clearBatch")).thenReturn(notIntercepted());
         statementWrapper.clearBatch();
         verify(wrappedMock).clearBatch();
         verify(interceptorMock).postExecute(eq("clearBatch"), isNull(), anyLong(), anyLong());
@@ -928,7 +922,7 @@ class StatementWrapperTest {
 
     @Test
     void testClearBatch_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("clearBatch"))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("clearBatch")).thenReturn(intercepted(null));
         statementWrapper.clearBatch();
         verify(wrappedMock, never()).clearBatch();
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong());
@@ -937,7 +931,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteBatch_delegatesToWrapped() throws SQLException {
         int[] canned = new int[] { 1, 2 };
-        when(interceptorMock.preExecute(eq("executeBatch"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeBatch")).thenReturn(notIntercepted());
         when(wrappedMock.executeBatch()).thenReturn(canned);
         when(interceptorMock.postExecute(eq("executeBatch"), eq(canned), anyLong(), anyLong())).thenReturn(notIntercepted());
         int[] result = statementWrapper.executeBatch();
@@ -948,7 +942,7 @@ class StatementWrapperTest {
     @Test
     void testExecuteBatch_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         int[] interceptValue = new int[] { 9 };
-        when(interceptorMock.preExecute(eq("executeBatch"))).thenReturn(intercepted(interceptValue));
+        when(interceptorMock.preExecute("executeBatch")).thenReturn(intercepted(interceptValue));
         int[] result = statementWrapper.executeBatch();
         assertSame(interceptValue, result);
         verify(wrappedMock, never()).executeBatch();
@@ -958,7 +952,7 @@ class StatementWrapperTest {
     void testExecuteBatch_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         int[] wrappedValue = new int[] { 1, 2 };
         int[] postValue = new int[] { 3, 4, 5 };
-        when(interceptorMock.preExecute(eq("executeBatch"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("executeBatch")).thenReturn(notIntercepted());
         when(wrappedMock.executeBatch()).thenReturn(wrappedValue);
         when(interceptorMock.postExecute(eq("executeBatch"), eq(wrappedValue), anyLong(), anyLong())).thenReturn(intercepted(postValue));
         int[] result = statementWrapper.executeBatch();
@@ -968,7 +962,7 @@ class StatementWrapperTest {
     @Test
     void testGetGeneratedKeys_delegatesToWrapped() throws SQLException {
         ResultSet canned = mock(ResultSet.class);
-        when(interceptorMock.preExecute(eq("getGeneratedKeys"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getGeneratedKeys")).thenReturn(notIntercepted());
         when(wrappedMock.getGeneratedKeys()).thenReturn(canned);
         when(interceptorMock.postExecute(eq("getGeneratedKeys"), eq(canned), anyLong(), anyLong())).thenReturn(notIntercepted());
         ResultSet result = statementWrapper.getGeneratedKeys();
@@ -979,7 +973,7 @@ class StatementWrapperTest {
     @Test
     void testGetGeneratedKeys_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         ResultSet interceptValue = mock(ResultSet.class);
-        when(interceptorMock.preExecute(eq("getGeneratedKeys"))).thenReturn(intercepted(interceptValue));
+        when(interceptorMock.preExecute("getGeneratedKeys")).thenReturn(intercepted(interceptValue));
         ResultSet result = statementWrapper.getGeneratedKeys();
         assertSame(interceptValue, result);
         verify(wrappedMock, never()).getGeneratedKeys();
@@ -989,7 +983,7 @@ class StatementWrapperTest {
     void testGetGeneratedKeys_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
         ResultSet wrappedValue = mock(ResultSet.class);
         ResultSet postValue = mock(ResultSet.class);
-        when(interceptorMock.preExecute(eq("getGeneratedKeys"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getGeneratedKeys")).thenReturn(notIntercepted());
         when(wrappedMock.getGeneratedKeys()).thenReturn(wrappedValue);
         when(interceptorMock.postExecute(eq("getGeneratedKeys"), eq(wrappedValue), anyLong(), anyLong())).thenReturn(intercepted(postValue));
         ResultSet result = statementWrapper.getGeneratedKeys();
@@ -998,7 +992,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetResultSetHoldability_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("getResultSetHoldability"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getResultSetHoldability")).thenReturn(notIntercepted());
         when(wrappedMock.getResultSetHoldability()).thenReturn(ResultSet.HOLD_CURSORS_OVER_COMMIT);
         when(interceptorMock.postExecute(eq("getResultSetHoldability"), eq(ResultSet.HOLD_CURSORS_OVER_COMMIT), anyLong(), anyLong()))
                 .thenReturn(notIntercepted());
@@ -1009,7 +1003,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetResultSetHoldability_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getResultSetHoldability"))).thenReturn(intercepted(99));
+        when(interceptorMock.preExecute("getResultSetHoldability")).thenReturn(intercepted(99));
         int result = statementWrapper.getResultSetHoldability();
         assertEquals(99, result);
         verify(wrappedMock, never()).getResultSetHoldability();
@@ -1017,7 +1011,7 @@ class StatementWrapperTest {
 
     @Test
     void testGetResultSetHoldability_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("getResultSetHoldability"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("getResultSetHoldability")).thenReturn(notIntercepted());
         when(wrappedMock.getResultSetHoldability()).thenReturn(ResultSet.HOLD_CURSORS_OVER_COMMIT);
         when(interceptorMock.postExecute(eq("getResultSetHoldability"), eq(ResultSet.HOLD_CURSORS_OVER_COMMIT), anyLong(), anyLong()))
                 .thenReturn(intercepted(42));
@@ -1027,7 +1021,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetPoolable_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("setPoolable"), eq(true))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("setPoolable", true)).thenReturn(notIntercepted());
         statementWrapper.setPoolable(true);
         verify(wrappedMock).setPoolable(true);
         verify(interceptorMock).postExecute(eq("setPoolable"), isNull(), anyLong(), anyLong(), eq(true));
@@ -1035,7 +1029,7 @@ class StatementWrapperTest {
 
     @Test
     void testSetPoolable_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("setPoolable"), eq(true))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("setPoolable", true)).thenReturn(intercepted(null));
         statementWrapper.setPoolable(true);
         verify(wrappedMock, never()).setPoolable(anyBoolean());
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong(), any());
@@ -1043,7 +1037,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsPoolable_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("isPoolable"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("isPoolable")).thenReturn(notIntercepted());
         when(wrappedMock.isPoolable()).thenReturn(true);
         when(interceptorMock.postExecute(eq("isPoolable"), eq(true), anyLong(), anyLong())).thenReturn(notIntercepted());
         boolean result = statementWrapper.isPoolable();
@@ -1053,7 +1047,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsPoolable_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("isPoolable"))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("isPoolable")).thenReturn(intercepted(false));
         boolean result = statementWrapper.isPoolable();
         assertFalse(result);
         verify(wrappedMock, never()).isPoolable();
@@ -1061,7 +1055,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsPoolable_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("isPoolable"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("isPoolable")).thenReturn(notIntercepted());
         when(wrappedMock.isPoolable()).thenReturn(true);
         when(interceptorMock.postExecute(eq("isPoolable"), eq(true), anyLong(), anyLong())).thenReturn(intercepted(false));
         boolean result = statementWrapper.isPoolable();
@@ -1070,7 +1064,7 @@ class StatementWrapperTest {
 
     @Test
     void testCloseOnCompletion_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("closeOnCompletion"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("closeOnCompletion")).thenReturn(notIntercepted());
         statementWrapper.closeOnCompletion();
         verify(wrappedMock).closeOnCompletion();
         verify(interceptorMock).postExecute(eq("closeOnCompletion"), isNull(), anyLong(), anyLong());
@@ -1078,7 +1072,7 @@ class StatementWrapperTest {
 
     @Test
     void testCloseOnCompletion_shortCircuitsWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("closeOnCompletion"))).thenReturn(intercepted(null));
+        when(interceptorMock.preExecute("closeOnCompletion")).thenReturn(intercepted(null));
         statementWrapper.closeOnCompletion();
         verify(wrappedMock, never()).closeOnCompletion();
         verify(interceptorMock, never()).postExecute(any(), any(), anyLong(), anyLong());
@@ -1086,7 +1080,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsCloseOnCompletion_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("isCloseOnCompletion"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("isCloseOnCompletion")).thenReturn(notIntercepted());
         when(wrappedMock.isCloseOnCompletion()).thenReturn(true);
         when(interceptorMock.postExecute(eq("isCloseOnCompletion"), eq(true), anyLong(), anyLong())).thenReturn(notIntercepted());
         boolean result = statementWrapper.isCloseOnCompletion();
@@ -1096,7 +1090,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsCloseOnCompletion_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("isCloseOnCompletion"))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("isCloseOnCompletion")).thenReturn(intercepted(false));
         boolean result = statementWrapper.isCloseOnCompletion();
         assertFalse(result);
         verify(wrappedMock, never()).isCloseOnCompletion();
@@ -1104,7 +1098,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsCloseOnCompletion_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("isCloseOnCompletion"))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("isCloseOnCompletion")).thenReturn(notIntercepted());
         when(wrappedMock.isCloseOnCompletion()).thenReturn(true);
         when(interceptorMock.postExecute(eq("isCloseOnCompletion"), eq(true), anyLong(), anyLong())).thenReturn(intercepted(false));
         boolean result = statementWrapper.isCloseOnCompletion();
@@ -1116,7 +1110,7 @@ class StatementWrapperTest {
     void testUnwrap_delegatesToWrapped() throws SQLException {
         Class targetType = String.class;
         Object canned = "wrappedValue";
-        when(interceptorMock.preExecute(eq("unwrap"), eq(targetType))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("unwrap", targetType)).thenReturn(notIntercepted());
         when(wrappedMock.unwrap(targetType)).thenReturn(canned);
         when(interceptorMock.postExecute(eq("unwrap"), eq(canned), anyLong(), anyLong(), eq(targetType))).thenReturn(notIntercepted());
         Object result = statementWrapper.unwrap(targetType);
@@ -1129,7 +1123,7 @@ class StatementWrapperTest {
     void testUnwrap_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
         Class targetType = String.class;
         Object interceptValue = "interceptValue";
-        when(interceptorMock.preExecute(eq("unwrap"), eq(targetType))).thenReturn(intercepted(interceptValue));
+        when(interceptorMock.preExecute("unwrap", targetType)).thenReturn(intercepted(interceptValue));
         Object result = statementWrapper.unwrap(targetType);
         assertSame(interceptValue, result);
         verify(wrappedMock, never()).unwrap(any(Class.class));
@@ -1141,7 +1135,7 @@ class StatementWrapperTest {
         Class targetType = String.class;
         Object wrappedValue = "wrappedValue";
         Object postValue = "postValue";
-        when(interceptorMock.preExecute(eq("unwrap"), eq(targetType))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("unwrap", targetType)).thenReturn(notIntercepted());
         when(wrappedMock.unwrap(targetType)).thenReturn(wrappedValue);
         when(interceptorMock.postExecute(eq("unwrap"), eq(wrappedValue), anyLong(), anyLong(), eq(targetType))).thenReturn(intercepted(postValue));
         Object result = statementWrapper.unwrap(targetType);
@@ -1150,7 +1144,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsWrapperFor_delegatesToWrapped() throws SQLException {
-        when(interceptorMock.preExecute(eq("isWrapperFor"), eq(String.class))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("isWrapperFor", String.class)).thenReturn(notIntercepted());
         when(wrappedMock.isWrapperFor(String.class)).thenReturn(true);
         when(interceptorMock.postExecute(eq("isWrapperFor"), eq(true), anyLong(), anyLong(), eq(String.class))).thenReturn(notIntercepted());
         boolean result = statementWrapper.isWrapperFor(String.class);
@@ -1160,7 +1154,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsWrapperFor_returnsInterceptedValueWhenPreIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("isWrapperFor"), eq(String.class))).thenReturn(intercepted(false));
+        when(interceptorMock.preExecute("isWrapperFor", String.class)).thenReturn(intercepted(false));
         boolean result = statementWrapper.isWrapperFor(String.class);
         assertFalse(result);
         verify(wrappedMock, never()).isWrapperFor(any(Class.class));
@@ -1168,7 +1162,7 @@ class StatementWrapperTest {
 
     @Test
     void testIsWrapperFor_returnsInterceptedValueWhenPostIntercepted() throws SQLException {
-        when(interceptorMock.preExecute(eq("isWrapperFor"), eq(String.class))).thenReturn(notIntercepted());
+        when(interceptorMock.preExecute("isWrapperFor", String.class)).thenReturn(notIntercepted());
         when(wrappedMock.isWrapperFor(String.class)).thenReturn(true);
         when(interceptorMock.postExecute(eq("isWrapperFor"), eq(true), anyLong(), anyLong(), eq(String.class))).thenReturn(intercepted(false));
         boolean result = statementWrapper.isWrapperFor(String.class);

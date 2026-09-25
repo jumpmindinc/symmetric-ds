@@ -135,9 +135,10 @@ class DriverTest {
     @Test
     void testConnect_withUppercaseSymdsUrl_doesNotStripPrefixAndOverflowsStack() throws SQLException {
         List<java.sql.Driver> otherDrivers = deregisterOtherDrivers();
+        Properties info = new Properties();
         try {
             assertThrows(StackOverflowError.class,
-                    () -> driver.connect("JDBC:SYMDS:h2:mem:driverTestUppercase;DB_CLOSE_DELAY=-1", new Properties()));
+                    () -> driver.connect("JDBC:SYMDS:h2:mem:driverTestUppercase;DB_CLOSE_DELAY=-1", info));
         } finally {
             for (java.sql.Driver otherDriver : otherDrivers) {
                 DriverManager.registerDriver(otherDriver);

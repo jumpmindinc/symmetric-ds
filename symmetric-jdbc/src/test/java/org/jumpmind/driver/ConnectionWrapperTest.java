@@ -81,12 +81,9 @@ class ConnectionWrapperTest {
     @Test
     void testConstructor_singleArgPopulatesEngineProperties() throws SQLException {
         Connection anotherWrappedMock = mock(Connection.class);
-        ConnectionWrapper singleArgWrapper = new ConnectionWrapper(anotherWrappedMock);
-        try {
+        try (ConnectionWrapper singleArgWrapper = new ConnectionWrapper(anotherWrappedMock)) {
             TypedProperties engineProperties = singleArgWrapper.getEngineProperties();
             assertTrue(engineProperties.containsKey("java.version"));
-        } finally {
-            singleArgWrapper.close();
         }
     }
 
@@ -94,11 +91,8 @@ class ConnectionWrapperTest {
     void testConstructor_singleArgDelegatesTransparently() throws SQLException {
         Connection anotherWrappedMock = mock(Connection.class);
         when(anotherWrappedMock.isClosed()).thenReturn(true);
-        ConnectionWrapper singleArgWrapper = new ConnectionWrapper(anotherWrappedMock);
-        try {
+        try (ConnectionWrapper singleArgWrapper = new ConnectionWrapper(anotherWrappedMock)) {
             assertTrue(singleArgWrapper.isClosed());
-        } finally {
-            singleArgWrapper.close();
         }
     }
 
