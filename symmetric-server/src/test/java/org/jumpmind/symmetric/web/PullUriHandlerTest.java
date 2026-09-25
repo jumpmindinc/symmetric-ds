@@ -20,27 +20,41 @@
  */
 package org.jumpmind.symmetric.web;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.Collections;
 
 import org.jumpmind.symmetric.common.Constants;
+import org.jumpmind.symmetric.common.ParameterConstants;
+import org.jumpmind.symmetric.io.stage.IStagedResource;
+import org.jumpmind.symmetric.io.stage.IStagedResource.State;
+import org.jumpmind.symmetric.io.stage.StagedResourceETag;
+import org.jumpmind.symmetric.model.Channel;
 import org.jumpmind.symmetric.model.NodeChannels;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.model.NodeSecurity;
+import org.jumpmind.symmetric.model.OutgoingBatch;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
+import org.jumpmind.symmetric.model.ProcessType;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataExtractorService;
 import org.jumpmind.symmetric.service.INodeService;
@@ -60,72 +74,302 @@ class PullUriHandlerTest {
     private static final String REMOTE_HOST = "client-host";
     private static final String REMOTE_ADDRESS = "10.0.0.5";
     private static final String ENCODING = "UTF-8";
+    private IParameterService parameterService;
     private INodeService nodeService;
-    private IRegistrationService registrationService;
+    private IConfigurationService configurationService;
     private IDataExtractorService dataExtractorService;
+    private IRegistrationService registrationService;
     private IStatisticManager statisticManager;
-    private HttpServletResponse response;
-    private ByteArrayOutputStream outputStream;
-    private Node clientNode;
-    private NodeSecurity clientSecurity;
+    private IOutgoingBatchService outgoingBatchService;
     private PullUriHandler handler;
+    private HttpServletResponse res;
+    private IOutgoingTransport outgoingTransport;
+    private ProcessInfo processInfo;
+    private ByteArrayOutputStream outputStream;
 
     @BeforeEach
     void setUp() {
-        IParameterService parameterService = mock(IParameterService.class);
-        IConfigurationService configurationService = mock(IConfigurationService.class);
-        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
+        parameterService = mock(IParameterService.class);
         nodeService = mock(INodeService.class);
-        registrationService = mock(IRegistrationService.class);
+        configurationService = mock(IConfigurationService.class);
         dataExtractorService = mock(IDataExtractorService.class);
+        registrationService = mock(IRegistrationService.class);
         statisticManager = mock(IStatisticManager.class);
-        response = mock(HttpServletResponse.class);
+        outgoingBatchService = mock(IOutgoingBatchService.class);
+        handler = new PullUriHandler(parameterService, nodeService, configurationService, dataExtractorService,
+                registrationService, statisticManager, outgoingBatchService);
+        res = mock(HttpServletResponse.class);
+        BufferedWriter writer = new BufferedWriter(new StringWriter());
+        outgoingTransport = mock(IOutgoingTransport.class);
+        when(outgoingTransport.getWriter()).thenReturn(writer);
+        processInfo = new ProcessInfo(new ProcessInfoKey("me", "node1", ProcessType.PULL_HANDLER_EXTRACT));
         outputStream = new ByteArrayOutputStream();
-        clientNode = new Node();
-        clientNode.setNodeId(CLIENT_NODE_ID);
-        clientNode.setNodeGroupId("client");
-        clientNode.setExternalId("1");
-        clientSecurity = new NodeSecurity();
-        clientSecurity.setNodeId(CLIENT_NODE_ID);
-        clientSecurity.setRegistrationEnabled(true);
-        clientSecurity.setCreatedAtNodeId(SERVER_NODE_ID);
-        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
-        when(nodeService.findIdentityNodeId()).thenReturn(SERVER_NODE_ID);
-        when(nodeService.findNodeSecurity(CLIENT_NODE_ID, true)).thenReturn(clientSecurity);
-        when(nodeService.findNode(CLIENT_NODE_ID)).thenReturn(clientNode);
-        when(nodeService.findNode(CLIENT_NODE_ID, true)).thenReturn(clientNode);
-        when(statisticManager.newProcessInfo(any(ProcessInfoKey.class))).thenAnswer(invocation -> new ProcessInfo(invocation.getArgument(0)));
-        when(dataExtractorService.extract(any(ProcessInfo.class), any(Node.class), anyString(), any(IOutgoingTransport.class)))
-                .thenReturn(Collections.emptyList());
-        handler = new PullUriHandler(parameterService, nodeService, configurationService, dataExtractorService, registrationService,
-                statisticManager, outgoingBatchService);
     }
 
     @Test
-    void registersNodeWhenRegistrationEnabledOnDefaultQueue() throws IOException {
-        handler.handlePull(CLIENT_NODE_ID, REMOTE_HOST, REMOTE_ADDRESS, outputStream, ENCODING, response, buildNodeChannels(Constants.QUEUE_DEFAULT));
+    void handleResume_blankBatchId_returnsFalseWithoutLookup() {
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "", null, null, Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertFalse(result);
+        verify(outgoingBatchService, never()).findOutgoingBatch(anyLong(), anyString());
+    }
+
+    @Test
+    void handleResume_nonNumericBatchId_returnsFalse() {
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "not-a-number", null, null, Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertFalse(result);
+    }
+
+    @Test
+    void handleResume_missingBatch_returnsFalse() {
+        when(outgoingBatchService.findOutgoingBatch(1L, "node1")).thenReturn(null);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", null, null, Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertFalse(result);
+    }
+
+    @Test
+    void handleResume_missingStagedResource_returnsFalse() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        when(outgoingBatchService.findOutgoingBatch(1L, "node1")).thenReturn(batch);
+        when(dataExtractorService.getStagedResourceForResume(batch)).thenReturn(null);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", null, null, Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertFalse(result);
+    }
+
+    @Test
+    void handleResume_resourceNotDone_returnsFalse() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        IStagedResource resource = mock(IStagedResource.class);
+        when(resource.getState()).thenReturn(State.CREATE);
+        when(outgoingBatchService.findOutgoingBatch(1L, "node1")).thenReturn(batch);
+        when(dataExtractorService.getStagedResourceForResume(batch)).thenReturn(resource);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", null, null, Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertFalse(result);
+    }
+
+    @Test
+    void handleResume_resourceNotFileBacked_returnsFalse() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        IStagedResource resource = mock(IStagedResource.class);
+        when(resource.getState()).thenReturn(State.DONE);
+        when(resource.isFileResource()).thenReturn(false);
+        when(outgoingBatchService.findOutgoingBatch(1L, "node1")).thenReturn(batch);
+        when(dataExtractorService.getStagedResourceForResume(batch)).thenReturn(resource);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", null, null, Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertFalse(result);
+    }
+
+    @Test
+    void handleResume_channelOnDifferentQueue_returnsFalse() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        batch.setChannelId("channel1");
+        setUpEligibleResource(batch);
+        Channel channel = new Channel();
+        channel.setQueue(Constants.QUEUE_SYSTEM);
+        when(configurationService.getChannel("channel1")).thenReturn(channel);
+        StagedResourceETag etag = new StagedResourceETag(1000L, 500L);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", etag.toJson(), "chars=200-", Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertFalse(result);
+        verify(dataExtractorService, never()).extractSingleBatchForResume(any(), any(), any(), anyLong(), any());
+    }
+
+    @Test
+    void handleResume_channelNotFound_returnsFalse() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        batch.setChannelId("channel1");
+        setUpEligibleResource(batch);
+        when(configurationService.getChannel("channel1")).thenReturn(null);
+        StagedResourceETag etag = new StagedResourceETag(1000L, 500L);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", etag.toJson(), "chars=200-", Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertFalse(result);
+    }
+
+    private IStagedResource setUpEligibleResource(OutgoingBatch batch) {
+        IStagedResource resource = mock(IStagedResource.class);
+        when(resource.getState()).thenReturn(State.DONE);
+        when(resource.isFileResource()).thenReturn(true);
+        when(resource.getGenerationTime()).thenReturn(1000L);
+        when(resource.getSize()).thenReturn(500L);
+        when(outgoingBatchService.findOutgoingBatch(1L, "node1")).thenReturn(batch);
+        when(dataExtractorService.getStagedResourceForResume(batch)).thenReturn(resource);
+        Channel channel = new Channel();
+        channel.setQueue(Constants.QUEUE_DEFAULT);
+        when(configurationService.getChannel(batch.getChannelId())).thenReturn(channel);
+        return resource;
+    }
+
+    @Test
+    void handleResume_matchingEtagAndValidRange_returnsPartialContent() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        batch.setChannelId("channel1");
+        setUpEligibleResource(batch);
+        StagedResourceETag etag = new StagedResourceETag(1000L, 500L);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", etag.toJson(), "chars=200-", Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertTrue(result);
+        verify(res).setStatus(WebConstants.SC_PARTIAL_CONTENT);
+        verify(res).setHeader(WebConstants.HEADER_CONTENT_RANGE, "chars 200-499/500");
+        verify(res).setHeader(eq(WebConstants.HEADER_ETAG), anyString());
+        verify(res).setHeader(WebConstants.HEADER_ACCEPT_RANGES, "chars");
+        verify(dataExtractorService).extractSingleBatchForResume(eq(batch), any(), any(), eq(200L), eq(processInfo));
+    }
+
+    @Test
+    void handleResume_staleEtag_fullResendWithNoPartialStatus() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        batch.setChannelId("channel1");
+        setUpEligibleResource(batch);
+        StagedResourceETag staleEtag = new StagedResourceETag(999L, 500L);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", staleEtag.toJson(), "chars=200-", Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertTrue(result);
+        verify(res, never()).setStatus(WebConstants.SC_PARTIAL_CONTENT);
+        verify(res, never()).setHeader(eq(WebConstants.HEADER_CONTENT_RANGE), anyString());
+        verify(dataExtractorService).extractSingleBatchForResume(eq(batch), any(), any(), eq(0L), eq(processInfo));
+    }
+
+    @Test
+    void handleResume_missingIfETagHeader_fullResend() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        batch.setChannelId("channel1");
+        setUpEligibleResource(batch);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", null, "chars=200-", Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertTrue(result);
+        verify(res, never()).setStatus(WebConstants.SC_PARTIAL_CONTENT);
+        verify(dataExtractorService).extractSingleBatchForResume(eq(batch), any(), any(), eq(0L), eq(processInfo));
+    }
+
+    @Test
+    void handleResume_missingRangeHeader_fullResendEvenWithMatchingEtag() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        batch.setChannelId("channel1");
+        setUpEligibleResource(batch);
+        StagedResourceETag etag = new StagedResourceETag(1000L, 500L);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", etag.toJson(), null, Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertTrue(result);
+        verify(res, never()).setStatus(WebConstants.SC_PARTIAL_CONTENT);
+        verify(dataExtractorService).extractSingleBatchForResume(eq(batch), any(), any(), eq(0L), eq(processInfo));
+    }
+
+    @Test
+    void handleResume_rangeStartAtOrPastTotalSize_fullResend() {
+        OutgoingBatch batch = new OutgoingBatch();
+        batch.setBatchId(1);
+        batch.setChannelId("channel1");
+        setUpEligibleResource(batch);
+        StagedResourceETag etag = new StagedResourceETag(1000L, 500L);
+        boolean result = handler.handleResume(new PullUriHandler.ResumeRequest("node1", "1", etag.toJson(), "chars=500-", Constants.QUEUE_DEFAULT),
+                outgoingTransport, res, processInfo);
+        assertTrue(result);
+        verify(res, never()).setStatus(WebConstants.SC_PARTIAL_CONTENT);
+        verify(dataExtractorService).extractSingleBatchForResume(eq(batch), any(), any(), eq(0L), eq(processInfo));
+    }
+
+    @Test
+    void parseRangeSkipCount_blankHeader_returnsNull() {
+        assertNull(handler.parseRangeSkipCount(null));
+        assertNull(handler.parseRangeSkipCount(""));
+        assertNull(handler.parseRangeSkipCount("   "));
+    }
+
+    @Test
+    void parseRangeSkipCount_malformedHeader_returnsNull() {
+        assertNull(handler.parseRangeSkipCount("chars=abc-"));
+        assertNull(handler.parseRangeSkipCount("not-a-range-header"));
+        assertNull(handler.parseRangeSkipCount("chars=100-200"));
+        assertNull(handler.parseRangeSkipCount("chars=123456789012345678901-"));
+    }
+
+    @Test
+    void parseRangeSkipCount_validHeader_returnsSkipCount() {
+        assertEquals(1234L, handler.parseRangeSkipCount("chars=1234-"));
+    }
+
+    @Test
+    void parseRangeSkipCount_headerWithWhitespace_isTrimmed() {
+        assertEquals(42L, handler.parseRangeSkipCount("  chars=42-  "));
+    }
+
+    @Test
+    void handlePull_resumeEligibleAndEnabled_skipsNormalExtract() throws Exception {
+        PullUriHandler spyHandler = spy(handler);
+        NodeSecurity nodeSecurity = new NodeSecurity();
+        when(nodeService.findNodeSecurity("node1", true)).thenReturn(nodeSecurity);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(nodeService.findNode("node1", true)).thenReturn(new Node());
+        when(statisticManager.newProcessInfo(any())).thenReturn(processInfo);
+        when(parameterService.is(ParameterConstants.TRANSPORT_HTTP_RESUME_ENABLED)).thenReturn(true);
+        doReturn(true).when(spyHandler).handleResume(any(), any(), any(), any());
+        spyHandler.handlePull(new PullUriHandler.ResumeRequest("node1", "1", null, null, Constants.QUEUE_DEFAULT), "host", "1.2.3.4",
+                new ByteArrayOutputStream(), null, res, new NodeChannels());
+        verify(dataExtractorService, never()).extract(any(), any(), any(), any());
+    }
+
+    @Test
+    void handlePull_noBatchId_neverInvokesResume() throws Exception {
+        PullUriHandler spyHandler = spy(handler);
+        NodeSecurity nodeSecurity = new NodeSecurity();
+        when(nodeService.findNodeSecurity("node1", true)).thenReturn(nodeSecurity);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(nodeService.findNode("node1", true)).thenReturn(new Node());
+        when(statisticManager.newProcessInfo(any())).thenReturn(processInfo);
+        when(dataExtractorService.extract(any(), any(), any(), any())).thenReturn(Collections.emptyList());
+        spyHandler.handlePull(new PullUriHandler.ResumeRequest("node1", null, null, null, Constants.QUEUE_DEFAULT), "host", "1.2.3.4",
+                new ByteArrayOutputStream(), null, res, new NodeChannels());
+        verify(spyHandler, never()).handleResume(any(), any(), any(), any());
+        verify(dataExtractorService).extract(any(), any(), any(), any());
+    }
+
+    @Test
+    void handlePull_registrationEnabledOnDefaultQueue_registersNode() throws IOException {
+        Node clientNode = setUpRegistrationEligibleClient(true);
+        handler.handlePull(new PullUriHandler.ResumeRequest(CLIENT_NODE_ID, null, null, null, Constants.QUEUE_DEFAULT), REMOTE_HOST, REMOTE_ADDRESS,
+                outputStream, ENCODING, res, buildNodeChannels(Constants.QUEUE_DEFAULT));
         verify(registrationService).registerNode(eq(clientNode), eq(REMOTE_HOST), eq(REMOTE_ADDRESS), eq(outputStream), isNull(), isNull(), eq(false));
         verify(dataExtractorService, never()).extract(any(ProcessInfo.class), any(Node.class), anyString(), any(IOutgoingTransport.class));
     }
 
     @Test
-    void registersNodeWhenRegistrationEnabledAndQueueHeaderMissing() throws IOException {
-        handler.handlePull(CLIENT_NODE_ID, REMOTE_HOST, REMOTE_ADDRESS, outputStream, ENCODING, response, buildNodeChannels(null));
+    void handlePull_registrationEnabledAndQueueHeaderMissing_registersNode() throws IOException {
+        Node clientNode = setUpRegistrationEligibleClient(true);
+        handler.handlePull(new PullUriHandler.ResumeRequest(CLIENT_NODE_ID, null, null, null, null), REMOTE_HOST, REMOTE_ADDRESS,
+                outputStream, ENCODING, res, buildNodeChannels(null));
         verify(registrationService).registerNode(eq(clientNode), eq(REMOTE_HOST), eq(REMOTE_ADDRESS), eq(outputStream), isNull(), isNull(), eq(false));
     }
 
     @Test
-    void skipsRegistrationWhenRegistrationEnabledOnNonDefaultQueue() throws IOException {
-        handler.handlePull(CLIENT_NODE_ID, REMOTE_HOST, REMOTE_ADDRESS, outputStream, ENCODING, response, buildNodeChannels("reload"));
+    void handlePull_registrationEnabledOnNonDefaultQueue_skipsRegistration() throws IOException {
+        setUpRegistrationEligibleClient(true);
+        handler.handlePull(new PullUriHandler.ResumeRequest(CLIENT_NODE_ID, null, null, null, "reload"), REMOTE_HOST, REMOTE_ADDRESS,
+                outputStream, ENCODING, res, buildNodeChannels("reload"));
         verify(registrationService, never()).registerNode(any(Node.class), anyString(), anyString(), any(), any(), any(), eq(false));
         verify(dataExtractorService, never()).extract(any(ProcessInfo.class), any(Node.class), anyString(), any(IOutgoingTransport.class));
     }
 
     @Test
-    void extractsDataOnNonDefaultQueueWhenRegistrationNotEnabled() throws IOException {
-        clientSecurity.setRegistrationEnabled(false);
+    void handlePull_registrationNotEnabledOnNonDefaultQueue_extractsData() throws IOException {
+        Node clientNode = setUpRegistrationEligibleClient(false);
         String queue = "reload";
-        handler.handlePull(CLIENT_NODE_ID, REMOTE_HOST, REMOTE_ADDRESS, outputStream, ENCODING, response, buildNodeChannels(queue));
+        handler.handlePull(new PullUriHandler.ResumeRequest(CLIENT_NODE_ID, null, null, null, queue), REMOTE_HOST, REMOTE_ADDRESS,
+                outputStream, ENCODING, res, buildNodeChannels(queue));
         verify(dataExtractorService).extract(any(ProcessInfo.class), eq(clientNode), eq(queue), any(IOutgoingTransport.class));
         verify(registrationService, never()).registerNode(any(Node.class), anyString(), anyString(), any(), any(), any(), eq(false));
     }
@@ -135,6 +379,26 @@ class PullUriHandlerTest {
         assertTrue(handler.isRegistrationQueue(Constants.QUEUE_DEFAULT));
         assertTrue(handler.isRegistrationQueue(null));
         assertFalse(handler.isRegistrationQueue("reload"));
+    }
+
+    private Node setUpRegistrationEligibleClient(boolean registrationEnabled) {
+        Node clientNode = new Node();
+        clientNode.setNodeId(CLIENT_NODE_ID);
+        clientNode.setNodeGroupId("client");
+        clientNode.setExternalId("1");
+        NodeSecurity clientSecurity = new NodeSecurity();
+        clientSecurity.setNodeId(CLIENT_NODE_ID);
+        clientSecurity.setRegistrationEnabled(registrationEnabled);
+        clientSecurity.setCreatedAtNodeId(SERVER_NODE_ID);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(nodeService.findIdentityNodeId()).thenReturn(SERVER_NODE_ID);
+        when(nodeService.findNodeSecurity(CLIENT_NODE_ID, true)).thenReturn(clientSecurity);
+        when(nodeService.findNode(CLIENT_NODE_ID)).thenReturn(clientNode);
+        when(nodeService.findNode(CLIENT_NODE_ID, true)).thenReturn(clientNode);
+        when(statisticManager.newProcessInfo(any(ProcessInfoKey.class))).thenAnswer(invocation -> new ProcessInfo(invocation.getArgument(0)));
+        when(dataExtractorService.extract(any(ProcessInfo.class), any(Node.class), anyString(), any(IOutgoingTransport.class)))
+                .thenReturn(Collections.emptyList());
+        return clientNode;
     }
 
     private NodeChannels buildNodeChannels(String channelQueue) {

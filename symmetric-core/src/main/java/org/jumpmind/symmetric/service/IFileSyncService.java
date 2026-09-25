@@ -27,6 +27,7 @@ import java.util.List;
 
 import org.jumpmind.db.sql.ISqlTransaction;
 import org.jumpmind.symmetric.file.DirectorySnapshot;
+import org.jumpmind.symmetric.file.FileSyncPullResult;
 import org.jumpmind.symmetric.model.FileSnapshot;
 import org.jumpmind.symmetric.model.FileTrigger;
 import org.jumpmind.symmetric.model.FileTriggerRouter;
@@ -88,6 +89,28 @@ public interface IFileSyncService {
     public RemoteNodeStatuses pushFilesToNodes(boolean force);
 
     public List<OutgoingBatch> sendFiles(ProcessInfo processInfo, Node node, IOutgoingTransport outgoingTransport);
+
+    /**
+     * Same overall purpose as {@link #sendFiles(ProcessInfo, Node, IOutgoingTransport)}, but used only by the pull path and split into two phases so the
+     * servlet handler can set response headers/status (ETag, Content-Range, {@code FileSync-Format}) based on the returned {@link FileSyncPullResult}
+     * <em>before</em> any bytes are written to the response - a response is committed the moment its output stream is written to, after which setting a header
+     * on it is a silent no-op.
+     * <p>
+     * This phase decides whether to resume one specific, previously-interrupted batch (when {@code batchIdParam} is non-blank), extracts/stages whichever
+     * batches will be sent, and computes the envelope/partial-content decisions - it performs no network writes. Pass the result to
+     * {@link #writeFilesForPull(ProcessInfo, FileSyncPullResult, IOutgoingTransport)} to actually stream the bytes.
+     * {@link #sendFiles(ProcessInfo, Node, IOutgoingTransport)} remains unchanged for the push path, which has no equivalent resume mechanism.
+     */
+    public FileSyncPullResult prepareFilesForPull(ProcessInfo processInfo, Node targetNode, String batchIdParam,
+            String ifETagHeader, String rangeHeader);
+
+    /**
+     * Streams the bytes described by a {@link FileSyncPullResult} previously returned from
+     * {@link #prepareFilesForPull(ProcessInfo, Node, String, String, String)} to the given transport, and performs the associated batch bookkeeping (marking
+     * batches loaded, cleaning up staged resources) once the write completes. Must be called only after the caller has finished setting response
+     * headers/status.
+     */
+    public void writeFilesForPull(ProcessInfo processInfo, FileSyncPullResult result, IOutgoingTransport outgoingTransport);
 
     public void acknowledgeFiles(OutgoingBatch outgoingBatch);
 

@@ -29,6 +29,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 
+import org.apache.commons.io.IOUtils;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,7 @@ import org.junit.jupiter.api.io.TempDir;
 class StagedResourceTest {
     private static final String PATH = "outgoing/0000000001";
     @TempDir
-    private File tempDir;
+    File tempDir;
     private StagingManager stagingManager;
     private StagedResource resource;
 
@@ -169,10 +170,138 @@ class StagedResourceTest {
         assertThrows(IllegalStateException.class, () -> StagedResource.toPath(tempDir, file));
     }
 
-    private void writeText(StagedResource resource, String text) throws IOException {
-        BufferedWriter writer = resource.getWriter(0);
+    @Test
+    void testGetGenerationTime_isStableAcrossRefreshLastUpdateTime() {
+        StagingManager manager = newManager();
+        StagedResource generationResource = new StagedResource(tempDir, "path1", manager);
+        long generationTime = generationResource.getGenerationTime();
+        generationResource.refreshLastUpdateTime();
+        generationResource.refreshLastUpdateTime();
+        assertEquals(generationTime, generationResource.getGenerationTime());
+    }
+
+    @Test
+    void testGetGenerationTime_forFreshlyLookedUpResource_reflectsFileLastModified() throws IOException {
+        StagingManager manager = newManager();
+        StagedResource original = new StagedResource(tempDir, "path1", manager);
+        writeAndClose(original, "hello", false);
+        StagedResource lookedUpAgain = new StagedResource(tempDir, "path1", manager);
+        assertEquals(original.getFile().lastModified(), lookedUpAgain.getGenerationTime());
+    }
+
+    @Test
+    void testCreate_reusingPathWithStaleLeftoverFile_doesNotInheritStaleGenerationTime() throws IOException {
+        StagingManager manager = newManager();
+        IStagedResource first = manager.create("path1");
+        writeAndClose((StagedResource) first, "stale content from a prior attempt", false);
+        first.getFile().setLastModified(System.currentTimeMillis() - 60000);
+        long beforeRecreate = System.currentTimeMillis();
+        IStagedResource second = manager.create("path1");
+        assertTrue(second.getGenerationTime() >= beforeRecreate);
+    }
+
+    @Test
+    void testGetGenerationTime_forDoneResource_isStableAcrossReconstructionAfterMultipleWrites() throws IOException {
+        StagingManager manager = newManager();
+        StagedResource original = new StagedResource(tempDir, "path1", manager);
+        long originalGenerationTime = original.getGenerationTime();
+        BufferedWriter writer = original.getWriter(0);
+        writer.write("first chunk ");
+        writer.flush();
+        assertTrue(original.file.setLastModified(originalGenerationTime - 5000));
+        writer.write("second chunk");
+        original.setState(State.DONE);
+        StagedResource reconstructed = new StagedResource(tempDir, "path1", manager);
+        assertEquals(originalGenerationTime, reconstructed.getGenerationTime());
+    }
+
+    @Test
+    void testGetWriter_nonAppendMode_overwritesExistingContent() throws IOException {
+        StagingManager manager = newManager();
+        StagedResource first = new StagedResource(tempDir, "path1", manager);
+        writeAndClose(first, "original content", false);
+        StagedResource second = new StagedResource(tempDir, "path1", manager);
+        writeAndClose(second, "new", false);
+        assertEquals("new", readContent(second));
+    }
+
+    @Test
+    void testGetWriter_appendMode_preservesExistingContent() throws IOException {
+        StagingManager manager = newManager();
+        StagedResource first = new StagedResource(tempDir, "path1", manager);
+        writeAndClose(first, "hello ", false);
+        StagedResource second = new StagedResource(tempDir, "path1", manager);
+        writeAndClose(second, "world", true);
+        assertEquals("hello world", readContent(second));
+    }
+
+    @Test
+    void testGetWriter_appendMode_onFreshResource_createsFileFromScratch() throws IOException {
+        StagingManager manager = newManager();
+        StagedResource freshResource = new StagedResource(tempDir, "path1", manager);
+        writeAndClose(freshResource, "brand new", true);
+        assertEquals("brand new", readContent(freshResource));
+    }
+
+    @Test
+    void testGetWriter_defaultOneArgOverload_behavesSameAsNonAppend() throws IOException {
+        StagingManager manager = newManager();
+        StagedResource first = new StagedResource(tempDir, "path1", manager);
+        writeAndClose(first, "original content", false);
+        StagedResource second = new StagedResource(tempDir, "path1", manager);
+        BufferedWriter writer = second.getWriter(0);
+        writer.write("new");
+        writer.close();
+        second.close();
+        assertEquals("new", readContent(second));
+    }
+
+    @Test
+    void testDelete_removesFileAndReportsGone() throws IOException {
+        StagingManager manager = newManager();
+        StagedResource deleteResource = new StagedResource(tempDir, "path1", manager);
+        writeAndClose(deleteResource, "content", false);
+        assertTrue(deleteResource.isFileResource());
+        assertTrue(deleteResource.delete());
+        assertTrue(!deleteResource.getFile().exists());
+    }
+
+    @Test
+    void testGetSize_reflectsWrittenContentLength() throws IOException {
+        StagingManager manager = newManager();
+        StagedResource sizeResource = new StagedResource(tempDir, "path1", manager);
+        writeAndClose(sizeResource, "12345", false);
+        assertEquals(5, sizeResource.getSize());
+    }
+
+    @Test
+    void testGetState_defaultsToCreateForNewResource() {
+        StagingManager manager = newManager();
+        StagedResource stateResource = new StagedResource(tempDir, "path1", manager);
+        assertEquals(State.CREATE, stateResource.getState());
+    }
+
+    private StagingManager newManager() {
+        return new StagingManager(tempDir.getAbsolutePath(), false);
+    }
+
+    private void writeAndClose(StagedResource resourceToWrite, String content, boolean append) throws IOException {
+        BufferedWriter writer = resourceToWrite.getWriter(0, append);
+        writer.write(content);
+        writer.close();
+        resourceToWrite.close();
+    }
+
+    private String readContent(StagedResource resourceToRead) throws IOException {
+        String content = IOUtils.toString(resourceToRead.getReader());
+        resourceToRead.closeReaders();
+        return content;
+    }
+
+    private void writeText(StagedResource resourceToWrite, String text) throws IOException {
+        BufferedWriter writer = resourceToWrite.getWriter(0);
         writer.write(text);
         writer.close();
-        resource.close();
+        resourceToWrite.close();
     }
 }

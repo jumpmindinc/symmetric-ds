@@ -41,6 +41,7 @@ public class ThresholdFileWriter extends Writer {
     protected BufferedWriter fileWriter;
     protected StringBuilder buffer;
     protected long threshhold;
+    protected boolean append;
 
     /**
      * @param threshold
@@ -49,9 +50,22 @@ public class ThresholdFileWriter extends Writer {
      *            The file to write to after the threshold has been reached
      */
     public ThresholdFileWriter(long threshold, StringBuilder buffer, File file) {
+        this(threshold, buffer, file, false);
+    }
+
+    /**
+     * @param threshold
+     *            The number of bytes at which to start writing to a file
+     * @param file
+     *            The file to write to after the threshold has been reached
+     * @param append
+     *            When true, write to the end of an existing file instead of truncating it
+     */
+    public ThresholdFileWriter(long threshold, StringBuilder buffer, File file, boolean append) {
         this.file = file;
         this.buffer = buffer;
         this.threshhold = threshold;
+        this.append = append;
     }
 
     public File getFile() {
@@ -97,7 +111,7 @@ public class ThresholdFileWriter extends Writer {
     }
 
     protected BufferedWriter getWriter() throws IOException {
-        return new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8.name()));
+        return new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, append), StandardCharsets.UTF_8.name()));
     }
 
     public BufferedReader getReader() throws IOException {

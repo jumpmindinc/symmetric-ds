@@ -13,6 +13,7 @@ import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.transport.http.HttpTransportManager;
+import org.jumpmind.symmetric.transport.http.IHttpResumeCache;
 import org.jumpmind.symmetric.transport.internal.InternalTransportManager;
 
 public class HybridTransportManager implements ITransportManager {
@@ -56,6 +57,12 @@ public class HybridTransportManager implements ITransportManager {
     }
 
     @Override
+    public IIncomingTransport getFilePullTransport(Node remote, Node local, String securityToken,
+            Map<String, String> requestProperties, String registrationUrl, Long resumeBatchId) throws IOException {
+        return getTransport(remote).getFilePullTransport(remote, local, securityToken, requestProperties, registrationUrl, resumeBatchId);
+    }
+
+    @Override
     public IOutgoingWithResponseTransport getFilePushTransport(Node remote, Node local, String securityToken,
             String registrationUrl) throws IOException {
         return getTransport(remote).getFilePushTransport(remote, local, securityToken, registrationUrl);
@@ -65,6 +72,26 @@ public class HybridTransportManager implements ITransportManager {
     public IIncomingTransport getPullTransport(Node remote, Node local, String securityToken,
             Map<String, String> requestProperties, String registrationUrl) throws IOException {
         return getTransport(remote).getPullTransport(remote, local, securityToken, requestProperties, registrationUrl);
+    }
+
+    /**
+     * Delegates to whichever underlying transport is active for this node, so a resumed pull still reaches {@link HttpTransportManager}'s real resume logic
+     * when hybrid mode has selected HTTP; the internal transport has no concept of resume and ignores the extra parameter via the {@code ITransportManager}
+     * default.
+     */
+    @Override
+    public IIncomingTransport getPullTransport(Node remote, Node local, String securityToken,
+            Map<String, String> requestProperties, String registrationUrl, Long resumeBatchId) throws IOException {
+        return getTransport(remote).getPullTransport(remote, local, securityToken, requestProperties, registrationUrl, resumeBatchId);
+    }
+
+    /**
+     * The internal (same-JVM) transport never needs real HTTP resume, so it's safe to always resolve resume state through the one {@link HttpTransportManager}
+     * this hybrid manager holds, regardless of which transport ends up handling any particular pull.
+     */
+    @Override
+    public IHttpResumeCache getResumeCache() {
+        return httpTransport.getResumeCache();
     }
 
     @Override

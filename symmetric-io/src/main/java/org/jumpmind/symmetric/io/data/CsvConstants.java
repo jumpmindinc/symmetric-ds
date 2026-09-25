@@ -48,4 +48,5 @@ final public class CsvConstants {
     public static final String STATS_COLUMNS = "stats_columns";
     public static final String BASETIME = "basetime";
     public static final String TIME = "ts";
+    public static final String ETAG = "etag";
 }

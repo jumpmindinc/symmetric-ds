@@ -39,6 +39,10 @@ public interface IStagedResource {
 
     public BufferedWriter getWriter(long threshold);
 
+    default BufferedWriter getWriter(long threshold, boolean append) {
+        return getWriter(threshold);
+    }
+
     public OutputStream getOutputStream();
 
     public OutputStream getOutputStream(boolean append);
@@ -62,6 +66,10 @@ public interface IStagedResource {
     public long getLastUpdateTime();
 
     public void refreshLastUpdateTime();
+
+    default long getGenerationTime() {
+        return getLastUpdateTime();
+    }
 
     public boolean isFileResource();
 

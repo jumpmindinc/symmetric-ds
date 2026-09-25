@@ -160,6 +160,24 @@ class HttpIncomingTransportTest {
     }
 
     @Test
+    void testOpenStream_withPartialContent_returnsInputStream() throws Exception {
+        stubSuccessfulResponse();
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_PARTIAL_CONTENT);
+        HttpIncomingTransport transport = newTransport();
+        InputStream result = transport.openStream();
+        assertNotNull(result);
+    }
+
+    @Test
+    void testOpenStream_withPartialContent_updatesSessionLikeOk() throws Exception {
+        stubSuccessfulResponse();
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_PARTIAL_CONTENT);
+        HttpIncomingTransport transport = newTransport();
+        transport.openStream();
+        verify(httpTransportManager).updateSession(connection);
+    }
+
+    @Test
     void testOpenStream_withRegistrationNotOpenThrowsException() throws Exception {
         when(connection.getResponseCode()).thenReturn(WebConstants.REGISTRATION_NOT_OPEN);
         HttpIncomingTransport transport = newTransport();
@@ -308,7 +326,7 @@ class HttpIncomingTransportTest {
     }
 
     @Test
-    void testGetHeaders_returnsCaseInsensitiveMapSkippingNullKey() {
+    void testGetHeaders_returnsCaseInsensitiveMapSkippingNullKey() throws Exception {
         Map<String, List<String>> rawHeaders = new LinkedHashMap<>();
         rawHeaders.put(null, List.of("HTTP/1.1 200 OK"));
         rawHeaders.put("Content-Type", List.of("text/xml"));

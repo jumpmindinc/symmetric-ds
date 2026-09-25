@@ -53,6 +53,7 @@ public class StagedResource implements IStagedResource {
     protected String path;
     protected StringBuilder memoryBuffer;
     protected long lastUpdateTime;
+    protected long generationTime;
     protected State state;
     protected OutputStream outputStream = null;
     protected Map<Thread, InputStream> inputStreams = null;
@@ -77,6 +78,7 @@ public class StagedResource implements IStagedResource {
                 lastUpdateTime = file.lastModified();
             }
         }
+        this.generationTime = lastUpdateTime;
     }
 
     protected static String toPath(File directory, File file) {
@@ -163,6 +165,11 @@ public class StagedResource implements IStagedResource {
         refreshLastUpdateTime();
         this.state = state;
         this.file = buildFile(state);
+        if (state == State.DONE && this.file.exists() && !this.file.setLastModified(generationTime)) {
+            log.warn(
+                    "Failed to pin the last-modified time of '{}' to its generation time; a future re-lookup of this resource may derive a different generation time",
+                    this.file.getAbsolutePath());
+        }
     }
 
     protected void handleFailedRename(File oldFile, File newFile) {
@@ -367,23 +374,36 @@ public class StagedResource implements IStagedResource {
     }
 
     public BufferedWriter getWriter(long threshold) {
+        return getWriter(threshold, false);
+    }
+
+    @Override
+    public BufferedWriter getWriter(long threshold, boolean append) {
         refreshLastUpdateTime();
         if (writer == null) {
-            if (file != null && file.exists()) {
-                log.warn("getWriter had to delete {} because it already existed.", file.getAbsolutePath());
-                file.delete();
-            } else if (this.memoryBuffer != null) {
-                log.warn("We had to delete the memory buffer for {} because it already existed", getPath());
+            if (!append) {
+                if (file != null && file.exists()) {
+                    log.warn("getWriter had to delete {} because it already existed.", file.getAbsolutePath());
+                    file.delete();
+                } else if (this.memoryBuffer != null) {
+                    log.warn("We had to delete the memory buffer for {} because it already existed", getPath());
+                    this.memoryBuffer = null;
+                }
+                this.memoryBuffer = threshold > 0 ? new StringBuilder() : null;
+            } else {
                 this.memoryBuffer = null;
             }
-            this.memoryBuffer = threshold > 0 ? new StringBuilder() : null;
-            writer = createWriter(threshold);
+            writer = createWriter(threshold, append);
         }
         return writer;
     }
 
     protected BufferedWriter createWriter(long threshold) {
-        return new BufferedWriter(new ThresholdFileWriter(threshold, this.memoryBuffer, file));
+        return createWriter(threshold, false);
+    }
+
+    protected BufferedWriter createWriter(long threshold, boolean append) {
+        return new BufferedWriter(new ThresholdFileWriter(threshold, this.memoryBuffer, file, append));
     }
 
     public long getSize() {
@@ -406,6 +426,20 @@ public class StagedResource implements IStagedResource {
 
     public void refreshLastUpdateTime() {
         this.lastUpdateTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public long getGenerationTime() {
+        return generationTime;
+    }
+
+    /**
+     * Stamps {@code generationTime} to now, discarding whatever value the constructor derived from a stale file that previously occupied this path. Called by
+     * {@link StagingManager#create(Object...)} after it deletes such a file, so a freshly-created resource's identity doesn't get inherited from unrelated
+     * prior content.
+     */
+    void resetGenerationTime() {
+        this.generationTime = System.currentTimeMillis();
     }
 
     public boolean delete() {

@@ -38,5 +38,10 @@ public interface IIncomingTransport {
 
     public String getUrl();
 
-    public Map<String, String> getHeaders();
+    /**
+     * @throws IOException
+     *             if the underlying connection could not be established - callers must not treat this as a definitive "no such header" result (e.g. a resume
+     *             request that hasn't been honored), since that would misclassify a transient connectivity failure as a real server response.
+     */
+    public Map<String, String> getHeaders() throws IOException;
 }

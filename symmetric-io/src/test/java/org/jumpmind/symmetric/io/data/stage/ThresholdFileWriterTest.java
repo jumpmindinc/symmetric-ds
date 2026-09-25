@@ -25,11 +25,56 @@ import java.io.File;
 
 import org.apache.commons.io.IOUtils;
 import org.jumpmind.symmetric.io.stage.ThresholdFileWriter;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 public class ThresholdFileWriterTest {
     final String TEST_STR = "The quick brown fox jumped over the lazy dog";
+
+    @Test
+    public void testAppendConstructor_appendsToExistingFileContent() throws Exception {
+        File file = getTestFile();
+        ThresholdFileWriter writer = new ThresholdFileWriter(0, null, file);
+        writer.write("hello ");
+        writer.close();
+        ThresholdFileWriter appendingWriter = new ThresholdFileWriter(0, null, file, true);
+        appendingWriter.write("world");
+        appendingWriter.close();
+        BufferedReader reader = appendingWriter.getReader();
+        assertEquals("hello world", IOUtils.toString(reader));
+        reader.close();
+        assertTrue(file.delete());
+    }
+
+    @Test
+    public void testNonAppendConstructor_stillOverwritesExistingFileContent() throws Exception {
+        File file = getTestFile();
+        ThresholdFileWriter writer = new ThresholdFileWriter(0, null, file);
+        writer.write("original content");
+        writer.close();
+        ThresholdFileWriter overwritingWriter = new ThresholdFileWriter(0, null, file, false);
+        overwritingWriter.write("new");
+        overwritingWriter.close();
+        BufferedReader reader = overwritingWriter.getReader();
+        assertEquals("new", IOUtils.toString(reader));
+        reader.close();
+        assertTrue(file.delete());
+    }
+
+    @Test
+    public void testThreeArgConstructor_defaultsToNonAppendBehavior() throws Exception {
+        File file = getTestFile();
+        ThresholdFileWriter writer = new ThresholdFileWriter(0, null, file);
+        writer.write("original content");
+        writer.close();
+        ThresholdFileWriter secondWriter = new ThresholdFileWriter(0, null, file);
+        secondWriter.write("new");
+        secondWriter.close();
+        BufferedReader reader = secondWriter.getReader();
+        assertEquals("new", IOUtils.toString(reader));
+        reader.close();
+        assertTrue(file.delete());
+    }
 
     @Test
     public void testNoWriteToFile() throws Exception {
