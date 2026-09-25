@@ -76,7 +76,7 @@ import org.mockito.internal.verification.VerificationModeFactory;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-public class DataGapDetectorTest {
+class DataGapDetectorTest {
     final static String ENGINE_NAME = "testengine";
     final static String CHANNEL_ID = "testchannel";
     final static String NODE_ID = "00000";
@@ -95,7 +95,7 @@ public class DataGapDetectorTest {
     ThreadLocalRandom rand = ThreadLocalRandom.current();
 
     @BeforeEach
-    public void setUp() throws Exception {
+    void setUp() throws Exception {
         sqlTemplate = mock(ISqlTemplate.class);
         sqlTransaction = mock(ISqlTransaction.class);
         when(sqlTemplate.startSqlTransaction()).thenReturn(sqlTransaction);
@@ -168,7 +168,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testNewGap() throws Exception {
+    void testNewGap() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(4, 50000004));
@@ -188,7 +188,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testNewGapFull() throws Exception {
+    void testNewGapFull() throws Exception {
         detector.setFullGapAnalysis(true);
         when(contextService.is(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(true);
         List<Long> dataIds = new ArrayList<Long>();
@@ -215,7 +215,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testTwoNewGaps() throws Exception {
+    void testTwoNewGaps() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(4, 50000004));
@@ -237,7 +237,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testTwoNewGapsFull() throws Exception {
+    void testTwoNewGapsFull() throws Exception {
         detector.setFullGapAnalysis(true);
         when(contextService.is(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(true);
         List<Long> dataIds = new ArrayList<Long>();
@@ -266,7 +266,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapInGap() throws Exception {
+    void testGapInGap() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(5, 10));
@@ -297,7 +297,7 @@ public class DataGapDetectorTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testGapInGapFull() throws Exception {
+    void testGapInGapFull() throws Exception {
         detector.setFullGapAnalysis(true);
         when(contextService.is(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(true);
         when(sqlTemplate.query(ArgumentMatchers.any(), ArgumentMatchers.isA(ISqlRowMapper.class), ArgumentMatchers.any(Object[].class))).thenAnswer(
@@ -341,7 +341,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapExpire() throws Exception {
+    void testGapExpire() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(5, 6));
@@ -363,7 +363,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapExpireBusyChannel() throws Exception {
+    void testGapExpireBusyChannel() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(5, 6));
@@ -386,7 +386,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapBusyExpireRun() throws Exception {
+    void testGapBusyExpireRun() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(5, 6));
@@ -410,7 +410,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapBusyExpireRunMultiple() throws Exception {
+    void testGapBusyExpireRunMultiple() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         when(symmetricDialect.supportsTransactionViews()).thenReturn(true);
         when(symmetricDialect.getDatabaseTime()).thenReturn(System.currentTimeMillis() + 60001L);
@@ -446,7 +446,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapBusyExpireNoRun() throws Exception {
+    void testGapBusyExpireNoRun() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(5, 6));
@@ -460,7 +460,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapExpireOracle() throws Exception {
+    void testGapExpireOracle() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(5, 6));
@@ -481,7 +481,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapExpireOracleBusyChannel() throws Exception {
+    void testGapExpireOracleBusyChannel() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(5, 6));
@@ -505,7 +505,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapsBeforeAndAfterFull() throws Exception {
+    void testGapsBeforeAndAfterFull() throws Exception {
         detector.setFullGapAnalysis(true);
         when(contextService.is(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(true);
         List<Long> dataIds = new ArrayList<Long>();
@@ -543,7 +543,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapsOverlap() throws Exception {
+    void testGapsOverlap() throws Exception {
         List<Long> dataIds = new ArrayList<Long>();
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(30953883, 80953883));
@@ -557,7 +557,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapsOverlapMultiple() throws Exception {
+    void testGapsOverlapMultiple() throws Exception {
         List<Long> dataIds = new ArrayList<Long>();
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(1, 10));
@@ -582,7 +582,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapsOverlapThenData() throws Exception {
+    void testGapsOverlapThenData() throws Exception {
         List<Long> dataIds = new ArrayList<Long>();
         dataIds.add(30953883L);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
@@ -604,7 +604,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapsOverlapThenDataFull() throws Exception {
+    void testGapsOverlapThenDataFull() throws Exception {
         detector.setFullGapAnalysis(true);
         when(contextService.is(ContextConstants.ROUTING_FULL_GAP_ANALYSIS)).thenReturn(true);
         List<Long> dataIds = new ArrayList<Long>();
@@ -637,7 +637,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapsOverlapAfterLastGap() throws Exception {
+    void testGapsOverlapAfterLastGap() throws Exception {
         List<Long> dataIds = new ArrayList<Long>();
         dataIds.add(30953883L);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
@@ -661,7 +661,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapsDuplicateDetection() throws Exception {
+    void testGapsDuplicateDetection() throws Exception {
         List<Long> dataIds = new ArrayList<Long>();
         dataIds.add(31832439L);
         List<DataGap> dataGaps = new ArrayList<DataGap>();
@@ -684,7 +684,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapsOverlapDetection() throws Exception {
+    void testGapsOverlapDetection() throws Exception {
         List<Long> dataIds = new ArrayList<Long>();
         dataIds.add(31837983L);
         dataIds.add(31837989L);
@@ -708,7 +708,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testGapsFailedToDelete() throws Exception {
+    void testGapsFailedToDelete() throws Exception {
         when(parameterService.getLong(ParameterConstants.ROUTING_LARGEST_GAP_SIZE)).thenReturn(10L);
         when(parameterService.getInt(ParameterConstants.ROUTING_MAX_GAP_CHANGES)).thenReturn(2);
         List<Long> dataIds = new ArrayList<Long>();
@@ -739,7 +739,7 @@ public class DataGapDetectorTest {
     }
 
     @Test
-    public void testDataBeforeGap() throws Exception {
+    void testDataBeforeGap() throws Exception {
         List<DataGap> dataGaps = new ArrayList<DataGap>();
         dataGaps.add(new DataGap(3, 3));
         dataGaps.add(new DataGap(4, 50000004));

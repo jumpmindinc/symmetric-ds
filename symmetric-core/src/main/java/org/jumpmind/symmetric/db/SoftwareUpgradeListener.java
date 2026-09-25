@@ -23,7 +23,6 @@ package org.jumpmind.symmetric.db;
 import org.jumpmind.extension.IBuiltInExtensionPoint;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.Version;
-import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
 import org.jumpmind.symmetric.ext.ISymmetricEngineAware;
@@ -66,7 +65,7 @@ public class SoftwareUpgradeListener implements ISoftwareUpgradeListener, ISymme
             }
         }
         if (Version.isOlderThanVersion(databaseVersion, "3.18.0")) {
-            boolean startupValue = ClusteredCacheManager.getInstance().isClusterLockingEnabled();
+            boolean startupValue = engine.getClusteredCacheManager().isClusterLockingEnabled();
             boolean oldDbValue = parameterService.is(ParameterConstants.CLUSTER_LOCKING_ENABLED);
             parameterService.saveParameter(ParameterConstants.CLUSTER_LOCKING_ENABLED, startupValue, "upgrade");
             if (oldDbValue != startupValue) {

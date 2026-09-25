@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -50,6 +51,8 @@ import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.io.data.Batch;
 import org.jumpmind.symmetric.io.data.Batch.BatchType;
 import org.jumpmind.symmetric.io.data.DataContext;
+import org.jumpmind.symmetric.io.data.ProtocolException;
+import org.jumpmind.symmetric.io.data.writer.IProtocolDataWriterListener;
 import org.jumpmind.symmetric.io.stage.IStagedResource.State;
 import org.jumpmind.symmetric.model.ProcessInfo;
 import org.jumpmind.symmetric.model.ProcessInfoKey;
@@ -65,6 +68,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 
 class SimpleStagingDataWriterTest {
+    private static final String SOURCE_NODE_ID = "store-1";
+    private static final String TARGET_NODE_ID = "corp";
+    private static final String CATEGORY = "incoming";
     @TempDir
     File tempDir;
     private ISymmetricEngine engine;
@@ -73,6 +79,7 @@ class SimpleStagingDataWriterTest {
     private IHttpResumeCache resumeCache;
     private StagingManager realStagingManager;
     private ProcessInfo processInfo;
+    private ProcessInfo mockProcessInfo;
     private DataContext context;
 
     @BeforeEach
@@ -89,6 +96,7 @@ class SimpleStagingDataWriterTest {
         realStagingManager = new StagingManager(tempDir.getAbsolutePath(), false);
         when(engine.getStagingManager()).thenReturn(realStagingManager);
         processInfo = new ProcessInfo(new ProcessInfoKey("node1", "me", ProcessType.PULL_HANDLER_EXTRACT));
+        mockProcessInfo = mock(ProcessInfo.class);
         context = new DataContext();
         context.getContext().put(Constants.DATA_CONTEXT_SOURCE_NODE, "node1");
     }
@@ -475,5 +483,118 @@ class SimpleStagingDataWriterTest {
         assertNotNull(writer.getException());
         verify(stagedResource).delete();
         verify(resumeCache, never()).put(any(), anyLong(), any());
+    }
+
+    @Test
+    void testProcess_stagesBatchAsDoneResource() throws IOException {
+        processProtocol(batchProtocol(1));
+        IStagedResource resource = realStagingManager.find(CATEGORY, SOURCE_NODE_ID, 1);
+        assertNotNull(resource);
+        assertEquals(State.DONE, resource.getState());
+    }
+
+    @Test
+    void testProcess_writesBatchHeaderAndRows() throws IOException {
+        processProtocol(batchProtocol(1));
+        String staged = readProtocolStaged(1);
+        assertTrue(staged.contains("nodeid," + SOURCE_NODE_ID));
+        assertTrue(staged.contains("binary,BASE64"));
+        assertTrue(staged.contains("channel,default"));
+        assertTrue(staged.contains("batch,1"));
+        assertTrue(staged.contains("insert,1,widget"));
+        assertTrue(staged.contains("commit,1"));
+    }
+
+    @Test
+    void testProcess_notifiesListenerOfBatchStart() throws IOException {
+        IProtocolDataWriterListener listener = mock(IProtocolDataWriterListener.class);
+        processProtocol(batchProtocol(1), listener);
+        ArgumentCaptor<Batch> batchCaptor = ArgumentCaptor.forClass(Batch.class);
+        verify(listener).start(eq(context), batchCaptor.capture());
+        assertEquals(1L, batchCaptor.getValue().getBatchId());
+    }
+
+    @Test
+    void testProcess_notifiesListenerOfBatchEnd() throws IOException {
+        IProtocolDataWriterListener listener = mock(IProtocolDataWriterListener.class);
+        processProtocol(batchProtocol(1), listener);
+        verify(listener).end(eq(context), any(Batch.class), any(IStagedResource.class));
+    }
+
+    @Test
+    void testProcess_stagesEachBatchSeparately() throws IOException {
+        processProtocol(batchProtocol(1) + batchProtocol(2));
+        assertNotNull(realStagingManager.find(CATEGORY, SOURCE_NODE_ID, 1));
+        assertNotNull(realStagingManager.find(CATEGORY, SOURCE_NODE_ID, 2));
+    }
+
+    @Test
+    void testProcess_rejectsLinesOutsideOfABatch() {
+        String protocol = "insert,1,orphan\n" + batchProtocol(1);
+        assertThrows(ProtocolException.class, () -> processProtocol(protocol));
+    }
+
+    @Test
+    void testProcess_withEmptyInputStagesNothing() throws IOException {
+        processProtocol("");
+        assertTrue(realStagingManager.getResourceReferences().isEmpty());
+    }
+
+    @Test
+    void testGetException_isNullAfterCleanRun() throws IOException {
+        SimpleStagingDataWriter writer = newProtocolWriter(batchProtocol(1));
+        writer.process();
+        assertNull(writer.getException());
+    }
+
+    @Test
+    void testProcess_recordsBatchOnProcessInfo() throws IOException {
+        processProtocol(batchProtocol(1));
+        verify(mockProcessInfo).setCurrentBatchId(1L);
+        verify(mockProcessInfo).incrementBatchCount();
+    }
+
+    private String batchProtocol(long batchId) {
+        return "nodeid," + SOURCE_NODE_ID + "\n"
+                + "binary,BASE64\n"
+                + "channel,default\n"
+                + "batch," + batchId + "\n"
+                + "table,item\n"
+                + "keys,id\n"
+                + "columns,id,name\n"
+                + "insert,1,widget\n"
+                + "commit," + batchId + "\n";
+    }
+
+    private void processProtocol(String protocol, IProtocolDataWriterListener... listeners) throws IOException {
+        newProtocolWriter(protocol, listeners).process();
+    }
+
+    private SimpleStagingDataWriter newProtocolWriter(String protocol, IProtocolDataWriterListener... listeners) {
+        BufferedReader reader = new BufferedReader(new StringReader(protocol));
+        return SimpleStagingDataWriter.builder()
+                .processInfo(mockProcessInfo)
+                .reader(reader)
+                .engine(engine)
+                .category(CATEGORY)
+                .memoryThresholdInBytes(0L)
+                .batchType(BatchType.LOAD)
+                .sourceNodeId(SOURCE_NODE_ID)
+                .targetNodeId(TARGET_NODE_ID)
+                .context(context)
+                .listeners(listeners)
+                .build();
+    }
+
+    private String readProtocolStaged(long batchId) throws IOException {
+        IStagedResource resource = realStagingManager.find(CATEGORY, SOURCE_NODE_ID, batchId);
+        StringBuilder text = new StringBuilder();
+        try (BufferedReader reader = resource.getReader()) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                text.append(line).append("\n");
+            }
+        }
+        return text.toString();
     }
 }

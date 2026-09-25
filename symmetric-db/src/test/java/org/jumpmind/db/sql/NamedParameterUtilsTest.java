@@ -49,6 +49,48 @@ class NamedParameterUtilsTest {
     }
 
     @Test
+    void testParseSqlStatement_countsUnnamedParameters() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = ? and b = ?");
+        assertEquals(0, parsed.getNamedParameterCount());
+        assertEquals(2, parsed.getUnnamedParameterCount());
+        assertEquals(2, parsed.getTotalParameterCount());
+    }
+
+    @Test
+    void testParseSqlStatement_parsesAmpersandPrefixedNamedParameter() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = &foo");
+        assertEquals(1, parsed.getNamedParameterCount());
+        assertEquals(List.of("foo"), parsed.getParameterNames());
+    }
+
+    @Test
+    void testParseSqlStatement_ignoresBareColonWithNoParameterNameFollowing() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = : and b = :foo");
+        assertEquals(1, parsed.getNamedParameterCount());
+        assertEquals(List.of("foo"), parsed.getParameterNames());
+    }
+
+    @Test
+    void testParseSqlStatement_withUnclosedQuote_doesNotThrowAndStopsAtEndOfStatement() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select 'unterminated from t where a = :foo");
+        assertEquals(0, parsed.getNamedParameterCount());
+    }
+
+    @Test
+    void testParseSqlStatement_withUnclosedBlockComment_doesNotThrowAndStopsAtEndOfStatement() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * /* unterminated comment :foo");
+        assertEquals(0, parsed.getNamedParameterCount());
+    }
+
+    @Test
+    void testParseSqlStatement_withNoParameters_returnsZeroCounts() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t");
+        assertEquals(0, parsed.getNamedParameterCount());
+        assertEquals(0, parsed.getUnnamedParameterCount());
+        assertEquals(0, parsed.getTotalParameterCount());
+    }
+
+    @Test
     void testSubstituteNamedParameters_expandsCollectionIntoCommaSeparatedPlaceholders() {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where id in (:ids)");
         Map<String, Object> params = Map.of("ids", List.of(1, 2, 3));
@@ -84,6 +126,27 @@ class NamedParameterUtilsTest {
         ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo");
         Map<String, Object> params = Map.of("bar", 1);
         assertThrows(InvalidSqlException.class, () -> NamedParameterUtils.substituteNamedParameters(parsed, params));
+    }
+
+    @Test
+    void testSubstituteNamedParameters_withNullParamSource_throwsInvalidSqlException() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo");
+        assertThrows(InvalidSqlException.class, () -> NamedParameterUtils.substituteNamedParameters(parsed, null));
+    }
+
+    @Test
+    void testSubstituteNamedParameters_withEmptyCollection_producesEmptyParenthesizedList() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where id in (:ids)");
+        Map<String, Object> params = Map.of("ids", List.of());
+        String sql = NamedParameterUtils.substituteNamedParameters(parsed, params);
+        assertEquals("select * from t where id in ()", sql);
+    }
+
+    @Test
+    void testSubstituteNamedParameters_withNoParameters_returnsSqlUnchanged() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t");
+        String sql = NamedParameterUtils.substituteNamedParameters(parsed, Map.of());
+        assertEquals("select * from t", sql);
     }
 
     static Stream<Arguments> sqlWithSingleFooParameter() {
@@ -125,5 +188,13 @@ class NamedParameterUtilsTest {
         Map<String, Object> params = Map.of("ids", List.of(1, 2, 3));
         Object[] values = NamedParameterUtils.buildValueArray(parsed, params);
         assertArrayEquals(new Object[] { 1, 2, 3 }, values);
+    }
+
+    @Test
+    void testBuildValueArray_withMissingKeyInMap_returnsNullForMissingValueInsteadOfThrowing() {
+        ParsedSql parsed = NamedParameterUtils.parseSqlStatement("select * from t where a = :foo and b = :bar");
+        Map<String, Object> params = Map.of("foo", 1);
+        Object[] values = NamedParameterUtils.buildValueArray(parsed, params);
+        assertArrayEquals(new Object[] { 1, null }, values);
     }
 }

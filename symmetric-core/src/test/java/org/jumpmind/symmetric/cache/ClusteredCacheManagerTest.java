@@ -61,6 +61,7 @@ import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -227,9 +228,10 @@ class ClusteredCacheManagerTest {
     }
 
     private void callInitializeClusterCommunicationAndDiscovery(ISecurityService securityService) throws Exception {
-        Method method = ClusteredCacheManager.class.getDeclaredMethod("initializeClusterCommunicationAndDiscovery", ISecurityService.class);
+        Method method = ClusteredCacheManager.class.getDeclaredMethod("initializeClusterCommunicationAndDiscovery", ISecurityService.class,
+                IStartupParameterService.class);
         method.setAccessible(true);
-        method.invoke(manager, securityService);
+        method.invoke(manager, securityService, mock(IStartupParameterService.class));
     }
 
     private int callDiscoverPeersFromNodeHostTable() throws Exception {
@@ -910,7 +912,7 @@ class ClusteredCacheManagerTest {
         ISecurityService mockSecurityService = mock(ISecurityService.class);
         when(mockSecurityService.isInitialized()).thenReturn(true);
         try {
-            manager.initialize(mockSecurityService, PARTITION_ID, PEER_1, true, null);
+            manager.initialize(mockSecurityService, PARTITION_ID, PEER_1, true, null, mock(IStartupParameterService.class));
             assertTrue(manager.isClusterPeerListenerStarted());
             Thread thread = (Thread) getField("heartbeatThread");
             assertNotNull(thread);
@@ -929,7 +931,7 @@ class ClusteredCacheManagerTest {
     void initialize_clusterLockingDisabled_doesNotStartClusterHeartbeatLoop() throws Exception {
         ISecurityService mockSecurityService = mock(ISecurityService.class);
         when(mockSecurityService.isInitialized()).thenReturn(true);
-        manager.initialize(mockSecurityService, PARTITION_ID, PEER_1, false, null);
+        manager.initialize(mockSecurityService, PARTITION_ID, PEER_1, false, null, mock(IStartupParameterService.class));
         assertFalse(manager.isClusterPeerListenerStarted());
         assertNull(getField("heartbeatThread"));
     }

@@ -59,6 +59,7 @@ import org.jumpmind.symmetric.service.IOfflinePullService;
 import org.jumpmind.symmetric.service.IOfflinePushService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.service.IPullService;
 import org.jumpmind.symmetric.service.IPurgeService;
 import org.jumpmind.symmetric.service.IPushService;
@@ -252,6 +253,8 @@ public interface ISymmetricEngine {
     public IConfigurationService getConfigurationService();
 
     public IParameterService getParameterService();
+
+    public IStartupParameterService getStartupParameterService();
 
     public INodeService getNodeService();
 

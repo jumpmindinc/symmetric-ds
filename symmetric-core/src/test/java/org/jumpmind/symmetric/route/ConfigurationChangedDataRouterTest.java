@@ -47,7 +47,7 @@ import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.junit.jupiter.api.Test;
 
-public class ConfigurationChangedDataRouterTest {
+class ConfigurationChangedDataRouterTest {
     private static List<NodeGroupLink> THREE_TIER_LINKS;
     private static NetworkedNode THREE_TIER_NETWORKED_ROOT;
     private static List<NodeGroupLink> MULTIPLE_GROUPS_PLUS_REG_SVR_LINKS;
@@ -96,7 +96,7 @@ public class ConfigurationChangedDataRouterTest {
     }
 
     @Test
-    public void testRouteHeartbeatToParent() {
+    void testRouteHeartbeatToParent() {
         IDataRouter router = buildTestableRouter(
                 THREE_TIER_NETWORKED_ROOT.findNetworkedNode("laptop1").getNode(), THREE_TIER_LINKS,
                 THREE_TIER_NETWORKED_ROOT);
@@ -109,7 +109,7 @@ public class ConfigurationChangedDataRouterTest {
     }
 
     @Test
-    public void testRouteLaptop1FromRgn1() {
+    void testRouteLaptop1FromRgn1() {
         IDataRouter router = buildTestableRouter(
                 THREE_TIER_NETWORKED_ROOT.findNetworkedNode("corp").getNode(), THREE_TIER_LINKS,
                 THREE_TIER_NETWORKED_ROOT);
@@ -122,7 +122,7 @@ public class ConfigurationChangedDataRouterTest {
     }
 
     @Test
-    public void testRouteRgn2FromCorp() {
+    void testRouteRgn2FromCorp() {
         IDataRouter router = buildTestableRouter(
                 THREE_TIER_NETWORKED_ROOT.findNetworkedNode("corp").getNode(), THREE_TIER_LINKS,
                 THREE_TIER_NETWORKED_ROOT);
@@ -136,7 +136,7 @@ public class ConfigurationChangedDataRouterTest {
     }
 
     @Test
-    public void testConfigurationExtract() {
+    void testConfigurationExtract() {
         IDataRouter router = buildTestableRouter(
                 THREE_TIER_NETWORKED_ROOT.findNetworkedNode("corp").getNode(), THREE_TIER_LINKS,
                 THREE_TIER_NETWORKED_ROOT);
@@ -149,7 +149,7 @@ public class ConfigurationChangedDataRouterTest {
     }
 
     @Test
-    public void testRouteRgn1FromCorp() {
+    void testRouteRgn1FromCorp() {
         IDataRouter router = buildTestableRouter(
                 THREE_TIER_NETWORKED_ROOT.findNetworkedNode("corp").getNode(), THREE_TIER_LINKS,
                 THREE_TIER_NETWORKED_ROOT);
@@ -163,7 +163,7 @@ public class ConfigurationChangedDataRouterTest {
     }
 
     @Test
-    public void testRouteLaptop1FromCorp() {
+    void testRouteLaptop1FromCorp() {
         IDataRouter router = buildTestableRouter(
                 THREE_TIER_NETWORKED_ROOT.findNetworkedNode("corp").getNode(), THREE_TIER_LINKS,
                 THREE_TIER_NETWORKED_ROOT);
@@ -177,7 +177,7 @@ public class ConfigurationChangedDataRouterTest {
     }
 
     @Test
-    public void testRouteS1ToDWFromRegsvr() {
+    void testRouteS1ToDWFromRegsvr() {
         IDataRouter router = buildTestableRouter(
                 MULTIPLE_GROUPS_PLUS_REG_SVR_NETWORKED_ROOT.findNetworkedNode("regsvr").getNode(), MULTIPLE_GROUPS_PLUS_REG_SVR_LINKS,
                 MULTIPLE_GROUPS_PLUS_REG_SVR_NETWORKED_ROOT);
@@ -193,7 +193,7 @@ public class ConfigurationChangedDataRouterTest {
     }
 
     @Test
-    public void testRouteDWToS1andS2FromRegsvr() {
+    void testRouteDWToS1andS2FromRegsvr() {
         IDataRouter router = buildTestableRouter(
                 MULTIPLE_GROUPS_PLUS_REG_SVR_NETWORKED_ROOT.findNetworkedNode("regsvr").getNode(), MULTIPLE_GROUPS_PLUS_REG_SVR_LINKS,
                 MULTIPLE_GROUPS_PLUS_REG_SVR_NETWORKED_ROOT);
@@ -210,7 +210,7 @@ public class ConfigurationChangedDataRouterTest {
     }
 
     @Test
-    public void testRouteS1toRegsvrFromS1() {
+    void testRouteS1toRegsvrFromS1() {
         IDataRouter router = buildTestableRouter(
                 MULTIPLE_GROUPS_PLUS_REG_SVR_NETWORKED_ROOT.findNetworkedNode("s1").getNode(), MULTIPLE_GROUPS_PLUS_REG_SVR_LINKS,
                 MULTIPLE_GROUPS_PLUS_REG_SVR_NETWORKED_ROOT);

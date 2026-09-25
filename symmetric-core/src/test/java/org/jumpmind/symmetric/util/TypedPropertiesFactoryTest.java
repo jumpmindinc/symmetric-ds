@@ -23,6 +23,7 @@ package org.jumpmind.symmetric.util;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.io.File;
 import java.util.Map;
 import java.util.Properties;
 
@@ -219,5 +220,20 @@ class TypedPropertiesFactoryTest {
         } catch (RuntimeException e) {
             assertEquals("Property files were not found", e.getMessage());
         }
+    }
+
+    @Test
+    void testGetPropertiesFile_returnsFilePassedToInit() {
+        TypedPropertiesFactory factory = new TypedPropertiesFactory();
+        File propertiesFile = new File("some-engine.properties");
+        factory.init(propertiesFile, null);
+        assertEquals(propertiesFile, factory.getPropertiesFile());
+    }
+
+    @Test
+    void testGetPropertiesFile_noFilePassedToInit_returnsNull() {
+        TypedPropertiesFactory factory = new TypedPropertiesFactory();
+        factory.init(null, null);
+        assertNull(factory.getPropertiesFile());
     }
 }

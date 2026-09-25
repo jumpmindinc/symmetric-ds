@@ -18,19 +18,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jumpmind.util;
+package org.jumpmind.db.sql;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-import org.jumpmind.properties.EnvironmentSpecificProperties;
 import org.junit.jupiter.api.Test;
 
-public class EnvironmentSpecificPropertiesTest {
+class SqlTransactionListenerAdapterTest {
+    private final SqlTransactionListenerAdapter adapter = new SqlTransactionListenerAdapter();
+
     @Test
-    public void testEnvironmentSpecificProperties() throws Exception {
-        EnvironmentSpecificProperties properties = new EnvironmentSpecificProperties(getClass().getResource("/test.env.specifc.properties"), "environment");
-        assertEquals(4, properties.size() - System.getProperties().size());
-        assertEquals("one", properties.get("name1"));
-        assertEquals("two", properties.get("name2"));
+    void testTransactionCommitted_doesNotThrow() {
+        assertDoesNotThrow(adapter::transactionCommitted);
+    }
+
+    @Test
+    void testTransactionRolledBack_doesNotThrow() {
+        assertDoesNotThrow(adapter::transactionRolledBack);
     }
 }

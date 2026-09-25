@@ -121,8 +121,13 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
             if (nodeSecurity == null) {
                 log.warn("Node {} does not exist", nodeId);
             } else if (isRegistrationRequired(nodeSecurity)) {
-                registrationService.registerNode(nodeService.findNode(nodeId), remoteHost,
-                        remoteAddress, outputStream, null, null, false);
+                if (isRegistrationQueue(nodeChannels.getChannelQueue())) {
+                    registrationService.registerNode(nodeService.findNode(nodeId), remoteHost,
+                            remoteAddress, outputStream, null, null, false);
+                } else {
+                    log.debug("Not sending registration to node {} on queue {} because registration is only sent on the {} queue",
+                            nodeId, nodeChannels.getChannelQueue(), Constants.QUEUE_DEFAULT);
+                }
             } else {
                 extractAndSendBatches(resumeRequest, remoteHost, outputStream, encoding, res, nodeChannels, nodeId);
             }
@@ -137,6 +142,10 @@ public class PullUriHandler extends AbstractCompressionUriHandler {
         String createdAtNodeId = nodeSecurity.getCreatedAtNodeId();
         return nodeSecurity.isRegistrationEnabled()
                 && (createdAtNodeId == null || createdAtNodeId.equals(nodeService.findIdentityNodeId()));
+    }
+
+    protected boolean isRegistrationQueue(String channelQueue) {
+        return channelQueue == null || Constants.QUEUE_DEFAULT.equals(channelQueue);
     }
 
     private void extractAndSendBatches(ResumeRequest resumeRequest, String remoteHost, OutputStream outputStream, String encoding,

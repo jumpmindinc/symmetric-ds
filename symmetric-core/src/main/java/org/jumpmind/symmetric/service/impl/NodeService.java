@@ -41,7 +41,6 @@ import org.jumpmind.db.sql.SqlException;
 import org.jumpmind.db.sql.UniqueKeyException;
 import org.jumpmind.db.sql.mapper.StringMapper;
 import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ICacheManager;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.TableConstants;
@@ -263,7 +262,7 @@ public class NodeService extends AbstractService implements INodeService {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
         }
         nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId(),
-                ClusteredCacheManager.getInstance().getClusterPartitionId());
+                engine.getClusteredCacheManager().getClusterPartitionId());
         log.debug("Updating NodeHost for current node: nodeId={}, hostname={}, ip={}, partition={}",
                 nodeHostForCurrentNode.getNodeId(), nodeHostForCurrentNode.getHostName(),
                 nodeHostForCurrentNode.getIpAddress(), nodeHostForCurrentNode.getClusterPartitionId());
@@ -276,7 +275,7 @@ public class NodeService extends AbstractService implements INodeService {
             nodeHostForCurrentNode = new NodeHost(findIdentityNodeId(), engine.getClusterService().getInstanceId());
         }
         nodeHostForCurrentNode.refresh(platform, engine.getClusterService().getInstanceId(), engine.getClusterService().getServerId(),
-                ClusteredCacheManager.getInstance().getClusterPartitionId());
+                engine.getClusteredCacheManager().getClusterPartitionId());
         updateNodeHost(transaction, nodeHostForCurrentNode);
     }
 

@@ -96,7 +96,7 @@ abstract public class AbstractTriggerTemplate {
     protected String newColumnPrefix = "";
     protected String otherColumnTemplate;
     protected ISymmetricDialect symmetricDialect;
-    protected int hashedValue = 0;
+    protected volatile int hashedValue = 0;
 
     protected AbstractTriggerTemplate(ISymmetricDialect symmetricDialect) {
         this.symmetricDialect = symmetricDialect;
@@ -1197,25 +1197,32 @@ abstract public class AbstractTriggerTemplate {
 
     public int toHashedValue() {
         if (hashedValue == 0 && sqlTemplates != null) {
-            for (String key : sqlTemplates.keySet()) {
-                hashedValue += sqlTemplates.get(key).hashCode();
-            }
-            Field[] fields = getClass().getSuperclass().getDeclaredFields();
-            for (Field field : fields) {
-                field.setAccessible(true);
-                if (field.getType().equals(String.class)) {
-                    try {
-                        String value = (String) field.get(this);
-                        if (value != null) {
-                            hashedValue += value.hashCode();
-                        }
-                    } catch (Exception e) {
-                        log.warn("Failed to get hash code for field " + field.getName());
+            hashedValue = calculateHashedValue();
+        }
+        return hashedValue;
+    }
+
+    // Accumulates into a local so concurrent sync-triggers workers cannot add into a half-computed shared value
+    private int calculateHashedValue() {
+        int calculatedHash = 0;
+        for (String key : sqlTemplates.keySet()) {
+            calculatedHash += sqlTemplates.get(key).hashCode();
+        }
+        Field[] fields = getClass().getSuperclass().getDeclaredFields();
+        for (Field field : fields) {
+            field.setAccessible(true);
+            if (field.getType().equals(String.class)) {
+                try {
+                    String value = (String) field.get(this);
+                    if (value != null) {
+                        calculatedHash += value.hashCode();
                     }
+                } catch (Exception e) {
+                    log.warn("Failed to get hash code for field " + field.getName());
                 }
             }
         }
-        return hashedValue;
+        return calculatedHash;
     }
 
     protected String getHasPrimaryKeysDefinedString(Table table) {

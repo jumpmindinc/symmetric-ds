@@ -190,7 +190,7 @@ public class TabularResultLayout extends VerticalLayout {
             for (Grid.Column<List<Object>> col : grid.getColumns()) {
                 String colId = col.getKey();
                 if (colId == null || !colId.equals("#")) {
-                    Integer index = Integer.valueOf(i);
+                    int index = i;
                     TextField field = new TextField();
                     binder.bind(field, list -> list.get(index).toString(), (list, value) -> list.set(index, value));
                     col.setEditorComponent(field);
@@ -739,7 +739,7 @@ public class TabularResultLayout extends VerticalLayout {
                         columnName = realColumnName + "_" + index++;
                     }
                     columnNames.add(columnName);
-                    Integer colNum = Integer.valueOf(columnCounter[0] - 1 - skipColumnIndexes.size());
+                    int colNum = columnCounter[0] - 1 - skipColumnIndexes.size();
                     columnVisibilityToggler.addColumn(grid.addColumn(row -> row.get(colNum)).setKey(columnName)
                             .setHeader(columnName).setPartNameGenerator(row -> {
                                 if (row.get(colNum) == null) {

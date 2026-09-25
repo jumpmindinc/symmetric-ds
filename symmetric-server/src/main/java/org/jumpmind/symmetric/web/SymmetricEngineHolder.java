@@ -58,11 +58,11 @@ import org.jumpmind.symmetric.ApplicationHealthTracker;
 import org.jumpmind.symmetric.IApplicationHealthTracker;
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.ITypedPropertiesFactory;
+import org.jumpmind.symmetric.ServiceRegistry;
 import org.jumpmind.symmetric.SymmetricException;
 import org.jumpmind.symmetric.cache.ClusterPartitionGenerator;
 import org.jumpmind.symmetric.cache.ClusterPeerServerState;
 import org.jumpmind.symmetric.cache.ClusterServerStatusMessage;
-import org.jumpmind.symmetric.cache.ClusteredCacheManager;
 import org.jumpmind.symmetric.cache.ClusteredEngineState;
 import org.jumpmind.symmetric.cache.EngineAndPeerStateMap;
 import org.jumpmind.symmetric.cache.IClusterCacheCoordinator;
@@ -81,6 +81,7 @@ import org.jumpmind.symmetric.model.Router;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IRegistrationService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.symmetric.util.TypedPropertiesFactory;
@@ -167,17 +168,20 @@ public class SymmetricEngineHolder implements ISymmetricEngineHolder {
      * Initialize JCS cluster peer heartbeat and discovery with no database dependency and no engine files. Additional peer servers can be linked later on.
      */
     private IClusteredCacheManager initClusteredCacheManager() {
+        ServiceRegistry serviceRegistry = ServiceRegistry.getInstance();
+        IStartupParameterService startupParameterService = serviceRegistry.getStartupParameterService();
         IClusteredCacheManager ccManager = null;
         boolean isClusterLockingEnabled = false;
         try {
-            ccManager = ClusteredCacheManager.getInstance();
-            String clusterPartitionId = ClusterPartitionGenerator.resolve(coreServerProperties);
+            ccManager = serviceRegistry.getClusteredCacheManager();
+            String clusterPartitionId = ClusterPartitionGenerator.resolve(startupParameterService);
             String serverId = ClusterPartitionGenerator.resolveServerId(coreServerProperties);
             isClusterLockingEnabled = ClusterPartitionGenerator.isClusterLockingEnabled(coreServerProperties);
             log.debug("Resolved cluster settings. clusterPartitionId={}, serverId={}, {}={} (raw property value='{}')", clusterPartitionId, serverId,
                     ParameterConstants.CLUSTER_LOCKING_ENABLED, isClusterLockingEnabled,
                     coreServerProperties.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED));
-            ccManager.initialize(securityService, clusterPartitionId, serverId, isClusterLockingEnabled, this);
+            ccManager.initialize(securityService, clusterPartitionId, serverId, isClusterLockingEnabled, this,
+                    startupParameterService);
             ccManager.broadcastStateToPeers(ClusterPeerServerState.INITIALIZING);
         } catch (Exception ex) {
             if (isClusterLockingEnabled) {

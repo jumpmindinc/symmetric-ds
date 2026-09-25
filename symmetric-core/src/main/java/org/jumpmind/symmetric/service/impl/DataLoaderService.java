@@ -369,9 +369,7 @@ public class DataLoaderService extends AbstractService implements IDataLoaderSer
         } catch (RegistrationRequiredException e) {
             if (StringUtils.isBlank(remote.getSyncUrl())
                     || remote.getSyncUrl().equalsIgnoreCase(parameterService.getRegistrationUrl())) {
-                log.warn("Node information missing on the server.  Attempting to re-register remote.getSyncUrl()={}", remote.getSyncUrl());
-                loadDataFromPull(null, status);
-                nodeService.findIdentity(false);
+                engine.getRegistrationService().reRegisterWithServer("pull from " + remote.getNodeId() + " on queue " + status.getQueue());
             } else {
                 log.warn(
                         "Failed to pull data from node '{}'. It probably is missing a node security record for '{}'.",

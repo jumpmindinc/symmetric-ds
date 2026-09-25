@@ -399,6 +399,10 @@ public abstract class WrapperService {
         ArrayList<String> cmd = new ArrayList<String>();
         String quote = isQuotedArguments ? getWrapperCommandQuote() : "";
         cmd.add(quote + config.getJavaCommand() + quote);
+        if (Platform.isWindows()) {
+            cmd.add("-Xms16m");
+            cmd.add("-Xmx64m");
+        }
         String tmpDir = System.getProperty("java.io.tmpdir");
         if (tmpDir != null && tmpDir.endsWith("\\")) {
             tmpDir = tmpDir.substring(0, tmpDir.length() - 1);

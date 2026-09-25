@@ -375,6 +375,25 @@ class TableTest {
         assertTrue(t.canCreateIndex(indexOnColumns("a"), dbInfo));
     }
 
+    @Test
+    void canCreateIndex_returnsTrue_forNonPersistedGeneratedColumn_whenTargetLacksNonPersistedSupportButSupportsPersistedIndexing() {
+        Table t = new Table("t", generatedColumn("a", false));
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setGeneratedColumnsSupported(true);
+        dbInfo.setNonPersistedGeneratedColumnsSupported(false);
+        dbInfo.setPersistedGeneratedColumnsSupported(true);
+        assertTrue(t.canCreateIndex(indexOnColumns("a"), dbInfo));
+    }
+
+    @Test
+    void canCreateIndex_returnsFalse_forNonPersistedGeneratedColumn_whenTargetLacksNonPersistedSupportAndPersistedIndexing() {
+        Table t = new Table("t", generatedColumn("a", false));
+        DatabaseInfo dbInfo = new DatabaseInfo();
+        dbInfo.setGeneratedColumnsSupported(true);
+        dbInfo.setNonPersistedGeneratedColumnsSupported(false);
+        assertFalse(t.canCreateIndex(indexOnColumns("a"), dbInfo));
+    }
+
     private static IIndex indexOnColumns(String... columnNames) {
         NonUniqueIndex index = new NonUniqueIndex();
         for (String name : columnNames) {

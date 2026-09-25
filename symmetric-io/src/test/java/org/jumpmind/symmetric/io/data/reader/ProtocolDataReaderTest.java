@@ -32,9 +32,9 @@ import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.Batch.BatchType;
 import org.junit.jupiter.api.Test;
 
-public class ProtocolDataReaderTest {
+class ProtocolDataReaderTest {
     @Test
-    public void testSimpleRead() {
+    void testSimpleRead() {
         String nodeId = "055";
         long batchId = 123;
         String channelId = "nbc";
@@ -86,7 +86,7 @@ public class ProtocolDataReaderTest {
     }
 
     @Test
-    public void testTableContextSwitch() {
+    void testTableContextSwitch() {
         String nodeId = "1";
         long batchId = 1;
         String channelId = "test";

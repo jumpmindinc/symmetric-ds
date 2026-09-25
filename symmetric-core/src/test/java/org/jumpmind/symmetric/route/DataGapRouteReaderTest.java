@@ -63,7 +63,7 @@ import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
-public class DataGapRouteReaderTest {
+class DataGapRouteReaderTest {
     final static String ENGINE_NAME = "testengine";
     final static String CHANNEL_ID = "testchannel";
     final static String NODE_ID = "00000";
@@ -79,7 +79,7 @@ public class DataGapRouteReaderTest {
     NodeChannel nodeChannel;
 
     @BeforeEach
-    public void setUp() throws Exception {
+    void setUp() throws Exception {
         sqlTemplate = mock(ISqlTemplate.class);
         dataService = mock(DataService.class);
         parameterService = mock(ParameterService.class);
@@ -123,7 +123,7 @@ public class DataGapRouteReaderTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void testTransactionalOrderingWithGaps() throws Exception {
+    void testTransactionalOrderingWithGaps() throws Exception {
         nodeChannel.setBatchAlgorithm(DefaultBatchAlgorithm.NAME);
         nodeChannel.setMaxDataToRoute(100);
         when(parameterService.getInt(ParameterConstants.ROUTING_PEEK_AHEAD_WINDOW)).thenReturn(2);
@@ -153,7 +153,7 @@ public class DataGapRouteReaderTest {
     }
 
     @Test
-    public void testTransactionalChannelMaxDataToRoute() throws Exception {
+    void testTransactionalChannelMaxDataToRoute() throws Exception {
         nodeChannel.setBatchAlgorithm(TransactionalBatchAlgorithm.NAME);
         nodeChannel.setMaxDataToRoute(3);
         when(parameterService.getInt(ParameterConstants.ROUTING_PEEK_AHEAD_WINDOW)).thenReturn(100);
@@ -184,7 +184,7 @@ public class DataGapRouteReaderTest {
     }
 
     @Test
-    public void testTransactionalChannelTwoTransactionsRouted() throws Exception {
+    void testTransactionalChannelTwoTransactionsRouted() throws Exception {
         nodeChannel.setBatchAlgorithm(TransactionalBatchAlgorithm.NAME);
         nodeChannel.setMaxDataToRoute(100);
         when(parameterService.getInt(ParameterConstants.ROUTING_PEEK_AHEAD_WINDOW)).thenReturn(100);
@@ -215,7 +215,7 @@ public class DataGapRouteReaderTest {
     }
 
     @Test
-    public void testTransactionalChannelReachMaxPeekAheadSizeThreshold() throws Exception {
+    void testTransactionalChannelReachMaxPeekAheadSizeThreshold() throws Exception {
         nodeChannel.setBatchAlgorithm(TransactionalBatchAlgorithm.NAME);
         nodeChannel.setMaxDataToRoute(100);
         when(parameterService.getInt(ParameterConstants.ROUTING_PEEK_AHEAD_WINDOW)).thenReturn(100);
@@ -247,7 +247,7 @@ public class DataGapRouteReaderTest {
     }
 
     @Test
-    public void testDontPeekAheadWhenPeekAheadQueueIsAlreadyFull() throws Exception {
+    void testDontPeekAheadWhenPeekAheadQueueIsAlreadyFull() throws Exception {
         nodeChannel.setBatchAlgorithm(TransactionalBatchAlgorithm.NAME);
         nodeChannel.setMaxDataToRoute(100);
         when(parameterService.getInt(ParameterConstants.ROUTING_PEEK_AHEAD_WINDOW)).thenReturn(5);
@@ -280,7 +280,7 @@ public class DataGapRouteReaderTest {
     }
 
     @Test
-    public void testNonTransactionalChannelMaxDataToRoute() throws Exception {
+    void testNonTransactionalChannelMaxDataToRoute() throws Exception {
         nodeChannel.setBatchAlgorithm(NonTransactionalBatchAlgorithm.NAME);
         nodeChannel.setMaxDataToRoute(3);
         when(parameterService.getInt(ParameterConstants.ROUTING_PEEK_AHEAD_WINDOW)).thenReturn(2);
@@ -311,7 +311,7 @@ public class DataGapRouteReaderTest {
     }
 
     @Test
-    public void testStopReading() throws Exception {
+    void testStopReading() throws Exception {
         nodeChannel.setBatchAlgorithm(DefaultBatchAlgorithm.NAME);
         nodeChannel.setMaxDataToRoute(3);
         when(parameterService.getInt(ParameterConstants.ROUTING_PEEK_AHEAD_WINDOW)).thenReturn(1);

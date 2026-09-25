@@ -34,6 +34,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.common.ServerConstants;
 import org.jumpmind.symmetric.common.SystemConstants;
+import org.jumpmind.symmetric.service.IStartupParameterService;
 import org.jumpmind.util.AppUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,40 +53,11 @@ public class ClusterPartitionGenerator {
     private ClusterPartitionGenerator() {
     }
 
-    public synchronized static String resolve() {
+    public static synchronized String resolve(IStartupParameterService startupParameterService) {
         if (clusterPartitionId == null) {
-            clusterPartitionId = loadOrCreateClusterPartitionId();
+            clusterPartitionId = loadOrCreateClusterPartitionId(startupParameterService);
         }
         return clusterPartitionId;
-    }
-
-    public static String resolve(Properties properties) {
-        String configuredId = properties != null ? properties.getProperty(ServerConstants.CLUSTER_PARTITION_ID) : null;
-        if (StringUtils.isNotBlank(configuredId)) {
-            return StringUtils.left(configuredId, 60);
-        }
-        return resolve();
-    }
-
-    public static String resolveServerId() {
-        String id = System.getProperty(ServerConstants.CLUSTER_SERVER_ID);
-        if (StringUtils.isBlank(id)) {
-            id = System.getenv("SYM_CLUSTER_SERVER_ID");
-        }
-        if (StringUtils.isBlank(id)) {
-            id = System.getProperty("bind.address");
-        }
-        if (StringUtils.isBlank(id)) {
-            id = System.getProperty("jboss.bind.address");
-        }
-        if (StringUtils.isBlank(id)) {
-            try {
-                id = AppUtils.getHostName();
-            } catch (Exception ex) {
-                id = "unknown";
-            }
-        }
-        return StringUtils.left(id, 255);
     }
 
     /** Resolves server ID from properties or hostname. First checks properties for cluster.server.id, falls back to hostname. */
@@ -97,14 +69,34 @@ public class ClusterPartitionGenerator {
         return StringUtils.left(id, 255);
     }
 
+    public static String resolveServerId(IStartupParameterService startupParameterService) {
+        String id = startupParameterService.getGlobalString(ServerConstants.CLUSTER_SERVER_ID);
+        if (StringUtils.isBlank(id)) {
+            // JBoss uses this system property to identify a server in a cluster
+            id = startupParameterService.getGlobalString("bind.address");
+        }
+        if (StringUtils.isBlank(id)) {
+            // JBoss uses this system property to identify a server in a cluster
+            id = startupParameterService.getGlobalString("jboss.bind.address");
+        }
+        if (StringUtils.isBlank(id)) {
+            try {
+                id = AppUtils.getHostName();
+            } catch (Exception ex) {
+                id = "unknown";
+            }
+        }
+        return StringUtils.left(id, 255);
+    }
+
     public static boolean isClusterLockingEnabled(Properties properties) {
         String value = properties != null ? properties.getProperty(ParameterConstants.CLUSTER_LOCKING_ENABLED) : null;
         return Boolean.parseBoolean(value);
     }
 
-    private static String loadOrCreateClusterPartitionId() {
-        File clusterPartitionIdFile = getClusterPartitionIdFile();
-        String configuredId = StringUtils.left(readConfiguredPartitionId(), 60);
+    private static String loadOrCreateClusterPartitionId(IStartupParameterService startupParameterService) {
+        File clusterPartitionIdFile = getClusterPartitionIdFile(startupParameterService);
+        String configuredId = StringUtils.left(readConfiguredPartitionId(startupParameterService), 60);
         if (StringUtils.isNotBlank(configuredId)) {
             writeClusterPartitionId(clusterPartitionIdFile, configuredId);
             return configuredId;
@@ -137,16 +129,12 @@ public class ClusterPartitionGenerator {
         }
     }
 
-    private static String readConfiguredPartitionId() {
-        String id = System.getProperty(ServerConstants.CLUSTER_PARTITION_ID);
-        if (StringUtils.isBlank(id)) {
-            id = System.getenv("SYM_CLUSTER_PARTITION_ID");
-        }
-        return id;
+    private static String readConfiguredPartitionId(IStartupParameterService startupParameterService) {
+        return startupParameterService.getGlobalString(ServerConstants.CLUSTER_PARTITION_ID);
     }
 
-    private static File getClusterPartitionIdFile() {
-        return "true".equals(System.getProperty(SystemConstants.SYSPROP_LAUNCHER))
+    private static File getClusterPartitionIdFile(IStartupParameterService startupParameterService) {
+        return startupParameterService.isGlobal(SystemConstants.SYSPROP_LAUNCHER, false)
                 ? new File(AppUtils.getSymHome() + "/conf/cluster-partition.uuid")
                 : null;
     }

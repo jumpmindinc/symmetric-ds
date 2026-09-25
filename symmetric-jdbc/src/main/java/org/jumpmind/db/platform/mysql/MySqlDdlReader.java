@@ -149,6 +149,7 @@ public class MySqlDdlReader extends AbstractJdbcDdlReader {
             column.setExpressionAsDefaultValue(true);
         } else if (column.getDefaultValue() == null || column.getDefaultValue().equalsIgnoreCase("NULL")) {
             column.setDefaultValue(row.getString("generation_expression"));
+            column.setPersisted(extra.toUpperCase().contains("STORED"));
         }
     }
 

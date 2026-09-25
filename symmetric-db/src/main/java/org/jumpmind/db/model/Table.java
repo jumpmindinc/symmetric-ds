@@ -375,18 +375,30 @@ public class Table extends Relation {
     }
 
     /**
-     * Determines whether an index can be created on this table for the given platform. Generated columns that the platform can't index (either because it
-     * physically stores the value differently than the source, or because it doesn't materialize the value at all) are not indexable there, unless the platform
-     * doesn't support generated columns in the first place, in which case the column is replicated as a plain column and any index is fine.
+     * Determines whether an index can be created on this table for the given platform. The rules, applied in order:
+     * <ol>
+     * <li>If the platform doesn't support generated columns at all, every generated column is replicated as a plain column, so any index is fine.</li>
+     * <li>If the platform doesn't support non-persisted (virtual) generated columns (e.g. PostgreSQL before version 18), a non-persisted source column still
+     * ends up created as persisted there, so it's treated as persisted for the rest of this decision.</li>
+     * <li>An index touching a column that will be persisted needs the platform to support indexing persisted generated columns.</li>
+     * <li>An index touching a column that will stay non-persisted needs the platform to support indexing non-persisted generated columns.</li>
+     * </ol>
      */
     public boolean canCreateIndex(IIndex index, DatabaseInfo databaseInfo) {
         if (!databaseInfo.isGeneratedColumnsSupported()) {
             return true;
         }
-        if (doesIndexContainPersistedGeneratedColumn(index) && !databaseInfo.isPersistedGeneratedColumnsSupported()) {
+        boolean indexHasPersistedGeneratedColumn = doesIndexContainPersistedGeneratedColumn(index);
+        boolean indexHasNonPersistedGeneratedColumn = doesIndexContainNonPersistedGeneratedColumn(index);
+        if (!databaseInfo.isNonPersistedGeneratedColumnsSupported()) {
+            // a non-persisted source column is still created as persisted on this platform, so treat it as persisted here too
+            indexHasPersistedGeneratedColumn = indexHasPersistedGeneratedColumn || indexHasNonPersistedGeneratedColumn;
+            indexHasNonPersistedGeneratedColumn = false;
+        }
+        if (indexHasPersistedGeneratedColumn && !databaseInfo.isPersistedGeneratedColumnsSupported()) {
             return false;
         }
-        return !doesIndexContainNonPersistedGeneratedColumn(index) || databaseInfo.isNonPersistedGeneratedColumnsIndexSupported();
+        return !indexHasNonPersistedGeneratedColumn || databaseInfo.isNonPersistedGeneratedColumnsIndexSupported();
     }
 
     public void sortForeignKeys(final boolean caseSensitive) {

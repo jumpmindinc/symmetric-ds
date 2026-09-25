@@ -96,6 +96,8 @@ public class DatabaseInfo {
     private boolean generatedColumnsSupported = false;
     /** Whether generated columns that physically store their value (e.g. SQL Server PERSISTED) are supported. */
     private boolean persistedGeneratedColumnsSupported = false;
+    /** Whether the platform supports generated columns whose value is computed on read rather than stored (e.g. PostgreSQL 18+ VIRTUAL). */
+    private boolean nonPersistedGeneratedColumnsSupported = true;
     /** Whether an index can be created on a generated column that isn't persisted (e.g. a virtual/non-materialized computed column). */
     private boolean nonPersistedGeneratedColumnsIndexSupported = false;
     /** Whether expressions can be used as default values */
@@ -531,6 +533,25 @@ public class DatabaseInfo {
      */
     public void setPersistedGeneratedColumnsSupported(boolean persistedGeneratedColumnsSupported) {
         this.persistedGeneratedColumnsSupported = persistedGeneratedColumnsSupported;
+    }
+
+    /**
+     * Determines whether the platform supports generated columns whose value is computed on read rather than stored.
+     *
+     * @return <code>true</code> if non-persisted (virtual) generated columns are supported
+     */
+    public boolean isNonPersistedGeneratedColumnsSupported() {
+        return nonPersistedGeneratedColumnsSupported;
+    }
+
+    /**
+     * Specifies whether the platform supports generated columns whose value is computed on read rather than stored.
+     *
+     * @param nonPersistedGeneratedColumnsSupported
+     *            <code>true</code> if non-persisted (virtual) generated columns are supported
+     */
+    public void setNonPersistedGeneratedColumnsSupported(boolean nonPersistedGeneratedColumnsSupported) {
+        this.nonPersistedGeneratedColumnsSupported = nonPersistedGeneratedColumnsSupported;
     }
 
     /**

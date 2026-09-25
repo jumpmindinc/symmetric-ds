@@ -20,10 +20,12 @@
  */
 package org.jumpmind.db.sql;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -122,6 +124,67 @@ public class SqlScriptReaderTest {
         assertEquals("insert into test (col1, col2) ('test', '\n" +
                 "''test'';\n" +
                 "')", nextStatement);
+        assertNull(reader.readSqlStatement());
+        reader.close();
+    }
+
+    @Test
+    void testReadSqlStatement_withTriggersContainJavaFalse_splitsOnDelimiterInsideTriggerBody() throws Exception {
+        SqlScriptReader reader = new SqlScriptReader(new StringReader("CREATE TRIGGER trg1\nBEGIN\n  do_something();\nEND;\n"));
+        assertEquals("CREATE TRIGGER trg1\nBEGIN\n  do_something()", reader.readSqlStatement());
+        assertEquals("END", reader.readSqlStatement());
+        assertNull(reader.readSqlStatement());
+        reader.close();
+    }
+
+    @Test
+    void testReadSqlStatement_withTriggersContainJavaTrue_treatsTriggerBodyAsSingleStatement() throws Exception {
+        SqlScriptReader reader = new SqlScriptReader(new StringReader("CREATE TRIGGER trg1\nBEGIN\n  do_something();\nEND;\n"), true);
+        assertEquals("CREATE TRIGGER trg1\nBEGIN\n  do_something();\nEND", reader.readSqlStatement());
+        assertNull(reader.readSqlStatement());
+        reader.close();
+    }
+
+    @Test
+    void testReadSqlStatement_withCustomDelimiter_splitsOnCustomDelimiterInsteadOfSemicolon() throws Exception {
+        SqlScriptReader reader = new SqlScriptReader(new StringReader("select 1 GO\nselect 2 GO\n"));
+        reader.setDelimiter("GO");
+        assertEquals("select 1", reader.readSqlStatement());
+        assertEquals("select 2", reader.readSqlStatement());
+        assertNull(reader.readSqlStatement());
+        reader.close();
+    }
+
+    @Test
+    void testReadSqlStatement_withReplacementTokensNoPrefixSuffix_replacesRawTokenText() throws Exception {
+        SqlScriptReader reader = new SqlScriptReader(new StringReader("select * from FOO;"));
+        reader.setReplacementTokens(Map.of("FOO", "bar"));
+        assertEquals("select * from bar", reader.readSqlStatement());
+        reader.close();
+    }
+
+    @Test
+    void testReadSqlStatement_withReplacementTokensUsingPrefixSuffix_replacesDollarParenTokens() throws Exception {
+        SqlScriptReader reader = new SqlScriptReader(new StringReader("select * from $(FOO);"));
+        reader.setUsePrefixSuffixForReplacementTokens(true);
+        reader.setReplacementTokens(Map.of("FOO", "bar"));
+        assertEquals("select * from bar", reader.readSqlStatement());
+        reader.close();
+    }
+
+    @Test
+    void testReadSqlStatement_skipsBlankStatementBetweenDelimiters() throws Exception {
+        SqlScriptReader reader = new SqlScriptReader(new StringReader("-- just a comment\n;\nselect 1;\n"));
+        assertEquals("select 1;", reader.readSqlStatement());
+        assertNull(reader.readSqlStatement());
+        reader.close();
+    }
+
+    @Test
+    void testReadSqlStatement_atEndOfFileWithoutTrailingDelimiter_returnsFinalStatement() throws Exception {
+        SqlScriptReader reader = new SqlScriptReader(new StringReader("select 1;\nselect 2"));
+        assertEquals("select 1", reader.readSqlStatement());
+        assertEquals("select 2", reader.readSqlStatement());
         assertNull(reader.readSqlStatement());
         reader.close();
     }

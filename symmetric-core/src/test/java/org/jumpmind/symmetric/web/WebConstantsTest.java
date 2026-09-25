@@ -50,4 +50,44 @@ class WebConstantsTest {
     void getHttpMessage_unknownCode_returnsNull() {
         assertNull(WebConstants.getHttpMessage(999));
     }
+
+    @Test
+    void testGetHttpMessage_registrationNotOpen() {
+        assertEquals("Registration is not open", WebConstants.getHttpMessage(WebConstants.REGISTRATION_NOT_OPEN));
+    }
+
+    @Test
+    void testGetHttpMessage_registrationRequired() {
+        assertEquals("Registration is required", WebConstants.getHttpMessage(WebConstants.REGISTRATION_REQUIRED));
+    }
+
+    @Test
+    void testGetHttpMessage_registrationPending() {
+        assertEquals("Registration is pending", WebConstants.getHttpMessage(WebConstants.REGISTRATION_PENDING));
+    }
+
+    @Test
+    void testGetHttpMessage_initialLoadPending() {
+        assertEquals("Initial load is pending", WebConstants.getHttpMessage(WebConstants.INITIAL_LOAD_PENDING));
+    }
+
+    @Test
+    void testGetHttpMessage_syncDisabled() {
+        assertEquals("Sync is disabled", WebConstants.getHttpMessage(WebConstants.SYNC_DISABLED));
+    }
+
+    @Test
+    void testGetHttpMessage_forbidden() {
+        assertEquals("Bad node password", WebConstants.getHttpMessage(WebConstants.SC_FORBIDDEN));
+    }
+
+    @Test
+    void testGetHttpMessage_authExpired() {
+        assertEquals("Session expired", WebConstants.getHttpMessage(WebConstants.SC_AUTH_EXPIRED));
+    }
+
+    @Test
+    void testGetHttpMessage_serviceUnavailable() {
+        assertEquals("Service is unavailable", WebConstants.getHttpMessage(WebConstants.SC_SERVICE_UNAVAILABLE));
+    }
 }

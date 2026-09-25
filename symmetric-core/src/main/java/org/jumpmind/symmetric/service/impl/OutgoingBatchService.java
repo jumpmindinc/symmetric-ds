@@ -592,8 +592,8 @@ public class OutgoingBatchService extends AbstractService implements IOutgoingBa
         if (!rows.isEmpty()) {
             Row row = rows.get(0);
             for (String key : row.keySet()) {
-                Long count = row.getLong(key);
-                result.put(key.toLowerCase(), count == null ? 0 : count);
+                long count = row.getLong(key);
+                result.put(key.toLowerCase(), count);
             }
         }
         return result;

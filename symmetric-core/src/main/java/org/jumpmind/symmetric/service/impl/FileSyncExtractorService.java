@@ -118,8 +118,7 @@ public class FileSyncExtractorService extends DataExtractorService {
                 log.info("Extracting file sync batch {} to resource '{}'", outgoingBatch.getNodeBatchId(), stagedResource);
                 long maxBytesToSync = parameterService.getLong(ParameterConstants.TRANSPORT_MAX_BYTES_TO_SYNC);
                 int compressionLevel = parameterService.getInt(ParameterConstants.FILE_SYNC_COMPRESSION_LEVEL);
-                FileSyncZipDataWriter fileSyncWriter = new FileSyncZipDataWriter(maxBytesToSync, compressionLevel, fileSyncService,
-                        nodeService, stagedResource, extensionService, configurationService) {
+                FileSyncZipDataWriter fileSyncWriter = new FileSyncZipDataWriter(maxBytesToSync, compressionLevel, stagedResource, engine) {
                     @Override
                     public void close() {
                         super.finish();

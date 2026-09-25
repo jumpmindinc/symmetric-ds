@@ -1,6 +1,8 @@
 package org.jumpmind.db.platform.mysql;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import java.sql.ResultSet;
@@ -13,7 +15,6 @@ import org.jumpmind.db.mock.MockDbUtils;
 import org.jumpmind.db.model.Column;
 import org.jumpmind.db.model.Table;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -143,5 +144,38 @@ public class MySqlDdlReaderTest extends MySqlDdlReader {
         assertEquals(true, testColumn.isAutoIncrement());
         assertEquals(columnName, testColumn.getName());
         assertEquals(true, testColumn.isRequired());
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "total, STORED GENERATED, int, a + b", })
+    void testDetermineExtraColumnInfo_StoredGenerated_MarksColumnPersisted(String columnName, String extra, String columnType, String generationExpression)
+            throws Exception {
+        MockDbDataSource mockDataSource = new MockDbDataSource(MySqlDatabasePlatform_VERSION8);
+        MySqlDdlReader testReader = createMySqlDdlReader(mockDataSource);
+        Column testColumn = MockDbMySqlUtils.generateMySqlColumn(columnName, null, columnType,
+                Types.INTEGER, "0", "integer", 0, columnType, true, false, false);
+        Table testTable = MockDbUtils.generateOneColumnTable(testColumn, null);
+        ResultSet mockResultSet = MockDbMySqlUtils.buildTableLookup1ColumnInformation(columnName, extra, columnType, generationExpression);
+        mockDataSource.enqueuePreparedStatement(MockDbMySqlUtils.QUERY_TABLE_COLUMN_INFO, mockResultSet, 1);
+        assertEquals(false, testColumn.isPersisted());
+        testReader.determineExtraColumnInfo(testTable);
+        assertTrue(testColumn.isPersisted());
+        assertEquals(generationExpression, testColumn.getDefaultValue());
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "total, VIRTUAL GENERATED, int, a + b", })
+    void testDetermineExtraColumnInfo_VirtualGenerated_LeavesColumnNotPersisted(String columnName, String extra, String columnType,
+            String generationExpression) throws Exception {
+        MockDbDataSource mockDataSource = new MockDbDataSource(MySqlDatabasePlatform_VERSION8);
+        MySqlDdlReader testReader = createMySqlDdlReader(mockDataSource);
+        Column testColumn = MockDbMySqlUtils.generateMySqlColumn(columnName, null, columnType,
+                Types.INTEGER, "0", "integer", 0, columnType, true, false, false);
+        Table testTable = MockDbUtils.generateOneColumnTable(testColumn, null);
+        ResultSet mockResultSet = MockDbMySqlUtils.buildTableLookup1ColumnInformation(columnName, extra, columnType, generationExpression);
+        mockDataSource.enqueuePreparedStatement(MockDbMySqlUtils.QUERY_TABLE_COLUMN_INFO, mockResultSet, 1);
+        testReader.determineExtraColumnInfo(testTable);
+        assertFalse(testColumn.isPersisted());
+        assertEquals(generationExpression, testColumn.getDefaultValue());
     }
 }
