@@ -377,6 +377,7 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
         batches.filterSuspendedBatches(suspendIgnoreChannelsList);
         duration = System.currentTimeMillis() - ts;
         logQueryDuration("Filter suspended batches took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
+<<<<<<< HEAD
         // Defer non-load batches because an initial load has higher priority in maintaining data integrity.
         if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true)
                 && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
@@ -384,20 +385,37 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 if (!(parameterService.is(ParameterConstants.INITIAL_LOAD_UNBLOCK_CHANNELS_ON_ERROR, true) && batches.containsBatchesInError())) {
                     batches.removeNonLoadBatches();
                     log.info("Deferring non-load batches from queue {} for target node {} because a load is active", queue, targetNode);
+=======
+        // Remove non-load batches so that an initial load finishes before
+        // any other batches are loaded.
+        if (parameterService.is(ParameterConstants.INITIAL_LOAD_BLOCK_CHANNELS, true) && !Constants.QUEUE_RELOAD.equals(QueueThread.getQueueName(queue))) {
+            if (batches.containsLoadBatches()) {
+                if (!(parameterService.is(ParameterConstants.INITIAL_LOAD_UNBLOCK_CHANNELS_ON_ERROR, true) && batches.containsBatchesInError())) {
+                    batches.removeNonLoadBatches();
+                    log.info("Pausing non-load batches from queue {} for target node {} because a load is active", queue, targetNode);
+>>>>>>> 5dac40e732 (SYM-8099: Revert-Skip reservation process, when filtered list of batches is empty (release/3.17) (#1146))
                 }
             } else {
                 NodeSecurity nodeSecurity = nodeService.findNodeSecurity(targetNode.getNodeId(), true);
                 if (nodeSecurity != null) {
                     ts = System.currentTimeMillis();
                     long loadId = 0;
+<<<<<<< HEAD
                     List<TableReloadStatus> targetNodeLoadStatuses = dataService.getActiveOutgoingTableReloadStatusByTargetNodeId(targetNode.getNodeId());
                     if (!targetNodeLoadStatuses.isEmpty()) {
                         loadId = targetNodeLoadStatuses.get(0).getLoadId();
+=======
+                    List<TableReloadStatus> l = dataService.getActiveOutgoingTableReloadStatusByTargetNodeId(targetNode.getNodeId());
+                    for (TableReloadStatus status : l) {
+                        loadId = status.getLoadId();
+                        break;
+>>>>>>> 5dac40e732 (SYM-8099: Revert-Skip reservation process, when filtered list of batches is empty (release/3.17) (#1146))
                     }
                     duration = System.currentTimeMillis() - ts;
                     logQueryDuration("Get active reload status took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
                     if (loadId != 0) {
                         ts = System.currentTimeMillis();
+<<<<<<< HEAD
                         TableReloadStatus loadStatus = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(loadId, engine.getNodeId());
                         duration = System.currentTimeMillis() - ts;
                         logQueryDuration("Get table reload status by load and source node took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
@@ -405,6 +423,15 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                             batches.removeNonLoadBatches();
                             log.info("Deferring non-load batches from queue {} for target node {} because load ID {} is active", queue, targetNode,
                                     loadStatus.getLoadId());
+=======
+                        TableReloadStatus status = dataService.getTableReloadStatusByLoadIdAndSourceNodeId(loadId, engine.getNodeId());
+                        duration = System.currentTimeMillis() - ts;
+                        logQueryDuration("Get table reload status by load and source node took {} ms", duration, DataExtractorService.MAX_DURATION_FOR_QUERY);
+                        if (status != null && status.getDataBatchLoaded() < status.getDataBatchCount()) {
+                            batches.removeNonLoadBatches();
+                            log.info("Pausing non-load batches from queue {} for target node {} because load ID {} is active", queue, targetNode,
+                                    status.getLoadId());
+>>>>>>> 5dac40e732 (SYM-8099: Revert-Skip reservation process, when filtered list of batches is empty (release/3.17) (#1146))
                         }
                     }
                 }

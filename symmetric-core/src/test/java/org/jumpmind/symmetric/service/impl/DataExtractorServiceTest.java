@@ -20,6 +20,7 @@
  */
 package org.jumpmind.symmetric.service.impl;
 
+<<<<<<< HEAD
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,10 +28,15 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+=======
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+>>>>>>> 5dac40e732 (SYM-8099: Revert-Skip reservation process, when filtered list of batches is empty (release/3.17) (#1146))
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+<<<<<<< HEAD
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -52,14 +58,24 @@ import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlReadCursor;
 import org.jumpmind.db.sql.ISqlTemplate;
 import org.jumpmind.db.sql.ISqlTransaction;
+=======
+import static org.mockito.Mockito.when;
+
+import java.util.Date;
+
+import org.jumpmind.db.platform.IDatabasePlatform;
+import org.jumpmind.db.sql.ISqlReadCursor;
+>>>>>>> 5dac40e732 (SYM-8099: Revert-Skip reservation process, when filtered list of batches is empty (release/3.17) (#1146))
 import org.jumpmind.symmetric.ISymmetricEngine;
-import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.extract.SelectFromSymDataSource;
 import org.jumpmind.symmetric.io.data.DataEventType;
+<<<<<<< HEAD
 import org.jumpmind.symmetric.io.data.IDataWriter;
 import org.jumpmind.symmetric.io.stage.IStagingManager;
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
+=======
+>>>>>>> 5dac40e732 (SYM-8099: Revert-Skip reservation process, when filtered list of batches is empty (release/3.17) (#1146))
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.ExtractRequest;
 import org.jumpmind.symmetric.model.Node;
@@ -70,6 +86,7 @@ import org.jumpmind.symmetric.model.TableReloadRequest;
 import org.jumpmind.symmetric.model.TableReloadStatus;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.route.AbstractFileParsingRouter;
+<<<<<<< HEAD
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataService;
@@ -111,6 +128,14 @@ class DataExtractorServiceTest {
             return Collections.emptyList();
         }
     }
+=======
+import org.jumpmind.symmetric.service.IDataService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+public class DataExtractorServiceTest {
+    protected ISymmetricEngine engine;
+>>>>>>> 5dac40e732 (SYM-8099: Revert-Skip reservation process, when filtered list of batches is empty (release/3.17) (#1146))
 
     @BeforeEach
     void setUp() {
@@ -120,15 +145,13 @@ class DataExtractorServiceTest {
         TriggerRouterService triggerRouterService = mock(TriggerRouterService.class);
         when(triggerRouterService.getTriggerRoutersByTriggerHist("target", false)).thenReturn(null);
         when(engine.getTriggerRouterService()).thenReturn(triggerRouterService);
-        parameterService = mock(IParameterService.class);
-        when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(engine.getParameterService()).thenReturn(parameterService);
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         when(symmetricDialect.getName()).thenReturn("H2");
         when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         when(platform.supportsParametersInSelect()).thenReturn(true);
         when(engine.getDatabasePlatform()).thenReturn(platform);
+<<<<<<< HEAD
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(symmetricDialect.getSqlReplacementTokens()).thenReturn(new HashMap<String, String>());
         sqlTemplate = mock(ISqlTemplate.class);
@@ -146,6 +169,10 @@ class DataExtractorServiceTest {
         createTableLoad.setCreateTable(true);
         when(dataService.getTableReloadRequest(anyLong())).thenReturn(createTableLoad);
         when(sqlTemplateDirty.queryForLong(any(), any(), any())).thenReturn(0L);
+=======
+        IDataService dataService = mock(IDataService.class);
+        when(engine.getDataService()).thenReturn(dataService);
+>>>>>>> 5dac40e732 (SYM-8099: Revert-Skip reservation process, when filtered list of batches is empty (release/3.17) (#1146))
     }
 
     @Test
@@ -160,6 +187,7 @@ class DataExtractorServiceTest {
         SelectFromSymDataSource source = new SelectFromSymDataSource(engine, new OutgoingBatch(), new Node(), new Node(), new ProcessInfo(), false);
         assertTrue(source.next().equals(data));
     }
+<<<<<<< HEAD
 
     @Test
     void checkSendDeferredForeignKeys_deferConstraintsDisabled_neverSends() {
@@ -349,4 +377,6 @@ class DataExtractorServiceTest {
         when(engine.getInitialLoadService()).thenReturn(testInitialLoadService);
         return new DataExtractorService(engine);
     }
+=======
+>>>>>>> 5dac40e732 (SYM-8099: Revert-Skip reservation process, when filtered list of batches is empty (release/3.17) (#1146))
 }
