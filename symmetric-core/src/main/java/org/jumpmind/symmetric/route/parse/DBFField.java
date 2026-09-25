@@ -144,9 +144,8 @@ public class DBFField {
             if (obj == null) {
                 obj = Boolean.valueOf(false);
             }
-            if (obj instanceof Boolean) {
-                Boolean boolean1 = (Boolean) obj;
-                return boolean1.booleanValue() ? "Y" : "N";
+            if (obj instanceof Boolean flag) {
+                return flag ? "Y" : "N";
             } else {
                 throw new DBFException("Expected a Boolean, got " + obj.getClass() + ".");
             }
