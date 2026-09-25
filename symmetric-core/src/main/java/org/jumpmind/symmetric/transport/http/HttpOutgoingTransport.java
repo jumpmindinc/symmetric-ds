@@ -318,6 +318,11 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
         return suspendIgnoreChannelsList;
     }
 
+    @Override
+    public boolean isReservationRequired() {
+        return true;
+    }
+
     public HttpConnection getConnection() {
         return connection;
     }

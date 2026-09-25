@@ -508,20 +508,15 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
             log.debug("No batches to extract for targetNode={}", targetNode.getNodeId());
             return Collections.emptyList();
         }
-        List<OutgoingBatch> activeBatches = filterBatchesForExtraction(batches, configurationService.getSuspendIgnoreChannelLists(), queue, targetNode);
-        if (activeBatches.isEmpty()) {
-            log.debug("The local suspend and ignore list left no batches to extract for targetNode={}", targetNode.getNodeId());
-            return Collections.emptyList();
+        List<OutgoingBatch> activeBatches;
+        if (transport.isReservationRequired()) {
+            activeBatches = filterBatchesBeforeAndAfterReservation(batches, queue, targetNode, transport);
+        } else {
+            activeBatches = filterBatchesForExtraction(batches, transport.getSuspendIgnoreChannelLists(configurationService, queue, targetNode), queue,
+                    targetNode);
         }
-        /*
-         * The remote list of channels to suspend and batches to ignore arrives via a transport connection reservation, so the reservation is only requested if
-         * the local filter returned something to send. Asking earlier would abandon a reservation on the target whenever the local list empties the batches.
-         */
-        NodeChannels nodeChannels = transport.getSuspendIgnoreChannelLists(configurationService, queue, targetNode);
-        filterSuspendedAndIgnoredBatches(batches, nodeChannels);
-        activeBatches = batches.getBatches();
         if (activeBatches.isEmpty()) {
-            log.debug("The suspend and ignore list from the target left no batches to extract for targetNode={}", targetNode.getNodeId());
+            log.debug("The suspend and ignore lists left no batches to extract for targetNode={}", targetNode.getNodeId());
             return Collections.emptyList();
         }
         BufferedWriter writer = transport.openWriter();
@@ -529,6 +524,15 @@ public class DataExtractorService extends AbstractService implements IDataExtrac
                 writer, targetNode.requires13Compatiblity(), targetNode.allowCaptureTimeInProtocol(),
                 parameterService.is(ParameterConstants.EXTRACT_ROW_CAPTURE_TIME, true));
         return extract(extractInfo, targetNode, activeBatches, dataWriter, writer, ExtractMode.FOR_SYM_CLIENT);
+    }
+
+    private List<OutgoingBatch> filterBatchesBeforeAndAfterReservation(OutgoingBatches batches, String queue, Node targetNode,
+            IOutgoingTransport transport) {
+        if (filterBatchesForExtraction(batches, configurationService.getSuspendIgnoreChannelLists(), queue, targetNode).isEmpty()) {
+            return Collections.emptyList();
+        }
+        filterSuspendedAndIgnoredBatches(batches, transport.getSuspendIgnoreChannelLists(configurationService, queue, targetNode));
+        return batches.getBatches();
     }
 
     protected OutgoingBatches loadPendingBatches(ProcessInfo extractInfo, Node targetNode, String queue, IOutgoingTransport transport) {

@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlReadCursor;
@@ -70,6 +71,8 @@ import org.jumpmind.symmetric.service.impl.DataExtractorService.ExtractMode;
 import org.jumpmind.symmetric.transport.IOutgoingTransport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class DataExtractorServiceTest {
     private static final String EXTRACT_TARGET_NODE_ID = "target1";
@@ -154,7 +157,7 @@ public class DataExtractorServiceTest {
 
     @Test
     void extract_localSuspendListRemovesEveryBatch_neverAsksTransportForReservation() {
-        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        IOutgoingTransport transport = reservingTransport();
         service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
         when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(suspending(EXTRACT_CHANNEL));
         List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
@@ -165,7 +168,7 @@ public class DataExtractorServiceTest {
 
     @Test
     void extract_noPendingBatches_neverAsksTransportForReservation() {
-        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        IOutgoingTransport transport = reservingTransport();
         service.pendingBatches = new OutgoingBatches(new ArrayList<OutgoingBatch>());
         List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
         assertTrue(extracted.isEmpty(), "nothing should be extracted when there are no pending batches");
@@ -174,7 +177,7 @@ public class DataExtractorServiceTest {
 
     @Test
     void extract_localIgnoreListRemovesEveryBatch_marksBatchIgnoredWithoutReservation() {
-        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        IOutgoingTransport transport = reservingTransport();
         OutgoingBatch batch = new OutgoingBatch(EXTRACT_TARGET_NODE_ID, EXTRACT_CHANNEL, Status.NE);
         service.pendingBatches = new OutgoingBatches(new ArrayList<OutgoingBatch>(Collections.singletonList(batch)));
         when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(ignoring(EXTRACT_CHANNEL));
@@ -187,7 +190,7 @@ public class DataExtractorServiceTest {
 
     @Test
     void extract_remoteSuspendListRemovesEveryBatch_takesReservationButWritesNothing() {
-        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        IOutgoingTransport transport = reservingTransport();
         service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
         when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(suspending(EXTRACT_CHANNEL));
         List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
@@ -198,7 +201,7 @@ public class DataExtractorServiceTest {
 
     @Test
     void extract_batchesSurviveBothFilters_takesReservationAndExtracts() {
-        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        IOutgoingTransport transport = reservingTransport();
         service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
         when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(new NodeChannels());
         when(transport.openWriter()).thenReturn(new BufferedWriter(new StringWriter()));
@@ -207,6 +210,109 @@ public class DataExtractorServiceTest {
         assertEquals(1, service.batchesHandedToExtract.size(), "the surviving batch should be handed to the extractor");
         verify(transport).getSuspendIgnoreChannelLists(any(), any(), any());
         verify(transport).openWriter();
+    }
+
+    @Test
+    void extract_withoutReservation_remoteIgnoreWinsOverLocalSuspend_marksBatchIgnored() {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        OutgoingBatch batch = new OutgoingBatch(EXTRACT_TARGET_NODE_ID, EXTRACT_CHANNEL, Status.NE);
+        service.pendingBatches = new OutgoingBatches(new ArrayList<OutgoingBatch>(Collections.singletonList(batch)));
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(suspending(EXTRACT_CHANNEL));
+        NodeChannels combinedChannels = suspending(EXTRACT_CHANNEL);
+        combinedChannels.addIgnoreChannels(EXTRACT_TARGET_NODE_ID, EXTRACT_CHANNEL);
+        when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(combinedChannels);
+        List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertTrue(extracted.isEmpty(), "an ignored batch should not be extracted");
+        assertEquals(Status.OK, batch.getStatus(), "the remote ignore should complete the batch even though the local list suspends the channel");
+        assertEquals(1, batch.getIgnoreCount(), "the ignore count should be incremented once");
+        verify(outgoingBatchService).updateOutgoingBatches(anyList());
+        verify(transport, never()).openWriter();
+    }
+
+    @Test
+    void extract_withoutReservation_suspendListRemovesEveryBatch_leavesBatchPending() {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        OutgoingBatch batch = new OutgoingBatch(EXTRACT_TARGET_NODE_ID, EXTRACT_CHANNEL, Status.NE);
+        service.pendingBatches = new OutgoingBatches(new ArrayList<OutgoingBatch>(Collections.singletonList(batch)));
+        when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(suspending(EXTRACT_CHANNEL));
+        List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertTrue(extracted.isEmpty(), "a suspended batch should not be extracted");
+        assertEquals(Status.NE, batch.getStatus(), "a suspended batch should stay pending");
+        verify(configurationService, never()).getSuspendIgnoreChannelLists();
+        verify(transport, never()).openWriter();
+    }
+
+    @Test
+    void extract_withoutReservation_batchesSurviveFilter_extracts() {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
+        when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(new NodeChannels());
+        when(transport.openWriter()).thenReturn(new BufferedWriter(new StringWriter()));
+        List<OutgoingBatch> extracted = service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertEquals(1, extracted.size(), "the surviving batch should be extracted");
+        verify(transport).getSuspendIgnoreChannelLists(any(), any(), any());
+        verify(transport).openWriter();
+    }
+
+    static Stream<Status> pendingStatuses() {
+        return Stream.of(Status.RQ, Status.NE, Status.QY, Status.SE, Status.LD, Status.ER, Status.IG, Status.RS);
+    }
+
+    @ParameterizedTest
+    @MethodSource("pendingStatuses")
+    void extract_withReservation_localIgnoreList_marksBatchOkWhateverItsStatus(Status status) {
+        IOutgoingTransport transport = reservingTransport();
+        OutgoingBatch batch = pendingBatchIn(status);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(ignoring(EXTRACT_CHANNEL));
+        service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertEquals(Status.OK, batch.getStatus());
+        assertEquals(1, batch.getIgnoreCount());
+    }
+
+    @ParameterizedTest
+    @MethodSource("pendingStatuses")
+    void extract_withReservation_localSuspendList_leavesStatusUnchanged(Status status) {
+        IOutgoingTransport transport = reservingTransport();
+        OutgoingBatch batch = pendingBatchIn(status);
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(suspending(EXTRACT_CHANNEL));
+        service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertEquals(status, batch.getStatus());
+        assertEquals(0, batch.getIgnoreCount());
+    }
+
+    @ParameterizedTest
+    @MethodSource("pendingStatuses")
+    void extract_withReservation_remoteIgnoreList_marksBatchOkWhateverItsStatus(Status status) {
+        IOutgoingTransport transport = reservingTransport();
+        OutgoingBatch batch = pendingBatchIn(status);
+        when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(ignoring(EXTRACT_CHANNEL));
+        service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertEquals(Status.OK, batch.getStatus());
+        assertEquals(1, batch.getIgnoreCount());
+    }
+
+    @ParameterizedTest
+    @MethodSource("pendingStatuses")
+    void extract_withoutReservation_ignoreWinsOverSuspend_marksBatchOkWhateverItsStatus(Status status) {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        OutgoingBatch batch = pendingBatchIn(status);
+        NodeChannels combinedChannels = suspending(EXTRACT_CHANNEL);
+        combinedChannels.addIgnoreChannels(EXTRACT_TARGET_NODE_ID, EXTRACT_CHANNEL);
+        when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(combinedChannels);
+        service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertEquals(Status.OK, batch.getStatus());
+        assertEquals(1, batch.getIgnoreCount());
+    }
+
+    @ParameterizedTest
+    @MethodSource("pendingStatuses")
+    void extract_withoutReservation_suspendList_leavesStatusUnchanged(Status status) {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        OutgoingBatch batch = pendingBatchIn(status);
+        when(transport.getSuspendIgnoreChannelLists(any(), any(), any())).thenReturn(suspending(EXTRACT_CHANNEL));
+        service.extract(new ProcessInfo(), extractTarget(), EXTRACT_QUEUE, transport);
+        assertEquals(status, batch.getStatus());
+        assertEquals(0, batch.getIgnoreCount());
     }
 
     @Test
@@ -306,6 +412,18 @@ public class DataExtractorServiceTest {
     void filterSuspendedAndIgnoredBatches_thereAreNoBatches_returnsNoRemovedBatches() {
         OutgoingBatches batches = new OutgoingBatches(new ArrayList<OutgoingBatch>());
         assertTrue(service.filterSuspendedAndIgnoredBatches(batches, ignoring(EXTRACT_CHANNEL)).isEmpty(), "an empty batch list should remove nothing");
+    }
+
+    private IOutgoingTransport reservingTransport() {
+        IOutgoingTransport transport = mock(IOutgoingTransport.class);
+        when(transport.isReservationRequired()).thenReturn(true);
+        return transport;
+    }
+
+    private OutgoingBatch pendingBatchIn(Status status) {
+        OutgoingBatch batch = new OutgoingBatch(EXTRACT_TARGET_NODE_ID, EXTRACT_CHANNEL, status);
+        service.pendingBatches = new OutgoingBatches(new ArrayList<OutgoingBatch>(Collections.singletonList(batch)));
+        return batch;
     }
 
     private Node extractTarget() {
