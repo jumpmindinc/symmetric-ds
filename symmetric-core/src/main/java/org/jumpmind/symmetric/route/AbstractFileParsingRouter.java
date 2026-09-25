@@ -113,7 +113,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
                     }
                     for (Map.Entry<Integer, String> tableEntry : tableNames.entrySet()) {
                         String contextId = filePath + "[" + tableEntry.getValue() + "]";
-                        Integer lineNumber = 0;
+                        int lineNumber = 0;
                         if (options.isTailFile()) {
                             lineNumber = contextService.getInt(contextId, 0);
                         }
@@ -133,7 +133,7 @@ public abstract class AbstractFileParsingRouter extends AbstractDataRouter {
                         if (!dataRows.isEmpty()) {
                             lineNumber += dataRows.size();
                             if (options.isTailFile()) {
-                                contextService.save(contextId, lineNumber.toString());
+                                contextService.save(contextId, Integer.toString(lineNumber));
                             }
                             if ((tableNames.size() - 1) == tableIndex) {
                                 deleteFileIfNecessary(dataMetaData);

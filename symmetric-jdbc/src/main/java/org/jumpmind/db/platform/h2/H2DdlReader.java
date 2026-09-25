@@ -134,21 +134,21 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
         if (values.get("CHARACTER_MAXIMUM_LENGTH") != null) {
             String maxLength = (String) values.get("CHARACTER_MAXIMUM_LENGTH");
             if (isNotBlank(maxLength)) {
-                Integer size = Integer.valueOf(maxLength);
-                if (!isVersion2 && size.intValue() == Integer.MAX_VALUE && column.getMappedTypeCode() == Types.VARCHAR) {
+                int size = Integer.parseInt(maxLength);
+                if (!isVersion2 && size == Integer.MAX_VALUE && column.getMappedTypeCode() == Types.VARCHAR) {
                     column.setMappedTypeCode(Types.LONGVARCHAR);
                     column.setMappedType("LONGVARCHAR");
                     column.findPlatformColumn(platform.getName()).setType("LONGVARCHAR");
                 }
-                column.setSize(size.toString());
+                column.setSize(Integer.toString(size));
                 column.findPlatformColumn(platform.getName()).setSize(size);
             }
         }
         if (values.get("COLUMN_SIZE") != null) {
             String maxLength = (String) values.get("COLUMN_SIZE");
             if (isNotBlank(maxLength)) {
-                Integer size = Integer.valueOf(maxLength);
-                if (isVersion2 && size.intValue() == 1000000000) {
+                int size = Integer.parseInt(maxLength);
+                if (isVersion2 && size == 1000000000) {
                     if (column.getMappedTypeCode() == Types.VARCHAR || column.getMappedTypeCode() == Types.VARBINARY) {
                         if (column.getMappedTypeCode() == Types.VARCHAR) {
                             column.setMappedTypeCode(Types.LONGVARCHAR);
@@ -159,7 +159,7 @@ public class H2DdlReader extends AbstractJdbcDdlReader {
                             column.setMappedType("LONGVARBINARY");
                             column.findPlatformColumn(platform.getName()).setType("LONGVARBINARY");
                         }
-                        column.setSize(size.toString());
+                        column.setSize(Integer.toString(size));
                         column.findPlatformColumn(platform.getName()).setSize(size);
                     }
                 }

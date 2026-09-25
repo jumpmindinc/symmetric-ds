@@ -68,7 +68,7 @@ public class MathColumnTransform implements ISingleNewAndOldValueColumnTransform
             // JEval always returns a double with at least one decimal place.
             // Truncate the decimal place if not needed so the number can be inserted into an integer column.
             String result = eval.evaluate(transformExpression);
-            Double dblResult = Double.valueOf(result);
+            double dblResult = Double.parseDouble(result);
             if (result.contains("E")) {
                 DecimalFormat format = new DecimalFormat("#");
                 format.setMaximumFractionDigits(340);
