@@ -22,6 +22,7 @@ package org.jumpmind.db.platform.hsqldb;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -211,7 +212,7 @@ class HsqlDbDdlBuilderTest {
         StringBuilder ddl = new StringBuilder();
         ddlBuilder.processChange(currentModel, currentModel, change, ddl);
         Table updatedTable = currentModel.findTable("TEST_TABLE", false);
-        assertTrue(updatedTable.findColumn("NEW_COL", false) != null);
+        assertNotNull(updatedTable.findColumn("NEW_COL", false));
     }
 
     @Test
