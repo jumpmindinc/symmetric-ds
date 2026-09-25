@@ -407,7 +407,7 @@ public class DefaultDatabaseWriterConflictResolver extends AbstractDatabaseWrite
         } else {
             Map<String, String> newData = data.toColumnNameValuePairs(sourceTable.getColumnNames(),
                     CsvData.ROW_DATA);
-            Long loadingVersion = Long.valueOf(newData.get(columnName));
+            long loadingVersion = Long.parseLong(newData.get(columnName));
             return loadingVersion > existingVersion;
         }
     }
