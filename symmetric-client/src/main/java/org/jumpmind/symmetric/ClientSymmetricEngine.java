@@ -79,11 +79,8 @@ import org.jumpmind.symmetric.util.PropertiesUtil;
 import org.jumpmind.symmetric.util.SnapshotUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.util.AppUtils;
-<<<<<<< HEAD
 import org.jumpmind.util.FormatUtils;
-=======
 import org.jumpmind.db.util.IPooledDataSource;
->>>>>>> 3a4b4e8e1b (SYM-8067: Log effective DB connection pool size at startup and warn when concurrent workers exceed it (#1131))
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
