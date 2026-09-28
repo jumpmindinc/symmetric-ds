@@ -20,19 +20,23 @@
  */
 package org.jumpmind.symmetric.file;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.io.File;
 import org.junit.jupiter.api.Test;
 
-public class FileSyncUtilsTest {
+class FileSyncUtilsTest {
     @Test
-    public void testGetRelativePathsUnix() {
+    void testGetRelativePathsUnix() {
         assertEquals("stuff/xyz.dat", FileSyncUtils.getRelativePath("/var/data/stuff/xyz.dat", "/var/data/", "/"));
         assertEquals("../../b/c", FileSyncUtils.getRelativePath("/a/b/c", "/a/x/y/", "/"));
         assertEquals("../../b/c", FileSyncUtils.getRelativePath("/m/n/o/a/b/c", "/m/n/o/a/x/y/", "/"));
     }
 
     @Test
-    public void testGetRelativePathFileToFile() {
+    void testGetRelativePathFileToFile() {
         String target = "C:\\Windows\\Boot\\Fonts\\chs_boot.ttf";
         String base = "C:\\Windows\\Speech\\Common\\sapisvr.exe";
         String relPath = FileSyncUtils.getRelativePath(target, base, "\\");
@@ -40,7 +44,7 @@ public class FileSyncUtilsTest {
     }
 
     @Test
-    public void testGetRelativePathDirectoryToFile() {
+    void testGetRelativePathDirectoryToFile() {
         String target = "C:\\Windows\\Boot\\Fonts\\chs_boot.ttf";
         String base = "C:\\Windows\\Speech\\Common\\";
         String relPath = FileSyncUtils.getRelativePath(target, base, "\\");
@@ -48,7 +52,7 @@ public class FileSyncUtilsTest {
     }
 
     @Test
-    public void testGetRelativePathFileToDirectory() {
+    void testGetRelativePathFileToDirectory() {
         String target = "C:\\Windows\\Boot\\Fonts";
         String base = "C:\\Windows\\Speech\\Common\\foo.txt";
         String relPath = FileSyncUtils.getRelativePath(target, base, "\\");
@@ -56,7 +60,7 @@ public class FileSyncUtilsTest {
     }
 
     @Test
-    public void testGetRelativePathDirectoryToDirectory() {
+    void testGetRelativePathDirectoryToDirectory() {
         String target = "C:\\Windows\\Boot\\";
         String base = "C:\\Windows\\Speech\\Common\\";
         String expected = "..\\..\\Boot";
@@ -65,7 +69,7 @@ public class FileSyncUtilsTest {
     }
 
     @Test
-    public void testGetRelativePathDifferentDriveLetters() {
+    void testGetRelativePathDifferentDriveLetters() {
         String target = "D:\\sources\\recovery\\RecEnv.exe";
         String base = "C:\\Java\\workspace\\AcceptanceTests\\Standard test data\\geo\\";
         try {
@@ -74,5 +78,34 @@ public class FileSyncUtilsTest {
         } catch (PathResolutionException ex) {
             // expected exception
         }
+    }
+
+    @Test
+    void testGetRelativePath_withFileArguments() {
+        File base = new File("target/relative-base");
+        File target = new File(base, "nested/item.txt");
+        assertEquals("nested" + File.separator + "item.txt", FileSyncUtils.getRelativePath(target, base));
+    }
+
+    // Defect pinned, not endorsed: when target and base are the same path the common prefix is one
+    // separator longer than the path itself, so the trailing substring underflows instead of returning "".
+    @Test
+    void testGetRelativePath_forIdenticalPaths() {
+        assertThrows(StringIndexOutOfBoundsException.class, () -> FileSyncUtils.getRelativePath("/var/data", "/var/data", "/"));
+    }
+
+    @Test
+    void testGetRelativePath_forChildOfBaseDirectory() {
+        assertEquals("xyz.dat", FileSyncUtils.getRelativePath("/var/data/xyz.dat", "/var/data/", "/"));
+    }
+
+    @Test
+    void testGetRelativePath_withUnrecognisedSeparator() {
+        assertThrows(IllegalArgumentException.class, () -> FileSyncUtils.getRelativePath("/a/b", "/a/c", ":"));
+    }
+
+    @Test
+    void testGetRelativePath_normalisesRedundantSegments() {
+        assertEquals("b" + "/" + "c", FileSyncUtils.getRelativePath("/a/./x/../b/c", "/a/", "/"));
     }
 }

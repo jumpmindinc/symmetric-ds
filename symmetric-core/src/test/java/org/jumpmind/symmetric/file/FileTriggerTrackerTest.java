@@ -34,7 +34,7 @@ import org.jumpmind.symmetric.model.Router;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class FileTriggerTrackerTest {
+class FileTriggerTrackerTest {
     File snapshotDirectory = new File("target/snapshots");
     File directory = new File("target/test");
     File subdirectory = new File(directory, "a");
@@ -43,12 +43,12 @@ public class FileTriggerTrackerTest {
     File fileInSubDirectory = new File(subdirectory, "3.doc");
 
     @BeforeEach
-    public void setupTest() throws Exception {
+    void setupTest() throws Exception {
         recreateDirectorySpecAndFiles();
     }
 
     @Test
-    public void testTakeFullSnapshotRecursive() throws Exception {
+    void testTakeFullSnapshotRecursive() throws Exception {
         FileTrigger fileTrigger = new FileTrigger(directory.getAbsolutePath(), true, null, null);
         Router router = new Router();
         FileTriggerRouter fileTriggerRouter = new FileTriggerRouter(fileTrigger, router);
@@ -59,7 +59,7 @@ public class FileTriggerTrackerTest {
     }
 
     @Test
-    public void testTakeFullSnapshotNonRecursive() throws Exception {
+    void testTakeFullSnapshotNonRecursive() throws Exception {
         FileTrigger fileTrigger = new FileTrigger(directory.getAbsolutePath(), false, null, null);
         Router router = new Router();
         FileTriggerRouter fileTriggerRouter = new FileTriggerRouter(fileTrigger, router);
@@ -70,7 +70,7 @@ public class FileTriggerTrackerTest {
     }
 
     @Test
-    public void testTakeFullSnapshotIncludes() throws Exception {
+    void testTakeFullSnapshotIncludes() throws Exception {
         FileTrigger fileTrigger = new FileTrigger(directory.getAbsolutePath(), false, "*.txt", null);
         Router router = new Router();
         FileTriggerRouter fileTriggerRouter = new FileTriggerRouter(fileTrigger, router);
@@ -82,7 +82,7 @@ public class FileTriggerTrackerTest {
     }
 
     @Test
-    public void testTakeFullSnapshotExcludes() throws Exception {
+    void testTakeFullSnapshotExcludes() throws Exception {
         FileTrigger fileTrigger = new FileTrigger(directory.getAbsolutePath(), false, null, "*.txt");
         Router router = new Router();
         FileTriggerRouter fileTriggerRouter = new FileTriggerRouter(fileTrigger, router);
@@ -94,7 +94,7 @@ public class FileTriggerTrackerTest {
     }
 
     @Test
-    public void testTakeSnapshotRecursiveTestDelete() throws Exception {
+    void testTakeSnapshotRecursiveTestDelete() throws Exception {
         FileTrigger fileTrigger = new FileTrigger(directory.getAbsolutePath(), true, null, null);
         Router router = new Router();
         FileTriggerRouter fileTriggerRouter = new FileTriggerRouter(fileTrigger, router);
@@ -109,10 +109,10 @@ public class FileTriggerTrackerTest {
     }
 
     @Test
-    public void testTakeSnapshotAfterRestart() throws Exception {
+    void testTakeSnapshotAfterRestart() throws Exception {
     }
 
-    protected void recreateDirectorySpecAndFiles() throws Exception {
+    private void recreateDirectorySpecAndFiles() throws Exception {
         FileUtils.deleteQuietly(snapshotDirectory);
         FileUtils.deleteQuietly(directory);
         directory.mkdirs();
