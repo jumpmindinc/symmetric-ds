@@ -78,9 +78,7 @@ class MySqlSymmetricDialectTest {
         when(platform.isMetadataIgnoreCase()).thenReturn(true);
         when(sqlTemplate.queryForInt(anyString(), any(Object[].class))).thenReturn(1);
         MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
-
         boolean exists = dialect.doesTriggerExistOnPlatform(null, "SymmetricRoot", null, "TEST_ALL_CAPS", "SYM_ON_I_FOR_8000_TSTRTGRP");
-
         assertTrue(exists);
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
@@ -96,9 +94,7 @@ class MySqlSymmetricDialectTest {
         when(platform.isMetadataIgnoreCase()).thenReturn(false);
         when(sqlTemplate.queryForInt(anyString(), any(Object[].class))).thenReturn(0);
         MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
-
         boolean exists = dialect.doesTriggerExistOnPlatform(null, "SymmetricRoot", null, "test_all_caps", "SYM_ON_I_FOR_8000_TSTRTGRP");
-
         assertFalse(exists);
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         verify(sqlTemplate).queryForInt(sqlCaptor.capture(), any(Object[].class));
