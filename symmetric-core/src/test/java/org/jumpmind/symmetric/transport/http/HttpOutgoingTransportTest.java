@@ -331,4 +331,10 @@ class HttpOutgoingTransportTest {
         return new HttpOutgoingTransport(manager, url, HTTP_TIMEOUT, HTTP_CONNECT_TIMEOUT, useCompression, Deflater.DEFAULT_STRATEGY,
                 Deflater.DEFAULT_COMPRESSION, NODE_ID, SECURITY_TOKEN, streamOutputEnabled, streamOutputChunkSize, fileUpload);
     }
+
+    @Test
+    void isReservationRequired_suspendIgnoreListComesFromTargetReservation_returnsTrue() {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        assertTrue(transport.isReservationRequired());
+    }
 }
