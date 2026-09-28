@@ -45,6 +45,7 @@ import org.jumpmind.symmetric.model.IncomingBatch;
 import org.jumpmind.symmetric.model.Node;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.transport.http.HttpTransportManager;
+import org.jumpmind.symmetric.transport.http.IHttpResumeCache;
 import org.jumpmind.symmetric.transport.internal.InternalTransportManager;
 import org.jumpmind.symmetric.web.WebConstants;
 import org.junit.jupiter.api.AfterEach;
@@ -195,6 +196,34 @@ public class HybridTransportManagerTest {
         IIncomingTransport result = manager.getPullTransport(remoteNode, localNode, "token", requestProps, "http://reg");
         assertSame(expectedTransport, result);
         verify(internalTransport).getPullTransport(remoteNode, localNode, "token", requestProps, "http://reg");
+    }
+
+    @Test
+    void testGetPullTransport_sixArg_delegatesToHttpTransport() throws IOException {
+        IIncomingTransport expectedTransport = mock(IIncomingTransport.class);
+        Map<String, String> requestProps = new HashMap<String, String>();
+        when(httpTransport.getPullTransport(remoteNode, localNode, "token", requestProps, "http://reg", 42L)).thenReturn(expectedTransport);
+        IIncomingTransport result = manager.getPullTransport(remoteNode, localNode, "token", requestProps, "http://reg", 42L);
+        assertSame(expectedTransport, result);
+        verify(httpTransport).getPullTransport(remoteNode, localNode, "token", requestProps, "http://reg", 42L);
+    }
+
+    @Test
+    void testGetPullTransport_sixArg_delegatesToInternalTransport() throws IOException {
+        registerEngineForInternalTransport();
+        IIncomingTransport expectedTransport = mock(IIncomingTransport.class);
+        Map<String, String> requestProps = new HashMap<String, String>();
+        when(internalTransport.getPullTransport(remoteNode, localNode, "token", requestProps, "http://reg", 42L)).thenReturn(expectedTransport);
+        IIncomingTransport result = manager.getPullTransport(remoteNode, localNode, "token", requestProps, "http://reg", 42L);
+        assertSame(expectedTransport, result);
+        verify(internalTransport).getPullTransport(remoteNode, localNode, "token", requestProps, "http://reg", 42L);
+    }
+
+    @Test
+    void testGetResumeCache_delegatesToHttpTransport() {
+        IHttpResumeCache expectedCache = mock(IHttpResumeCache.class);
+        when(httpTransport.getResumeCache()).thenReturn(expectedCache);
+        assertSame(expectedCache, manager.getResumeCache());
     }
 
     @Test

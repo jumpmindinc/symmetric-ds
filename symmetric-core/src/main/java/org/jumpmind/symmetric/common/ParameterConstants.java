@@ -266,6 +266,7 @@ final public class ParameterConstants {
     public static final String TRANSPORT_HTTP_SESSION_EXPIRE_SECONDS = "http.session.expire.seconds";
     public static final String TRANSPORT_HTTP_SESSION_MAX_COUNT = "http.session.max.count";
     public static final String TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN = "http.use.header.security.token";
+    public static final String TRANSPORT_HTTP_RESUME_ENABLED = "sync.http.resume.enabled";
     public static final String TRANSPORT_TYPE = "transport.type";
     public static final String TRANSPORT_MAX_BYTES_TO_SYNC = "transport.max.bytes.to.sync";
     public static final String TRANSPORT_MAX_FORM_KEYS = "transport.max.form.keys";

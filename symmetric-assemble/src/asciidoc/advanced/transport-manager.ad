@@ -61,3 +61,55 @@ http.transport.manager.class=com.example.MyHttpTransportManager
 
 This applies to both the `http` and `hybrid` transport types, since the hybrid transport uses an HTTP
 transport manager internally for remote communication.
+
+==== Resumable Batch Transfer
+
+When a batch pull is interrupted partway through (for example, by a dropped connection through a proxy or
+load balancer), SymmetricDS can resume the transfer from where it left off instead of re-downloading the
+whole batch. This applies to both table (CSV) data batches and file sync (ZIP) batches, and only to the
+pull direction; a push always sends the full batch.
+
+Resumable transfer is controlled by the `sync.http.resume.enabled` parameter, which defaults to `true`.
+
+[source, properties]
+----
+sync.http.resume.enabled=true
+----
+
+Resume only takes effect for batches that are staged to disk, so it also requires `stream.to.file.enabled=true`
+and a batch size over the `stream.to.file.threshold.bytes` threshold; smaller batches are streamed from memory
+and always re-sent in full.
+
+.How it works
+* Each staged batch is identified by an ETag made up of the batch's staging version, the time its staged file
+was generated, and its final size. The client caches this ETag along with how much of the batch it has already
+received whenever a pull attempt fails partway through.
+* On the next pull attempt for that node, the client sends the cached ETag in an `If-ETag` header and how much
+it already has in a `Range` header, along with the ID of the batch to resume. Table (CSV) batches use
+`Range: chars=<count>-`, a count of decoded characters, since the staged content is read and written as text;
+file sync (ZIP) batches use `Range: bytes=<count>-`, a count of raw bytes, since the staged content is copied
+as-is.
+* If the server still has that exact staged batch (matched by ETag) available, it responds with
+`206 Partial Content`, an `ETag` header, and a `Content-Range` header, and streams only the remainder.
+* If the staged batch is missing or its ETag no longer matches (for example, it was purged or re-extracted),
+the server falls back to a normal `200` response with the full batch, and the client discards its partial
+copy and starts over.
+
+Older peers (prior to version 3.18) simply do not send the resume request headers, so they always receive
+full-batch behavior; the resume mechanism only activates when both sides support it.
+
+These `Range`/`If-ETag`/`Accept-Ranges` headers are a private convention between SymmetricDS nodes, not a
+standard, cache-aware `If-Range` exchange - a node never validates a range against a shared intermediary
+cache. Because of this, a proxy, load balancer, or CDN that inspects and tries to interpret or satisfy HTTP
+range requests on its own (rather than passing them through unmodified) can corrupt a resumed transfer; make
+sure any such intermediary in the sync path is configured to forward these headers untouched rather than act
+on them.
+
+.File sync bundling
+For file sync pulls specifically, each batch is staged as its own independent zip file, the same way table
+batches already are, so that any one batch can be resumed without affecting the others. To keep bundling
+multiple batches into a single pull response (subject to `transport.max.bytes.to.sync`), SymmetricDS wraps
+each batch's zip in a small header — batch ID, byte length, and ETag — one after another in the response
+body. A `FileSync-Format` response header tells the client that this bundling format was used; it is only
+sent when the target node is version 3.18 or later, since older clients only know how to unzip a single,
+unwrapped zip file per response. When the header is absent, the response is a single, unwrapped zip file.

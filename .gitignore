@@ -2,14 +2,11 @@
 *.log
 *.tmp
 .clover/*
-<<<<<<< HEAD
-=======
 /.idea/*
 *.ipr
 *.iws
 .gradle/
 *.factorypath
->>>>>>> 778bf3b64f (SYM-7978: Drop sym_node_channel_ctl before upgrading from pre-3.17 version (#1066))
 
 # Visual Studio Code related temporary files and personal preferences
 .vscode-test

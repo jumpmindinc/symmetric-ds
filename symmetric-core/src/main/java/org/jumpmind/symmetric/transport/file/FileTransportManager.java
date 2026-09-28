@@ -64,6 +64,16 @@ public class FileTransportManager extends HttpTransportManager implements ITrans
         return getPullTransport(remote, local, securityToken, requestProperties, registrationUrl);
     }
 
+    /**
+     * File-based transport has no concept of a resumed pull; ignore {@code resumeBatchId} rather than inheriting {@link HttpTransportManager}'s HTTP-specific
+     * 6-arg override.
+     */
+    @Override
+    public IIncomingTransport getFilePullTransport(Node remote, Node local, String securityToken, Map<String, String> requestProperties,
+            String registrationUrl, Long resumeBatchId) throws IOException {
+        return getPullTransport(remote, local, securityToken, requestProperties, registrationUrl);
+    }
+
     @Override
     public IOutgoingWithResponseTransport getFilePushTransport(Node remote, Node local, String securityToken, String registrationUrl)
             throws IOException {
@@ -77,6 +87,16 @@ public class FileTransportManager extends HttpTransportManager implements ITrans
                 getDirName(ParameterConstants.NODE_OFFLINE_INCOMING_DIR, local),
                 getDirName(ParameterConstants.NODE_OFFLINE_ARCHIVE_DIR, local),
                 getDirName(ParameterConstants.NODE_OFFLINE_ERROR_DIR, local));
+    }
+
+    /**
+     * File-based transport has no concept of a resumed pull; ignore {@code resumeBatchId} rather than inheriting {@link HttpTransportManager}'s HTTP-specific
+     * 6-arg override.
+     */
+    @Override
+    public IIncomingTransport getPullTransport(Node remote, Node local, String securityToken, Map<String, String> requestProperties,
+            String registrationUrl, Long resumeBatchId) throws IOException {
+        return getPullTransport(remote, local, securityToken, requestProperties, registrationUrl);
     }
 
     @Override
