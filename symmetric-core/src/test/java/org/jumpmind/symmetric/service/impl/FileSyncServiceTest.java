@@ -561,8 +561,8 @@ class FileSyncServiceTest {
     @Test
     void sendFiles_failureDuringSendPhase_incrementsDataSentErrorsOnly() throws Exception {
         IStatisticManager statisticManager = mock(IStatisticManager.class);
-        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
-        FileSyncService service = spy(buildFileSyncService(statisticManager, outgoingBatchService));
+        IOutgoingBatchService mockOutgoingBatchService = mock(IOutgoingBatchService.class);
+        FileSyncService service = spy(buildFileSyncService(statisticManager, mockOutgoingBatchService));
         OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
         batch.setBatchId(1);
         List<OutgoingBatch> batchesToProcess = new ArrayList<OutgoingBatch>();
@@ -591,8 +591,8 @@ class FileSyncServiceTest {
     @Test
     void sendFiles_failureDuringExtractPhase_incrementsDataExtractedErrorsOnly() {
         IStatisticManager statisticManager = mock(IStatisticManager.class);
-        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
-        FileSyncService service = spy(buildFileSyncService(statisticManager, outgoingBatchService));
+        IOutgoingBatchService mockOutgoingBatchService = mock(IOutgoingBatchService.class);
+        FileSyncService service = spy(buildFileSyncService(statisticManager, mockOutgoingBatchService));
         OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
         batch.setBatchId(1);
         List<OutgoingBatch> batchesToProcess = new ArrayList<OutgoingBatch>();
@@ -613,22 +613,22 @@ class FileSyncServiceTest {
     }
 
     private FileSyncService buildFileSyncService(IStatisticManager statisticManager, IOutgoingBatchService outgoingBatchService) {
-        ISymmetricEngine engine = mock(ISymmetricEngine.class);
-        IParameterService parameterService = mock(IParameterService.class);
-        when(parameterService.getTablePrefix()).thenReturn("sym");
-        when(engine.getParameterService()).thenReturn(parameterService);
+        ISymmetricEngine mockEngine = mock(ISymmetricEngine.class);
+        IParameterService mockParameterService = mock(IParameterService.class);
+        when(mockParameterService.getTablePrefix()).thenReturn("sym");
+        when(mockEngine.getParameterService()).thenReturn(mockParameterService);
         IDatabasePlatform platform = mock(IDatabasePlatform.class);
         ISymmetricDialect symmetricDialect = mock(ISymmetricDialect.class);
         when(symmetricDialect.getPlatform()).thenReturn(platform);
-        when(engine.getSymmetricDialect()).thenReturn(symmetricDialect);
+        when(mockEngine.getSymmetricDialect()).thenReturn(symmetricDialect);
         IExtensionService extensionService = mock(IExtensionService.class);
-        when(engine.getExtensionService()).thenReturn(extensionService);
+        when(mockEngine.getExtensionService()).thenReturn(extensionService);
         ICacheManager cacheManager = mock(ICacheManager.class);
-        when(engine.getCacheManager()).thenReturn(cacheManager);
-        when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
-        when(engine.getStatisticManager()).thenReturn(statisticManager);
+        when(mockEngine.getCacheManager()).thenReturn(cacheManager);
+        when(mockEngine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
+        when(mockEngine.getStatisticManager()).thenReturn(statisticManager);
         IConfigurationService configurationService = mock(IConfigurationService.class);
-        when(engine.getConfigurationService()).thenReturn(configurationService);
-        return new FileSyncService(engine);
+        when(mockEngine.getConfigurationService()).thenReturn(configurationService);
+        return new FileSyncService(mockEngine);
     }
 }
