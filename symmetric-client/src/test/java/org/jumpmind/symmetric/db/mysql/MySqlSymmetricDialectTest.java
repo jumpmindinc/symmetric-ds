@@ -20,10 +20,13 @@
  */
 package org.jumpmind.symmetric.db.mysql;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.jumpmind.db.platform.DatabaseInfo;
@@ -35,6 +38,7 @@ import org.jumpmind.db.util.DataSourceProperties;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.impl.ParameterService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class MySqlSymmetricDialectTest {
     @Test
@@ -65,6 +69,41 @@ class MySqlSymmetricDialectTest {
         IDatabasePlatform platform = createPlatform("5.7.8");
         new MySqlSymmetricDialect(createParameterService(), platform);
         assertTrue(platform.getDatabaseInfo().isNonPersistedGeneratedColumnsIndexSupported());
+    }
+
+    @Test
+    void doesTriggerExistOnPlatform_comparesTableNameCaseInsensitively_whenMetadataIgnoresCase() {
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        when(platform.isMetadataIgnoreCase()).thenReturn(true);
+        when(sqlTemplate.queryForInt(anyString(), any(Object[].class))).thenReturn(1);
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
+
+        boolean exists = dialect.doesTriggerExistOnPlatform(null, "SymmetricRoot", null, "TEST_ALL_CAPS", "SYM_ON_I_FOR_8000_TSTRTGRP");
+
+        assertTrue(exists);
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> argsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(sqlTemplate).queryForInt(sqlCaptor.capture(), argsCaptor.capture());
+        assertTrue(sqlCaptor.getValue().contains("lower(event_object_table) = lower(?)"));
+        assertArrayEquals(new Object[] { "SYM_ON_I_FOR_8000_TSTRTGRP", "TEST_ALL_CAPS" }, argsCaptor.getValue());
+    }
+
+    @Test
+    void doesTriggerExistOnPlatform_comparesTableNameWithLike_whenMetadataIsCaseSensitive() {
+        IDatabasePlatform platform = createPlatform("8.0.30");
+        ISqlTemplate sqlTemplate = platform.getSqlTemplate();
+        when(platform.isMetadataIgnoreCase()).thenReturn(false);
+        when(sqlTemplate.queryForInt(anyString(), any(Object[].class))).thenReturn(0);
+        MySqlSymmetricDialect dialect = new MySqlSymmetricDialect(createParameterService(), platform);
+
+        boolean exists = dialect.doesTriggerExistOnPlatform(null, "SymmetricRoot", null, "test_all_caps", "SYM_ON_I_FOR_8000_TSTRTGRP");
+
+        assertFalse(exists);
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(sqlTemplate).queryForInt(sqlCaptor.capture(), any(Object[].class));
+        assertTrue(sqlCaptor.getValue().contains("event_object_table like ?"));
+        assertFalse(sqlCaptor.getValue().contains("lower(event_object_table)"));
     }
 
     private IParameterService createParameterService() {
