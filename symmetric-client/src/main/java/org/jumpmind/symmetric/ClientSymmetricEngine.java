@@ -80,7 +80,6 @@ import org.jumpmind.symmetric.util.SnapshotUtil;
 import org.jumpmind.symmetric.util.SymmetricUtils;
 import org.jumpmind.util.AppUtils;
 import org.jumpmind.util.FormatUtils;
-import org.jumpmind.db.util.IPooledDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -541,8 +540,11 @@ public class ClientSymmetricEngine extends AbstractSymmetricEngine {
     }
 
     private static void logConnectionPoolSize(DataSource dataSource, TypedProperties properties) {
+        if (!(dataSource instanceof BasicDataSource)) {
+            return;
+        }
         int concurrentWorkersMax = properties.getInt(ParameterConstants.CONCURRENT_WORKERS, 20);
-        int effectivePoolSize = IPooledDataSource.of(dataSource).getMaxTotal();
+        int effectivePoolSize = ((BasicDataSource) dataSource).getMaxTotal();
         if ((concurrentWorkersMax * 2) > effectivePoolSize) {
             log.warn("Configured {} is {}, the effective connection pool size of the database is {}", ParameterConstants.CONCURRENT_WORKERS,
                     concurrentWorkersMax, effectivePoolSize);
