@@ -191,8 +191,10 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
             connection.setRequestProperty(WebConstants.CHANNEL_QUEUE, queue);
             analyzeResponseCode(connection.getResponseCode());
             httpTransportManager.updateSession(connection);
-            httpTransportManager.getReservationCookieManager().beginReservation(url);
-            reservationHeld = true;
+            if (!reservationHeld) {
+                httpTransportManager.getReservationCookieManager().beginReservation(url);
+                reservationHeld = true;
+            }
         } catch (IOException ex) {
             throw new IoException(ex);
         }

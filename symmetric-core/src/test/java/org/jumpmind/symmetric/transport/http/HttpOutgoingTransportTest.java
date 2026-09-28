@@ -308,6 +308,21 @@ class HttpOutgoingTransportTest {
     }
 
     @Test
+    void testRequestReservation_calledTwiceOnSameInstance_beginsReservationOnlyOnce() throws IOException {
+        HttpOutgoingTransport transport = newTransport(false, false);
+        IConfigurationService configurationService = mock(IConfigurationService.class);
+        Node targetNode = mock(Node.class);
+        when(targetNode.getNodeId()).thenReturn("target1");
+        when(configurationService.getSuspendIgnoreChannelLists()).thenReturn(new NodeChannels());
+        when(connection.getResponseCode()).thenReturn(WebConstants.SC_OK);
+        when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("");
+        when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
+        verify(reservationCookieManager, times(1)).beginReservation(url);
+    }
+
+    @Test
     void testRequestReservation_onServiceBusy_doesNotBeginReservation() throws IOException {
         HttpOutgoingTransport transport = newTransport(false, false);
         IConfigurationService configurationService = mock(IConfigurationService.class);

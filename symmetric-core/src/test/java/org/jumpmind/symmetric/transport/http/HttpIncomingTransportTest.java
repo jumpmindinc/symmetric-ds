@@ -225,6 +225,17 @@ class HttpIncomingTransportTest {
     }
 
     @Test
+    void testOpenStream_calledTwiceOnSameInstance_beginsReservationOnlyOnce() throws Exception {
+        stubSuccessfulResponse();
+        URL url = URI.create("http://node.example.com/sync/pull").toURL();
+        when(connection.getURL()).thenReturn(url);
+        HttpIncomingTransport transport = newTransport();
+        transport.openStream();
+        transport.openStream();
+        verify(reservationCookieManager, times(1)).beginReservation(url);
+    }
+
+    @Test
     void testClose_afterSuccessfulOpenStream_endsReservationForConnectionUrl() throws Exception {
         stubSuccessfulResponse();
         URL url = URI.create("http://node.example.com/sync/pull").toURL();

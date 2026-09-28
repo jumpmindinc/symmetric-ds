@@ -160,8 +160,10 @@ public class HttpIncomingTransport implements IIncomingTransport {
                 throw new NoContentException();
             case WebConstants.SC_OK:
                 httpTransportManager.updateSession(connection);
-                httpTransportManager.getReservationCookieManager().beginReservation(connection.getURL());
-                reservationHeld = true;
+                if (!reservationHeld) {
+                    httpTransportManager.getReservationCookieManager().beginReservation(connection.getURL());
+                    reservationHeld = true;
+                }
                 is = HttpTransportManager.getInputStreamFrom(connection);
                 return is;
             default:
