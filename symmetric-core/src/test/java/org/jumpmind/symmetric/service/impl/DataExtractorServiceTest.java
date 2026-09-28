@@ -21,71 +21,49 @@
 package org.jumpmind.symmetric.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-<<<<<<< HEAD
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
-=======
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyList;
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-<<<<<<< HEAD
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-=======
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.BufferedWriter;
 import java.io.StringWriter;
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-<<<<<<< HEAD
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-=======
 import java.util.stream.Stream;
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
 
 import org.jumpmind.db.platform.IDatabasePlatform;
 import org.jumpmind.db.sql.ISqlReadCursor;
 import org.jumpmind.db.sql.ISqlTemplate;
-<<<<<<< HEAD
 import org.jumpmind.db.sql.ISqlTransaction;
-=======
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
 import org.jumpmind.symmetric.db.ISymmetricDialect;
 import org.jumpmind.symmetric.extract.SelectFromSymDataSource;
 import org.jumpmind.symmetric.io.data.DataEventType;
 import org.jumpmind.symmetric.io.data.IDataWriter;
-<<<<<<< HEAD
 import org.jumpmind.symmetric.io.stage.IStagingManager;
-=======
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
 import org.jumpmind.symmetric.model.AbstractBatch.Status;
 import org.jumpmind.symmetric.model.Data;
 import org.jumpmind.symmetric.model.ExtractRequest;
@@ -99,78 +77,61 @@ import org.jumpmind.symmetric.model.TableReloadRequest;
 import org.jumpmind.symmetric.model.TableReloadStatus;
 import org.jumpmind.symmetric.model.TriggerHistory;
 import org.jumpmind.symmetric.route.AbstractFileParsingRouter;
-<<<<<<< HEAD
 import org.jumpmind.symmetric.service.IClusterService;
 import org.jumpmind.symmetric.service.IConfigurationService;
 import org.jumpmind.symmetric.service.IDataService;
 import org.jumpmind.symmetric.service.IInitialLoadService;
 import org.jumpmind.symmetric.service.INodeCommunicationService;
-=======
-import org.jumpmind.symmetric.service.IConfigurationService;
-import org.jumpmind.symmetric.service.IDataService;
-import org.jumpmind.symmetric.service.IInitialLoadService;
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
 import org.jumpmind.symmetric.service.INodeService;
 import org.jumpmind.symmetric.service.IOutgoingBatchService;
 import org.jumpmind.symmetric.service.IParameterService;
 import org.jumpmind.symmetric.service.IRouterService;
-<<<<<<< HEAD
 import org.jumpmind.symmetric.service.ISequenceService;
 import org.jumpmind.symmetric.service.ITransformService;
 import org.jumpmind.symmetric.service.ITriggerRouterService;
 import org.jumpmind.symmetric.service.impl.DataExtractorService.ExtractMode;
 import org.jumpmind.symmetric.statistic.IStatisticManager;
-=======
 import org.jumpmind.symmetric.transport.IOutgoingTransport;
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-<<<<<<< HEAD
 class DataExtractorServiceTest {
     private static final long LOAD_ID = 7929;
-    protected ISymmetricEngine engine;
-    private IParameterService parameterService;
-    private ISqlTemplate sqlTemplate;
-    private ISqlTemplate sqlTemplateDirty;
-    private IDataService dataService;
-    private INodeService nodeService;
-    private TestableDataExtractorService service;
-    private Node targetNode;
-
-    static class TestableDataExtractorService extends DataExtractorService {
-        AtomicInteger sendPasses = new AtomicInteger();
-=======
-public class DataExtractorServiceTest {
     private static final String EXTRACT_TARGET_NODE_ID = "target1";
     private static final String EXTRACT_CHANNEL = "testchannel";
     private static final String EXTRACT_SECOND_CHANNEL = "othertestchannel";
     private static final String EXTRACT_QUEUE = "default";
     protected ISymmetricEngine engine;
     private IParameterService parameterService;
+    private ISqlTemplate sqlTemplate;
+    private ISqlTemplate sqlTemplateDirty;
+    private IDataService dataService;
+    private INodeService nodeService;
     private IConfigurationService configurationService;
     private IOutgoingBatchService outgoingBatchService;
     private IRouterService routerService;
     private IInitialLoadService initialLoadService;
     private TestableDataExtractorService service;
+    private Node targetNode;
 
     static class TestableDataExtractorService extends DataExtractorService {
+        AtomicInteger sendPasses = new AtomicInteger();
         OutgoingBatches pendingBatches;
         List<OutgoingBatch> batchesHandedToExtract;
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
 
         TestableDataExtractorService(ISymmetricEngine engine) {
             super(engine);
         }
 
         @Override
-<<<<<<< HEAD
         public List<ExtractRequest> getTablesForExtractByLoadId(long loadId) {
             sendPasses.incrementAndGet();
             return Collections.emptyList();
-=======
+        }
+
+        @Override
         protected OutgoingBatches loadPendingBatches(ProcessInfo extractInfo, Node targetNode, String queue, IOutgoingTransport transport) {
             return pendingBatches;
         }
@@ -180,7 +141,6 @@ public class DataExtractorServiceTest {
                 BufferedWriter writer, ExtractMode mode) {
             batchesHandedToExtract = activeBatches;
             return activeBatches;
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
         }
     }
 
@@ -203,7 +163,6 @@ public class DataExtractorServiceTest {
         when(engine.getDatabasePlatform()).thenReturn(platform);
         when(symmetricDialect.getPlatform()).thenReturn(platform);
         when(symmetricDialect.getSqlReplacementTokens()).thenReturn(new HashMap<String, String>());
-<<<<<<< HEAD
         sqlTemplate = mock(ISqlTemplate.class);
         sqlTemplateDirty = mock(ISqlTemplate.class);
         when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
@@ -211,22 +170,6 @@ public class DataExtractorServiceTest {
         dataService = mock(IDataService.class);
         when(engine.getDataService()).thenReturn(dataService);
         nodeService = mock(INodeService.class);
-        when(engine.getNodeService()).thenReturn(nodeService);
-        service = new TestableDataExtractorService(engine);
-        targetNode = new Node();
-        when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
-        TableReloadRequest createTableLoad = new TableReloadRequest();
-        createTableLoad.setCreateTable(true);
-        when(dataService.getTableReloadRequest(anyLong())).thenReturn(createTableLoad);
-        when(sqlTemplateDirty.queryForLong(any(), any(), any())).thenReturn(0L);
-=======
-        ISqlTemplate sqlTemplate = mock(ISqlTemplate.class);
-        when(platform.getSqlTemplate()).thenReturn(sqlTemplate);
-        ISqlTemplate sqlTemplateDirty = mock(ISqlTemplate.class);
-        when(platform.getSqlTemplateDirty()).thenReturn(sqlTemplateDirty);
-        IDataService dataService = mock(IDataService.class);
-        when(engine.getDataService()).thenReturn(dataService);
-        INodeService nodeService = mock(INodeService.class);
         when(engine.getNodeService()).thenReturn(nodeService);
         configurationService = mock(IConfigurationService.class);
         when(engine.getConfigurationService()).thenReturn(configurationService);
@@ -238,7 +181,12 @@ public class DataExtractorServiceTest {
         initialLoadService = mock(IInitialLoadService.class);
         when(engine.getInitialLoadService()).thenReturn(initialLoadService);
         service = new TestableDataExtractorService(engine);
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
+        targetNode = new Node();
+        when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(true);
+        TableReloadRequest createTableLoad = new TableReloadRequest();
+        createTableLoad.setCreateTable(true);
+        when(dataService.getTableReloadRequest(anyLong())).thenReturn(createTableLoad);
+        when(sqlTemplateDirty.queryForLong(any(), any(), any())).thenReturn(0L);
     }
 
     @Test
@@ -255,7 +203,6 @@ public class DataExtractorServiceTest {
     }
 
     @Test
-<<<<<<< HEAD
     void checkSendDeferredForeignKeys_deferConstraintsDisabled_neverSends() {
         when(parameterService.is(ParameterConstants.INITIAL_LOAD_DEFER_CREATE_CONSTRAINTS, false)).thenReturn(false);
         service.checkSendDeferredForeignKeys(LOAD_ID, targetNode);
@@ -359,11 +306,11 @@ public class DataExtractorServiceTest {
     @Test
     void extract_failureDuringSendPhase_incrementsDataSentErrorsOnly() throws Exception {
         IStatisticManager statisticManager = mock(IStatisticManager.class);
-        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
-        DataExtractorService extractService = spy(buildExtractService(statisticManager, outgoingBatchService));
+        IOutgoingBatchService failingOutgoingBatchService = mock(IOutgoingBatchService.class);
+        DataExtractorService extractService = spy(buildExtractService(statisticManager, failingOutgoingBatchService));
         OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
         batch.setBatchId(1);
-        when(outgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
+        when(failingOutgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
         doReturn(new DataExtractorService.FutureOutgoingBatch(batch, false)).when(extractService)
                 .extractBatch(any(OutgoingBatch.class), any(), any(ProcessInfo.class), any(Node.class), any(), any(), anyList());
         doThrow(new RuntimeException("simulated send failure")).when(extractService)
@@ -381,11 +328,11 @@ public class DataExtractorServiceTest {
     @Test
     void extract_failureDuringExtractPhase_incrementsDataExtractedErrorsOnly() throws Exception {
         IStatisticManager statisticManager = mock(IStatisticManager.class);
-        IOutgoingBatchService outgoingBatchService = mock(IOutgoingBatchService.class);
-        DataExtractorService extractService = spy(buildExtractService(statisticManager, outgoingBatchService));
+        IOutgoingBatchService failingOutgoingBatchService = mock(IOutgoingBatchService.class);
+        DataExtractorService extractService = spy(buildExtractService(statisticManager, failingOutgoingBatchService));
         OutgoingBatch batch = new OutgoingBatch("target1", "testchannel", Status.NE);
         batch.setBatchId(1);
-        when(outgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
+        when(failingOutgoingBatchService.findOutgoingBatch(1, "target1")).thenReturn(batch);
         doThrow(new RuntimeException("simulated extract failure")).when(extractService)
                 .extractBatch(any(OutgoingBatch.class), any(), any(ProcessInfo.class), any(Node.class), any(), any(), anyList());
         Node extractTargetNode = new Node();
@@ -398,7 +345,7 @@ public class DataExtractorServiceTest {
         verify(statisticManager, never()).incrementDataSentErrors(any(), anyLong());
     }
 
-    private DataExtractorService buildExtractService(IStatisticManager statisticManager, IOutgoingBatchService outgoingBatchService) {
+    private DataExtractorService buildExtractService(IStatisticManager statisticManager, IOutgoingBatchService failingOutgoingBatchService) {
         IParameterService testParameterService = mock(IParameterService.class);
         when(testParameterService.getTablePrefix()).thenReturn("sym");
         when(testParameterService.getEngineName()).thenReturn("Test");
@@ -411,7 +358,7 @@ public class DataExtractorServiceTest {
         ISymmetricDialect testSymmetricDialect = mock(ISymmetricDialect.class);
         when(testSymmetricDialect.getPlatform()).thenReturn(testPlatform);
         when(engine.getSymmetricDialect()).thenReturn(testSymmetricDialect);
-        when(engine.getOutgoingBatchService()).thenReturn(outgoingBatchService);
+        when(engine.getOutgoingBatchService()).thenReturn(failingOutgoingBatchService);
         IRouterService testRouterService = mock(IRouterService.class);
         when(engine.getRouterService()).thenReturn(testRouterService);
         IDataService testDataService = mock(IDataService.class);
@@ -442,7 +389,9 @@ public class DataExtractorServiceTest {
         IInitialLoadService testInitialLoadService = mock(IInitialLoadService.class);
         when(engine.getInitialLoadService()).thenReturn(testInitialLoadService);
         return new DataExtractorService(engine);
-=======
+    }
+
+    @Test
     void extract_localSuspendListRemovesEveryBatch_neverAsksTransportForReservation() {
         IOutgoingTransport transport = reservingTransport();
         service.pendingBatches = batchesOn(EXTRACT_CHANNEL);
@@ -740,6 +689,5 @@ public class DataExtractorServiceTest {
         NodeChannels nodeChannels = new NodeChannels();
         nodeChannels.addIgnoreChannels(EXTRACT_TARGET_NODE_ID, channelId);
         return nodeChannels;
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
     }
 }

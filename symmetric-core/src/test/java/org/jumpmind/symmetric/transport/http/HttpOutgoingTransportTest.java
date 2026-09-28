@@ -3,21 +3,12 @@
  * license agreements.  See the NOTICE file distributed
  * with this work for additional information regarding
  * copyright ownership.  JumpMind Inc licenses this file
-<<<<<<< HEAD
  * to you under the GNU Affero General Public License, version 3.0 (AGPLv3)
  * (the "License"); you may not use this file except in compliance
  * with the License.
  *
  * You should have received a copy of the GNU Affero General Public License,
  * version 3.0 (AGPLv3) along with this library; if not, see
-=======
- * to you under the GNU General Public License, version 3.0 (GPLv3)
- * (the "License"); you may not use this file except in compliance
- * with the License.
- *
- * You should have received a copy of the GNU General Public License,
- * version 3.0 (GPLv3) along with this library; if not, see
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
  * <http://www.gnu.org/licenses/>.
  *
  * Unless required by applicable law or agreed to in writing,
@@ -29,7 +20,6 @@
  */
 package org.jumpmind.symmetric.transport.http;
 
-<<<<<<< HEAD
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -340,20 +330,11 @@ class HttpOutgoingTransportTest {
         }
         return new HttpOutgoingTransport(manager, url, HTTP_TIMEOUT, HTTP_CONNECT_TIMEOUT, useCompression, Deflater.DEFAULT_STRATEGY,
                 Deflater.DEFAULT_COMPRESSION, NODE_ID, SECURITY_TOKEN, streamOutputEnabled, streamOutputChunkSize, fileUpload);
-=======
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
+    }
 
-import java.net.URL;
-
-import org.junit.jupiter.api.Test;
-
-class HttpOutgoingTransportTest {
     @Test
-    void isReservationRequired_suspendIgnoreListComesFromTargetReservation_returnsTrue() throws Exception {
-        HttpOutgoingTransport transport = new HttpOutgoingTransport(mock(HttpTransportManager.class), new URL("http://localhost:31415/sync/server"),
-                1000, 1000, false, 0, 0, "client", "token", false, 0, false);
+    void isReservationRequired_suspendIgnoreListComesFromTargetReservation_returnsTrue() {
+        HttpOutgoingTransport transport = newTransport(false, false);
         assertTrue(transport.isReservationRequired());
->>>>>>> 23b89fe5a3 (SYM-8099: Skip reservation process, when filtered list of batches is empty (with pull fix) (#1148))
     }
 }
