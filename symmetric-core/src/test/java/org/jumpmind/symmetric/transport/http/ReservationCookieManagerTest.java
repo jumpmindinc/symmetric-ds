@@ -32,6 +32,13 @@ import java.net.CookiePolicy;
 import java.net.HttpCookie;
 import java.net.URI;
 import java.net.URL;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -67,7 +74,7 @@ class ReservationCookieManagerTest {
         reservationCookieManager.beginReservation(url);
         assertEquals(1, reservationCookieManager.outstandingReservationsByUri.size());
         reservationCookieManager.beginReservation(url);
-        assertEquals(2, reservationCookieManager.outstandingReservationsByUri.values().iterator().next().get());
+        assertEquals(2, reservationCookieManager.outstandingReservationsByUri.values().iterator().next());
     }
 
     @Test
@@ -77,7 +84,7 @@ class ReservationCookieManagerTest {
         reservationCookieManager.beginReservation(pushUrl);
         reservationCookieManager.beginReservation(pullUrl);
         assertEquals(1, reservationCookieManager.outstandingReservationsByUri.size());
-        assertEquals(2, reservationCookieManager.outstandingReservationsByUri.values().iterator().next().get());
+        assertEquals(2, reservationCookieManager.outstandingReservationsByUri.values().iterator().next());
     }
 
     @Test
@@ -86,7 +93,7 @@ class ReservationCookieManagerTest {
         reservationCookieManager.beginReservation(url);
         reservationCookieManager.beginReservation(url);
         reservationCookieManager.endReservation(url);
-        assertEquals(1, reservationCookieManager.outstandingReservationsByUri.values().iterator().next().get());
+        assertEquals(1, reservationCookieManager.outstandingReservationsByUri.values().iterator().next());
         reservationCookieManager.endReservation(url);
         assertTrue(reservationCookieManager.outstandingReservationsByUri.isEmpty());
     }
@@ -95,6 +102,38 @@ class ReservationCookieManagerTest {
     void testEndReservation_withNoExistingEntry_doesNotThrow() throws Exception {
         URL url = URI.create("http://node.example.com/sync/push").toURL();
         assertDoesNotThrow(() -> reservationCookieManager.endReservation(url));
+        assertTrue(reservationCookieManager.outstandingReservationsByUri.isEmpty());
+    }
+
+    @Test
+    void testBeginAndEndReservation_underConcurrentContentionOnSameUri_neverLeavesAStaleEntry() throws Exception {
+        URL url = URI.create("http://node.example.com/sync/push").toURL();
+        int threadCount = 20;
+        int opsPerThread = 500;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<?>> futures = new ArrayList<>();
+        for (int i = 0; i < threadCount; i++) {
+            futures.add(executor.submit(() -> {
+                ready.countDown();
+                try {
+                    start.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                for (int j = 0; j < opsPerThread; j++) {
+                    reservationCookieManager.beginReservation(url);
+                    reservationCookieManager.endReservation(url);
+                }
+            }));
+        }
+        ready.await();
+        start.countDown();
+        for (Future<?> future : futures) {
+            future.get(30, TimeUnit.SECONDS);
+        }
+        executor.shutdown();
         assertTrue(reservationCookieManager.outstandingReservationsByUri.isEmpty());
     }
 

@@ -30,7 +30,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.jumpmind.symmetric.ISymmetricEngine;
 import org.jumpmind.symmetric.common.ParameterConstants;
@@ -44,22 +43,18 @@ import org.slf4j.LoggerFactory;
 public class ReservationCookieManager {
     private static final Logger log = LoggerFactory.getLogger(ReservationCookieManager.class);
     private final ISymmetricEngine engine;
-    protected Map<URI, AtomicInteger> outstandingReservationsByUri = new ConcurrentHashMap<URI, AtomicInteger>();
+    protected Map<URI, Integer> outstandingReservationsByUri = new ConcurrentHashMap<URI, Integer>();
 
     public ReservationCookieManager(ISymmetricEngine engine) {
         this.engine = engine;
     }
 
     public void beginReservation(URL url) {
-        outstandingReservationsByUri.computeIfAbsent(getAffinityURI(url), key -> new AtomicInteger()).incrementAndGet();
+        outstandingReservationsByUri.compute(getAffinityURI(url), (key, count) -> count == null ? 1 : count + 1);
     }
 
     public void endReservation(URL url) {
-        URI uri = getAffinityURI(url);
-        AtomicInteger count = outstandingReservationsByUri.get(uri);
-        if (count != null && count.decrementAndGet() <= 0) {
-            outstandingReservationsByUri.remove(uri);
-        }
+        outstandingReservationsByUri.computeIfPresent(getAffinityURI(url), (key, count) -> count <= 1 ? null : count - 1);
     }
 
     public void handleServiceBusy(HttpConnection conn) {
@@ -74,11 +69,11 @@ public class ReservationCookieManager {
     }
 
     public void clearReservationCookieForUri(HttpConnection conn) {
-        AtomicInteger outstandingReservations = outstandingReservationsByUri.get(getAffinityURI(conn.getURL()));
-        if (outstandingReservations != null && outstandingReservations.get() > 0) {
+        Integer outstandingReservations = outstandingReservationsByUri.get(getAffinityURI(conn.getURL()));
+        if (outstandingReservations != null && outstandingReservations > 0) {
             log.debug(
                     "Not clearing load balancer affinity cookies for {} because {} reservation(s) are outstanding",
-                    getUri(conn), outstandingReservations.get());
+                    getUri(conn), outstandingReservations);
             return;
         }
         CookieHandler handler = CookieHandler.getDefault();
