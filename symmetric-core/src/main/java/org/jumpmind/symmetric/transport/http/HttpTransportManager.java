@@ -27,21 +27,13 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.net.CookieHandler;
-import java.net.CookieManager;
-import java.net.CookieStore;
-import java.net.HttpCookie;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.lang3.StringUtils;
@@ -75,9 +67,10 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     protected boolean useHeaderSecurityToken;
     protected boolean useSessionAuth;
     protected int backOffPostCount;
-    protected Map<URI, AtomicInteger> outstandingReservationsByUri = new ConcurrentHashMap<URI, AtomicInteger>();
+    protected ReservationCookieManager reservationCookieManager;
 
     public HttpTransportManager() {
+        reservationCookieManager = new ReservationCookieManager(engine);
     }
 
     public HttpTransportManager(ISymmetricEngine engine) {
@@ -86,6 +79,11 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
         useHeaderSecurityToken = engine.getParameterService()
                 .is(ParameterConstants.TRANSPORT_HTTP_USE_HEADER_SECURITY_TOKEN);
         useSessionAuth = engine.getParameterService().is(ParameterConstants.TRANSPORT_HTTP_USE_SESSION_AUTH);
+        reservationCookieManager = new ReservationCookieManager(engine);
+    }
+
+    public ReservationCookieManager getReservationCookieManager() {
+        return reservationCookieManager;
     }
 
     public int sendCopyRequest(Node local) throws IOException {
@@ -261,69 +259,6 @@ public class HttpTransportManager extends AbstractTransportManager implements IT
     public void clearSession(HttpConnection conn) {
         if (useSessionAuth) {
             sessionIdByUri.remove(getUri(conn));
-        }
-    }
-
-    public void beginReservation(URL url) {
-        outstandingReservationsByUri.computeIfAbsent(getAffinityURI(url), key -> new AtomicInteger()).incrementAndGet();
-    }
-
-    public void endReservation(URL url) {
-        URI uri = getAffinityURI(url);
-        AtomicInteger count = outstandingReservationsByUri.get(uri);
-        if (count != null && count.decrementAndGet() <= 0) {
-            outstandingReservationsByUri.remove(uri);
-        }
-    }
-
-    public void handleServiceBusy(HttpConnection conn) {
-        boolean clearBusyAffinityCookieEnabled = engine.getParameterService()
-                .is(ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, false);
-        if (clearBusyAffinityCookieEnabled) {
-            clearReservationCookieForUri(conn);
-        } else {
-            log.debug("Not clearing load balancer affinity cookies for {} because {} = {}", getUri(conn),
-                    ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, clearBusyAffinityCookieEnabled);
-        }
-    }
-
-    public void clearReservationCookieForUri(HttpConnection conn) {
-        AtomicInteger outstandingReservations = outstandingReservationsByUri.get(getAffinityURI(conn.getURL()));
-        if (outstandingReservations != null && outstandingReservations.get() > 0) {
-            log.debug(
-                    "Not clearing load balancer affinity cookies for {} because {} reservation(s) are outstanding",
-                    getUri(conn), outstandingReservations.get());
-            return;
-        }
-        CookieHandler handler = CookieHandler.getDefault();
-        if (!(handler instanceof CookieManager)) {
-            log.debug("Not clearing load balancer affinity cookies for {} because no CookieManager is installed (server.http.cookies.enabled may be false)",
-                    getUri(conn));
-            return;
-        }
-        URI uri = getAffinityURI(conn.getURL());
-        if (uri == null) {
-            log.debug("Not clearing load balancer affinity cookies for {} because uri could not be built", conn.getURL());
-            return;
-        }
-        CookieStore store = ((CookieManager) handler).getCookieStore();
-        int cookieCount = 0;
-        for (HttpCookie cookie : new ArrayList<HttpCookie>(store.get(uri))) {
-            store.remove(uri, cookie);
-            if (log.isDebugEnabled()) {
-                log.debug("Cleared cookie '{}' for {} after SC_SERVICE_BUSY", cookie.getName(), uri.getHost());
-            }
-            cookieCount++;
-        }
-        log.info("Cleared {} cookies for {} after SC_SERVICE_BUSY", cookieCount, uri.getHost());
-    }
-
-    private URI getAffinityURI(URL url) {
-        try {
-            return new URI(url.getProtocol(), null, url.getHost(), url.getPort(), "/", null, null);
-        } catch (URISyntaxException e) {
-            log.debug("URI could not be built for {}", url, e);
-            return null;
         }
     }
 

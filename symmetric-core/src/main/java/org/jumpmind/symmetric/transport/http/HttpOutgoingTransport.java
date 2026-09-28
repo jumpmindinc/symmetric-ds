@@ -107,7 +107,7 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
         closeOutputStream(true);
         closeReader();
         if (reservationHeld) {
-            httpTransportManager.endReservation(url);
+            httpTransportManager.getReservationCookieManager().endReservation(url);
             reservationHeld = false;
         }
         if (connection != null) {
@@ -191,7 +191,7 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
             connection.setRequestProperty(WebConstants.CHANNEL_QUEUE, queue);
             analyzeResponseCode(connection.getResponseCode());
             httpTransportManager.updateSession(connection);
-            httpTransportManager.beginReservation(url);
+            httpTransportManager.getReservationCookieManager().beginReservation(url);
             reservationHeld = true;
         } catch (IOException ex) {
             throw new IoException(ex);
@@ -265,7 +265,7 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
     private void analyzeResponseCode(int code) {
         httpTransportManager.checkResponseCode(connection, code);
         if (WebConstants.SC_SERVICE_BUSY == code) {
-            httpTransportManager.handleServiceBusy(connection);
+            httpTransportManager.getReservationCookieManager().handleServiceBusy(connection);
             throw new ConnectionRejectedException();
         } else if (WebConstants.SC_SERVICE_UNAVAILABLE == code) {
             throw new ServiceUnavailableException();

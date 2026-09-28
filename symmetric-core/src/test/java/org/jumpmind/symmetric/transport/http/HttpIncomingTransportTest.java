@@ -72,12 +72,15 @@ class HttpIncomingTransportTest {
     private static final String NODE_ID = "node1";
     private static final String SECURITY_TOKEN = "token1";
     private HttpTransportManager httpTransportManager;
+    private ReservationCookieManager reservationCookieManager;
     private HttpConnection connection;
     private IParameterService parameterService;
 
     @BeforeEach
     void setUp() {
         httpTransportManager = mock(HttpTransportManager.class);
+        reservationCookieManager = mock(ReservationCookieManager.class);
+        when(httpTransportManager.getReservationCookieManager()).thenReturn(reservationCookieManager);
         connection = mock(HttpConnection.class);
         parameterService = mock(IParameterService.class);
         when(parameterService.getInt(ParameterConstants.TRANSPORT_HTTP_TIMEOUT)).thenReturn(30000);
@@ -200,7 +203,7 @@ class HttpIncomingTransportTest {
         when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
         HttpIncomingTransport transport = newTransport();
         assertThrows(ConnectionRejectedException.class, transport::openStream);
-        verify(httpTransportManager).handleServiceBusy(connection);
+        verify(reservationCookieManager).handleServiceBusy(connection);
     }
 
     @Test
@@ -208,7 +211,7 @@ class HttpIncomingTransportTest {
         when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
         HttpIncomingTransport transport = newTransport();
         assertThrows(ConnectionRejectedException.class, transport::openStream);
-        verify(httpTransportManager, never()).beginReservation(any());
+        verify(reservationCookieManager, never()).beginReservation(any());
     }
 
     @Test
@@ -218,7 +221,7 @@ class HttpIncomingTransportTest {
         when(connection.getURL()).thenReturn(url);
         HttpIncomingTransport transport = newTransport();
         transport.openStream();
-        verify(httpTransportManager).beginReservation(url);
+        verify(reservationCookieManager).beginReservation(url);
     }
 
     @Test
@@ -229,14 +232,14 @@ class HttpIncomingTransportTest {
         HttpIncomingTransport transport = newTransport();
         transport.openStream();
         transport.close();
-        verify(httpTransportManager).endReservation(url);
+        verify(reservationCookieManager).endReservation(url);
     }
 
     @Test
     void testClose_withoutOpenStream_doesNotEndReservation() {
         HttpIncomingTransport transport = newTransport();
         transport.close();
-        verify(httpTransportManager, never()).endReservation(any());
+        verify(reservationCookieManager, never()).endReservation(any());
     }
 
     @Test
@@ -248,7 +251,7 @@ class HttpIncomingTransportTest {
         transport.openStream();
         transport.close();
         transport.close();
-        verify(httpTransportManager, times(1)).endReservation(url);
+        verify(reservationCookieManager, times(1)).endReservation(url);
     }
 
     @Test

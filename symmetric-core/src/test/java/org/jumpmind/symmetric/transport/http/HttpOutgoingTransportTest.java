@@ -84,15 +84,18 @@ class HttpOutgoingTransportTest {
     private static final int HTTP_TIMEOUT = 5000;
     private static final int HTTP_CONNECT_TIMEOUT = 3000;
     private HttpTransportManager manager;
+    private ReservationCookieManager reservationCookieManager;
     private HttpConnection connection;
     private URL url;
 
     @BeforeEach
     void setUp() throws Exception {
         manager = mock(HttpTransportManager.class);
+        reservationCookieManager = mock(ReservationCookieManager.class);
         connection = mock(HttpConnection.class);
         url = URI.create("http://node.example.com/push").toURL();
         when(manager.openConnection(any(URL.class), any(), any())).thenReturn(connection);
+        when(manager.getReservationCookieManager()).thenReturn(reservationCookieManager);
     }
 
     @Test
@@ -301,7 +304,7 @@ class HttpOutgoingTransportTest {
         when(connection.getHeaderField(WebConstants.SUSPENDED_CHANNELS)).thenReturn("");
         when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
         transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
-        verify(manager).beginReservation(url);
+        verify(reservationCookieManager).beginReservation(url);
     }
 
     @Test
@@ -312,7 +315,7 @@ class HttpOutgoingTransportTest {
         when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
         assertThrows(ConnectionRejectedException.class,
                 () -> transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode));
-        verify(manager, never()).beginReservation(any());
+        verify(reservationCookieManager, never()).beginReservation(any());
     }
 
     @Test
@@ -327,7 +330,7 @@ class HttpOutgoingTransportTest {
         when(connection.getHeaderField(WebConstants.IGNORED_CHANNELS)).thenReturn("");
         transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
         transport.close();
-        verify(manager).endReservation(url);
+        verify(reservationCookieManager).endReservation(url);
     }
 
     @Test
@@ -336,7 +339,7 @@ class HttpOutgoingTransportTest {
         when(connection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
         transport.openStream();
         transport.close();
-        verify(manager, never()).endReservation(any());
+        verify(reservationCookieManager, never()).endReservation(any());
     }
 
     @Test
@@ -352,7 +355,7 @@ class HttpOutgoingTransportTest {
         transport.getSuspendIgnoreChannelLists(configurationService, "queue1", targetNode);
         transport.close();
         transport.close();
-        verify(manager, times(1)).endReservation(url);
+        verify(reservationCookieManager, times(1)).endReservation(url);
     }
 
     @Test
@@ -362,7 +365,7 @@ class HttpOutgoingTransportTest {
         transport.openStream();
         when(connection.getResponseCode()).thenReturn(WebConstants.SC_SERVICE_BUSY);
         assertThrows(ConnectionRejectedException.class, transport::readResponse);
-        verify(manager).handleServiceBusy(connection);
+        verify(reservationCookieManager).handleServiceBusy(connection);
     }
 
     @Test
