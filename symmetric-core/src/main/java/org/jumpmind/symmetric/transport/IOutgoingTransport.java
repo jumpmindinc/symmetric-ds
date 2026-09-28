@@ -45,4 +45,8 @@ public interface IOutgoingTransport {
      * @param targetNode
      */
     public NodeChannels getSuspendIgnoreChannelLists(IConfigurationService configurationService, String queue, Node targetNode);
+
+    public default boolean isReservationRequired() {
+        return false;
+    }
 }
