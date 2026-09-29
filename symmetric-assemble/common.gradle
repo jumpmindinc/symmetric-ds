@@ -338,7 +338,7 @@ subprojects { subproject ->
         jdomVersion = '2.0.6.1'
         jaxbVersion = '4.0.5'
         gsonVersion = '2.13.1'
-        jacksonVersion = '2.21.2'
+        jacksonVersion = '2.21.7'
         guavaVersion = '33.2.0-android'
         junitVersion = '5.13.3'
         spotBugsVersion = '4.8.5'
