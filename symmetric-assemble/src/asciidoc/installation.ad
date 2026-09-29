@@ -585,6 +585,7 @@ Upgrading an existing SymmetricDS instance depends on the deployment option used
 . *Embedded Installation*: As noted in the <<Embedded>> section, you would need to swap all SymmetricDS Java Archive (JAR) library on the classpath (used for your Java application) for their new version.
 . *Rollback*: a combination of restoring database from a prior backup and the The SymmetricDS Pro setup program will overwrite current installation with an older version. See <<Downgrade Considerations>> for more details and options.
 
+<<<<<<< HEAD
 NOTE: When upgrading to 3.18 from any earlier version, the logging framework changes from Log4j2 to
 Logback, and `conf/log4j2.xml` is replaced by `conf/logback.xml`. 
 ifdef::pro[]
@@ -592,14 +593,21 @@ The setup program deprecates and converts your existing configuration, but a few
 endif::pro[]
 See <<Migrating from Log4j to Logback>> for what is converted and what to check afterwards.
 
+=======
+>>>>>>> 86c08c7fba (SYM-8115: Upgraded H2 library to 2.5.252 (#1158))
 NOTE: The H2 library was upgraded to version 2.5.252 starting in SymmetricDS versions 3.16.20,
 3.17.10, and 3.18.2. Upgrading to one of these versions (or newer) converts all H2 databases to
 a new file format. Once converted, the database can't be opened by an older SymmetricDS release
 that bundles an older H2 library. If your installation includes an H2 database, avoid upgrading
+<<<<<<< HEAD
 to a SymmetricDS release with an older H2 library (for example, going from 3.17.10 to 3.18.1
 instead of 3.18.2 or later).
 
 ifdef::pro[]
+=======
+to a SymmetricDS release with an older H2 library (for example, going from 3.16.20 to 3.18.1
+instead of 3.18.2 or later).
+>>>>>>> 86c08c7fba (SYM-8115: Upgraded H2 library to 2.5.252 (#1158))
 
 ==== Upgrade SymmetricDS Cluster
 
