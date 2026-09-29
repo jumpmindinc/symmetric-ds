@@ -327,6 +327,10 @@ subprojects { subproject ->
         commonsCollectionVersion = '4.5.0-M3'
         commonsVfs = '2.10.0'
         hamcrestVersion = '1.3'
+<<<<<<< HEAD
+=======
+        hikariVersion = '7.0.2'
+>>>>>>> 9e144e96d3 (SYM-8115: Upgraded H2 library to 2.5.252 (#1157))
         h2Version = '2.5.252'
         derbyVersion = '10.16.1.1'
         postgresqlVersion =  '42.7.11'

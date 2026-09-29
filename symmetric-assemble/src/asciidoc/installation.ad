@@ -480,7 +480,11 @@ NOTE: The H2 library was upgraded to version 2.5.252 starting in SymmetricDS ver
 3.17.10, and 3.18.2. Upgrading to one of these versions (or newer) converts all H2 databases to
 a new file format. Once converted, the database can't be opened by an older SymmetricDS release
 that bundles an older H2 library. If your installation includes an H2 database, avoid upgrading
+<<<<<<< HEAD
 to a SymmetricDS release with an older H2 library (for example, going from 3.16.20 to 3.18.1
+=======
+to a SymmetricDS release with an older H2 library (for example, going from 3.17.10 to 3.18.1
+>>>>>>> 9e144e96d3 (SYM-8115: Upgraded H2 library to 2.5.252 (#1157))
 instead of 3.18.2 or later).
 
 ==== Upgrade SymmetricDS Cluster
