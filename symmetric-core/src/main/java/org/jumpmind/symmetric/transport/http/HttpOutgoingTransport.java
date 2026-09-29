@@ -73,7 +73,7 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
     private int streamOutputChunkSize = 30720;
     private boolean fileUpload = false;
     private Map<String, String> requestProperties;
-    private boolean reservationHeld = false;
+    private boolean isReservationHeld = false;
 
     public HttpOutgoingTransport(HttpTransportManager httpTransportManager, URL url, int httpTimeout, int httpConnectTimeout, boolean useCompression,
             int compressionStrategy, int compressionLevel, String nodeId,
@@ -106,9 +106,9 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
         closeWriter(true);
         closeOutputStream(true);
         closeReader();
-        if (reservationHeld) {
+        if (isReservationHeld) {
             httpTransportManager.getReservationCookieManager().endReservation(url);
-            reservationHeld = false;
+            isReservationHeld = false;
         }
         if (connection != null) {
             connection.disconnect();
@@ -191,9 +191,9 @@ public class HttpOutgoingTransport implements IOutgoingWithResponseTransport {
             connection.setRequestProperty(WebConstants.CHANNEL_QUEUE, queue);
             analyzeResponseCode(connection.getResponseCode());
             httpTransportManager.updateSession(connection);
-            if (!reservationHeld) {
+            if (!isReservationHeld) {
                 httpTransportManager.getReservationCookieManager().beginReservation(url);
-                reservationHeld = true;
+                isReservationHeld = true;
             }
         } catch (IOException ex) {
             throw new IoException(ex);

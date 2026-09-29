@@ -40,24 +40,24 @@ import org.slf4j.LoggerFactory;
  * Tracks outstanding push/pull reservations per target host, and clears the load balancer's session-affinity cookies for a target host when it rejects a
  * request with SC_SERVICE_BUSY, so the next request can be routed to a cluster member with reservation capacity.
  */
-public class ReservationCookieManager {
+class ReservationCookieManager {
     private static final Logger log = LoggerFactory.getLogger(ReservationCookieManager.class);
     private final ISymmetricEngine engine;
-    protected Map<URI, Integer> outstandingReservationsByUri = new ConcurrentHashMap<URI, Integer>();
+    Map<URI, Integer> outstandingReservationsByUri = new ConcurrentHashMap<URI, Integer>();
 
-    public ReservationCookieManager(ISymmetricEngine engine) {
+    ReservationCookieManager(ISymmetricEngine engine) {
         this.engine = engine;
     }
 
-    public void beginReservation(URL url) {
+    void beginReservation(URL url) {
         outstandingReservationsByUri.compute(getAffinityURI(url), (key, count) -> count == null ? 1 : count + 1);
     }
 
-    public void endReservation(URL url) {
+    void endReservation(URL url) {
         outstandingReservationsByUri.computeIfPresent(getAffinityURI(url), (key, count) -> count <= 1 ? null : count - 1);
     }
 
-    public void handleServiceBusy(HttpConnection conn) {
+    void handleServiceBusy(HttpConnection conn) {
         boolean clearBusyAffinityCookieEnabled = engine.getParameterService()
                 .is(ParameterConstants.TRANSPORT_HTTP_SESSION_STICKY_RESET_ENABLED, false);
         if (clearBusyAffinityCookieEnabled) {
@@ -68,7 +68,7 @@ public class ReservationCookieManager {
         }
     }
 
-    public void clearReservationCookieForUri(HttpConnection conn) {
+    void clearReservationCookieForUri(HttpConnection conn) {
         Integer outstandingReservations = outstandingReservationsByUri.get(getAffinityURI(conn.getURL()));
         if (outstandingReservations != null && outstandingReservations > 0) {
             log.debug(
