@@ -1325,6 +1325,30 @@ class ClusteredCacheManagerTest {
     }
 
     @Test
+    void isAnyPeerWithEngineInState_notInitialized_returnsFalse() throws Exception {
+        setField("isInitializationComplete", false);
+        assertFalse(manager.isAnyPeerWithEngineInState(ENGINE_1, ClusteredEngineState.RUNNING));
+    }
+
+    @Test
+    void isAnyPeerOnline_notInitialized_returnsFalse() throws Exception {
+        setField("isInitializationComplete", false);
+        assertFalse(manager.isAnyPeerOnline());
+    }
+
+    @Test
+    void isAnyPeerInState_notInitialized_returnsFalse() throws Exception {
+        setField("isInitializationComplete", false);
+        assertFalse(manager.isAnyPeerInState(ClusterServerStatusMessage.EVENT_PEER_JOINING));
+    }
+
+    @Test
+    void getActiveServerIds_notInitialized_returnsEmptySet() throws Exception {
+        setField("isInitializationComplete", false);
+        assertTrue(manager.getActiveServerIds().isEmpty());
+    }
+
+    @Test
     void rebroadcastCurrentState_listenerStarted_broadcasts() throws Exception {
         setField("isClusterPeerListenerStarted", true);
         setMyClusterPartitionId(PARTITION_ID);
